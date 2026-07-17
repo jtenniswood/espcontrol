@@ -34,6 +34,25 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
         });
         scheduleTimes.appendChild(offHour.wrap);
         els.setScheduleOffHour = offHour.select;
+        scheduleBody.appendChild(scheduleTimes);
+        els.setScheduleTimes = scheduleTimes;
+        var scheduleSensor: any = document.createElement("div");
+        scheduleSensor.className = "sp-schedule-times";
+        var schedulePresenceField: any = document.createElement("div");
+        schedulePresenceField.className = "sp-field";
+        schedulePresenceField.appendChild(fieldLabel("Presence Entity", "sp-set-schedule-presence"));
+        var schedulePresInp: any = entityInput("sp-set-schedule-presence", state.presenceEntity, "Presence sensor entity", ["binary_sensor", "sensor"]);
+        schedulePresenceField.appendChild(schedulePresInp);
+        scheduleSensor.appendChild(schedulePresenceField);
+        bindTextPost(schedulePresInp, entityName("presence_sensor_entity"), {
+            post: postPresenceSensorEntity,
+        });
+        scheduleBody.appendChild(scheduleSensor);
+        els.setScheduleSensor = scheduleSensor;
+        els.setSchedulePresence = schedulePresInp;
+        var scheduleActions: any = document.createElement("div");
+        scheduleActions.className = "sp-schedule-times";
+        scheduleActions.id = "sp-set-schedule-actions";
         var scheduleModeControl: any = selectField("At Night Time", "sp-set-schedule-mode", [
             { value: "screen_off", label: "Screen Off" },
             { value: "screen_dimmed", label: "Screen Dimmed" },
@@ -44,7 +63,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
             syncScreenScheduleUi();
         });
         var scheduleModeSelect: any = scheduleModeControl.select;
-        scheduleTimes.appendChild(scheduleModeControl.field);
+        scheduleActions.appendChild(scheduleModeControl.field);
         els.setScheduleMode = scheduleModeSelect;
         var offScreenOptions: any = condField();
         var wakeTimeoutOptions: any = [
@@ -74,7 +93,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
         offScreenOptions.appendChild(wakeBrightnessSlider.wrap);
         els.setScheduleWakeBrightness = wakeBrightnessSlider.range;
         els.setScheduleWakeBrightnessVal = wakeBrightnessSlider.val;
-        scheduleTimes.appendChild(offScreenOptions);
+        scheduleActions.appendChild(offScreenOptions);
         els.setScheduleOffOptions = offScreenOptions;
         var dimmedOptions: any = condField();
         var dimmedBrightnessSlider: any = createRangeSlider("Dimmed Screen Brightness", state.scheduleDimmedBrightness, postScreenScheduleDimmedBrightness);
@@ -86,7 +105,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
             syncScreenScheduleUi();
         });
         dimmedOptions.appendChild(dimmedBrightnessSlider.wrap);
-        scheduleTimes.appendChild(dimmedOptions);
+        scheduleActions.appendChild(dimmedOptions);
         els.setScheduleDimmedOptions = dimmedOptions;
         els.setScheduleDimmedBrightness = dimmedBrightnessSlider.range;
         els.setScheduleDimmedBrightnessVal = dimmedBrightnessSlider.val;
@@ -106,27 +125,13 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
             postText(entityName("screen_schedule_clock_text_color"), state.scheduleClockTextColor);
         });
         clockOptions.appendChild(clockTextColor);
-        scheduleTimes.appendChild(clockOptions);
+        scheduleActions.appendChild(clockOptions);
         els.setScheduleClockOptions = clockOptions;
         els.setScheduleClockBrightness = clockBrightnessSlider.range;
         els.setScheduleClockBrightnessVal = clockBrightnessSlider.val;
         els.setScheduleClockTextColor = clockTextColor;
-        scheduleBody.appendChild(scheduleTimes);
-        els.setScheduleTimes = scheduleTimes;
-        var scheduleSensor: any = document.createElement("div");
-        scheduleSensor.className = "sp-schedule-times";
-        var schedulePresenceField: any = document.createElement("div");
-        schedulePresenceField.className = "sp-field";
-        schedulePresenceField.appendChild(fieldLabel("Presence Entity", "sp-set-schedule-presence"));
-        var schedulePresInp: any = entityInput("sp-set-schedule-presence", state.presenceEntity, "Presence sensor entity", ["binary_sensor", "sensor"]);
-        schedulePresenceField.appendChild(schedulePresInp);
-        scheduleSensor.appendChild(schedulePresenceField);
-        bindTextPost(schedulePresInp, entityName("presence_sensor_entity"), {
-            post: postPresenceSensorEntity,
-        });
-        scheduleBody.appendChild(scheduleSensor);
-        els.setScheduleSensor = scheduleSensor;
-        els.setSchedulePresence = schedulePresInp;
+        scheduleBody.appendChild(scheduleActions);
+        els.setScheduleActions = scheduleActions;
         function setScheduleTrigger(this: any, trigger?: any) {
             state._scheduleTriggerReceived = true;
             state.scheduleTrigger = normalizeScheduleTrigger(trigger, state.scheduleEnabled);

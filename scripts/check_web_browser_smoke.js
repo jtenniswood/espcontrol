@@ -988,6 +988,21 @@ async function assertSettingsPage(page, label, options = {}) {
     "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want presence to control the night schedule.",
     `${label}: night schedule override info panel text should match`,
   );
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-on-hour").isVisible(),
+    false,
+    `${label}: disabled night schedule should hide time fields`,
+  );
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-presence").isVisible(),
+    false,
+    `${label}: disabled night schedule should hide the sensor field`,
+  );
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-actions").isVisible(),
+    false,
+    `${label}: disabled night schedule should hide night action controls`,
+  );
   const coverArtCard = page
     .locator("#sp-settings .card")
     .filter({
@@ -3299,6 +3314,204 @@ async function assertClockBarEditorSmoke(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
 }
 
+async function assertNightScheduleSensorControls(page, posts, label) {
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.waitForSelector("#sp-settings.sp-page.active");
+  const card = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Night Schedule$/ }),
+    })
+    .first();
+  if (await card.evaluate((element) => element.classList.contains("collapsed"))) {
+    await card.locator(".card-header").click();
+  }
+
+  const timeButton = card.getByRole("button", { name: "Time", exact: true });
+  const sensorButton = card.getByRole("button", { name: "Sensor", exact: true });
+  const disabledButton = card.getByRole("button", { name: "Disabled", exact: true });
+  const timeFields = card.locator("#sp-set-schedule-on-hour");
+  const sensorField = card.locator("#sp-set-schedule-presence");
+  const actions = card.locator("#sp-set-schedule-actions");
+  const actionSelect = card.locator("#sp-set-schedule-mode");
+  const wakeTimeout = card.locator("#sp-set-schedule-wake-timeout");
+  const dimmedBrightness = card.locator("#sp-set-schedule-dimmed-brightness");
+  const clockBrightness = card.locator("#sp-set-schedule-clock-brightness");
+  const clockTextColor = card.locator("#sp-set-schedule-clock-text-color");
+
+  let before = posts.length;
+  await timeButton.click();
+  await waitForPost(
+    posts,
+    {
+      domain: "text",
+      name: "screen__schedule_trigger",
+      action: "set",
+      value: "time",
+    },
+    `${label}: selecting time schedule posts its trigger`,
+    before,
+  );
+  assert(await timeFields.isVisible(), `${label}: Time mode should show time fields`);
+  assert.strictEqual(
+    await sensorField.isVisible(),
+    false,
+    `${label}: Time mode should hide the sensor field`,
+  );
+  assert(await actions.isVisible(), `${label}: Time mode should show night action controls`);
+  assert(await wakeTimeout.isVisible(), `${label}: Screen Off should show wake controls`);
+  assert.strictEqual(
+    await dimmedBrightness.isVisible(),
+    false,
+    `${label}: Screen Off should hide dimmed brightness`,
+  );
+  assert.strictEqual(
+    await clockBrightness.isVisible(),
+    false,
+    `${label}: Screen Off should hide clock controls`,
+  );
+
+  before = posts.length;
+  await actionSelect.selectOption("clock");
+  await waitForPost(
+    posts,
+    {
+      domain: "select",
+      name: "screen__schedule_mode",
+      action: "set",
+      option: "Clock",
+    },
+    `${label}: selecting the night clock posts the shared action`,
+    before,
+  );
+  assert.strictEqual(
+    await wakeTimeout.isVisible(),
+    false,
+    `${label}: Clock should hide Screen Off wake controls`,
+  );
+  assert(await clockBrightness.isVisible(), `${label}: Clock should show brightness`);
+  assert(await clockTextColor.isVisible(), `${label}: Clock should show its text colour`);
+
+  before = posts.length;
+  await sensorButton.click();
+  await waitForPost(
+    posts,
+    {
+      domain: "text",
+      name: "screen__schedule_trigger",
+      action: "set",
+      value: "sensor",
+    },
+    `${label}: selecting sensor schedule posts its trigger`,
+    before,
+  );
+  assert.strictEqual(
+    await timeFields.isVisible(),
+    false,
+    `${label}: Sensor mode should hide time fields`,
+  );
+  assert(await sensorField.isVisible(), `${label}: Sensor mode should show the presence entity`);
+  assert(await actions.isVisible(), `${label}: Sensor mode should show night action controls`);
+  assert.strictEqual(
+    await actionSelect.inputValue(),
+    "clock",
+    `${label}: switching to Sensor mode should preserve the selected night action`,
+  );
+  assert(await clockBrightness.isVisible(), `${label}: Sensor clock should show brightness`);
+  assert(await clockTextColor.isVisible(), `${label}: Sensor clock should show its text colour`);
+
+  before = posts.length;
+  await sensorField.fill("binary_sensor.all_lights_on");
+  await sensorField.blur();
+  await clockBrightness.evaluate((input) => {
+    input.value = "4";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await clockTextColor.fill("330000");
+  await clockTextColor.blur();
+  await waitForPost(
+    posts,
+    {
+      domain: "text",
+      name: "presence_sensor_entity",
+      action: "set",
+      value: "binary_sensor.all_lights_on",
+    },
+    `${label}: Sensor mode posts the presence entity`,
+    before,
+  );
+  await waitForPost(
+    posts,
+    {
+      domain: "number",
+      name: "screen__schedule_clock_brightness",
+      action: "set",
+      value: "4",
+    },
+    `${label}: Sensor mode posts clock brightness`,
+    before,
+  );
+  await waitForPost(
+    posts,
+    {
+      domain: "text",
+      name: "Screen: Schedule Clock Text Color",
+      action: "set",
+      value: "330000",
+    },
+    `${label}: Sensor mode posts clock text colour`,
+    before,
+  );
+
+  await actionSelect.selectOption("screen_dimmed");
+  assert(await dimmedBrightness.isVisible(), `${label}: Sensor Dimmed should show brightness`);
+  assert.strictEqual(
+    await clockBrightness.isVisible(),
+    false,
+    `${label}: Sensor Dimmed should hide clock controls`,
+  );
+  await actionSelect.selectOption("screen_off");
+  assert(await wakeTimeout.isVisible(), `${label}: Sensor Screen Off should show wake controls`);
+  assert.strictEqual(
+    await dimmedBrightness.isVisible(),
+    false,
+    `${label}: Sensor Screen Off should hide dimmed brightness`,
+  );
+
+  await timeButton.click();
+  assert.strictEqual(
+    await sensorField.isVisible(),
+    false,
+    `${label}: returning to Time mode should hide the sensor field`,
+  );
+  await sensorButton.click();
+  assert.strictEqual(
+    await sensorField.inputValue(),
+    "binary_sensor.all_lights_on",
+    `${label}: trigger changes should preserve the sensor entity`,
+  );
+
+  await disabledButton.click();
+  assert.strictEqual(
+    await timeFields.isVisible(),
+    false,
+    `${label}: Disabled should hide time fields after interaction`,
+  );
+  assert.strictEqual(
+    await sensorField.isVisible(),
+    false,
+    `${label}: Disabled should hide the sensor field after interaction`,
+  );
+  assert.strictEqual(
+    await actions.isVisible(),
+    false,
+    `${label}: Disabled should hide shared night action controls`,
+  );
+
+  await page.getByRole("tab", { name: "Screen" }).click();
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -3348,6 +3561,9 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertSettingsPage(page, testCase.name, testCase);
+    if (testCase.exerciseInteractions) {
+      await assertNightScheduleSensorControls(page, posts, testCase.name);
+    }
     assertNoLayoutBreaks(
       await measureCoreLayout(page),
       `${testCase.name} after settings`,

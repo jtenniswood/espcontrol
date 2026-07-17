@@ -8,11 +8,11 @@ description:
 
 Screen schedule controls what the panel does overnight, then returns it to normal when the schedule says it should be available again.
 
-You will find it in the **Settings** tab on the [Setup](/features/setup) page, under **Screen Schedule**.
+You will find it in the **Settings** tab on the [Setup](/features/setup) page, under **Night Schedule**.
 
 ## Settings
 
-- **Mode** - choose **Disabled**, **Time**, or **Sensor**. Time uses the daytime and night-time hours. Sensor uses the configured presence entity to decide when the panel is in normal or night mode.
+- **Mode** - choose **Disabled**, **Time**, or **Sensor**. Time uses the daytime and night-time hours. Sensor uses the configured presence entity: `on` puts the panel in normal mode, while `off` applies the selected night-time action.
 - **Daytime** - the first hour when the screen should be awake. The default is **6:00 AM**.
 - **Night Time** - the first hour when the night schedule starts. The default is **11:00 PM**.
 - **At Night Time** - what the panel should do overnight. **Screen Off** is the default, **Screen Dimmed** keeps the panel usable at a set brightness, and **Clock** shows the clock instead. Screen Off can protect the LCD in the background while the backlight stays off.
@@ -21,6 +21,8 @@ You will find it in the **Settings** tab on the [Setup](/features/setup) page, u
 - **Dimmed Screen Brightness** - shown only for **Screen Dimmed**. It controls the overnight brightness while the panel stays usable. The default is **10%**.
 - **Clock Brightness** - shown only for **Clock**. It controls the backlight level used by the overnight clock. The default is **10%**.
 - **Clock Text Color** - shown only for **Clock**. It controls the colour of the overnight schedule clock text.
+
+Time and Sensor modes share the same night-time action and brightness settings. Switching between them keeps those settings. In Sensor mode, you can use a Home Assistant binary sensor directly, or an `input_boolean` controlled by an automation, as the **Presence Entity**.
 
 When the schedule is disabled, the panel uses the normal [screensaver](/features/screensaver) and [backlight](/features/backlight) rules.
 

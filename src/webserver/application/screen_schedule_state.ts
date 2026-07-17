@@ -90,6 +90,9 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
         if (els.setScheduleSensor) {
             els.setScheduleSensor.className = "sp-schedule-times" + (state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
         }
+        if (els.setScheduleActions) {
+            els.setScheduleActions.className = "sp-schedule-times" + (state.scheduleTrigger === "time" || state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
+        }
         if (els.setScheduleBadge) {
             els.setScheduleBadge.className = "sp-card-badge" + (state.scheduleEnabled ? "" : " sp-hidden");
         }
