@@ -20,7 +20,7 @@ struct Context {
   Surface surface = Surface::MAIN_GRID;
   bool known = false;
   bool allow_in_subpage = false;
-  bool legacy_dispatch = true;
+  bool legacy_dispatch = false;
 };
 
 inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type) {
@@ -70,55 +70,6 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
   }
 }
 
-inline bool driver_uses_legacy_dispatch(
-    const espcontrol::card_runtime::CardRuntimeSpec &runtime) {
-  using Driver = espcontrol::card_runtime::CardDriverId;
-  switch (runtime.driver) {
-    case Driver::STATUS_ENTITY: return false;
-    case Driver::DATE_TIME:
-    case Driver::SENSOR:
-    case Driver::WEATHER:
-    case Driver::TOGGLE:
-    case Driver::ACTION:
-    case Driver::ALARM_ACTION:
-    case Driver::INTERNAL:
-    case Driver::NUMERIC:
-    case Driver::LIGHT_TEMPERATURE:
-    case Driver::OPTION_SELECT:
-    case Driver::PUSH:
-    case Driver::SCREEN_LOCK:
-    case Driver::WEBHOOK:
-      return false;
-    case Driver::FAN:
-      return false;
-    case Driver::VACUUM:
-    case Driver::LAWN_MOWER:
-    case Driver::ACCESS:
-    case Driver::COVER_COMMAND:
-    case Driver::COVER_TOGGLE:
-    case Driver::COVER_POSITION:
-    case Driver::COVER_TILT:
-    case Driver::COVER_MODAL:
-    case Driver::SUBPAGE:
-    case Driver::IMAGE:
-    case Driver::LIGHT_CONTROL:
-    case Driver::FAN_CONTROL:
-    case Driver::CLIMATE:
-    case Driver::ALARM:
-    case Driver::MEDIA:
-    case Driver::MEDIA_CONTROL:
-    case Driver::MEDIA_PLAY_PAUSE:
-    case Driver::MEDIA_TRANSPORT:
-    case Driver::MEDIA_VOLUME:
-    case Driver::MEDIA_POSITION:
-    case Driver::MEDIA_NOW_PLAYING:
-    case Driver::MEDIA_COVER_ART:
-    case Driver::MEDIA_PLAYLIST:
-      return false;
-    default: return true;
-  }
-}
-
 inline Context context_for(const std::string &type, const std::string &mode,
                            Surface surface = Surface::MAIN_GRID) {
   using namespace espcontrol::card_runtime;
@@ -129,38 +80,16 @@ inline Context context_for(const std::string &type, const std::string &mode,
   context.surface = surface;
   context.known = context.runtime.type != CardTypeId::UNKNOWN;
   context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
-  context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime);
-  if (context.runtime.type == CardTypeId::ACTION &&
-      card_contract_is_option_select_action(mode)) {
-    context.legacy_dispatch = false;
-  }
-
-  // These saved-config types predate the generated contract. Keep them on the
-  // established dispatcher until they receive their own generated definition.
-  if (!context.known && type == "local") {
-    context.family = Family::ACTION;
-    context.known = true;
-    context.allow_in_subpage = true;
-    context.runtime.driver = CardDriverId::ACTION;
-    context.runtime.capabilities = static_cast<uint16_t>(
-        CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS |
-        CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE);
-    context.legacy_dispatch = false;
-  } else if (!context.known && type == "text_sensor") {
-    context.family = Family::SENSOR;
-    context.known = true;
-    context.allow_in_subpage = true;
-    context.runtime.driver = CardDriverId::SENSOR;
-    context.runtime.capabilities = static_cast<uint16_t>(
-        CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE);
-    context.legacy_dispatch = false;
-  } else if (!context.known && type == "todo") {
+  // Todo was removed from the configurator but old saved cards remain
+  // supported through one explicit compatibility driver.
+  if (!context.known && type == "todo") {
     context.family = Family::TODO;
     context.known = true;
     context.allow_in_subpage = true;
     context.runtime.capabilities = static_cast<uint16_t>(
         CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL |
         CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE);
+    context.legacy_dispatch = true;
   }
   return context;
 }
@@ -207,13 +136,6 @@ inline bool card_runtime_passive(const espcontrol::cards::Context &context) {
   return card_runtime_information_only(context) &&
          !card_runtime_has_capability(
              context, espcontrol::card_runtime::CAPABILITY_ACTIONS);
-}
-
-inline bool card_runtime_uses_slider_visual(const espcontrol::cards::Context &context) {
-  using Type = espcontrol::card_runtime::CardTypeId;
-  return context.family == espcontrol::cards::Family::SLIDER ||
-         context.family == espcontrol::cards::Family::COVER ||
-         context.runtime.type == Type::FAN_SPEED;
 }
 
 inline const char *card_runtime_label(const std::string &type) {
