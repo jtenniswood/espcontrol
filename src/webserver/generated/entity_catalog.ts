@@ -52,6 +52,14 @@ export const ENTITY_CATALOG = {
       "domain": "button",
       "name": "Restart"
     },
+    "screen_wake": {
+      "domain": "button",
+      "name": "Screen: Wake",
+      "objectIds": [
+        "screen__wake",
+        "screen_wake"
+      ]
+    },
     "indoor_temp_enable": {
       "domain": "switch",
       "name": "Indoor Temp Enable"

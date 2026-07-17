@@ -2044,6 +2044,50 @@ def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path:
     return errors
 
 
+def firmware_screen_wake_button_errors(backlight_path: Path, root: Path) -> list[str]:
+    if not backlight_path.exists():
+        return []
+
+    rel = backlight_path.relative_to(root)
+    text = backlight_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    match = re.search(
+        r'(?ms)^button:\s*\n(?P<section>.*?)(?=^[a-zA-Z_][\w-]*:\s*(?:#.*)?$|\Z)',
+        text,
+    )
+    button_block: str | None = None
+    if match:
+        for item in re.finditer(
+            r'(?ms)^  - platform:\s*template\s*\n(?P<body>.*?)(?=^  - platform:|\Z)',
+            match.group("section"),
+        ):
+            candidate = item.group(0)
+            if re.search(r'^\s+name:\s*["\']?\$\{entity_screen_wake\}["\']?\s*$', candidate, re.MULTILINE):
+                button_block = candidate
+                break
+
+    if button_block is None:
+        return [f"{rel}: expose Screen: Wake as a template button"]
+
+    if re.search(r'^\s+internal:\s*true\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: keep Screen: Wake exposed to Home Assistant")
+    if re.search(r'^\s+disabled_by_default:\s*true\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: enable Screen: Wake by default")
+    if re.search(r'^\s+entity_category:', button_block, re.MULTILINE):
+        errors.append(f"{rel}: keep Screen: Wake operational rather than a configuration entity")
+    if not re.search(r'^\s+icon:\s*["\']?mdi:monitor-arrow-up["\']?\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: use mdi:monitor-arrow-up for Screen: Wake")
+
+    required_sequence = (
+        "      - script.execute: cover_art_pause_after_touch\n"
+        "      - script.wait: cover_art_pause_after_touch\n"
+        "      - script.execute: screensaver_wake"
+    )
+    if "on_press:" not in button_block or required_sequence not in button_block:
+        errors.append(f"{rel}: run the complete touch-equivalent Screen: Wake sequence")
+    return errors
+
+
 def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> list[str]:
     if not display_path.exists():
         return []
@@ -2709,6 +2753,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(firmware_screensaver_wake_guard_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
+    errors.extend(firmware_screen_wake_button_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
@@ -3277,6 +3322,19 @@ def expect_screensaver_wake_guard_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_screen_wake_button_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "backlight.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        errors = firmware_screen_wake_button_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_clock_screensaver_overlay_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -3459,6 +3517,45 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def run_self_test() -> int:
+    expect_screen_wake_button_errors(
+        "missing Screen: Wake button",
+        "script:\n  - id: screensaver_wake\n",
+        ("expose Screen: Wake as a template button",),
+    )
+    expect_screen_wake_button_errors(
+        "hidden incomplete Screen: Wake button",
+        "button:\n"
+        "  - platform: template\n"
+        "    name: \"${entity_screen_wake}\"\n"
+        "    icon: mdi:power\n"
+        "    internal: true\n"
+        "    disabled_by_default: true\n"
+        "    entity_category: config\n"
+        "    on_press:\n"
+        "      - script.execute: screensaver_wake\n",
+        (
+            "keep Screen: Wake exposed to Home Assistant",
+            "enable Screen: Wake by default",
+            "keep Screen: Wake operational",
+            "use mdi:monitor-arrow-up",
+            "complete touch-equivalent Screen: Wake sequence",
+        ),
+    )
+    expect_screen_wake_button_errors(
+        "complete Screen: Wake button",
+        "button:\n"
+        "  - platform: template\n"
+        "    name: \"${entity_screen_wake}\"\n"
+        "    icon: mdi:monitor-arrow-up\n"
+        "    disabled_by_default: false\n"
+        "    on_press:\n"
+        "      - script.execute: cover_art_pause_after_touch\n"
+        "      - script.wait: cover_art_pause_after_touch\n"
+        "      - script.execute: screensaver_wake\n"
+        "script:\n"
+        "  - id: screensaver_wake\n",
+        (),
+    )
     expect_c6_update_status_errors(
         "missing c6 no-update fallback",
         'text_sensor:\n'

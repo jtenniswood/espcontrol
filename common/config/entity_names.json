@@ -13,6 +13,7 @@
     { "key": "subpage_config_ext_7", "domain": "text", "template": "Subpage {slot} Config Ext 7", "groups": ["subpage_slot"] },
 
     { "key": "display_restart", "domain": "button", "name": "Restart" },
+    { "key": "screen_wake", "domain": "button", "name": "Screen: Wake", "objectIds": ["screen__wake", "screen_wake"] },
 
     { "key": "indoor_temp_enable", "domain": "switch", "name": "Indoor Temp Enable", "groups": ["settings"] },
     { "key": "outdoor_temp_enable", "domain": "switch", "name": "Outdoor Temp Enable", "groups": ["settings"] },

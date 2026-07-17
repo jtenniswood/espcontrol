@@ -28,7 +28,7 @@ Time and Sensor modes share the same night-time action and brightness settings. 
 
 When the schedule is disabled, the panel uses the normal [screensaver](/features/screensaver) and [backlight](/features/backlight) rules.
 
-Time-based Night Schedule has priority over screensaver presence wake while night time is active. If someone walks past during scheduled night time, the normal screensaver sensor does not wake the panel; tap wake still works. To make presence control night and daytime behavior, use **Sensor** mode for Night Schedule instead.
+Time-based Night Schedule has priority over screensaver presence wake while night time is active. If someone walks past during scheduled night time, the normal screensaver sensor does not wake the panel; touch and the panel's **Screen: Wake** button in Home Assistant still work. To make presence control night and daytime behavior, use **Sensor** mode for Night Schedule instead.
 
 ## How the Times Work
 
@@ -40,7 +40,9 @@ If the on and off times are the same, the schedule is treated as always on.
 
 ## Manual Wake and Sleep
 
-Touching the screen while it is asleep, or while the schedule clock is showing, wakes it without changing the saved schedule. In **Screen Off** and **Clock** modes, a temporary wake outside the scheduled hours uses the saved wake brightness, stays awake for the saved wake idle time, then returns to the selected night mode.
+Touching the screen while it is asleep, pressing its **Screen: Wake** button in Home Assistant, or waking it while the schedule clock is showing does not change the saved schedule. In **Screen Off** and **Clock** modes, a temporary wake outside the scheduled hours uses the saved wake brightness, stays awake for the saved wake idle time, then returns to the selected night mode. The same Home Assistant button can also wake a manually sleeping panel.
+
+The button is stateless and is intended for Home Assistant's `button.press` action. For an automation example, see [Wake from Home Assistant](/features/screensaver#wake-from-home-assistant). Home Assistant assigns the entity ID, so choose your panel's **Screen: Wake** entity in the automation editor.
 
 Pressing and holding a button on the touchscreen for 3 seconds puts the screen to sleep manually. This is stronger than the schedule, so it will not immediately wake again just because the current time is inside the scheduled-on window. Tap the screen to wake it.
 

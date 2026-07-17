@@ -14,6 +14,17 @@
 # Touch wake is handled by the touchscreen on_touch in device.yaml.
 # =============================================================================
 
+button:
+  - platform: template
+    id: screen_wake
+    name: "${entity_screen_wake}"
+    icon: "mdi:monitor-arrow-up"
+    disabled_by_default: false
+    on_press:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
+      - script.execute: screensaver_wake
+
 globals:
   - id: manual_wake_ms
     type: uint32_t
