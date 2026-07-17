@@ -331,21 +331,6 @@ lvgl:
                 indicator:
                   bg_color: ${cover_art_text_color}
                   radius: 0
-      - obj:
-          id: cover_art_wake_touch_guard
-          x: 0
-          y: 0
-          width: 100%
-          height: 100%
-          bg_opa: 0%
-          radius: 0
-          border_width: 0
-          pad_all: 0
-          scrollable: false
-          scrollbar_mode: "off"
-          clickable: true
-          hidden: true
-
 script:
   - id: cover_art_pause_after_touch
     mode: restart
@@ -372,45 +357,6 @@ script:
                 id(cover_art_manual_pause_until_ms) = millis() + duration_ms;
                 ESP_LOGI("cover_art", "Waiting %.0fs to show cover art again after touch", seconds);
 
-  - id: cover_art_wake_touch_block
-    mode: restart
-    then:
-      - globals.set:
-          id: screensaver_wake_touch_guard_active
-          value: 'true'
-      - lvgl.widget.show: cover_art_wake_touch_guard
-      - lambda: 'lv_obj_move_foreground(id(cover_art_wake_touch_guard));'
-      - wait_until:
-          condition:
-            lambda: |-
-              lv_indev_t *indev = nullptr;
-              while ((indev = lv_indev_get_next(indev)) != nullptr) {
-                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
-                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
-                  return true;
-                }
-              }
-              return false;
-          timeout: 150ms
-      - wait_until:
-          condition:
-            lambda: |-
-              lv_indev_t *indev = nullptr;
-              while ((indev = lv_indev_get_next(indev)) != nullptr) {
-                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
-                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
-                  return false;
-                }
-              }
-              return true;
-          timeout: 2s
-      - delay: 250ms
-      - script.stop: screensaver_wake_touch_guard_clear
-      - globals.set:
-          id: screensaver_wake_touch_guard_active
-          value: 'false'
-      - lvgl.widget.hide: cover_art_wake_touch_guard
-
   - id: cover_art_apply_responsive_layout
     mode: restart
     then:
@@ -428,8 +374,8 @@ script:
           auto set_fullscreen_size = [](int width, int height) {
             lv_obj_set_pos(id(cover_art_screensaver), 0, 0);
             lv_obj_set_size(id(cover_art_screensaver), width, height);
-            lv_obj_set_pos(id(cover_art_wake_touch_guard), 0, 0);
-            lv_obj_set_size(id(cover_art_wake_touch_guard), width, height);
+            lv_obj_set_pos(id(screensaver_wake_touch_guard), 0, 0);
+            lv_obj_set_size(id(screensaver_wake_touch_guard), width, height);
             lv_obj_set_size(id(cover_art_progress_bar), width, ${cover_art_progress_height});
             lv_obj_align(id(cover_art_progress_bar), LV_ALIGN_BOTTOM_MID, 0, 0);
           };
@@ -441,8 +387,8 @@ script:
                                        int title_max_height) {
             lv_obj_set_pos(id(cover_art_screensaver), 0, 0);
             lv_obj_set_size(id(cover_art_screensaver), screen_w, screen_h);
-            lv_obj_set_pos(id(cover_art_wake_touch_guard), 0, 0);
-            lv_obj_set_size(id(cover_art_wake_touch_guard), screen_w, screen_h);
+            lv_obj_set_pos(id(screensaver_wake_touch_guard), 0, 0);
+            lv_obj_set_size(id(screensaver_wake_touch_guard), screen_w, screen_h);
             lv_obj_set_size(id(cover_art_progress_bar), screen_w, ${cover_art_progress_height});
             lv_obj_align(id(cover_art_progress_bar), LV_ALIGN_BOTTOM_MID, 0, 0);
             lv_obj_set_pos(id(cover_art_backdrop), art_x, art_y);
