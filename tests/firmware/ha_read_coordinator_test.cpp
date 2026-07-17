@@ -193,6 +193,38 @@ void reusable_subscriptions_rebind_without_transport_growth() {
           "rebound reusable callback did not receive state exactly once");
 }
 
+void disconnected_reusable_rebinds_are_deduplicated() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u << 4;
+  int calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "volume_level",
+              [&](std::string) { calls++; }, scope, true),
+          "reusable subscription should register");
+  coordinator.reset_subscriptions(scope);
+  coordinator.transport().connected = false;
+
+  require(coordinator.subscribe(
+              "media_player.room", "volume_level",
+              [&](std::string) { calls++; }, scope, true),
+          "disconnected reusable subscription should rebind");
+  coordinator.reset_subscriptions(scope);
+  require(coordinator.subscribe(
+              "media_player.room", "volume_level",
+              [&](std::string) { calls++; }, scope, true),
+          "repeated disconnected reusable subscription should rebind");
+  require(coordinator.deferred_count() == 1,
+          "repeated reusable rebinds should share one deferred request");
+
+  coordinator.transport().connected = true;
+  coordinator.flush(8, 10, 5);
+  require(coordinator.transport().reads.size() == 1,
+          "repeated reusable rebinds sent more than one read");
+  coordinator.transport().deliver_read(0, "0.60");
+  require(calls == 1,
+          "repeated reusable rebinds delivered the current callback more than once");
+}
+
 void stale_generations_do_not_deliver() {
   Coordinator coordinator;
   int calls = 0;
@@ -229,6 +261,7 @@ int main() {
   reentrant_reads_are_deferred();
   cancellation_is_safe_during_callback();
   reusable_subscriptions_rebind_without_transport_growth();
+  disconnected_reusable_rebinds_are_deduplicated();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
   return EXIT_SUCCESS;

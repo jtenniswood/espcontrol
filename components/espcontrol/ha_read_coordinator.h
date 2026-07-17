@@ -163,6 +163,9 @@ class HaReadCoordinator {
           request.has_attribute == has_attribute &&
           request.entity_id == entity_id &&
           request.attribute == attribute) {
+        for (const auto &queued_callback : request.callbacks) {
+          if (queued_callback == callback) return true;
+        }
         request.callbacks.push_back(std::move(callback));
         return true;
       }
