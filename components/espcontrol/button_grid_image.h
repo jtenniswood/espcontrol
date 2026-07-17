@@ -26,8 +26,13 @@ constexpr uint32_t IMAGE_CARD_MODAL_CLOSE_GUARD_MS = 350;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_DEBOUNCE_MS = 300;
 constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
-constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
+constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX =
+    esphome::artwork_image::IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX;
+constexpr int IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX =
+    esphome::artwork_image::IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX;
 constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
+constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES = 40 * 1024;
+constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES = 24 * 1024;
 constexpr lv_coord_t IMAGE_CARD_COMPACT_PORTRAIT_MODAL_BACK_BUTTON_REF_PX = 58;
 constexpr const char *IMAGE_CARD_LOADING_ICON = "\U000F02E9";
 
@@ -180,6 +185,23 @@ inline ImageCardModalUi &image_card_modal_ui() {
 inline ImageCardModalCache &image_card_modal_cache() {
   static ImageCardModalCache cache;
   return cache;
+}
+
+inline bool image_card_constrained_memory_profile() {
+  return display_modal_is_constrained(display_active_modal_profile());
+}
+
+inline bool image_card_retain_modal_cache() {
+  return esphome::artwork_image::image_pipeline_should_retain_modal_cache(
+      image_card_constrained_memory_profile());
+}
+
+inline void image_card_release_modal_cache(
+    esphome::artwork_image::ArtworkImage *modal_image) {
+  if (!modal_image) return;
+  ImageCardModalCache &cache = image_card_modal_cache();
+  if (cache.image == modal_image) cache = ImageCardModalCache();
+  modal_image->release();
 }
 
 inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
@@ -568,19 +590,26 @@ inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,
 #ifdef ESP_PLATFORM
   size_t image_bytes = image_card_estimated_buffer_bytes(width, height);
   size_t pipeline_bytes = image_card_estimated_pipeline_bytes(width, height);
-  size_t needed_free = pipeline_bytes + IMAGE_CARD_MEMORY_HEADROOM_BYTES;
+  size_t needed_psram = pipeline_bytes + IMAGE_CARD_MEMORY_HEADROOM_BYTES;
   size_t internal_free = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
   size_t internal_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
   size_t external_free = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
   size_t external_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
-  size_t heap_free = internal_free + external_free;
-  size_t heap_largest = std::max(internal_largest, external_largest);
-  if (image_bytes > 0 && (heap_free < needed_free || heap_largest < image_bytes)) {
+  auto failure = esphome::artwork_image::image_pipeline_memory_failure(
+      image_card_constrained_memory_profile(), internal_free, internal_largest,
+      external_free, external_largest, image_bytes, pipeline_bytes,
+      IMAGE_CARD_MEMORY_HEADROOM_BYTES,
+      IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES,
+      IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES);
+  if (failure != esphome::artwork_image::ImagePipelineMemoryFailure::NONE) {
     ESP_LOGW("image_card",
-             "Skipping %s image refresh for %s: need=%u largest=%u free=%u internal=%u psram=%u target=%dx%d",
+             "Skipping %s image refresh for %s: reason=%u psram_need=%u image=%u "
+             "internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u target=%dx%d",
              stage ? stage : "camera", ctx ? ctx->entity_id.c_str() : "(unknown)",
-             (unsigned) needed_free, (unsigned) heap_largest, (unsigned) heap_free,
-             (unsigned) internal_free, (unsigned) external_free, width, height);
+             static_cast<unsigned>(failure), static_cast<unsigned>(needed_psram),
+             static_cast<unsigned>(image_bytes), static_cast<unsigned>(internal_free),
+             static_cast<unsigned>(internal_largest), static_cast<unsigned>(external_free),
+             static_cast<unsigned>(external_largest), width, height);
     return false;
   }
   image_card_log_diagnostics(ctx, stage ? stage : "memory-ok", width, height);
@@ -779,7 +808,12 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   int count = cfg.image_card_image_count;
   if (count > IMAGE_CARD_MAX_CONTEXTS) count = IMAGE_CARD_MAX_CONTEXTS;
   if (count < 0) count = 0;
-  if (cfg.image_card_modal_image) cfg.image_card_modal_image->cancel_update();
+  if (cfg.image_card_modal_image) {
+    cfg.image_card_modal_image->cancel_update();
+    if (!image_card_retain_modal_cache()) {
+      image_card_release_modal_cache(cfg.image_card_modal_image);
+    }
+  }
   image_card_bind_modal_callbacks(cfg.image_card_modal_image);
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     esphome::artwork_image::ArtworkImage *next_image =
@@ -1061,9 +1095,11 @@ inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t sou
   int width = source_width > 0 ? static_cast<int>(source_width) : 1;
   int height = source_height > 0 ? static_cast<int>(source_height) : 1;
   int long_side = width > height ? width : height;
-  if (long_side > IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX) {
-    width = std::max(1, width * IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX / long_side);
-    height = std::max(1, height * IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX / long_side);
+  int max_target_side = esphome::artwork_image::image_pipeline_modal_max_target_side(
+      image_card_constrained_memory_profile());
+  if (long_side > max_target_side) {
+    width = std::max(1, width * max_target_side / long_side);
+    height = std::max(1, height * max_target_side / long_side);
   }
   if (target_width) *target_width = width;
   if (target_height) *target_height = height;
@@ -1766,7 +1802,12 @@ inline void image_card_finish_modal_cleanup(ImageCardCtx *ctx) {
   bool shared_modal_in_use = active_modal && active_modal->modal_image == ctx->modal_image;
   if (esphome::artwork_image::image_pipeline_should_cancel_modal_cleanup(
         image_card_has_separate_modal_image(ctx), shared_modal_in_use)) {
-    ctx->modal_image->cancel_update();
+    if (image_card_retain_modal_cache()) {
+      ctx->modal_image->cancel_update();
+    } else {
+      image_card_release_modal_cache(ctx->modal_image);
+      image_card_log_diagnostics(ctx, "modal-cache-released");
+    }
   }
   image_card_apply_context_widget_geometry(ctx);
 }

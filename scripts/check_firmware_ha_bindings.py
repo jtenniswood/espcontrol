@@ -1796,6 +1796,11 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
     errors: list[str] = []
     if "IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX" not in text:
         errors.append(f"{rel}: cap high-resolution image card modal downloads")
+    if (
+        "IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX" not in text
+        or "image_pipeline_modal_max_target_side" not in text
+    ):
+        errors.append(f"{rel}: cap constrained-display image card modals at 320 pixels")
     if "IMAGE_CARD_MAX_CONTEXTS = 6" not in text:
         errors.append(f"{rel}: support six concurrent image cards on P4 displays")
     if "image_card_limit_target_size" not in text:
@@ -1804,6 +1809,18 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: check free memory before image-card downloads")
     if "MALLOC_CAP_SPIRAM" not in text or "external_largest" not in text:
         errors.append(f"{rel}: include PSRAM in image-card memory checks")
+    if (
+        "image_pipeline_memory_failure" not in text
+        or "IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES" not in text
+        or "IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES" not in text
+    ):
+        errors.append(f"{rel}: guard constrained internal RAM separately from PSRAM")
+    if (
+        "image_card_release_modal_cache" not in text
+        or "image_card_retain_modal_cache" not in text
+        or "modal_image->release()" not in text
+    ):
+        errors.append(f"{rel}: release constrained modal image buffers after closing")
     if "ctx->image->cancel_update();" not in text:
         errors.append(f"{rel}: cancel in-flight image downloads before opening image card modals")
     if "Deferring image refresh while modal is open" not in text:
@@ -5642,21 +5659,29 @@ def run_self_test() -> int:
         "image card modal requests capped image",
         "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
+        "constexpr int IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 320;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
+        "constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES = 40 * 1024;\n"
+        "constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES = 24 * 1024;\n"
         "struct ImageCardModalCache {};\n"
         "inline ImageCardModalCache &image_card_modal_cache();\n"
+        "inline bool image_card_retain_modal_cache() { return true; }\n"
+        "inline void image_card_release_modal_cache(ArtworkImage *modal_image) { modal_image->release(); }\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"
         "inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,\n"
         "                                        int width, int height) {\n"
         "  size_t external_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);\n"
+        "  image_pipeline_memory_failure(true, 0, 0, 0, external_largest, 0, 0, 0, 0, 0);\n"
         "  return external_largest > 0;\n"
         "}\n"
         "inline bool image_card_modal_refresh_supported() {\n"
         "  return true;\n"
         "}\n"
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
-        "                                         int *target_width, int *target_height) {}\n"
+        "                                         int *target_width, int *target_height) {\n"
+        "  image_pipeline_modal_max_target_side(false);\n"
+        "}\n"
         "inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {\n"
         "  lv_obj_set_size(ui.loading_widget, width, height);\n"
         "  lv_obj_align(icon, LV_ALIGN_CENTER, 0, -18);\n"

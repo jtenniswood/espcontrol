@@ -1040,7 +1040,7 @@
         "dragAnimation": true,
         "disabledCardTypes": [
           "weather_forecast",
-          "image"
+          "media_cover_art"
         ],
         "screen": {
           "width": "55%",

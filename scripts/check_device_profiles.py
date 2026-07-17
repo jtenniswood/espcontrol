@@ -9,7 +9,13 @@ from pathlib import Path
 
 import device_matrix
 import generate_device_slots
-from device_profiles import ROOT, load_device_profiles, public_device_capabilities, web_config
+from device_profiles import (
+    ROOT,
+    load_device_profiles,
+    public_device_capabilities,
+    public_device_capability,
+    web_config,
+)
 import check_public_firmware
 
 
@@ -63,6 +69,18 @@ def image_slot_capacity(profile: dict) -> int:
     return int(profile["capabilities"]["imageSlots"])
 
 
+def image_capacity_text(capability: dict) -> str:
+    image_slots = capability["imageSlots"]
+    image_card_types = capability.get("imageCardTypes", [])
+    if image_slots == 0 or not image_card_types:
+        return "Not supported"
+    if image_card_types == ["image"]:
+        return f"Up to {image_slots} Camera Card" + ("" if image_slots == 1 else "s")
+    if image_card_types == ["media_cover_art"]:
+        return f"Up to {image_slots} Media Cover Art card" + ("" if image_slots == 1 else "s")
+    return f"Up to {image_slots} simultaneous Image or Media Cover Art cards"
+
+
 def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str, dict]) -> None:
     for slug, profile in profiles.items():
         if image_slot_capacity(profile) != 0:
@@ -73,12 +91,17 @@ def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str,
         )
 
 
-def test_constrained_s3_supports_one_cover_art_card(profiles: dict[str, dict]) -> None:
-    profile = profiles["guition-esp32-s3-4848s040"]
+def test_s3_exposes_one_camera_without_media_cover_art(profiles: dict[str, dict]) -> None:
+    slug = "guition-esp32-s3-4848s040"
+    profile = profiles[slug]
     disabled = set(web_config(profile).get("disabledCardTypes", []))
-    assert image_slot_capacity(profile) == 1, "S3 must provide one low-memory artwork slot"
-    assert "image" in disabled, "S3 must keep general Image cards unavailable"
-    assert "media_cover_art" not in disabled, "S3 must expose Media Cover Art cards"
+    assert image_slot_capacity(profile) == 1, f"{slug}: S3 must expose exactly one image slot"
+    assert "image" not in disabled, f"{slug}: S3 Camera Cards must be available"
+    assert "media_cover_art" in disabled, f"{slug}: S3 Media Cover Art must remain unavailable"
+    capability = public_device_capability(profile)
+    assert capability["imageCardTypes"] == ["image"], (
+        f"{slug}: public capability must expose only Camera Cards"
+    )
 
 
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
@@ -102,19 +125,7 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
         assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
         assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
         assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
-        image_card_types = capability.get("imageCardTypes", [])
-        if capability["imageSlots"] == 0 or not image_card_types:
-            image_capacity_text = "Not supported"
-        elif image_card_types == ["media_cover_art"]:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} Media Cover Art card' +
-                ("" if capability["imageSlots"] == 1 else "s")
-            )
-        else:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
-            )
-        assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
+        assert image_capacity_text(capability) in grid, f"{stem}: grid snippet missing image capacity"
         assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
         relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
         assert relay_text in grid, f"{stem}: grid snippet missing relay availability"
@@ -182,6 +193,17 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert "image_cards:" not in package, f"{slug}: zero image-card profile should not include image cards"
             assert "cfg.image_card_image_count" not in sensors, (
                 f"{slug}: zero image-card profile should not wire image-card downloaders"
+            )
+        media_cover_art_supported = "media_cover_art" not in set(
+            profile["web"].get("disabledCardTypes", [])
+        )
+        if media_cover_art_supported:
+            assert "cfg.media_cover_art_supported = false;" not in sensors, (
+                f"{slug}: supported Media Cover Art must retain the firmware default"
+            )
+        else:
+            assert "cfg.media_cover_art_supported = false;" in sensors, (
+                f"{slug}: firmware must block unsupported Media Cover Art"
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
@@ -631,7 +653,7 @@ def main() -> int:
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
-    test_constrained_s3_supports_one_cover_art_card(profiles)
+    test_s3_exposes_one_camera_without_media_cover_art(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()

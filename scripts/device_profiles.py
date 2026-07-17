@@ -941,6 +941,9 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "display_mode": display.get("mode", "color"),
         "modal": copy.deepcopy(display["modal"]),
         "package": firmware.get("package"),
+        "media_cover_art_supported": "media_cover_art" not in set(
+            profile["web"].get("disabledCardTypes", [])
+        ),
     }
     if "portraitCols" in layout:
         slot["portrait_cols"] = layout["portraitCols"]
@@ -1004,7 +1007,7 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "relays": len(profile["internalRelays"]),
         "rotation": bool((profile.get("rotation") or {}).get("enabled")),
         "ethernetManualInstall": bool(package.get("ethernetSelectable")),
-        "subpages": "subpage" not in profile["web"].get("disabledCardTypes", []),
+        "subpages": "subpage" not in disabled_card_types,
     }
     return capability
 

@@ -132,7 +132,7 @@
       "slots": 9,
       "imageSlots": 1,
       "imageCardTypes": [
-        "media_cover_art"
+        "image"
       ],
       "grid": {
         "rows": 3,

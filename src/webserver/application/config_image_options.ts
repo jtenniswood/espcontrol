@@ -17,7 +17,14 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         if (IMAGE_SLOT_CAPACITY <= 0)
             return "Image cards are not available on this display.";
         var disabled: any = CFG.disabledCardTypes || [];
-        if (disabled.indexOf("image") !== -1 && disabled.indexOf("media_cover_art") === -1) {
+        var cameraAvailable: any = disabled.indexOf("image") < 0;
+        var mediaCoverArtAvailable: any = disabled.indexOf("media_cover_art") < 0;
+        if (cameraAvailable && !mediaCoverArtAvailable) {
+            return "This display supports up to " + IMAGE_SLOT_CAPACITY +
+                (IMAGE_SLOT_CAPACITY === 1 ? " Camera Card" : " Camera Cards") +
+                " across the main page and subpages.";
+        }
+        if (!cameraAvailable && mediaCoverArtAvailable) {
             return "This display supports up to " + IMAGE_SLOT_CAPACITY +
                 " Media Cover Art card" + (IMAGE_SLOT_CAPACITY === 1 ? "." : "s.");
         }

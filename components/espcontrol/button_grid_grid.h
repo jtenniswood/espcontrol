@@ -56,6 +56,7 @@ struct GridConfig {
   esphome::artwork_image::ArtworkImage **image_card_images = nullptr;
   esphome::artwork_image::ArtworkImage *image_card_modal_image = nullptr;
   int image_card_image_count = 0;
+  bool media_cover_art_supported = true;
   bool image_card_diagnostics = false;
   std::function<std::string()> home_assistant_base_url;
 };
@@ -352,6 +353,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
     static_cast<MediaNowPlayingCtx *>(lv_obj_get_user_data(s.sensor_container));
   if (!media_ctx || !media_ctx->btn) return;
   clear_media_cover_art(media_ctx);
+  if (!cfg.media_cover_art_supported) return;
   if (!media_cover_art_enabled(p) || p.entity.empty()) return;
   ImageCardCtx *art = acquire_image_card_context(cfg, p.entity);
   if (!art) {

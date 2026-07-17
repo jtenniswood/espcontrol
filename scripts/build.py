@@ -3477,6 +3477,8 @@ def gen_device_grid_snippet(capability):
     image_card_types = capability.get("imageCardTypes", [])
     if image_slots == 0 or not image_card_types:
         image_slot_text = "Not supported"
+    elif image_card_types == ["image"]:
+        image_slot_text = f"Up to {image_slots} Camera Card" + ("" if image_slots == 1 else "s")
     elif image_card_types == ["media_cover_art"]:
         image_slot_text = f"Up to {image_slots} Media Cover Art card" + ("" if image_slots == 1 else "s")
     else:

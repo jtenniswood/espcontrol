@@ -432,6 +432,8 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append("            cfg.image_card_images = image_card_downloaders;")
         lines.append("            cfg.image_card_modal_image = id(image_card_modal_download_1);")
         lines.append(f"            cfg.image_card_image_count = {image_card_count};")
+    if not device.get("media_cover_art_supported", True):
+        lines.append("            cfg.media_cover_art_supported = false;")
     if device.get("image_card_diagnostics"):
         lines.append("            cfg.image_card_diagnostics = true;")
     lines.append("            cfg.home_assistant_base_url = []() {")
