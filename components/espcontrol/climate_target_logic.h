@@ -57,6 +57,12 @@ constexpr CommandKind command_kind(TargetKind kind, bool values_complete) {
   return CommandKind::NONE;
 }
 
+constexpr bool capability_change_invalidates_pending(TargetKind previous_kind,
+                                                      TargetKind next_kind,
+                                                      bool next_values_complete) {
+  return previous_kind != next_kind || !next_values_complete;
+}
+
 enum class TargetSelection {
   RETAIN = 0,
   LOW = 1,

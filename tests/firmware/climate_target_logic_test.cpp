@@ -8,6 +8,7 @@ using espcontrol::climate::TargetSelection;
 
 int main() {
   using espcontrol::climate::command_kind;
+  using espcontrol::climate::capability_change_invalidates_pending;
   using espcontrol::climate::constrain_range_target;
   using espcontrol::climate::nearest_handle_is_high;
   using espcontrol::climate::nearest_target_is_high;
@@ -31,6 +32,14 @@ int main() {
   assert(partial_range == TargetKind::RANGE);
   assert(!target_values_complete(partial_range, false, true, false));
   assert(command_kind(partial_range, false) == CommandKind::NONE);
+
+  // Repeated capability updates must not discard an adjustment waiting to send.
+  assert(!capability_change_invalidates_pending(
+    TargetKind::RANGE, TargetKind::RANGE, true));
+  assert(capability_change_invalidates_pending(
+    TargetKind::SINGLE, TargetKind::RANGE, true));
+  assert(capability_change_invalidates_pending(
+    TargetKind::RANGE, TargetKind::RANGE, false));
 
   // Before capability data arrives, use whichever complete attribute shape exists.
   assert(target_kind(false, 0, true, true, true) == TargetKind::SINGLE);

@@ -2697,7 +2697,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (!active()) return;
         std::string mode = climate_hvac_service_value(
           string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
-        climate_select_target_for_mode(ctx, mode);
+        if (mode != ctx->hvac_mode) climate_select_target_for_mode(ctx, mode);
         ctx->hvac_mode = mode;
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
@@ -2728,11 +2728,15 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
     std::function<void(esphome::StringRef)>(
       [ctx, refresh, active](esphome::StringRef value) {
         if (!active()) return;
+        ClimateTargetKind previous_kind = climate_target_kind(ctx);
         int features = 0;
         ctx->supported_features_known =
           climate_parse_supported_features(value, features);
         ctx->supported_features = ctx->supported_features_known ? features : 0;
-        climate_cancel_temperature_send(ctx);
+        ClimateTargetKind next_kind = climate_target_kind(ctx);
+        if (espcontrol::climate::capability_change_invalidates_pending(
+              previous_kind, next_kind, climate_target_values_complete(ctx)))
+          climate_cancel_temperature_send(ctx);
         refresh();
       })
   );
