@@ -43,10 +43,6 @@ constexpr bool target_values_complete(TargetKind kind,
   return false;
 }
 
-constexpr bool uses_dual_target_control(TargetKind kind, std::string_view mode) {
-  return kind == TargetKind::RANGE && mode == "heat_cool";
-}
-
 enum class CommandKind {
   NONE = 0,
   SINGLE = 1,

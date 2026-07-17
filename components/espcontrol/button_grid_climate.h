@@ -371,8 +371,7 @@ inline bool climate_range_target(ClimateControlCtx *ctx) {
 }
 
 inline bool climate_dual_target(ClimateControlCtx *ctx) {
-  return ctx && espcontrol::climate::uses_dual_target_control(
-    climate_target_kind(ctx), ctx->hvac_mode);
+  return climate_range_target(ctx);
 }
 
 inline bool climate_target_values_complete(ClimateControlCtx *ctx) {
