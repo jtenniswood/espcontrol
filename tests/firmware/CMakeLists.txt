@@ -17,6 +17,12 @@ target_include_directories(button_grid_foundations_test PRIVATE
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
 
+add_executable(climate_target_logic_test climate_target_logic_test.cpp)
+target_compile_features(climate_target_logic_test PRIVATE cxx_std_17)
+target_compile_options(climate_target_logic_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(climate_target_logic_test PRIVATE ../../components/espcontrol)
+add_test(NAME climate_target_logic_test COMMAND climate_target_logic_test)
+
 add_executable(display_mode_controller_test display_mode_controller_test.cpp)
 target_compile_features(display_mode_controller_test PRIVATE cxx_std_17)
 target_compile_options(display_mode_controller_test PRIVATE -Wall -Wextra -Werror)

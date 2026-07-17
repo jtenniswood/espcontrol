@@ -40,11 +40,27 @@ The card can show either an icon or a large temperature. It lights up when Home 
 Tapping the card opens a climate control popup. From there, you can:
 
 - Change the target temperature.
-- Adjust low and high targets for heat/cool mode when the entity supports them.
+- Adjust separate low and high targets when Home Assistant reports a target temperature range.
 - Change HVAC mode, such as Off, Heat, Cool, Heat/Cool, Auto, Dry, or Fan.
 - Change fan, swing, or preset modes when the entity exposes those options.
 
 The card follows Home Assistant attributes such as current temperature, target temperature, min/max temperature, target step, HVAC mode, fan mode, swing mode, and preset mode.
+
+### Low and High Targets
+
+For climate entities with separate heating and cooling targets, the popup shows both temperatures together. The orange section and handle represent the low heating target; the blue section and handle represent the high cooling target. The neutral gap between them is the temperature range where neither target is active.
+
+Tap either temperature, drag its handle, or tap near a handle on the arc to select it. The plus and minus buttons change the selected target, and the two targets always remain at least one configured temperature step apart.
+
+- **Cool** and **Dry** select the high target when the popup opens or the mode changes.
+- **Heat** selects the low target.
+- **Auto**, **Heat/Cool**, and **Off** keep the target you selected previously.
+
+Both targets remain visible in every mode, including Off. If Home Assistant reports range support before both target values are available, the missing value appears as `--` and adjustments remain disabled until the complete range arrives. Ordinary single-target thermostats keep the standard one-handle popup.
+
+::: info Physical device testing
+Automated checks verify the climate logic, documentation, and firmware builds, but they cannot confirm how a specific heating or cooling unit responds. Test target changes on the physical device before relying on the new controls.
+:::
 
 ::: info Requires Home Assistant actions
 Climate cards send Home Assistant climate actions from the panel. If controls do not respond, check [Enable Actions](/getting-started/home-assistant-actions).
