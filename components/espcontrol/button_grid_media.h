@@ -2805,17 +2805,31 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_label_set_long_mode(row->name_label, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_color(row->name_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(row->name_label, ctx->label_font, LV_PART_MAIN);
-  row->toggle = lv_switch_create(row->row);
+  // The low-memory display profile does not enable LVGL's switch widget.
+  // A small check button provides the same immediate join/unjoin interaction
+  // using widgets that are already part of every firmware build.
+  row->toggle = lv_btn_create(row->row);
+  lv_obj_set_size(row->toggle, 48, 36);
   lv_obj_align(row->toggle, LV_ALIGN_TOP_RIGHT, 0, 0);
+  lv_obj_set_style_radius(row->toggle, 18, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(row->toggle, lv_color_hex(TERTIARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(
+    row->toggle, lv_color_hex(current_button_primary_color()),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+      static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
+  lv_obj_set_style_border_width(row->toggle, 1, LV_PART_MAIN);
+  lv_obj_set_style_border_color(row->toggle, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
+  lv_obj_t *toggle_icon = lv_label_create(row->toggle);
+  lv_label_set_text(toggle_icon, find_icon("Check"));
+  lv_obj_center(toggle_icon);
   lv_obj_set_user_data(row->toggle, row);
   lv_obj_add_event_cb(row->toggle, [](lv_event_t *event) {
     MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
       lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
     MediaControlCtx *ctx = media_control_modal_ui().active;
     if (!ctx || !row) return;
-    bool selected = lv_obj_has_state(row->toggle, LV_STATE_CHECKED);
-    media_control_toggle_speaker(ctx, row, selected);
-  }, LV_EVENT_VALUE_CHANGED, nullptr);
+    media_control_toggle_speaker(ctx, row, !row->selected);
+  }, LV_EVENT_CLICKED, nullptr);
   row->volume_slider = lv_slider_create(row->row);
   lv_slider_set_range(row->volume_slider, 0, media_control_volume_max_pct(ctx));
   lv_obj_set_size(row->volume_slider, LV_PCT(75), 12);
