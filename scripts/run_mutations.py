@@ -25,6 +25,9 @@ def copy_tracked_files(destination: Path) -> None:
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, target)
+    dependencies = ROOT / "node_modules"
+    if dependencies.is_dir():
+        (destination / "node_modules").symlink_to(dependencies, target_is_directory=True)
 
 
 def main() -> int:

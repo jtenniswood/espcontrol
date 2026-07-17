@@ -33,5 +33,18 @@
       "python3",
       "scripts/check_firmware_parser.py"
     ]
+  },
+  {
+    "id": "web-config-comma-encoding",
+    "patch": "web-config-comma-encoding.patch",
+    "command": [
+      "node",
+      "--test",
+      "tests/web/unit/encoding.test.js"
+    ],
+    "legacy_command": [
+      "node",
+      "scripts/check_config_formats.js"
+    ]
   }
 ]

@@ -16,8 +16,10 @@ equivalent protection.
 | `check_timezones.py` `sun_calc.h` source checks | Timezone lookup or solar calculations losing required boundaries | Pure C++ timezone/solar executable tests | Break a boundary or known location result | Awaiting executable domain migration (#1007); old rule retained |
 | `check_device_profiles.py` generated/source assertions | Device capability data and generated packages drifting apart | Schema and generated-output comparison | Change a profile without regenerating outputs | Mixed structural/output contract; retain structural rules |
 | `check_card_contract_outputs.py` generated text assertions | Firmware, web and docs consuming different card contracts | Generator snapshot equality | Change one generated consumer only | Genuine generated-output rule; retain |
-| Web smoke scripts using source transformation or pattern assertions | Setup behaviour diverging without browser coverage | `node:test` module tests and Playwright interactions | Remove validation, import, event or persistence behaviour | Awaiting web migration (#1007); old rule retained |
+| Web smoke scripts using source transformation or pattern assertions | Setup behaviour diverging without browser coverage | Named `node:test` suites importing final TypeScript modules, followed by Playwright interactions | Comma-encoding mutation plus later validation, import, event and persistence mutations | Stage 1 unit overlap verified for encoding, migrations, card contracts, backup compatibility, preview logic and device profiles; old broad checks retained until browser migration |
 
 Assertions that protect only a symbol name, formatting choice, log wording, or one
 valid implementation shape will be marked **intentionally retired** when their
-domain migration reaches the mutation-overlap step. None are removed in stage 1.
+domain migration reaches the mutation-overlap step. Stage 1 does not retire the
+broad browser-oriented checks; the compatibility runner executes the new named
+suites before the legacy assertions during the overlap period.
