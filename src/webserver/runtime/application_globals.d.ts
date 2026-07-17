@@ -43,6 +43,7 @@ declare global {
   var CARD_SIZE_LARGE: any;
   var CARD_SIZE_MAX_TALL: any;
   var CARD_SIZE_MAX_WIDE: any;
+  var CARD_SIZE_PORTRAIT_LARGE: any;
   var CARD_SIZE_SINGLE: any;
   var CARD_SIZE_TALL: any;
   var CARD_SIZE_WIDE: any;
@@ -107,6 +108,7 @@ declare global {
   var MAX_CLOCK_BAR_TEMPERATURES: any;
   var MEDIA_CARD_METADATA: any;
   var MEDIA_COVER_ART_ACTION_OPTION: any;
+  var MEDIA_COVER_ART_DETAILS_OPTION: any;
   var MEDIA_COVER_ART_OPTION: any;
   var MEDIA_LABEL_DISPLAY_OPTION: any;
   var MEDIA_NUMBER_DISPLAY_OPTION: any;
@@ -129,6 +131,7 @@ declare global {
   var SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_DIMMED_BRIGHTNESS_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_MODE_UNAVAILABLE: any;
+  var SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_TRIGGER_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_WAKE_BRIGHTNESS_UNAVAILABLE: any;
@@ -284,6 +287,8 @@ declare global {
   var buttonConfigHasLegacySliderDirection: any;
   var buttonConfigNeedsMigration: any;
   var buttonTypeDisabledForDevice: any;
+  var buttonConfigDisabledForDevice: any;
+  var clipboardEntriesFromCardTransfer: any;
   var buttonTypeInfoOnlyVisible: any;
   var buttonTypePickerDetails: any;
   var buttonTypePickerKeys: any;
@@ -320,6 +325,7 @@ declare global {
   var cardContractPickerKey: any;
   var cardRequiresSquareSize: any;
   var cardSupportsMaxSize: any;
+  var cardSupportsPortraitLargeSize: any;
   var cardContractSubpageTypeCode: any;
   var cardContractSubpageTypeFromCode: any;
   var cardIconHtml: any;
@@ -654,6 +660,7 @@ declare global {
   var mdiIcon: any;
   var mediaBehaviorSpec: any;
   var mediaCoverArtAction: any;
+  var mediaCoverArtDetailsEnabled: any;
   var mediaDefaultMode: any;
   var mediaEditorMode: any;
   var mediaEditorValidMode: any;
@@ -752,6 +759,7 @@ declare global {
   var normalizeScheduleClockBrightness: any;
   var normalizeScheduleDimmedBrightness: any;
   var normalizeScheduleMode: any;
+  var normalizeScheduleSensorActivation: any;
   var normalizeScheduleTrigger: any;
   var normalizeScheduleWakeBrightness: any;
   var normalizeScheduleWakeTimeout: any;
@@ -853,6 +861,7 @@ declare global {
   var postScreenScheduleMode: any;
   var postScreenScheduleOffHour: any;
   var postScreenScheduleOnHour: any;
+  var postScreenScheduleSensorActivation: any;
   var postScreenScheduleTrigger: any;
   var postScreenScheduleWakeBrightness: any;
   var postScreenScheduleWakeTimeout: any;
@@ -954,6 +963,7 @@ declare global {
   var scheduleFirmwareWebOtaFallback: any;
   var scheduleMigration: any;
   var scheduleModeOption: any;
+  var scheduleSensorActivationOption: any;
   var scheduleRender: any;
   var scheduleSliderSubpageMigration: any;
   var screenRotationSortValue: any;
@@ -1026,6 +1036,7 @@ declare global {
   var setLightControlType: any;
   var setMediaLabelDisplayMode: any;
   var setMediaCoverArtAction: any;
+  var setMediaCoverArtDetailsEnabled: any;
   var setMediaNumberDisplayMode: any;
   var setMediaPlaylistContentId: any;
   var setMediaPlaylistContentType: any;

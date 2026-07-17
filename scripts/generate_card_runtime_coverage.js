@@ -158,6 +158,15 @@ function validateInventory(inventory, contract, webTypes, parserTypes, firmwareT
   }
 
   const aliases = new Set(Object.keys(contract.migrationAliases || {}));
+  const savedConfigAliases = new Set(aliases);
+  for (const action of Object.values(contract.migrationActions || {})) {
+    for (const condition of action.when || []) {
+      if (condition.source === "field" && condition.name === "type" &&
+          condition.operator === "equals") {
+        savedConfigAliases.add(condition.value);
+      }
+    }
+  }
   for (const [type, spec] of Object.entries(inventory.types)) {
     if (!CLASSIFICATIONS.has(spec.classification)) throw new Error(`${type || "<switch>"}: invalid classification`);
     if (!Array.isArray(spec.modes) || !spec.modes.length) throw new Error(`${type || "<switch>"}: at least one mode is required`);
@@ -198,13 +207,15 @@ function validateInventory(inventory, contract, webTypes, parserTypes, firmwareT
     }
     validateLifecycle(spec.lifecycle, inventory.lifecycleVocabulary, `runtime-only ${type}`);
     if (!Array.isArray(spec.surfaces) || !spec.surfaces.length) throw new Error(`${type}: runtime-only surfaces are required`);
-    if (spec.surfaces.some((surface) => !["web_parser", "web_registry", "firmware"].includes(surface))) {
+    if (spec.surfaces.some((surface) => !["web_parser", "web_registry", "saved_config_parser", "firmware"].includes(surface))) {
       throw new Error(`${type}: unknown runtime surface`);
     }
     if (spec.surfaces.includes("web_registry") && !webTypes.has(type)) throw new Error(`${type}: declared web residue is not registered`);
     if (spec.surfaces.includes("web_parser") && !parserTypes.has(type)) throw new Error(`${type}: declared web legacy input is not parsed`);
+    if (spec.surfaces.includes("saved_config_parser") && !savedConfigAliases.has(type)) throw new Error(`${type}: declared saved-config alias has no generated migration`);
     if (spec.surfaces.includes("firmware") && !firmwareTypes.has(type)) throw new Error(`${type}: declared firmware legacy type is not registered`);
-    if (spec.firmwareFamily && firmwareTypes.get(type) !== spec.firmwareFamily) {
+    if (spec.surfaces.includes("firmware") && spec.firmwareFamily &&
+        firmwareTypes.get(type) !== spec.firmwareFamily) {
       throw new Error(`${type}: firmware family is ${firmwareTypes.get(type)}, expected ${spec.firmwareFamily}`);
     }
   }

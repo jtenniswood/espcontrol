@@ -48,6 +48,7 @@ export {
   CARD_SIZE_LARGE,
   CARD_SIZE_MAX_TALL,
   CARD_SIZE_MAX_WIDE,
+  CARD_SIZE_PORTRAIT_LARGE,
   CARD_SIZE_SINGLE,
   CARD_SIZE_TALL,
   CARD_SIZE_WIDE,
@@ -101,6 +102,7 @@ export {
   normalizeScheduleClockBrightness,
   normalizeScheduleDimmedBrightness,
   normalizeScheduleMode,
+  normalizeScheduleSensorActivation,
   normalizeScheduleTrigger,
   normalizeScheduleWakeBrightness,
   normalizeScheduleWakeTimeout,
@@ -109,6 +111,7 @@ export {
   normalizeTemperatureUnit,
   normalizeTimeOfDay,
   scheduleModeOption,
+  scheduleSensorActivationOption,
   screensaverActionOption,
 } from "./settings";
 

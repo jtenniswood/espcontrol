@@ -10,6 +10,7 @@ artwork_image:
     byte_order: LITTLE_ENDIAN
     resize: 1x1
     resize_mode: COVER
+    priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
     p4_pipeline: TILE
@@ -21,6 +22,7 @@ artwork_image:
     byte_order: LITTLE_ENDIAN
     resize: 1x1
     resize_mode: COVER
+    priority: MODAL
     buffer_size: 8192
     allow_insecure_local_urls: true
     p4_pipeline: MODAL

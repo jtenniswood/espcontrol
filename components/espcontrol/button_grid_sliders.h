@@ -57,6 +57,8 @@ struct MediaNowPlayingCtx {
   char artist[HA_STATE_TEXT_MAX_LEN + 1] = {};
   bool external_source = false;
   bool play_pause_background = false;
+  bool artist_below_title = false;
+  lv_coord_t artist_gap = 0;
 };
 
 struct MediaPlaylistCtx {

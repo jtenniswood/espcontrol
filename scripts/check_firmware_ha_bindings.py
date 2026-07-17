@@ -16,6 +16,7 @@ CORE_INFRA_PATH = ROOT / "common" / "device" / "core_infra.yaml"
 API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 C6_FIRMWARE_UPDATE_PATH = ROOT / "common" / "device" / "esp32_c6_firmware_update.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
+SCREEN_CLOCK_PATH = ROOT / "common" / "device" / "screen_clock.yaml"
 ARTWORK_IMAGE_PATH = ROOT / "components" / "artwork_image" / "artwork_image.cpp"
 BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
@@ -1151,18 +1152,22 @@ def firmware_media_sleep_prevention_errors(
             errors.append(f"{rel}: missing screensaver_idle_check script")
         else:
             if (
-                "id(media_player_sleep_prevention_enabled).state &&" not in idle_body
+                "id(cover_art_screensaver_enabled).state &&" not in idle_body
+                or "id(media_player_sleep_prevention_enabled).state &&" not in idle_body
                 or "id(media_player_playing)" not in idle_body
             ):
-                errors.append(f"{rel}: keep media playback awake only through the media sleep prevention setting")
+                errors.append(
+                    f"{rel}: keep media playback awake only while cover art and media sleep prevention are enabled"
+                )
             if "id(cover_art_media_playing)" in idle_body:
                 errors.append(f"{rel}: use the dedicated media sleep prevention playback state")
             if re.search(
-                r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,160}"
+                r"\(id\(media_player_sleep_prevention_enabled\)\.state\s*\|\|\s*"
+                r"id\(cover_art_screensaver_enabled\)\.state\)\s*&&\s*"
                 r"id\(media_player_playing\)",
                 idle_body,
             ):
-                errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
+                errors.append(f"{rel}: require both cover art and media sleep prevention to keep the idle timer awake")
         sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
         if sleep_body is not None:
             if "id(cover_art_media_playing)" in sleep_body and not re.search(
@@ -2004,7 +2009,12 @@ def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
-def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path: Path, root: Path) -> list[str]:
+def firmware_screensaver_wake_guard_errors(
+    backlight_path: Path,
+    screen_clock_path: Path,
+    cover_art_path: Path,
+    root: Path,
+) -> list[str]:
     errors: list[str] = []
     if backlight_path.exists():
         rel = backlight_path.relative_to(root)
@@ -2042,22 +2052,123 @@ def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path:
                     normal_wake_body,
                 ):
                     errors.append(f"{rel}: clear stale wake guard state during normal screensaver wake")
+                if "bool keep_wake_guard = id(screensaver_wake_touch_guard_skip_once);" not in normal_wake_body:
+                    errors.append(f"{rel}: preserve the shared wake guard while screensaver state is restored")
+
+            clear_marker = (
+                "id(display_mode_controller).clear("
+                "espcontrol::DisplayRequestSource::IDLE_TIMER);"
+            )
+            clear_index = body.find(clear_marker)
+            guard_execute_index = body.find("script.execute: screensaver_wake_touch_block")
+            pre_clear_body = body[:clear_index] if clear_index >= 0 else ""
+            if (
+                "id(screensaver_wake_touch_guard_skip_once) =" not in pre_clear_body
+                or "espcontrol::DisplayMode::COVER_ART" not in pre_clear_body
+                or "espcontrol::DisplayMode::DISPLAY_OFF" not in pre_clear_body
+            ):
+                errors.append(
+                    f"{rel}: arm the shared wake guard from the pre-wake Cover Art and Display Off modes"
+                )
+            if (
+                clear_index < 0
+                or guard_execute_index < 0
+                or guard_execute_index > clear_index
+            ):
+                errors.append(f"{rel}: raise the shared wake guard before clearing screensaver state")
+
+        guard_body = yaml_script_body(text, "screensaver_wake_touch_block")
+        if guard_body is None:
+            errors.append(f"{rel}: missing shared screensaver_wake_touch_block script")
+        else:
+            if not re.search(
+                r"id:\s*screensaver_wake_touch_guard_active\s*\n\s*value:\s*'true'",
+                guard_body,
+            ):
+                errors.append(f"{rel}: keep screensaver wake taps guarded")
+            if "LV_INDEV_STATE_PRESSED" not in guard_body:
+                errors.append(f"{rel}: keep the shared wake guard until the wake touch is released")
+            if "timeout: 2s" not in guard_body:
+                errors.append(f"{rel}: clear the shared wake guard after a stuck touch timeout")
+            if "delay: 250ms" not in guard_body:
+                errors.append(f"{rel}: retain the shared wake guard while touch input settles")
+            if "screensaver_fill_screen(id(screensaver_wake_touch_guard))" not in guard_body:
+                errors.append(f"{rel}: resize the shared wake guard for every display layout")
+            if "lv_obj_move_foreground(id(screensaver_wake_touch_guard))" not in guard_body:
+                errors.append(f"{rel}: raise the shared wake guard above active controls")
+            if "lvgl.widget.show: screensaver_wake_touch_guard" not in guard_body:
+                errors.append(f"{rel}: show the shared full-screen wake guard")
+            if not re.search(
+                r"id:\s*screensaver_wake_touch_guard_active\s*\n\s*value:\s*'false'",
+                guard_body,
+            ):
+                errors.append(f"{rel}: accept the first deliberate tap after wake-touch release")
+            if "lvgl.widget.hide: screensaver_wake_touch_guard" not in guard_body:
+                errors.append(f"{rel}: hide the shared wake guard after touch release")
+
+    if screen_clock_path.exists():
+        rel = screen_clock_path.relative_to(root)
+        text = screen_clock_path.read_text(encoding="utf-8")
+        widget_marker = "id: screensaver_wake_touch_guard"
+        widget_index = text.find(widget_marker)
+        widget_body = text[widget_index:] if widget_index >= 0 else ""
+        if widget_index < 0:
+            errors.append(f"{rel}: define the shared screensaver wake touch guard")
+        elif not all(
+            token in widget_body
+            for token in ("width: 100%", "height: 100%", "clickable: true", "hidden: true")
+        ):
+            errors.append(f"{rel}: keep the shared wake guard full-screen, clickable, and hidden by default")
 
     if cover_art_path.exists():
         rel = cover_art_path.relative_to(root)
         text = cover_art_path.read_text(encoding="utf-8")
-        body = yaml_script_body(text, "cover_art_wake_touch_block")
-        if body is None:
-            errors.append(f"{rel}: missing cover_art_wake_touch_block script")
-        else:
-            if not re.search(r"id:\s*screensaver_wake_touch_guard_active\s*\n\s*value:\s*'true'", body):
-                errors.append(f"{rel}: keep cover art wake taps guarded")
-            if "LV_INDEV_STATE_PRESSED" not in body:
-                errors.append(f"{rel}: keep cover art guard until the wake touch is released")
-            if not re.search(r"id:\s*screensaver_wake_touch_guard_active\s*\n\s*value:\s*'false'", body):
-                errors.append(f"{rel}: clear the cover art wake guard after touch release")
-            if "lvgl.widget.hide: cover_art_wake_touch_guard" not in body:
-                errors.append(f"{rel}: hide the cover art wake touch guard after release")
+        if "cover_art_wake_touch_guard" in text or "cover_art_wake_touch_block" in text:
+            errors.append(f"{rel}: use the shared screensaver wake guard for Cover Art")
+    return errors
+
+
+def firmware_screen_wake_button_errors(backlight_path: Path, root: Path) -> list[str]:
+    if not backlight_path.exists():
+        return []
+
+    rel = backlight_path.relative_to(root)
+    text = backlight_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    match = re.search(
+        r'(?ms)^button:\s*\n(?P<section>.*?)(?=^[a-zA-Z_][\w-]*:\s*(?:#.*)?$|\Z)',
+        text,
+    )
+    button_block: str | None = None
+    if match:
+        for item in re.finditer(
+            r'(?ms)^  - platform:\s*template\s*\n(?P<body>.*?)(?=^  - platform:|\Z)',
+            match.group("section"),
+        ):
+            candidate = item.group(0)
+            if re.search(r'^\s+name:\s*["\']?\$\{entity_screen_wake\}["\']?\s*$', candidate, re.MULTILINE):
+                button_block = candidate
+                break
+
+    if button_block is None:
+        return [f"{rel}: expose Screen: Wake as a template button"]
+
+    if re.search(r'^\s+internal:\s*true\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: keep Screen: Wake exposed to Home Assistant")
+    if re.search(r'^\s+disabled_by_default:\s*true\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: enable Screen: Wake by default")
+    if re.search(r'^\s+entity_category:', button_block, re.MULTILINE):
+        errors.append(f"{rel}: keep Screen: Wake operational rather than a configuration entity")
+    if not re.search(r'^\s+icon:\s*["\']?mdi:monitor-arrow-up["\']?\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: use mdi:monitor-arrow-up for Screen: Wake")
+
+    required_sequence = (
+        "      - script.execute: cover_art_pause_after_touch\n"
+        "      - script.wait: cover_art_pause_after_touch\n"
+        "      - script.execute: screensaver_wake"
+    )
+    if "on_press:" not in button_block or required_sequence not in button_block:
+        errors.append(f"{rel}: run the complete touch-equivalent Screen: Wake sequence")
     return errors
 
 
@@ -2370,6 +2481,14 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             )
         if typed_presence_wake and "id(cover_art_screensaver_active)" in wake_body:
             errors.append(f"{rel}: leave active cover art unchanged on presence detection")
+        if typed_presence_wake:
+            reconcile_index = wake_body.find("script.execute: screen_schedule_check")
+            sensor_guard_index = wake_body.find("screen_schedule_sensor_trigger(")
+            wake_action_index = wake_body.find("script.execute: screensaver_wake")
+            if not (0 <= reconcile_index < sensor_guard_index < wake_action_index):
+                errors.append(
+                    f"{rel}: reconcile sensor-triggered night schedule before presence wake behavior"
+                )
         if controller_presence_wake and (
             "target_mode_is(\n                          espcontrol::DisplayMode::COVER_ART)" not in wake_body
             or "script.execute: screensaver_wake" not in wake_body
@@ -2392,6 +2511,18 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             schedule_check_index != -1 and disabled_wake_index < schedule_check_index
         )):
             errors.append(f"{rel}: let sensor screensaver wake when the screen schedule is disabled")
+
+    presence_sleep_body = yaml_script_body(text, "screensaver_presence_sleep")
+    if presence_sleep_body is None:
+        errors.append(f"{rel}: missing screensaver_presence_sleep script")
+    else:
+        reconcile_index = presence_sleep_body.find("script.execute: screen_schedule_check")
+        sensor_guard_index = presence_sleep_body.find("screen_schedule_sensor_trigger(")
+        sleep_action_index = presence_sleep_body.find("script.execute: screensaver_sleep_sensor")
+        if not (0 <= reconcile_index < sensor_guard_index < sleep_action_index):
+            errors.append(
+                f"{rel}: reconcile sensor-triggered night schedule before presence sleep behavior"
+            )
 
     return errors
 
@@ -2705,7 +2836,12 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
-    errors.extend(firmware_screensaver_wake_guard_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
+    errors.extend(
+        firmware_screensaver_wake_guard_errors(
+            BACKLIGHT_PATH, SCREEN_CLOCK_PATH, COVER_ART_PATH, ROOT
+        )
+    )
+    errors.extend(firmware_screen_wake_button_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
@@ -3255,19 +3391,38 @@ def expect_image_card_startup_errors(
 def expect_screensaver_wake_guard_errors(
     name: str,
     backlight_text: str,
+    screen_clock_text: str,
     cover_art_text: str,
     expected: tuple[str, ...],
 ) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         backlight_path = root / "common" / "addon" / "backlight.yaml"
+        screen_clock_path = root / "common" / "device" / "screen_clock.yaml"
         cover_art_path = root / "common" / "device" / "screen_cover_art.yaml"
         backlight_path.parent.mkdir(parents=True)
-        cover_art_path.parent.mkdir(parents=True)
+        screen_clock_path.parent.mkdir(parents=True)
+        cover_art_path.parent.mkdir(parents=True, exist_ok=True)
         backlight_path.write_text(backlight_text, encoding="utf-8")
+        screen_clock_path.write_text(screen_clock_text, encoding="utf-8")
         cover_art_path.write_text(cover_art_text, encoding="utf-8")
 
-        errors = firmware_screensaver_wake_guard_errors(backlight_path, cover_art_path, root)
+        errors = firmware_screensaver_wake_guard_errors(
+            backlight_path, screen_clock_path, cover_art_path, root
+        )
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_screen_wake_button_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "backlight.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        errors = firmware_screen_wake_button_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3456,6 +3611,45 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def run_self_test() -> int:
+    expect_screen_wake_button_errors(
+        "missing Screen: Wake button",
+        "script:\n  - id: screensaver_wake\n",
+        ("expose Screen: Wake as a template button",),
+    )
+    expect_screen_wake_button_errors(
+        "hidden incomplete Screen: Wake button",
+        "button:\n"
+        "  - platform: template\n"
+        "    name: \"${entity_screen_wake}\"\n"
+        "    icon: mdi:power\n"
+        "    internal: true\n"
+        "    disabled_by_default: true\n"
+        "    entity_category: config\n"
+        "    on_press:\n"
+        "      - script.execute: screensaver_wake\n",
+        (
+            "keep Screen: Wake exposed to Home Assistant",
+            "enable Screen: Wake by default",
+            "keep Screen: Wake operational",
+            "use mdi:monitor-arrow-up",
+            "complete touch-equivalent Screen: Wake sequence",
+        ),
+    )
+    expect_screen_wake_button_errors(
+        "complete Screen: Wake button",
+        "button:\n"
+        "  - platform: template\n"
+        "    name: \"${entity_screen_wake}\"\n"
+        "    icon: mdi:monitor-arrow-up\n"
+        "    disabled_by_default: false\n"
+        "    on_press:\n"
+        "      - script.execute: cover_art_pause_after_touch\n"
+        "      - script.wait: cover_art_pause_after_touch\n"
+        "      - script.execute: screensaver_wake\n"
+        "script:\n"
+        "  - id: screensaver_wake\n",
+        (),
+    )
     expect_c6_update_status_errors(
         "missing c6 no-update fallback",
         'text_sensor:\n'
@@ -4803,13 +4997,13 @@ def run_self_test() -> int:
         "    then:\n"
         "      - script.execute: cover_art_start_delay\n",
         (
-            "do not let cover art alone keep the idle timer awake",
+            "require both cover art and media sleep prevention to keep the idle timer awake",
             "do not turn on media sleep prevention",
             "let cover art use its own delay",
         ),
     )
     expect_media_sleep_prevention_errors(
-        "media sleep prevention is independent from cover art",
+        "playback cannot block sleep while cover art is disabled",
         "script:\n"
         "  - id: screensaver_idle_check\n"
         "    then:\n"
@@ -4818,6 +5012,22 @@ def run_self_test() -> int:
         "            lambda: |-\n"
         "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                      id(media_player_playing));\n",
+        "",
+        "",
+        ("keep media playback awake only while cover art and media sleep prevention are enabled",),
+    )
+    expect_media_sleep_prevention_errors(
+        "media sleep prevention applies while cover art is enabled",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
+        "                     (id(cover_art_screensaver_enabled).state &&\n"
+        "                      id(media_player_sleep_prevention_enabled).state &&\n"
         "                      id(media_player_playing));\n"
         "  - id: screensaver_wake\n"
         "    then:\n"
@@ -4860,7 +5070,8 @@ def run_self_test() -> int:
         "          condition:\n"
         "            lambda: |-\n"
         "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
-        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                     (id(cover_art_screensaver_enabled).state &&\n"
+        "                      id(media_player_sleep_prevention_enabled).state &&\n"
         "                      id(media_player_playing));\n"
         "  - id: screensaver_sleep_timer\n"
         "    then:\n"
@@ -4909,7 +5120,8 @@ def run_self_test() -> int:
         "          condition:\n"
         "            lambda: |-\n"
         "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
-        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                     (id(cover_art_screensaver_enabled).state &&\n"
+        "                      id(media_player_sleep_prevention_enabled).state &&\n"
         "                      id(media_player_playing));\n"
         "  - id: screensaver_sleep_timer\n"
         "    then:\n"
@@ -5650,23 +5862,41 @@ def run_self_test() -> int:
         "        refresh_image_cards();\n",
         (),
     )
-    valid_cover_art_wake_guard = (
-        "script:\n"
-        "  - id: cover_art_wake_touch_block\n"
+    valid_shared_wake_guard_widget = (
+        "lvgl:\n"
+        "  top_layer:\n"
+        "    widgets:\n"
+        "      - obj:\n"
+        "          id: screensaver_wake_touch_guard\n"
+        "          width: 100%\n"
+        "          height: 100%\n"
+        "          clickable: true\n"
+        "          hidden: true\n"
+    )
+    valid_shared_wake_guard_script = (
+        "  - id: screensaver_wake_touch_block\n"
         "    then:\n"
         "      - globals.set:\n"
         "          id: screensaver_wake_touch_guard_active\n"
         "          value: 'true'\n"
+        "      - lambda: 'screensaver_fill_screen(id(screensaver_wake_touch_guard));'\n"
+        "      - lvgl.widget.show: screensaver_wake_touch_guard\n"
+        "      - lambda: 'lv_obj_move_foreground(id(screensaver_wake_touch_guard));'\n"
         "      - wait_until:\n"
         "          condition:\n"
         "            lambda: 'return lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED;'\n"
+        "          timeout: 150ms\n"
+        "      - wait_until:\n"
+        "          condition:\n"
+        "            lambda: 'return lv_indev_get_state(indev) != LV_INDEV_STATE_PRESSED;'\n"
+        "          timeout: 2s\n"
+        "      - delay: 250ms\n"
         "      - globals.set:\n"
         "          id: screensaver_wake_touch_guard_active\n"
         "          value: 'false'\n"
-        "      - lvgl.widget.hide: cover_art_wake_touch_guard\n"
+        "      - lvgl.widget.hide: screensaver_wake_touch_guard\n"
     )
-    expect_screensaver_wake_guard_errors(
-        "normal wake arms delayed guard",
+    valid_shared_wake_flow = (
         "globals:\n"
         "  - id: screensaver_wake_restore_pending\n"
         "    type: bool\n"
@@ -5677,6 +5907,50 @@ def run_self_test() -> int:
         "      - lambda: |-\n"
         "          id(screensaver_wake_restore_pending) =\n"
         "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
+        "          id(screensaver_wake_touch_guard_skip_once) =\n"
+        "              id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
+        "              id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::DISPLAY_OFF);\n"
+        "      - script.execute: screensaver_wake_touch_block\n"
+        "      - lambda: |-\n"
+        "          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::IDLE_TIMER);\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              const bool restore_pending = id(screensaver_wake_restore_pending);\n"
+        "              id(screensaver_wake_restore_pending) = false;\n"
+        "              return restore_pending ||\n"
+        "                  !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
+        "          then:\n"
+        "            - if:\n"
+        "                condition:\n"
+        "                  lambda: |-\n"
+        "                    bool keep_wake_guard = id(screensaver_wake_touch_guard_skip_once);\n"
+        "                    id(screensaver_wake_touch_guard_skip_once) = false;\n"
+        "                    return keep_wake_guard;\n"
+        "                else:\n"
+        "                  - globals.set:\n"
+        "                      id: screensaver_wake_touch_guard_active\n"
+        "                      value: 'false'\n"
+        + valid_shared_wake_guard_script
+    )
+    expect_screensaver_wake_guard_errors(
+        "simple timed global guard is rejected",
+        "globals:\n"
+        "  - id: screensaver_wake_restore_pending\n"
+        "    type: bool\n"
+        "    initial_value: 'false'\n"
+        "script:\n"
+        "  - id: screensaver_wake\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          id(screensaver_wake_restore_pending) =\n"
+        "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
+        "          id(screensaver_wake_touch_guard_skip_once) =\n"
+        "              id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
+        "              id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::DISPLAY_OFF);\n"
+        "      - script.execute: screensaver_wake_touch_block\n"
+        "      - lambda: |-\n"
+        "          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::IDLE_TIMER);\n"
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
@@ -5689,44 +5963,53 @@ def run_self_test() -> int:
         "                id: screensaver_wake_touch_guard_active\n"
         "                value: 'true'\n"
         "            - script.execute: screensaver_wake_touch_guard_clear\n",
-        valid_cover_art_wake_guard,
+        valid_shared_wake_guard_widget,
+        "",
         (
             "do not block the first button tap after normal screensaver wake",
             "do not arm a delayed wake guard clear for normal screensaver wake",
+            "missing shared screensaver_wake_touch_block script",
         ),
     )
     expect_screensaver_wake_guard_errors(
-        "normal wake clears stale guard while cover art remains guarded",
-        "globals:\n"
-        "  - id: screensaver_wake_restore_pending\n"
-        "    type: bool\n"
-        "    initial_value: 'false'\n"
-        "script:\n"
-        "  - id: screensaver_wake\n"
-        "    then:\n"
-        "      - lambda: |-\n"
-        "          id(screensaver_wake_restore_pending) =\n"
-        "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
-        "      - if:\n"
-        "          condition:\n"
-        "            lambda: |-\n"
-        "              const bool restore_pending = id(screensaver_wake_restore_pending);\n"
-        "              id(screensaver_wake_restore_pending) = false;\n"
-        "              return restore_pending ||\n"
-        "                  !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
-        "          then:\n"
-        "            - if:\n"
-        "                condition:\n"
-        "                  lambda: |-\n"
-        "                    bool keep_cover_art_guard = id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) && id(screensaver_wake_touch_guard_skip_once);\n"
-        "                    id(screensaver_wake_touch_guard_skip_once) = false;\n"
-        "                    return keep_cover_art_guard;\n"
-        "                else:\n"
-        "                  - globals.set:\n"
-        "                      id: screensaver_wake_touch_guard_active\n"
-        "                      value: 'false'\n",
-        valid_cover_art_wake_guard,
+        "shared release guard covers Display Off and Cover Art",
+        valid_shared_wake_flow,
+        valid_shared_wake_guard_widget,
+        "script:\n  - id: cover_art_apply_responsive_layout\n",
         (),
+    )
+    expect_screensaver_wake_guard_errors(
+        "Cover Art-only guard does not cover Display Off",
+        valid_shared_wake_flow.replace(
+            " ||\n              id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::DISPLAY_OFF)",
+            "",
+        ),
+        valid_shared_wake_guard_widget,
+        "",
+        ("pre-wake Cover Art and Display Off modes",),
+    )
+    expect_screensaver_wake_guard_errors(
+        "release guard accepts the next deliberate tap",
+        valid_shared_wake_flow.replace(
+            "      - globals.set:\n"
+            "          id: screensaver_wake_touch_guard_active\n"
+            "          value: 'false'\n"
+            "      - lvgl.widget.hide: screensaver_wake_touch_guard\n",
+            "",
+        ),
+        valid_shared_wake_guard_widget,
+        "",
+        (
+            "accept the first deliberate tap after wake-touch release",
+            "hide the shared wake guard after touch release",
+        ),
+    )
+    expect_screensaver_wake_guard_errors(
+        "stuck touch retains a bounded fallback",
+        valid_shared_wake_flow.replace("          timeout: 2s\n", ""),
+        valid_shared_wake_guard_widget,
+        "",
+        ("clear the shared wake guard after a stuck touch timeout",),
     )
     expect_clock_screensaver_overlay_errors(
         "clock screensaver closes active UI before showing",
@@ -5870,6 +6153,18 @@ def run_self_test() -> int:
         "                      (int) id(schedule_off_hour).state);\n"
         "                then:\n"
         "            - script.execute: screensaver_wake\n"
+        "  - id: screensaver_presence_sleep\n"
+        "    then:\n"
+        "      - script.execute: screen_schedule_check\n"
+        "      - script.wait: screen_schedule_check\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(screensaver_mode).state == \"sensor\" &&\n"
+        "                     !screen_schedule_sensor_trigger(\n"
+        "                         id(screen_schedule_trigger).state);\n"
+        "          then:\n"
+        "            - script.execute: screensaver_sleep_sensor\n"
         "  - id: backlight_schedule_display_off\n"
         "    then:\n"
         "      - script.stop: cover_art_delay_timer\n"
@@ -5896,6 +6191,8 @@ def run_self_test() -> int:
     )
     typed_presence_wake = valid_schedule_screensaver_override.replace(
         "            - script.execute: screensaver_wake\n",
+        "            - script.execute: screen_schedule_check\n"
+        "            - lambda: 'return !screen_schedule_sensor_trigger(id(screen_schedule_trigger).state);'\n"
         "            - lambda: 'return espcontrol::presence_can_wake_display(transition);'\n"
         "            - script.execute: screensaver_wake\n"
         "            - script.execute: display_mode_clear_automatic\n",

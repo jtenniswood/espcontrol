@@ -14,6 +14,17 @@
 # Touch wake is handled by the touchscreen on_touch in device.yaml.
 # =============================================================================
 
+button:
+  - platform: template
+    id: screen_wake
+    name: "${entity_screen_wake}"
+    icon: "mdi:monitor-arrow-up"
+    disabled_by_default: false
+    on_press:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
+      - script.execute: screensaver_wake
+
 globals:
   - id: manual_wake_ms
     type: uint32_t
@@ -356,7 +367,8 @@ script:
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
-              (int) id(schedule_off_hour).state);
+              (int) id(schedule_off_hour).state,
+              id(screen_schedule_sensor_activation).current_option());
           const bool schedule_was_active = controller.request_active(
               espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
           const bool schedule_ended = schedule_was_active && !schedule_night;
@@ -524,7 +536,8 @@ script:
                     now.is_valid(),
                     now.is_valid() ? now.hour : 0,
                     (int) id(schedule_on_hour).state,
-                    (int) id(schedule_off_hour).state)) {
+                    (int) id(schedule_off_hour).state,
+                    id(screen_schedule_sensor_activation).current_option())) {
                 id(screen_schedule_check).execute();
                 return false;
               }
@@ -541,7 +554,8 @@ script:
                     return id(display_mode_controller).target_mode_is(
                                espcontrol::DisplayMode::COVER_ART) ||
                            alarm_display_takeover_active() ||
-                           (id(media_player_sleep_prevention_enabled).state &&
+                           (id(cover_art_screensaver_enabled).state &&
+                            id(media_player_sleep_prevention_enabled).state &&
                             id(media_player_playing));
                 then:
                   - script.execute: screensaver_idle_check
@@ -628,9 +642,14 @@ script:
   - id: screensaver_presence_wake
     mode: restart
     then:
+      - script.execute: screen_schedule_check
+      - script.wait: screen_schedule_check
       - if:
           condition:
-            lambda: 'return id(screensaver_mode).state == "sensor";'
+            lambda: |-
+              return id(screensaver_mode).state == "sensor" &&
+                     !screen_schedule_sensor_trigger(
+                         id(screen_schedule_trigger).state);
           then:
             - globals.set: { id: screensaver_sensor_sleep_pending, value: 'false' }
             - if:
@@ -648,9 +667,14 @@ script:
   - id: screensaver_presence_sleep
     mode: restart
     then:
+      - script.execute: screen_schedule_check
+      - script.wait: screen_schedule_check
       - if:
           condition:
-            lambda: 'return id(screensaver_mode).state == "sensor";'
+            lambda: |-
+              return id(screensaver_mode).state == "sensor" &&
+                     !screen_schedule_sensor_trigger(
+                         id(screen_schedule_trigger).state);
           then:
             - script.execute: screensaver_sleep_sensor
 
@@ -966,6 +990,23 @@ script:
           id(screensaver_wake_restore_pending) =
               !id(display_mode_controller).target_mode_is(
                   espcontrol::DisplayMode::ACTIVE);
+          id(screensaver_wake_touch_guard_skip_once) =
+              id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::COVER_ART) ||
+              id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::DISPLAY_OFF);
+      - if:
+          condition:
+            lambda: 'return id(screensaver_wake_touch_guard_skip_once);'
+          then:
+            - globals.set:
+                id: screensaver_wake_touch_guard_active
+                value: 'true'
+            - lambda: 'screensaver_fill_screen(id(screensaver_wake_touch_guard));'
+            - lvgl.widget.show: screensaver_wake_touch_guard
+            - lambda: 'lv_obj_move_foreground(id(screensaver_wake_touch_guard));'
+            - script.execute: screensaver_wake_touch_block
+      - lambda: |-
           id(display_mode_controller).clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
           id(display_mode_controller).clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           id(display_mode_controller).clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
@@ -980,7 +1021,8 @@ script:
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
-              (int) id(schedule_off_hour).state);
+              (int) id(schedule_off_hour).state,
+              id(screen_schedule_sensor_activation).current_option());
             id(manual_wake_ms) =
               (schedule_night && !id(schedule_mode_always_on)) ? millis() : 0;
           }
@@ -994,21 +1036,6 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(display_mode_controller).target_mode_is(
-                  espcontrol::DisplayMode::COVER_ART);
-          then:
-            - globals.set:
-                id: screensaver_wake_touch_guard_skip_once
-                value: 'true'
-            - globals.set:
-                id: screensaver_wake_touch_guard_active
-                value: 'true'
-            - lvgl.widget.show: cover_art_wake_touch_guard
-            - lambda: 'lv_obj_move_foreground(id(cover_art_wake_touch_guard));'
-            - script.execute: cover_art_wake_touch_block
-      - if:
-          condition:
-            lambda: |-
               const bool restore_pending = id(screensaver_wake_restore_pending);
               id(screensaver_wake_restore_pending) = false;
               return restore_pending ||
@@ -1019,14 +1046,11 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    bool keep_cover_art_guard =
-                        id(display_mode_controller).target_mode_is(
-                            espcontrol::DisplayMode::COVER_ART) &&
-                        id(screensaver_wake_touch_guard_skip_once);
+                    bool keep_wake_guard = id(screensaver_wake_touch_guard_skip_once);
                     id(screensaver_wake_touch_guard_skip_once) = false;
-                    return keep_cover_art_guard;
+                    return keep_wake_guard;
                 then:
-                  - lambda: 'ESP_LOGD("screensaver", "Keeping cover art wake guard until touch release");'
+                  - lambda: 'ESP_LOGD("screensaver", "Keeping wake guard until touch release");'
                 else:
                   - script.stop: screensaver_wake_touch_guard_clear
                   - globals.set:
@@ -1060,6 +1084,46 @@ script:
                      !alarm_display_takeover_active();
           then:
             - script.execute: cover_art_start_delay
+
+  - id: screensaver_wake_touch_block
+    mode: restart
+    then:
+      - globals.set:
+          id: screensaver_wake_touch_guard_active
+          value: 'true'
+      - lambda: 'screensaver_fill_screen(id(screensaver_wake_touch_guard));'
+      - lvgl.widget.show: screensaver_wake_touch_guard
+      - lambda: 'lv_obj_move_foreground(id(screensaver_wake_touch_guard));'
+      - wait_until:
+          condition:
+            lambda: |-
+              lv_indev_t *indev = nullptr;
+              while ((indev = lv_indev_get_next(indev)) != nullptr) {
+                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
+                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
+                  return true;
+                }
+              }
+              return false;
+          timeout: 150ms
+      - wait_until:
+          condition:
+            lambda: |-
+              lv_indev_t *indev = nullptr;
+              while ((indev = lv_indev_get_next(indev)) != nullptr) {
+                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
+                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
+                  return false;
+                }
+              }
+              return true;
+          timeout: 2s
+      - delay: 250ms
+      - script.stop: screensaver_wake_touch_guard_clear
+      - globals.set:
+          id: screensaver_wake_touch_guard_active
+          value: 'false'
+      - lvgl.widget.hide: screensaver_wake_touch_guard
 
   - id: screensaver_wake_touch_guard_clear
     mode: restart

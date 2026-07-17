@@ -22,12 +22,6 @@ int main() {
       card_runtime_context("not_a_card").family != Family::UNKNOWN) {
     return EXIT_FAILURE;
   }
-  if (!card_runtime_uses_slider_visual(card_runtime_context("light_brightness")) ||
-      !card_runtime_uses_slider_visual(card_runtime_context("cover")) ||
-      !card_runtime_uses_slider_visual(card_runtime_context("fan_speed")) ||
-      card_runtime_uses_slider_visual(card_runtime_context("fan_switch"))) {
-    return EXIT_FAILURE;
-  }
   const auto door = card_runtime_context("door_window");
   const auto presence = card_runtime_context("presence");
   const auto image = card_runtime_context("image");
@@ -41,7 +35,7 @@ int main() {
   const auto calendar = card_runtime_context("calendar");
   const auto sensor = card_runtime_context("sensor");
   const auto local_sensor = card_runtime_context("local_sensor");
-  const auto legacy_text_sensor = card_runtime_context("text_sensor");
+  const auto raw_text_sensor_alias = card_runtime_context("text_sensor");
   const auto weather = card_runtime_context("weather");
   const auto weather_forecast = card_runtime_context("weather_forecast");
   const auto toggle = card_runtime_context("");
@@ -50,7 +44,7 @@ int main() {
   const auto fan_switch = card_runtime_context("fan_switch");
   const auto internal = card_runtime_context("internal");
   const auto light_switch = card_runtime_context("light_switch");
-  const auto local_action = card_runtime_context("local");
+  const auto raw_local_action_alias = card_runtime_context("local");
   const auto push = card_runtime_context("push");
   const auto screen_lock = card_runtime_context("screen_lock");
   const auto webhook = card_runtime_context("webhook");
@@ -68,6 +62,8 @@ int main() {
   const auto gate = card_runtime_context("gate");
   const auto lock = card_runtime_context("lock");
   const auto subpage = card_runtime_context("subpage");
+  const auto todo_compatibility = card_runtime_context("todo");
+  const auto unsupported = card_runtime_context("not_a_card");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
@@ -76,16 +72,16 @@ int main() {
       clock.legacy_dispatch || timezone.legacy_dispatch || calendar.legacy_dispatch ||
       sensor.runtime.driver != espcontrol::card_runtime::CardDriverId::SENSOR ||
       local_sensor.runtime.driver != espcontrol::card_runtime::CardDriverId::SENSOR ||
-      legacy_text_sensor.runtime.driver != espcontrol::card_runtime::CardDriverId::SENSOR ||
       sensor.legacy_dispatch || local_sensor.legacy_dispatch ||
-      legacy_text_sensor.legacy_dispatch ||
+      raw_text_sensor_alias.known || raw_text_sensor_alias.legacy_dispatch ||
       weather.runtime.driver != espcontrol::card_runtime::CardDriverId::WEATHER ||
       weather_forecast.runtime.driver != espcontrol::card_runtime::CardDriverId::WEATHER ||
       weather.legacy_dispatch || weather_forecast.legacy_dispatch ||
       toggle.legacy_dispatch || action.legacy_dispatch ||
       alarm_action.legacy_dispatch || fan_switch.legacy_dispatch ||
       internal.legacy_dispatch || light_switch.legacy_dispatch ||
-      local_action.legacy_dispatch || push.legacy_dispatch ||
+      raw_local_action_alias.known || raw_local_action_alias.legacy_dispatch ||
+      push.legacy_dispatch ||
       screen_lock.legacy_dispatch || webhook.legacy_dispatch ||
       slider.runtime.driver != espcontrol::card_runtime::CardDriverId::NUMERIC ||
       light_brightness.runtime.driver != espcontrol::card_runtime::CardDriverId::NUMERIC ||
@@ -125,7 +121,10 @@ int main() {
         espcontrol::card_runtime::CardDriverId::CLIMATE ||
       climate.legacy_dispatch || climate_control.legacy_dispatch ||
       alarm.runtime.driver != espcontrol::card_runtime::CardDriverId::ALARM ||
-      alarm.legacy_dispatch) {
+      alarm.legacy_dispatch || !todo_compatibility.known ||
+      todo_compatibility.family != Family::TODO ||
+      !todo_compatibility.legacy_dispatch || unsupported.known ||
+      unsupported.legacy_dispatch) {
     return EXIT_FAILURE;
   }
   struct TestConfig {

@@ -3474,13 +3474,12 @@ def gen_device_grid_snippet(capability):
     relay_text = "No built-in relays" if relays == 0 else f"{relays} built-in relay" + ("" if relays == 1 else "s")
     ethernet = "Yes, manual ESPHome install only" if capability.get("ethernetManualInstall") else "No"
     image_slots = capability["imageSlots"]
-    camera_cards = capability.get("cameraCards", image_slots > 0)
-    media_cover_art_cards = capability.get("mediaCoverArtCards", image_slots > 0)
-    if image_slots == 0 or not (camera_cards or media_cover_art_cards):
+    image_card_types = capability.get("imageCardTypes", [])
+    if image_slots == 0 or not image_card_types:
         image_slot_text = "Not supported"
-    elif camera_cards and not media_cover_art_cards:
+    elif image_card_types == ["image"]:
         image_slot_text = f"Up to {image_slots} Camera Card" + ("" if image_slots == 1 else "s")
-    elif media_cover_art_cards and not camera_cards:
+    elif image_card_types == ["media_cover_art"]:
         image_slot_text = f"Up to {image_slots} Media Cover Art card" + ("" if image_slots == 1 else "s")
     else:
         image_slot_text = f"Up to {image_slots} simultaneous Image or Media Cover Art cards"

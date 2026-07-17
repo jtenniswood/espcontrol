@@ -18,6 +18,7 @@ using esphome::artwork_image::image_pipeline_should_preempt_stale_modal;
 using esphome::artwork_image::image_pipeline_should_retain_modal_cache;
 using esphome::artwork_image::ImagePipelineMemoryFailure;
 using esphome::artwork_image::p4_pipeline_transfer_capacity;
+using esphome::artwork_image::cover_alignment_edge_overscan;
 using esphome::artwork_image::p4_cover_scale_plan;
 using esphome::artwork_image::p4_jpeg_hardware_target_supported;
 
@@ -115,6 +116,14 @@ int main() {
   assert(image_pipeline_should_cancel_modal_cleanup(true, false));
   assert(!image_pipeline_should_cancel_modal_cleanup(true, true));
   assert(!image_pipeline_should_cancel_modal_cleanup(false, false));
+
+  // The 7-inch panel compensates media artwork to 98% width. LVGL rounds its
+  // cover scale down (261/256 here), rendering 194 pixels into a 195-pixel
+  // card. A one-pixel clipped overscan closes that visible right-hand seam.
+  assert(cover_alignment_edge_overscan(191, 178, 195, 178, 256) == 1);
+  assert(cover_alignment_edge_overscan(593, 535, 605, 535, 256) == 2);
+  assert(cover_alignment_edge_overscan(195, 178, 195, 178, 256) == 0);
+  assert(cover_alignment_edge_overscan(0, 178, 195, 178, 256) == 0);
 
   // Switching cards inside the delayed cleanup window should cancel the old
   // request only when both cards use the same modal-quality image buffer.

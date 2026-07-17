@@ -94,11 +94,14 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             mediaStateDisplayModeSupported: mediaStateDisplayModeSupported,
             cardRequiresSquareSize: cardRequiresSquareSize,
             cardSupportsMaxSize: cardSupportsMaxSize,
+            cardSupportsPortraitLargeSize: cardSupportsPortraitLargeSize,
             cardSizeMenuOptions: cardSizeMenuOptions,
             normalizeCardSizeForConfig: normalizeCardSizeForConfig,
             normalizeMediaOptions: normalizeMediaOptions,
             mediaCoverArtAction: mediaCoverArtAction,
             setMediaCoverArtAction: setMediaCoverArtAction,
+            mediaCoverArtDetailsEnabled: mediaCoverArtDetailsEnabled,
+            setMediaCoverArtDetailsEnabled: setMediaCoverArtDetailsEnabled,
             mediaVolumeMax: mediaVolumeMax,
             setMediaVolumeMax: setMediaVolumeMax,
             mediaLabelDisplayMode: mediaLabelDisplayMode,
@@ -206,6 +209,9 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             buttonTypeVisibleInPickerFor: function (this: any, key?: any, isSub?: any) {
                 var visible: any = buttonTypeVisibleInPicker(key, !!isSub);
                 return visible;
+            },
+            cardTransferEntriesFromEnvelopeForTest: function (this: any, envelope?: any, targetIsSubpage?: any) {
+                return clipboardEntriesFromCardTransfer(envelope, !!targetIsSubpage);
             },
             buttonTypePickerKeysForInfoOnly: function (this: any, enabled?: any, selectedTypeKey?: any) {
                 var oldInfoOnly: any = CFG.infoOnly;

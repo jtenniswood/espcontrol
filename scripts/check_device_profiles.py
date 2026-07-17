@@ -71,13 +71,12 @@ def image_slot_capacity(profile: dict) -> int:
 
 def image_capacity_text(capability: dict) -> str:
     image_slots = capability["imageSlots"]
-    camera_cards = capability.get("cameraCards", image_slots > 0)
-    media_cover_art_cards = capability.get("mediaCoverArtCards", image_slots > 0)
-    if image_slots == 0 or not (camera_cards or media_cover_art_cards):
+    image_card_types = capability.get("imageCardTypes", [])
+    if image_slots == 0 or not image_card_types:
         return "Not supported"
-    if camera_cards and not media_cover_art_cards:
+    if image_card_types == ["image"]:
         return f"Up to {image_slots} Camera Card" + ("" if image_slots == 1 else "s")
-    if media_cover_art_cards and not camera_cards:
+    if image_card_types == ["media_cover_art"]:
         return f"Up to {image_slots} Media Cover Art card" + ("" if image_slots == 1 else "s")
     return f"Up to {image_slots} simultaneous Image or Media Cover Art cards"
 
@@ -100,9 +99,8 @@ def test_s3_exposes_one_camera_without_media_cover_art(profiles: dict[str, dict]
     assert "image" not in disabled, f"{slug}: S3 Camera Cards must be available"
     assert "media_cover_art" in disabled, f"{slug}: S3 Media Cover Art must remain unavailable"
     capability = public_device_capability(profile)
-    assert capability["cameraCards"] is True, f"{slug}: public capability must expose Camera Cards"
-    assert capability["mediaCoverArtCards"] is False, (
-        f"{slug}: public capability must keep Media Cover Art disabled"
+    assert capability["imageCardTypes"] == ["image"], (
+        f"{slug}: public capability must expose only Camera Cards"
     )
 
 

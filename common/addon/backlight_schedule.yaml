@@ -84,7 +84,8 @@ esphome:
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
-              (int) id(schedule_off_hour).state);
+              (int) id(schedule_off_hour).state,
+              id(screen_schedule_sensor_activation).current_option());
       - script.execute: screen_schedule_boot_guard
 
 # =============================================================================
@@ -153,6 +154,24 @@ switch:
             - script.execute: backlight_apply_brightness
 
 select:
+  - platform: template
+    name: "${entity_screen_schedule_sensor_activation}"
+    internal: true
+    id: screen_schedule_sensor_activation
+    entity_category: config
+    icon: "mdi:toggle-switch-outline"
+    optimistic: true
+    restore_value: true
+    initial_option: "Sensor Off"
+    options:
+      - "Sensor Off"
+      - "Sensor On"
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - script.execute: screen_schedule_check
+
   - platform: template
     name: "${entity_screen_schedule_mode}"
     internal: true
@@ -380,7 +399,8 @@ number:
                          now.is_valid(),
                          now.is_valid() ? now.hour : 0,
                          (int) id(schedule_on_hour).state,
-                         (int) id(schedule_off_hour).state) &&
+                         (int) id(schedule_off_hour).state,
+                         id(screen_schedule_sensor_activation).current_option()) &&
                        id(schedule_mode_always_on);
             then:
               - script.execute: backlight_apply_brightness
@@ -539,7 +559,8 @@ script:
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
-              (int) id(schedule_off_hour).state);
+              (int) id(schedule_off_hour).state,
+              id(screen_schedule_sensor_activation).current_option());
           if (!id(schedule_enabled).state ||
               screen_schedule_disabled_trigger(id(screen_schedule_trigger).state) ||
               normal_active || id(schedule_mode_always_on)) {
@@ -583,7 +604,8 @@ script:
                 now.is_valid(),
                 now.is_valid() ? now.hour : 0,
                 (int) id(schedule_on_hour).state,
-                (int) id(schedule_off_hour).state)) {
+                (int) id(schedule_off_hour).state,
+                id(screen_schedule_sensor_activation).current_option())) {
             id(manual_wake_ms) = 0;
             id(display_mode_reconcile).execute();
             return;
@@ -642,7 +664,8 @@ script:
                        now.is_valid(),
                        now.is_valid() ? now.hour : 0,
                        (int) id(schedule_on_hour).state,
-                       (int) id(schedule_off_hour).state) &&
+                       (int) id(schedule_off_hour).state,
+                       id(screen_schedule_sensor_activation).current_option()) &&
                      id(schedule_mode_always_on)) {
             pct = id(schedule_dimmed_brightness).state;
             if (std::isnan(pct) || pct <= 0) pct = 10;

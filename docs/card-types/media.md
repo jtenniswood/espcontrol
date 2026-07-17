@@ -72,6 +72,8 @@ Cover Art cards are not supported on the 4-inch ESP32-S3 screen, so this type is
 
 Cover Art shows the current artwork reported by the selected media player. Choose a square card size: **1x1**, **2x2**, or **3x3**. EspControl crops the image to fill the tile without stretching it.
 
+Enable **Show Track Details** to place the current title and artist over the artwork. EspControl adds an artwork-derived dark tint so the text remains readable. If artwork is unavailable, the title and artist remain visible on the card's normal background. The setting is off by default, so existing Cover Art cards remain image-only.
+
 Choose what happens when the artwork is tapped:
 
 - **Play/Pause** toggles playback.

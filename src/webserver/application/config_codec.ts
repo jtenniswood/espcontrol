@@ -42,8 +42,15 @@ export function installConfigCodecModule(): GlobalDescriptors {
     function cardSupportsMaxSize(this: any, b?: any) {
         return !!(b && b.type === "image");
     }
+    function cardSupportsPortraitLargeSize(this: any, b?: any) {
+        var tenInch: any = DEVICE_ID === "guition-esp32-p4-jc8012p4a1" ||
+            DEVICE_ID === "guition-esp32-p4-jc8012p4a1-v2";
+        return tenInch && (cardRequiresSquareSize(b) || cardSupportsMaxSize(b));
+    }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        if (size === CARD_SIZE_PORTRAIT_LARGE)
+            return cardSupportsPortraitLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
             return cardSupportsMaxSize(b) ? size : CARD_SIZE_SINGLE;
         if (!cardRequiresSquareSize(b))
@@ -857,6 +864,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         "normalizeButtonConfig": staticGlobal(normalizeButtonConfig),
         "cardRequiresSquareSize": staticGlobal(cardRequiresSquareSize),
         "cardSupportsMaxSize": staticGlobal(cardSupportsMaxSize),
+        "cardSupportsPortraitLargeSize": staticGlobal(cardSupportsPortraitLargeSize),
         "normalizeCardSizeForConfig": staticGlobal(normalizeCardSizeForConfig),
         "isBrightnessSliderType": staticGlobal(isBrightnessSliderType),
         "isFanCardType": staticGlobal(isFanCardType),

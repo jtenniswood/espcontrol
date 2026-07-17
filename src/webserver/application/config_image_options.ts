@@ -24,6 +24,10 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
                 (IMAGE_SLOT_CAPACITY === 1 ? " Camera Card" : " Camera Cards") +
                 " across the main page and subpages.";
         }
+        if (!cameraAvailable && mediaCoverArtAvailable) {
+            return "This display supports up to " + IMAGE_SLOT_CAPACITY +
+                " Media Cover Art card" + (IMAGE_SLOT_CAPACITY === 1 ? "." : "s.");
+        }
         return "Image and Media Cover Art cards use shared image slots. You can save up to " +
             IMAGE_SLOT_CAPACITY + " of these cards across the main page and subpages.";
     }

@@ -323,7 +323,7 @@
     "local": {
       "classification": "accepted_legacy_input",
       "canonicalType": "action",
-      "surfaces": ["web_parser", "firmware"],
+      "surfaces": ["web_parser", "saved_config_parser"],
       "firmwareFamily": "ACTION",
       "config": { "entity": "zoom_mute", "type": "local", "sensor": "local" },
       "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" }
@@ -331,7 +331,7 @@
     "text_sensor": {
       "classification": "accepted_legacy_input",
       "canonicalType": "sensor",
-      "surfaces": ["web_parser", "firmware"],
+      "surfaces": ["web_parser", "saved_config_parser"],
       "firmwareFamily": "SENSOR",
       "config": { "entity": "sensor.example", "type": "text_sensor" },
       "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" }
