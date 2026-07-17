@@ -14,6 +14,7 @@ int main() {
   using espcontrol::climate::target_kind;
   using espcontrol::climate::target_selection_for_mode;
   using espcontrol::climate::target_values_complete;
+  using espcontrol::climate::uses_dual_target_control;
 
   // Reported Mitsubishi state: Cool, 65-75 F, supported_features 426.
   const TargetKind reported = target_kind(true, 426, false, true, true);
@@ -49,6 +50,15 @@ int main() {
   assert(target_selection_for_mode("auto") == TargetSelection::RETAIN);
   assert(target_selection_for_mode("heat_cool") == TargetSelection::RETAIN);
   assert(target_selection_for_mode("off") == TargetSelection::RETAIN);
+
+  // The two-handle control is exclusive to Heat/Cool mode. Range-capable
+  // thermostats retain their range values in every other mode, but display the
+  // established single-handle temperature control.
+  assert(uses_dual_target_control(TargetKind::RANGE, "heat_cool"));
+  assert(!uses_dual_target_control(TargetKind::RANGE, "heat"));
+  assert(!uses_dual_target_control(TargetKind::RANGE, "cool"));
+  assert(!uses_dual_target_control(TargetKind::RANGE, "auto"));
+  assert(!uses_dual_target_control(TargetKind::SINGLE, "heat_cool"));
 
   // A range drag must begin on one of the visible handles. Touches elsewhere
   // on the arc are ignored, and overlapping hit areas choose the nearest one.

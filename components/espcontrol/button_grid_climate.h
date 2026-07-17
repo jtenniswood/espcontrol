@@ -366,8 +366,13 @@ inline ClimateTargetKind climate_target_kind(ClimateControlCtx *ctx) {
     ctx->has_target, ctx->has_low, ctx->has_high);
 }
 
-inline bool climate_dual_target(ClimateControlCtx *ctx) {
+inline bool climate_range_target(ClimateControlCtx *ctx) {
   return climate_target_kind(ctx) == ClimateTargetKind::RANGE;
+}
+
+inline bool climate_dual_target(ClimateControlCtx *ctx) {
+  return ctx && espcontrol::climate::uses_dual_target_control(
+    climate_target_kind(ctx), ctx->hvac_mode);
 }
 
 inline bool climate_target_values_complete(ClimateControlCtx *ctx) {
@@ -398,6 +403,14 @@ inline int climate_selected_target(ClimateControlCtx *ctx) {
   return climate_clamp_tenths(ctx, CLIMATE_DEFAULT_TARGET_TENTHS);
 }
 
+inline bool climate_selected_target_available(ClimateControlCtx *ctx) {
+  if (!ctx) return false;
+  ClimateTargetKind kind = climate_target_kind(ctx);
+  if (kind == ClimateTargetKind::RANGE)
+    return ctx->edit_high ? ctx->has_high : ctx->has_low;
+  return kind == ClimateTargetKind::SINGLE && ctx->has_target;
+}
+
 inline int climate_display_target(ClimateControlCtx *ctx) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   if (ctx && ui.active == ctx && ui.dragging_arc && ui.has_drag_preview)
@@ -424,7 +437,7 @@ inline int climate_display_high_target(ClimateControlCtx *ctx) {
 inline int climate_constrain_selected_target(ClimateControlCtx *ctx, int value) {
   if (!ctx) return CLIMATE_DEFAULT_TARGET_TENTHS;
   value = climate_clamp_tenths(ctx, value);
-  if (climate_dual_target(ctx)) {
+  if (climate_range_target(ctx)) {
     int gap = climate_effective_step_tenths(ctx);
     value = espcontrol::climate::constrain_range_target(
       value, ctx->edit_high, ctx->low_tenths, ctx->high_tenths,
@@ -755,22 +768,28 @@ inline void climate_layout_handle_dot(ClimateControlCtx *ctx, const ControlModal
   climate_layout_arc_dot(ctx, layout, ui.handle_dot, climate_display_target(ctx), handle_size, radius);
 }
 
-inline void climate_layout_dual_handle_dots(ClimateControlCtx *ctx,
-                                            const ControlModalLayout &layout) {
+inline void climate_layout_dual_handle_dot(ClimateControlCtx *ctx,
+                                           const ControlModalLayout &layout,
+                                           bool high) {
   if (!ctx) return;
   ClimateControlModalUi &ui = climate_control_modal_ui();
   lv_coord_t pad = layout.short_side < 520 ? 4 : 6;
   lv_coord_t handle_size = layout.arc_stroke + pad * 2;
   lv_coord_t radius = layout.arc_size / 2 - layout.arc_stroke / 2;
   if (radius < 0) radius = layout.arc_size / 2;
-  if (ctx->has_low)
-    climate_layout_arc_dot(ctx, layout, ui.low_handle_dot,
-                           climate_display_low_target(ctx),
-                           handle_size, radius);
-  if (ctx->has_high)
+  if (high && ctx->has_high) {
     climate_layout_arc_dot(ctx, layout, ui.high_handle_dot,
-                           climate_display_high_target(ctx),
-                           handle_size, radius);
+                           climate_display_high_target(ctx), handle_size, radius);
+  } else if (!high && ctx->has_low) {
+    climate_layout_arc_dot(ctx, layout, ui.low_handle_dot,
+                           climate_display_low_target(ctx), handle_size, radius);
+  }
+}
+
+inline void climate_layout_dual_handle_dots(ClimateControlCtx *ctx,
+                                            const ControlModalLayout &layout) {
+  climate_layout_dual_handle_dot(ctx, layout, false);
+  climate_layout_dual_handle_dot(ctx, layout, true);
 }
 
 inline void climate_style_dual_handle(lv_obj_t *dot) {
@@ -1199,19 +1218,24 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
   if (!ctx || ui.active != ctx) return;
   int target = climate_display_target(ctx);
   if (climate_dual_target(ctx)) {
-    if (ui.low_target_lbl && ctx->has_low)
-      lv_label_set_text(ui.low_target_lbl, climate_format_tenths(
-        climate_display_low_target(ctx), climate_target_display_precision(ctx)).c_str());
-    if (ui.high_target_lbl && ctx->has_high)
-      lv_label_set_text(ui.high_target_lbl, climate_format_tenths(
-        climate_display_high_target(ctx), climate_target_display_precision(ctx)).c_str());
-    if (ui.heat_arc && ui.cool_arc) {
-      uint16_t low_angle = static_cast<uint16_t>(
-        climate_arc_angle_for_tenths(ctx, climate_display_low_target(ctx)) + 0.5f);
-      uint16_t high_angle = static_cast<uint16_t>(
-        climate_arc_angle_for_tenths(ctx, climate_display_high_target(ctx)) + 0.5f);
-      lv_arc_set_bg_angles(ui.heat_arc, 135, low_angle);
-      lv_arc_set_bg_angles(ui.cool_arc, high_angle, 45);
+    if (ctx->edit_high) {
+      if (ui.high_target_lbl && ctx->has_high)
+        lv_label_set_text(ui.high_target_lbl, climate_format_tenths(
+          climate_display_high_target(ctx), climate_target_display_precision(ctx)).c_str());
+      if (ui.cool_arc) {
+        uint16_t high_angle = static_cast<uint16_t>(
+          climate_arc_angle_for_tenths(ctx, climate_display_high_target(ctx)) + 0.5f);
+        lv_arc_set_bg_angles(ui.cool_arc, high_angle, 45);
+      }
+    } else {
+      if (ui.low_target_lbl && ctx->has_low)
+        lv_label_set_text(ui.low_target_lbl, climate_format_tenths(
+          climate_display_low_target(ctx), climate_target_display_precision(ctx)).c_str());
+      if (ui.heat_arc) {
+        uint16_t low_angle = static_cast<uint16_t>(
+          climate_arc_angle_for_tenths(ctx, climate_display_low_target(ctx)) + 0.5f);
+        lv_arc_set_bg_angles(ui.heat_arc, 135, low_angle);
+      }
     }
   } else if (ui.target_lbl) {
     lv_label_set_text(ui.target_lbl, climate_format_tenths(
@@ -1219,9 +1243,9 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
   }
   if (ui.panel) {
     ControlModalLayout layout = climate_control_calc_layout(ctx);
-    if (climate_dual_target(ctx)) climate_layout_dual_handle_dots(ctx, layout);
+    if (climate_dual_target(ctx))
+      climate_layout_dual_handle_dot(ctx, layout, ctx->edit_high);
     else climate_layout_handle_dot(ctx, layout);
-    climate_raise_arc_markers();
   }
 }
 
@@ -1233,7 +1257,7 @@ inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, boo
   }
   value = climate_round_to_step(ctx, climate_constrain_selected_target(ctx, value));
   value = climate_constrain_selected_target(ctx, value);
-  if (climate_dual_target(ctx)) {
+  if (climate_range_target(ctx)) {
     if (ctx->edit_high) {
       ctx->high_tenths = climate_clamp_tenths(ctx, value);
       ctx->has_high = true;
@@ -1892,6 +1916,13 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   int target = climate_display_target(ctx);
   if (ui.arc) {
     climate_set_obj_visible(ui.arc, show_dial);
+    if (ui.panel) {
+      ControlModalLayout layout = climate_control_calc_layout(ctx);
+      // The base arc still owns touch input in dual mode, but its indicator is
+      // hidden so LVGL does not redraw a redundant full-size arc while dragging.
+      lv_obj_set_style_arc_width(ui.arc, dual ? 0 : layout.arc_stroke,
+                                 LV_PART_INDICATOR);
+    }
     if (show_dial && !ui.dragging_arc) {
       ui.updating_arc = true;
       lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
@@ -1936,7 +1967,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
   if (ui.target_lbl) {
     climate_set_obj_visible(ui.target_lbl, !dual);
-    if (!ctx->available || !ctx->has_target) lv_label_set_text(ui.target_lbl, "--");
+    if (!ctx->available || !climate_selected_target_available(ctx))
+      lv_label_set_text(ui.target_lbl, "--");
     else lv_label_set_text(ui.target_lbl, climate_format_tenths(
       target, climate_target_display_precision(ctx)).c_str());
     lv_obj_clear_flag(ui.target_lbl, LV_OBJ_FLAG_CLICKABLE);
