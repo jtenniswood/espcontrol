@@ -223,7 +223,7 @@ jobs:
 
           BUILD_DIR=$(dirname "${FIRMWARE_FACTORY}")
           cp "${BUILD_DIR}/firmware.factory.bin" output/${{ matrix.slug }}.factory.bin
-          cp "${BUILD_DIR}/firmware.bin" output/${{ matrix.slug }}.ota.bin
+          cp "${BUILD_DIR}/firmware.ota.bin" output/${{ matrix.slug }}.ota.bin
 
           VERSION="${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}"
           python3 espcontrol-${{ matrix.slug }}/scripts/firmware_release.py manifest \
