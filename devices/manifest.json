@@ -53,21 +53,24 @@
           "fontSize": 1.95
         },
         "grid": {
-          "top": 4.4,
+          "top": 4.1,
           "compactTop": 0.49,
           "left": 0.49,
           "right": 0.49,
           "bottom": 0.49,
-          "gap": 0.76,
+          "gap": 0.98,
           "fr": "1fr"
         },
         "btn": {
-          "radius": 0.78,
-          "padding": 1.37,
-          "iconSize": 4.69,
-          "labelSize": 1.8,
+          "radius": 0.98,
+          "padding": 1.56,
+          "iconSize": 5.37,
+          "labelSize": 2.15,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "numberSize": 5.37,
+          "largeNumberSize": 13.48,
+          "mediaTitleSize": 4.2
         },
         "emptyCell": {
           "radius": 0.78
@@ -240,21 +243,24 @@
           "fontSize": 4.5
         },
         "grid": {
-          "top": 8.58,
-          "compactTop": 1.5,
-          "left": 1.5,
-          "right": 1.5,
-          "bottom": 1.5,
-          "gap": 1.74,
+          "top": 10.42,
+          "compactTop": 1.04,
+          "left": 1.04,
+          "right": 1.04,
+          "bottom": 1.04,
+          "gap": 2.92,
           "fr": "1fr"
         },
         "btn": {
-          "radius": 1.18,
-          "padding": 2.73,
-          "iconSize": 14,
-          "labelSize": 5.5,
+          "radius": 2.08,
+          "padding": 4.38,
+          "iconSize": 12.92,
+          "labelSize": 6.04,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "numberSize": 12.92,
+          "largeNumberSize": 32.29,
+          "mediaTitleSize": 11.67
         },
         "emptyCell": {
           "radius": 1.18
@@ -423,21 +429,24 @@
           "fontSize": 1.72
         },
         "grid": {
-          "top": 4.7,
+          "top": 3.59,
           "compactTop": 0.39,
           "left": 0.39,
           "right": 0.39,
           "bottom": 0.39,
-          "gap": 0.76,
+          "gap": 0.78,
           "fr": "1fr"
         },
         "btn": {
           "radius": 0.86,
           "padding": 1.41,
-          "iconSize": 4.1,
+          "iconSize": 4.38,
           "labelSize": 1.88,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "numberSize": 4.06,
+          "largeNumberSize": 10.16,
+          "mediaTitleSize": 3.59
         },
         "emptyCell": {
           "radius": 0.86
@@ -605,21 +614,24 @@
           "fontSize": 1.72
         },
         "grid": {
-          "top": 4.7,
+          "top": 3.59,
           "compactTop": 0.39,
           "left": 0.39,
           "right": 0.39,
           "bottom": 0.39,
-          "gap": 0.76,
+          "gap": 0.78,
           "fr": "1fr"
         },
         "btn": {
           "radius": 0.86,
           "padding": 1.41,
-          "iconSize": 4.1,
+          "iconSize": 4.38,
           "labelSize": 1.88,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "numberSize": 4.06,
+          "largeNumberSize": 10.16,
+          "mediaTitleSize": 3.59
         },
         "emptyCell": {
           "radius": 0.86
@@ -790,19 +802,22 @@
         "grid": {
           "top": 8.33,
           "compactTop": 0.83,
-          "left": 1.04,
-          "right": 1.04,
+          "left": 1.11,
+          "right": 1.11,
           "bottom": 0.83,
-          "gap": 1.39,
+          "gap": 2.08,
           "fr": "1fr"
         },
         "btn": {
           "radius": 1.67,
           "padding": 2.92,
-          "iconSize": 9.58,
-          "labelSize": 3.96,
+          "iconSize": 9.17,
+          "labelSize": 4.58,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "numberSize": 9.17,
+          "largeNumberSize": 22.92,
+          "mediaTitleSize": 7.22
         },
         "emptyCell": {
           "radius": 1.67
@@ -997,16 +1012,19 @@
           "left": 1.04,
           "right": 1.04,
           "bottom": 0.83,
-          "gap": 1.39,
+          "gap": 2.08,
           "fr": "1fr"
         },
         "btn": {
           "radius": 1.67,
           "padding": 2.92,
-          "iconSize": 9.58,
-          "labelSize": 3.96,
+          "iconSize": 9.17,
+          "labelSize": 4.58,
           "labelLines": 2,
-          "labelLinesDouble": 3
+          "labelLinesDouble": 3,
+          "numberSize": 9.17,
+          "largeNumberSize": 22.92,
+          "mediaTitleSize": 7.08
         },
         "emptyCell": {
           "radius": 1.67

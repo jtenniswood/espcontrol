@@ -311,17 +311,63 @@ def test_web_screen_aspect_matches_public_resolution() -> None:
             )
 
 
-def test_web_grid_spacing_matches_across_screen_sizes() -> None:
+def _preview_truth_cqw(slug: str, profile: dict) -> dict[str, dict[str, float]]:
+    """Ground-truth preview metrics: firmware layout values as percentages of the
+    device's screen width (validated 1:1 against a physical screen capture)."""
+    subs = profile["firmware"]["package"]["substitutions"]
+
+    def sub_int(key: str) -> int:
+        return int(re.sub(r"[^0-9]", "", str(subs[key])))
+
+    width = sub_int("screen_width")
+    lvgl = (ROOT / "devices" / slug / "device" / "lvgl.yaml").read_text(encoding="utf-8")
+    pads = dict(re.findall(r"pad_(left|right|bottom): (\d+)", lvgl))
+    fonts = (ROOT / "devices" / slug / "device" / "fonts.yaml").read_text(encoding="utf-8")
+
+    def font_size(font_id: str) -> int:
+        match = re.search(rf"id: {font_id}\n\s+size: (\d+)", fonts)
+        assert match, f"{slug}: font {font_id} not found for preview fidelity check"
+        return int(match.group(1))
+
+    def cq(px: int) -> float:
+        return px * 100.0 / width
+
+    return {
+        "grid": {
+            "top": cq(sub_int("main_page_pad_top")),
+            "compactTop": cq(sub_int("main_page_compact_pad_top")),
+            "left": cq(int(pads.get("left", "5"))),
+            "right": cq(int(pads.get("right", "5"))),
+            "bottom": cq(int(pads.get("bottom", "5"))),
+            "gap": cq(sub_int("main_page_card_gap")),
+        },
+        "btn": {
+            "radius": cq(sub_int("radius")),
+            "padding": cq(sub_int("padding")),
+            "iconSize": cq(font_size(str(subs.get("icon_font", "font_icon_main")))),
+            "labelSize": cq(font_size(str(subs.get("label_font", "font_text_body")))),
+            "numberSize": cq(font_size(profile["firmware"]["fonts"]["sensor"])),
+            "largeNumberSize": cq(font_size(profile["firmware"]["fonts"]["largeSensor"])),
+            "mediaTitleSize": cq(font_size(profile["firmware"]["fonts"]["mediaTitle"])),
+        },
+    }
+
+
+def test_web_preview_matches_device_layout() -> None:
+    # The preview must faithfully represent each device's physical rendering:
+    # every spacing/font value is the firmware value scaled by screen width.
     profiles = load_device_profiles()
-    expected = None
     for slug, profile in profiles.items():
-        grid = profile["web"]["grid"]
-        rendered_gap = float(grid["gap"]) * web_screen_width_percent(profile) / 100.0
-        if expected is None:
-            expected = rendered_gap
-        assert abs(rendered_gap - expected) <= 0.01, (
-            f"{slug}: web preview grid spacing must match the other generated screen layouts"
-        )
+        truth = _preview_truth_cqw(slug, profile)
+        web = profile["web"]
+        for section, values in truth.items():
+            for key, expected in values.items():
+                actual = float(web[section][key])
+                assert abs(actual - expected) <= 0.05, (
+                    f"{slug}: web.{section}.{key} = {actual} does not match the "
+                    f"device layout ({expected:.2f} cqw); preview values must "
+                    f"mirror the firmware substitutions"
+                )
 
 
 def test_setup_icon_glyphs() -> None:
@@ -622,7 +668,7 @@ def main() -> int:
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_p4_43_rotation_refresh_rebuilds_subpages()
     test_web_screen_aspect_matches_public_resolution()
-    test_web_grid_spacing_matches_across_screen_sizes()
+    test_web_preview_matches_device_layout()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_weather_card_mode_visibility_reset()

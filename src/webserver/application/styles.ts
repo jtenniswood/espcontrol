@@ -79,13 +79,13 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-sensor-preview{display:flex;align-items:baseline;gap:.18em;color:#fff}" +
         ".sp-climate-temp-card .sp-sensor-preview{position:absolute;left:var(--btn-pad);top:var(--btn-pad)}" +
         ".sp-climate-temp-card .sp-btn-label-row{margin-top:auto}" +
-        ".sp-btn-big .sp-sensor-preview-large .sp-sensor-value,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-value{font-size:calc(var(--btn-icon)*2.5);font-weight:100}" +
+        ".sp-btn-big .sp-sensor-preview-large .sp-sensor-value,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-value{font-size:var(--num-large);font-weight:100}" +
         ".sp-btn-big .sp-sensor-preview-large .sp-sensor-unit,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-unit{transform:translateY(var(--large-sensor-unit-offset-y,-20px))}" +
         ".sp-date-time-wide-large{justify-content:center;align-items:center}" +
         ".sp-clock-wide-large{justify-content:center;align-items:flex-start}" +
         ".sp-clock-wide-large .sp-sensor-value{font-family:Roboto,sans-serif;font-weight:100}" +
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
-        ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
+        ".sp-sensor-value{font-size:var(--num-value);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
         ".sp-slider-track{width:100%;height:100%;position:relative}" +
@@ -109,7 +109,7 @@ export function installStylesModule(): GlobalDescriptors {
         "background:var(--screen-tertiary);overflow:hidden;pointer-events:none}" +
         ".sp-media-h-slider span{display:block;width:62%;height:100%;background:#fff;border-radius:999px}" +
         ".sp-media-position-time{z-index:1}" +
-        ".sp-media-now-title{font-size:calc(var(--btn-label)*1.75);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
+        ".sp-media-now-title{font-size:var(--media-title);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
         "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
         ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff}" +
         ".sp-btn-double{grid-row:span 2}" +

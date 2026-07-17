@@ -82,6 +82,11 @@ export function installCore(): GlobalDescriptors {
             r.removeProperty("--btn-border");
         r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
         r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+        // Number/title fonts mirror the device's dedicated fonts and are not
+        // density-scaled (the firmware only scales icons and labels).
+        r.setProperty("--num-value", scaledCqw(btn.numberSize || btn.iconSize, scale));
+        r.setProperty("--num-large", scaledCqw(btn.largeNumberSize || btn.iconSize * 2.5, scale));
+        r.setProperty("--media-title", scaledCqw(btn.mediaTitleSize || btn.labelSize * 1.75, scale));
         r.setProperty("--btn-label-weight", String(btn.labelWeight || 400));
         r.setProperty("--btn-lines", String(btn.labelLines || 1));
         r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
@@ -107,7 +112,7 @@ export function installCore(): GlobalDescriptors {
         syncPreviewStyleVars(layout, scale);
         var largeSensorUnitOffsetPercent: any = typeof CFG.largeSensorUnitOffsetPercent === "number"
             ? CFG.largeSensorUnitOffsetPercent : -10;
-        r.setProperty("--large-sensor-unit-offset-y", "calc(var(--btn-icon) * 2.5 * " + (largeSensorUnitOffsetPercent / 100) + ")");
+        r.setProperty("--large-sensor-unit-offset-y", "calc(var(--num-large) * " + (largeSensorUnitOffsetPercent / 100) + ")");
         if (state.grid && state.grid.length) {
             clearSpans(state.grid, NUM_SLOTS);
             applySpans(state.grid, state.sizes, NUM_SLOTS);
