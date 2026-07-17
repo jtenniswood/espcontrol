@@ -2050,7 +2050,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
       compact_portrait ? 48 : 52, layout.short_side);
     if (toggle_h < 44) toggle_h = 44;
     lv_coord_t toggle_w = compensated_width(
-      compact_portrait ? 220 : 260, ctx->width_compensation_percent);
+      compact_portrait ? 180 : 200, ctx->width_compensation_percent);
     lv_obj_set_size(ui.range_toggle, toggle_w, toggle_h);
     lv_obj_set_style_radius(ui.range_toggle, toggle_h / 2, LV_PART_MAIN);
     lv_obj_align(ui.range_toggle, LV_ALIGN_BOTTOM_MID, 0, -layout.inset);
