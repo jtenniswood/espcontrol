@@ -86,6 +86,9 @@ export function installApiModule(): GlobalDescriptors {
     function postFirmwareAutoUpdate(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("firmware_auto_update"), entityObjectIds("firmware_auto_update"), on);
     }
+    function postC6FirmwareAutoUpdate(this: any, on?: any) {
+        return postSwitchWithObjectIds(entityName("esp32_c6_auto_update"), entityObjectIds("esp32_c6_auto_update"), on);
+    }
     function postFirmwareUpdateFrequency(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("firmware_update_frequency"), entityObjectIds("firmware_update_frequency"), value);
     }
@@ -187,6 +190,7 @@ export function installApiModule(): GlobalDescriptors {
         "postSwitch": staticGlobal(postSwitch),
         "postScreensaverMode": staticGlobal(postScreensaverMode),
         "postFirmwareAutoUpdate": staticGlobal(postFirmwareAutoUpdate),
+        "postC6FirmwareAutoUpdate": staticGlobal(postC6FirmwareAutoUpdate),
         "postFirmwareUpdateFrequency": staticGlobal(postFirmwareUpdateFrequency),
         "postNumber": staticGlobal(postNumber),
         "postWithObjectId": staticGlobal(postWithObjectId),

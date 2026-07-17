@@ -75,7 +75,7 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
         });
     }
     function refreshFirmwareVersion(this: any) {
-        var pending: any = 12;
+        var pending: any = 13;
         if (!state.firmwareVersion) {
             state.firmwareVersionRefreshPending = true;
             renderFirmwareVersion();
@@ -143,6 +143,13 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
         getJsonFirst(entityDetailPaths("button", entityLookupNames("esp32_c6_check_for_update")), function (this: any, d?: any) {
             rememberEntityPostPath(d);
             state.c6FirmwareUpdateControlsSupported = true;
+            syncC6FirmwareUi();
+        }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+        getJsonFirst(entityDetailPaths("switch", entityLookupNames("esp32_c6_auto_update")), function (this: any, d?: any) {
+            rememberEntityPostPath(d);
+            state.c6FirmwareUpdateControlsSupported = true;
+            state.c6FirmwareAutoUpdateSupported = true;
+            state.c6FirmwareAutoUpdate = d.value === true || d.state === "ON";
             syncC6FirmwareUi();
         }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
     }

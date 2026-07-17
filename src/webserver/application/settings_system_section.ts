@@ -173,6 +173,19 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         c6LatestRow.appendChild(c6LatestValue);
         wifiFirmwareBody.appendChild(c6LatestRow);
         els.c6FirmwareLatest = c6LatestValue;
+        var c6AutoUpdateToggle: any = toggleRow("Auto Update", "sp-set-c6-auto-update", state.c6FirmwareAutoUpdate);
+        c6AutoUpdateToggle.input.addEventListener("change", function (this: any) {
+            if (!state.c6FirmwareAutoUpdateSupported) {
+                syncC6FirmwareUi();
+                return;
+            }
+            state.c6FirmwareAutoUpdate = this.checked;
+            postC6FirmwareAutoUpdate(state.c6FirmwareAutoUpdate);
+            syncC6FirmwareUi();
+        });
+        wifiFirmwareBody.appendChild(c6AutoUpdateToggle.row);
+        els.c6FirmwareAutoUpdateRow = c6AutoUpdateToggle.row;
+        els.c6FirmwareAutoUpdate = c6AutoUpdateToggle.input;
         var c6Actions: any = document.createElement("div");
         c6Actions.className = "sp-fw-actions sp-fw-actions-full";
         var c6UpdateBtn: any = createActionButton("sp-fw-btn", "Check for Update");

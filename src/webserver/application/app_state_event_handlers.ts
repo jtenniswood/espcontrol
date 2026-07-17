@@ -387,6 +387,12 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 }
                 syncFirmwareUpdateUi();
             },
+            "switch-wifi_firmware__auto_update": function (this: any, val?: any, d?: any) {
+                state.c6FirmwareUpdateControlsSupported = true;
+                state.c6FirmwareAutoUpdateSupported = true;
+                state.c6FirmwareAutoUpdate = d.value === true || val === "ON";
+                syncC6FirmwareUi();
+            },
             "text_sensor-esp32_c6__current_firmware": function (this: any, val?: any) {
                 setC6FirmwareCurrentVersion(val);
             },

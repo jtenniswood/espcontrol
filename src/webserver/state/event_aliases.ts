@@ -37,6 +37,7 @@ export const SSE_ALIAS_GROUPS = {
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
   firmwareAutoUpdate: ["switch-firmware__auto_update", "switch-firmware_auto_update", "switch-auto_update_switch"],
   firmwareUpdateFrequency: ["select-firmware__update_frequency", "select-firmware_update_frequency", "select-update_frequency_select"],
+  c6FirmwareAutoUpdate: ["switch-wifi_firmware__auto_update", "switch-wifi_firmware_auto_update", "switch-c6_auto_update_switch"],
 } as const;
 
 function addSseAliases(handlers: SseHandlers, names: readonly string[], canonical: string): void {
@@ -79,4 +80,5 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer3, "text-screen__ntp_server_3");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.firmwareAutoUpdate, "switch-firmware__auto_update");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.firmwareUpdateFrequency, "select-firmware__update_frequency");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.c6FirmwareAutoUpdate, "switch-wifi_firmware__auto_update");
 }

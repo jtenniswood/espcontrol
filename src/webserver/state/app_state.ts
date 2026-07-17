@@ -71,6 +71,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     firmwareVersionOptions: [], firmwareSelectedVersion: "", firmwareVersionIndexLoaded: false,
     c6FirmwareCurrentVersion: "", c6FirmwareLatestVersion: "", c6FirmwareUpdateAvailable: "",
     c6FirmwareUpdateControlsSupported: false, c6FirmwareInstallControlsSupported: false,
+    c6FirmwareAutoUpdateSupported: false, c6FirmwareAutoUpdate: true,
     c6FirmwareChecking: false, c6FirmwareInstalling: false, autoUpdate: true, updateFrequency: "Daily",
     updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"], configLocked: false, configLockReason: "",
     clockBarDragItem: "", clockBarTempRestoreIndoor: false, clockBarTempRestoreOutdoor: true,

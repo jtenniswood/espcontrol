@@ -526,6 +526,15 @@ export const ENTITY_CATALOG = {
         "update_frequency_select"
       ]
     },
+    "esp32_c6_auto_update": {
+      "domain": "switch",
+      "name": "WiFi Firmware: Auto Update",
+      "objectIds": [
+        "wifi_firmware__auto_update",
+        "wifi_firmware_auto_update",
+        "c6_auto_update_switch"
+      ]
+    },
     "esp32_c6_update_available": {
       "domain": "text_sensor",
       "name": "ESP32-C6: Update Available",
@@ -657,6 +666,7 @@ export const ENTITY_CATALOG = {
       "firmware_install_update",
       "firmware_auto_update",
       "firmware_update_frequency",
+      "esp32_c6_auto_update",
       "esp32_c6_update_available",
       "esp32_c6_current_firmware",
       "esp32_c6_latest_firmware",

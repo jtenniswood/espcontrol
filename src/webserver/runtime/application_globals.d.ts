@@ -593,6 +593,7 @@ declare global {
   var isBackOrderToken: any;
   var isBrightnessSliderType: any;
   var isC6FirmwareCheckButtonEvent: any;
+  var isC6FirmwareAutoUpdateEvent: any;
   var isC6FirmwareCurrentEvent: any;
   var isC6FirmwareInstallButtonEvent: any;
   var isC6FirmwareLatestEvent: any;
@@ -823,6 +824,7 @@ declare global {
   var postBrightnessDuskTime: any;
   var postButtonPress: any;
   var postC6FirmwareUpdateCheck: any;
+  var postC6FirmwareAutoUpdate: any;
   var postC6FirmwareUpdateInstall: any;
   var postClockBar: any;
   var postClockBarTemperatureEntities: any;
