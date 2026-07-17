@@ -778,11 +778,10 @@ inline void climate_layout_dual_handle_dots(ClimateControlCtx *ctx,
                            handle_size, radius);
 }
 
-inline void climate_style_dual_handle(lv_obj_t *dot, uint32_t color,
-                                      bool selected) {
+inline void climate_style_dual_handle(lv_obj_t *dot, bool selected) {
   if (!dot) return;
-  lv_obj_set_style_bg_color(dot, lv_color_hex(color), LV_PART_MAIN);
-  lv_obj_set_style_border_color(dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_border_color(dot, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
   lv_obj_set_style_border_width(dot, selected ? 3 : 0, LV_PART_MAIN);
 }
 
@@ -1955,8 +1954,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   climate_set_obj_visible(ui.high_handle_dot, show_dual_handles);
   if (show_dual_handles && ui.panel) {
     climate_layout_dual_handle_dots(ctx, climate_control_calc_layout(ctx));
-    climate_style_dual_handle(ui.low_handle_dot, climate_heating_color(ctx), !ctx->edit_high);
-    climate_style_dual_handle(ui.high_handle_dot, CLIMATE_COOLING_COLOR, ctx->edit_high);
+    climate_style_dual_handle(ui.low_handle_dot, !ctx->edit_high);
+    climate_style_dual_handle(ui.high_handle_dot, ctx->edit_high);
   }
   climate_raise_arc_markers();
   if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
@@ -2420,11 +2419,11 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_clear_flag(ui.handle_dot, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.handle_dot, LV_OBJ_FLAG_HIDDEN);
 
-  auto create_range_handle = [&](uint32_t color) {
+  auto create_range_handle = []() {
     lv_obj_t *dot = lv_obj_create(ui.panel);
-    lv_obj_set_style_bg_color(dot, lv_color_hex(color), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_color(dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_border_color(dot, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
     lv_obj_set_style_border_width(dot, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(dot, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(dot, 0, LV_PART_MAIN);
@@ -2433,8 +2432,8 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
     return dot;
   };
-  ui.low_handle_dot = create_range_handle(climate_heating_color(ctx));
-  ui.high_handle_dot = create_range_handle(CLIMATE_COOLING_COLOR);
+  ui.low_handle_dot = create_range_handle();
+  ui.high_handle_dot = create_range_handle();
 
   ui.target_row = lv_obj_create(ui.panel);
   lv_obj_set_size(ui.target_row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
