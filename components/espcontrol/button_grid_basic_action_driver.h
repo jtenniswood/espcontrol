@@ -4,7 +4,8 @@
 // The same visual, binding, interaction, layout, and cleanup entry points serve
 // main-grid and subpage cards while preserving their established ownership.
 // Contract coverage markers: type == "", "action", "alarm_action",
-// "fan_switch", "internal", "light_switch", "push", "screen_lock", "webhook".
+// "fan_switch", "internal", "light_switch", "push", "screen_lock",
+// "screensaver", "webhook".
 
 namespace espcontrol::cards {
 
@@ -35,7 +36,8 @@ inline bool basic_action_driver_setup_visual(
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
     case Driver::SCREEN_LOCK:
-      setup_screen_lock_card(slot, config);
+      if (config.type == "screensaver") setup_screensaver_card(slot, config);
+      else setup_screen_lock_card(slot, config);
       break;
     case Driver::ALARM_ACTION:
       setup_alarm_action_card(slot, config);
@@ -285,9 +287,15 @@ inline bool basic_action_driver_bind_subpage(
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
     case Driver::SCREEN_LOCK:
-      lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
-        screen_lock_toggle();
-      }, LV_EVENT_CLICKED, nullptr);
+      if (config.type == "screensaver") {
+        lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
+          activate_configured_screensaver();
+        }, LV_EVENT_CLICKED, nullptr);
+      } else {
+        lv_obj_add_event_cb(slot.btn, [](lv_event_t *) {
+          screen_lock_toggle();
+        }, LV_EVENT_CLICKED, nullptr);
+      }
       break;
     case Driver::PUSH: {
       std::string label = config.label.empty()
@@ -447,7 +455,8 @@ inline bool basic_action_driver_handle_main_click(
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
     case Driver::SCREEN_LOCK:
-      screen_lock_toggle();
+      if (config.type == "screensaver") activate_configured_screensaver();
+      else screen_lock_toggle();
       break;
     case Driver::PUSH: {
       std::string label = config.label;

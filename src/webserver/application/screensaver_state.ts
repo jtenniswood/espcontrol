@@ -8,7 +8,11 @@ export function installScreensaverStateModule(): GlobalDescriptors {
             return "timer";
         return "disabled";
     }
+    function normalizePin(this: any, value?: any) {
+        return String(value == null ? "" : value).replace(/\D+/g, "").slice(0, 16);
+    }
     return {
         "getActiveScreensaverMode": staticGlobal(getActiveScreensaverMode),
+        "normalizePin": staticGlobal(normalizePin),
     };
 }

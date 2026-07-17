@@ -150,6 +150,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Obrazovka ztlumena";
   if (std::strcmp(text, "Screen Locked") == 0) return "Obrazovka uzamčena";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Obrazovka odemčena";
+  if (std::strcmp(text, "Screensaver") == 0) return "Spořič obrazovky";
   if (std::strcmp(text, "Skip Next") == 0) return "Přeskočit další";
   if (std::strcmp(text, "Skip Previous") == 0) return "Přeskočit předchozí";
   if (std::strcmp(text, "Snowy") == 0) return "Sněží";
@@ -362,6 +363,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Skærm neddæmpet";
   if (std::strcmp(text, "Screen Locked") == 0) return "Skærm låst";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Skærm låst op";
+  if (std::strcmp(text, "Screensaver") == 0) return "Pauseskærm";
   if (std::strcmp(text, "Skip Next") == 0) return "Spring til næste";
   if (std::strcmp(text, "Skip Previous") == 0) return "Spring til forrige";
   if (std::strcmp(text, "Snowy") == 0) return "Sne";
@@ -569,6 +571,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Bildschirm gedimmt";
   if (std::strcmp(text, "Screen Locked") == 0) return "Bildschirm gesperrt";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Bildschirm entsperrt";
+  if (std::strcmp(text, "Screensaver") == 0) return "Bildschirmschoner";
   if (std::strcmp(text, "Skip Next") == 0) return "Weiter springen";
   if (std::strcmp(text, "Skip Previous") == 0) return "Zurück springen";
   if (std::strcmp(text, "Snowy") == 0) return "Schneereich";
@@ -781,6 +784,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Pantalla atenuada";
   if (std::strcmp(text, "Screen Locked") == 0) return "Pantalla bloqueada";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Pantalla desbloqueada";
+  if (std::strcmp(text, "Screensaver") == 0) return "Protector de pantalla";
   if (std::strcmp(text, "Skip Next") == 0) return "Saltar siguiente";
   if (std::strcmp(text, "Skip Previous") == 0) return "Saltar anterior";
   if (std::strcmp(text, "Snowy") == 0) return "Nevado";
@@ -1003,6 +1007,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Näyttö himmennetty";
   if (std::strcmp(text, "Screen Locked") == 0) return "Näyttö lukittu";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Näyttö avattu";
+  if (std::strcmp(text, "Screensaver") == 0) return "Näytönsäästäjä";
   if (std::strcmp(text, "Skip Next") == 0) return "Seuraava kappale";
   if (std::strcmp(text, "Skip Previous") == 0) return "Edellinen kappale";
   if (std::strcmp(text, "Snowy") == 0) return "Lumisadetta";
@@ -1212,6 +1217,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Écran tamisé";
   if (std::strcmp(text, "Screen Locked") == 0) return "Écran verrouillé";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Écran déverrouillé";
+  if (std::strcmp(text, "Screensaver") == 0) return "Économiseur d’écran";
   if (std::strcmp(text, "Skip Next") == 0) return "Passer au suivant";
   if (std::strcmp(text, "Skip Previous") == 0) return "Passer au précédent";
   if (std::strcmp(text, "Snowy") == 0) return "Neigeux";
@@ -1433,6 +1439,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Képernyő halványítva";
   if (std::strcmp(text, "Screen Locked") == 0) return "Képernyő lezárva";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Képernyő feloldva";
+  if (std::strcmp(text, "Screensaver") == 0) return "Képernyőkímélő";
   if (std::strcmp(text, "Skip Next") == 0) return "Ugrás a következőre";
   if (std::strcmp(text, "Skip Previous") == 0) return "Ugrás az előzőre";
   if (std::strcmp(text, "Snowy") == 0) return "Havas";
@@ -1652,6 +1659,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Schermo attenuato";
   if (std::strcmp(text, "Screen Locked") == 0) return "Schermo bloccato";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Schermo sbloccato";
+  if (std::strcmp(text, "Screensaver") == 0) return "Salvaschermo";
   if (std::strcmp(text, "Skip Next") == 0) return "Salta avanti";
   if (std::strcmp(text, "Skip Previous") == 0) return "Salta indietro";
   if (std::strcmp(text, "Snowy") == 0) return "Nevoso";
@@ -1865,6 +1873,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Skjerm neddimmet";
   if (std::strcmp(text, "Screen Locked") == 0) return "Skjerm låst";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Skjerm låst opp";
+  if (std::strcmp(text, "Screensaver") == 0) return "Skjermsparer";
   if (std::strcmp(text, "Skip Next") == 0) return "Hopp til neste";
   if (std::strcmp(text, "Skip Previous") == 0) return "Hopp til forrige";
   if (std::strcmp(text, "Snowy") == 0) return "Snø";
@@ -2080,6 +2089,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Scherm gedimd";
   if (std::strcmp(text, "Screen Locked") == 0) return "Scherm vergrendeld";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Scherm ontgrendeld";
+  if (std::strcmp(text, "Screensaver") == 0) return "Schermbeveiliging";
   if (std::strcmp(text, "Skip Next") == 0) return "Volgende overslaan";
   if (std::strcmp(text, "Skip Previous") == 0) return "Vorige overslaan";
   if (std::strcmp(text, "Snowy") == 0) return "Sneeuwachtig";
@@ -2290,6 +2300,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ekran przyciemniony";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ekran zablokowany";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Ekran odblokowany";
+  if (std::strcmp(text, "Screensaver") == 0) return "Wygaszacz ekranu";
   if (std::strcmp(text, "Skip Next") == 0) return "Pomiń następny";
   if (std::strcmp(text, "Skip Previous") == 0) return "Pomiń poprzedni";
   if (std::strcmp(text, "Snowy") == 0) return "Śnieżnie";
@@ -2504,6 +2515,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Tela escurecida";
   if (std::strcmp(text, "Screen Locked") == 0) return "Tela bloqueada";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Tela desbloqueada";
+  if (std::strcmp(text, "Screensaver") == 0) return "Proteção de tela";
   if (std::strcmp(text, "Skip Next") == 0) return "Pular próximo";
   if (std::strcmp(text, "Skip Previous") == 0) return "Pular anterior";
   if (std::strcmp(text, "Snowy") == 0) return "Nevado";
@@ -2719,6 +2731,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ecrã escurecido";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ecrã bloqueado";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Ecrã desbloqueado";
+  if (std::strcmp(text, "Screensaver") == 0) return "Proteção de ecrã";
   if (std::strcmp(text, "Skip Next") == 0) return "Saltar seguinte";
   if (std::strcmp(text, "Skip Previous") == 0) return "Saltar anterior";
   if (std::strcmp(text, "Snowy") == 0) return "Nevado";
@@ -2939,6 +2952,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ecran estompat";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ecran blocat";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Ecran deblocat";
+  if (std::strcmp(text, "Screensaver") == 0) return "Economizor de ecran";
   if (std::strcmp(text, "Skip Next") == 0) return "Următorul";
   if (std::strcmp(text, "Skip Previous") == 0) return "Anteriorul";
   if (std::strcmp(text, "Snowy") == 0) return "Ninsoare";
@@ -3157,6 +3171,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Obrazovka stlmená";
   if (std::strcmp(text, "Screen Locked") == 0) return "Obrazovka uzamknutá";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Obrazovka odomknutá";
+  if (std::strcmp(text, "Screensaver") == 0) return "Šetrič obrazovky";
   if (std::strcmp(text, "Skip Next") == 0) return "Preskočiť ďalšie";
   if (std::strcmp(text, "Skip Previous") == 0) return "Preskočiť predchádzajúce";
   if (std::strcmp(text, "Snowy") == 0) return "Sneží";
@@ -3376,6 +3391,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Zaslon zatemnjen";
   if (std::strcmp(text, "Screen Locked") == 0) return "Zaslon zaklenjen";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Zaslon odklenjen";
+  if (std::strcmp(text, "Screensaver") == 0) return "Ohranjevalnik zaslona";
   if (std::strcmp(text, "Skip Next") == 0) return "Preskoči naprej";
   if (std::strcmp(text, "Skip Previous") == 0) return "Preskoči nazaj";
   if (std::strcmp(text, "Snowy") == 0) return "Snežno";
@@ -3591,6 +3607,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Skärm nedtonad";
   if (std::strcmp(text, "Screen Locked") == 0) return "Skärm låst";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Skärm upplåst";
+  if (std::strcmp(text, "Screensaver") == 0) return "Skärmsläckare";
   if (std::strcmp(text, "Skip Next") == 0) return "Hoppa till nästa";
   if (std::strcmp(text, "Skip Previous") == 0) return "Hoppa till föregående";
   if (std::strcmp(text, "Snowy") == 0) return "Snöigt";
@@ -3811,6 +3828,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ekran kısılmış";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ekran kilitli";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Ekran kilidi açık";
+  if (std::strcmp(text, "Screensaver") == 0) return "Ekran koruyucu";
   if (std::strcmp(text, "Skip Next") == 0) return "Sonrakine geç";
   if (std::strcmp(text, "Skip Previous") == 0) return "Öncekine geç";
   if (std::strcmp(text, "Snowy") == 0) return "Karlı";
@@ -4037,6 +4055,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Екран приглушено";
   if (std::strcmp(text, "Screen Locked") == 0) return "Екран заблоковано";
   if (std::strcmp(text, "Screen Unlocked") == 0) return "Екран розблоковано";
+  if (std::strcmp(text, "Screensaver") == 0) return "Заставка";
   if (std::strcmp(text, "Skip Next") == 0) return "Наступний";
   if (std::strcmp(text, "Skip Previous") == 0) return "Попередній";
   if (std::strcmp(text, "Snowy") == 0) return "Сніг";
@@ -4268,6 +4287,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Screen Dimmed";
   if (std::strcmp(key, "screen_locked") == 0) return "Screen Locked";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Screen Unlocked";
+  if (std::strcmp(key, "screensaver") == 0) return "Screensaver";
   if (std::strcmp(key, "skip_next") == 0) return "Skip Next";
   if (std::strcmp(key, "skip_previous") == 0) return "Skip Previous";
   if (std::strcmp(key, "snowy") == 0) return "Snowy";
@@ -4489,6 +4509,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Obrazovka ztlumena";
   if (std::strcmp(key, "screen_locked") == 0) return "Obrazovka uzamčena";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Obrazovka odemčena";
+  if (std::strcmp(key, "screensaver") == 0) return "Spořič obrazovky";
   if (std::strcmp(key, "skip_next") == 0) return "Přeskočit další";
   if (std::strcmp(key, "skip_previous") == 0) return "Přeskočit předchozí";
   if (std::strcmp(key, "snowy") == 0) return "Sněží";
@@ -4702,6 +4723,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Skærm neddæmpet";
   if (std::strcmp(key, "screen_locked") == 0) return "Skærm låst";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Skærm låst op";
+  if (std::strcmp(key, "screensaver") == 0) return "Pauseskærm";
   if (std::strcmp(key, "skip_next") == 0) return "Spring til næste";
   if (std::strcmp(key, "skip_previous") == 0) return "Spring til forrige";
   if (std::strcmp(key, "snowy") == 0) return "Sne";
@@ -4910,6 +4932,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Bildschirm gedimmt";
   if (std::strcmp(key, "screen_locked") == 0) return "Bildschirm gesperrt";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Bildschirm entsperrt";
+  if (std::strcmp(key, "screensaver") == 0) return "Bildschirmschoner";
   if (std::strcmp(key, "skip_next") == 0) return "Weiter springen";
   if (std::strcmp(key, "skip_previous") == 0) return "Zurück springen";
   if (std::strcmp(key, "snowy") == 0) return "Schneereich";
@@ -5123,6 +5146,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Pantalla atenuada";
   if (std::strcmp(key, "screen_locked") == 0) return "Pantalla bloqueada";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Pantalla desbloqueada";
+  if (std::strcmp(key, "screensaver") == 0) return "Protector de pantalla";
   if (std::strcmp(key, "skip_next") == 0) return "Saltar siguiente";
   if (std::strcmp(key, "skip_previous") == 0) return "Saltar anterior";
   if (std::strcmp(key, "snowy") == 0) return "Nevado";
@@ -5346,6 +5370,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Näyttö himmennetty";
   if (std::strcmp(key, "screen_locked") == 0) return "Näyttö lukittu";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Näyttö avattu";
+  if (std::strcmp(key, "screensaver") == 0) return "Näytönsäästäjä";
   if (std::strcmp(key, "skip_next") == 0) return "Seuraava kappale";
   if (std::strcmp(key, "skip_previous") == 0) return "Edellinen kappale";
   if (std::strcmp(key, "snowy") == 0) return "Lumisadetta";
@@ -5556,6 +5581,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Écran tamisé";
   if (std::strcmp(key, "screen_locked") == 0) return "Écran verrouillé";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Écran déverrouillé";
+  if (std::strcmp(key, "screensaver") == 0) return "Économiseur d’écran";
   if (std::strcmp(key, "skip_next") == 0) return "Passer au suivant";
   if (std::strcmp(key, "skip_previous") == 0) return "Passer au précédent";
   if (std::strcmp(key, "snowy") == 0) return "Neigeux";
@@ -5778,6 +5804,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Képernyő halványítva";
   if (std::strcmp(key, "screen_locked") == 0) return "Képernyő lezárva";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Képernyő feloldva";
+  if (std::strcmp(key, "screensaver") == 0) return "Képernyőkímélő";
   if (std::strcmp(key, "skip_next") == 0) return "Ugrás a következőre";
   if (std::strcmp(key, "skip_previous") == 0) return "Ugrás az előzőre";
   if (std::strcmp(key, "snowy") == 0) return "Havas";
@@ -5998,6 +6025,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Schermo attenuato";
   if (std::strcmp(key, "screen_locked") == 0) return "Schermo bloccato";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Schermo sbloccato";
+  if (std::strcmp(key, "screensaver") == 0) return "Salvaschermo";
   if (std::strcmp(key, "skip_next") == 0) return "Salta avanti";
   if (std::strcmp(key, "skip_previous") == 0) return "Salta indietro";
   if (std::strcmp(key, "snowy") == 0) return "Nevoso";
@@ -6212,6 +6240,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Skjerm neddimmet";
   if (std::strcmp(key, "screen_locked") == 0) return "Skjerm låst";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Skjerm låst opp";
+  if (std::strcmp(key, "screensaver") == 0) return "Skjermsparer";
   if (std::strcmp(key, "skip_next") == 0) return "Hopp til neste";
   if (std::strcmp(key, "skip_previous") == 0) return "Hopp til forrige";
   if (std::strcmp(key, "snowy") == 0) return "Snø";
@@ -6427,6 +6456,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Scherm gedimd";
   if (std::strcmp(key, "screen_locked") == 0) return "Scherm vergrendeld";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Scherm ontgrendeld";
+  if (std::strcmp(key, "screensaver") == 0) return "Schermbeveiliging";
   if (std::strcmp(key, "skip_next") == 0) return "Volgende overslaan";
   if (std::strcmp(key, "skip_previous") == 0) return "Vorige overslaan";
   if (std::strcmp(key, "snowy") == 0) return "Sneeuwachtig";
@@ -6638,6 +6668,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ekran przyciemniony";
   if (std::strcmp(key, "screen_locked") == 0) return "Ekran zablokowany";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Ekran odblokowany";
+  if (std::strcmp(key, "screensaver") == 0) return "Wygaszacz ekranu";
   if (std::strcmp(key, "skip_next") == 0) return "Pomiń następny";
   if (std::strcmp(key, "skip_previous") == 0) return "Pomiń poprzedni";
   if (std::strcmp(key, "snowy") == 0) return "Śnieżnie";
@@ -6853,6 +6884,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Tela escurecida";
   if (std::strcmp(key, "screen_locked") == 0) return "Tela bloqueada";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Tela desbloqueada";
+  if (std::strcmp(key, "screensaver") == 0) return "Proteção de tela";
   if (std::strcmp(key, "skip_next") == 0) return "Pular próximo";
   if (std::strcmp(key, "skip_previous") == 0) return "Pular anterior";
   if (std::strcmp(key, "snowy") == 0) return "Nevado";
@@ -7069,6 +7101,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ecrã escurecido";
   if (std::strcmp(key, "screen_locked") == 0) return "Ecrã bloqueado";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Ecrã desbloqueado";
+  if (std::strcmp(key, "screensaver") == 0) return "Proteção de ecrã";
   if (std::strcmp(key, "skip_next") == 0) return "Saltar seguinte";
   if (std::strcmp(key, "skip_previous") == 0) return "Saltar anterior";
   if (std::strcmp(key, "snowy") == 0) return "Nevado";
@@ -7290,6 +7323,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ecran estompat";
   if (std::strcmp(key, "screen_locked") == 0) return "Ecran blocat";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Ecran deblocat";
+  if (std::strcmp(key, "screensaver") == 0) return "Economizor de ecran";
   if (std::strcmp(key, "skip_next") == 0) return "Următorul";
   if (std::strcmp(key, "skip_previous") == 0) return "Anteriorul";
   if (std::strcmp(key, "snowy") == 0) return "Ninsoare";
@@ -7509,6 +7543,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Obrazovka stlmená";
   if (std::strcmp(key, "screen_locked") == 0) return "Obrazovka uzamknutá";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Obrazovka odomknutá";
+  if (std::strcmp(key, "screensaver") == 0) return "Šetrič obrazovky";
   if (std::strcmp(key, "skip_next") == 0) return "Preskočiť ďalšie";
   if (std::strcmp(key, "skip_previous") == 0) return "Preskočiť predchádzajúce";
   if (std::strcmp(key, "snowy") == 0) return "Sneží";
@@ -7729,6 +7764,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Zaslon zatemnjen";
   if (std::strcmp(key, "screen_locked") == 0) return "Zaslon zaklenjen";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Zaslon odklenjen";
+  if (std::strcmp(key, "screensaver") == 0) return "Ohranjevalnik zaslona";
   if (std::strcmp(key, "skip_next") == 0) return "Preskoči naprej";
   if (std::strcmp(key, "skip_previous") == 0) return "Preskoči nazaj";
   if (std::strcmp(key, "snowy") == 0) return "Snežno";
@@ -7945,6 +7981,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Skärm nedtonad";
   if (std::strcmp(key, "screen_locked") == 0) return "Skärm låst";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Skärm upplåst";
+  if (std::strcmp(key, "screensaver") == 0) return "Skärmsläckare";
   if (std::strcmp(key, "skip_next") == 0) return "Hoppa till nästa";
   if (std::strcmp(key, "skip_previous") == 0) return "Hoppa till föregående";
   if (std::strcmp(key, "snowy") == 0) return "Snöigt";
@@ -8166,6 +8203,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ekran kısılmış";
   if (std::strcmp(key, "screen_locked") == 0) return "Ekran kilitli";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Ekran kilidi açık";
+  if (std::strcmp(key, "screensaver") == 0) return "Ekran koruyucu";
   if (std::strcmp(key, "skip_next") == 0) return "Sonrakine geç";
   if (std::strcmp(key, "skip_previous") == 0) return "Öncekine geç";
   if (std::strcmp(key, "snowy") == 0) return "Karlı";
@@ -8393,6 +8431,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "screen_dimmed") == 0) return "Екран приглушено";
   if (std::strcmp(key, "screen_locked") == 0) return "Екран заблоковано";
   if (std::strcmp(key, "screen_unlocked") == 0) return "Екран розблоковано";
+  if (std::strcmp(key, "screensaver") == 0) return "Заставка";
   if (std::strcmp(key, "skip_next") == 0) return "Наступний";
   if (std::strcmp(key, "skip_previous") == 0) return "Попередній";
   if (std::strcmp(key, "snowy") == 0) return "Сніг";

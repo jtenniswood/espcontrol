@@ -40,6 +40,8 @@ substitutions:
   entity_outdoor_temp_entity: "Outdoor Temp Entity"
   entity_screensaver_mode: "Screensaver Mode"
   entity_screen_saver_action: "Screen Saver: Action"
+  entity_screensaver_pin_required: "Screensaver: Require PIN after wake"
+  entity_screensaver_pin: "Screensaver: PIN"
   entity_presence_sensor_entity: "Presence Sensor Entity"
   entity_screen_saver_media_player_sleep_prevention: "Screen Saver: Media Player Sleep Prevention"
   entity_media_player_sleep_prevention_entity: "Media Player Sleep Prevention Entity"

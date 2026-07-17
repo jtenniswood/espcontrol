@@ -37,6 +37,22 @@ When the screensaver activates, you can choose what happens:
 
 When Screen Dimmed is selected, set **Dimmed Screen Brightness**. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values. Clock brightness uses the same sunrise and sunset calculation as the main screen brightness.
 
+## PIN Protection After Wake
+
+In **Setup → Settings → Screensaver**, turn on **Require PIN after wake** and enter a numeric PIN. The PIN is stored on that panel. It is not configured in YAML or through a Home Assistant helper.
+
+After the panel wakes from **Display Off**, **Screen Dimmed**, **Clock**, presence-controlled sleep, or manual sleep, a numeric keypad appears with the digits in a new random order. Normal touchscreen controls remain blocked until the correct PIN is entered. A wrong PIN clears the entry and leaves the panel locked.
+
+Clearing the PIN disables wake locking even if the switch remains on. The PIN itself is not included in normal configuration backups; after importing a backup, set a new PIN on the destination panel.
+
+::: warning Security limit
+PIN protection blocks local touchscreen controls. It does not protect the device's web setup page, network access, Home Assistant access, or other administration paths. Secure those separately on your network.
+:::
+
+## Start the Screensaver from a Card
+
+Add a local [Screensaver card](/card-types/screensaver) to start the configured screensaver immediately from the home screen or a subpage. The card follows the same **Display Off**, **Screen Dimmed**, or **Clock** choice used by automatic screensaver modes and needs no Home Assistant entity.
+
 ## Sensor
 
 Instead of a timer, the screensaver is controlled by a motion or presence sensor (like a mmWave sensor mounted nearby). When someone is in the room, the screen stays on. When nobody is detected, the screen goes to sleep — and wakes up again when someone walks past.

@@ -43,6 +43,7 @@ enum class CardTypeId : uint8_t {
   OPTION_SELECT,
   PUSH,
   SCREEN_LOCK,
+  SCREENSAVER,
   WEBHOOK,
   SENSOR,
   LOCAL_SENSOR,
@@ -151,6 +152,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "option_select") return CardTypeId::OPTION_SELECT;
   if (type == "push") return CardTypeId::PUSH;
   if (type == "screen_lock") return CardTypeId::SCREEN_LOCK;
+  if (type == "screensaver") return CardTypeId::SCREENSAVER;
   if (type == "webhook") return CardTypeId::WEBHOOK;
   if (type == "sensor") return CardTypeId::SENSOR;
   if (type == "local_sensor") return CardTypeId::LOCAL_SENSOR;
@@ -196,6 +198,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::OPTION_SELECT: return {type, CardDriverId::OPTION_SELECT, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::PUSH: return {type, CardDriverId::PUSH, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::SCREEN_LOCK: return {type, CardDriverId::SCREEN_LOCK, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
+    case CardTypeId::SCREENSAVER: return {type, CardDriverId::SCREEN_LOCK, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEBHOOK: return {type, CardDriverId::WEBHOOK, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::SENSOR: return {type, CardDriverId::SENSOR, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::LOCAL_SENSOR: return {type, CardDriverId::SENSOR, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
@@ -573,6 +576,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "option_select") return "Option Select";
   if (type == "push") return "Trigger";
   if (type == "screen_lock") return "Screen Lock";
+  if (type == "screensaver") return "Screensaver";
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
   if (type == "local_sensor") return "Local Sensor";
@@ -617,6 +621,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "option_select") return true;
   if (type == "push") return true;
   if (type == "screen_lock") return true;
+  if (type == "screensaver") return true;
   if (type == "webhook") return true;
   if (type == "sensor") return true;
   if (type == "local_sensor") return true;
@@ -661,6 +666,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "option_select") return "Flash";
   if (type == "push") return "Gesture Tap";
   if (type == "screen_lock") return "Lock";
+  if (type == "screensaver") return "Power";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "local_sensor") return "Auto";
@@ -705,6 +711,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "option_select") return "Auto";
   if (type == "push") return "Auto";
   if (type == "screen_lock") return "Lock Open";
+  if (type == "screensaver") return "Auto";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "local_sensor") return "Auto";
@@ -785,6 +792,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "climate_control") return "HC";
   if (type == "push") return "P";
   if (type == "screen_lock") return "SL";
+  if (type == "screensaver") return "SS";
   if (type == "webhook") return "WH";
   if (type == "internal") return "I";
   if (type == "subpage") return "G";
@@ -827,6 +835,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "HC") return "climate_control";
   if (code == "P") return "push";
   if (code == "SL") return "screen_lock";
+  if (code == "SS") return "screensaver";
   if (code == "WH") return "webhook";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";

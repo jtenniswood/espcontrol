@@ -156,6 +156,23 @@ export const ENTITY_CATALOG = {
         "screensaver_action"
       ]
     },
+    "screensaver_pin_required": {
+      "domain": "switch",
+      "name": "Screensaver: Require PIN after wake",
+      "objectIds": [
+        "screensaver__require_pin_after_wake",
+        "screensaver__pin_required",
+        "screensaver_pin_required"
+      ]
+    },
+    "screensaver_pin": {
+      "domain": "text",
+      "name": "Screensaver: PIN",
+      "objectIds": [
+        "screensaver__pin",
+        "screensaver_pin"
+      ]
+    },
     "presence_sensor_entity": {
       "domain": "text",
       "name": "Presence Sensor Entity",
@@ -606,6 +623,8 @@ export const ENTITY_CATALOG = {
       "outdoor_temp_entity",
       "screensaver_mode",
       "screen_saver_action",
+      "screensaver_pin_required",
+      "screensaver_pin",
       "presence_sensor_entity",
       "screen_saver_media_player_sleep_prevention",
       "media_player_sleep_prevention_entity",

@@ -148,6 +148,7 @@ run_this_script=Kør dette script?
 screen_dimmed=Skærm neddæmpet
 screen_locked=Skærm låst
 screen_unlocked=Skærm låst op
+screensaver=Pauseskærm
 skip_next=Spring til næste
 skip_previous=Spring til forrige
 snowy=Sne

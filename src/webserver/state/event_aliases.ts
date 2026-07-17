@@ -12,6 +12,8 @@ export const SSE_ALIAS_GROUPS = {
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
+  screensaverPinRequired: ["switch-screensaver__require_pin_after_wake", "switch-screensaver__pin_required", "switch-screensaver_pin_required"],
+  screensaverPin: ["text-screensaver__pin", "text-screensaver_pin"],
   clockScreensaver: ["switch-screen_saver__clock", "switch-screen_saver_clock", "switch-clock_screensaver_enabled"],
   mediaPlayerSleepPrevention: ["switch-screen_saver__media_player_sleep_prevention", "switch-screen_saver_media_player_sleep_prevention", "switch-media_player_sleep_prevention_enabled"],
   mediaPlayerSleepPreventionEntity: ["text-media_player_sleep_prevention_entity"],
@@ -54,6 +56,8 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, "switch-screen__temperature_degree_symbol");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.subpageChevron, "switch-screen__subpage_chevron");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverTimeout, "number-screensaver_timeout");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverPinRequired, "switch-screensaver__require_pin_after_wake");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverPin, "text-screensaver__pin");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockScreensaver, "switch-screen_saver__clock");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPrevention, "switch-screen_saver__media_player_sleep_prevention");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPreventionEntity, "text-media_player_sleep_prevention_entity");

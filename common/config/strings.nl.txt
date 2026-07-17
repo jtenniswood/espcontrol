@@ -148,6 +148,7 @@ run_this_script=Dit script uitvoeren?
 screen_dimmed=Scherm gedimd
 screen_locked=Scherm vergrendeld
 screen_unlocked=Scherm ontgrendeld
+screensaver=Schermbeveiliging
 skip_next=Volgende overslaan
 skip_previous=Vorige overslaan
 snowy=Sneeuwachtig

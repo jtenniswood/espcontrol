@@ -417,6 +417,19 @@ switch:
     on_turn_off:
       - script.execute: cover_art_apply_external_input_policy
 
+  - platform: template
+    name: "${entity_screensaver_pin_required}"
+    internal: true
+    id: screensaver_pin_required
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:lock-outline"
+    entity_category: config
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_off:
+      - lambda: 'screensaver_pin_clear_lock();'
+
 select:
   - platform: template
     name: "${entity_screen_saver_action}"
@@ -583,6 +596,31 @@ text:
               lambda: 'return id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screensaver_pin}"
+    internal: true
+    id: screensaver_pin
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 16
+    mode: password
+    entity_category: config
+    icon: "mdi:form-textbox-password"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - lambda: |-
+            std::string pin = normalize_numeric_pin(id(screensaver_pin).state);
+            if (pin.empty()) {
+              screensaver_pin_clear_lock();
+            } else if (screensaver_pin_locked()) {
+              screensaver_pin_unlock_code() = pin;
+            }
 
   # Optional presence sensor for screensaver (e.g. mmWave)
   - platform: template

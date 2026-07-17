@@ -260,6 +260,11 @@
       "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },
       "modes": [{ "name": "toggle", "config": {} }]
     },
+    "screensaver": {
+      "classification": "canonical", "canonicalType": "screensaver", "webRegistration": "screensaver", "firmwareFamily": "SCREENSAVER",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [{ "name": "activate", "config": { "type": "screensaver" } }]
+    },
     "webhook": {
       "classification": "canonical", "canonicalType": "webhook", "webRegistration": "webhook", "firmwareFamily": "WEBHOOK",
       "lifecycle": { "subscriptions": ["http"], "actions": ["http"], "modalOwner": "none" },

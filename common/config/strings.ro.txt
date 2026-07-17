@@ -148,6 +148,7 @@ run_this_script=Rulați acest script?
 screen_dimmed=Ecran estompat
 screen_locked=Ecran blocat
 screen_unlocked=Ecran deblocat
+screensaver=Economizor de ecran
 skip_next=Următorul
 skip_previous=Anteriorul
 snowy=Ninsoare

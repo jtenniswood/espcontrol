@@ -95,6 +95,8 @@ export function runStateContractTests(): void {
     temperatureDegreeSymbol: "switch-screen__temperature_degree_symbol",
     subpageChevron: "switch-screen__subpage_chevron",
     screensaverTimeout: "number-screensaver_timeout",
+    screensaverPinRequired: "switch-screensaver__require_pin_after_wake",
+    screensaverPin: "text-screensaver__pin",
     clockScreensaver: "switch-screen_saver__clock",
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",

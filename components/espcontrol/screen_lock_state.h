@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 struct ScreenLockCardRef {
@@ -17,6 +18,45 @@ struct ScreenLockCardRef {
 inline bool &screen_lock_enabled() {
   static bool locked = false;
   return locked;
+}
+
+inline bool &screensaver_pin_locked() {
+  static bool locked = false;
+  return locked;
+}
+
+inline std::string &screensaver_pin_unlock_code() {
+  static std::string code;
+  return code;
+}
+
+inline std::string normalize_numeric_pin(const std::string &value) {
+  std::string normalized;
+  normalized.reserve(value.size());
+  for (char ch : value) {
+    if (ch >= '0' && ch <= '9') normalized.push_back(ch);
+  }
+  return normalized;
+}
+
+using ScreensaverActivateCallback = void (*)();
+
+inline ScreensaverActivateCallback &screensaver_activate_callback() {
+  static ScreensaverActivateCallback callback = nullptr;
+  return callback;
+}
+
+inline void set_screensaver_activate_callback(ScreensaverActivateCallback callback) {
+  screensaver_activate_callback() = callback;
+}
+
+inline void activate_configured_screensaver() {
+  ScreensaverActivateCallback callback = screensaver_activate_callback();
+  if (callback) callback();
+}
+
+inline bool screen_interaction_locked() {
+  return screen_lock_enabled() || screensaver_pin_locked();
 }
 
 inline std::vector<lv_obj_t *> &screen_lock_controlled_buttons() {
@@ -73,20 +113,23 @@ inline void screen_lock_clear_clickable_tree(lv_obj_t *obj) {
 }
 
 inline void screen_lock_apply() {
-  bool locked = screen_lock_enabled();
+  bool card_locked = screen_lock_enabled();
   if (screen_lock_card_refs().empty()) {
-    locked = false;
+    card_locked = false;
     screen_lock_enabled() = false;
   }
+  const bool pin_locked = screensaver_pin_locked();
+  const bool interaction_locked = card_locked || pin_locked;
 
   auto &clickable = screen_lock_clickable_objects();
   for (lv_obj_t *btn : screen_lock_controlled_buttons()) {
-    if (!btn || screen_lock_button_is_lock_card(btn)) continue;
-    if (locked) {
+    if (!btn) continue;
+    if (screen_lock_button_is_lock_card(btn) && !pin_locked) continue;
+    if (interaction_locked) {
       screen_lock_clear_clickable_tree(btn);
     }
   }
-  if (!locked) {
+  if (!interaction_locked) {
     for (lv_obj_t *obj : clickable) {
       if (obj) lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
     }
@@ -95,15 +138,16 @@ inline void screen_lock_apply() {
 
   for (const auto &ref : screen_lock_card_refs()) {
     if (!ref.btn) continue;
-    set_card_checked_state(ref.btn, locked);
-    lv_obj_add_flag(ref.btn, LV_OBJ_FLAG_CLICKABLE);
+    set_card_checked_state(ref.btn, card_locked);
+    if (pin_locked) screen_lock_clear_clickable_tree(ref.btn);
+    else lv_obj_add_flag(ref.btn, LV_OBJ_FLAG_CLICKABLE);
     if (ref.icon_lbl) {
-      const char *icon = locked ? ref.locked_icon : ref.unlocked_icon;
+      const char *icon = card_locked ? ref.locked_icon : ref.unlocked_icon;
       lv_label_set_text(ref.icon_lbl, icon ? icon : "");
     }
     if (ref.text_lbl) {
       lv_label_set_text(ref.text_lbl,
-        locked ? espcontrol_i18n("Screen Locked") : espcontrol_i18n("Screen Unlocked"));
+        card_locked ? espcontrol_i18n("Screen Locked") : espcontrol_i18n("Screen Unlocked"));
     }
   }
 }

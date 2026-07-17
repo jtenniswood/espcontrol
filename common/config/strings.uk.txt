@@ -148,6 +148,7 @@ run_this_script=Запустити цей скрипт?
 screen_dimmed=Екран приглушено
 screen_locked=Екран заблоковано
 screen_unlocked=Екран розблоковано
+screensaver=Заставка
 skip_next=Наступний
 skip_previous=Попередній
 snowy=Сніг

@@ -23,6 +23,7 @@ enum class ControlModalKind {
   FAN_CONTROL,
   NETWORK_STATUS,
   ALARM_PIN,
+  SCREENSAVER_PIN,
   ALARM_CONTROL,
   IMAGE_CARD,
   TODO_LIST,
@@ -49,6 +50,7 @@ enum class ControlModalPresentation {
 };
 
 enum class ControlModalChrome {
+  NONE,
   BACK,
   CLOSE,
 };
@@ -83,6 +85,9 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::ALARM_PIN:
       return {ControlModalPresentation::KEYPAD, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::SCREENSAVER_PIN:
+      return {ControlModalPresentation::KEYPAD, ControlModalChrome::NONE,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::ALARM_CONTROL:
       return {ControlModalPresentation::TABBED_CONTROL, ControlModalChrome::BACK,
@@ -757,7 +762,9 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
   control_modal_close_active();
   const ControlModalDefinition definition = control_modal_definition(kind);
   const bool button_top_right = definition.chrome == ControlModalChrome::CLOSE;
-  const char *button_text = button_top_right ? "\U000F0156" : "\U000F0141";
+  const char *button_text = definition.chrome == ControlModalChrome::NONE
+    ? nullptr
+    : (button_top_right ? "\U000F0156" : "\U000F0141");
 
   ControlModalShell shell;
   shell.layout = control_modal_calc_layout(width_compensation_percent);

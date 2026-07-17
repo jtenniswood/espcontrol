@@ -79,6 +79,19 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             els.setSensorClockBrightnessNightVal.textContent = controlState.nightBrightnessLabel;
         }
     }
+    function syncScreensaverPinUi(this: any) {
+        if (els.setScreensaverPinRequired) {
+            els.setScreensaverPinRequired.checked = !!state.screensaverPinRequired;
+        }
+        if (els.setScreensaverPin) {
+            if (document.activeElement !== els.setScreensaverPin) {
+                els.setScreensaverPin.value = "";
+            }
+            els.setScreensaverPin.placeholder = state.screensaverPinSet
+                ? "PIN set"
+                : "Enter numeric PIN";
+        }
+    }
     function syncMediaPlayerSleepPreventionUi(this: any) {
         if (els.setMediaPlayerSleepPreventionToggle) {
             els.setMediaPlayerSleepPreventionToggle.checked = !!state.mediaPlayerSleepPreventionOn;
@@ -260,6 +273,7 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         "disclosureBadge": staticGlobal(disclosureBadge),
         "inlineDisclosure": staticGlobal(inlineDisclosure),
         "syncClockScreensaverControls": staticGlobal(syncClockScreensaverControls),
+        "syncScreensaverPinUi": staticGlobal(syncScreensaverPinUi),
         "syncMediaPlayerSleepPreventionUi": staticGlobal(syncMediaPlayerSleepPreventionUi),
         "syncCoverArtScreensaverUi": staticGlobal(syncCoverArtScreensaverUi),
         "syncOptionalClockBrightness": staticGlobal(syncOptionalClockBrightness),

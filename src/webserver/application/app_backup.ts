@@ -64,6 +64,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 firmware_auto_update: !!state.autoUpdate,
                 firmware_update_frequency: state.updateFrequency,
                 screensaver_action: normalizeScreensaverAction(state.screensaverAction),
+                screensaver_pin_required: !!state.screensaverPinRequired,
                 clock_screensaver: state.clockScreensaverOn,
                 clock_brightness: state.clockBrightnessDay,
                 clock_brightness_day: state.clockBrightnessDay,
@@ -250,6 +251,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     var importedClockBrightnessNight: any = importedSettings.clockBrightnessNight;
                     postScreensaverAction(importedScreensaverAction);
                     postClockScreensaver(importedScreensaverAction === "clock");
+                    postText(entityName("screensaver_pin"), "");
+                    postSwitch(entityName("screensaver_pin_required"), importedSettings.screensaverPinRequired);
                     postClockBrightnessDay(importedClockBrightnessDay);
                     postClockBrightnessNight(importedClockBrightnessNight);
                     postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
@@ -294,6 +297,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.autoUpdate = importedSettings.autoUpdate;
                     state.updateFrequency = importedSettings.updateFrequency;
                     state.screensaverAction = importedScreensaverAction;
+                    state.screensaverPinRequired = importedSettings.screensaverPinRequired;
+                    state.screensaverPinSet = false;
                     state._screensaverActionReceived = true;
                     state.clockScreensaverOn = importedScreensaverAction === "clock";
                     state.clockBrightnessDay = importedClockBrightnessDay;
@@ -323,6 +328,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                         els.setClockFormat.value = state.clockFormat;
                     syncNtpServerUi();
                     syncClockScreensaverControls();
+                    syncScreensaverPinUi();
                     syncScreensaverTimeoutUi();
                     syncIdleUi();
                     if (els.setScreenRotation)

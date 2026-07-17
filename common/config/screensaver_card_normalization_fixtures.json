@@ -1,0 +1,32 @@
+[
+  {
+    "name": "default screensaver card stays local",
+    "input": ";;;;;;screensaver;;",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Power",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "screensaver",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "screensaver keeps its custom label and strips remote fields",
+    "input": "switch.should_not_save;Screen Off;Television Off;Lock;sensor.should_not_save;%;screensaver;2;large_numbers",
+    "expected": {
+      "entity": "",
+      "label": "Screen Off",
+      "icon": "Television Off",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "screensaver",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

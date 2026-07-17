@@ -494,6 +494,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntp_server_1: "pool.ntp.org",
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
+  screensaver_pin_required: true,
   cover_art_hide_external_input: true,
   home_assistant_artwork_protocol: "https",
   home_assistant_artwork_port: "80",
@@ -529,6 +530,7 @@ assert.strictEqual(panelSettings.clockFormat, "24h", "panel clock format validat
 assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server imports");
 assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mode imports");
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
+assert.strictEqual(panelSettings.screensaverPinRequired, true, "panel screensaver PIN flag imports");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantProtocol, "https", "panel Home Assistant artwork protocol imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");

@@ -148,6 +148,7 @@ run_this_script=Bu betik çalıştırılsın mı?
 screen_dimmed=Ekran kısılmış
 screen_locked=Ekran kilitli
 screen_unlocked=Ekran kilidi açık
+screensaver=Ekran koruyucu
 skip_next=Sonrakine geç
 skip_previous=Öncekine geç
 snowy=Karlı
