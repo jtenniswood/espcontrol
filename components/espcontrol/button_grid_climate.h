@@ -2362,9 +2362,28 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   };
   ui.heat_arc = create_range_arc(climate_heating_color(ctx));
   ui.cool_arc = create_range_arc(CLIMATE_COOLING_COLOR);
-  lv_obj_add_event_cb(ui.arc, [](lv_event_t *) {
+  lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     ui.drag_target_selected = false;
+    if (!ui.active || !climate_dual_target(ui.active) ||
+        !ui.low_handle_dot || !ui.high_handle_dot) return;
+    lv_indev_t *indev = lv_event_get_indev(e);
+    if (!indev) indev = lv_indev_active();
+    if (!indev) return;
+    lv_point_t point;
+    lv_indev_get_point(indev, &point);
+    lv_area_t low_area;
+    lv_area_t high_area;
+    lv_obj_get_coords(ui.low_handle_dot, &low_area);
+    lv_obj_get_coords(ui.high_handle_dot, &high_area);
+    int32_t low_x = (low_area.x1 + low_area.x2) / 2;
+    int32_t low_y = (low_area.y1 + low_area.y2) / 2;
+    int32_t high_x = (high_area.x1 + high_area.x2) / 2;
+    int32_t high_y = (high_area.y1 + high_area.y2) / 2;
+    ui.active->edit_high = espcontrol::climate::nearest_handle_is_high(
+      point.x, point.y, low_x, low_y, high_x, high_y);
+    ui.drag_target_selected = true;
+    climate_control_set_modal_value(ui.active);
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
@@ -2419,7 +2438,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_clear_flag(ui.handle_dot, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.handle_dot, LV_OBJ_FLAG_HIDDEN);
 
-  auto create_range_handle = []() {
+  auto create_range_handle = [&]() {
     lv_obj_t *dot = lv_obj_create(ui.panel);
     lv_obj_set_style_bg_color(dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
