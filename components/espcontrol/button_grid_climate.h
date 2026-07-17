@@ -2468,7 +2468,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.target_separator_lbl = lv_label_create(ui.target_row);
   lv_label_set_text(ui.target_separator_lbl, "-");
   lv_obj_set_style_text_color(ui.target_separator_lbl,
-                              lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+                              lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_separator_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   const lv_font_t *range_font = ctx->range_number_font
     ? ctx->range_number_font : ctx->number_font;
