@@ -135,6 +135,14 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.clockScreensaverOn = state.screensaverAction === "clock";
                 syncClockScreensaverControls();
             },
+            "switch-screensaver__require_pin_after_wake": function (this: any, val?: any, d?: any) {
+                state.screensaverPinRequired = d.value === true || val === "ON";
+                syncScreensaverPinUi();
+            },
+            "text-screensaver__pin": function (this: any, val?: any) {
+                state.screensaverPinSet = normalizePin(val).length > 0;
+                syncScreensaverPinUi();
+            },
             "number-screen_saver__dimmed_brightness": function (this: any, val?: any) {
                 state.screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(val);
                 syncClockScreensaverControls();

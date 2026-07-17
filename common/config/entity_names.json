@@ -28,6 +28,8 @@
     { "key": "outdoor_temp_entity", "domain": "text", "name": "Outdoor Temp Entity", "groups": ["settings"] },
     { "key": "screensaver_mode", "domain": "text", "name": "Screensaver Mode", "objectIds": ["screensaver_mode"], "groups": ["settings"] },
     { "key": "screen_saver_action", "domain": "select", "name": "Screen Saver: Action", "objectIds": ["screen_saver__action", "screen_saver_action", "screensaver_action"], "groups": ["settings"] },
+    { "key": "screensaver_pin_required", "domain": "switch", "name": "Screensaver: Require PIN after wake", "objectIds": ["screensaver__require_pin_after_wake", "screensaver__pin_required", "screensaver_pin_required"], "groups": ["settings"] },
+    { "key": "screensaver_pin", "domain": "text", "name": "Screensaver: PIN", "objectIds": ["screensaver__pin", "screensaver_pin"], "groups": ["settings"] },
     { "key": "presence_sensor_entity", "domain": "text", "name": "Presence Sensor Entity", "objectIds": ["presence_sensor_entity"], "groups": ["settings"] },
     { "key": "screen_saver_media_player_sleep_prevention", "domain": "switch", "name": "Screen Saver: Media Player Sleep Prevention", "objectIds": ["screen_saver__media_player_sleep_prevention", "screen_saver_media_player_sleep_prevention", "media_player_sleep_prevention_enabled"], "groups": ["settings"] },
     { "key": "media_player_sleep_prevention_entity", "domain": "text", "name": "Media Player Sleep Prevention Entity", "objectIds": ["media_player_sleep_prevention_entity"], "groups": ["settings"] },

@@ -86,6 +86,9 @@ esphome:
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
           };
+          set_screensaver_activate_callback([]() {
+            id(screensaver_sleep_timer).execute();
+          });
           update_screensaver_action_cache();
 
           if (!id(screensaver_action_migrated)) {
@@ -1037,6 +1040,15 @@ script:
                 value: 'true'
             - script.execute: display_mode_clear_cover_art
             - script.wait: display_mode_clear_cover_art
+            - lambda: |-
+                screensaver_pin_lock_and_open(
+                  id(screensaver_pin_required).state,
+                  id(screensaver_pin).state,
+                  id(main_page)->obj,
+                  100,
+                  id(font_text_body)->get_lv_font(),
+                  id(font_text_body)->get_lv_font(),
+                  id(font_icon_main)->get_lv_font());
       - script.execute: screensaver_idle_check
       - script.execute: home_screen_idle_check
       - if:

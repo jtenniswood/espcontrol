@@ -48,7 +48,8 @@
       "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
       "coverArtHideExternalInput": true, "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
-      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
+      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "screensaverPinRequired": false,
+      "clockScreensaver": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
       "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
     },
@@ -99,5 +100,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 614256, "gzip": 146373 }
+  "bundleSize": { "minified": 619286, "gzip": 147354 }
 }

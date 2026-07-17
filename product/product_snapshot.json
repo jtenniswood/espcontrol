@@ -10,8 +10,8 @@
   },
   "summary": {
     "deviceProfiles": 6,
-    "cardTypes": 40,
-    "entityNames": 82,
+    "cardTypes": 41,
+    "entityNames": 84,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -1657,6 +1657,18 @@
           "capabilities": {
             "informationOnly": false,
             "subscriptions": true,
+            "actions": true,
+            "numericControl": false,
+            "modal": false,
+            "runtimeAllocation": false,
+            "subpage": true
+          }
+        },
+        "screensaver": {
+          "driver": "screen_lock",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
             "actions": true,
             "numericControl": false,
             "modal": false,
@@ -4556,6 +4568,61 @@
           "options": ""
         }
       },
+      "screensaver": {
+        "label": "Screensaver",
+        "allowInSubpage": true,
+        "domains": [],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "clear"
+            },
+            "label": {
+              "policy": "keep"
+            },
+            "icon": {
+              "policy": "alias",
+              "aliases": {
+                "": "Power",
+                "Auto": "Power"
+              }
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "screensaver"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "clear"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": []
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Power",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "screensaver",
+          "precision": "",
+          "options": ""
+        }
+      },
       "webhook": {
         "label": "Webhook",
         "allowInSubpage": true,
@@ -5592,6 +5659,7 @@
       "climate_control": "HC",
       "push": "P",
       "screen_lock": "SL",
+      "screensaver": "SS",
       "webhook": "WH",
       "internal": "I",
       "subpage": "G"
@@ -5839,6 +5907,31 @@
           "screen_saver__action",
           "screen_saver_action",
           "screensaver_action"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screensaver_pin_required",
+        "domain": "switch",
+        "name": "Screensaver: Require PIN after wake",
+        "objectIds": [
+          "screensaver__require_pin_after_wake",
+          "screensaver__pin_required",
+          "screensaver_pin_required"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screensaver_pin",
+        "domain": "text",
+        "name": "Screensaver: PIN",
+        "objectIds": [
+          "screensaver__pin",
+          "screensaver_pin"
         ],
         "groups": [
           "settings"

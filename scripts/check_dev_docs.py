@@ -164,6 +164,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "option_select": "docs/card-types/option-select.md",
     "push": "docs/card-types/buttons.md",
     "screen_lock": "docs/card-types/screen-lock.md",
+    "screensaver": "docs/card-types/screensaver.md",
     "webhook": "docs/card-types/webhooks.md",
     "sensor": "docs/card-types/sensors.md",
     "slider": "docs/card-types/sliders.md",

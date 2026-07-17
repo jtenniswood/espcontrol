@@ -148,6 +148,7 @@ run_this_script=Suoritetaanko tämä skripti?
 screen_dimmed=Näyttö himmennetty
 screen_locked=Näyttö lukittu
 screen_unlocked=Näyttö avattu
+screensaver=Näytönsäästäjä
 skip_next=Seuraava kappale
 skip_previous=Edellinen kappale
 snowy=Lumisadetta

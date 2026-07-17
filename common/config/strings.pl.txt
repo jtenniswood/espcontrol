@@ -148,6 +148,7 @@ run_this_script=Uruchomić ten skrypt?
 screen_dimmed=Ekran przyciemniony
 screen_locked=Ekran zablokowany
 screen_unlocked=Ekran odblokowany
+screensaver=Wygaszacz ekranu
 skip_next=Pomiń następny
 skip_previous=Pomiń poprzedni
 snowy=Śnieżnie

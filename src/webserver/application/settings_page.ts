@@ -321,7 +321,57 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.setSensorClockBrightnessNight = sensorClockControls.clockBrightnessNight;
         els.setSensorClockBrightnessNightVal = sensorClockControls.clockBrightnessNightVal;
         els.setSensorClockBrightnessField = sensorClockControls.brightnessField;
+        var pinProtectionToggle: any = toggleRow(
+            "Require PIN after wake",
+            "sp-set-ss-pin-required",
+            state.screensaverPinRequired);
+        ssBody.appendChild(pinProtectionToggle.row);
+        pinProtectionToggle.input.addEventListener("change", function (this: any) {
+            state.screensaverPinRequired = this.checked;
+            postSwitch(entityName("screensaver_pin_required"), state.screensaverPinRequired);
+            syncScreensaverPinUi();
+        });
+        els.setScreensaverPinRequired = pinProtectionToggle.input;
+        var pinField: any = document.createElement("div");
+        pinField.className = "sp-field";
+        pinField.appendChild(fieldLabel("PIN", "sp-set-ss-pin"));
+        var pinInput: any = document.createElement("input");
+        pinInput.className = "sp-input";
+        pinInput.id = "sp-set-ss-pin";
+        pinInput.type = "password";
+        pinInput.inputMode = "numeric";
+        pinInput.maxLength = 16;
+        pinInput.autocomplete = "new-password";
+        pinInput.placeholder = state.screensaverPinSet ? "PIN set" : "Enter numeric PIN";
+        var pinEdited: any = false;
+        pinInput.addEventListener("input", function (this: any) {
+            var next: any = normalizePin(this.value);
+            if (this.value !== next)
+                this.value = next;
+            pinEdited = true;
+        });
+        pinInput.addEventListener("blur", function (this: any) {
+            var next: any = normalizePin(this.value);
+            if (!pinEdited && next.length === 0)
+                return;
+            postText(entityName("screensaver_pin"), next);
+            state.screensaverPinSet = next.length > 0;
+            pinEdited = false;
+            syncScreensaverPinUi();
+            window.setTimeout(function () {
+                pinInput.value = "";
+            }, 0);
+        });
+        pinField.appendChild(pinInput);
+        var pinHelp: any = document.createElement("div");
+        pinHelp.className = "sp-help";
+        pinHelp.textContent = "Protects local touchscreen use after wake. It does not secure web or admin access.";
+        pinField.appendChild(pinHelp);
+        ssBody.appendChild(pinField);
+        els.setScreensaverPin = pinInput;
+        els.setScreensaverPinField = pinField;
         syncClockScreensaverControls();
+        syncScreensaverPinUi();
         syncMediaPlayerSleepPreventionUi();
         syncCoverArtScreensaverUi();
         var ssBadge: any = statusBadge("Screensaver on");

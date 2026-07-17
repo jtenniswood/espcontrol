@@ -148,6 +148,7 @@ run_this_script=Futtatja ezt a szkriptet?
 screen_dimmed=Képernyő halványítva
 screen_locked=Képernyő lezárva
 screen_unlocked=Képernyő feloldva
+screensaver=Képernyőkímélő
 skip_next=Ugrás a következőre
 skip_previous=Ugrás az előzőre
 snowy=Havas

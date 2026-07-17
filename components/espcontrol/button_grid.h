@@ -20,6 +20,9 @@
 #include <algorithm>
 #include <vector>
 #include <functional>
+#ifdef ESP_PLATFORM
+#include "esp_system.h"
+#endif
 #include "esphome/components/api/homeassistant_service.h"
 #include "esphome/components/http_request/http_request.h"
 #include "esphome/components/artwork_image/artwork_image.h"
@@ -41,6 +44,7 @@
 #include "button_grid_display.h"
 #include "button_grid_cards.h"
 #include "button_grid_modal.h"
+#include "button_grid_pin_keypad.h"
 #include "button_grid_subscriptions.h"
 #include "button_grid_vacuum.h"
 #include "button_grid_lawn_mower.h"

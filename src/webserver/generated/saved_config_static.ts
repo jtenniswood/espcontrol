@@ -46,6 +46,18 @@ export function normalizeSavedConfigStatic(config: CardConfig): boolean {
     config.options = "";
     return true;
   }
+  if (config.type === "screensaver") {
+    config.entity = "";
+    if (config.icon === "") config.icon = "Power";
+    if (config.icon === "Auto") config.icon = "Power";
+    config.icon_on = "Auto";
+    config.sensor = "";
+    config.unit = "";
+    config.type = "screensaver";
+    config.precision = "";
+    config.options = "";
+    return true;
+  }
   if (config.type === "slider") {
     config.sensor = "";
     config.type = "slider";

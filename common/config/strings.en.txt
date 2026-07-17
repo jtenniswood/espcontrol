@@ -148,6 +148,7 @@ run_this_script=Run this script?
 screen_dimmed=Screen Dimmed
 screen_locked=Screen Locked
 screen_unlocked=Screen Unlocked
+screensaver=Screensaver
 skip_next=Skip Next
 skip_previous=Skip Previous
 snowy=Snowy

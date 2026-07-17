@@ -120,6 +120,8 @@ export interface AppState {
   _screensaverModeReceived: boolean;
   screensaverAction: string;
   _screensaverActionReceived: boolean;
+  screensaverPinRequired: boolean;
+  screensaverPinSet: boolean;
   clockScreensaverOn: boolean;
   clockBrightnessDay: number;
   clockBrightnessNight: number;

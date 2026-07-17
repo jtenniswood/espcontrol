@@ -148,6 +148,7 @@ run_this_script=Kör detta skript?
 screen_dimmed=Skärm nedtonad
 screen_locked=Skärm låst
 screen_unlocked=Skärm upplåst
+screensaver=Skärmsläckare
 skip_next=Hoppa till nästa
 skip_previous=Hoppa till föregående
 snowy=Snöigt

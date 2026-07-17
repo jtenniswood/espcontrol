@@ -148,6 +148,7 @@ run_this_script=Zagnati ta skript?
 screen_dimmed=Zaslon zatemnjen
 screen_locked=Zaslon zaklenjen
 screen_unlocked=Zaslon odklenjen
+screensaver=Ohranjevalnik zaslona
 skip_next=Preskoči naprej
 skip_previous=Preskoči nazaj
 snowy=Snežno

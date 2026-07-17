@@ -124,6 +124,7 @@ declare global {
   var PreviewGridFeature: any;
   var SCREENSAVER_ACTION_UNAVAILABLE: any;
   var SCREENSAVER_TIMEOUT_OPTIONS: any;
+  var SCREENSAVER_CARD_METADATA: any;
   var SCREEN_LOCK_CARD_METADATA: any;
   var SCREEN_ROTATION_STARTUP_FALLBACK_MS: any;
   var SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE: any;
@@ -733,6 +734,7 @@ declare global {
   var normalizeImageOptions: any;
   var normalizeInternalRelayMode: any;
   var normalizeLanguage: any;
+  var normalizePin: any;
   var normalizeLawnMowerConfig: any;
   var normalizeLawnMowerMode: any;
   var normalizeLightControlOptions: any;
@@ -1123,6 +1125,7 @@ declare global {
   var syncScreenScheduleUi: any;
   var syncScreensaverTimeoutLimits: any;
   var syncScreensaverTimeoutUi: any;
+  var syncScreensaverPinUi: any;
   var syncTabChrome: any;
   var syncTemperatureUi: any;
   var syncThemeUi: any;

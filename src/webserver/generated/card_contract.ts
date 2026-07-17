@@ -2942,6 +2942,61 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "screensaver": {
+    "label": "Screensaver",
+    "allowInSubpage": true,
+    "domains": [],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "clear"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "alias",
+          "aliases": {
+            "": "Power",
+            "Auto": "Power"
+          }
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "screensaver"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "clear"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": []
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Power",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "screensaver",
+      "precision": "",
+      "options": ""
+    }
+  },
   "webhook": {
     "label": "Webhook",
     "allowInSubpage": true,
@@ -4097,6 +4152,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subpage": true
     }
   },
+  "screensaver": {
+    "driver": "screen_lock",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": false,
+      "actions": true,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
+  },
   "webhook": {
     "driver": "webhook",
     "capabilities": {
@@ -4274,6 +4341,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "climate_control": "HC",
   "push": "P",
   "screen_lock": "SL",
+  "screensaver": "SS",
   "webhook": "WH",
   "internal": "I",
   "subpage": "G"
@@ -4314,6 +4382,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string
   "HC": "climate_control",
   "P": "push",
   "SL": "screen_lock",
+  "SS": "screensaver",
   "WH": "webhook",
   "I": "internal",
   "G": "subpage"

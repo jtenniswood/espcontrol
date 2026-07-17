@@ -148,6 +148,7 @@ run_this_script=Spustit tento skript?
 screen_dimmed=Obrazovka ztlumena
 screen_locked=Obrazovka uzamčena
 screen_unlocked=Obrazovka odemčena
+screensaver=Spořič obrazovky
 skip_next=Přeskočit další
 skip_previous=Přeskočit předchozí
 snowy=Sněží

@@ -48,6 +48,18 @@ inline bool normalize_saved_config_static(Config &config) {
     config.options.clear();
     return true;
   }
+  if (config.type == "screensaver") {
+    config.entity.clear();
+    if (config.icon == "") config.icon = "Power";
+    if (config.icon == "Auto") config.icon = "Power";
+    config.icon_on = "Auto";
+    config.sensor.clear();
+    config.unit.clear();
+    config.type = "screensaver";
+    config.precision.clear();
+    config.options.clear();
+    return true;
+  }
   if (config.type == "slider") {
     config.sensor.clear();
     config.type = "slider";

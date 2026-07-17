@@ -148,6 +148,7 @@ run_this_script=Executar este script?
 screen_dimmed=Ecrã escurecido
 screen_locked=Ecrã bloqueado
 screen_unlocked=Ecrã desbloqueado
+screensaver=Proteção de ecrã
 skip_next=Saltar seguinte
 skip_previous=Saltar anterior
 snowy=Nevado
