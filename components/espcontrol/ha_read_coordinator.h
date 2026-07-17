@@ -60,8 +60,8 @@ class HaReadCoordinator {
     if (!available() || entity_id.empty() || !callback) return false;
     if (reusable) {
       for (SubscriptionRef &ref : subscriptions_) {
-        if (!ref.reusable || ref.entity_id != entity_id ||
-            ref.attribute != attribute || ref.scope != scope ||
+        if (!ref.reuse_key || ref.reuse_key->entity_id != entity_id ||
+            ref.reuse_key->attribute != attribute || ref.scope != scope ||
             !ref.callback || *ref.callback) {
           continue;
         }
@@ -77,7 +77,12 @@ class HaReadCoordinator {
       }
     }
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
-    subscriptions_.push_back({entity_id, attribute, callback_ref, scope, reusable});
+    std::unique_ptr<ReusableSubscriptionKey> reuse_key;
+    if (reusable) {
+      reuse_key = std::make_unique<ReusableSubscriptionKey>(
+          ReusableSubscriptionKey{entity_id, attribute});
+    }
+    subscriptions_.push_back({callback_ref, scope, std::move(reuse_key)});
     transport_.subscribe(
         entity_id, attribute,
         [this, callback_ref](State state) { invoke(callback_ref, state); });
@@ -134,12 +139,17 @@ class HaReadCoordinator {
     bool has_attribute = false;
   };
 
-  struct SubscriptionRef {
+  struct ReusableSubscriptionKey {
     std::string entity_id;
     std::string attribute;
+  };
+
+  struct SubscriptionRef {
     std::shared_ptr<Callback> callback;
     uint32_t scope = 0;
-    bool reusable = false;
+    // Normal grid subscriptions deliberately carry no copied entity strings.
+    // Only modal subscriptions that can be rebound need this lookup key.
+    std::unique_ptr<ReusableSubscriptionKey> reuse_key;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
@@ -207,7 +217,7 @@ class HaReadCoordinator {
       SubscriptionRef &ref = subscriptions_[read_index];
       if (scope == 0 || (ref.scope & scope) != 0) {
         if (ref.callback && *ref.callback) *ref.callback = nullptr;
-        if (!ref.reusable) continue;
+        if (!ref.reuse_key) continue;
       }
       if (write_index != read_index) subscriptions_[write_index] = std::move(ref);
       write_index++;

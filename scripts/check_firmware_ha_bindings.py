@@ -238,16 +238,22 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or "for (const auto &callback : *callback_refs)" not in read_boundary_text
     ):
         errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-    if "subscriptions_.push_back({entity_id, attribute, callback_ref, scope, reusable})" not in coordinator_text:
+    if "subscriptions_.push_back({callback_ref, scope, std::move(reuse_key)})" not in coordinator_text:
         errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
     if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
         errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
     if (
-        "ref.entity_id != entity_id" not in coordinator_text
+        "ref.reuse_key->entity_id != entity_id" not in coordinator_text
         or "*callback_ref = std::move(callback)" not in coordinator_text
         or "dispatch_one(entity_id, attribute, callback_ref, has_attribute, generation_)" not in coordinator_text
     ):
         errors.append(f"{rel}: reuse released modal subscription wrappers without transport growth")
+    if (
+        "std::unique_ptr<ReusableSubscriptionKey> reuse_key" not in coordinator_text
+        or "if (reusable)" not in coordinator_text
+        or "if (!ref.reuse_key) continue" not in coordinator_text
+    ):
+        errors.append(f"{rel}: retain entity lookup strings only for reusable subscriptions")
 
     return errors
 
@@ -1482,6 +1488,11 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             if token not in subscribe_body:
                 errors.append(f"{rel}: rehydrate a speaker row recreated during a live helper edit")
                 break
+        if (
+            "if (!parse_float_ref(value, level) || !std::isfinite(level))" not in subscribe_body
+            or "row->volume_known = false" not in subscribe_body
+        ):
+            errors.append(f"{rel}: disable group volume when a speaker reports an invalid volume")
     return errors
 
 

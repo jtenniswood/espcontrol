@@ -2815,7 +2815,12 @@ inline void media_control_subscribe_speaker(MediaControlCtx *ctx,
     MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
     if (!row) return;
     float level = 0.0f;
-    if (!parse_float_ref(value, level)) return;
+    if (!parse_float_ref(value, level) || !std::isfinite(level)) {
+      row->volume_known = false;
+      media_control_refresh_speaker_row(ctx, row);
+      media_control_refresh_group_volume(ctx);
+      return;
+    }
     row->volume_known = true;
     row->volume_pct = std::max(
       0, std::min(100, static_cast<int>(level * 100.0f + 0.5f)));
