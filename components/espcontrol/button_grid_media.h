@@ -2755,15 +2755,9 @@ inline void media_control_subscribe_speaker(MediaControlCtx *ctx,
                                             MediaSpeakerRowState *row) {
   if (!ctx || !row) return;
   MediaControlModalUi &ui = media_control_modal_ui();
-  if (std::find(ui.speaker_subscription_entities.begin(),
-                ui.speaker_subscription_entities.end(), row->entity_id) !=
-      ui.speaker_subscription_entities.end()) {
-    return;
-  }
-  media_group_append_unique(ui.speaker_subscription_entities, row->entity_id);
   uint32_t generation = ui.speaker_generation;
   std::string entity_id = row->entity_id;
-  ha_subscribe_state_reusable(entity_id, [ctx, entity_id, generation](esphome::StringRef value) {
+  HomeAssistantStateCallback state_callback = [ctx, entity_id, generation](esphome::StringRef value) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (ui.active != ctx || ui.speaker_generation != generation) return;
     MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
@@ -2771,31 +2765,46 @@ inline void media_control_subscribe_speaker(MediaControlCtx *ctx,
     row->available = !ha_state_unavailable_ref(value);
     media_control_refresh_speaker_row(ctx, row);
     media_control_refresh_group_volume(ctx);
-  }, HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
-  ha_subscribe_attribute_reusable(entity_id, std::string("friendly_name"),
-    [ctx, entity_id, generation](esphome::StringRef value) {
-      MediaControlModalUi &ui = media_control_modal_ui();
-      if (ui.active != ctx || ui.speaker_generation != generation) return;
-      MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
-      if (!row) return;
-      row->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
-      if (row->friendly_name == "unknown" || row->friendly_name == "unavailable") row->friendly_name.clear();
-      media_control_refresh_speaker_row(ctx, row);
-    }, HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
-  ha_subscribe_attribute_reusable(entity_id, std::string("volume_level"),
-    [ctx, entity_id, generation](esphome::StringRef value) {
-      MediaControlModalUi &ui = media_control_modal_ui();
-      if (ui.active != ctx || ui.speaker_generation != generation) return;
-      MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
-      if (!row) return;
-      float level = 0.0f;
-      if (!parse_float_ref(value, level)) return;
-      row->volume_known = true;
-      row->volume_pct = std::max(
-        0, std::min(100, static_cast<int>(level * 100.0f + 0.5f)));
-      media_control_refresh_speaker_row(ctx, row);
-      media_control_refresh_group_volume(ctx);
-    }, HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
+  };
+  HomeAssistantStateCallback name_callback = [ctx, entity_id, generation](esphome::StringRef value) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (ui.active != ctx || ui.speaker_generation != generation) return;
+    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
+    if (!row) return;
+    row->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
+    if (row->friendly_name == "unknown" || row->friendly_name == "unavailable") row->friendly_name.clear();
+    media_control_refresh_speaker_row(ctx, row);
+  };
+  HomeAssistantStateCallback volume_callback = [ctx, entity_id, generation](esphome::StringRef value) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (ui.active != ctx || ui.speaker_generation != generation) return;
+    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
+    if (!row) return;
+    float level = 0.0f;
+    if (!parse_float_ref(value, level)) return;
+    row->volume_known = true;
+    row->volume_pct = std::max(
+      0, std::min(100, static_cast<int>(level * 100.0f + 0.5f)));
+    media_control_refresh_speaker_row(ctx, row);
+    media_control_refresh_group_volume(ctx);
+  };
+  if (std::find(ui.speaker_subscription_entities.begin(),
+                ui.speaker_subscription_entities.end(), entity_id) !=
+      ui.speaker_subscription_entities.end()) {
+    ha_get_state(entity_id, state_callback);
+    ha_get_attribute(entity_id, std::string("friendly_name"), name_callback);
+    ha_get_attribute(entity_id, std::string("volume_level"), volume_callback);
+    return;
+  }
+  media_group_append_unique(ui.speaker_subscription_entities, entity_id);
+  ha_subscribe_state_reusable(
+    entity_id, state_callback, HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
+  ha_subscribe_attribute_reusable(
+    entity_id, std::string("friendly_name"), name_callback,
+    HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
+  ha_subscribe_attribute_reusable(
+    entity_id, std::string("volume_level"), volume_callback,
+    HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
 }
 
 inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,

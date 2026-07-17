@@ -1459,6 +1459,17 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             errors.append(f"{rel}: {message}")
     if text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 2:
         errors.append(f"{rel}: parse both current members and helper candidates without truncation")
+    if "inline void media_control_subscribe_speaker" in text:
+        subscribe_body = text.split("inline void media_control_subscribe_speaker", 1)[1]
+        subscribe_body = subscribe_body.split("\n}\n\ninline void media_control_add_speaker_candidate", 1)[0]
+        for token in (
+            "ha_get_state(entity_id, state_callback)",
+            'ha_get_attribute(entity_id, std::string("friendly_name"), name_callback)',
+            'ha_get_attribute(entity_id, std::string("volume_level"), volume_callback)',
+        ):
+            if token not in subscribe_body:
+                errors.append(f"{rel}: rehydrate a speaker row recreated during a live helper edit")
+                break
     return errors
 
 
