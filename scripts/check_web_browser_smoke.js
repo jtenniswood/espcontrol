@@ -985,7 +985,7 @@ async function assertSettingsPage(page, label, options = {}) {
   );
   assert.strictEqual(
     await nightScheduleInfo.innerText(),
-    "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want presence to control the night schedule.",
+    "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want a sensor to control the night schedule.",
     `${label}: night schedule override info panel text should match`,
   );
   assert.strictEqual(
@@ -3332,6 +3332,7 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const disabledButton = card.getByRole("button", { name: "Disabled", exact: true });
   const timeFields = card.locator("#sp-set-schedule-on-hour");
   const sensorField = card.locator("#sp-set-schedule-presence");
+  const sensorFieldLabel = card.getByText("Sensor Entity", { exact: true });
   const actions = card.locator("#sp-set-schedule-actions");
   const actionSelect = card.locator("#sp-set-schedule-mode");
   const wakeTimeout = card.locator("#sp-set-schedule-wake-timeout");
@@ -3410,7 +3411,8 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     false,
     `${label}: Sensor mode should hide time fields`,
   );
-  assert(await sensorField.isVisible(), `${label}: Sensor mode should show the presence entity`);
+  assert(await sensorField.isVisible(), `${label}: Sensor mode should show the sensor entity`);
+  assert(await sensorFieldLabel.isVisible(), `${label}: Sensor mode should label the sensor entity clearly`);
   assert(await actions.isVisible(), `${label}: Sensor mode should show night action controls`);
   assert.strictEqual(
     await actionSelect.inputValue(),
@@ -3438,7 +3440,7 @@ async function assertNightScheduleSensorControls(page, posts, label) {
       action: "set",
       value: "binary_sensor.all_lights_on",
     },
-    `${label}: Sensor mode posts the presence entity`,
+    `${label}: Sensor mode posts the sensor entity`,
     before,
   );
   await waitForPost(
