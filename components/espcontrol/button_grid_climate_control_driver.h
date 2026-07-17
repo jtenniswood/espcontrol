@@ -51,6 +51,7 @@ struct ClimateControlDriverEnvironment {
   uint32_t secondary_color = SECONDARY_GREY;
   uint32_t tertiary_color = TERTIARY_GREY;
   const lv_font_t *number_font = nullptr;
+  const lv_font_t *range_number_font = nullptr;
   const lv_font_t *unit_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *option_title_font = nullptr;
@@ -72,6 +73,7 @@ inline ClimateControlDriverEnvironment climate_control_driver_environment(
   environment.tertiary_color = palette.has_sensor_color
     ? palette.sensor_val : TERTIARY_GREY;
   environment.number_font = display_volume_number_font(display);
+  environment.range_number_font = display_media_control_title_font(display);
   environment.unit_font = display_volume_label_font(display)
     ? display_volume_label_font(display)
     : lv_obj_get_style_text_font(slot.unit_lbl, LV_PART_MAIN);
@@ -106,6 +108,7 @@ inline ClimateControlCtx *climate_control_driver_bind_data(
       slot.btn, slot.icon_lbl, slot.text_lbl, config,
       environment.accent_color, environment.secondary_color,
       environment.tertiary_color, environment.number_font,
+      environment.range_number_font,
       environment.unit_font, environment.label_font,
       environment.option_title_font, environment.option_value_font,
       environment.option_menu_font, environment.card_icon_font,
