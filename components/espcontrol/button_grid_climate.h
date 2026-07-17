@@ -1915,13 +1915,6 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   int target = climate_display_target(ctx);
   if (ui.arc) {
     climate_set_obj_visible(ui.arc, show_dial);
-    if (ui.panel) {
-      ControlModalLayout layout = climate_control_calc_layout(ctx);
-      // The base arc still owns touch input in dual mode, but its indicator is
-      // hidden so LVGL does not redraw a redundant full-size arc while dragging.
-      lv_obj_set_style_arc_width(ui.arc, dual ? 0 : layout.arc_stroke,
-                                 LV_PART_INDICATOR);
-    }
     if (show_dial && !ui.dragging_arc) {
       ui.updating_arc = true;
       lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
