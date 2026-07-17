@@ -23,6 +23,7 @@ constexpr int CLIMATE_MODAL_ARC_SIZE_PERCENT = 88;
 constexpr int CLIMATE_MODAL_COMPACT_PORTRAIT_ARC_SIZE_PERCENT = 96;
 constexpr lv_coord_t CLIMATE_MODAL_ARC_UP_REF_PX = 30;
 constexpr lv_coord_t CLIMATE_MODAL_UNIT_UP_REF_PX = 10;
+constexpr lv_coord_t CLIMATE_MODAL_HANDLE_TOUCH_PADDING_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_SQUARE_ARC_UP_REF_PX = 24;
 constexpr lv_coord_t CLIMATE_MODAL_STEP_BUTTONS_UP_REF_PX = 42;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX = 18;
@@ -386,12 +387,6 @@ inline void climate_select_target_for_mode(ClimateControlCtx *ctx,
     espcontrol::climate::target_selection_for_mode(mode);
   if (selection == espcontrol::climate::TargetSelection::HIGH) ctx->edit_high = true;
   else if (selection == espcontrol::climate::TargetSelection::LOW) ctx->edit_high = false;
-}
-
-inline void climate_select_nearest_target(ClimateControlCtx *ctx, int value) {
-  if (!ctx || !climate_dual_target(ctx) || !ctx->has_low || !ctx->has_high) return;
-  ctx->edit_high = espcontrol::climate::nearest_target_is_high(
-    value, ctx->low_tenths, ctx->high_tenths);
 }
 
 inline int climate_selected_target(ClimateControlCtx *ctx) {
@@ -778,11 +773,10 @@ inline void climate_layout_dual_handle_dots(ClimateControlCtx *ctx,
                            handle_size, radius);
 }
 
-inline void climate_style_dual_handle(lv_obj_t *dot, bool selected) {
+inline void climate_style_dual_handle(lv_obj_t *dot) {
   if (!dot) return;
   lv_obj_set_style_bg_color(dot, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_border_color(dot, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
-  lv_obj_set_style_border_width(dot, selected ? 3 : 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(dot, 0, LV_PART_MAIN);
 }
 
 inline void climate_apply_background_arc_width(lv_obj_t *arc, const ControlModalLayout &layout) {
@@ -1935,8 +1929,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   climate_set_obj_visible(ui.high_handle_dot, show_dual_handles);
   if (show_dual_handles && ui.panel) {
     climate_layout_dual_handle_dots(ctx, climate_control_calc_layout(ctx));
-    climate_style_dual_handle(ui.low_handle_dot, !ctx->edit_high);
-    climate_style_dual_handle(ui.high_handle_dot, ctx->edit_high);
+    climate_style_dual_handle(ui.low_handle_dot);
+    climate_style_dual_handle(ui.high_handle_dot);
   }
   climate_raise_arc_markers();
   if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
@@ -2361,26 +2355,50 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     int32_t low_y = (low_area.y1 + low_area.y2) / 2;
     int32_t high_x = (high_area.x1 + high_area.x2) / 2;
     int32_t high_y = (high_area.y1 + high_area.y2) / 2;
-    ui.active->edit_high = espcontrol::climate::nearest_handle_is_high(
-      point.x, point.y, low_x, low_y, high_x, high_y);
+    ControlModalLayout layout = climate_control_calc_layout(ui.active);
+    int32_t handle_size = low_area.x2 - low_area.x1 + 1;
+    int32_t low_height = low_area.y2 - low_area.y1 + 1;
+    int32_t high_width = high_area.x2 - high_area.x1 + 1;
+    int32_t high_height = high_area.y2 - high_area.y1 + 1;
+    if (low_height > handle_size) handle_size = low_height;
+    if (high_width > handle_size) handle_size = high_width;
+    if (high_height > handle_size) handle_size = high_height;
+    int32_t hit_radius = handle_size / 2 + control_modal_scaled_px(
+      CLIMATE_MODAL_HANDLE_TOUCH_PADDING_REF_PX, layout.short_side);
+    espcontrol::climate::TargetSelection selection =
+      espcontrol::climate::handle_selection_at_point(
+        point.x, point.y, low_x, low_y, high_x, high_y, hit_radius);
+    if (selection == espcontrol::climate::TargetSelection::RETAIN) {
+      climate_control_set_modal_value(ui.active);
+      return;
+    }
+    ui.active->edit_high = selection == espcontrol::climate::TargetSelection::HIGH;
     ui.drag_target_selected = true;
     climate_control_set_modal_value(ui.active);
   }, LV_EVENT_PRESSED, nullptr);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.updating_arc || !ui.active) return;
+    if (climate_dual_target(ui.active) && !ui.drag_target_selected) {
+      climate_control_set_modal_value(ui.active);
+      return;
+    }
     ui.dragging_arc = true;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int target = climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc));
-    if (climate_dual_target(ui.active) && !ui.drag_target_selected) {
-      climate_select_nearest_target(ui.active, target);
-      ui.drag_target_selected = true;
-    }
     climate_preview_selected_target(ui.active, target);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.updating_arc || !ui.active) return;
+    if (climate_dual_target(ui.active) &&
+        (!ui.drag_target_selected || !ui.has_drag_preview)) {
+      ui.dragging_arc = false;
+      ui.drag_target_selected = false;
+      ui.has_drag_preview = false;
+      climate_control_set_modal_value(ui.active);
+      return;
+    }
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int value = ui.has_drag_preview
       ? ui.drag_preview_tenths

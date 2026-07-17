@@ -10,8 +10,7 @@ int main() {
   using espcontrol::climate::command_kind;
   using espcontrol::climate::capability_change_invalidates_pending;
   using espcontrol::climate::constrain_range_target;
-  using espcontrol::climate::nearest_handle_is_high;
-  using espcontrol::climate::nearest_target_is_high;
+  using espcontrol::climate::handle_selection_at_point;
   using espcontrol::climate::target_kind;
   using espcontrol::climate::target_selection_for_mode;
   using espcontrol::climate::target_values_complete;
@@ -51,16 +50,16 @@ int main() {
   assert(target_selection_for_mode("heat_cool") == TargetSelection::RETAIN);
   assert(target_selection_for_mode("off") == TargetSelection::RETAIN);
 
-  assert(!nearest_target_is_high(650, 650, 750));
-  assert(nearest_target_is_high(750, 650, 750));
-  assert(!nearest_target_is_high(700, 650, 750));
-
-  // A press starts with whichever visible range handle is closest, without
-  // requiring the matching number label to be selected first.
-  assert(!nearest_handle_is_high(100, 200, 100, 200, 300, 200));
-  assert(nearest_handle_is_high(300, 200, 100, 200, 300, 200));
-  assert(!nearest_handle_is_high(200, 200, 100, 200, 300, 200));
-  assert(nearest_handle_is_high(290, 210, 100, 200, 300, 200));
+  // A range drag must begin on one of the visible handles. Touches elsewhere
+  // on the arc are ignored, and overlapping hit areas choose the nearest one.
+  assert(handle_selection_at_point(100, 200, 100, 200, 300, 200, 30) ==
+    TargetSelection::LOW);
+  assert(handle_selection_at_point(300, 200, 100, 200, 300, 200, 30) ==
+    TargetSelection::HIGH);
+  assert(handle_selection_at_point(200, 200, 100, 200, 300, 200, 30) ==
+    TargetSelection::RETAIN);
+  assert(handle_selection_at_point(290, 210, 100, 200, 300, 200, 30) ==
+    TargetSelection::HIGH);
 
   // Low and high remain at least one configured step apart.
   assert(constrain_range_target(760, false, 650, 750, 500, 900, 10) == 740);

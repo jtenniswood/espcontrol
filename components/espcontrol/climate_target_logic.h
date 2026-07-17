@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cstdlib>
 #include <string_view>
 
 namespace espcontrol::climate {
@@ -75,20 +74,22 @@ constexpr TargetSelection target_selection_for_mode(std::string_view mode) {
   return TargetSelection::RETAIN;
 }
 
-constexpr bool nearest_target_is_high(int value, int low, int high) {
-  return std::abs(value - high) < std::abs(value - low);
-}
-
-constexpr bool nearest_handle_is_high(int point_x, int point_y,
-                                      int low_x, int low_y,
-                                      int high_x, int high_y) {
+constexpr TargetSelection handle_selection_at_point(int point_x, int point_y,
+                                                    int low_x, int low_y,
+                                                    int high_x, int high_y,
+                                                    int hit_radius) {
+  if (hit_radius < 0) return TargetSelection::RETAIN;
   const int64_t low_dx = static_cast<int64_t>(point_x) - low_x;
   const int64_t low_dy = static_cast<int64_t>(point_y) - low_y;
   const int64_t high_dx = static_cast<int64_t>(point_x) - high_x;
   const int64_t high_dy = static_cast<int64_t>(point_y) - high_y;
   const int64_t low_distance = low_dx * low_dx + low_dy * low_dy;
   const int64_t high_distance = high_dx * high_dx + high_dy * high_dy;
-  return high_distance < low_distance;
+  const int64_t max_distance = static_cast<int64_t>(hit_radius) * hit_radius;
+  if (low_distance > max_distance && high_distance > max_distance)
+    return TargetSelection::RETAIN;
+  return high_distance < low_distance
+    ? TargetSelection::HIGH : TargetSelection::LOW;
 }
 
 constexpr int clamp(int value, int minimum, int maximum) {
