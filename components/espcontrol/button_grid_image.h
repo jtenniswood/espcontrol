@@ -780,7 +780,12 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   int count = cfg.image_card_image_count;
   if (count > IMAGE_CARD_MAX_CONTEXTS) count = IMAGE_CARD_MAX_CONTEXTS;
   if (count < 0) count = 0;
-  if (cfg.image_card_modal_image) cfg.image_card_modal_image->cancel_update();
+  if (cfg.image_card_modal_image) {
+    cfg.image_card_modal_image->cancel_update();
+    if (!image_card_retain_modal_cache()) {
+      image_card_release_modal_cache(cfg.image_card_modal_image);
+    }
+  }
   image_card_bind_modal_callbacks(cfg.image_card_modal_image);
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     esphome::artwork_image::ArtworkImage *next_image =

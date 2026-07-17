@@ -329,6 +329,10 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
+        if reset_body is None or "image_card_release_modal_cache" not in reset_body:
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: release the constrained modal cache when resetting the image-card pool"
+            )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")
@@ -1031,6 +1035,7 @@ def run_self_test() -> None:
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  image_card_release_modal_cache(cfg.image_card_modal_image);\n"
                     "  int count = cfg.image_card_image_count;\n"
                     "  for (int i = 0; i < count; i++) {}\n"
                     "}\n"
@@ -1042,6 +1047,17 @@ def run_self_test() -> None:
             {
                 "button_grid_image.h": (
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("release the constrained modal cache when resetting the image-card pool",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  image_card_release_modal_cache(cfg.image_card_modal_image);\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"
                 )
