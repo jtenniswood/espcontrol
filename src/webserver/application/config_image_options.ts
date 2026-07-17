@@ -16,6 +16,14 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
     function imageSlotCapacityMessage(this: any) {
         if (IMAGE_SLOT_CAPACITY <= 0)
             return "Image cards are not available on this display.";
+        var disabled: any = CFG.disabledCardTypes || [];
+        var cameraAvailable: any = disabled.indexOf("image") < 0;
+        var mediaCoverArtAvailable: any = disabled.indexOf("media_cover_art") < 0;
+        if (cameraAvailable && !mediaCoverArtAvailable) {
+            return "This display supports up to " + IMAGE_SLOT_CAPACITY +
+                (IMAGE_SLOT_CAPACITY === 1 ? " Camera Card" : " Camera Cards") +
+                " across the main page and subpages.";
+        }
         return "Image and Media Cover Art cards use shared image slots. You can save up to " +
             IMAGE_SLOT_CAPACITY + " of these cards across the main page and subpages.";
     }

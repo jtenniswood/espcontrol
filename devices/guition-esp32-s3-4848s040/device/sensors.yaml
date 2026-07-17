@@ -66,6 +66,12 @@ script:
           cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
             id(display_takeover_end).execute(static_cast<int>(kind));
           };
+          static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
+            id(image_card_download_1),
+          };
+          cfg.image_card_images = image_card_downloaders;
+          cfg.image_card_modal_image = id(image_card_modal_download_1);
+          cfg.image_card_image_count = 1;
           cfg.home_assistant_base_url = []() {
             std::string base = id(cover_art_home_assistant_base_url);
             while (!base.empty() && base.back() == '/') base.pop_back();
@@ -148,6 +154,12 @@ esphome:
             cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
               id(display_takeover_end).execute(static_cast<int>(kind));
             };
+            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
+              id(image_card_download_1),
+            };
+            cfg.image_card_images = image_card_downloaders;
+            cfg.image_card_modal_image = id(image_card_modal_download_1);
+            cfg.image_card_image_count = 1;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
               while (!base.empty() && base.back() == '/') base.pop_back();
@@ -255,6 +267,12 @@ esphome:
             cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
               id(display_takeover_end).execute(static_cast<int>(kind));
             };
+            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
+              id(image_card_download_1),
+            };
+            cfg.image_card_images = image_card_downloaders;
+            cfg.image_card_modal_image = id(image_card_modal_download_1);
+            cfg.image_card_image_count = 1;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
               while (!base.empty() && base.back() == '/') base.pop_back();

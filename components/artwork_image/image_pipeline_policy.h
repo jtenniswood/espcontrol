@@ -6,6 +6,53 @@
 namespace esphome {
 namespace artwork_image {
 
+constexpr int IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX = 800;
+constexpr int IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 320;
+
+constexpr int image_pipeline_modal_max_target_side(bool constrained) {
+  return constrained ? IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX
+                     : IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX;
+}
+
+constexpr bool image_pipeline_should_retain_modal_cache(bool constrained) {
+  return !constrained;
+}
+
+enum class ImagePipelineMemoryFailure : uint8_t {
+  NONE,
+  INTERNAL_FREE,
+  INTERNAL_LARGEST,
+  PSRAM_FREE,
+  PSRAM_LARGEST,
+};
+
+// Image surfaces and compressed staging live in PSRAM, while the constrained
+// S3 still needs a small, contiguous internal-RAM reserve for WiFi, HTTP and
+// decoder bookkeeping. Check the two pools independently so abundant PSRAM
+// cannot hide an unsafe internal heap.
+constexpr ImagePipelineMemoryFailure image_pipeline_memory_failure(
+    bool constrained, size_t internal_free, size_t internal_largest,
+    size_t psram_free, size_t psram_largest, size_t image_bytes,
+    size_t pipeline_bytes, size_t psram_headroom_bytes,
+    size_t constrained_internal_free_bytes,
+    size_t constrained_internal_largest_bytes) {
+  if (image_bytes == 0) return ImagePipelineMemoryFailure::NONE;
+  if (constrained && internal_free < constrained_internal_free_bytes) {
+    return ImagePipelineMemoryFailure::INTERNAL_FREE;
+  }
+  if (constrained && internal_largest < constrained_internal_largest_bytes) {
+    return ImagePipelineMemoryFailure::INTERNAL_LARGEST;
+  }
+  if (psram_free < pipeline_bytes ||
+      psram_free - pipeline_bytes < psram_headroom_bytes) {
+    return ImagePipelineMemoryFailure::PSRAM_FREE;
+  }
+  if (psram_largest < image_bytes) {
+    return ImagePipelineMemoryFailure::PSRAM_LARGEST;
+  }
+  return ImagePipelineMemoryFailure::NONE;
+}
+
 // Higher-priority requests win. Equal-priority requests keep their original
 // submission order so a busy camera page cannot starve its first tile.
 constexpr bool p4_pipeline_candidate_precedes(uint8_t candidate_priority,

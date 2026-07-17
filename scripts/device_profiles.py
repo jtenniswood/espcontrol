@@ -974,6 +974,8 @@ def slot_devices(path: Path = DEVICE_MANIFEST) -> list[dict[str, Any]]:
 
 def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
     package = profile["firmware"]["package"]
+    image_slots = profile["capabilities"]["imageSlots"]
+    disabled_card_types = set(profile["web"].get("disabledCardTypes", []))
     capability = {
         "slug": profile["slug"],
         "installSlug": profile["slug"],
@@ -983,7 +985,9 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "resolution": profile["public"]["resolution"],
         "orientation": profile["public"]["orientation"],
         "slots": profile["slots"],
-        "imageSlots": profile["capabilities"]["imageSlots"],
+        "imageSlots": image_slots,
+        "cameraCards": image_slots > 0 and "image" not in disabled_card_types,
+        "mediaCoverArtCards": image_slots > 0 and "media_cover_art" not in disabled_card_types,
         "grid": {
             "rows": profile["layout"]["rows"],
             "cols": profile["layout"]["cols"],
@@ -992,7 +996,7 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "relays": len(profile["internalRelays"]),
         "rotation": bool((profile.get("rotation") or {}).get("enabled")),
         "ethernetManualInstall": bool(package.get("ethernetSelectable")),
-        "subpages": "subpage" not in profile["web"].get("disabledCardTypes", []),
+        "subpages": "subpage" not in disabled_card_types,
     }
     return capability
 

@@ -1,0 +1,32 @@
+# =============================================================================
+# IMAGE CARD DOWNLOADERS - Single-slot pool for constrained displays
+# =============================================================================
+
+artwork_image:
+  - url: "https://placehold.co/1x1/000000/000000.jpg"
+    id: image_card_download_1
+    format: AUTO
+    type: RGB565
+    byte_order: LITTLE_ENDIAN
+    resize: 1x1
+    resize_mode: COVER
+    buffer_size: 8192
+    allow_insecure_local_urls: true
+    p4_pipeline: TILE
+
+  - url: "https://placehold.co/1x1/000000/000000.jpg"
+    id: image_card_modal_download_1
+    format: AUTO
+    type: RGB565
+    byte_order: LITTLE_ENDIAN
+    resize: 1x1
+    resize_mode: COVER
+    buffer_size: 8192
+    allow_insecure_local_urls: true
+    p4_pipeline: MODAL
+
+interval:
+  - interval: 250ms
+    then:
+      - lambda: |-
+          image_card_refresh_due();

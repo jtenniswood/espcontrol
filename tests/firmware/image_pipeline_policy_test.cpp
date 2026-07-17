@@ -10,14 +10,68 @@ using esphome::artwork_image::image_pipeline_modal_can_open;
 using esphome::artwork_image::image_pipeline_modal_cache_matches;
 using esphome::artwork_image::image_pipeline_can_start_followup_inline;
 using esphome::artwork_image::image_pipeline_cached_target_changed;
+using esphome::artwork_image::image_pipeline_memory_failure;
+using esphome::artwork_image::image_pipeline_modal_max_target_side;
 using esphome::artwork_image::image_resize_aspect_differs;
 using esphome::artwork_image::image_pipeline_should_cancel_modal_cleanup;
 using esphome::artwork_image::image_pipeline_should_preempt_stale_modal;
+using esphome::artwork_image::image_pipeline_should_retain_modal_cache;
+using esphome::artwork_image::ImagePipelineMemoryFailure;
 using esphome::artwork_image::p4_pipeline_transfer_capacity;
 using esphome::artwork_image::p4_cover_scale_plan;
 using esphome::artwork_image::p4_jpeg_hardware_target_supported;
 
 int main() {
+  // Constrained displays use a smaller modal and release it after closing;
+  // standard P4 displays keep their existing 800px cache.
+  assert(image_pipeline_modal_max_target_side(true) == 320);
+  assert(image_pipeline_modal_max_target_side(false) == 800);
+  assert(!image_pipeline_should_retain_modal_cache(true));
+  assert(image_pipeline_should_retain_modal_cache(false));
+
+  constexpr size_t internal_free_min = 40 * 1024;
+  constexpr size_t internal_largest_min = 24 * 1024;
+  constexpr size_t image_bytes = 320 * 320 * 2;
+  constexpr size_t pipeline_bytes = image_bytes * 2 + 128 * 1024;
+  constexpr size_t psram_headroom = 96 * 1024;
+  assert(image_pipeline_memory_failure(
+             true, internal_free_min, internal_largest_min,
+             pipeline_bytes + psram_headroom, image_bytes,
+             image_bytes, pipeline_bytes, psram_headroom,
+             internal_free_min, internal_largest_min) ==
+         ImagePipelineMemoryFailure::NONE);
+  assert(image_pipeline_memory_failure(
+             true, internal_free_min - 1, internal_largest_min,
+             pipeline_bytes + psram_headroom, image_bytes,
+             image_bytes, pipeline_bytes, psram_headroom,
+             internal_free_min, internal_largest_min) ==
+         ImagePipelineMemoryFailure::INTERNAL_FREE);
+  assert(image_pipeline_memory_failure(
+             true, internal_free_min, internal_largest_min - 1,
+             pipeline_bytes + psram_headroom, image_bytes,
+             image_bytes, pipeline_bytes, psram_headroom,
+             internal_free_min, internal_largest_min) ==
+         ImagePipelineMemoryFailure::INTERNAL_LARGEST);
+  assert(image_pipeline_memory_failure(
+             true, internal_free_min, internal_largest_min,
+             pipeline_bytes + psram_headroom - 1, image_bytes,
+             image_bytes, pipeline_bytes, psram_headroom,
+             internal_free_min, internal_largest_min) ==
+         ImagePipelineMemoryFailure::PSRAM_FREE);
+  assert(image_pipeline_memory_failure(
+             true, internal_free_min, internal_largest_min,
+             pipeline_bytes + psram_headroom, image_bytes - 1,
+             image_bytes, pipeline_bytes, psram_headroom,
+             internal_free_min, internal_largest_min) ==
+         ImagePipelineMemoryFailure::PSRAM_LARGEST);
+  // Standard displays still require PSRAM, but do not inherit the S3's tight
+  // internal-memory floor.
+  assert(image_pipeline_memory_failure(
+             false, 1, 1, pipeline_bytes + psram_headroom, image_bytes,
+             image_bytes, pipeline_bytes, psram_headroom,
+             internal_free_min, internal_largest_min) ==
+         ImagePipelineMemoryFailure::NONE);
+
   // Modal work preempts queued tile work.
   assert(p4_pipeline_candidate_precedes(2, 20, 1, 10));
   assert(!p4_pipeline_candidate_precedes(1, 10, 2, 20));

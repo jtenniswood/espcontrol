@@ -163,7 +163,7 @@ vm.createContext(hostedSandbox);
 vm.runInContext(generated, hostedSandbox, { filename: webOutput });
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.imageSlotCapacity(),
-  0,
+  manifest.devices["guition-esp32-s3-4848s040"].capabilities.imageSlots,
   "shared hosted bundle selects the device profile from its script URL",
 );
 
@@ -241,7 +241,10 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
       `${slug}: generated web UI must not preview disabled weather forecast modes`
     );
   }
-  if (device.capabilities.imageSlots === 0) {
+  const disabledCardTypes = new Set((device.web || {}).disabledCardTypes || []);
+  const imageCardsDisabled = device.capabilities.imageSlots === 0 || disabledCardTypes.has("image");
+  const mediaCoverArtDisabled = device.capabilities.imageSlots === 0 || disabledCardTypes.has("media_cover_art");
+  if (mediaCoverArtDisabled) {
     assert(
       !Array.from(generatedHooks.mediaModeOptionValues()).includes("cover_art"),
       `${slug}: generated web UI must hide Media Cover Art from the Media card type list`
@@ -255,6 +258,26 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
       generatedHooks.buttonTypeVisibleInPickerFor("media_cover_art", false),
       false,
       `${slug}: generated web UI must hide Media Cover Art from the main card picker`
+    );
+  }
+  assert.strictEqual(
+    generatedHooks.buttonTypeVisibleInPickerFor("image", false),
+    !imageCardsDisabled,
+    `${slug}: generated web UI must match the Camera Card capability`
+  );
+  if (slug === "guition-esp32-s3-4848s040") {
+    assert.strictEqual(
+      generatedHooks.imageSlotCapacityMessage(),
+      "This display supports up to 1 Camera Card across the main page and subpages.",
+      `${slug}: generated web UI must describe the camera-only limit accurately`
+    );
+    assert.strictEqual(
+      generatedHooks.imageCardCandidateAllowedForTest(
+        { grid: [1], buttons: [{ type: "image" }], subpages: {} },
+        { isSub: false, slot: 2, button: { type: "image" } }
+      ),
+      false,
+      `${slug}: generated web UI must reject a second Camera Card`
     );
   }
   assert(
