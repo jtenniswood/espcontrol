@@ -125,7 +125,8 @@ api:
     - script.execute: cover_art_resubscribe
 
 image:
-  - file: "${cover_art_placeholder_file}"
+  - platform: file
+    file: "${cover_art_placeholder_file}"
     id: cover_art_placeholder
     type: RGB565
     byte_order: LITTLE_ENDIAN

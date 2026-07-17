@@ -2025,6 +2025,24 @@ inline void climate_control_hide_modal() {
   ui = ClimateControlModalUi();
 }
 
+inline void delete_climate_control_context(ClimateControlCtx *ctx) {
+  if (!ctx) return;
+  if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();
+  if (ctx->debounce_timer) {
+    lv_timer_del(ctx->debounce_timer);
+    ctx->debounce_timer = nullptr;
+  }
+  ClimateControlCtx **refs = climate_control_refs();
+  int &count = climate_control_ref_count();
+  int write_index = 0;
+  for (int read_index = 0; read_index < count; read_index++) {
+    if (refs[read_index] == ctx) continue;
+    refs[write_index++] = refs[read_index];
+  }
+  count = write_index;
+  delete ctx;
+}
+
 inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   if (!ctx || !ctx->available) return;
   ControlModalShell shell = control_modal_open_shell(

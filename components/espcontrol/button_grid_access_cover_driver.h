@@ -1,7 +1,7 @@
 #pragma once
 
 // Shared lifecycle driver for Garage, Gate, Lock, and non-modal Cover cards.
-// Cover modal behaviour deliberately remains with the later rich-card stage.
+// Cover All Controls uses the separate cover-modal lifecycle driver.
 // Contract coverage markers: "garage", "gate", "lock", "cover".
 
 namespace espcontrol::cards {

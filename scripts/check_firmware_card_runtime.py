@@ -54,8 +54,14 @@ BASIC_ACTION_HEADER = "button_grid_basic_action_driver.h"
 NUMERIC_SELECTABLE_HEADER = "button_grid_numeric_selectable_driver.h"
 CLEANING_HEADER = "button_grid_cleaning_driver.h"
 ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
+COVER_MODAL_DRIVER_HEADER = "button_grid_cover_modal_driver.h"
+MEDIA_DRIVER_HEADER = "button_grid_media_driver.h"
 NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
 IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
+LIGHT_CONTROL_DRIVER_HEADER = "button_grid_light_control_driver.h"
+FAN_CONTROL_DRIVER_HEADER = "button_grid_fan_control_driver.h"
+CLIMATE_CONTROL_DRIVER_HEADER = "button_grid_climate_control_driver.h"
+ALARM_DRIVER_HEADER = "button_grid_alarm_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
 
 
@@ -163,12 +169,30 @@ def check_root(root: Path) -> list[str]:
             or "access_cover_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "access_cover_driver_bind_main( s, p, context)" not in compact_grid
             or "access_cover_driver_bind_subpage( sub_slot, sb_cfg, context, access_cover_environment)" not in compact_grid
+            or "cover_modal_driver_setup_visual(s, p, context)" not in compact_grid
+            or "cover_modal_driver_bind_main( s, p, context, cover_modal_environment)" not in compact_grid
+            or "cover_modal_driver_bind_subpage( sub_slot, sb_cfg, context, cover_modal_environment)" not in compact_grid
+            or "media_driver_setup_visual( s, p, context, palette, display, row_span, col_span)" not in compact_grid
+            or "media_driver_bind_main( s, p, context, media_environment)" not in compact_grid
+            or "media_driver_bind_subpage( sub_slot, sb_cfg, context, media_environment)" not in compact_grid
             or "navigation_driver_setup_visual( s, p, context, cfg, display)" not in compact_grid
             or "navigation_driver_bind_main( s, p, context, navigation_state)" not in compact_grid
             or "navigation_driver_own_subpage( slots[si], p, parent_context, si + 1, display_order, sub_scr)" not in compact_grid
             or "image_driver_setup_visual(s, p, context)" not in compact_grid
             or "image_driver_bind_main( s, p, context, cfg)" not in compact_grid
             or "image_driver_bind_subpage( sub_slot, sb_cfg, context, cfg)" not in compact_grid
+            or "light_control_driver_setup_visual(s, p, context)" not in compact_grid
+            or "light_control_driver_bind_main( s, p, context, light_control_environment)" not in compact_grid
+            or "light_control_driver_bind_subpage( sub_slot, sb_cfg, context, light_control_environment)" not in compact_grid
+            or "fan_control_driver_setup_visual(s, p, context)" not in compact_grid
+            or "fan_control_driver_bind_main( s, p, context, fan_control_environment)" not in compact_grid
+            or "fan_control_driver_bind_subpage( sub_slot, sb_cfg, context, fan_control_environment)" not in compact_grid
+            or "climate_control_driver_setup_visual( s, p, context, display)" not in compact_grid
+            or "climate_control_driver_bind_main( s, p, context, climate_control_environment)" not in compact_grid
+            or "climate_control_driver_bind_subpage( sub_slot, sb_cfg, context, climate_control_environment)" not in compact_grid
+            or "alarm_driver_setup_visual(s, p, context)" not in compact_grid
+            or "alarm_driver_bind_main( s, p, context, alarm_environment)" not in compact_grid
+            or "alarm_driver_bind_subpage( sub_slot, sb_cfg, context, alarm_environment)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
@@ -209,8 +233,17 @@ def check_root(root: Path) -> list[str]:
             'p.type == "cover" && cover_toggle_mode',
             'sb_cfg.type == "cover" && cover_command_mode',
             'sb_cfg.type == "cover" && cover_toggle_mode',
+            'p.type == "cover" && cover_modal_mode',
+            'sb_cfg.type == "cover" && cover_modal_mode',
             'p.type == "subpage"', 'p.type != "subpage"',
             'p.type == "image"', 'sb_cfg.type == "image"',
+            'family == espcontrol::cards::Family::LIGHT_CONTROL',
+            'p.type == "light_control"', 'sb_cfg.type == "light_control"',
+            'p.type == "fan_control"', 'sb_cfg.type == "fan_control"',
+            'family == espcontrol::cards::Family::CLIMATE',
+            'family == espcontrol::cards::Family::ALARM',
+            'family == espcontrol::cards::Family::MEDIA',
+            'p.type == "media"', 'sb_cfg.type == "media"',
         ):
             if direct_branch in text:
                 failures.append(
@@ -224,11 +257,18 @@ def check_root(root: Path) -> list[str]:
                 f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
             )
         if (
-            'if (sb_cfg.type == "light_control")' not in text
-            or "subscribe_light_control_state(ctx);\n          add_parent_indicator(sb_cfg.entity);" not in text
+            "light_control_environment.add_parent_indicator" not in text
+            or "light_control_driver_bind_subpage(" not in text
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: include full light controls in generic subpage parent indicators"
+            )
+        if (
+            "fan_control_environment.add_parent_indicator" not in text
+            or "fan_control_driver_bind_subpage(" not in text
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: include full fan controls in generic subpage parent indicators"
             )
         image_reset_pos = text.find("image_driver_reset_pool(cfg);")
         subpage_clear_pos = text.find("navigation_clear_subpages();")
@@ -248,8 +288,14 @@ def check_root(root: Path) -> list[str]:
             or "numeric_selectable_driver_handle_main_click(" not in click_body
             or "cleaning_driver_handle_main_click(" not in click_body
             or "access_cover_driver_handle_main_click(" not in click_body
+            or "cover_modal_driver_handle_main_click(" not in click_body
             or "navigation_driver_handle_main_click(" not in click_body
             or "image_driver_handle_main_click(" not in click_body
+            or "light_control_driver_handle_main_click(" not in click_body
+            or "fan_control_driver_handle_main_click(" not in click_body
+            or "climate_control_driver_handle_main_click(" not in click_body
+            or "alarm_driver_handle_main_click(" not in click_body
+            or "media_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
@@ -262,12 +308,18 @@ def check_root(root: Path) -> list[str]:
                 'p.type == "cover" && cover_command_mode',
                 'p.type == "cover" && cover_toggle_mode',
                 'else if (p.type == "cover")',
+                'p.type == "cover" && cover_modal_mode',
                 'p.type == "subpage"',
                 'p.type == "image"',
+                'p.type == "light_control"',
+                'p.type == "fan_control"',
+                'climate_card_type(p.type)',
+                'p.type == "alarm"',
+                'p.type == "media"',
             ):
                 if direct_branch in click_body:
                     failures.append(
-                        f"components/espcontrol/{ACTION_HEADER}: keep migrated access/cover clicks inside the shared driver"
+                        f"components/espcontrol/{ACTION_HEADER}: keep migrated clicks inside shared drivers"
                     )
     image_header = root / "components" / "espcontrol" / IMAGE_HEADER
     if image_header.exists():
@@ -505,6 +557,68 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover driver"
         )
+    cover_modal_driver_header = (
+        root / "components" / "espcontrol" / COVER_MODAL_DRIVER_HEADER
+    )
+    if cover_modal_driver_header.exists():
+        text = cover_modal_driver_header.read_text(encoding="utf-8")
+        required = (
+            "cover_modal_driver_setup_visual",
+            "cover_modal_driver_bind_main",
+            "cover_modal_driver_bind_subpage",
+            "cover_modal_driver_attach_interaction",
+            "cover_modal_driver_refresh_layout",
+            "cover_modal_driver_cleanup",
+            "cover_modal_driver_handle_main_click",
+            "create_cover_control_context",
+            "subscribe_cover_control_state",
+            "cover_control_open_modal",
+            "grid_track_cover_control_runtime",
+            "grid_delete_cover_control_with_owner",
+            '"cover"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{COVER_MODAL_DRIVER_HEADER}: missing shared cover-modal lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{COVER_MODAL_DRIVER_HEADER}: missing shared cover-modal driver"
+        )
+    media_driver_header = root / "components" / "espcontrol" / MEDIA_DRIVER_HEADER
+    if media_driver_header.exists():
+        text = media_driver_header.read_text(encoding="utf-8")
+        required = (
+            "media_driver_setup_visual",
+            "media_driver_bind_main",
+            "media_driver_bind_subpage",
+            "media_driver_attach_interaction",
+            "media_driver_refresh_layout",
+            "media_driver_cleanup",
+            "media_driver_handle_main_click",
+            "create_media_control_context",
+            "create_media_volume_context",
+            "create_media_playlist_context",
+            "subscribe_media_control_state",
+            "subscribe_media_volume_state",
+            "subscribe_media_now_playing_state",
+            "subscribe_media_cover_art",
+            "subscribe_media_playlist_state",
+            "subscribe_media_slider_state",
+            "grid_track_media_control_runtime",
+            "grid_delete_media_control_with_owner",
+            '"media"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"
+        )
     navigation_driver_header = root / "components" / "espcontrol" / NAVIGATION_DRIVER_HEADER
     if navigation_driver_header.exists():
         text = navigation_driver_header.read_text(encoding="utf-8")
@@ -556,6 +670,121 @@ def check_root(root: Path) -> list[str]:
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{IMAGE_DRIVER_HEADER}: missing shared image driver"
+        )
+    light_control_driver_header = (
+        root / "components" / "espcontrol" / LIGHT_CONTROL_DRIVER_HEADER
+    )
+    if light_control_driver_header.exists():
+        text = light_control_driver_header.read_text(encoding="utf-8")
+        required = (
+            "light_control_driver_setup_visual",
+            "light_control_driver_bind_main",
+            "light_control_driver_bind_subpage",
+            "light_control_driver_attach_interaction",
+            "light_control_driver_refresh_layout",
+            "light_control_driver_cleanup",
+            "light_control_driver_handle_main_click",
+            "create_light_control_context",
+            "subscribe_light_control_state",
+            "light_control_open_modal",
+            '"light_control"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{LIGHT_CONTROL_DRIVER_HEADER}: missing shared light-control lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{LIGHT_CONTROL_DRIVER_HEADER}: missing shared light-control driver"
+        )
+    fan_control_driver_header = (
+        root / "components" / "espcontrol" / FAN_CONTROL_DRIVER_HEADER
+    )
+    if fan_control_driver_header.exists():
+        text = fan_control_driver_header.read_text(encoding="utf-8")
+        required = (
+            "fan_control_driver_setup_visual",
+            "fan_control_driver_bind_main",
+            "fan_control_driver_bind_subpage",
+            "fan_control_driver_attach_interaction",
+            "fan_control_driver_refresh_layout",
+            "fan_control_driver_cleanup",
+            "fan_control_driver_handle_main_click",
+            "create_fan_card_context",
+            "subscribe_fan_card_state",
+            "fan_control_open_modal",
+            "grid_track_fan_card_runtime",
+            "grid_delete_fan_card_with_owner",
+            '"fan_control"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{FAN_CONTROL_DRIVER_HEADER}: missing shared fan-control lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{FAN_CONTROL_DRIVER_HEADER}: missing shared fan-control driver"
+        )
+    climate_control_driver_header = (
+        root / "components" / "espcontrol" / CLIMATE_CONTROL_DRIVER_HEADER
+    )
+    if climate_control_driver_header.exists():
+        text = climate_control_driver_header.read_text(encoding="utf-8")
+        required = (
+            "climate_control_driver_setup_visual",
+            "climate_control_driver_bind_main",
+            "climate_control_driver_bind_subpage",
+            "climate_control_driver_attach_interaction",
+            "climate_control_driver_refresh_layout",
+            "climate_control_driver_cleanup",
+            "climate_control_driver_handle_main_click",
+            "create_climate_control_context",
+            "subscribe_climate_control_state",
+            "climate_control_open_modal",
+            "grid_track_climate_control_runtime",
+            "grid_delete_climate_control_with_owner",
+            '"climate_control"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{CLIMATE_CONTROL_DRIVER_HEADER}: missing shared climate-control lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{CLIMATE_CONTROL_DRIVER_HEADER}: missing shared climate-control driver"
+        )
+    alarm_driver_header = (
+        root / "components" / "espcontrol" / ALARM_DRIVER_HEADER
+    )
+    if alarm_driver_header.exists():
+        text = alarm_driver_header.read_text(encoding="utf-8")
+        required = (
+            "alarm_driver_setup_visual",
+            "alarm_driver_bind_main",
+            "alarm_driver_bind_subpage",
+            "alarm_driver_attach_interaction",
+            "alarm_driver_refresh_layout",
+            "alarm_driver_cleanup",
+            "alarm_driver_handle_main_click",
+            "alarm_driver_effective_config",
+            "create_alarm_card_context",
+            "subscribe_alarm_state",
+            "alarm_card_open_page",
+            "grid_track_alarm_card_runtime",
+            "grid_delete_alarm_card_with_owner",
+            '"alarm"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{ALARM_DRIVER_HEADER}: missing shared alarm lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{ALARM_DRIVER_HEADER}: missing shared alarm driver"
         )
     cards_header = root / "components" / "espcontrol" / CARDS_HEADER
     if cards_header.exists():
@@ -758,6 +987,42 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared image lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_light_control_driver.h": (
+                    "inline bool light_control_driver_setup_visual() {}\n"
+                    "inline bool light_control_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared light-control lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_fan_control_driver.h": (
+                    "inline bool fan_control_driver_setup_visual() {}\n"
+                    "inline bool fan_control_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared fan-control lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_climate_control_driver.h": (
+                    "inline bool climate_control_driver_setup_visual() {}\n"
+                    "inline bool climate_control_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared climate-control lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_alarm_driver.h": (
+                    "inline bool alarm_driver_setup_visual() {}\n"
+                    "inline bool alarm_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared alarm lifecycle guard",),
         ),
         (
             {

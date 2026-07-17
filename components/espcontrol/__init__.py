@@ -7,6 +7,7 @@ the smaller button_grid_*.h implementation headers.
 No YAML schema — all config is handled by the YAML packages.
 """
 import esphome.codegen as cg
+from esphome.components.esp32 import VARIANT_ESP32S3, get_esp32_variant
 import esphome.config_validation as cv
 import os
 
@@ -22,6 +23,12 @@ CONFIG_SCHEMA = cv.Schema(
 
 
 async def to_code(config):
+    # ESPHome's native ESP-IDF generator only forwards -D and -W entries from
+    # esphome.build_flags. Route this required S3 compiler option through the
+    # dedicated C++ flag channel as well so generated main.cpp receives it.
+    if get_esp32_variant() == VARIANT_ESP32S3:
+        cg.add_cxx_build_flag("-mtext-section-literals")
+
     comp_dir = os.path.dirname(os.path.abspath(__file__))
     comp_include_dir = comp_dir.replace("\\", "/")
     cg.add_build_flag(f"-I{comp_dir}")

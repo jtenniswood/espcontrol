@@ -323,6 +323,15 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
 
 def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
     grid_path = root / "components" / "espcontrol" / "button_grid_grid.h"
+    light_driver_path = (
+        root / "components" / "espcontrol" / "button_grid_light_control_driver.h"
+    )
+    fan_driver_path = (
+        root / "components" / "espcontrol" / "button_grid_fan_control_driver.h"
+    )
+    media_driver_path = (
+        root / "components" / "espcontrol" / "button_grid_media_driver.h"
+    )
     subpages_path = root / "components" / "espcontrol" / "button_grid_subpages.h"
     errors: list[str] = []
 
@@ -331,23 +340,19 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
         return errors
 
     text = grid_path.read_text(encoding="utf-8")
-    media_home_block = re.search(
-        r"MediaControlCtx \*ctx = grid_track_media_control_runtime"
-        r"(?P<body>.*?)"
-        r"\n\s*\}\s*else if\s*\(mode == \"volume\"\)",
-        text,
-        re.S,
-    )
-    if media_home_block is None:
+    if (
+        "media_driver_bind_main(" not in text
+        or not media_driver_path.exists()
+    ):
         errors.append("components/espcontrol/button_grid_grid.h: keep media control cards wired on the home grid")
     else:
-        body = media_home_block.group("body")
+        body = media_driver_path.read_text(encoding="utf-8")
         if (
             "create_media_control_context" not in body
-            or "subscribe_media_control_state(ctx);" not in body
+            or "subscribe_media_control_state(control);" not in body
         ):
             errors.append("components/espcontrol/button_grid_grid.h: keep media control cards wired on the home grid")
-        if "media_control_open_modal(ctx);" in body or "LV_EVENT_CLICKED, ctx" in body:
+        if "media_driver_handle_main_click" not in body:
             errors.append("components/espcontrol/button_grid_grid.h: open home media control cards through the shared button dispatcher")
 
     media_refresh_block = re.search(
@@ -367,37 +372,33 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
         ):
             errors.append("components/espcontrol/button_grid_grid.h: preserve media control context during grid layout refresh")
 
-    light_block = re.search(
-        r'if\s*\(\s*sb_cfg\.type\s*==\s*"light_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
-        text,
-        re.S,
-    )
-    if light_block is None:
+    if (
+        "light_control_driver_bind_subpage(" not in text
+        or not light_driver_path.exists()
+    ):
         errors.append("components/espcontrol/button_grid_grid.h: keep light control cards available in subpages")
         return errors
 
-    body = light_block.group("body")
+    body = light_driver_path.read_text(encoding="utf-8")
     if (
         "create_light_control_context" not in body
-        or "subscribe_light_control_state(ctx);" not in body
-        or "light_control_open_modal(ctx);" not in body
+        or "subscribe_light_control_state(" not in body
+        or "light_control_open_modal(" not in body
         or "LV_EVENT_CLICKED" not in body
     ):
         errors.append("components/espcontrol/button_grid_grid.h: open light control modals from subpage cards")
 
-    fan_block = re.search(
-        r'if\s*\(\s*sb_cfg\.type\s*==\s*"fan_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
-        text,
-        re.S,
-    )
-    if fan_block is None:
+    if (
+        "fan_control_driver_bind_subpage(" not in text
+        or not fan_driver_path.exists()
+    ):
         errors.append("components/espcontrol/button_grid_grid.h: keep fan control modal cards available in subpages")
     else:
-        body = fan_block.group("body")
+        body = fan_driver_path.read_text(encoding="utf-8")
         if (
             "create_fan_card_context" not in body
-            or "subscribe_fan_card_state(ctx);" not in body
-            or "fan_control_open_modal(ctx);" not in body
+            or "subscribe_fan_card_state(" not in body
+            or "fan_control_open_modal(" not in body
             or "LV_EVENT_CLICKED" not in body
         ):
             errors.append("components/espcontrol/button_grid_grid.h: open fan control modals from subpage cards")
@@ -811,12 +812,243 @@ def firmware_climate_option_selection_errors(root: Path) -> list[str]:
     return []
 
 
+def firmware_fan_modal_context_lifecycle_errors(root: Path) -> list[str]:
+    firmware_dir = root / "components" / "espcontrol"
+    fan_path = firmware_dir / "button_grid_fan.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+    errors: list[str] = []
+
+    if not fan_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_fan.h: close fan modals before deleting their card context"
+        )
+    else:
+        fan_text = fan_path.read_text(encoding="utf-8")
+        if (
+            "inline void fan_close_modals_for_context(FanCardCtx *ctx)" not in fan_text
+            or "fan_control_modal_ui().active == ctx" not in fan_text
+            or "fan_control_hide_modal();" not in fan_text
+            or "fan_preset_ui().active == ctx" not in fan_text
+            or "fan_preset_close();" not in fan_text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_fan.h: close fan modals before deleting their card context"
+            )
+
+    if not grid_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_grid.h: invalidate fan modals on main-grid and subpage cleanup"
+        )
+    else:
+        grid_text = grid_path.read_text(encoding="utf-8")
+        if (
+            "fan_close_modals_for_context(fan);" not in grid_text
+            or "fan_close_modals_for_context(ctx);" not in grid_text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_grid.h: invalidate fan modals on main-grid and subpage cleanup"
+            )
+
+    return errors
+
+
+def firmware_climate_modal_context_lifecycle_errors(root: Path) -> list[str]:
+    firmware_dir = root / "components" / "espcontrol"
+    climate_path = firmware_dir / "button_grid_climate.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+    errors: list[str] = []
+
+    if not climate_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_climate.h: close climate modals and timers before deleting their card context"
+        )
+    else:
+        climate_text = climate_path.read_text(encoding="utf-8")
+        if (
+            "inline void delete_climate_control_context(ClimateControlCtx *ctx)" not in climate_text
+            or "climate_control_modal_ui().active == ctx" not in climate_text
+            or "climate_control_hide_modal();" not in climate_text
+            or "lv_timer_del(ctx->debounce_timer);" not in climate_text
+            or "climate_control_refs();" not in climate_text
+            or "climate_control_ref_count();" not in climate_text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_climate.h: close climate modals and timers before deleting their card context"
+            )
+
+    if not grid_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_grid.h: use climate-aware main-grid and subpage cleanup"
+        )
+    else:
+        grid_text = grid_path.read_text(encoding="utf-8")
+        if (
+            "grid_delete_climate_control_runtime_ptr" not in grid_text
+            or "grid_track_climate_control_runtime" not in grid_text
+            or "grid_delete_climate_control_with_owner" not in grid_text
+            or grid_text.count("delete_climate_control_context(") < 2
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_grid.h: use climate-aware main-grid and subpage cleanup"
+            )
+
+    return errors
+
+
+def firmware_cover_modal_context_lifecycle_errors(root: Path) -> list[str]:
+    firmware_dir = root / "components" / "espcontrol"
+    sliders_path = firmware_dir / "button_grid_sliders.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+    errors: list[str] = []
+
+    if not sliders_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_sliders.h: close cover modals before deleting their card context"
+        )
+    else:
+        sliders_text = sliders_path.read_text(encoding="utf-8")
+        if (
+            "inline void delete_cover_control_context(CoverControlCtx *ctx)" not in sliders_text
+            or "cover_control_modal_ui().active == ctx" not in sliders_text
+            or "cover_control_hide_modal();" not in sliders_text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_sliders.h: close cover modals before deleting their card context"
+            )
+
+    if not grid_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_grid.h: use cover-aware main-grid and subpage cleanup"
+        )
+    else:
+        grid_text = grid_path.read_text(encoding="utf-8")
+        if (
+            "grid_delete_cover_control_runtime_ptr" not in grid_text
+            or "grid_track_cover_control_runtime" not in grid_text
+            or "grid_delete_cover_control_with_owner" not in grid_text
+            or grid_text.count("delete_cover_control_context(") < 2
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_grid.h: use cover-aware main-grid and subpage cleanup"
+            )
+
+    return errors
+
+
+def firmware_media_modal_context_lifecycle_errors(root: Path) -> list[str]:
+    firmware_dir = root / "components" / "espcontrol"
+    media_path = firmware_dir / "button_grid_media.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+    errors: list[str] = []
+
+    if not media_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_media.h: close media modals, detach playback consumers, and cancel timers before deleting card contexts"
+        )
+    else:
+        media_text = media_path.read_text(encoding="utf-8")
+        requirements = (
+            "delete_media_control_context",
+            "media_control_modal_ui()",
+            "media_control_hide_modal();",
+            "media_playback_detach_control(ctx);",
+            "delete_media_volume_context",
+            "media_volume_modal_ui().active == ctx",
+            "media_volume_hide_modal();",
+            "media_playback_detach_volume(ctx);",
+            "delete_media_playlist_context",
+            "media_playback_detach_playlist(ctx);",
+            "delete_media_now_playing_context",
+            "media_playback_detach_now_playing(ctx);",
+            "delete_media_slider_context",
+            "media_playback_detach_slider(ctx);",
+            "lv_timer_del(ctx->media_timer);",
+        )
+        if any(requirement not in media_text for requirement in requirements):
+            errors.append(
+                "components/espcontrol/button_grid_media.h: close media modals, detach playback consumers, and cancel timers before deleting card contexts"
+            )
+
+    if not grid_path.exists():
+        errors.append(
+            "components/espcontrol/button_grid_grid.h: use media-aware main-grid and subpage cleanup"
+        )
+    else:
+        grid_text = grid_path.read_text(encoding="utf-8")
+        requirements = (
+            "grid_track_media_control_runtime",
+            "grid_delete_media_control_with_owner",
+            "grid_track_media_volume_runtime",
+            "grid_delete_media_volume_with_owner",
+            "grid_track_media_playlist_runtime",
+            "grid_delete_media_playlist_with_owner",
+            "grid_track_media_now_playing_runtime",
+            "grid_delete_media_now_playing_with_owner",
+            "grid_track_media_slider_runtime",
+            "grid_delete_media_slider_with_owner",
+        )
+        if any(requirement not in grid_text for requirement in requirements):
+            errors.append(
+                "components/espcontrol/button_grid_grid.h: use media-aware main-grid and subpage cleanup"
+            )
+
+    return errors
+
+
+def firmware_alarm_modal_context_lifecycle_errors(root: Path) -> list[str]:
+    grid_path = root / "components" / "espcontrol" / "button_grid_grid.h"
+    errors: list[str] = []
+
+    if not grid_path.exists():
+        return [
+            "components/espcontrol/button_grid_grid.h: close alarm modals, deferred actions, timers, and display takeover before deleting their card context"
+        ]
+
+    grid_text = grid_path.read_text(encoding="utf-8")
+    cleanup_requirements = (
+        "alarm_control_modal_ui();",
+        "control_ui.active == ctx",
+        "alarm_control_hide_modal();",
+        "alarm_pin_modal_ui();",
+        "pin_ui.active->card == ctx",
+        "alarm_pin_hide_modal();",
+        "alarm_deferred_action();",
+        "deferred.action.card == ctx",
+        "lv_timer_del(deferred.timer);",
+        "alarm_release_arming_takeover(ctx);",
+        "lv_timer_del(ctx->arm_delay_timer);",
+        "lv_timer_del(ctx->pending_action_timer);",
+        "grid_delete_transient_status_label(ctx->status_label);",
+    )
+    if any(requirement not in grid_text for requirement in cleanup_requirements):
+        errors.append(
+            "components/espcontrol/button_grid_grid.h: close alarm modals, deferred actions, timers, and display takeover before deleting their card context"
+        )
+
+    if (
+        "grid_delete_alarm_card_runtime_ptr" not in grid_text
+        or "grid_track_alarm_card_runtime" not in grid_text
+        or "grid_delete_alarm_card_with_owner" not in grid_text
+        or grid_text.count("grid_delete_alarm_card_runtime_ptr(") < 4
+    ):
+        errors.append(
+            "components/espcontrol/button_grid_grid.h: use alarm-aware main-grid, subpage, and alarm-action cleanup"
+        )
+
+    return errors
+
+
 def run_scan() -> int:
     errors = firmware_modal_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_modal_sleep_takeover_errors(ROOT))
     errors.extend(firmware_subpage_modal_wiring_errors(ROOT))
     errors.extend(firmware_climate_step_errors(ROOT))
     errors.extend(firmware_climate_option_selection_errors(ROOT))
+    errors.extend(firmware_fan_modal_context_lifecycle_errors(ROOT))
+    errors.extend(firmware_climate_modal_context_lifecycle_errors(ROOT))
+    errors.extend(firmware_cover_modal_context_lifecycle_errors(ROOT))
+    errors.extend(firmware_media_modal_context_lifecycle_errors(ROOT))
+    errors.extend(firmware_alarm_modal_context_lifecycle_errors(ROOT))
     errors.extend(firmware_light_control_brightness_errors(ROOT))
     errors.extend(firmware_light_control_tab_errors(ROOT))
     errors.extend(firmware_cover_control_tab_errors(ROOT))
@@ -873,13 +1105,22 @@ def expect_sleep_takeover_errors(name: str, files: dict[str, str], expected: tup
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
-def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tuple[str, ...]) -> None:
+def expect_subpage_modal_wiring_errors(
+    name: str,
+    grid_text: str,
+    expected: tuple[str, ...],
+    light_driver_text: str | None = None,
+    fan_driver_text: str | None = None,
+) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         path = root / "components" / "espcontrol" / "button_grid_grid.h"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             grid_text +
+            "light_control_driver_bind_subpage(sub_slot, sb_cfg, context, environment);\n" +
+            "fan_control_driver_bind_subpage(sub_slot, sb_cfg, context, environment);\n" +
+            "media_driver_bind_main(s, p, context, environment);\n" +
             '  if (mode == "control_modal") {\n'
             "    MediaControlCtx *ctx = grid_media_control_runtime_for_owner(s.btn);\n"
             "    setup_media_control_button(\n"
@@ -888,26 +1129,42 @@ def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tupl
             "    if (ctx) media_control_refresh_parent_card(ctx);\n"
             "    return;\n"
             "  }\n"
-            "  if (mode == \"volume\") return;\n"
-            '        } else if (mode == "control_modal") {\n'
-            "          MediaControlCtx *ctx = grid_track_media_control_runtime(s.btn, create_media_control_context(\n"
-            "            s, p, DEFAULT_SLIDER_COLOR, DEFAULT_OFF_COLOR, DEFAULT_TERTIARY_COLOR,\n"
-            "            nullptr, nullptr, nullptr, nullptr, 100));\n"
-            "          subscribe_media_control_state(ctx);\n"
-            '        } else if (mode == "volume") {\n'
-            '      if (sb_cfg.type == "fan_control") {\n'
-            "        if (!sb_cfg.entity.empty()) {\n"
-            "          FanCardCtx *ctx = create_fan_card_context(\n"
-            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, DEFAULT_OFF_COLOR, DEFAULT_TERTIARY_COLOR, nullptr, nullptr, 100);\n"
-            "          subscribe_fan_card_state(ctx);\n"
-            "          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {\n"
-            "            FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);\n"
-            "            if (ctx) fan_control_open_modal(ctx);\n"
-            "          }, LV_EVENT_CLICKED, ctx);\n"
-            "        }\n"
-            "        continue;\n"
-            "      }\n",
+            "  if (mode == \"volume\") return;\n",
             encoding="utf-8",
+        )
+        (path.parent / "button_grid_media_driver.h").write_text(
+            "MediaControlCtx *ctx = create_media_control_context();\n"
+            "subscribe_media_control_state(control);\n"
+            "inline bool media_driver_handle_main_click() { return true; }\n",
+            encoding="utf-8",
+        )
+        light_driver = (
+            light_driver_text
+            if light_driver_text is not None
+            else (
+                "LightControlCtx *ctx = create_light_control_context();\n"
+                "subscribe_light_control_state(ctx);\n"
+                "lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {\n"
+                "  if (ctx) light_control_open_modal(ctx);\n"
+                "}, LV_EVENT_CLICKED, ctx);\n"
+            )
+        )
+        (path.parent / "button_grid_light_control_driver.h").write_text(
+            light_driver, encoding="utf-8"
+        )
+        fan_driver = (
+            fan_driver_text
+            if fan_driver_text is not None
+            else (
+                "FanCardCtx *ctx = create_fan_card_context();\n"
+                "subscribe_fan_card_state(ctx);\n"
+                "lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {\n"
+                "  if (ctx) fan_control_open_modal(ctx);\n"
+                "}, LV_EVENT_CLICKED, ctx);\n"
+            )
+        )
+        (path.parent / "button_grid_fan_control_driver.h").write_text(
+            fan_driver, encoding="utf-8"
         )
         (path.parent / "button_grid_subpages.h").write_text(
             'if (b.type == "light_control") {\n'
@@ -1167,6 +1424,132 @@ def valid_sleep_takeover_files() -> dict[str, str]:
     }
 
 
+def expect_fan_modal_context_lifecycle_errors(
+    name: str,
+    fan_text: str,
+    grid_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_fan.h").write_text(
+            fan_text, encoding="utf-8"
+        )
+        (firmware_dir / "button_grid_grid.h").write_text(
+            grid_text, encoding="utf-8"
+        )
+
+        errors = firmware_fan_modal_context_lifecycle_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), (
+                f"{name}: missing {item!r} in {errors!r}"
+            )
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_climate_modal_context_lifecycle_errors(
+    name: str,
+    climate_text: str,
+    grid_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_climate.h").write_text(
+            climate_text, encoding="utf-8"
+        )
+        (firmware_dir / "button_grid_grid.h").write_text(
+            grid_text, encoding="utf-8"
+        )
+
+        errors = firmware_climate_modal_context_lifecycle_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), (
+                f"{name}: missing {item!r} in {errors!r}"
+            )
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_alarm_modal_context_lifecycle_errors(
+    name: str,
+    grid_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_grid.h").write_text(
+            grid_text, encoding="utf-8"
+        )
+
+        errors = firmware_alarm_modal_context_lifecycle_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), (
+                f"{name}: missing {item!r} in {errors!r}"
+            )
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_modal_context_lifecycle_errors(
+    name: str,
+    sliders_text: str,
+    grid_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_sliders.h").write_text(
+            sliders_text, encoding="utf-8"
+        )
+        (firmware_dir / "button_grid_grid.h").write_text(
+            grid_text, encoding="utf-8"
+        )
+
+        errors = firmware_cover_modal_context_lifecycle_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), (
+                f"{name}: missing {item!r} in {errors!r}"
+            )
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_modal_context_lifecycle_errors(
+    name: str,
+    media_text: str,
+    grid_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(
+            media_text, encoding="utf-8"
+        )
+        (firmware_dir / "button_grid_grid.h").write_text(
+            grid_text, encoding="utf-8"
+        )
+
+        errors = firmware_media_modal_context_lifecycle_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), (
+                f"{name}: missing {item!r} in {errors!r}"
+            )
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def run_self_test() -> int:
     expect_errors(
         "forbidden click allocation",
@@ -1197,6 +1580,202 @@ def run_self_test() -> int:
         "shared delete helper",
         {"button_grid_media.h": "control_modal_delete_overlay(ControlModalKind::MEDIA_VOLUME, ui.overlay);\n"},
         (),
+    )
+    valid_fan_cleanup = (
+        "inline void fan_close_modals_for_context(FanCardCtx *ctx) {\n"
+        "  if (fan_control_modal_ui().active == ctx) fan_control_hide_modal();\n"
+        "  if (fan_preset_ui().active == ctx) fan_preset_close();\n"
+        "}\n"
+    )
+    valid_grid_cleanup = (
+        "fan_close_modals_for_context(fan);\n"
+        "fan_close_modals_for_context(ctx);\n"
+    )
+    expect_fan_modal_context_lifecycle_errors(
+        "fan modal context cleanup",
+        valid_fan_cleanup,
+        valid_grid_cleanup,
+        (),
+    )
+    expect_fan_modal_context_lifecycle_errors(
+        "fan modal context remains active",
+        "inline void fan_close_modals_for_context(FanCardCtx *ctx) {}\n",
+        valid_grid_cleanup,
+        ("close fan modals before deleting their card context",),
+    )
+    expect_fan_modal_context_lifecycle_errors(
+        "fan modal cleanup missing from subpage deletion",
+        valid_fan_cleanup,
+        "fan_close_modals_for_context(ctx);\n",
+        ("invalidate fan modals on main-grid and subpage cleanup",),
+    )
+    valid_climate_cleanup = (
+        "inline void delete_climate_control_context(ClimateControlCtx *ctx) {\n"
+        "  if (climate_control_modal_ui().active == ctx) climate_control_hide_modal();\n"
+        "  lv_timer_del(ctx->debounce_timer);\n"
+        "  ClimateControlCtx **refs = climate_control_refs();\n"
+        "  int &count = climate_control_ref_count();\n"
+        "}\n"
+    )
+    valid_climate_grid_cleanup = (
+        "inline void grid_delete_climate_control_runtime_ptr() {\n"
+        "  delete_climate_control_context(ctx);\n"
+        "}\n"
+        "inline void grid_track_climate_control_runtime() {}\n"
+        "inline void grid_delete_climate_control_with_owner() {\n"
+        "  delete_climate_control_context(ctx);\n"
+        "}\n"
+    )
+    expect_climate_modal_context_lifecycle_errors(
+        "climate modal context cleanup",
+        valid_climate_cleanup,
+        valid_climate_grid_cleanup,
+        (),
+    )
+    expect_climate_modal_context_lifecycle_errors(
+        "climate timer remains active",
+        valid_climate_cleanup.replace(
+            "  lv_timer_del(ctx->debounce_timer);\n", ""
+        ),
+        valid_climate_grid_cleanup,
+        ("close climate modals and timers before deleting their card context",),
+    )
+    expect_climate_modal_context_lifecycle_errors(
+        "climate subpage uses generic cleanup",
+        valid_climate_cleanup,
+        valid_climate_grid_cleanup.replace(
+            "  delete_climate_control_context(ctx);\n", "", 1
+        ),
+        ("use climate-aware main-grid and subpage cleanup",),
+    )
+    valid_cover_cleanup = (
+        "inline void delete_cover_control_context(CoverControlCtx *ctx) {\n"
+        "  if (cover_control_modal_ui().active == ctx) cover_control_hide_modal();\n"
+        "}\n"
+    )
+    valid_cover_grid_cleanup = (
+        "inline void grid_delete_cover_control_runtime_ptr() {\n"
+        "  delete_cover_control_context(ctx);\n"
+        "}\n"
+        "inline void grid_track_cover_control_runtime() {}\n"
+        "inline void grid_delete_cover_control_with_owner() {\n"
+        "  delete_cover_control_context(ctx);\n"
+        "}\n"
+    )
+    expect_cover_modal_context_lifecycle_errors(
+        "cover modal context cleanup",
+        valid_cover_cleanup,
+        valid_cover_grid_cleanup,
+        (),
+    )
+    expect_cover_modal_context_lifecycle_errors(
+        "cover modal remains active",
+        valid_cover_cleanup.replace(" cover_control_hide_modal();", ""),
+        valid_cover_grid_cleanup,
+        ("close cover modals before deleting their card context",),
+    )
+    expect_cover_modal_context_lifecycle_errors(
+        "cover subpage uses generic cleanup",
+        valid_cover_cleanup,
+        valid_cover_grid_cleanup.replace(
+            "  delete_cover_control_context(ctx);\n", "", 1
+        ),
+        ("use cover-aware main-grid and subpage cleanup",),
+    )
+    valid_media_cleanup = (
+        "inline void delete_media_control_context(MediaControlCtx *ctx) {\n"
+        "  MediaControlModalUi &ui = media_control_modal_ui();\n"
+        "  media_control_hide_modal();\n"
+        "  media_playback_detach_control(ctx);\n"
+        "}\n"
+        "inline void delete_media_volume_context(MediaVolumeCtx *ctx) {\n"
+        "  if (media_volume_modal_ui().active == ctx) media_volume_hide_modal();\n"
+        "  media_playback_detach_volume(ctx);\n"
+        "}\n"
+        "inline void delete_media_playlist_context(MediaPlaylistCtx *ctx) {\n"
+        "  media_playback_detach_playlist(ctx);\n"
+        "}\n"
+        "inline void delete_media_now_playing_context(MediaNowPlayingCtx *ctx) {\n"
+        "  media_playback_detach_now_playing(ctx);\n"
+        "}\n"
+        "inline void delete_media_slider_context(SliderCtx *ctx) {\n"
+        "  media_playback_detach_slider(ctx);\n"
+        "  lv_timer_del(ctx->media_timer);\n"
+        "}\n"
+    )
+    valid_media_grid_cleanup = "\n".join((
+        "grid_track_media_control_runtime",
+        "grid_delete_media_control_with_owner",
+        "grid_track_media_volume_runtime",
+        "grid_delete_media_volume_with_owner",
+        "grid_track_media_playlist_runtime",
+        "grid_delete_media_playlist_with_owner",
+        "grid_track_media_now_playing_runtime",
+        "grid_delete_media_now_playing_with_owner",
+        "grid_track_media_slider_runtime",
+        "grid_delete_media_slider_with_owner",
+    ))
+    expect_media_modal_context_lifecycle_errors(
+        "media modal context cleanup",
+        valid_media_cleanup,
+        valid_media_grid_cleanup,
+        (),
+    )
+    expect_media_modal_context_lifecycle_errors(
+        "media volume modal remains active",
+        valid_media_cleanup.replace(" media_volume_hide_modal();", ""),
+        valid_media_grid_cleanup,
+        ("close media modals, detach playback consumers, and cancel timers",),
+    )
+    expect_media_modal_context_lifecycle_errors(
+        "media subpage uses generic cleanup",
+        valid_media_cleanup,
+        valid_media_grid_cleanup.replace(
+            "grid_delete_media_slider_with_owner", ""
+        ),
+        ("use media-aware main-grid and subpage cleanup",),
+    )
+    valid_alarm_cleanup = (
+        "inline void grid_delete_alarm_card_runtime_ptr(void *ptr);\n"
+        "inline AlarmCardCtx *grid_delete_alarm_card_with_owner();\n"
+        "inline AlarmCardCtx *grid_track_alarm_card_runtime();\n"
+        "inline void grid_delete_alarm_card_runtime_ptr(void *ptr) {\n"
+        "  AlarmControlModalUi &control_ui = alarm_control_modal_ui();\n"
+        "  if (control_ui.active == ctx) alarm_control_hide_modal();\n"
+        "  AlarmPinModalUi &pin_ui = alarm_pin_modal_ui();\n"
+        "  if (pin_ui.active->card == ctx) alarm_pin_hide_modal();\n"
+        "  AlarmDeferredAction &deferred = alarm_deferred_action();\n"
+        "  if (deferred.action.card == ctx) lv_timer_del(deferred.timer);\n"
+        "  alarm_release_arming_takeover(ctx);\n"
+        "  lv_timer_del(ctx->arm_delay_timer);\n"
+        "  lv_timer_del(ctx->pending_action_timer);\n"
+        "  grid_delete_transient_status_label(ctx->status_label);\n"
+        "}\n"
+        "inline void delete_alarm_action() {\n"
+        "  grid_delete_alarm_card_runtime_ptr(ctx);\n"
+        "}\n"
+        "inline void delete_alarm_subpage() {\n"
+        "  grid_delete_alarm_card_runtime_ptr(ctx);\n"
+        "}\n"
+    )
+    expect_alarm_modal_context_lifecycle_errors(
+        "alarm modal context cleanup",
+        valid_alarm_cleanup,
+        (),
+    )
+    expect_alarm_modal_context_lifecycle_errors(
+        "alarm PIN modal remains active",
+        valid_alarm_cleanup.replace(
+            "  if (pin_ui.active->card == ctx) alarm_pin_hide_modal();\n", ""
+        ),
+        ("close alarm modals, deferred actions, timers, and display takeover",),
+    )
+    expect_alarm_modal_context_lifecycle_errors(
+        "alarm subpage uses generic cleanup",
+        valid_alarm_cleanup.replace(
+            "  grid_delete_alarm_card_runtime_ptr(ctx);\n", "", 1
+        ),
+        ("use alarm-aware main-grid, subpage, and alarm-action cleanup",),
     )
     expect_sleep_takeover_errors(
         "missing display takeover close",
@@ -1252,35 +1831,27 @@ def run_self_test() -> int:
     )
     expect_subpage_modal_wiring_errors(
         "subpage light modal missing click handler",
-        (
-            '      if (sb_cfg.type == "light_control") {\n'
-            "        if (!sb_cfg.entity.empty()) {\n"
-            "          LightControlCtx *ctx = create_light_control_context(\n"
-            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, nullptr, nullptr, nullptr, 100);\n"
-            "          subscribe_light_control_state(ctx);\n"
-            "        }\n"
-            "        continue;\n"
-            "      }\n"
-        ),
+        "",
         ("open light control modals from subpage cards",),
+        (
+            "LightControlCtx *ctx = create_light_control_context();\n"
+            "subscribe_light_control_state(ctx);\n"
+        ),
     )
     expect_subpage_modal_wiring_errors(
         "subpage light modal click handler",
-        (
-            '      if (sb_cfg.type == "light_control") {\n'
-            "        if (!sb_cfg.entity.empty()) {\n"
-            "          LightControlCtx *ctx = create_light_control_context(\n"
-            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, nullptr, nullptr, nullptr, 100);\n"
-            "          subscribe_light_control_state(ctx);\n"
-            "          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {\n"
-            "            LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);\n"
-            "            if (ctx) light_control_open_modal(ctx);\n"
-            "          }, LV_EVENT_CLICKED, ctx);\n"
-            "        }\n"
-            "        continue;\n"
-            "      }\n"
-        ),
+        "",
         (),
+    )
+    expect_subpage_modal_wiring_errors(
+        "subpage fan modal missing click handler",
+        "",
+        ("open fan control modals from subpage cards",),
+        None,
+        (
+            "FanCardCtx *ctx = create_fan_card_context();\n"
+            "subscribe_fan_card_state(ctx);\n"
+        ),
     )
     expect_climate_step_errors(
         "climate modal allows 0.1C steps",

@@ -1113,6 +1113,12 @@ inline void fan_preset_open(FanCardCtx *ctx) {
   lv_obj_move_foreground(ui.overlay);
 }
 
+inline void fan_close_modals_for_context(FanCardCtx *ctx) {
+  if (!ctx) return;
+  if (fan_control_modal_ui().active == ctx) fan_control_hide_modal();
+  if (fan_preset_ui().active == ctx) fan_preset_close();
+}
+
 inline void fan_card_handle_click(FanCardCtx *ctx) {
   if (!fan_control_supported(ctx)) return;
   if (ctx->type == "fan_switch") send_fan_switch_action(ctx);

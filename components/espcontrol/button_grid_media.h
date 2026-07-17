@@ -197,6 +197,12 @@ inline float media_control_current_position_seconds(MediaControlCtx *ctx);
 inline void media_playlist_refresh_checked(MediaPlaylistCtx *ctx);
 
 inline MediaPlaybackState *media_playback_ensure_state(const std::string &entity_id);
+inline void media_playback_detach_button(lv_obj_t *button);
+inline void media_playback_detach_control(MediaControlCtx *ctx);
+inline void media_playback_detach_volume(MediaVolumeCtx *ctx);
+inline void media_playback_detach_playlist(MediaPlaylistCtx *ctx);
+inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx);
+inline void media_playback_detach_slider(SliderCtx *ctx);
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
 inline void media_playback_subscribe_metadata(MediaPlaybackState *state);
@@ -213,6 +219,7 @@ inline void delete_media_control_context(MediaControlCtx *ctx) {
   if (!ctx) return;
   MediaControlModalUi &ui = media_control_modal_ui();
   if (ui.active == ctx) media_control_hide_modal();
+  media_playback_detach_control(ctx);
   if (ctx->btn && lv_obj_get_user_data(ctx->btn) == ctx) {
     lv_obj_set_user_data(ctx->btn, nullptr);
   }
@@ -477,6 +484,103 @@ struct MediaPlaybackState {
 inline std::vector<MediaPlaybackState *> &media_playback_states() {
   static std::vector<MediaPlaybackState *> states;
   return states;
+}
+
+template<typename T>
+inline void media_playback_erase_consumer(std::vector<T *> &consumers, T *consumer) {
+  consumers.erase(
+    std::remove(consumers.begin(), consumers.end(), consumer),
+    consumers.end());
+}
+
+inline void media_playback_detach_button(lv_obj_t *button) {
+  if (!button) return;
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (!state) continue;
+    state->buttons.erase(
+      std::remove_if(
+        state->buttons.begin(), state->buttons.end(),
+        [button](const MediaPlaybackButtonRef &ref) {
+          return ref.btn == button;
+        }),
+      state->buttons.end());
+  }
+}
+
+inline void media_playback_detach_control(MediaControlCtx *ctx) {
+  if (!ctx) return;
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (!state) continue;
+    media_playback_erase_consumer(state->controls, ctx);
+    media_playback_refresh_progress_timer(state);
+  }
+}
+
+inline void media_playback_detach_volume(MediaVolumeCtx *ctx) {
+  if (!ctx) return;
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (state) media_playback_erase_consumer(state->volumes, ctx);
+  }
+}
+
+inline void media_playback_detach_playlist(MediaPlaylistCtx *ctx) {
+  if (!ctx) return;
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (state) media_playback_erase_consumer(state->playlists, ctx);
+  }
+}
+
+inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx) {
+  if (!ctx) return;
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (state) media_playback_erase_consumer(state->now_playing, ctx);
+  }
+}
+
+inline void media_playback_detach_slider(SliderCtx *ctx) {
+  if (!ctx) return;
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (!state) continue;
+    media_playback_erase_consumer(state->sliders, ctx);
+    media_playback_refresh_progress_timer(state);
+  }
+}
+
+inline void delete_media_volume_context(MediaVolumeCtx *ctx) {
+  if (!ctx) return;
+  if (media_volume_modal_ui().active == ctx) media_volume_hide_modal();
+  media_playback_detach_volume(ctx);
+  if (ctx->btn && lv_obj_get_user_data(ctx->btn) == ctx) {
+    lv_obj_set_user_data(ctx->btn, nullptr);
+  }
+  delete ctx;
+}
+
+inline void delete_media_playlist_context(MediaPlaylistCtx *ctx) {
+  if (!ctx) return;
+  media_playback_detach_playlist(ctx);
+  delete ctx;
+}
+
+inline void delete_media_now_playing_context(MediaNowPlayingCtx *ctx) {
+  if (!ctx) return;
+  media_playback_detach_now_playing(ctx);
+  delete ctx;
+}
+
+inline void delete_media_slider_context(SliderCtx *ctx) {
+  if (!ctx) return;
+  media_playback_detach_slider(ctx);
+  if (ctx->media_timer) {
+    lv_timer_del(ctx->media_timer);
+    ctx->media_timer = nullptr;
+  }
+  ctx->media_slider = nullptr;
+  ctx->fill = nullptr;
+  ctx->media_track_bg = nullptr;
+  ctx->media_value_lbl = nullptr;
+  ctx->media_status_lbl = nullptr;
+  delete ctx;
 }
 
 inline void media_playback_reset_state(MediaPlaybackState *state,

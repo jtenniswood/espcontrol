@@ -8,10 +8,9 @@
 esphome:
   # Enable LVGL's bidirectional text algorithm so right-to-left scripts
   # (Hebrew, Arabic) render in visual order.
-  platformio_options:
-    build_flags:
-      - "-DLV_USE_BIDI=1"
-      - '-DESPCONTROL_DEVICE_SLUG=\"${device_slug}\"'
+  build_flags:
+    - "-DLV_USE_BIDI=1"
+    - '-DESPCONTROL_DEVICE_SLUG=\"${device_slug}\"'
 
 api:
   reboot_timeout: 0s

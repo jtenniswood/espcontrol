@@ -118,10 +118,35 @@ target cleanup; child-card layout remains grid infrastructure. Image cards use
 the shared `IMAGE` lifecycle boundary for main-grid and subpage visual setup,
 runtime binding, layout refresh, modal click dispatch, and pool cleanup while
 retaining their specialised downloader, cache, resizing, and modal
-implementation. Cover modal and the combined Fan Control card remain on the
-existing `Family` dispatch for their later reviewed migrations. Other families
-also remain on that dispatch until their reviewed migration PR switches them
-one family at a time.
+implementation. Light Control cards use the shared `LIGHT_CONTROL` lifecycle
+boundary for main-grid and subpage visual setup, runtime binding, modal click
+dispatch, parent indicators, and allocation cleanup while retaining their
+specialised power, brightness, colour-temperature, colour, and modal
+implementation. Fan Control cards use the shared `FAN_CONTROL` lifecycle
+boundary for main-grid and subpage visual setup, runtime binding, modal click
+dispatch, parent indicators, and allocation cleanup while retaining their
+specialised power, speed, preset, oscillation, direction, Home Assistant, and
+modal implementation. Climate and Climate Control compatibility cards use the
+shared `CLIMATE` lifecycle boundary for main-grid and subpage visual setup,
+runtime binding, modal click dispatch, timer cancellation, reference cleanup,
+and allocation cleanup while retaining their specialised temperature, HVAC
+mode, preset, fan, swing, Home Assistant, and modal implementation. Alarm cards
+use the shared `ALARM` lifecycle boundary for main-grid and subpage visual
+setup, inherited subpage configuration, runtime binding, modal click dispatch,
+PIN and control modal dismissal, timer cancellation, display takeover release,
+and allocation cleanup while retaining their specialised PIN entry, arming
+countdown, critical display takeover, Home Assistant, and modal implementation.
+Cover All Controls uses the shared `COVER_MODAL` lifecycle boundary for
+main-grid and subpage visual setup, runtime binding, modal click dispatch,
+parent indicators, popup dismissal, and allocation cleanup while retaining its
+specialised position, tilt, preset, supported-feature, Home Assistant, and
+modal implementation. All Media modes use one shared lifecycle boundary for
+main-grid and subpage visual setup, runtime binding, click dispatch, parent
+indicators, playback-consumer detachment, modal dismissal, timer cancellation,
+and allocation cleanup while retaining their specialised playback, artwork,
+playlist, progress, volume, Home Assistant, and modal implementations. This
+completes the reviewed rich-card migrations; narrow legacy fallback retirement
+remains a separate final stage.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and

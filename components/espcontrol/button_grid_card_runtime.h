@@ -98,8 +98,22 @@ inline bool driver_uses_legacy_dispatch(
     case Driver::COVER_TOGGLE:
     case Driver::COVER_POSITION:
     case Driver::COVER_TILT:
+    case Driver::COVER_MODAL:
     case Driver::SUBPAGE:
     case Driver::IMAGE:
+    case Driver::LIGHT_CONTROL:
+    case Driver::FAN_CONTROL:
+    case Driver::CLIMATE:
+    case Driver::ALARM:
+    case Driver::MEDIA:
+    case Driver::MEDIA_CONTROL:
+    case Driver::MEDIA_PLAY_PAUSE:
+    case Driver::MEDIA_TRANSPORT:
+    case Driver::MEDIA_VOLUME:
+    case Driver::MEDIA_POSITION:
+    case Driver::MEDIA_NOW_PLAYING:
+    case Driver::MEDIA_COVER_ART:
+    case Driver::MEDIA_PLAYLIST:
       return false;
     default: return true;
   }

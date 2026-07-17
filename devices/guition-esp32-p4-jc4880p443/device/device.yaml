@@ -66,21 +66,21 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags:
-      - "-Wno-deprecated-declarations"
-      - "-DESPCONTROL_DISABLE_TODO=1"
-      - "-DESPCONTROL_MAX_GRID_SLOTS=6"
-      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
-      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
-      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
-      # Separate marker for the JC4880P443 boot-loop fix so ESPHome cannot
-      # silently reuse the earlier 09:02 build that still crashes.
-      - "-DESPCONTROL_JC4880P443_BOOTFIX_20260522=1"
-      # Rebuild marker for the JC4880P443 OTA flash erase watchdog increase.
-      - "-DESPCONTROL_JC4880P443_OTA_WDT_20260522=1"
-    build_src_flags:
-      - "-Wno-literal-suffix"
+  build_flags:
+    - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_DISABLE_TODO=1"
+    - "-DESPCONTROL_MAX_GRID_SLOTS=6"
+    # Force cached ESPHome objects to rebuild after the 2026.5
+    # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+    - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+    # Separate marker for the JC4880P443 boot-loop fix so ESPHome cannot
+    # silently reuse the earlier 09:02 build that still crashes.
+    - "-DESPCONTROL_JC4880P443_BOOTFIX_20260522=1"
+    # Rebuild marker for the JC4880P443 OTA flash erase watchdog increase.
+    - "-DESPCONTROL_JC4880P443_OTA_WDT_20260522=1"
+    # Keep the ESP-IDF header warning suppressed without warning on C sources.
+    - "-Wno-literal-suffix"
+    - "-Wno-complain-wrong-lang"
   on_boot:
     - priority: 260
       then:

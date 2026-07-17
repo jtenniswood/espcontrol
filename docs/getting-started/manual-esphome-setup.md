@@ -11,7 +11,7 @@ The normal [browser install](/getting-started/install) is the easiest route. Use
 ## What You Need
 
 - A supported ESP32 panel.
-- ESPHome Device Builder in Home Assistant, or the ESPHome command line on your computer.
+- ESPHome 2026.7.0 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
 - A USB-C data cable for the first install.
 - Your WiFi name and password, unless you are using an advanced wired Ethernet option.
 
@@ -94,7 +94,7 @@ packages:
     refresh: 1sec
 ```
 
-After saving, validate the device and install the firmware again. The next time you open the display address in a browser, it will ask for the username and password.
+After saving, validate the device and install the firmware again. The next time you open the display address in a browser, it will ask for the username and password. EspControl uses Digest authentication so the password is not sent directly across your network.
 
 If the username or password substitution is missing, ESPHome validation will fail instead of building firmware with placeholder credentials.
 

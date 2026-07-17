@@ -31,6 +31,11 @@ int main() {
   const auto door = card_runtime_context("door_window");
   const auto presence = card_runtime_context("presence");
   const auto image = card_runtime_context("image");
+  const auto light_control = card_runtime_context("light_control");
+  const auto fan_control = card_runtime_context("fan_control");
+  const auto climate = card_runtime_context("climate");
+  const auto climate_control = card_runtime_context("climate_control");
+  const auto alarm = card_runtime_context("alarm");
   const auto clock = card_runtime_context("clock");
   const auto timezone = card_runtime_context("timezone");
   const auto calendar = card_runtime_context("calendar");
@@ -108,7 +113,19 @@ int main() {
       !card_runtime_has_capability(
         subpage, espcontrol::card_runtime::CAPABILITY_ACTIONS) ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
-      image.legacy_dispatch) {
+      image.legacy_dispatch ||
+      light_control.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::LIGHT_CONTROL ||
+      light_control.legacy_dispatch ||
+      fan_control.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::FAN_CONTROL ||
+      fan_control.legacy_dispatch ||
+      climate.runtime.driver != espcontrol::card_runtime::CardDriverId::CLIMATE ||
+      climate_control.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::CLIMATE ||
+      climate.legacy_dispatch || climate_control.legacy_dispatch ||
+      alarm.runtime.driver != espcontrol::card_runtime::CardDriverId::ALARM ||
+      alarm.legacy_dispatch) {
     return EXIT_FAILURE;
   }
   struct TestConfig {
@@ -125,6 +142,22 @@ int main() {
       TestConfig{"cover", "open"});
   const auto cover_modal = card_runtime_context(
       TestConfig{"cover", "modal"});
+  const auto media_control = card_runtime_context(
+      TestConfig{"media", "control_modal"});
+  const auto media_play_pause = card_runtime_context(
+      TestConfig{"media", "play_pause"});
+  const auto media_transport = card_runtime_context(
+      TestConfig{"media", "next"}, espcontrol::cards::Surface::SUBPAGE);
+  const auto media_volume = card_runtime_context(
+      TestConfig{"media", "volume"});
+  const auto media_position = card_runtime_context(
+      TestConfig{"media", "position"});
+  const auto media_now_playing = card_runtime_context(
+      TestConfig{"media", "now_playing"});
+  const auto media_cover_art = card_runtime_context(
+      TestConfig{"media", "cover_art"});
+  const auto media_playlist = card_runtime_context(
+      TestConfig{"media", "playlist"});
   const auto option_select_compatibility = card_runtime_context(
       TestConfig{"action", card_runtime_option_select_canonical_action()});
   if (cover.runtime.type != espcontrol::card_runtime::CardTypeId::COVER ||
@@ -141,7 +174,30 @@ int main() {
       cover_command.legacy_dispatch ||
       cover_modal.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::COVER_MODAL ||
-      !cover_modal.legacy_dispatch) {
+      cover_modal.legacy_dispatch) {
+    return EXIT_FAILURE;
+  }
+  if (media_control.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_CONTROL ||
+      media_play_pause.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_PLAY_PAUSE ||
+      media_transport.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_TRANSPORT ||
+      media_transport.surface != espcontrol::cards::Surface::SUBPAGE ||
+      media_volume.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_VOLUME ||
+      media_position.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_POSITION ||
+      media_now_playing.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_NOW_PLAYING ||
+      media_cover_art.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_COVER_ART ||
+      media_playlist.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::MEDIA_PLAYLIST ||
+      media_control.legacy_dispatch || media_play_pause.legacy_dispatch ||
+      media_transport.legacy_dispatch || media_volume.legacy_dispatch ||
+      media_position.legacy_dispatch || media_now_playing.legacy_dispatch ||
+      media_cover_art.legacy_dispatch || media_playlist.legacy_dispatch) {
     return EXIT_FAILURE;
   }
   if (option_select_compatibility.legacy_dispatch ||

@@ -2151,6 +2151,15 @@ inline void cover_control_hide_modal() {
   control_modal_delete_overlay(ControlModalKind::COVER_CONTROL, overlay);
 }
 
+inline void delete_cover_control_context(CoverControlCtx *ctx) {
+  if (!ctx) return;
+  if (cover_control_modal_ui().active == ctx) cover_control_hide_modal();
+  if (ctx->btn && lv_obj_get_user_data(ctx->btn) == ctx) {
+    lv_obj_set_user_data(ctx->btn, nullptr);
+  }
+  delete ctx;
+}
+
 inline void cover_control_set_slider_value(lv_obj_t *slider, bool &updating,
                                            bool dragging, int pct) {
   if (!slider || dragging) return;
