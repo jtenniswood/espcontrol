@@ -73,6 +73,7 @@ struct MediaSpeakerRowState {
   bool pending = false;
   bool previous_selected = false;
   uint32_t call_id = 0;
+  uint32_t pending_until_ms = 0;
   lv_obj_t *row = nullptr;
   lv_obj_t *name_label = nullptr;
   lv_obj_t *toggle = nullptr;
@@ -112,6 +113,7 @@ struct MediaControlModalUi {
   lv_obj_t *group_volume_label = nullptr;
   lv_obj_t *group_volume_slider = nullptr;
   lv_obj_t *speaker_list = nullptr;
+  lv_timer_t *speaker_action_timer = nullptr;
   std::vector<MediaSpeakerRowState *> speaker_rows;
   std::vector<std::string> speaker_helper_members;
   std::vector<std::string> speaker_subscription_entities;
@@ -125,6 +127,8 @@ struct MediaControlModalUi {
   bool speaker_helper_subscribed = false;
   uint32_t speaker_generation = 0;
 };
+
+constexpr uint32_t MEDIA_GROUP_ACTION_TIMEOUT_MS = 12000;
 
 inline MediaControlModalUi &media_control_modal_ui() {
   static MediaControlModalUi ui;
@@ -234,6 +238,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
+inline void media_control_refresh_group_volume(MediaControlCtx *ctx);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
 inline void media_control_refresh_speakers(MediaControlCtx *ctx);
@@ -2648,6 +2653,32 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
   }
 }
 
+inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  MediaControlCtx *ctx = ui.active;
+  if (!ctx || ui.tab != MediaControlTab::SPEAKERS) return;
+  uint32_t now = esphome::millis();
+  bool expired = false;
+  for (MediaSpeakerRowState *row : ui.speaker_rows) {
+    if (!row || !row->pending || row->pending_until_ms == 0 ||
+        (int32_t)(now - row->pending_until_ms) < 0) {
+      continue;
+    }
+    uint32_t call_id = row->call_id;
+    row->pending = false;
+    row->call_id = 0;
+    row->pending_until_ms = 0;
+    row->selected = media_control_group_contains(ctx, row->entity_id);
+    if (call_id != 0) ha_cancel_action_response_callback(call_id, "grouping timeout");
+    media_control_refresh_speaker_row(ctx, row);
+    expired = true;
+  }
+  if (expired) {
+    media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
+    media_control_refresh_group_volume(ctx);
+  }
+}
+
 inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
     MediaControlCtx *ctx) {
   std::vector<MediaGroupVolumeState> volumes;
@@ -2698,6 +2729,7 @@ inline void media_control_group_action_result(
   if (!row || row->call_id != call_id) return;
   row->pending = false;
   row->call_id = 0;
+  row->pending_until_ms = 0;
   if (!response.is_success()) {
     row->selected = row->previous_selected;
     media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
@@ -2724,6 +2756,7 @@ inline void media_control_toggle_speaker(MediaControlCtx *ctx,
   row->previous_selected = media_control_group_contains(ctx, row->entity_id);
   row->selected = selected;
   row->pending = true;
+  row->pending_until_ms = esphome::millis() + MEDIA_GROUP_ACTION_TIMEOUT_MS;
   media_control_set_speaker_status(espcontrol_i18n("Updating speakers"));
   media_control_refresh_speaker_row(ctx, row);
   auto call_id = std::make_shared<uint32_t>(0);
@@ -2745,6 +2778,7 @@ inline void media_control_toggle_speaker(MediaControlCtx *ctx,
   row->call_id = *call_id;
   if (!sent) {
     row->pending = false;
+    row->pending_until_ms = 0;
     row->selected = row->previous_selected;
     media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
     media_control_refresh_speaker_row(ctx, row);
@@ -2984,12 +3018,17 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   lv_obj_set_style_pad_all(ui.speaker_list, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_row(ui.speaker_list, 4, LV_PART_MAIN);
   lv_obj_add_flag(ui.speaker_list, LV_OBJ_FLAG_SCROLLABLE);
+  ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
 
   media_control_refresh_speakers(ctx);
 }
 
 inline void media_control_clear_tab_content() {
   MediaControlModalUi &ui = media_control_modal_ui();
+  if (ui.speaker_action_timer) {
+    lv_timer_del(ui.speaker_action_timer);
+    ui.speaker_action_timer = nullptr;
+  }
   for (MediaSpeakerRowState *row : ui.speaker_rows) delete row;
   std::vector<MediaSpeakerRowState *>().swap(ui.speaker_rows);
   std::vector<std::string>().swap(ui.speaker_helper_members);

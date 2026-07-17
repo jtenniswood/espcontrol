@@ -1453,6 +1453,18 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             "lv_obj_del(row->row)",
             "delete speaker rows removed from the helper inventory",
         ),
+        (
+            "MEDIA_GROUP_ACTION_TIMEOUT_MS",
+            "bound pending speaker actions so a lost response does not disable a row indefinitely",
+        ),
+        (
+            'ha_cancel_action_response_callback(call_id, "grouping timeout")',
+            "cancel stale grouping callbacks when a speaker action times out",
+        ),
+        (
+            "lv_timer_del(ui.speaker_action_timer)",
+            "release the modal-scoped speaker action timer",
+        ),
     )
     for token, message in required:
         if token not in text:
