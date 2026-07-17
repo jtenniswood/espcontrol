@@ -21,6 +21,7 @@ VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
 PROJECT_NAME = "jtenniswood.espcontrol"
 ESPHOME_ENV = Path(__file__).resolve().parents[1] / ".github" / "esphome.env"
+RELEASE_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "release.yml"
 ESPHOME_ENV_RE = re.compile(r"^ESPHOME_VERSION=20[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}$")
 
 
@@ -101,6 +102,14 @@ def test_esphome_env_format() -> None:
                 pass
             else:
                 raise AssertionError(f"invalid ESPHome env value passed validation: {value!r}")
+
+
+def test_release_workflow_uses_current_ota_output() -> None:
+    workflow = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+    current_copy = 'cp "${BUILD_DIR}/firmware.ota.bin" output/${{ matrix.slug }}.ota.bin'
+    legacy_copy = 'cp "${BUILD_DIR}/firmware.bin" output/${{ matrix.slug }}.ota.bin'
+    assert current_copy in workflow, "release workflow must package ESPHome's firmware.ota.bin output"
+    assert legacy_copy not in workflow, "release workflow still packages the obsolete firmware.bin output"
 
 
 def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> tuple[Path, Path, Path]:
@@ -306,6 +315,7 @@ def test_public_pages_verification() -> None:
 
 def main() -> int:
     test_esphome_env_format()
+    test_release_workflow_uses_current_ota_output()
     test_valid_files_and_directory()
     test_placeholder_fails()
     test_unrelated_placeholder_strings_pass()
