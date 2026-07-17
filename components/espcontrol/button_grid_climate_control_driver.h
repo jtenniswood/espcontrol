@@ -73,7 +73,7 @@ inline ClimateControlDriverEnvironment climate_control_driver_environment(
   environment.tertiary_color = palette.has_sensor_color
     ? palette.sensor_val : TERTIARY_GREY;
   environment.number_font = display_volume_number_font(display);
-  environment.range_number_font = display_sensor_font(display);
+  environment.range_number_font = display_media_control_title_font(display);
   environment.unit_font = display_volume_label_font(display)
     ? display_volume_label_font(display)
     : lv_obj_get_style_text_font(slot.unit_lbl, LV_PART_MAIN);
