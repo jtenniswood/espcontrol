@@ -331,21 +331,6 @@ lvgl:
                 indicator:
                   bg_color: ${cover_art_text_color}
                   radius: 0
-      - obj:
-          id: cover_art_wake_touch_guard
-          x: 0
-          y: 0
-          width: 100%
-          height: 100%
-          bg_opa: 0%
-          radius: 0
-          border_width: 0
-          pad_all: 0
-          scrollable: false
-          scrollbar_mode: "off"
-          clickable: true
-          hidden: true
-
 script:
   - id: cover_art_pause_after_touch
     mode: restart
@@ -372,45 +357,6 @@ script:
                 id(cover_art_manual_pause_until_ms) = millis() + duration_ms;
                 ESP_LOGI("cover_art", "Waiting %.0fs to show cover art again after touch", seconds);
 
-  - id: cover_art_wake_touch_block
-    mode: restart
-    then:
-      - globals.set:
-          id: screensaver_wake_touch_guard_active
-          value: 'true'
-      - lvgl.widget.show: cover_art_wake_touch_guard
-      - lambda: 'lv_obj_move_foreground(id(cover_art_wake_touch_guard));'
-      - wait_until:
-          condition:
-            lambda: |-
-              lv_indev_t *indev = nullptr;
-              while ((indev = lv_indev_get_next(indev)) != nullptr) {
-                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
-                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
-                  return true;
-                }
-              }
-              return false;
-          timeout: 150ms
-      - wait_until:
-          condition:
-            lambda: |-
-              lv_indev_t *indev = nullptr;
-              while ((indev = lv_indev_get_next(indev)) != nullptr) {
-                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
-                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
-                  return false;
-                }
-              }
-              return true;
-          timeout: 2s
-      - delay: 250ms
-      - script.stop: screensaver_wake_touch_guard_clear
-      - globals.set:
-          id: screensaver_wake_touch_guard_active
-          value: 'false'
-      - lvgl.widget.hide: cover_art_wake_touch_guard
-
   - id: cover_art_apply_responsive_layout
     mode: restart
     then:
@@ -428,8 +374,8 @@ script:
           auto set_fullscreen_size = [](int width, int height) {
             lv_obj_set_pos(id(cover_art_screensaver), 0, 0);
             lv_obj_set_size(id(cover_art_screensaver), width, height);
-            lv_obj_set_pos(id(cover_art_wake_touch_guard), 0, 0);
-            lv_obj_set_size(id(cover_art_wake_touch_guard), width, height);
+            lv_obj_set_pos(id(screensaver_wake_touch_guard), 0, 0);
+            lv_obj_set_size(id(screensaver_wake_touch_guard), width, height);
             lv_obj_set_size(id(cover_art_progress_bar), width, ${cover_art_progress_height});
             lv_obj_align(id(cover_art_progress_bar), LV_ALIGN_BOTTOM_MID, 0, 0);
           };
@@ -441,8 +387,8 @@ script:
                                        int title_max_height) {
             lv_obj_set_pos(id(cover_art_screensaver), 0, 0);
             lv_obj_set_size(id(cover_art_screensaver), screen_w, screen_h);
-            lv_obj_set_pos(id(cover_art_wake_touch_guard), 0, 0);
-            lv_obj_set_size(id(cover_art_wake_touch_guard), screen_w, screen_h);
+            lv_obj_set_pos(id(screensaver_wake_touch_guard), 0, 0);
+            lv_obj_set_size(id(screensaver_wake_touch_guard), screen_w, screen_h);
             lv_obj_set_size(id(cover_art_progress_bar), screen_w, ${cover_art_progress_height});
             lv_obj_align(id(cover_art_progress_bar), LV_ALIGN_BOTTOM_MID, 0, 0);
             lv_obj_set_pos(id(cover_art_backdrop), art_x, art_y);
@@ -595,74 +541,21 @@ script:
           auto *img = id(cover_art_downloaded_image);
           int img_w = img->get_width();
           int img_h = img->get_height();
-          if (img_w <= 0 || img_h <= 0) return;
-
           #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
           auto *dsc = img->get_lv_image_dsc();
           #else
           auto *dsc = img->get_lv_img_dsc();
           #endif
-          const uint8_t *data = dsc->data;
-          if (data == nullptr) return;
-
-          int sample_x = img->get_content_offset_x();
-          int sample_y = img->get_content_offset_y();
-          int sample_w = img->get_content_width();
-          int sample_h = img->get_content_height();
-          if (sample_w <= 0 || sample_h <= 0 ||
-              sample_x < 0 || sample_y < 0 ||
-              sample_x + sample_w > img_w || sample_y + sample_h > img_h) {
-            sample_x = 0;
-            sample_y = 0;
-            sample_w = img_w;
-            sample_h = img_h;
-          }
-
-          int grid = espcontrol::cover_art::ACCENT_SAMPLE_GRID;
-          int step_x = sample_w / grid;
-          int step_y = sample_h / grid;
-          if (step_x < 1) step_x = 1;
-          if (step_y < 1) step_y = 1;
-
-          int64_t r_wsum = 0;
-          int64_t g_wsum = 0;
-          int64_t b_wsum = 0;
-          int64_t w_total = 0;
-
-          for (int sy = sample_y + step_y / 2; sy < sample_y + sample_h; sy += step_y) {
-            for (int sx = sample_x + step_x / 2; sx < sample_x + sample_w; sx += step_x) {
-              int pos = (sx + sy * img_w) * 2;
-              uint16_t rgb565 = img->is_big_endian()
-                  ? ((uint16_t) data[pos] << 8) | data[pos + 1]
-                  : data[pos] | ((uint16_t) data[pos + 1] << 8);
-
-              int r = (rgb565 >> 11) & 0x1F;
-              int g = (rgb565 >> 5) & 0x3F;
-              int b = rgb565 & 0x1F;
-              r = (r << 3) | (r >> 2);
-              g = (g << 2) | (g >> 4);
-              b = (b << 3) | (b >> 2);
-
-              int mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
-              int mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
-              int sat = mx - mn;
-              int weight = sat * sat + 1;
-
-              r_wsum += (int64_t) r * weight;
-              g_wsum += (int64_t) g * weight;
-              b_wsum += (int64_t) b * weight;
-              w_total += weight;
-            }
-          }
-
-          if (w_total <= 0) return;
-
-          int r = (int) (r_wsum / w_total);
-          int g = (int) (g_wsum / w_total);
-          int b = (int) (b_wsum / w_total);
-          ESP_LOGI("cover_art", "Extracted artwork accent color: rgb(%d,%d,%d)", r, g, b);
-
-          lv_color_t dark_accent = lv_color_make(r / 3, g / 3, b / 3);
+          auto accent = espcontrol::cover_art::darken_accent_color(
+              espcontrol::cover_art::extract_accent_color_rgb565(
+                  dsc ? dsc->data : nullptr, img_w, img_h, img->is_big_endian(),
+                  img->get_content_offset_x(), img->get_content_offset_y(),
+                  img->get_content_width(), img->get_content_height()));
+          lv_color_t dark_accent = accent.valid
+              ? lv_color_make(accent.red, accent.green, accent.blue)
+              : lv_color_make(0, 0, 0);
+          ESP_LOGI("cover_art", "Artwork tint color: rgb(%d,%d,%d)",
+                   accent.red, accent.green, accent.blue);
           lv_obj_set_style_bg_color(id(cover_art_backdrop), dark_accent, 0);
           lv_obj_set_style_bg_color(id(cover_art_accent_overlay), dark_accent, 0);
 
@@ -1441,7 +1334,8 @@ script:
                        now.is_valid(),
                        now.is_valid() ? now.hour : 0,
                        (int) id(schedule_on_hour).state,
-                       (int) id(schedule_off_hour).state);
+                       (int) id(schedule_off_hour).state,
+                       id(screen_schedule_sensor_activation).current_option());
           then:
             - logger.log:
                 level: DEBUG
@@ -1628,7 +1522,8 @@ script:
                   now.is_valid(),
                   now.is_valid() ? now.hour : 0,
                   (int) id(schedule_on_hour).state,
-                  (int) id(schedule_off_hour).state);
+                  (int) id(schedule_off_hour).state,
+                  id(screen_schedule_sensor_activation).current_option());
               return espcontrol::cover_art::display_allowed(
                        id(cover_art_screensaver_enabled).state,
                        id(cover_art_media_playing),
@@ -2357,7 +2252,8 @@ script:
                   now.is_valid(),
                   now.is_valid() ? now.hour : 0,
                   (int) id(schedule_on_hour).state,
-                  (int) id(schedule_off_hour).state);
+                  (int) id(schedule_off_hour).state,
+                  id(screen_schedule_sensor_activation).current_option());
               return espcontrol::cover_art::feature_allowed(
                   id(cover_art_screensaver_enabled).state,
                   !id(cover_art_media_player_entity).state.empty(),

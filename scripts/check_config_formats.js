@@ -16,6 +16,7 @@ const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "i
 const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
 
 function loadHooks(search) {
+  const params = new URLSearchParams(search || "");
   const sandbox = {
     __ESPCONTROL_TEST_HOOKS__: {},
     console: { log() {}, warn() {}, error() {} },
@@ -30,6 +31,8 @@ function loadHooks(search) {
       addEventListener() {},
     },
   };
+  const device = params.get("device");
+  if (device) sandbox.__ESPCONTROL_DEVICE_PROFILE__ = device;
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
@@ -127,6 +130,8 @@ function assertNormalizationFixtures(hooks, groups) {
 }
 
 const hooks = loadHooks();
+const tenInchHooks = loadHooks("?device=guition-esp32-p4-jc8012p4a1");
+const s3Hooks = loadHooks("?device=guition-esp32-s3-4848s040");
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const cardNormalizationFixtures = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
 const imageCardNormalizationFixtures = JSON.parse(fs.readFileSync(IMAGE_CARD_NORMALIZATION_FIXTURES, "utf8"));
@@ -328,17 +333,80 @@ assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mo
 assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_art" }), true, "cover art cards require square sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 7), 7, "cover art keeps 3x3 size");
+assert.strictEqual(tenInchHooks.cardSupportsPortraitLargeSize({ type: "media", sensor: "cover_art" }), true, "10-inch cover art supports portrait-large size");
+assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 10), 10, "10-inch cover art keeps 3x4 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 6), 1, "cover art rejects non-square sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 8), 8, "camera cards keep max-wide size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 9), 9, "camera cards keep max-tall size");
+assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "image" }, 10), 10, "10-inch image cards keep 3x4 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 8), 1, "non-camera cards reject max-wide size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 9), 1, "non-camera cards reject max-tall size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 10), 1, "ordinary cards reject portrait-large size");
+assert.strictEqual(
+  Array.from(tenInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 10 && option.label === "Portrait (3x4)"),
+  true,
+  "10-inch cover art size menu exposes Portrait (3x4)",
+);
+const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
+  cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],
+}, false);
+assert.strictEqual(transferredSensor.entries[0].size, 1, "card transfer downgrades unsupported 3x4 sensor size");
+assert.strictEqual(transferredSensor.warnings.cardResized, true, "card transfer reports normalized card sizes");
+const transferredCoverArt = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
+  cards: [{ type: "media", sensor: "cover_art", entity: "media_player.office", label: "Cover Art", size: 10 }],
+}, false);
+assert.strictEqual(transferredCoverArt.entries[0].size, 10, "card transfer keeps supported 3x4 cover art size");
+const transferredSubpage = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
+  cards: [{
+    type: "subpage",
+    label: "Sensors",
+    size: 1,
+    subpage: {
+      order: ["1p", "B"],
+      back_label: "Back",
+      buttons: [{ type: "sensor", entity: "sensor.office", label: "Office" }],
+    },
+  }],
+}, false);
+assert.strictEqual(transferredSubpage.warnings.subpageResized, true, "card transfer reports normalized subpage sizes");
+assert.strictEqual(
+  Array.from(tenInchHooks.parseSubpageConfig(transferredSubpage.entries[0].subpageConfig).order).includes("1p"),
+  false,
+  "card transfer downgrades unsupported 3x4 sizes inside subpages",
+);
+assert.throws(
+  () => s3Hooks.cardTransferEntriesFromEnvelopeForTest({
+    cards: [{ type: "image", entity: "camera.front_door", label: "Front Door", size: 1 }],
+  }, false),
+  (error) => String(error.cardTransferMessage || error.message).includes("does not support the image card type"),
+  "S3 card transfer rejects disabled image cards",
+);
+assert.throws(
+  () => s3Hooks.cardTransferEntriesFromEnvelopeForTest({
+    cards: [{
+      type: "subpage",
+      label: "Cameras",
+      size: 1,
+      subpage: {
+        order: ["1", "B"],
+        back_label: "Back",
+        buttons: [{ type: "image", entity: "camera.front_door", label: "Front Door" }],
+      },
+    }],
+  }, false),
+  (error) => String(error.cardTransferMessage || error.message).includes("does not support the image card type"),
+  "S3 card transfer rejects disabled image cards inside subpages",
+);
 const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
 assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
 hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
 assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal", "cover art stores the optional controls action");
+hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, true);
+assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal,cover_art_details", "cover art preserves action with track details");
 hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
-assert.strictEqual(coverArtActionButton.options, "", "cover art omits its default action");
+assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art omits its default action without dropping track details");
+hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
+assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
 assert.deepStrictEqual(
   Array.from(hooks.mediaNowPlayingControlValues()),
   ["", "progress", "play_pause"],
@@ -1749,7 +1817,7 @@ assertButtonRoundTrip(hooks, "media cover art card", {
   unit: "",
   type: "media",
   precision: "",
-  options: "cover_art_action=control_modal",
+  options: "cover_art_action=control_modal,cover_art_details",
 }, false);
 
 assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art", {

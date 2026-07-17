@@ -65,6 +65,20 @@ int main() {
   assert(progress_percent(0, 0) == 0 && progress_percent(30, 120) == 25 && progress_percent(150, 120) == 100);
   assert(progress_percent(30, infinity) == 0 && progress_percent(30, invalid) == 0);
   assert(progress_percent(invalid, 120) == 0);
+  const uint8_t red_le[] = {0x00, 0xF8};
+  const uint8_t red_be[] = {0xF8, 0x00};
+  auto little_red = extract_accent_color_rgb565(red_le, 1, 1, false, 0, 0, 1, 1);
+  auto big_red = extract_accent_color_rgb565(red_be, 1, 1, true, 0, 0, 1, 1);
+  assert(little_red.valid && little_red.red == 255 && little_red.green == 0 && little_red.blue == 0);
+  assert(big_red.valid && big_red.red == 255 && big_red.green == 0 && big_red.blue == 0);
+  const uint8_t red_blue_le[] = {0x00, 0xF8, 0x1F, 0x00};
+  auto blue_content = extract_accent_color_rgb565(red_blue_le, 2, 1, false, 1, 0, 1, 1);
+  assert(blue_content.valid && blue_content.red == 0 && blue_content.blue == 255);
+  auto full_fallback = extract_accent_color_rgb565(red_blue_le, 2, 1, false, 4, 0, 1, 1);
+  assert(full_fallback.valid && full_fallback.red == 127 && full_fallback.blue == 127);
+  auto dark_red = darken_accent_color(little_red);
+  assert(dark_red.valid && dark_red.red == 85 && dark_red.green == 0 && dark_red.blue == 0);
+  assert(!extract_accent_color_rgb565(nullptr, 1, 1, false, 0, 0, 1, 1).valid);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="cover-art-contract-") as temp_dir:
@@ -128,11 +142,51 @@ for required in (
         raise SystemExit("P4 JPEG workspace must be released after image buffer allocation failure")
 
 image_cards = (ROOT / "components" / "espcontrol" / "button_grid_image.h").read_text(encoding="utf-8")
+overlay_tint_start = image_cards.find("inline void image_card_apply_media_overlay_tint(")
+overlay_tint_end = image_cards.find("\ninline void image_card_apply_downloaded", overlay_tint_start)
+if overlay_tint_start < 0 or overlay_tint_end < 0:
+    raise SystemExit("Media cover art overlay tint contract missing")
+overlay_tint = image_cards[overlay_tint_start:overlay_tint_end]
+if "lv_obj_set_style_bg_opa(ctx->media_overlay, LV_OPA_60, LV_PART_MAIN);" not in overlay_tint:
+    raise SystemExit("Media cover art overlay tint must remain 60% opaque")
+
+web_styles = (ROOT / "src" / "webserver" / "application" / "styles.ts").read_text(encoding="utf-8")
+if ".sp-media-cover-tint{position:absolute;inset:-2px;background:rgba(49,49,49,.6)" not in web_styles:
+    raise SystemExit("Web preview media cover tint must use the 60% standard card grey")
+for required in (
+    ".sp-btn-big .sp-media-cover-details-title{font-size:var(--media-cover-artist)}",
+    ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}",
+    ".sp-btn-big .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--btn-label)}",
+    ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist,.sp-btn-portrait-large .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--media-cover-artist)}",
+    ".sp-btn-big.sp-media-cover-details-card,.sp-btn-extra-large.sp-media-cover-details-card,.sp-btn-portrait-large.sp-media-cover-details-card{justify-content:flex-start}",
+    ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}",
+    ".sp-btn-wide .sp-media-cover-details-title,.sp-btn-extra-wide .sp-media-cover-details-title{-webkit-line-clamp:2}",
+):
+    if required not in web_styles:
+        raise SystemExit(f"Large cover art web font-selection contract missing: {required}")
 for required in (
     "image_card_uses_background_pipeline(next->image, next->source_url)",
 ):
     if required not in image_cards:
         raise SystemExit(f"Image card background-pipeline contract missing: {required}")
+media_clear_start = image_cards.find(
+    "inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {"
+)
+media_clear_end = image_cards.find(
+    "\ninline void image_card_layout_modal_loading", media_clear_start
+)
+if media_clear_start < 0 or media_clear_end < 0:
+    raise SystemExit("Media artwork clear contract missing")
+media_clear = image_cards[media_clear_start:media_clear_end]
+for persistent_binding in (
+    "ctx->media_overlay_artwork_tint = false;",
+    "ctx->media_artwork_applied = nullptr;",
+):
+    if persistent_binding in media_clear:
+        raise SystemExit(
+            "Temporary artwork loss must preserve the configured overlay bindings: "
+            + persistent_binding
+        )
 modal_request_start = image_cards.find(
     "inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {"
 )
@@ -188,8 +242,64 @@ if 'state->entity_id, std::string("media_artist")' in metadata:
     raise SystemExit("Media track changes must not retain duplicate one-shot metadata reads")
 if "state->artist.clear()" in metadata:
     raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
+for required in (
+    "inline bool media_cover_art_uses_screensaver_fonts(int row_span, int col_span)",
+    "return row_span >= 2 && col_span >= 2;",
+    "inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)",
+    "return row_span == 2 && col_span == 2;",
+    "inline bool media_cover_art_limits_title_to_two_lines(int row_span,",
+    "return row_span == 1 || (row_span == 2 && col_span == 2);",
+    "inline void media_position_now_playing_artist(MediaNowPlayingCtx *ctx)",
+    "LV_ALIGN_OUT_BOTTOM_LEFT, 0, ctx->artist_gap",
+    "ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(",
+):
+    if required not in media:
+        raise SystemExit(f"Large cover art font-selection contract missing: {required}")
+
+cover_details_start = media.find('    if (mode == "cover_art") {')
+cover_title_start = media.find(
+    "\n      lv_obj_t *title_lbl = lv_label_create(s.btn);", cover_details_start
+)
+cover_details_end = media.find(
+    "\n    lv_obj_t *title_lbl = lv_label_create(s.btn);", cover_title_start + 1
+)
+if cover_details_start < 0 or cover_details_end < 0:
+    raise SystemExit("Cover art track-details layout contract missing")
+cover_details = media[cover_details_start:cover_details_end]
+for required in (
+    "lv_obj_t *artist_lbl = lv_label_create(s.btn);",
+    "ctx->artist_lbl = artist_lbl;",
+    "lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);",
+    "media_cover_art_limits_title_to_two_lines(row_span, col_span)",
+):
+    if required not in cover_details:
+        raise SystemExit(f"Cover art track-details layout contract missing: {required}")
+if "ctx->artist_lbl = s.text_lbl;" in cover_details:
+    raise SystemExit("Cover art artist metadata must not reuse the static card caption label")
+
+for required in (
+    "bool highlight_playing = true;",
+    "ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);",
+):
+    if required not in media:
+        raise SystemExit(f"Media control playing-highlight contract missing: {required}")
+
+media_driver = (ROOT / "components" / "espcontrol" / "button_grid_media_driver.h").read_text(encoding="utf-8")
+if "if (control) control->highlight_playing = false;" not in media_driver:
+    raise SystemExit("Cover art control modals must not highlight their parent card while playing")
 
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+if "media_cover_art_limits_title_to_two_lines(row_span, col_span)" not in grid:
+    raise SystemExit("Cover art layout refresh must keep track titles limited to two lines")
+if "if (ha_api_state_connected()) refresh_image_cards();" not in grid:
+    raise SystemExit("Grid startup must refresh bound cover artwork after Home Assistant state is ready")
+for required in (
+    "lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);",
+    "lv_obj_set_style_max_height(",
+    "title_lbl, font->line_height * 2 + TITLE_LINE_SPACE, LV_PART_MAIN);",
+):
+    if required not in media:
+        raise SystemExit(f"Two-line cover art title must flex to its content height: {required}")
 media_art_start = grid.find("inline void subscribe_media_cover_art(")
 media_art_end = grid.find("\ninline void setup_card_visual(", media_art_start)
 if media_art_start < 0 or media_art_end < 0:

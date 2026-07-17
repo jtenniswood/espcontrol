@@ -46,6 +46,7 @@ struct MediaControlCtx {
   int width_compensation_percent = 100;
   bool available = true;
   bool playing = false;
+  bool highlight_playing = true;
   bool volume_known = false;
   bool label_shows_status = false;
   bool top_shows_volume = false;
@@ -155,6 +156,15 @@ inline void media_apply_now_playing_artist_text(MediaNowPlayingCtx *ctx) {
     ? espcontrol_i18n("Source")
     : ctx->artist;
   lv_label_set_text(ctx->artist_lbl, text);
+}
+
+inline void media_position_now_playing_artist(MediaNowPlayingCtx *ctx) {
+  if (!ctx || !ctx->artist_below_title || !ctx->btn ||
+      !ctx->title_lbl || !ctx->artist_lbl) return;
+  lv_obj_update_layout(ctx->btn);
+  lv_obj_align_to(
+    ctx->artist_lbl, ctx->title_lbl,
+    LV_ALIGN_OUT_BOTTOM_LEFT, 0, ctx->artist_gap);
 }
 
 inline void media_set_now_playing_artist(MediaNowPlayingCtx *ctx,
@@ -805,6 +815,7 @@ inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state,
     ctx->external_source = state->external_source;
     media_apply_now_playing_artist_text(ctx);
   }
+  media_position_now_playing_artist(ctx);
   if (ctx->play_pause_background && ctx->btn) {
     set_card_checked_state(ctx->btn, state->available && state->playing);
   }
@@ -934,7 +945,8 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     }
   }
 
-  set_card_checked_state(ctx->btn, ctx->available && ctx->playing);
+  set_card_checked_state(
+    ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();
   if (ui.active == ctx && !ctx->available) {
@@ -1432,13 +1444,17 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (limit_title_lines) {
       const lv_font_t *font = title_font ? title_font : lv_obj_get_style_text_font(title_lbl, LV_PART_MAIN);
       lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
+      lv_obj_set_width(title_lbl, text_width);
+      lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);
       if (font && font->line_height > 0) {
-        lv_obj_set_size(title_lbl, text_width, font->line_height * 2 + TITLE_LINE_SPACE);
+        lv_obj_set_style_max_height(
+          title_lbl, font->line_height * 2 + TITLE_LINE_SPACE, LV_PART_MAIN);
       }
-      else lv_obj_set_width(title_lbl, text_width);
     } else {
+      lv_obj_set_style_max_height(title_lbl, LV_COORD_MAX, LV_PART_MAIN);
       lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_WRAP);
       lv_obj_set_width(title_lbl, text_width);
+      lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);
     }
     lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, text_inset, text_inset);
     if (reset_text) lv_label_set_text(title_lbl, "--");
@@ -2583,11 +2599,25 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   lv_obj_move_foreground(ui.overlay);
 }
 
+inline bool media_cover_art_uses_screensaver_fonts(int row_span, int col_span) {
+  return row_span >= 2 && col_span >= 2;
+}
+
+inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span) {
+  return row_span == 2 && col_span == 2;
+}
+
+inline bool media_cover_art_limits_title_to_two_lines(int row_span,
+                                                       int col_span) {
+  return row_span == 1 || (row_span == 2 && col_span == 2);
+}
+
 inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              uint32_t secondary_color,
                              uint32_t tertiary_color,
                              const lv_font_t *sensor_font,
                              const lv_font_t *media_title_font,
+                             const lv_font_t *media_artist_font,
                              int width_compensation_percent = 100,
                              int row_span = 1,
                              int col_span = 1) {
@@ -2626,10 +2656,37 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
       if (s.sensor_lbl) lv_obj_add_flag(s.sensor_lbl, LV_OBJ_FLAG_HIDDEN);
       if (s.unit_lbl) lv_obj_add_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (!media_cover_art_details_enabled(p)) {
+        if (s.text_lbl) {
+          lv_label_set_text(s.text_lbl, "");
+          lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
+      }
+      lv_obj_t *title_lbl = lv_label_create(s.btn);
+      lv_obj_set_style_text_color(title_lbl, lv_color_white(), LV_PART_MAIN);
+      apply_width_compensation(title_lbl, width_compensation_percent);
+      lv_obj_t *artist_lbl = lv_label_create(s.btn);
+      lv_obj_set_style_text_color(artist_lbl, lv_color_white(), LV_PART_MAIN);
+      if (media_artist_font) {
+        lv_obj_set_style_text_font(artist_lbl, media_artist_font, LV_PART_MAIN);
+      }
+      apply_width_compensation(artist_lbl, width_compensation_percent);
       if (s.text_lbl) {
         lv_label_set_text(s.text_lbl, "");
         lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
       }
+      ctx->title_lbl = title_lbl;
+      ctx->artist_lbl = artist_lbl;
+      ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(
+        row_span, col_span);
+      ctx->artist_gap = pad > 1 ? pad / 2 : 0;
+      setup_media_now_playing_layout(
+        s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
+        media_title_font, pad,
+        media_cover_art_limits_title_to_two_lines(row_span, col_span),
+        true, 0);
+      media_position_now_playing_artist(ctx);
       return;
     }
     lv_obj_t *title_lbl = lv_label_create(s.btn);

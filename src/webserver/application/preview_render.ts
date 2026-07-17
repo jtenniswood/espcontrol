@@ -11,6 +11,14 @@ export function installPreviewRenderModule(): GlobalDescriptors {
         var disabled: any = CFG.disabledCardTypes || [];
         return disabled.indexOf(key || "") !== -1;
     }
+    function buttonConfigDisabledForDevice(this: any, button?: any) {
+        var type: any = button && button.type || "";
+        if (buttonTypeDisabledForDevice(type))
+            return true;
+        var typeDef: any = BUTTON_TYPES[type];
+        var pickerKey: any = typeDef && buttonTypeRegistryValue(typeDef, "pickerKey", "");
+        return !!pickerKey && buttonTypeDisabledForDevice(pickerKey);
+    }
     function buttonTypeInfoOnlyVisible(this: any, key?: any) {
         return PreviewFeature.infoOnlyCardVisible(key || "", !!CFG.infoOnly);
     }
@@ -134,6 +142,7 @@ export function installPreviewRenderModule(): GlobalDescriptors {
         "previewHtmlValue": staticGlobal(previewHtmlValue),
         "buttonTypeRegistryValue": staticGlobal(buttonTypeRegistryValue),
         "buttonTypeDisabledForDevice": staticGlobal(buttonTypeDisabledForDevice),
+        "buttonConfigDisabledForDevice": staticGlobal(buttonConfigDisabledForDevice),
         "buttonTypeInfoOnlyVisible": staticGlobal(buttonTypeInfoOnlyVisible),
         "defaultButtonTypeForPicker": staticGlobal(defaultButtonTypeForPicker),
         "buttonTypePickerDetails": staticGlobal(buttonTypePickerDetails),

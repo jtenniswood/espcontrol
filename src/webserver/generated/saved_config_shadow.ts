@@ -159,6 +159,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
       "label_display",
       "number_display",
       "cover_art_action",
+      "cover_art_details",
       "volume_max",
       "playlist_content_id",
       "playlist_content_type",

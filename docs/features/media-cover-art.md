@@ -18,7 +18,7 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 - **Show After** also controls how long cover art waits before returning after you dismiss it by touch. The countdown restarts after every touch, so cover art returns only after the selected time has passed since your most recent touch.
 - **Show Track Details For** - controls how long track information is shown over the artwork on the 4-inch square displays.
 - **Advanced Options** - contains playback, source, and filtering controls you may not need every day.
-- **Keep Screen Awake During Playback** - is on by default and prevents the display from sleeping while media plays. It does not bypass the **Show After** delay.
+- **Keep Screen Awake During Playback** - is on by default and prevents the display from sleeping while media plays when **Show Cover Art** is enabled. It does not bypass the **Show After** delay, and has no effect while cover art is disabled.
 - **Hide for external source inputs** - hides cover art when the selected media player source is `TV` or `Line-in`.
 - **Advanced Filtering** - reveals **Only Show When**, which limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
 

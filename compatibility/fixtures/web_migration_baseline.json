@@ -57,6 +57,7 @@
       "brightness_day": 80,
       "brightness_night": 20,
       "schedule_trigger": "time",
+      "schedule_sensor_activation": "on",
       "schedule_on_hour": 6,
       "schedule_off_hour": 23,
       "schedule_mode": "clock",
@@ -65,7 +66,7 @@
     "screenNormalized": {
       "brightnessDayVal": 80, "brightnessNightVal": 20, "automaticBrightnessEnabled": true,
       "brightnessDawnTime": "06:00", "brightnessDuskTime": "18:00", "scheduleTrigger": "time",
-      "scheduleEnabled": true, "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
+      "scheduleEnabled": true, "scheduleSensorActivation": "on", "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
       "scheduleWakeTimeout": 30, "scheduleWakeBrightness": 10, "scheduleDimmedBrightness": 10,
       "scheduleClockBrightness": 10, "scheduleClockTextColor": "FFFFFF"
     }
@@ -100,5 +101,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 619286, "gzip": 147354 }
+  "bundleSize": { "minified": 627075, "gzip": 148917 }
 }

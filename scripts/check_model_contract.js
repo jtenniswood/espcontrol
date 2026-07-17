@@ -92,6 +92,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   stateDisplay: "label",
   nowPlayingControl: "none",
   coverArtAction: "play_pause",
+  showTrackDetails: false,
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
@@ -103,6 +104,11 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   largeNumbers: true,
 }, "Media saved strings cross a versioned typed boundary before application code uses them");
 assert.strictEqual(model.decodeMediaCardConfigV1({ type: "sensor" }), null, "Media decoder rejects other card types");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "cover_art",
+  options: "cover_art_details",
+}).showTrackDetails, true, "Media decoder exposes optional cover-art track details");
 assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "controls",
@@ -115,6 +121,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   stateDisplay: "state",
   nowPlayingControl: "none",
   coverArtAction: "control_modal",
+  showTrackDetails: false,
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,
@@ -148,6 +155,18 @@ assert.strictEqual(
   model.serializeGridOrder([1, -1, 0, -1, -1, 0, -1, -1, 0], { 1: 9 }),
   "1v",
   "max-tall grid order serializes with its saved token"
+);
+assert.deepStrictEqual(plain(model.parseGridOrder("1p", 20, 5)), {
+  grid: [1, -1, -1, 0, 0, -1, -1, -1, 0, 0, -1, -1, -1, 0, 0, -1, -1, -1, 0, 0],
+  sizes: { 1: 10 },
+}, "portrait-large grid order reserves three columns across four rows");
+assert.strictEqual(
+  model.serializeGridOrder(
+    [1, -1, -1, 0, 0, -1, -1, -1, 0, 0, -1, -1, -1, 0, 0, -1, -1, -1, 0, 0],
+    { 1: model.CARD_SIZE_PORTRAIT_LARGE },
+  ),
+  "1p",
+  "portrait-large grid order serializes with its saved token"
 );
 
 const transferCard = {
@@ -238,6 +257,15 @@ assert.strictEqual(
   model.CARD_SIZE_MAX_TALL,
   "card transfer accepts the supported 2x3 camera card size",
 );
+const portraitLargeTransferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [{ ...transferCard, size: model.CARD_SIZE_PORTRAIT_LARGE }],
+);
+assert.strictEqual(
+  model.parseCardTransferCode(portraitLargeTransferCode).cards[0].size,
+  model.CARD_SIZE_PORTRAIT_LARGE,
+  "card transfer accepts the supported 3x4 card size",
+);
 const maxWideSubpageCard = {
   ...transferSubpageCard,
   subpage: {
@@ -269,7 +297,7 @@ assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: 
   "newer version");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
   "no cards");
-assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_MAX_TALL + 1 }] },
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_PORTRAIT_LARGE + 1 }] },
   "invalid size");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");
@@ -408,6 +436,8 @@ assert.strictEqual(model.normalizeCoverArtDelay(0), 3, "legacy immediate cover a
 assert.strictEqual(model.normalizeCoverArtDelay(60), 60, "valid cover art delay remains unchanged");
 assert.strictEqual(model.normalizeCoverArtDelay(900), 300, "cover art delay clamps to the supported maximum");
 assert.strictEqual(model.normalizeScheduleClockBrightness(0), 10, "schedule clock brightness fallback");
+assert.strictEqual(model.normalizeScheduleSensorActivation("Sensor On"), "on", "schedule sensor activation accepts on");
+assert.strictEqual(model.normalizeScheduleSensorActivation("unexpected"), "off", "schedule sensor activation defaults off");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assistant artwork port accepts custom port");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(0), 1, "Home Assistant artwork port clamps low values");
@@ -420,6 +450,7 @@ assert.deepStrictEqual(
     brightness_dawn_time: "5:30",
     brightness_dusk_time: "21:05",
     schedule_enabled: true,
+    schedule_sensor_activation: "Sensor On",
     schedule_on_hour: 7,
     schedule_off_hour: 22,
     schedule_mode: "clock",
@@ -438,6 +469,7 @@ assert.deepStrictEqual(
     brightnessDuskTime: "21:05",
     scheduleTrigger: "time",
     scheduleEnabled: true,
+    scheduleSensorActivation: "on",
     scheduleOnHour: 7,
     scheduleOffHour: 22,
     scheduleMode: "clock",
