@@ -425,44 +425,52 @@ script:
     parameters:
       entry_delay: bool
     then:
-      - lambda: |-
-          id(alarm_delay_audio_session_active) = true;
-          if (!id(alarm_delay_volume_overridden)) {
-            id(alarm_delay_saved_volume) = id(voice_media_player).volume;
-            id(alarm_delay_volume_overridden) = true;
-          }
-      - media_player.volume_set:
-          id: voice_media_player
-          volume: !lambda return id(alarm_delay_beep_volume).state;
-      - switch.turn_on: speaker_amplifier_enable
-      - lambda: |-
-          id(alarm_delay_beep_requested) = true;
-          id(alarm_delay_beep_announcement_active) = false;
       - if:
           condition:
-            lambda: return entry_delay;
+            or:
+              - not:
+                  media_player.is_announcing:
+                    id: voice_media_player
+              - lambda: return id(alarm_delay_beep_announcement_active);
           then:
-            - media_player.speaker.play_on_device_media_file:
-                id: voice_media_player
-                media_file: alarm_delay_entry_beep
-                announcement: true
-          else:
-            - media_player.speaker.play_on_device_media_file:
-                id: voice_media_player
-                media_file: alarm_delay_exit_beep
-                announcement: true
-      - delay: 250ms
-      - lambda: |-
-          id(alarm_delay_beep_requested) = false;
-          id(alarm_delay_beep_announcement_active) = false;
-      - if:
-          condition:
-            lambda: return id(alarm_delay_volume_overridden);
-          then:
+            - lambda: |-
+                id(alarm_delay_audio_session_active) = true;
+                if (!id(alarm_delay_volume_overridden)) {
+                  id(alarm_delay_saved_volume) = id(voice_media_player).volume;
+                  id(alarm_delay_volume_overridden) = true;
+                }
             - media_player.volume_set:
                 id: voice_media_player
-                volume: !lambda return id(alarm_delay_saved_volume);
-            - lambda: id(alarm_delay_volume_overridden) = false;
+                volume: !lambda return id(alarm_delay_beep_volume).state;
+            - switch.turn_on: speaker_amplifier_enable
+            - lambda: |-
+                id(alarm_delay_beep_requested) = true;
+                id(alarm_delay_beep_announcement_active) = false;
+            - if:
+                condition:
+                  lambda: return entry_delay;
+                then:
+                  - media_player.speaker.play_on_device_media_file:
+                      id: voice_media_player
+                      media_file: alarm_delay_entry_beep
+                      announcement: true
+                else:
+                  - media_player.speaker.play_on_device_media_file:
+                      id: voice_media_player
+                      media_file: alarm_delay_exit_beep
+                      announcement: true
+            - delay: 250ms
+            - lambda: |-
+                id(alarm_delay_beep_requested) = false;
+                id(alarm_delay_beep_announcement_active) = false;
+            - if:
+                condition:
+                  lambda: return id(alarm_delay_volume_overridden);
+                then:
+                  - media_player.volume_set:
+                      id: voice_media_player
+                      volume: !lambda return id(alarm_delay_saved_volume);
+                  - lambda: id(alarm_delay_volume_overridden) = false;
 
   - id: announce_alarm_delay
     mode: parallel
@@ -477,7 +485,7 @@ script:
               - switch.is_on: alarm_delay_tts_enabled
           then:
             # Home Assistant can turn this event into TTS for the panel's
-            # Voice Media Player. The local beep loop starts independently.
+            # Voice Media Player. Local beeps pause while TTS is announcing.
             - homeassistant.event:
                 event: esphome.alarm_delay_announcement
                 data:

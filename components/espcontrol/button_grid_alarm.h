@@ -130,6 +130,7 @@ inline AlarmDeferredAction &alarm_deferred_action() {
 inline int alarm_remaining_delay_seconds(AlarmCardCtx *ctx);
 
 struct AlarmDelayAudioCoordinator {
+  AlarmCardCtx *source = nullptr;
   std::string entity_id;
   AlarmDelayAudioMode mode = AlarmDelayAudioMode::NONE;
   int remaining_seconds = -1;
@@ -160,6 +161,7 @@ inline void alarm_delay_audio_stop() {
   if (coordinator.mode != AlarmDelayAudioMode::NONE && coordinator.hooks.stop) {
     coordinator.hooks.stop();
   }
+  coordinator.source = nullptr;
   coordinator.entity_id.clear();
   coordinator.mode = AlarmDelayAudioMode::NONE;
   coordinator.remaining_seconds = -1;
@@ -204,16 +206,18 @@ inline void alarm_delay_audio_update(AlarmCardCtx *ctx) {
   bool should_run = alarm_delay_audio_should_run(
     ctx->state, remaining, ctx->available, enabled);
   AlarmDelayAudioCoordinator &coordinator = alarm_delay_audio_coordinator();
-  bool owns_active_audio = coordinator.entity_id == ctx->entity_id;
+  bool owns_active_audio = coordinator.source == ctx;
+  bool matches_active_entity = coordinator.entity_id == ctx->entity_id;
   if (!should_run) {
     if (owns_active_audio) alarm_delay_audio_stop();
     return;
   }
 
-  bool starting = !owns_active_audio || coordinator.mode != mode;
+  bool starting = !matches_active_entity || coordinator.mode != mode;
   if (starting && coordinator.mode != AlarmDelayAudioMode::NONE) {
     alarm_delay_audio_stop();
   }
+  if (starting || coordinator.source == nullptr) coordinator.source = ctx;
   coordinator.entity_id = ctx->entity_id;
   coordinator.mode = mode;
   coordinator.remaining_seconds = remaining;
