@@ -22,6 +22,7 @@ constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS = 450;
 constexpr int CLIMATE_MODAL_ARC_SIZE_PERCENT = 88;
 constexpr int CLIMATE_MODAL_COMPACT_PORTRAIT_ARC_SIZE_PERCENT = 96;
 constexpr lv_coord_t CLIMATE_MODAL_ARC_UP_REF_PX = 30;
+constexpr lv_coord_t CLIMATE_MODAL_UNIT_UP_REF_PX = 10;
 constexpr lv_coord_t CLIMATE_MODAL_SQUARE_ARC_UP_REF_PX = 24;
 constexpr lv_coord_t CLIMATE_MODAL_STEP_BUTTONS_UP_REF_PX = 42;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX = 18;
@@ -2068,6 +2069,10 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   lv_obj_align(ui.status_lbl, LV_ALIGN_CENTER, 0, title_center_y);
   lv_obj_set_style_translate_y(ui.status_lbl, climate_control_status_translate_y(layout), LV_PART_MAIN);
   lv_obj_align(ui.target_row, LV_ALIGN_CENTER, 0, value_center_y);
+  if (ui.unit_lbl) {
+    lv_obj_set_style_translate_y(ui.unit_lbl,
+      -control_modal_scaled_px(CLIMATE_MODAL_UNIT_UP_REF_PX, layout.short_side), LV_PART_MAIN);
+  }
   ControlModalLayout controls_layout = layout;
   controls_layout.btn_size = control_modal_scaled_px(
     compact_portrait ? CLIMATE_MODAL_COMPACT_PORTRAIT_STEP_BUTTON_REF_PX : 64,
