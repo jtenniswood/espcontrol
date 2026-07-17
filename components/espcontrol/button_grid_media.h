@@ -2583,6 +2583,16 @@ inline MediaSpeakerRowState *media_control_find_speaker_row(const std::string &e
   return nullptr;
 }
 
+inline void media_control_cancel_speaker_action(MediaSpeakerRowState *row,
+                                                const char *reason) {
+  if (!row || row->call_id == 0) return;
+  uint32_t call_id = row->call_id;
+  row->pending = false;
+  row->call_id = 0;
+  row->pending_until_ms = 0;
+  ha_cancel_action_response_callback(call_id, reason);
+}
+
 inline bool media_control_group_contains(MediaControlCtx *ctx, const std::string &entity_id) {
   if (!ctx) return false;
   if (entity_id == ctx->entity_id) return true;
@@ -2928,6 +2938,7 @@ inline void media_control_sync_speaker_candidates(
       continue;
     }
     if (row) {
+      media_control_cancel_speaker_action(row, "speaker removed");
       if (row->row) lv_obj_del(row->row);
       delete row;
     }
@@ -3034,7 +3045,10 @@ inline void media_control_clear_tab_content() {
     lv_timer_del(ui.speaker_action_timer);
     ui.speaker_action_timer = nullptr;
   }
-  for (MediaSpeakerRowState *row : ui.speaker_rows) delete row;
+  for (MediaSpeakerRowState *row : ui.speaker_rows) {
+    media_control_cancel_speaker_action(row, "speaker view closed");
+    delete row;
+  }
   std::vector<MediaSpeakerRowState *>().swap(ui.speaker_rows);
   std::vector<std::string>().swap(ui.speaker_helper_members);
   std::vector<std::string>().swap(ui.speaker_subscription_entities);
