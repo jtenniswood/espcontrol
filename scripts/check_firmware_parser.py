@@ -202,6 +202,8 @@ int main() {
   assert(row_span == 3 && col_span == 1);
   grid_token_spans('x', row_span, col_span);
   assert(row_span == 1 && col_span == 3);
+  grid_token_spans('p', row_span, col_span);
+  assert(row_span == 4 && col_span == 3);
   grid_token_spans('q', row_span, col_span);
   assert(row_span == 3 && col_span == 3);
   grid_token_spans('h', row_span, col_span);
@@ -457,6 +459,11 @@ int main() {
   assert(cover_art.precision == "");
   assert(cover_art.options == "");
   assert(media_cover_art_enabled(cover_art));
+  auto cover_art_details = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;cover_art_action=control_modal,cover_art_details");
+  assert(media_cover_art_enabled(cover_art_details));
+  assert(media_cover_art_details_enabled(cover_art_details));
+  assert(media_cover_art_press_action(cover_art_details) == "control_modal");
+  assert(cover_art_details.options == "cover_art_action=control_modal,cover_art_details");
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");
@@ -617,6 +624,12 @@ int main() {
   assert(brightness_schedule_times(false, true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
   assert(rise_h == 6 && rise_m == 30 && set_h == 21 && set_m == 5);
   assert(!brightness_schedule_times(false, true, 7, 15, 20, 45, "bad", "25:00", rise_h, rise_m, set_h, set_m));
+  assert(screen_schedule_night_active("sensor", true, false, false, 0, 6, 23));
+  assert(!screen_schedule_night_active("sensor", true, true, false, 0, 6, 23));
+  assert(screen_schedule_night_active("sensor", true, true, false, 0, 6, 23, "Sensor On"));
+  assert(!screen_schedule_night_active("sensor", true, false, false, 0, 6, 23, "Sensor On"));
+  assert(screen_schedule_normal_active("sensor", true, false, false, 0, 6, 23, "Sensor On"));
+  assert(!screen_schedule_normal_active("sensor", true, true, false, 0, 6, 23, "Sensor On"));
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;

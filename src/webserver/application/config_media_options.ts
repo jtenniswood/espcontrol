@@ -50,10 +50,15 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
             return playlistOut;
         }
         if (mode === "cover_art") {
+            var coverArtOut: any = "";
             var action: any = normalizeMediaCoverArtAction(configOptionValue(options, MEDIA_COVER_ART_ACTION_OPTION));
-            return action === "control_modal"
-                ? setConfigOptionValue("", MEDIA_COVER_ART_ACTION_OPTION, action)
-                : "";
+            if (action === "control_modal") {
+                coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_COVER_ART_ACTION_OPTION, action);
+            }
+            if (configOptionEnabled(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
+                coverArtOut = setConfigOption(coverArtOut, MEDIA_COVER_ART_DETAILS_OPTION, true);
+            }
+            return coverArtOut;
         }
         if (mode !== "volume" && mode !== "position")
             return "";
@@ -79,6 +84,16 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
             return "";
         var normalized: any = normalizeMediaCoverArtAction(value);
         b.options = setConfigOptionValue(b.options, MEDIA_COVER_ART_ACTION_OPTION, normalized === "play_pause" ? "" : normalized);
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
+    }
+    function mediaCoverArtDetailsEnabled(this: any, b?: any) {
+        return !!(b && configOptionEnabled(b.options, MEDIA_COVER_ART_DETAILS_OPTION));
+    }
+    function setMediaCoverArtDetailsEnabled(this: any, b?: any, enabled?: any) {
+        if (!b)
+            return "";
+        b.options = setConfigOption(b.options, MEDIA_COVER_ART_DETAILS_OPTION, !!enabled);
         b.options = normalizeMediaOptions(b.options, b.sensor);
         return b.options;
     }
@@ -167,6 +182,8 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         "normalizeMediaCoverArtAction": staticGlobal(normalizeMediaCoverArtAction),
         "mediaCoverArtAction": staticGlobal(mediaCoverArtAction),
         "setMediaCoverArtAction": staticGlobal(setMediaCoverArtAction),
+        "mediaCoverArtDetailsEnabled": staticGlobal(mediaCoverArtDetailsEnabled),
+        "setMediaCoverArtDetailsEnabled": staticGlobal(setMediaCoverArtDetailsEnabled),
         "normalizeMediaLabelDisplayMode": staticGlobal(normalizeMediaLabelDisplayMode),
         "normalizeMediaNumberDisplayMode": staticGlobal(normalizeMediaNumberDisplayMode),
         "mediaVolumeMax": staticGlobal(mediaVolumeMax),

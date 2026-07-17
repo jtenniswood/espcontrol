@@ -52,7 +52,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     screensaverTimeoutLimitsLoaded: false, homeScreenTimeout: 60, brightnessDayVal: 100,
     brightnessNightVal: 75, automaticBrightnessEnabled: true, brightnessDawnTime: "06:00",
     brightnessDuskTime: "18:00", scheduleTrigger: "disabled", _scheduleTriggerReceived: false,
-    scheduleEnabled: false, scheduleOnHour: 6, scheduleOffHour: 23, scheduleMode: "screen_off",
+    scheduleEnabled: false, scheduleSensorActivation: "off", scheduleOnHour: 6, scheduleOffHour: 23, scheduleMode: "screen_off",
     scheduleWakeTimeout: 60, scheduleWakeBrightness: 10, scheduleDimmedBrightness: 10,
     scheduleClockBrightness: 10, scheduleClockTextColor: "FFFFFF", timezone: AUTO_TIMEZONE_OPTION,
     activeTimezone: FALLBACK_TIMEZONE_OPTION, timezoneOptions: defaultTimezoneOptionsForDevice(deviceConfig),

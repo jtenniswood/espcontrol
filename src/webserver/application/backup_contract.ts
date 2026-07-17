@@ -24,8 +24,28 @@ export function installBackupContractModule(): GlobalDescriptors {
     function normalizeBackupConfig(this: any, data?: any) {
         return _backupFeature.normalizeBackupConfig(data);
     }
+    function backupUnsupportedCardError(button: any) {
+        var type: any = button && button.type || "";
+        var label: any = type ? type.replace(/_/g, " ") : "switch";
+        var err: any = new Error("This controller does not support the " + label + " card type in this backup.");
+        err.backupMessage = err.message;
+        return err;
+    }
+    function assertBackupButtonSupported(button: any) {
+        if (buttonConfigDisabledForDevice(button))
+            throw backupUnsupportedCardError(button);
+    }
+    function assertBackupCardsSupported(plan: any) {
+        (plan.config.buttons || []).forEach(assertBackupButtonSupported);
+        for (var subpageKey in plan.config.subpages || {}) {
+            var subpage: any = parseSubpageConfig(plan.config.subpages[subpageKey]);
+            (subpage.buttons || []).forEach(assertBackupButtonSupported);
+        }
+    }
     function planBackupImport(this: any, data?: any, targetDevice?: any) {
-        return _backupFeature.planBackupImport(data, targetDevice);
+        var plan: any = _backupFeature.planBackupImport(data, targetDevice);
+        assertBackupCardsSupported(plan);
+        return plan;
     }
     return {
         "_backupFeature": liveGlobal(() => _backupFeature, (value?: any) => { _backupFeature = value; }),

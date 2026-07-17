@@ -22,6 +22,7 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
     function syncScreenScheduleUi(this: any) {
         state.scheduleTrigger = normalizeScheduleTrigger(state.scheduleTrigger, state.scheduleEnabled);
         state.scheduleEnabled = state.scheduleTrigger !== "disabled";
+        state.scheduleSensorActivation = normalizeScheduleSensorActivation(state.scheduleSensorActivation);
         state.scheduleOnHour = normalizeHour(state.scheduleOnHour, 6);
         state.scheduleOffHour = normalizeHour(state.scheduleOffHour, 23);
         state.scheduleMode = normalizeScheduleMode(state.scheduleMode);
@@ -56,6 +57,9 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
         if (els.setScheduleMode) {
             setSelectValue(els.setScheduleMode, state.scheduleMode, scheduleModeOption(state.scheduleMode));
         }
+        if (els.setScheduleSensorActivation) {
+            setSelectValue(els.setScheduleSensorActivation, state.scheduleSensorActivation, scheduleSensorActivationOption(state.scheduleSensorActivation));
+        }
         setSelectValue(els.setScheduleWakeTimeout, state.scheduleWakeTimeout, formatDuration(state.scheduleWakeTimeout));
         if (els.setScheduleWakeBrightness) {
             els.setScheduleWakeBrightness.value = state.scheduleWakeBrightness;
@@ -88,7 +92,10 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             els.setScheduleTimes.className = "sp-schedule-times" + (state.scheduleTrigger === "time" ? "" : " sp-hidden");
         }
         if (els.setScheduleSensor) {
-            els.setScheduleSensor.className = "sp-schedule-times" + (state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
+            els.setScheduleSensor.className = "sp-schedule-times sp-schedule-sensor" + (state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
+        }
+        if (els.setScheduleActions) {
+            els.setScheduleActions.className = "sp-schedule-times" + (state.scheduleTrigger === "time" || state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
         }
         if (els.setScheduleBadge) {
             els.setScheduleBadge.className = "sp-card-badge" + (state.scheduleEnabled ? "" : " sp-hidden");

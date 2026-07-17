@@ -81,6 +81,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 brightness_dusk_time: normalizeTimeOfDay(state.brightnessDuskTime, "18:00"),
                 schedule_trigger: normalizeScheduleTrigger(state.scheduleTrigger, state.scheduleEnabled),
                 schedule_enabled: !!state.scheduleEnabled,
+                schedule_sensor_activation: normalizeScheduleSensorActivation(state.scheduleSensorActivation),
                 schedule_on_hour: normalizeHour(state.scheduleOnHour, 6),
                 schedule_off_hour: normalizeHour(state.scheduleOffHour, 23),
                 schedule_mode: normalizeScheduleMode(state.scheduleMode),
@@ -338,6 +339,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                         scheduleDimmedBrightness: state.scheduleDimmedBrightness,
                         scheduleClockBrightness: state.scheduleClockBrightness,
                         scheduleClockTextColor: state.scheduleClockTextColor,
+                        scheduleSensorActivation: state.scheduleSensorActivation,
                     });
                     state.brightnessDayVal = importedScreenSettings.brightnessDayVal;
                     state.brightnessNightVal = importedScreenSettings.brightnessNightVal;
@@ -346,6 +348,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.brightnessDuskTime = importedScreenSettings.brightnessDuskTime;
                     state.scheduleTrigger = importedScreenSettings.scheduleTrigger;
                     state.scheduleEnabled = importedScreenSettings.scheduleEnabled;
+                    state.scheduleSensorActivation = importedScreenSettings.scheduleSensorActivation;
                     state.scheduleOnHour = importedScreenSettings.scheduleOnHour;
                     state.scheduleOffHour = importedScreenSettings.scheduleOffHour;
                     state.scheduleMode = importedScreenSettings.scheduleMode;
@@ -360,6 +363,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postBrightnessDawnTime(state.brightnessDawnTime);
                     postBrightnessDuskTime(state.brightnessDuskTime);
                     postScreenScheduleTrigger(state.scheduleTrigger);
+                    postScreenScheduleSensorActivation(state.scheduleSensorActivation);
                     postScreenScheduleOnHour(state.scheduleOnHour);
                     postScreenScheduleOffHour(state.scheduleOffHour);
                     postScreenScheduleMode(state.scheduleMode);

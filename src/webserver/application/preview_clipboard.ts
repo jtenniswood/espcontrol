@@ -76,6 +76,10 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
             throw cardTransferError("This controller does not support the " +
                 cardTransferTypeLabel(type) + " card type.");
         }
+        if (buttonConfigDisabledForDevice(normalized)) {
+            throw cardTransferError("This controller does not support the " +
+                cardTransferTypeLabel(type) + " card type.");
+        }
         if (inSubpage && type === "subpage") {
             throw cardTransferError("Subpage cards cannot be placed inside another subpage.");
         }
@@ -132,7 +136,14 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
         if (orderedSlots.length > NUM_SLOTS) {
             throw cardTransferError("A copied subpage has more cards than this controller can display.");
         }
-        var targetSizes: any = cloneSizeMap(requestedSizes);
+        var targetSizes: any = {};
+        for (var requestedSlot in requestedSizes) {
+            var requestedSlotNumber: any = parseInt(requestedSlot, 10);
+            var requestedButton: any = requestedSlotNumber > 0
+                ? parsed.buttons[requestedSlotNumber - 1]
+                : {};
+            targetSizes[requestedSlot] = normalizeCardSizeForConfig(requestedButton, requestedSizes[requestedSlot]);
+        }
         var placementOrder: any = layoutSlots.length <= NUM_SLOTS ? layoutSlots : orderedSlots;
         var targetGrid: any = placeOrderedGridEntries(placementOrder, targetSizes, NUM_SLOTS);
         var placed: any = {};
@@ -181,9 +192,13 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
     }
     function clipboardEntriesFromCardTransfer(envelope: any, targetIsSubpage: any) {
         var entries: any = [];
-        var warnings: any = { local: false, subpageResized: false };
+        var warnings: any = { local: false, cardResized: false, subpageResized: false };
         envelope.cards.forEach(function (transfer: any) {
             var button: any = validateCardTransferButton(transfer, targetIsSubpage, warnings);
+            var requestedSize: any = transfer.size || 1;
+            var normalizedSize: any = normalizeCardSizeForConfig(button, requestedSize);
+            if (normalizedSize !== requestedSize)
+                warnings.cardResized = true;
             var entry: any = {
                 entity: button.entity,
                 label: button.label,
@@ -194,7 +209,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
                 type: button.type || "",
                 precision: button.precision || "",
                 options: button.options || "",
-                size: transfer.size || 1,
+                size: normalizedSize,
                 subpageConfig: null,
             };
             if (transfer.subpage) {
@@ -534,7 +549,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
                 closeCardTransferDialog();
                 var message: any = result.count === 1 ? "Card pasted." : result.count + " cards pasted.";
                 var warning: any = false;
-                if (result.resized) {
+                if (result.resized || converted.warnings.cardResized) {
                     message += " Some were resized to fit.";
                     warning = true;
                 }
@@ -561,6 +576,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
         "buildClipboardEntry": staticGlobal(buildClipboardEntry),
         "copySlot": staticGlobal(copySlot),
         "copyButtons": staticGlobal(copyButtons),
+        "clipboardEntriesFromCardTransfer": staticGlobal(clipboardEntriesFromCardTransfer),
         "cutSlot": staticGlobal(cutSlot),
         "cutButtons": staticGlobal(cutButtons),
         "showCopyCardCode": staticGlobal(showCopyCardCode),

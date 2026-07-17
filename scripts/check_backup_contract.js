@@ -11,11 +11,12 @@ const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
 
-function loadHooks() {
+function loadHooks(search = "") {
+  const params = new URLSearchParams(search);
   const sandbox = {
     __ESPCONTROL_TEST_HOOKS__: {},
     console: { log() {}, warn() {}, error() {} },
-    location: { search: "" },
+    location: { search },
     URLSearchParams,
     setTimeout,
     clearTimeout,
@@ -26,6 +27,8 @@ function loadHooks() {
       addEventListener() {},
     },
   };
+  const device = params.get("device");
+  if (device) sandbox.__ESPCONTROL_DEVICE_PROFILE__ = device;
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
@@ -58,6 +61,7 @@ function throwsBackupMessage(fn, expected) {
 }
 
 const hooks = loadHooks();
+const s3Hooks = loadHooks("?device=guition-esp32-s3-4848s040");
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -283,6 +287,41 @@ assert.strictEqual(
   structuredCrossDevicePlan.subpages["1"].buttons[0].label,
   "Relax",
   "structured subpage cross-device import keeps readable object content"
+);
+
+const unsupportedImageBackup = {
+  version: 2,
+  format: hooks.BACKUP_FORMAT,
+  device: "panel-a",
+  button_order: "1",
+  buttons: [{ type: "image", entity: "camera.front_door", label: "Front Door" }],
+};
+throwsBackupMessage(
+  () => s3Hooks.planBackupImport(unsupportedImageBackup, {
+    device: "guition-esp32-s3-4848s040",
+    slots: 9,
+  }),
+  "This controller does not support the image card type in this backup."
+);
+throwsBackupMessage(
+  () => s3Hooks.planBackupImport({
+    version: 2,
+    format: hooks.BACKUP_FORMAT,
+    device: "panel-a",
+    button_order: "1",
+    buttons: [{ type: "subpage", label: "Cameras" }],
+    subpage_objects: {
+      1: {
+        order: ["1", "B"],
+        back_label: "Back",
+        buttons: [{ type: "image", entity: "camera.front_door", label: "Front Door" }],
+      },
+    },
+  }, {
+    device: "guition-esp32-s3-4848s040",
+    slots: 9,
+  }),
+  "This controller does not support the image card type in this backup."
 );
 
 throwsBackupMessage(

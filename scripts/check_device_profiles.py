@@ -73,6 +73,14 @@ def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str,
         )
 
 
+def test_constrained_s3_supports_one_cover_art_card(profiles: dict[str, dict]) -> None:
+    profile = profiles["guition-esp32-s3-4848s040"]
+    disabled = set(web_config(profile).get("disabledCardTypes", []))
+    assert image_slot_capacity(profile) == 1, "S3 must provide one low-memory artwork slot"
+    assert "image" in disabled, "S3 must keep general Image cards unavailable"
+    assert "media_cover_art" not in disabled, "S3 must expose Media Cover Art cards"
+
+
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
     expected = public_device_capabilities()
     actual = read_json(DEVICE_CAPABILITIES_JSON)
@@ -94,11 +102,18 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
         assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
         assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
         assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
-        image_capacity_text = (
-            "Not supported"
-            if capability["imageSlots"] == 0
-            else f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
-        )
+        image_card_types = capability.get("imageCardTypes", [])
+        if capability["imageSlots"] == 0 or not image_card_types:
+            image_capacity_text = "Not supported"
+        elif image_card_types == ["media_cover_art"]:
+            image_capacity_text = (
+                f'Up to {capability["imageSlots"]} Media Cover Art card' +
+                ("" if capability["imageSlots"] == 1 else "s")
+            )
+        else:
+            image_capacity_text = (
+                f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
+            )
         assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
         assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
         relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
@@ -616,6 +631,7 @@ def main() -> int:
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
+    test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()

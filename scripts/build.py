@@ -3474,11 +3474,13 @@ def gen_device_grid_snippet(capability):
     relay_text = "No built-in relays" if relays == 0 else f"{relays} built-in relay" + ("" if relays == 1 else "s")
     ethernet = "Yes, manual ESPHome install only" if capability.get("ethernetManualInstall") else "No"
     image_slots = capability["imageSlots"]
-    image_slot_text = (
-        "Not supported"
-        if image_slots == 0
-        else f"Up to {image_slots} simultaneous Image or Media Cover Art cards"
-    )
+    image_card_types = capability.get("imageCardTypes", [])
+    if image_slots == 0 or not image_card_types:
+        image_slot_text = "Not supported"
+    elif image_card_types == ["media_cover_art"]:
+        image_slot_text = f"Up to {image_slots} Media Cover Art card" + ("" if image_slots == 1 else "s")
+    else:
+        image_slot_text = f"Up to {image_slots} simultaneous Image or Media Cover Art cards"
     if capability.get("subpages", True):
         layout_text = (
             f"The home screen uses a **{rows}-row x {cols}-column** grid, giving you "

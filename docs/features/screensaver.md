@@ -50,13 +50,32 @@ Presence wakes the panel from those dimmed, clock, or display-off states. When t
 Switching back to Timer keeps the sensor name saved, so you can return to Sensor mode later without typing it in again.
 
 ::: tip
-Touching the screen always wakes it up, no matter which mode you're using.
+Touching the screen or pressing its **Screen: Wake** button in Home Assistant always wakes it up, no matter which screensaver mode you're using.
 :::
+
+## Wake from Home Assistant
+
+Every panel exposes a stateless **Screen: Wake** button in Home Assistant. Pressing it behaves like touching the sleeping panel: it wakes a dimmed, clock, display-off, cover-art, or manually sleeping screen and restarts the normal inactivity timers. If the screen is already awake, it extends the active period without changing the page or pressing a card.
+
+You can use the button in an automation, for example to wake the panel when a door opens:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: button.press
+    target:
+      entity_id: button.your_panel_screen_wake
+```
+
+Replace the example entity IDs with your own door sensor and the panel's **Screen: Wake** entity. Home Assistant assigns the final button entity ID, so select the entity from the automation editor rather than relying on the example name.
 
 ## Screen Schedule
 
 The [screen schedule](/features/screen-schedule) is separate from the screensaver. Use it when you want the panel to be fully dark, dimmed, or showing a clock overnight.
 
-When Night Schedule is using fixed **Time** hours, it has priority over screensaver sensor wake during night time. The screensaver presence sensor still keeps the panel awake and wakes it during normal daytime operation, but it does not override scheduled night time. Tap wake still works, and uses the temporary wake settings from the screen schedule.
+When Night Schedule is using fixed **Time** hours, it has priority over screensaver sensor wake during night time. The screensaver presence sensor still keeps the panel awake and wakes it during normal daytime operation, but it does not override scheduled night time. Touch and Home Assistant button wake still work, using the temporary wake settings from the screen schedule.
 
 If you want presence to control when the panel is in night mode, set Night Schedule to **Sensor** mode instead of **Time** mode.

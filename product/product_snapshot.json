@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 82,
+    "entityNames": 84,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -82,6 +82,8 @@
           "padding": 1.37,
           "iconSize": 4.69,
           "labelSize": 1.8,
+          "coverArtTitleSize": 7.421875,
+          "coverArtArtistSize": 3.90625,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -109,6 +111,8 @@
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
           "mediaControlTitle": "font_cover_art_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
@@ -274,6 +278,8 @@
           "padding": 2.73,
           "iconSize": 14,
           "labelSize": 5.5,
+          "coverArtTitleSize": 7.375,
+          "coverArtArtistSize": 5,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -301,6 +307,8 @@
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
           "mediaControlTitle": "font_cover_art_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
@@ -462,6 +470,8 @@
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
+          "coverArtTitleSize": 6.875,
+          "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -489,6 +499,8 @@
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
           "mediaControlTitle": "font_cover_art_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
@@ -649,6 +661,8 @@
           "padding": 1.41,
           "iconSize": 4.1,
           "labelSize": 1.88,
+          "coverArtTitleSize": 6.875,
+          "coverArtArtistSize": 3.125,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -676,6 +690,8 @@
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
           "mediaControlTitle": "font_cover_art_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
@@ -836,6 +852,8 @@
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 3.96,
+          "coverArtTitleSize": 14.583333,
+          "coverArtArtistSize": 8.333333,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -863,6 +881,8 @@
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
           "mediaControlTitle": "font_media_control_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
@@ -975,7 +995,7 @@
       "slug": "guition-esp32-s3-4848s040",
       "slots": 9,
       "capabilities": {
-        "imageSlots": 0
+        "imageSlots": 1
       },
       "public": {
         "name": "Guition 4848S040",
@@ -1019,7 +1039,8 @@
         "dragMode": "displace",
         "dragAnimation": true,
         "disabledCardTypes": [
-          "weather_forecast"
+          "weather_forecast",
+          "image"
         ],
         "screen": {
           "width": "55%",
@@ -1044,6 +1065,8 @@
           "padding": 2.92,
           "iconSize": 9.58,
           "labelSize": 3.96,
+          "coverArtTitleSize": 14.583333,
+          "coverArtArtistSize": 8.333333,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -1071,6 +1094,8 @@
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
           "mediaControlTitle": "font_media_control_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
           "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
@@ -4229,6 +4254,20 @@
             ]
           },
           {
+            "name": "cover_art_details",
+            "label": "Show Track Details",
+            "kind": "flag",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "equals",
+                "value": "cover_art"
+              }
+            ]
+          },
+          {
             "name": "volume_max",
             "label": "Maximum Volume",
             "kind": "number",
@@ -4391,6 +4430,7 @@
             "label_display",
             "number_display",
             "cover_art_action",
+            "cover_art_details",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",
@@ -5693,6 +5733,15 @@
         "name": "Restart"
       },
       {
+        "key": "screen_wake",
+        "domain": "button",
+        "name": "Screen: Wake",
+        "objectIds": [
+          "screen__wake",
+          "screen_wake"
+        ]
+      },
+      {
         "key": "indoor_temp_enable",
         "domain": "switch",
         "name": "Indoor Temp Enable",
@@ -6185,6 +6234,19 @@
           "screen__schedule_trigger",
           "screen_schedule_trigger",
           "schedule_trigger"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_schedule_sensor_activation",
+        "domain": "select",
+        "name": "Screen: Schedule Sensor Activation",
+        "objectIds": [
+          "screen__schedule_sensor_activation",
+          "screen_schedule_sensor_activation",
+          "schedule_sensor_activation"
         ],
         "groups": [
           "settings"

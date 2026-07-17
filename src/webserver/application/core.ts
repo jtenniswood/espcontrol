@@ -82,6 +82,8 @@ export function installCore(): GlobalDescriptors {
             r.removeProperty("--btn-border");
         r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
         r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+        r.setProperty("--media-cover-title", scaledCqw(btn.coverArtTitleSize, scale));
+        r.setProperty("--media-cover-artist", scaledCqw(btn.coverArtArtistSize, scale));
         r.setProperty("--btn-label-weight", String(btn.labelWeight || 400));
         r.setProperty("--btn-lines", String(btn.labelLines || 1));
         r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
