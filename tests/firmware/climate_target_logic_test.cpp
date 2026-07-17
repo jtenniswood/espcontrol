@@ -10,7 +10,6 @@ int main() {
   using espcontrol::climate::command_kind;
   using espcontrol::climate::capability_change_invalidates_pending;
   using espcontrol::climate::constrain_range_target;
-  using espcontrol::climate::handle_selection_at_point;
   using espcontrol::climate::target_from_arc_angle;
   using espcontrol::climate::target_kind;
   using espcontrol::climate::target_selection_for_mode;
@@ -50,17 +49,6 @@ int main() {
   assert(target_selection_for_mode("auto") == TargetSelection::RETAIN);
   assert(target_selection_for_mode("heat_cool") == TargetSelection::RETAIN);
   assert(target_selection_for_mode("off") == TargetSelection::RETAIN);
-
-  // A range drag must begin on one of the visible handles. Touches elsewhere
-  // on the arc are ignored, and overlapping hit areas choose the nearest one.
-  assert(handle_selection_at_point(100, 200, 100, 200, 300, 200, 30) ==
-    TargetSelection::LOW);
-  assert(handle_selection_at_point(300, 200, 100, 200, 300, 200, 30) ==
-    TargetSelection::HIGH);
-  assert(handle_selection_at_point(200, 200, 100, 200, 300, 200, 30) ==
-    TargetSelection::RETAIN);
-  assert(handle_selection_at_point(290, 210, 100, 200, 300, 200, 30) ==
-    TargetSelection::HIGH);
 
   // The direct drag path follows the 270-degree climate arc clockwise from
   // 135 degrees (minimum) to 45 degrees (maximum).
