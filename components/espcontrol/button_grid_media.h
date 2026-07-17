@@ -3052,7 +3052,11 @@ inline void media_control_clear_tab_content() {
   std::vector<MediaSpeakerRowState *>().swap(ui.speaker_rows);
   std::vector<std::string>().swap(ui.speaker_helper_members);
   std::vector<std::string>().swap(ui.speaker_subscription_entities);
-  if (ui.content_box) lv_obj_clean(ui.content_box);
+  if (ui.content_box) {
+    lv_obj_clean(ui.content_box);
+    lv_obj_set_layout(ui.content_box, LV_LAYOUT_NONE);
+    lv_obj_set_style_pad_row(ui.content_box, 0, LV_PART_MAIN);
+  }
   ui.controls_box = nullptr;
   ui.progress_box = nullptr;
   ui.volume_box = nullptr;
