@@ -92,6 +92,18 @@ constexpr TargetSelection handle_selection_at_point(int point_x, int point_y,
     ? TargetSelection::HIGH : TargetSelection::LOW;
 }
 
+constexpr int target_from_arc_angle(int angle_degrees, int minimum, int maximum) {
+  if (maximum <= minimum) return minimum;
+  int angle = angle_degrees % 360;
+  if (angle < 0) angle += 360;
+  int progress = 0;
+  if (angle <= 45) progress = angle + 225;
+  else if (angle < 135) progress = angle < 90 ? 270 : 0;
+  else progress = angle - 135;
+  const int64_t span = static_cast<int64_t>(maximum) - minimum;
+  return minimum + static_cast<int>((span * progress + 135) / 270);
+}
+
 constexpr int clamp(int value, int minimum, int maximum) {
   return value < minimum ? minimum : (value > maximum ? maximum : value);
 }

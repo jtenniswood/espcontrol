@@ -11,6 +11,7 @@ int main() {
   using espcontrol::climate::capability_change_invalidates_pending;
   using espcontrol::climate::constrain_range_target;
   using espcontrol::climate::handle_selection_at_point;
+  using espcontrol::climate::target_from_arc_angle;
   using espcontrol::climate::target_kind;
   using espcontrol::climate::target_selection_for_mode;
   using espcontrol::climate::target_values_complete;
@@ -60,6 +61,15 @@ int main() {
     TargetSelection::RETAIN);
   assert(handle_selection_at_point(290, 210, 100, 200, 300, 200, 30) ==
     TargetSelection::HIGH);
+
+  // The direct drag path follows the 270-degree climate arc clockwise from
+  // 135 degrees (minimum) to 45 degrees (maximum).
+  assert(target_from_arc_angle(135, 100, 400) == 100);
+  assert(target_from_arc_angle(270, 100, 400) == 250);
+  assert(target_from_arc_angle(45, 100, 400) == 400);
+  assert(target_from_arc_angle(0, 100, 400) == 350);
+  assert(target_from_arc_angle(100, 100, 400) == 100);
+  assert(target_from_arc_angle(80, 100, 400) == 400);
 
   // Low and high remain at least one configured step apart.
   assert(constrain_range_target(760, false, 650, 750, 500, 900, 10) == 740);
