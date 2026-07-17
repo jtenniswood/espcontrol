@@ -395,6 +395,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                             helpers.saveField("options", b.options);
                         }
                         helpers.saveField("sensor", b.sensor);
+                        renderPreview();
                         renderButtonSettings();
                     },
                 }),

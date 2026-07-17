@@ -2280,6 +2280,7 @@ async function assertSpeakerGroupEditorAndPreview(page, label) {
   const helper = page.locator("#sp-inp-speaker-group-entity");
   await helper.waitFor({ state: "visible" });
   assert(await page.getByText("Compatible Speakers Group", { exact: true }).isVisible(), `${label}: speaker helper field should render`);
+  await page.waitForSelector('.sp-main [data-slot="4"].sp-media-group-active');
   assert(await page.locator('.sp-main [data-slot="4"].sp-media-group-active').count(), `${label}: speaker group preview should use active styling`);
   assert.strictEqual(await page.locator('.sp-main [data-slot="4"] .sp-media-group-count').textContent(), "3", `${label}: speaker group preview should show a member count`);
   await helper.fill("");

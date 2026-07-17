@@ -234,6 +234,7 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
 inline void media_control_refresh_speakers(MediaControlCtx *ctx);
+inline size_t media_control_group_size(MediaControlCtx *ctx);
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct);
 inline int media_control_volume_max_pct(MediaControlCtx *ctx);
 inline int media_control_clamp_volume(MediaControlCtx *ctx, int pct);
@@ -1080,7 +1081,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   }
 
   set_card_checked_state(ctx->btn, ctx->available &&
-    (ctx->group_only ? ctx->group_members.size() > 1
+    (ctx->group_only ? media_control_group_size(ctx) > 1
                      : ctx->highlight_playing && ctx->playing));
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();

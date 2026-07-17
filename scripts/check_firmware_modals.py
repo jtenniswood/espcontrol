@@ -1261,7 +1261,7 @@ def valid_modal_tab_layout_files() -> dict[str, str]:
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_media.h": (
-            "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)\n"
+            "control_modal_calc_tab_layout(layout, media_control_tab_count, true)\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);\n"
             "control_modal_calc_content_layout(\n"
