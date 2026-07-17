@@ -630,9 +630,14 @@ script:
   - id: screensaver_presence_wake
     mode: restart
     then:
+      - script.execute: screen_schedule_check
+      - script.wait: screen_schedule_check
       - if:
           condition:
-            lambda: 'return id(screensaver_mode).state == "sensor";'
+            lambda: |-
+              return id(screensaver_mode).state == "sensor" &&
+                     !screen_schedule_sensor_trigger(
+                         id(screen_schedule_trigger).state);
           then:
             - globals.set: { id: screensaver_sensor_sleep_pending, value: 'false' }
             - if:
@@ -650,9 +655,14 @@ script:
   - id: screensaver_presence_sleep
     mode: restart
     then:
+      - script.execute: screen_schedule_check
+      - script.wait: screen_schedule_check
       - if:
           condition:
-            lambda: 'return id(screensaver_mode).state == "sensor";'
+            lambda: |-
+              return id(screensaver_mode).state == "sensor" &&
+                     !screen_schedule_sensor_trigger(
+                         id(screen_schedule_trigger).state);
           then:
             - script.execute: screensaver_sleep_sensor
 

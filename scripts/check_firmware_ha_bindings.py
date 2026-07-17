@@ -2353,6 +2353,14 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             )
         if typed_presence_wake and "id(cover_art_screensaver_active)" in wake_body:
             errors.append(f"{rel}: leave active cover art unchanged on presence detection")
+        if typed_presence_wake:
+            reconcile_index = wake_body.find("script.execute: screen_schedule_check")
+            sensor_guard_index = wake_body.find("screen_schedule_sensor_trigger(")
+            wake_action_index = wake_body.find("script.execute: screensaver_wake")
+            if not (0 <= reconcile_index < sensor_guard_index < wake_action_index):
+                errors.append(
+                    f"{rel}: reconcile sensor-triggered night schedule before presence wake behavior"
+                )
         if controller_presence_wake and (
             "target_mode_is(\n                          espcontrol::DisplayMode::COVER_ART)" not in wake_body
             or "script.execute: screensaver_wake" not in wake_body
@@ -2375,6 +2383,18 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             schedule_check_index != -1 and disabled_wake_index < schedule_check_index
         )):
             errors.append(f"{rel}: let sensor screensaver wake when the screen schedule is disabled")
+
+    presence_sleep_body = yaml_script_body(text, "screensaver_presence_sleep")
+    if presence_sleep_body is None:
+        errors.append(f"{rel}: missing screensaver_presence_sleep script")
+    else:
+        reconcile_index = presence_sleep_body.find("script.execute: screen_schedule_check")
+        sensor_guard_index = presence_sleep_body.find("screen_schedule_sensor_trigger(")
+        sleep_action_index = presence_sleep_body.find("script.execute: screensaver_sleep_sensor")
+        if not (0 <= reconcile_index < sensor_guard_index < sleep_action_index):
+            errors.append(
+                f"{rel}: reconcile sensor-triggered night schedule before presence sleep behavior"
+            )
 
     return errors
 
@@ -5845,6 +5865,18 @@ def run_self_test() -> int:
         "                      (int) id(schedule_off_hour).state);\n"
         "                then:\n"
         "            - script.execute: screensaver_wake\n"
+        "  - id: screensaver_presence_sleep\n"
+        "    then:\n"
+        "      - script.execute: screen_schedule_check\n"
+        "      - script.wait: screen_schedule_check\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(screensaver_mode).state == \"sensor\" &&\n"
+        "                     !screen_schedule_sensor_trigger(\n"
+        "                         id(screen_schedule_trigger).state);\n"
+        "          then:\n"
+        "            - script.execute: screensaver_sleep_sensor\n"
         "  - id: backlight_schedule_display_off\n"
         "    then:\n"
         "      - script.stop: cover_art_delay_timer\n"
@@ -5871,6 +5903,8 @@ def run_self_test() -> int:
     )
     typed_presence_wake = valid_schedule_screensaver_override.replace(
         "            - script.execute: screensaver_wake\n",
+        "            - script.execute: screen_schedule_check\n"
+        "            - lambda: 'return !screen_schedule_sensor_trigger(id(screen_schedule_trigger).state);'\n"
         "            - lambda: 'return espcontrol::presence_can_wake_display(transition);'\n"
         "            - script.execute: screensaver_wake\n"
         "            - script.execute: display_mode_clear_automatic\n",
