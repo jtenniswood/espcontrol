@@ -35,12 +35,15 @@ inline void media_group_append_unique(std::vector<std::string> &out,
   if (std::find(out.begin(), out.end(), entity_id) == out.end()) out.push_back(entity_id);
 }
 
-inline std::vector<std::string> media_group_parse_entity_list(const std::string &raw) {
+inline std::vector<std::string> media_group_parse_entity_list(const char *raw,
+                                                              size_t raw_size) {
   std::vector<std::string> out;
+  if (!raw || raw_size == 0) return out;
   std::string token;
   char quote = 0;
   bool escaped = false;
-  for (char ch : raw) {
+  for (size_t i = 0; i < raw_size; i++) {
+    char ch = raw[i];
     if (escaped) {
       token.push_back(ch);
       escaped = false;
@@ -65,6 +68,10 @@ inline std::vector<std::string> media_group_parse_entity_list(const std::string 
   }
   media_group_append_unique(out, token);
   return out;
+}
+
+inline std::vector<std::string> media_group_parse_entity_list(const std::string &raw) {
+  return media_group_parse_entity_list(raw.data(), raw.size());
 }
 
 inline uint64_t media_group_parse_supported_features(const std::string &raw) {

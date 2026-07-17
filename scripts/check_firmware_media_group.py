@@ -101,6 +101,14 @@ int main() {
     "[\"media_player.office\", bad, sensor.temperature, media_player.office]") ==
     std::vector<std::string>{"media_player.office"}));
   assert(media_group_parse_entity_list("not a list").empty());
+  std::string long_list = "[";
+  for (int i = 0; i < 12; i++) {
+    if (i != 0) long_list += ",";
+    long_list += "media_player.speaker_" + std::to_string(i);
+  }
+  long_list += "]";
+  assert(long_list.size() > 96);
+  assert(media_group_parse_entity_list(long_list.data(), long_list.size()).size() == 12);
   assert(!media_group_valid_entity_id("light.office"));
   assert(!media_group_valid_entity_id("media_player.bad-name"));
 
@@ -122,6 +130,12 @@ int main() {
   assert(media_group_mean_volume(volumes, &mean) && mean == 25);
   assert((media_group_delta_volumes(volumes, 35, 100) == std::vector<int>{20, 35, 50}));
   assert((media_group_delta_volumes(volumes, 100, 45) == std::vector<int>{30, 45, 45}));
+  std::vector<MediaGroupVolumeState> above_max = {
+    {"media_player.one", 80, true, true},
+    {"media_player.two", 20, true, true},
+  };
+  assert(media_group_mean_volume(above_max, &mean) && mean == 50);
+  assert((media_group_delta_volumes(above_max, 40, 50) == std::vector<int>{50, 10}));
   volumes[1].volume_known = false;
   assert(!media_group_mean_volume(volumes, &mean));
   assert(media_group_delta_volumes(volumes, 35, 100).empty());

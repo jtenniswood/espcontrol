@@ -157,6 +157,37 @@ void cancellation_is_safe_during_callback() {
           "callback cancellation was not deferred safely");
 }
 
+void reusable_subscriptions_rebind_without_transport_growth() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u << 4;
+  int first_calls = 0;
+  int second_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "volume_level",
+              [&](std::string) { first_calls++; }, scope, true),
+          "reusable subscription should register");
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.retained_subscription_count() == 1,
+          "reusable subscription did not create one transport wrapper");
+  coordinator.transport().publish(0, "0.25");
+  coordinator.reset_subscriptions(scope);
+  require(coordinator.subscription_count() == 0 &&
+              coordinator.retained_subscription_count() == 1,
+          "reusable reset should retain only the inert transport wrapper");
+  coordinator.transport().publish(0, "0.50");
+  require(first_calls == 1, "released reusable callback still received state");
+  require(coordinator.subscribe(
+              "media_player.room", "volume_level",
+              [&](std::string) { second_calls++; }, scope, true),
+          "reusable subscription should rebind");
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.subscription_count() == 1,
+          "reopening a reusable subscription grew the transport list");
+  coordinator.transport().publish(0, "0.75");
+  require(first_calls == 1 && second_calls == 1,
+          "rebound reusable callback did not receive state exactly once");
+}
+
 void stale_generations_do_not_deliver() {
   Coordinator coordinator;
   int calls = 0;
@@ -192,6 +223,7 @@ int main() {
   duplicate_reads_fan_out_once();
   reentrant_reads_are_deferred();
   cancellation_is_safe_during_callback();
+  reusable_subscriptions_rebind_without_transport_growth();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
   return EXIT_SUCCESS;

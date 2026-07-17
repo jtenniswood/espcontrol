@@ -238,10 +238,12 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or "for (const auto &callback : *callback_refs)" not in read_boundary_text
     ):
         errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-    if "subscriptions_.push_back({callback_ref, scope})" not in coordinator_text:
+    if "subscriptions_.push_back({entity_id, attribute, callback_ref, scope, reusable})" not in coordinator_text:
         errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
     if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
         errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
+    if "ref.entity_id != entity_id" not in coordinator_text or "*ref.callback = std::move(callback)" not in coordinator_text:
+        errors.append(f"{rel}: reuse released modal subscription wrappers without transport growth")
 
     return errors
 
@@ -1404,6 +1406,55 @@ def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Pa
             or f'std::string("{attr}")' not in progress_helper
         ):
             errors.append(f"{rel}: full media modal builds should still subscribe {attr}")
+    return errors
+
+
+def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    required = (
+        (
+            "media_group_parse_entity_list(value.c_str(), value.size())",
+            "parse complete Home Assistant speaker lists without a fixed-size copy",
+        ),
+        (
+            "if (!row->pending) row->selected =",
+            "preserve pending speaker selections until Home Assistant responds",
+        ),
+        (
+            "std::min(row->volume_pct, media_control_volume_max_pct(ctx))",
+            "clamp only the displayed slider while retaining actual speaker volume",
+        ),
+        (
+            "ha_subscribe_state_reusable",
+            "reuse modal-scoped speaker state subscriptions",
+        ),
+        (
+            "ha_subscribe_attribute_reusable",
+            "reuse modal-scoped speaker attribute subscriptions",
+        ),
+        (
+            "media_control_ensure_speaker_helper_subscription(ctx);",
+            "start helper tracking when grouping support arrives after the modal opens",
+        ),
+        (
+            "media_control_sync_speaker_candidates",
+            "synchronize speaker rows when the helper inventory changes",
+        ),
+        (
+            "lv_obj_del(row->row)",
+            "delete speaker rows removed from the helper inventory",
+        ),
+    )
+    for token, message in required:
+        if token not in text:
+            errors.append(f"{rel}: {message}")
+    if text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 2:
+        errors.append(f"{rel}: parse both current members and helper candidates without truncation")
     return errors
 
 
@@ -2985,6 +3036,7 @@ def run_scan() -> int:
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_group_lifecycle_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))

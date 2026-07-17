@@ -27,7 +27,14 @@ class HaReadCoordinator {
   uint32_t generation() const { return generation_; }
   uint32_t &generation_ref() { return generation_; }
   size_t deferred_count() const { return deferred_.size(); }
-  size_t subscription_count() const { return subscriptions_.size(); }
+  size_t subscription_count() const {
+    size_t count = 0;
+    for (const SubscriptionRef &ref : subscriptions_) {
+      if (ref.callback && *ref.callback) count++;
+    }
+    return count;
+  }
+  size_t retained_subscription_count() const { return subscriptions_.size(); }
 
   bool get(const std::string &entity_id,
            const std::string &attribute,
@@ -48,10 +55,22 @@ class HaReadCoordinator {
   bool subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback,
-                 uint32_t scope) {
+                 uint32_t scope,
+                 bool reusable = false) {
     if (!available() || entity_id.empty() || !callback) return false;
+    if (reusable) {
+      for (SubscriptionRef &ref : subscriptions_) {
+        if (!ref.reusable || ref.entity_id != entity_id ||
+            ref.attribute != attribute || ref.scope != scope ||
+            !ref.callback || *ref.callback) {
+          continue;
+        }
+        *ref.callback = std::move(callback);
+        return true;
+      }
+    }
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
-    subscriptions_.push_back({callback_ref, scope});
+    subscriptions_.push_back({entity_id, attribute, callback_ref, scope, reusable});
     transport_.subscribe(
         entity_id, attribute,
         [this, callback_ref](State state) { invoke(callback_ref, state); });
@@ -109,8 +128,11 @@ class HaReadCoordinator {
   };
 
   struct SubscriptionRef {
+    std::string entity_id;
+    std::string attribute;
     std::shared_ptr<Callback> callback;
     uint32_t scope = 0;
+    bool reusable = false;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
@@ -178,7 +200,7 @@ class HaReadCoordinator {
       SubscriptionRef &ref = subscriptions_[read_index];
       if (scope == 0 || (ref.scope & scope) != 0) {
         if (ref.callback && *ref.callback) *ref.callback = nullptr;
-        continue;
+        if (!ref.reusable) continue;
       }
       if (write_index != read_index) subscriptions_[write_index] = std::move(ref);
       write_index++;
