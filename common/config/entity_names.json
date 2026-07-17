@@ -60,6 +60,7 @@
     { "key": "screen_automatic_brightness", "domain": "switch", "name": "Screen: Automatic Brightness", "objectIds": ["screen__automatic_brightness"], "groups": ["settings"] },
     { "key": "screen_schedule_enabled", "domain": "switch", "name": "Screen: Schedule Enabled", "objectIds": ["screen__schedule_enabled"], "groups": ["settings"] },
     { "key": "screen_schedule_trigger", "domain": "text", "name": "Screen: Schedule Trigger", "objectIds": ["screen__schedule_trigger", "screen_schedule_trigger", "schedule_trigger"], "groups": ["settings"] },
+    { "key": "screen_schedule_sensor_activation", "domain": "select", "name": "Screen: Schedule Sensor Activation", "objectIds": ["screen__schedule_sensor_activation", "screen_schedule_sensor_activation", "schedule_sensor_activation"], "groups": ["settings"] },
     { "key": "screen_schedule_mode", "domain": "select", "name": "Screen: Schedule Mode", "objectIds": ["screen__schedule_mode"], "groups": ["settings"] },
     { "key": "screen_schedule_on_hour", "domain": "number", "name": "Screen: Schedule On Hour", "objectIds": ["screen__schedule_on_hour"], "groups": ["settings"] },
     { "key": "screen_schedule_off_hour", "domain": "number", "name": "Screen: Schedule Off Hour", "objectIds": ["screen__schedule_off_hour"], "groups": ["settings"] },

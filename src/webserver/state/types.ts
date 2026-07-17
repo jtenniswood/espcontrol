@@ -138,6 +138,7 @@ export interface AppState {
   scheduleTrigger: string;
   _scheduleTriggerReceived: boolean;
   scheduleEnabled: boolean;
+  scheduleSensorActivation: string;
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;

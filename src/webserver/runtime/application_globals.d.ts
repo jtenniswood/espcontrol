@@ -129,6 +129,7 @@ declare global {
   var SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_DIMMED_BRIGHTNESS_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_MODE_UNAVAILABLE: any;
+  var SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_TRIGGER_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_UNAVAILABLE: any;
   var SCREEN_SCHEDULE_WAKE_BRIGHTNESS_UNAVAILABLE: any;
@@ -752,6 +753,7 @@ declare global {
   var normalizeScheduleClockBrightness: any;
   var normalizeScheduleDimmedBrightness: any;
   var normalizeScheduleMode: any;
+  var normalizeScheduleSensorActivation: any;
   var normalizeScheduleTrigger: any;
   var normalizeScheduleWakeBrightness: any;
   var normalizeScheduleWakeTimeout: any;
@@ -853,6 +855,7 @@ declare global {
   var postScreenScheduleMode: any;
   var postScreenScheduleOffHour: any;
   var postScreenScheduleOnHour: any;
+  var postScreenScheduleSensorActivation: any;
   var postScreenScheduleTrigger: any;
   var postScreenScheduleWakeBrightness: any;
   var postScreenScheduleWakeTimeout: any;
@@ -954,6 +957,7 @@ declare global {
   var scheduleFirmwareWebOtaFallback: any;
   var scheduleMigration: any;
   var scheduleModeOption: any;
+  var scheduleSensorActivationOption: any;
   var scheduleRender: any;
   var scheduleSliderSubpageMigration: any;
   var screenRotationSortValue: any;

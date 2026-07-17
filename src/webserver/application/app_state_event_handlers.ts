@@ -226,6 +226,10 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.scheduleEnabled = state.scheduleTrigger !== "disabled";
                 syncScreenScheduleUi();
             },
+            "select-screen__schedule_sensor_activation": function (this: any, val?: any, d?: any) {
+                state.scheduleSensorActivation = normalizeScheduleSensorActivation(d.value || val);
+                syncScreenScheduleUi();
+            },
             "number-screen__schedule_on_hour": function (this: any, val?: any) {
                 state.scheduleOnHour = normalizeHour(val, 6);
                 syncScreenScheduleUi();

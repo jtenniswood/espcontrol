@@ -107,6 +107,7 @@ export function runStateContractTests(): void {
     homeAssistantArtworkProtocol: "select-home_assistant_artwork_protocol",
     homeAssistantArtworkPort: "number-home_assistant_artwork_port",
     scheduleTrigger: "text-screen__schedule_trigger",
+    scheduleSensorActivation: "select-screen__schedule_sensor_activation",
     scheduleWakeTimeout: "number-screen__schedule_wake_timeout",
     scheduleWakeBrightness: "number-screen__schedule_wake_brightness",
     scheduleDimmedBrightness: "number-screen__schedule_dimmed_brightness",

@@ -1441,7 +1441,8 @@ script:
                        now.is_valid(),
                        now.is_valid() ? now.hour : 0,
                        (int) id(schedule_on_hour).state,
-                       (int) id(schedule_off_hour).state);
+                       (int) id(schedule_off_hour).state,
+                       id(screen_schedule_sensor_activation).current_option());
           then:
             - logger.log:
                 level: DEBUG
@@ -1628,7 +1629,8 @@ script:
                   now.is_valid(),
                   now.is_valid() ? now.hour : 0,
                   (int) id(schedule_on_hour).state,
-                  (int) id(schedule_off_hour).state);
+                  (int) id(schedule_off_hour).state,
+                  id(screen_schedule_sensor_activation).current_option());
               return espcontrol::cover_art::display_allowed(
                        id(cover_art_screensaver_enabled).state,
                        id(cover_art_media_playing),
@@ -2357,7 +2359,8 @@ script:
                   now.is_valid(),
                   now.is_valid() ? now.hour : 0,
                   (int) id(schedule_on_hour).state,
-                  (int) id(schedule_off_hour).state);
+                  (int) id(schedule_off_hour).state,
+                  id(screen_schedule_sensor_activation).current_option());
               return espcontrol::cover_art::feature_allowed(
                   id(cover_art_screensaver_enabled).state,
                   !id(cover_art_media_player_entity).state.empty(),

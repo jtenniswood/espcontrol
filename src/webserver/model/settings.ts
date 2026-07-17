@@ -101,6 +101,15 @@ export function normalizeScheduleTrigger(value: unknown, scheduleEnabled = false
   return scheduleEnabled ? "time" : "disabled";
 }
 
+export function normalizeScheduleSensorActivation(value: unknown): string {
+  const activation = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
+  return activation === "on" || activation === "sensor_on" ? "on" : "off";
+}
+
+export function scheduleSensorActivationOption(value: unknown): string {
+  return normalizeScheduleSensorActivation(value) === "on" ? "Sensor On" : "Sensor Off";
+}
+
 export function normalizeScreensaverAction(value: unknown): string {
   const action = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
   if (action === "screen_dimmed" || action === "dimmed" || action === "dim") return "dim";
@@ -163,6 +172,7 @@ export interface BackupScreenSettingsState {
   brightnessDuskTime: string;
   scheduleTrigger: string;
   scheduleEnabled: boolean;
+  scheduleSensorActivation: string;
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;
@@ -198,6 +208,11 @@ export function normalizeBackupScreenSettings(
     brightnessDuskTime: normalizeTimeOfDay(screenSettings.brightness_dusk_time, "18:00"),
     scheduleTrigger,
     scheduleEnabled: scheduleTrigger !== "disabled",
+    scheduleSensorActivation: normalizeScheduleSensorActivation(
+      objectValue(screenSettings, "schedule_sensor_activation") != null
+        ? screenSettings.schedule_sensor_activation
+        : current.scheduleSensorActivation,
+    ),
     scheduleOnHour: normalizeHour(screenSettings.schedule_on_hour, 6),
     scheduleOffHour: normalizeHour(screenSettings.schedule_off_hour, 23),
     scheduleMode: normalizeScheduleMode(screenSettings.schedule_mode),

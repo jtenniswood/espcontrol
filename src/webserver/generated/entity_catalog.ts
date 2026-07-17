@@ -366,6 +366,15 @@ export const ENTITY_CATALOG = {
         "schedule_trigger"
       ]
     },
+    "screen_schedule_sensor_activation": {
+      "domain": "select",
+      "name": "Screen: Schedule Sensor Activation",
+      "objectIds": [
+        "screen__schedule_sensor_activation",
+        "screen_schedule_sensor_activation",
+        "schedule_sensor_activation"
+      ]
+    },
     "screen_schedule_mode": {
       "domain": "select",
       "name": "Screen: Schedule Mode",
@@ -621,6 +630,7 @@ export const ENTITY_CATALOG = {
       "screen_automatic_brightness",
       "screen_schedule_enabled",
       "screen_schedule_trigger",
+      "screen_schedule_sensor_activation",
       "screen_schedule_mode",
       "screen_schedule_on_hour",
       "screen_schedule_off_hour",

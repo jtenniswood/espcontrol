@@ -2135,6 +2135,7 @@ function backupFixture(device, slots) {
       brightness_night: 55,
       automatic_brightness: false,
       schedule_enabled: true,
+      schedule_sensor_activation: "on",
       schedule_on_hour: 7,
       schedule_off_hour: 22,
       schedule_mode: "clock",
@@ -3334,6 +3335,7 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const sensorField = card.locator("#sp-set-schedule-presence");
   const sensorSection = card.locator(".sp-schedule-sensor");
   const sensorFieldLabel = card.getByText("Sensor Entity", { exact: true });
+  const sensorActivation = card.locator("#sp-set-schedule-sensor-activation");
   const actions = card.locator("#sp-set-schedule-actions");
   const actionSelect = card.locator("#sp-set-schedule-mode");
   const wakeTimeout = card.locator("#sp-set-schedule-wake-timeout");
@@ -3359,6 +3361,11 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     await sensorField.isVisible(),
     false,
     `${label}: Time mode should hide the sensor field`,
+  );
+  assert.strictEqual(
+    await sensorActivation.isVisible(),
+    false,
+    `${label}: Time mode should hide the sensor activation field`,
   );
   assert(await actions.isVisible(), `${label}: Time mode should show night action controls`);
   assert(await wakeTimeout.isVisible(), `${label}: Screen Off should show wake controls`);
@@ -3423,6 +3430,12 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     "Sensor Entity",
     `${label}: Sensor mode should use the sensor entity field prompt`,
   );
+  assert(await sensorActivation.isVisible(), `${label}: Sensor mode should show the sensor activation field`);
+  assert.strictEqual(
+    await sensorActivation.inputValue(),
+    "off",
+    `${label}: Sensor mode should default to activating when the sensor is off`,
+  );
   assert(await actions.isVisible(), `${label}: Sensor mode should show night action controls`);
   assert.strictEqual(
     await actionSelect.inputValue(),
@@ -3431,6 +3444,25 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   );
   assert(await clockBrightness.isVisible(), `${label}: Sensor clock should show brightness`);
   assert(await clockTextColor.isVisible(), `${label}: Sensor clock should show its text colour`);
+
+  before = posts.length;
+  await sensorActivation.selectOption("on");
+  await waitForPost(
+    posts,
+    {
+      domain: "select",
+      name: "screen__schedule_sensor_activation",
+      action: "set",
+      option: "Sensor On",
+    },
+    `${label}: Sensor mode posts the selected activation state`,
+    before,
+  );
+  assert.strictEqual(
+    await sensorActivation.inputValue(),
+    "on",
+    `${label}: Sensor activation choice should remain selected`,
+  );
 
   before = posts.length;
   await sensorField.fill("binary_sensor.all_lights_on");

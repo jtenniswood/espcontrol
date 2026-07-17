@@ -101,6 +101,7 @@ export {
   normalizeScheduleClockBrightness,
   normalizeScheduleDimmedBrightness,
   normalizeScheduleMode,
+  normalizeScheduleSensorActivation,
   normalizeScheduleTrigger,
   normalizeScheduleWakeBrightness,
   normalizeScheduleWakeTimeout,
@@ -109,6 +110,7 @@ export {
   normalizeTemperatureUnit,
   normalizeTimeOfDay,
   scheduleModeOption,
+  scheduleSensorActivationOption,
   screensaverActionOption,
 } from "./settings";
 

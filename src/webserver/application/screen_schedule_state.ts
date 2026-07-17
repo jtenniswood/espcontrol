@@ -22,6 +22,7 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
     function syncScreenScheduleUi(this: any) {
         state.scheduleTrigger = normalizeScheduleTrigger(state.scheduleTrigger, state.scheduleEnabled);
         state.scheduleEnabled = state.scheduleTrigger !== "disabled";
+        state.scheduleSensorActivation = normalizeScheduleSensorActivation(state.scheduleSensorActivation);
         state.scheduleOnHour = normalizeHour(state.scheduleOnHour, 6);
         state.scheduleOffHour = normalizeHour(state.scheduleOffHour, 23);
         state.scheduleMode = normalizeScheduleMode(state.scheduleMode);
@@ -55,6 +56,9 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             els.setScheduleOffHour.value = String(state.scheduleOffHour);
         if (els.setScheduleMode) {
             setSelectValue(els.setScheduleMode, state.scheduleMode, scheduleModeOption(state.scheduleMode));
+        }
+        if (els.setScheduleSensorActivation) {
+            setSelectValue(els.setScheduleSensorActivation, state.scheduleSensorActivation, scheduleSensorActivationOption(state.scheduleSensorActivation));
         }
         setSelectValue(els.setScheduleWakeTimeout, state.scheduleWakeTimeout, formatDuration(state.scheduleWakeTimeout));
         if (els.setScheduleWakeBrightness) {

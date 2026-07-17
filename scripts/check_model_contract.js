@@ -408,6 +408,8 @@ assert.strictEqual(model.normalizeCoverArtDelay(0), 3, "legacy immediate cover a
 assert.strictEqual(model.normalizeCoverArtDelay(60), 60, "valid cover art delay remains unchanged");
 assert.strictEqual(model.normalizeCoverArtDelay(900), 300, "cover art delay clamps to the supported maximum");
 assert.strictEqual(model.normalizeScheduleClockBrightness(0), 10, "schedule clock brightness fallback");
+assert.strictEqual(model.normalizeScheduleSensorActivation("Sensor On"), "on", "schedule sensor activation accepts on");
+assert.strictEqual(model.normalizeScheduleSensorActivation("unexpected"), "off", "schedule sensor activation defaults off");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assistant artwork port accepts custom port");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(0), 1, "Home Assistant artwork port clamps low values");
@@ -420,6 +422,7 @@ assert.deepStrictEqual(
     brightness_dawn_time: "5:30",
     brightness_dusk_time: "21:05",
     schedule_enabled: true,
+    schedule_sensor_activation: "Sensor On",
     schedule_on_hour: 7,
     schedule_off_hour: 22,
     schedule_mode: "clock",
@@ -438,6 +441,7 @@ assert.deepStrictEqual(
     brightnessDuskTime: "21:05",
     scheduleTrigger: "time",
     scheduleEnabled: true,
+    scheduleSensorActivation: "on",
     scheduleOnHour: 7,
     scheduleOffHour: 22,
     scheduleMode: "clock",

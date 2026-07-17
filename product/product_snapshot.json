@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 82,
+    "entityNames": 83,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -6185,6 +6185,19 @@
           "screen__schedule_trigger",
           "screen_schedule_trigger",
           "schedule_trigger"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_schedule_sensor_activation",
+        "domain": "select",
+        "name": "Screen: Schedule Sensor Activation",
+        "objectIds": [
+          "screen__schedule_sensor_activation",
+          "screen_schedule_sensor_activation",
+          "schedule_sensor_activation"
         ],
         "groups": [
           "settings"

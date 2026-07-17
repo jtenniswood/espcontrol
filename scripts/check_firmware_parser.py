@@ -617,6 +617,12 @@ int main() {
   assert(brightness_schedule_times(false, true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
   assert(rise_h == 6 && rise_m == 30 && set_h == 21 && set_m == 5);
   assert(!brightness_schedule_times(false, true, 7, 15, 20, 45, "bad", "25:00", rise_h, rise_m, set_h, set_m));
+  assert(screen_schedule_night_active("sensor", true, false, false, 0, 6, 23));
+  assert(!screen_schedule_night_active("sensor", true, true, false, 0, 6, 23));
+  assert(screen_schedule_night_active("sensor", true, true, false, 0, 6, 23, "Sensor On"));
+  assert(!screen_schedule_night_active("sensor", true, false, false, 0, 6, 23, "Sensor On"));
+  assert(screen_schedule_normal_active("sensor", true, false, false, 0, 6, 23, "Sensor On"));
+  assert(!screen_schedule_normal_active("sensor", true, true, false, 0, 6, 23, "Sensor On"));
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;

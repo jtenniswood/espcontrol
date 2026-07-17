@@ -71,6 +71,7 @@ substitutions:
   entity_screen_automatic_brightness: "Screen: Automatic Brightness"
   entity_screen_schedule_enabled: "Screen: Schedule Enabled"
   entity_screen_schedule_trigger: "Screen: Schedule Trigger"
+  entity_screen_schedule_sensor_activation: "Screen: Schedule Sensor Activation"
   entity_screen_schedule_mode: "Screen: Schedule Mode"
   entity_screen_schedule_on_hour: "Screen: Schedule On Hour"
   entity_screen_schedule_off_hour: "Screen: Schedule Off Hour"
