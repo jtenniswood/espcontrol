@@ -250,6 +250,7 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_climate_control_driver.h"
 #include "button_grid_alarm_driver.h"
 #include "button_grid_media_driver.h"
+#include "button_grid_legacy_compatibility_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -287,6 +288,15 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
     if (!child || card_slot_static_child(s, child)) continue;
     lv_obj_del(child);
   }
+}
+
+inline void clear_unsupported_card_slot_visuals(BtnSlot &s) {
+  // Slot widgets persist across dashboard reloads. An unsupported replacement
+  // must not keep showing the icon, label, or value from the previous card.
+  if (s.icon_lbl) lv_label_set_text(s.icon_lbl, "");
+  if (s.text_lbl) lv_label_set_text(s.text_lbl, "");
+  if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, "");
+  if (s.unit_lbl) lv_label_set_text(s.unit_lbl, "");
 }
 
 inline bool info_only_hidden_card_type(const espcontrol::cards::Context &context) {
@@ -431,11 +441,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto family = context.family;
-  if (context.legacy_dispatch) {
-    ESP_LOGD("card_runtime", "Legacy setup fallback: surface=%s type=%s driver=%u",
-             context.surface == espcontrol::cards::Surface::SUBPAGE ? "subpage" : "main",
-             p.type.c_str(), static_cast<unsigned>(context.runtime.driver));
-  }
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
   espcontrol::cards::sensor_driver_cleanup(s, p, context);
@@ -465,6 +470,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  // A previous unsupported or information-only config may have disabled this
+  // persistent button. Restore the default before the current driver applies
+  // its own interaction policy.
+  lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   set_subpage_chevron_visible(
     s, family == espcontrol::cards::Family::SUBPAGE && cfg.subpage_chevrons_enabled,
     cfg.subpage_chevron_x, cfg.subpage_chevron_y,
@@ -476,7 +485,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
 
-  screen_lock_register_controlled_button(s.btn);
+  if (context.known) screen_lock_register_controlled_button(s.btn);
 
   if (espcontrol::cards::image_driver_setup_visual(s, p, context)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
@@ -577,21 +586,14 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::navigation_driver_refresh_layout(s, p, context, cfg);
     return;
   }
-  if (family == espcontrol::cards::Family::TODO) {
-    setup_todo_card(s, p, palette.off_val);
-    if (large_number_square_card_layout(row_span, col_span) &&
-        card_large_numbers_active_for_layout(p, row_span, col_span) &&
-        display_large_sensor_font(display)) {
-      apply_large_sensor_number_style(
-        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
-    }
+  if (espcontrol::cards::legacy_compatibility_driver_setup_visual(
+        s, p, context, palette, display, row_span, col_span)) {
     return;
   }
-  if (card_runtime_uses_slider_visual(context)) {
-    setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
-    return;
-  }
-  setup_toggle_visual(s, p);
+  clear_unsupported_card_slot_visuals(s);
+  ESP_LOGW("card_runtime", "Unsupported card type has no visual driver: type=%s",
+           p.type.c_str());
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
 }
 
 inline bool bind_basic_sensor_card(
@@ -1507,10 +1509,8 @@ inline void grid_phase2(
 
     ParsedCfg p = parse_cfg(scfg);
     const auto context = card_runtime_context(p);
-    const auto family = context.family;
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
-    bool is_1x1_card = card_span_is_single(row_span, col_span);
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (espcontrol::cards::image_driver_bind_main(
@@ -1567,71 +1567,10 @@ inline void grid_phase2(
     navigation_state.icon_on = &icon_on_cp[idx - 1];
     if (espcontrol::cards::navigation_driver_bind_main(
           s, p, context, navigation_state)) continue;
-    if (family == espcontrol::cards::Family::TODO) {
-      if (!p.entity.empty()) {
-        TodoCardCtx *ctx = create_todo_card_context(
-          s, p,
-          has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          off_val,
-          large_number_square_card_layout(row_span, col_span) &&
-              card_large_numbers_active_for_layout(p, row_span, col_span) &&
-              display_large_sensor_font(display)
-            ? display_large_sensor_font(display) : display_sensor_font(display),
-          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          display_media_title_font_or(
-            display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
-          display_icon_font(display),
-          display_main_width_percent(display),
-          is_1x1_card);
-        grid_track_runtime_allocation(s.btn, ctx);
-        subscribe_todo_state(ctx);
-        subscribe_todo_friendly_name(ctx);
-      }
-      continue;
-    }
-    if (p.entity.empty()) continue;
-
-    has_sensor[idx - 1] = !p.sensor.empty();
-    sensor_text_mode[idx - 1] = has_sensor[idx - 1] && p.precision == "text";
-
-    has_icon_on[idx - 1] = !p.icon_on.empty() && p.icon_on != "Auto";
-    if (has_icon_on[idx - 1])
-      icon_on_cp[idx - 1] = find_icon(p.icon_on.c_str());
-
-    const char* icon_cp = "\U000F0493";
-    if (p.icon.empty() || p.icon == "Auto") {
-      icon_cp = domain_default_icon(p.entity.substr(0, p.entity.find('.')));
-    } else {
-      icon_cp = find_icon(p.icon.c_str());
-    }
-    icon_off_cp[idx - 1] = icon_cp;
-
-    ToggleTextSensorCtx *text_sensor_ctx = nullptr;
-    if (sensor_text_mode[idx - 1]) {
-      text_sensor_ctx = grid_track_runtime_allocation(s.btn, new ToggleTextSensorCtx());
-      text_sensor_ctx->text_lbl = s.text_lbl;
-      text_sensor_ctx->steady_text = label_text_or_empty(s.text_lbl);
-    }
-
-    if (p.label.empty()) {
-      if (text_sensor_ctx)
-        subscribe_friendly_name(text_sensor_ctx, p.entity);
-      else
-        subscribe_friendly_name(s.text_lbl, p.entity);
-    }
-
-    subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
-      &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
-      &has_icon_on[idx - 1], &icon_off_cp[idx - 1], &icon_on_cp[idx - 1],
-      text_sensor_ctx, p.entity);
-
-    if (has_sensor[idx - 1]) {
-      if (sensor_text_mode[idx - 1])
-        subscribe_toggle_text_sensor_value(text_sensor_ctx, p.sensor);
-      else
-        subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
-          s.unit_lbl, p.unit);
-    }
+    if (espcontrol::cards::legacy_compatibility_driver_bind(
+          s, p, context, palette, display, row_span, col_span)) continue;
+    ESP_LOGE("card_runtime", "Card has no main-grid data driver: type=%s",
+             p.type.c_str());
   }
 
   if (cfg.info_only) return;
@@ -1769,7 +1708,6 @@ inline void grid_phase2(
       ParsedCfg sb_cfg = parsed_cfg_from_subpage_btn(sb);
       const auto context = card_runtime_context(
           sb_cfg, espcontrol::cards::Surface::SUBPAGE);
-      const auto family = context.family;
       int col, row;
       if (sp_ord.has_back_token) { col = gp % COLS; row = gp / COLS; }
       else { int op = gp + 1; col = op % COLS; row = op / COLS; }
@@ -1889,87 +1827,10 @@ inline void grid_phase2(
         };
       if (espcontrol::cards::access_cover_driver_bind_subpage(
             sub_slot, sb_cfg, context, access_cover_environment)) continue;
-      if (family == espcontrol::cards::Family::TODO) {
-        if (!sb_cfg.entity.empty()) {
-          TodoCardCtx *ctx = create_todo_card_context(
-            sub_slot, sb_cfg,
-            has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            off_val,
-            large_number_square_card_layout(rs, cs) &&
-                card_large_numbers_active_for_layout(sb_cfg, rs, cs) &&
-                display_large_sensor_font(display)
-              ? display_large_sensor_font(display) : display_sensor_font(display),
-            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            display_media_title_font_or(
-              display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
-            display_icon_font(display),
-            display_main_width_percent(display),
-            card_span_is_single(rs, cs));
-          grid_delete_with_owner(sb_btn, ctx);
-          subscribe_todo_state(ctx);
-          subscribe_todo_friendly_name(ctx);
-          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            TodoCardCtx *ctx = (TodoCardCtx *)lv_event_get_user_data(e);
-            if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
-          }, LV_EVENT_CLICKED, ctx);
-        }
-        continue;
-      }
-      if (!sb_cfg.entity.empty()) {
-        bool switch_has_sensor = !sb_cfg.sensor.empty();
-        bool switch_sensor_text_mode = switch_has_sensor && sb_cfg.precision == "text";
-        bool switch_has_icon_on = !sb_cfg.icon_on.empty() && sb_cfg.icon_on != "Auto";
-        const char *switch_icon_on = switch_has_icon_on ? find_icon(sb_cfg.icon_on.c_str()) : nullptr;
-        const char *switch_icon_off = (sb_cfg.icon.empty() || sb_cfg.icon == "Auto")
-          ? domain_default_icon(sb_cfg.entity.substr(0, sb_cfg.entity.find('.')))
-          : find_icon(sb_cfg.icon.c_str());
-
-        ToggleTextSensorCtx *switch_text_ctx = nullptr;
-        if (switch_sensor_text_mode) {
-          switch_text_ctx = grid_delete_with_owner(sb_btn, new ToggleTextSensorCtx());
-          switch_text_ctx->text_lbl = sub_slot.text_lbl;
-          switch_text_ctx->steady_text = label_text_or_empty(sub_slot.text_lbl);
-        }
-
-        if (sb_cfg.label.empty()) {
-          if (switch_text_ctx)
-            subscribe_friendly_name(switch_text_ctx, sb_cfg.entity);
-          else
-            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
-        }
-
-        bool *switch_has_sensor_ptr = grid_delete_with_owner(sb_btn, new bool(switch_has_sensor));
-        bool *switch_sensor_text_ptr = grid_delete_with_owner(sb_btn, new bool(switch_sensor_text_mode));
-        bool *switch_has_icon_on_ptr = grid_delete_with_owner(sb_btn, new bool(switch_has_icon_on));
-        const char **switch_icon_off_ptr = grid_delete_with_owner(sb_btn, new const char*(switch_icon_off));
-        const char **switch_icon_on_ptr = grid_delete_with_owner(sb_btn, new const char*(switch_icon_on));
-        subscribe_toggle_state(sub_slot.btn, sub_slot.icon_lbl, sub_slot.sensor_container,
-          switch_has_sensor_ptr, switch_sensor_text_ptr, switch_has_icon_on_ptr,
-          switch_icon_off_ptr, switch_icon_on_ptr, switch_text_ctx, sb_cfg.entity);
-
-        if (switch_has_sensor) {
-          if (switch_sensor_text_mode)
-            subscribe_toggle_text_sensor_value(switch_text_ctx, sb_cfg.sensor);
-          else
-            subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision),
-              sub_slot.unit_lbl, sb_cfg.unit);
-        }
-
-        add_parent_indicator(sb_cfg.entity);
-        ParsedCfg *click_ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
-        lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-          ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
-          lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-          if (!c || c->entity.empty()) return;
-          bool currently_on = target && lv_obj_has_state(target, LV_STATE_CHECKED);
-          if (switch_confirmation_required(*c, currently_on) && target &&
-              !is_button_entity(c->entity)) {
-            switch_confirmation_open_modal(*c, target, !currently_on);
-          } else {
-            send_toggle_action(c->entity);
-          }
-        }, LV_EVENT_CLICKED, click_ctx);
-      }
+      if (espcontrol::cards::legacy_compatibility_driver_bind(
+            sub_slot, sb_cfg, context, palette, display, rs, cs)) continue;
+      ESP_LOGE("card_runtime", "Card has no subpage data driver: type=%s",
+               sb_cfg.type.c_str());
     }
 
   }

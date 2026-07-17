@@ -145,8 +145,11 @@ main-grid and subpage visual setup, runtime binding, click dispatch, parent
 indicators, playback-consumer detachment, modal dismissal, timer cancellation,
 and allocation cleanup while retaining their specialised playback, artwork,
 playlist, progress, volume, Home Assistant, and modal implementations. This
-completes the reviewed rich-card migrations; narrow legacy fallback retirement
-remains a separate final stage.
+completes the reviewed rich-card migrations. The former catch-all firmware
+fallback is retired: canonical cards and supported aliases resolve through the
+generated metadata and shared drivers. Removed Todo cards remain readable only
+through the narrow legacy compatibility driver; unknown card types stay inert
+instead of being treated as switches.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and
@@ -305,11 +308,12 @@ order:
 4. Add firmware rendering/runtime behavior in
    `components/espcontrol/button_grid_<type>.h`.
 5. Include the new header from `components/espcontrol/button_grid.h`.
-6. While legacy dispatch remains active, assign the type to a `Family` in
-   `button_grid_card_registry.h`. When migrating it, add a shared lifecycle
-   driver that owns visual setup, data binding, interaction, layout, cleanup,
-   and main/subpage click dispatch. Surface-specific ownership or navigation
-   can remain in that driver's environment adapter.
+6. Assign the type to a `Family` in `button_grid_card_registry.h` and add a
+   shared lifecycle driver that owns visual setup, data binding, interaction,
+   layout, cleanup, and main/subpage click dispatch. Surface-specific ownership
+   or navigation can remain in that driver's environment adapter. Do not add a
+   catch-all card fallback; deliberate compatibility inputs require an explicit
+   compatibility boundary and fixtures.
 7. If firmware parsing must understand new fields or options, update
    `components/espcontrol/button_grid_config.h`.
 8. If the card opens a full-screen modal, add a `ControlModalKind` value and use

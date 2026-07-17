@@ -844,6 +844,8 @@ inline bool alarm_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool media_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool legacy_compatibility_driver_handle_main_click(
+    const Context &context, lv_obj_t *button);
 }
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -857,10 +859,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   ESP_LOGI("button", "Main button %d clicked: type=%s entity=%s mode=%s label=%s",
            slot_num, p.type.c_str(), p.entity.c_str(), p.sensor.c_str(), p.label.c_str());
   if (card_runtime_passive(context)) return;
-  if (context.legacy_dispatch) {
-    ESP_LOGD("card_runtime", "Legacy action fallback: type=%s driver=%u",
-             p.type.c_str(), static_cast<unsigned>(context.runtime.driver));
-  }
   if (espcontrol::cards::basic_action_driver_handle_main_click(
         context, p, slot_num, btn_obj)) return;
   if (espcontrol::cards::numeric_selectable_driver_handle_main_click(
@@ -885,18 +883,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
         context, p, btn_obj)) return;
   if (espcontrol::cards::media_driver_handle_main_click(
         context, p, btn_obj)) return;
-  if (p.type == "todo") {
-    TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
-  } else {
-    if (!p.entity.empty()) {
-      bool currently_on = btn_obj && lv_obj_has_state(btn_obj, LV_STATE_CHECKED);
-      if (switch_confirmation_required(p, currently_on) && btn_obj &&
-          !is_button_entity(p.entity)) {
-        switch_confirmation_open_modal(p, btn_obj, !currently_on);
-      } else {
-        send_toggle_action(p.entity);
-      }
-    }
-  }
+  if (espcontrol::cards::legacy_compatibility_driver_handle_main_click(
+        context, btn_obj)) return;
+  ESP_LOGE("card_runtime", "Card has no main-grid action driver: type=%s",
+           p.type.c_str());
 }

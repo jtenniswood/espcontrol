@@ -929,13 +929,35 @@ inline lv_coord_t image_card_media_artwork_target_width(ImageCardCtx *ctx, lv_co
     (static_cast<int64_t>(width) * percent + 50) / 100));
 }
 
+inline bool image_card_position_context_widget(ImageCardCtx *ctx,
+                                               lv_coord_t *target_width = nullptr,
+                                               lv_coord_t *target_height = nullptr) {
+  if (!ctx) return false;
+  lv_coord_t width = 0;
+  lv_coord_t height = 0;
+  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return false;
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_coord_t artwork_width = image_card_media_artwork_target_width(ctx, width);
+  uint32_t overscan = esphome::artwork_image::cover_alignment_edge_overscan(
+    artwork_width, height, width, height, LV_SCALE_NONE);
+  if (overscan > 0) lv_obj_set_width(ctx->widget, width + static_cast<lv_coord_t>(overscan));
+#endif
+  if (target_width) *target_width = width;
+  if (target_height) *target_height = height;
+  return true;
+}
+
 inline void image_card_apply_context_widget_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   lv_coord_t width = 0;
   lv_coord_t height = 0;
-  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
-  image_card_apply_widget_geometry(
-    ctx->btn, ctx->widget, ctx->image, image_card_media_artwork_target_width(ctx, width));
+  if (!image_card_position_context_widget(ctx, &width, &height)) return;
+  image_card_apply_tile_image_align(ctx->widget);
+  lv_obj_t *loading = image_card_loading_widget(ctx->widget);
+  image_card_position_widget(ctx->btn, loading);
+  image_card_refresh_loading_layout(loading);
+  ctx->image->set_target_size(image_card_media_artwork_target_width(ctx, width), height);
+  ctx->image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
 }
 
 inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
@@ -1605,7 +1627,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
   lv_coord_t height = 0;
   esphome::artwork_image::ImageResizeMode resize_mode =
     esphome::artwork_image::ImageResizeMode::COVER;
-  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  if (!image_card_position_context_widget(ctx, &width, &height)) return;
   lv_coord_t decode_width = image_card_media_artwork_target_width(ctx, width);
   lv_coord_t decode_height = height;
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
