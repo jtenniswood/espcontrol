@@ -895,6 +895,7 @@ async function assertSettingsPage(page, label, options = {}) {
     await page.evaluate(() => window.__seedEspState([
       { id: "text_sensor-esp32_c6__current_firmware", state: "2.12.8" },
       { id: "text_sensor-esp32_c6__latest_firmware", state: "2.12.9" },
+      { id: "switch-wifi_firmware__auto_update", state: "ON", value: true },
       { id: "button-firmware_esp32_c6__install_update", state: "" },
     ]));
     const wifiPanel = page.locator("#sp-fw-wifi-panel");
@@ -915,6 +916,11 @@ async function assertSettingsPage(page, label, options = {}) {
       ),
       ["2.12.8", "2.12.9"],
       `${label}: WiFi panel should show current and available versions`,
+    );
+    assert.strictEqual(
+      await wifiPanel.locator("#sp-set-c6-auto-update").isChecked(),
+      true,
+      `${label}: WiFi automatic updates should be enabled by default`,
     );
     assert.strictEqual(
       await firmwareCard

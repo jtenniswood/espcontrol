@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 84,
+    "entityNames": 85,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -6462,6 +6462,19 @@
           "firmware__update_frequency",
           "firmware_update_frequency",
           "update_frequency_select"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "esp32_c6_auto_update",
+        "domain": "switch",
+        "name": "WiFi Firmware: Auto Update",
+        "objectIds": [
+          "wifi_firmware__auto_update",
+          "wifi_firmware_auto_update",
+          "c6_auto_update_switch"
         ],
         "groups": [
           "settings"

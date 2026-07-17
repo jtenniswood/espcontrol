@@ -2768,6 +2768,20 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
     errors: list[str] = []
     if "UPDATE_STATE_UNKNOWN" not in text:
         errors.append(f"{rel}: keep the C6 update status unknown until ESPHome checks for updates")
+    if (
+        'name: "${entity_esp32_c6_auto_update}"' not in text
+        or "id: c6_auto_update_switch" not in text
+        or "restore_mode: RESTORE_DEFAULT_ON" not in text
+    ):
+        errors.append(f"{rel}: expose a persistent default-on C6 automatic update switch")
+    if (
+        "on_update_available:" not in text
+        or "switch.is_on: c6_auto_update_switch" not in text
+        or not re.search(r"(?ms)on_update_available:.*?update\.perform:\s*\n\s*id:\s*esp32_c6_update", text)
+    ):
+        errors.append(f"{rel}: automatically install available C6 firmware when enabled")
+    if not re.search(r"(?ms)on_turn_on:.*?update\.check:\s*\n\s*id:\s*esp32_c6_update", text):
+        errors.append(f"{rel}: check for C6 firmware immediately when automatic updates are enabled")
     latest_match = re.search(
         r"(?ms)id:\s*c6_update_latest_firmware\b(?P<body>.*?)(?:^button:|\Z)",
         text,

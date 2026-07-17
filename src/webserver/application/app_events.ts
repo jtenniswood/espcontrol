@@ -77,6 +77,13 @@ export function installAppEventsModule(): GlobalDescriptors {
                 setC6FirmwareUpdateAvailable(val);
                 return;
             }
+            if (isC6FirmwareAutoUpdateEvent(id, d)) {
+                state.c6FirmwareUpdateControlsSupported = true;
+                state.c6FirmwareAutoUpdateSupported = true;
+                state.c6FirmwareAutoUpdate = d.value === true || val === "ON";
+                syncC6FirmwareUi();
+                return;
+            }
             if (isC6FirmwareInstallButtonEvent(id, d)) {
                 state.c6FirmwareUpdateControlsSupported = true;
                 state.c6FirmwareInstallControlsSupported = true;

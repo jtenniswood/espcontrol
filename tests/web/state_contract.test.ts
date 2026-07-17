@@ -120,6 +120,7 @@ export function runStateContractTests(): void {
     ntpServer3: "text-screen__ntp_server_3",
     firmwareAutoUpdate: "switch-firmware__auto_update",
     firmwareUpdateFrequency: "select-firmware__update_frequency",
+    c6FirmwareAutoUpdate: "switch-wifi_firmware__auto_update",
   };
   for (const [group, canonical] of Object.entries(canonicals)) {
     handlers[canonical] = () => calls.push(group);

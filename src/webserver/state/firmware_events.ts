@@ -42,6 +42,9 @@ export function isC6FirmwareLatestEvent(id: string, event: EntityEvent): boolean
 export function isC6FirmwareUpdateAvailableEvent(id: string, event: EntityEvent): boolean {
   return matches(firmwareEventFields(id, event), "text_sensor/esp32-c6: update available", "text_sensor", "esp32-c6: update available", ["c6", "update", "available"]);
 }
+export function isC6FirmwareAutoUpdateEvent(id: string, event: EntityEvent): boolean {
+  return matches(firmwareEventFields(id, event), "switch/wifi firmware: auto update", "switch", "wifi firmware: auto update", ["wifi", "firmware", "auto", "update"]);
+}
 export function isC6FirmwareCheckButtonEvent(id: string, event: EntityEvent): boolean {
   return matches(firmwareEventFields(id, event), "button/firmware esp32-c6: check for update", "button", "firmware esp32-c6: check for update", ["c6", "check", "update"]);
 }
