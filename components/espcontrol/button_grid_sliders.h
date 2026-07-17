@@ -1191,6 +1191,20 @@ inline ControlModalLayout media_volume_step_button_layout(const ControlModalLayo
   return controls_layout;
 }
 
+// Move vertical card-slider endpoints away from the screen bezel without
+// shrinking the slider's touch area or its separate full-card fill overlay.
+inline lv_coord_t slider_vertical_edge_inset(lv_coord_t height) {
+  if (height <= 0) return 0;
+
+  lv_coord_t inset = (lv_coord_t)(((int32_t)height * 8 + 50) / 100);
+  if (inset < 8) inset = 8;
+  if (inset > 24) inset = 24;
+
+  lv_coord_t small_slider_limit = height / 4;
+  if (inset > small_slider_limit) inset = small_slider_limit;
+  return inset;
+}
+
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
   if (!slider || !btn) return;
   lv_coord_t bw = lv_obj_get_width(btn);
@@ -1205,6 +1219,9 @@ inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizonta
     lv_coord_t w = bw >= bh ? bh - 1 : bw;
     if (w < 1) w = 1;
     lv_obj_set_size(slider, w, bh);
+    lv_coord_t edge_inset = slider_vertical_edge_inset(bh);
+    lv_obj_set_style_pad_top(slider, edge_inset, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(slider, edge_inset, LV_PART_MAIN);
   }
   lv_obj_align(slider, LV_ALIGN_CENTER, 0, 0);
 }
