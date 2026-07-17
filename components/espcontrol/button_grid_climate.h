@@ -19,6 +19,7 @@ constexpr int CLIMATE_DEFAULT_MAX_TENTHS = 350;
 constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;
 constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;
 constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS = 450;
+constexpr uint32_t CLIMATE_MODAL_DRAG_DETAIL_INTERVAL_MS = 50;
 constexpr int CLIMATE_MODAL_ARC_SIZE_PERCENT = 88;
 constexpr int CLIMATE_MODAL_COMPACT_PORTRAIT_ARC_SIZE_PERCENT = 96;
 constexpr lv_coord_t CLIMATE_MODAL_ARC_UP_REF_PX = 30;
@@ -224,6 +225,15 @@ struct ClimateControlModalUi {
   int drag_preview_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   int drag_start_x = 0;
   int drag_start_y = 0;
+  bool drag_geometry_valid = false;
+  lv_coord_t drag_center_x = 0;
+  lv_coord_t drag_center_y = 0;
+  lv_coord_t drag_screen_center_x = 0;
+  lv_coord_t drag_screen_center_y = 0;
+  lv_coord_t drag_radius_x = 0;
+  lv_coord_t drag_radius_y = 0;
+  lv_coord_t drag_handle_size = 0;
+  uint32_t drag_last_detail_update_ms = 0;
   bool action_menu_open = false;
   ClimateControlTab tab = ClimateControlTab::TEMPERATURE;
 };
@@ -1044,29 +1054,80 @@ inline int climate_target_from_drag_point(ClimateControlCtx *ctx,
                                           const lv_point_t &point) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   if (!ctx || !ui.panel) return CLIMATE_DEFAULT_TARGET_TENTHS;
-  ControlModalLayout layout = climate_control_calc_layout(ctx);
-  lv_area_t panel_area;
-  lv_obj_get_coords(ui.panel, &panel_area);
-  int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
-  lv_coord_t visible_w = width_compensation_vertical_axis()
-    ? layout.arc_size : layout.arc_size * width_percent / 100;
-  lv_coord_t visible_h = width_compensation_vertical_axis()
-    ? layout.arc_size * width_percent / 100 : layout.arc_size;
-  const float radius_x = static_cast<float>(visible_w) / 2.0f;
-  const float radius_y = static_cast<float>(visible_h) / 2.0f;
-  if (radius_x <= 0.0f || radius_y <= 0.0f) return climate_selected_target(ctx);
-  const float arc_left = panel_area.x1 + layout.panel_w / 2.0f +
-    layout.arc_center_x - layout.arc_size / 2.0f;
-  const float arc_top = panel_area.y1 + layout.panel_h / 2.0f +
-    layout.arc_center_y - layout.arc_size / 2.0f;
-  const float center_x = arc_left + radius_x;
-  const float center_y = arc_top + radius_y;
-  const float normalized_x = (static_cast<float>(point.x) - center_x) / radius_x;
-  const float normalized_y = (static_cast<float>(point.y) - center_y) / radius_y;
-  int angle = static_cast<int>(std::lround(
-    std::atan2(normalized_y, normalized_x) * 180.0f / 3.14159265f));
+  if (!ui.drag_geometry_valid) {
+    ControlModalLayout layout = climate_control_calc_layout(ctx);
+    lv_area_t panel_area;
+    lv_obj_get_coords(ui.panel, &panel_area);
+    int width_percent = normalize_width_compensation_percent(
+      ctx->width_compensation_percent);
+    lv_coord_t radius = layout.arc_size / 2 - layout.arc_stroke / 2;
+    if (radius < 0) radius = layout.arc_size / 2;
+    lv_coord_t visible_w = layout.arc_size;
+    lv_coord_t visible_h = layout.arc_size;
+    ui.drag_radius_x = radius;
+    ui.drag_radius_y = radius;
+    if (width_compensation_vertical_axis()) {
+      ui.drag_radius_y = radius * width_percent / 100;
+      visible_h = layout.arc_size * width_percent / 100;
+    } else {
+      ui.drag_radius_x = radius * width_percent / 100;
+      visible_w = layout.arc_size * width_percent / 100;
+    }
+    lv_coord_t arc_left = layout.panel_w / 2 + layout.arc_center_x -
+      layout.arc_size / 2;
+    lv_coord_t arc_top = layout.panel_h / 2 + layout.arc_center_y -
+      layout.arc_size / 2;
+    ui.drag_center_x = arc_left + visible_w / 2;
+    ui.drag_center_y = arc_top + visible_h / 2;
+    ui.drag_screen_center_x = panel_area.x1 + ui.drag_center_x;
+    ui.drag_screen_center_y = panel_area.y1 + ui.drag_center_y;
+    lv_obj_t *handle = ctx->edit_high ? ui.high_handle_dot : ui.low_handle_dot;
+    ui.drag_handle_size = handle ? lv_obj_get_width(handle) : 0;
+    if (ui.drag_handle_size <= 0) {
+      lv_coord_t pad = layout.short_side < 520 ? 4 : 6;
+      ui.drag_handle_size = layout.arc_stroke + pad * 2;
+    }
+    ui.drag_geometry_valid = ui.drag_radius_x > 0 && ui.drag_radius_y > 0;
+  }
+  if (!ui.drag_geometry_valid) return climate_selected_target(ctx);
+
+  // Scale the ellipse-adjusted vector into lv_atan2's safe integer range.
+  // This avoids floating-point atan2 on every touch sample.
+  int32_t angle_y = (static_cast<int32_t>(point.y) -
+    ui.drag_screen_center_y) * ui.drag_radius_x;
+  int32_t angle_x = (static_cast<int32_t>(point.x) -
+    ui.drag_screen_center_x) * ui.drag_radius_y;
+  int32_t largest = std::max(std::abs(angle_x), std::abs(angle_y));
+  while (largest > 1400) {
+    angle_x >>= 1;
+    angle_y >>= 1;
+    largest >>= 1;
+  }
+  if (angle_x == 0 && angle_y == 0) return climate_selected_target(ctx);
+  int angle = static_cast<int>(lv_atan2(angle_y, angle_x));
   return espcontrol::climate::target_from_arc_angle(
     angle, ctx->min_tenths, ctx->max_tenths);
+}
+
+inline void climate_move_drag_handle_fast(ClimateControlCtx *ctx, int tenths) {
+  ClimateControlModalUi &ui = climate_control_modal_ui();
+  if (!ctx || !ui.drag_geometry_valid) return;
+  lv_obj_t *handle = ctx->edit_high ? ui.high_handle_dot : ui.low_handle_dot;
+  if (!handle) return;
+  int span = ctx->max_tenths - ctx->min_tenths;
+  if (span <= 0) return;
+  tenths = climate_clamp_tenths(ctx, tenths);
+  int angle = 135 + static_cast<int>((
+    static_cast<int64_t>(tenths - ctx->min_tenths) * 270 + span / 2) / span);
+  if (angle >= 360) angle -= 360;
+  int32_t offset_x = static_cast<int32_t>(ui.drag_radius_x) *
+    lv_trigo_cos(static_cast<int16_t>(angle)) / 32767;
+  int32_t offset_y = static_cast<int32_t>(ui.drag_radius_y) *
+    lv_trigo_sin(static_cast<int16_t>(angle)) / 32767;
+  lv_coord_t half_size = ui.drag_handle_size / 2;
+  lv_obj_set_pos(handle,
+    ui.drag_center_x + static_cast<lv_coord_t>(offset_x) - half_size,
+    ui.drag_center_y + static_cast<lv_coord_t>(offset_y) - half_size);
 }
 
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
@@ -1248,6 +1309,10 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
   if (!ctx || ui.active != ctx) return;
   int target = climate_display_target(ctx);
   if (climate_dual_target(ctx)) {
+    uint32_t now = lv_tick_get();
+    if (now - ui.drag_last_detail_update_ms <
+        CLIMATE_MODAL_DRAG_DETAIL_INTERVAL_MS) return;
+    ui.drag_last_detail_update_ms = now;
     if (ctx->edit_high) {
       if (ui.high_target_lbl && ctx->has_high)
         lv_label_set_text(ui.high_target_lbl, climate_format_tenths(
@@ -1271,7 +1336,7 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
     lv_label_set_text(ui.target_lbl, climate_format_tenths(
       target, climate_target_display_precision(ctx)).c_str());
   }
-  if (ui.panel) {
+  if (ui.panel && !(climate_dual_target(ctx) && ui.drag_geometry_valid)) {
     ControlModalLayout layout = climate_control_calc_layout(ctx);
     if (climate_dual_target(ctx))
       climate_layout_dual_handle_dot(ctx, layout, ctx->edit_high);
@@ -2478,6 +2543,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
       ui.drag_target_selected = false;
       ui.dragging_arc = false;
       ui.has_drag_preview = false;
+      ui.drag_geometry_valid = false;
       if (!ui.active || !climate_dual_target(ui.active)) return;
       lv_indev_t *indev = lv_event_get_indev(e);
       if (!indev) indev = lv_indev_active();
@@ -2488,6 +2554,8 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
       ui.drag_target_selected = true;
       ui.drag_start_x = point.x;
       ui.drag_start_y = point.y;
+      ui.drag_last_detail_update_ms = lv_tick_get() -
+        CLIMATE_MODAL_DRAG_DETAIL_INTERVAL_MS;
     }, LV_EVENT_PRESSED, nullptr);
     lv_obj_add_event_cb(dot, [](lv_event_t *e) {
       ClimateControlModalUi &ui = climate_control_modal_ui();
@@ -2507,8 +2575,10 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
         if (dx * dx + dy * dy < static_cast<int64_t>(threshold) * threshold) return;
       }
       ui.dragging_arc = true;
-      climate_preview_selected_target(ui.active,
-        climate_target_from_drag_point(ui.active, point));
+      int raw_target = climate_target_from_drag_point(ui.active, point);
+      climate_move_drag_handle_fast(ui.active,
+        climate_constrain_selected_target(ui.active, raw_target));
+      climate_preview_selected_target(ui.active, raw_target);
     }, LV_EVENT_PRESSING, nullptr);
     lv_obj_add_event_cb(dot, [](lv_event_t *) {
       ClimateControlModalUi &ui = climate_control_modal_ui();
@@ -2518,6 +2588,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
       ui.dragging_arc = false;
       ui.drag_target_selected = false;
       ui.has_drag_preview = false;
+      ui.drag_geometry_valid = false;
       if (apply) climate_apply_selected_target(ui.active, value, true, false);
       else climate_control_set_modal_value(ui.active);
     }, LV_EVENT_RELEASED, nullptr);
@@ -2527,6 +2598,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
       ui.dragging_arc = false;
       ui.drag_target_selected = false;
       ui.has_drag_preview = false;
+      ui.drag_geometry_valid = false;
       climate_control_set_modal_value(ui.active);
     }, LV_EVENT_PRESS_LOST, nullptr);
   };
