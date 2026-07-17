@@ -985,7 +985,7 @@ async function assertSettingsPage(page, label, options = {}) {
   );
   assert.strictEqual(
     await nightScheduleInfo.innerText(),
-    "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want a sensor to control the night schedule.",
+    "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active.",
     `${label}: night schedule override info panel text should match`,
   );
   assert.strictEqual(
@@ -3413,6 +3413,11 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   );
   assert(await sensorField.isVisible(), `${label}: Sensor mode should show the sensor entity`);
   assert(await sensorFieldLabel.isVisible(), `${label}: Sensor mode should label the sensor entity clearly`);
+  assert.strictEqual(
+    await sensorField.getAttribute("placeholder"),
+    "Sensor Entity",
+    `${label}: Sensor mode should use the sensor entity field prompt`,
+  );
   assert(await actions.isVisible(), `${label}: Sensor mode should show night action controls`);
   assert.strictEqual(
     await actionSelect.inputValue(),

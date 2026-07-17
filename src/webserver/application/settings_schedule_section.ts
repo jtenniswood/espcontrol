@@ -3,7 +3,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
     // ── Settings Schedule Section ──────────────────────────────────────
     function buildScreenScheduleSettingsCard(this: any) {
         var scheduleBody: any = document.createElement("div");
-        scheduleBody.appendChild(infoPanel("sp-night-schedule-info", "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want a sensor to control the night schedule."));
+        scheduleBody.appendChild(infoPanel("sp-night-schedule-info", "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active."));
         scheduleBody.appendChild(fieldLabel("Mode"));
         var scheduleModeSegment: any = segmentControl([
             ["disabled", "Disabled"],
@@ -41,7 +41,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
         var schedulePresenceField: any = document.createElement("div");
         schedulePresenceField.className = "sp-field";
         schedulePresenceField.appendChild(fieldLabel("Sensor Entity", "sp-set-schedule-presence"));
-        var schedulePresInp: any = entityInput("sp-set-schedule-presence", state.presenceEntity, "Sensor entity", ["binary_sensor", "sensor"]);
+        var schedulePresInp: any = entityInput("sp-set-schedule-presence", state.presenceEntity, "Sensor Entity", ["binary_sensor", "sensor"]);
         schedulePresenceField.appendChild(schedulePresInp);
         scheduleSensor.appendChild(schedulePresenceField);
         bindTextPost(schedulePresInp, entityName("presence_sensor_entity"), {
