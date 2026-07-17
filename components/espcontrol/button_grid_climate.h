@@ -1529,26 +1529,13 @@ inline void climate_set_arc_enabled(lv_obj_t *arc, bool enabled) {
   }
 }
 
-inline void climate_style_target_label(lv_obj_t *label, uint32_t color,
-                                       bool selected) {
-  if (!label) return;
-  lv_obj_set_style_text_color(label, lv_color_hex(color), LV_PART_MAIN);
-  lv_obj_set_style_text_opa(label, selected ? LV_OPA_COVER : LV_OPA_60, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(label, lv_color_hex(color), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(label, selected ? LV_OPA_20 : LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_radius(label, 10, LV_PART_MAIN);
-  lv_obj_set_style_pad_left(label, 6, LV_PART_MAIN);
-  lv_obj_set_style_pad_right(label, 6, LV_PART_MAIN);
-  lv_obj_set_style_pad_top(label, 2, LV_PART_MAIN);
-  lv_obj_set_style_pad_bottom(label, 2, LV_PART_MAIN);
-}
-
 inline void climate_set_dial_controls_visible(bool visible) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   bool show_current = visible && ui.active && ui.active->available && ui.active->has_current;
   bool show_handle = visible && ui.active && climate_modal_temperature_controls_enabled(ui.active);
   bool dual = visible && ui.active && climate_dual_target(ui.active);
   bool show_dual_handles = dual && show_handle;
+  bool show_step_buttons = visible && !dual;
   climate_set_obj_visible(ui.arc, visible);
   climate_set_obj_visible(ui.heat_arc, dual && show_handle);
   climate_set_obj_visible(ui.cool_arc, dual && show_handle);
@@ -1558,8 +1545,8 @@ inline void climate_set_dial_controls_visible(bool visible) {
   climate_set_obj_visible(ui.high_handle_dot, show_dual_handles);
   climate_set_obj_visible(ui.target_row, visible);
   climate_set_obj_visible(ui.status_lbl, visible);
-  climate_set_obj_visible(ui.minus_btn, visible);
-  climate_set_obj_visible(ui.plus_btn, visible);
+  climate_set_obj_visible(ui.minus_btn, show_step_buttons);
+  climate_set_obj_visible(ui.plus_btn, show_step_buttons);
   climate_set_obj_visible(ui.target_chip, false);
   climate_set_obj_visible(ui.chips, false);
 }
@@ -1974,16 +1961,18 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
       ? climate_format_tenths(climate_display_low_target(ctx),
           climate_target_display_precision(ctx)).c_str()
       : "--");
-    climate_style_target_label(ui.low_target_lbl, climate_heating_color(ctx),
-                               !ctx->edit_high);
+    lv_obj_set_style_text_color(ui.low_target_lbl,
+                                lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(ui.low_target_lbl, LV_OPA_COVER, LV_PART_MAIN);
   }
   if (ui.high_target_lbl) {
     lv_label_set_text(ui.high_target_lbl, ctx->has_high
       ? climate_format_tenths(climate_display_high_target(ctx),
           climate_target_display_precision(ctx)).c_str()
       : "--");
-    climate_style_target_label(ui.high_target_lbl, CLIMATE_COOLING_COLOR,
-                               ctx->edit_high);
+    lv_obj_set_style_text_color(ui.high_target_lbl,
+                                lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(ui.high_target_lbl, LV_OPA_COVER, LV_PART_MAIN);
   }
   if (ui.unit_lbl) {
     lv_label_set_text(ui.unit_lbl, show_dial ? display_temperature_unit_symbol() : "");
@@ -1998,8 +1987,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   climate_update_option_chip(ui.fan_chip, "Fan", ctx->fan_mode, false);
   climate_update_option_chip(ui.swing_chip, "Swing", ctx->swing_mode, false);
   climate_set_obj_visible(ui.chips, false);
-  climate_set_step_button_enabled(ui.minus_btn, temp_enabled);
-  climate_set_step_button_enabled(ui.plus_btn, temp_enabled);
+  climate_set_step_button_enabled(ui.minus_btn, temp_enabled && !dual);
+  climate_set_step_button_enabled(ui.plus_btn, temp_enabled && !dual);
   climate_control_apply_tab_visibility();
 }
 
@@ -2472,26 +2461,22 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   if (ctx->number_font) lv_obj_set_style_text_font(ui.target_lbl, ctx->number_font, LV_PART_MAIN);
   apply_width_compensation(ui.target_lbl, ctx->width_compensation_percent);
 
-  auto create_range_target_label = [&](uint32_t color, bool edit_high) {
+  auto create_range_target_label = [&]() {
     lv_obj_t *label = lv_label_create(ui.target_row);
-    lv_obj_set_style_text_color(label, lv_color_hex(color), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(label, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     const lv_font_t *range_font = ctx->range_number_font
       ? ctx->range_number_font : ctx->number_font;
     if (range_font) lv_obj_set_style_text_font(label, range_font, LV_PART_MAIN);
     apply_width_compensation(label, ctx->width_compensation_percent);
-    lv_obj_add_flag(label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(label, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_event_cb(label, [](lv_event_t *e) {
-      ClimateControlModalUi &ui = climate_control_modal_ui();
-      if (!ui.active) return;
-      ui.active->edit_high = reinterpret_cast<uintptr_t>(
-        lv_event_get_user_data(e)) != 0;
-      climate_control_set_modal_value(ui.active);
-    }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(edit_high)));
     return label;
   };
-  ui.low_target_lbl = create_range_target_label(climate_heating_color(ctx), false);
+  ui.low_target_lbl = create_range_target_label();
 
   ui.target_separator_lbl = lv_label_create(ui.target_row);
   lv_label_set_text(ui.target_separator_lbl, "-");
@@ -2504,7 +2489,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_set_style_text_font(ui.target_separator_lbl, range_font, LV_PART_MAIN);
   lv_obj_add_flag(ui.target_separator_lbl, LV_OBJ_FLAG_HIDDEN);
 
-  ui.high_target_lbl = create_range_target_label(CLIMATE_COOLING_COLOR, true);
+  ui.high_target_lbl = create_range_target_label();
 
   ui.unit_lbl = lv_label_create(ui.target_row);
   lv_obj_set_style_text_color(ui.unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
