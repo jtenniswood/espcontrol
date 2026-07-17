@@ -2050,7 +2050,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
       compact_portrait ? 48 : 52, layout.short_side);
     if (toggle_h < 44) toggle_h = 44;
     lv_coord_t toggle_w = compensated_width(
-      compact_portrait ? 180 : 200, ctx->width_compensation_percent);
+      compact_portrait ? 132 : 144, ctx->width_compensation_percent);
     lv_obj_set_size(ui.range_toggle, toggle_w, toggle_h);
     lv_obj_set_style_radius(ui.range_toggle, toggle_h / 2, LV_PART_MAIN);
     lv_obj_align(ui.range_toggle, LV_ALIGN_BOTTOM_MID, 0, -layout.inset);
@@ -2436,7 +2436,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_clear_flag(ui.range_toggle, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.range_toggle, LV_OBJ_FLAG_HIDDEN);
 
-  auto create_range_target_button = [&](const std::string &text) {
+  auto create_range_target_button = [&](const char *icon) {
     lv_obj_t *btn = lv_btn_create(ui.range_toggle);
     lv_obj_set_size(btn, 0, lv_pct(100));
     lv_obj_set_flex_grow(btn, 1);
@@ -2447,15 +2447,17 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
     control_modal_apply_pressed_fill(btn);
     lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_text(label, text.c_str());
+    lv_label_set_text(label, icon);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (ctx->option_value_font)
-      lv_obj_set_style_text_font(label, ctx->option_value_font, LV_PART_MAIN);
+    const lv_font_t *toggle_icon_font = ctx->card_icon_font
+      ? ctx->card_icon_font : ctx->icon_font;
+    if (toggle_icon_font)
+      lv_obj_set_style_text_font(label, toggle_icon_font, LV_PART_MAIN);
     lv_obj_center(label);
     return btn;
   };
-  ui.heat_target_btn = create_range_target_button(climate_option_label("heat"));
-  ui.cool_target_btn = create_range_target_button(climate_option_label("cool"));
+  ui.heat_target_btn = create_range_target_button(find_icon("Fire"));
+  ui.cool_target_btn = create_range_target_button(find_icon("Snowflake"));
   lv_obj_add_event_cb(ui.heat_target_btn, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (!ui.active || !climate_dual_target(ui.active)) return;
