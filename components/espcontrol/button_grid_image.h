@@ -11,6 +11,7 @@
 
 #include "esphome/core/version.h"
 #include "artwork_controller.h"
+#include "cover_art.h"
 #include "../artwork_image/image_pipeline_policy.h"
 #include <cstring>
 
@@ -70,6 +71,8 @@ struct ImageCardCtx {
   bool access_token_request_pending = false;
   bool media_artwork = false;
   lv_obj_t *media_overlay = nullptr;
+  bool media_overlay_artwork_tint = false;
+  std::function<void()> media_artwork_applied;
   std::string pending_fallback_picture;
   espcontrol::artwork::SourceCandidates media_artwork_sources;
   uint8_t media_artwork_retry_mask = 0;
@@ -491,6 +494,8 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->last_download_completed_ms = 0;
   image_card_hide(ctx);
   if (ctx->media_overlay) lv_obj_add_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
+  ctx->media_overlay_artwork_tint = false;
+  ctx->media_artwork_applied = nullptr;
 }
 
 inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {
@@ -590,6 +595,29 @@ inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,
   return true;
 }
 
+inline void image_card_apply_media_overlay_tint(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->media_overlay || !ctx->media_overlay_artwork_tint || !ctx->image) return;
+  const int width = ctx->image->get_width();
+  const int height = ctx->image->get_height();
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  auto *descriptor = ctx->image->get_lv_image_dsc();
+#else
+  auto *descriptor = ctx->image->get_lv_img_dsc();
+#endif
+  auto accent = espcontrol::cover_art::darken_accent_color(
+      espcontrol::cover_art::extract_accent_color_rgb565(
+          descriptor ? descriptor->data : nullptr, width, height,
+          ctx->image->is_big_endian(), ctx->image->get_content_offset_x(),
+          ctx->image->get_content_offset_y(), ctx->image->get_content_width(),
+          ctx->image->get_content_height()));
+  lv_obj_set_style_bg_color(
+      ctx->media_overlay,
+      accent.valid ? lv_color_make(accent.red, accent.green, accent.blue)
+                   : lv_color_black(),
+      LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ctx->media_overlay, LV_OPA_80, LV_PART_MAIN);
+}
+
 inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->widget || !ctx->image) return;
   if (ctx->image->get_url() != ctx->url) {
@@ -612,9 +640,11 @@ inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   lv_obj_clear_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_background(ctx->widget);
   if (ctx->media_overlay) {
+    image_card_apply_media_overlay_tint(ctx);
     lv_obj_clear_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(ctx->media_overlay);
   }
+  if (ctx->media_artwork_applied) ctx->media_artwork_applied();
   lv_obj_invalidate(ctx->widget);
   if (ctx->btn) lv_obj_invalidate(ctx->btn);
   notify_dashboard_content_changed();
@@ -801,6 +831,8 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].access_token_request_pending = false;
     contexts[i].media_artwork = false;
     contexts[i].media_overlay = nullptr;
+    contexts[i].media_overlay_artwork_tint = false;
+    contexts[i].media_artwork_applied = nullptr;
     contexts[i].pending_fallback_picture.clear();
     contexts[i].media_artwork_sources.clear();
     contexts[i].media_artwork_retry_mask = 0;

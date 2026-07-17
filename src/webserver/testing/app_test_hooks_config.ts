@@ -99,6 +99,8 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             normalizeMediaOptions: normalizeMediaOptions,
             mediaCoverArtAction: mediaCoverArtAction,
             setMediaCoverArtAction: setMediaCoverArtAction,
+            mediaCoverArtDetailsEnabled: mediaCoverArtDetailsEnabled,
+            setMediaCoverArtDetailsEnabled: setMediaCoverArtDetailsEnabled,
             mediaVolumeMax: mediaVolumeMax,
             setMediaVolumeMax: setMediaVolumeMax,
             mediaLabelDisplayMode: mediaLabelDisplayMode,

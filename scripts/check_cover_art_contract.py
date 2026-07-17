@@ -65,6 +65,20 @@ int main() {
   assert(progress_percent(0, 0) == 0 && progress_percent(30, 120) == 25 && progress_percent(150, 120) == 100);
   assert(progress_percent(30, infinity) == 0 && progress_percent(30, invalid) == 0);
   assert(progress_percent(invalid, 120) == 0);
+  const uint8_t red_le[] = {0x00, 0xF8};
+  const uint8_t red_be[] = {0xF8, 0x00};
+  auto little_red = extract_accent_color_rgb565(red_le, 1, 1, false, 0, 0, 1, 1);
+  auto big_red = extract_accent_color_rgb565(red_be, 1, 1, true, 0, 0, 1, 1);
+  assert(little_red.valid && little_red.red == 255 && little_red.green == 0 && little_red.blue == 0);
+  assert(big_red.valid && big_red.red == 255 && big_red.green == 0 && big_red.blue == 0);
+  const uint8_t red_blue_le[] = {0x00, 0xF8, 0x1F, 0x00};
+  auto blue_content = extract_accent_color_rgb565(red_blue_le, 2, 1, false, 1, 0, 1, 1);
+  assert(blue_content.valid && blue_content.red == 0 && blue_content.blue == 255);
+  auto full_fallback = extract_accent_color_rgb565(red_blue_le, 2, 1, false, 4, 0, 1, 1);
+  assert(full_fallback.valid && full_fallback.red == 127 && full_fallback.blue == 127);
+  auto dark_red = darken_accent_color(little_red);
+  assert(dark_red.valid && dark_red.red == 85 && dark_red.green == 0 && dark_red.blue == 0);
+  assert(!extract_accent_color_rgb565(nullptr, 1, 1, false, 0, 0, 1, 1).valid);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="cover-art-contract-") as temp_dir:

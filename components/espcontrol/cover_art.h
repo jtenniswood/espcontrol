@@ -19,6 +19,72 @@ constexpr uint32_t SUBSCRIPTION_RECONCILE_MS = 5000;
 constexpr size_t MAX_ARTWORK_URL_LENGTH = 4096;
 constexpr int ACCENT_SAMPLE_GRID = 20;
 
+struct AccentColor {
+  uint8_t red{0};
+  uint8_t green{0};
+  uint8_t blue{0};
+  bool valid{false};
+};
+
+inline AccentColor extract_accent_color_rgb565(
+    const uint8_t *data, int image_width, int image_height, bool big_endian,
+    int content_x, int content_y, int content_width, int content_height) {
+  if (!data || image_width <= 0 || image_height <= 0) return {};
+  if (content_width <= 0 || content_height <= 0 || content_x < 0 || content_y < 0 ||
+      content_x > image_width - content_width ||
+      content_y > image_height - content_height) {
+    content_x = 0;
+    content_y = 0;
+    content_width = image_width;
+    content_height = image_height;
+  }
+
+  const int step_x = std::max(1, content_width / ACCENT_SAMPLE_GRID);
+  const int step_y = std::max(1, content_height / ACCENT_SAMPLE_GRID);
+  int64_t red_weighted = 0;
+  int64_t green_weighted = 0;
+  int64_t blue_weighted = 0;
+  int64_t total_weight = 0;
+
+  for (int y = content_y + step_y / 2; y < content_y + content_height; y += step_y) {
+    for (int x = content_x + step_x / 2; x < content_x + content_width; x += step_x) {
+      const size_t offset = (static_cast<size_t>(y) * image_width + x) * 2u;
+      const uint16_t pixel = big_endian
+        ? (static_cast<uint16_t>(data[offset]) << 8) | data[offset + 1]
+        : data[offset] | (static_cast<uint16_t>(data[offset + 1]) << 8);
+      int red = (pixel >> 11) & 0x1F;
+      int green = (pixel >> 5) & 0x3F;
+      int blue = pixel & 0x1F;
+      red = (red << 3) | (red >> 2);
+      green = (green << 2) | (green >> 4);
+      blue = (blue << 3) | (blue >> 2);
+      const int maximum = std::max(red, std::max(green, blue));
+      const int minimum = std::min(red, std::min(green, blue));
+      const int saturation = maximum - minimum;
+      const int weight = saturation * saturation + 1;
+      red_weighted += static_cast<int64_t>(red) * weight;
+      green_weighted += static_cast<int64_t>(green) * weight;
+      blue_weighted += static_cast<int64_t>(blue) * weight;
+      total_weight += weight;
+    }
+  }
+  if (total_weight <= 0) return {};
+  return {
+    static_cast<uint8_t>(red_weighted / total_weight),
+    static_cast<uint8_t>(green_weighted / total_weight),
+    static_cast<uint8_t>(blue_weighted / total_weight),
+    true,
+  };
+}
+
+inline AccentColor darken_accent_color(AccentColor color) {
+  if (!color.valid) return {};
+  color.red = static_cast<uint8_t>(color.red / 3);
+  color.green = static_cast<uint8_t>(color.green / 3);
+  color.blue = static_cast<uint8_t>(color.blue / 3);
+  return color;
+}
+
 struct RuntimeState {
   espcontrol::artwork::SourceCandidates sources;
   std::string source_url, effective_download_url, active_download_source_url;

@@ -337,8 +337,12 @@ const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" }
 assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
 hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
 assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal", "cover art stores the optional controls action");
+hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, true);
+assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal,cover_art_details", "cover art preserves action with track details");
 hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
-assert.strictEqual(coverArtActionButton.options, "", "cover art omits its default action");
+assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art omits its default action without dropping track details");
+hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
+assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
 assert.deepStrictEqual(
   Array.from(hooks.mediaNowPlayingControlValues()),
   ["", "progress", "play_pause"],
@@ -1749,7 +1753,7 @@ assertButtonRoundTrip(hooks, "media cover art card", {
   unit: "",
   type: "media",
   precision: "",
-  options: "cover_art_action=control_modal",
+  options: "cover_art_action=control_modal,cover_art_details",
 }, false);
 
 assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art", {

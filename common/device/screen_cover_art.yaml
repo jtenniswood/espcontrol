@@ -595,74 +595,21 @@ script:
           auto *img = id(cover_art_downloaded_image);
           int img_w = img->get_width();
           int img_h = img->get_height();
-          if (img_w <= 0 || img_h <= 0) return;
-
           #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
           auto *dsc = img->get_lv_image_dsc();
           #else
           auto *dsc = img->get_lv_img_dsc();
           #endif
-          const uint8_t *data = dsc->data;
-          if (data == nullptr) return;
-
-          int sample_x = img->get_content_offset_x();
-          int sample_y = img->get_content_offset_y();
-          int sample_w = img->get_content_width();
-          int sample_h = img->get_content_height();
-          if (sample_w <= 0 || sample_h <= 0 ||
-              sample_x < 0 || sample_y < 0 ||
-              sample_x + sample_w > img_w || sample_y + sample_h > img_h) {
-            sample_x = 0;
-            sample_y = 0;
-            sample_w = img_w;
-            sample_h = img_h;
-          }
-
-          int grid = espcontrol::cover_art::ACCENT_SAMPLE_GRID;
-          int step_x = sample_w / grid;
-          int step_y = sample_h / grid;
-          if (step_x < 1) step_x = 1;
-          if (step_y < 1) step_y = 1;
-
-          int64_t r_wsum = 0;
-          int64_t g_wsum = 0;
-          int64_t b_wsum = 0;
-          int64_t w_total = 0;
-
-          for (int sy = sample_y + step_y / 2; sy < sample_y + sample_h; sy += step_y) {
-            for (int sx = sample_x + step_x / 2; sx < sample_x + sample_w; sx += step_x) {
-              int pos = (sx + sy * img_w) * 2;
-              uint16_t rgb565 = img->is_big_endian()
-                  ? ((uint16_t) data[pos] << 8) | data[pos + 1]
-                  : data[pos] | ((uint16_t) data[pos + 1] << 8);
-
-              int r = (rgb565 >> 11) & 0x1F;
-              int g = (rgb565 >> 5) & 0x3F;
-              int b = rgb565 & 0x1F;
-              r = (r << 3) | (r >> 2);
-              g = (g << 2) | (g >> 4);
-              b = (b << 3) | (b >> 2);
-
-              int mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
-              int mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
-              int sat = mx - mn;
-              int weight = sat * sat + 1;
-
-              r_wsum += (int64_t) r * weight;
-              g_wsum += (int64_t) g * weight;
-              b_wsum += (int64_t) b * weight;
-              w_total += weight;
-            }
-          }
-
-          if (w_total <= 0) return;
-
-          int r = (int) (r_wsum / w_total);
-          int g = (int) (g_wsum / w_total);
-          int b = (int) (b_wsum / w_total);
-          ESP_LOGI("cover_art", "Extracted artwork accent color: rgb(%d,%d,%d)", r, g, b);
-
-          lv_color_t dark_accent = lv_color_make(r / 3, g / 3, b / 3);
+          auto accent = espcontrol::cover_art::darken_accent_color(
+              espcontrol::cover_art::extract_accent_color_rgb565(
+                  dsc ? dsc->data : nullptr, img_w, img_h, img->is_big_endian(),
+                  img->get_content_offset_x(), img->get_content_offset_y(),
+                  img->get_content_width(), img->get_content_height()));
+          lv_color_t dark_accent = accent.valid
+              ? lv_color_make(accent.red, accent.green, accent.blue)
+              : lv_color_make(0, 0, 0);
+          ESP_LOGI("cover_art", "Artwork tint color: rgb(%d,%d,%d)",
+                   accent.red, accent.green, accent.blue);
           lv_obj_set_style_bg_color(id(cover_art_backdrop), dark_accent, 0);
           lv_obj_set_style_bg_color(id(cover_art_accent_overlay), dark_accent, 0);
 

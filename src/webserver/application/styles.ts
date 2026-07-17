@@ -112,6 +112,8 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-media-now-title{font-size:calc(var(--btn-label)*1.75);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
         "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
         ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff}" +
+        ".sp-media-cover-artwork{background-image:radial-gradient(circle at 68% 28%,#ea80fc 0 13%,transparent 34%),linear-gradient(135deg,#3949ab 0%,#00897b 48%,#ff7043 100%)}" +
+        ".sp-media-cover-tint{position:absolute;inset:-2px;background:rgba(10,25,42,.8);z-index:0}" +
         ".sp-btn-double{grid-row:span 2}" +
         ".sp-btn-double .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-double .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +

@@ -27,6 +27,7 @@ export interface MediaCardConfigV1 {
   stateDisplay: MediaStateDisplay;
   nowPlayingControl: MediaNowPlayingControl;
   coverArtAction: MediaCoverArtAction;
+  showTrackDetails: boolean;
   controlLabelDisplay: MediaControlLabelDisplay;
   controlNumberDisplay: MediaControlNumberDisplay;
   maxVolumePercent: number;
@@ -91,6 +92,7 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
       configOptionValue(options, "cover_art_action") === "control_modal"
         ? "control_modal"
         : "play_pause",
+    showTrackDetails: configOptionEnabled(options, "cover_art_details"),
     controlLabelDisplay:
       configOptionValue(options, "label_display") === "label" ? "label" : "status",
     controlNumberDisplay:

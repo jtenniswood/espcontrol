@@ -92,6 +92,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   stateDisplay: "label",
   nowPlayingControl: "none",
   coverArtAction: "play_pause",
+  showTrackDetails: false,
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
@@ -103,6 +104,11 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   largeNumbers: true,
 }, "Media saved strings cross a versioned typed boundary before application code uses them");
 assert.strictEqual(model.decodeMediaCardConfigV1({ type: "sensor" }), null, "Media decoder rejects other card types");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "cover_art",
+  options: "cover_art_details",
+}).showTrackDetails, true, "Media decoder exposes optional cover-art track details");
 assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "controls",
@@ -115,6 +121,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   stateDisplay: "state",
   nowPlayingControl: "none",
   coverArtAction: "control_modal",
+  showTrackDetails: false,
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,

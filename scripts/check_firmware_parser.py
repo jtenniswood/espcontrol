@@ -457,6 +457,11 @@ int main() {
   assert(cover_art.precision == "");
   assert(cover_art.options == "");
   assert(media_cover_art_enabled(cover_art));
+  auto cover_art_details = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;cover_art_action=control_modal,cover_art_details");
+  assert(media_cover_art_enabled(cover_art_details));
+  assert(media_cover_art_details_enabled(cover_art_details));
+  assert(media_cover_art_press_action(cover_art_details) == "control_modal");
+  assert(cover_art_details.options == "cover_art_action=control_modal,cover_art_details");
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");

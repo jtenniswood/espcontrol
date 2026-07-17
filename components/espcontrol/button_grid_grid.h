@@ -330,6 +330,8 @@ inline void clear_media_cover_art(MediaNowPlayingCtx *ctx) {
     ctx->cover_art->diagnostics_enabled = false;
     ctx->cover_art->media_artwork = false;
     ctx->cover_art->media_overlay = nullptr;
+    ctx->cover_art->media_overlay_artwork_tint = false;
+    ctx->cover_art->media_artwork_applied = nullptr;
     if (widget) lv_obj_del(widget);
     ctx->cover_art = nullptr;
   }
@@ -353,7 +355,9 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
              p.entity.c_str());
     return;
   }
-  const bool image_only = card_runtime_media_mode(p.sensor) == "cover_art";
+  const bool show_track_details = media_cover_art_details_enabled(p);
+  const bool image_only = card_runtime_media_mode(p.sensor) == "cover_art" &&
+                          !show_track_details;
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
   lv_obj_t *img = lv_image_create(media_ctx->btn);
 #else
@@ -376,6 +380,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
     lv_obj_set_style_bg_color(overlay, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_50, LV_PART_MAIN);
     lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+    lv_obj_add_flag(overlay, LV_OBJ_FLAG_HIDDEN);
   }
 
   art->widget = img;
@@ -392,6 +397,10 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->modal_fit = false;
   art->media_artwork = true;
   art->media_overlay = overlay;
+  art->media_overlay_artwork_tint = show_track_details;
+  art->media_artwork_applied = [media_ctx]() {
+    media_cover_art_refresh_geometry(media_ctx);
+  };
   art->pending_fallback_picture.clear();
   art->media_artwork_retry_mask = 0;
   art->diagnostics_enabled = cfg.image_card_diagnostics;
@@ -401,7 +410,13 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   media_ctx->cover_art = art;
   media_ctx->cover_overlay = overlay;
   if (image_only && media_ctx->btn) lv_obj_set_user_data(media_ctx->btn, art);
-  if (art->image_ready) image_card_set_widget_source(img, art->image);
+  if (art->image_ready) {
+    image_card_set_widget_source(img, art->image);
+    if (overlay) {
+      image_card_apply_media_overlay_tint(art);
+      lv_obj_clear_flag(overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
   media_cover_art_refresh_geometry(media_ctx);
   image_card_log_diagnostics(art, "bind-media-artwork");
 }
@@ -678,8 +693,15 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       lv_label_set_text(s.text_lbl, "");
       lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
     }
-    if (ctx->title_lbl) lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
-    if (ctx->artist_lbl) lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->title_lbl && ctx->artist_lbl) {
+      lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
+      display_apply_main_width(ctx->title_lbl, display);
+      display_apply_main_width(ctx->artist_lbl, display);
+      setup_media_now_playing_layout(
+        s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
+        display_media_title_font(display), pad, row_span == 1, true, 0, false);
+    }
     media_cover_art_refresh_geometry(ctx);
     return;
   }

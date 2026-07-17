@@ -208,7 +208,8 @@ inline bool media_driver_bind_data(
     if (environment.grid_config) {
       setup_media_cover_art(slot, config, *environment.grid_config);
     }
-    if (mode == "now_playing") {
+    if (mode == "now_playing" ||
+        (mode == "cover_art" && media_cover_art_details_enabled(config))) {
       subscribe_media_now_playing_state(now_playing, config.entity);
     }
     subscribe_media_cover_art(now_playing, config.entity);

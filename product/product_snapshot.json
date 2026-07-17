@@ -4229,6 +4229,20 @@
             ]
           },
           {
+            "name": "cover_art_details",
+            "label": "Show Track Details",
+            "kind": "flag",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "equals",
+                "value": "cover_art"
+              }
+            ]
+          },
+          {
             "name": "volume_max",
             "label": "Maximum Volume",
             "kind": "number",
@@ -4391,6 +4405,7 @@
             "label_display",
             "number_display",
             "cover_art_action",
+            "cover_art_details",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",

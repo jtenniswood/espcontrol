@@ -521,6 +521,16 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                         },
                     }),
                 });
+                var detailsToggle: any = helpers.toggleRow(
+                    "Show Track Details",
+                    helpers.idPrefix + "media-cover-art-details",
+                    mediaCoverArtDetailsEnabled(b));
+                panel.appendChild(detailsToggle.row);
+                detailsToggle.input.addEventListener("change", function (this: any) {
+                    setMediaCoverArtDetailsEnabled(b, this.checked);
+                    helpers.saveField("options", b.options);
+                    renderPreview();
+                });
             }
             if (b.sensor === "control_modal") {
                 var labelDisplay: any = helpers.renderCardSegmentControl(panel, b, helpers, {
@@ -779,6 +789,17 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             }
             if (mode === "cover_art") {
                 var coverArtColor: any = WEB_UI_COLORS.tertiary;
+                if (mediaCoverArtDetailsEnabled(b)) {
+                    return {
+                        buttonClass: "sp-image-card",
+                        iconHtml: '<span class="sp-image-preview sp-media-cover-artwork" style="background-color:#' +
+                            helpers.escHtml(coverArtColor) + '"></span>' +
+                            '<span class="sp-media-cover-tint"></span>' +
+                            '<span class="sp-media-now-title">Midnight City</span>',
+                        labelHtml: '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">M83</span>' +
+                            '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+                    };
+                }
                 return {
                     buttonClass: "sp-image-card",
                     iconHtml: '<span class="sp-image-preview" style="background:#' +

@@ -44,6 +44,7 @@ constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
 constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
+constexpr const char *MEDIA_COVER_ART_DETAILS_OPTION = card_runtime_option_name_cover_art_details();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
@@ -314,9 +315,15 @@ inline std::string media_card_options_normalized(const std::string &options,
       : "";
   }
   if (mode == "cover_art") {
-    return cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal"
-      ? std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal"
-      : "";
+    std::string out;
+    if (cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal") {
+      out = std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal";
+    }
+    if (cfg_option_token_present(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
+      if (!out.empty()) out += ",";
+      out += MEDIA_COVER_ART_DETAILS_OPTION;
+    }
+    return out;
   }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
@@ -527,6 +534,10 @@ inline std::string media_cover_art_press_action(const ParsedCfg &p) {
              espcontrol::media::CoverArtAction::CONTROL_MODAL
     ? "control_modal"
     : "play_pause";
+}
+
+inline bool media_cover_art_details_enabled(const ParsedCfg &p) {
+  return espcontrol::media::decode_config_v1(p).show_track_details;
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,

@@ -2626,10 +2626,26 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
       if (s.sensor_lbl) lv_obj_add_flag(s.sensor_lbl, LV_OBJ_FLAG_HIDDEN);
       if (s.unit_lbl) lv_obj_add_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
-      if (s.text_lbl) {
-        lv_label_set_text(s.text_lbl, "");
-        lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (!media_cover_art_details_enabled(p)) {
+        if (s.text_lbl) {
+          lv_label_set_text(s.text_lbl, "");
+          lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
       }
+      lv_obj_t *title_lbl = lv_label_create(s.btn);
+      lv_obj_set_style_text_color(title_lbl, lv_color_white(), LV_PART_MAIN);
+      apply_width_compensation(title_lbl, width_compensation_percent);
+      if (s.text_lbl) {
+        lv_obj_set_style_text_color(s.text_lbl, lv_color_white(), LV_PART_MAIN);
+        lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(s.text_lbl, "");
+      }
+      ctx->title_lbl = title_lbl;
+      ctx->artist_lbl = s.text_lbl;
+      setup_media_now_playing_layout(
+        s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
+        media_title_font, pad, row_span == 1, true, 0);
       return;
     }
     lv_obj_t *title_lbl = lv_label_create(s.btn);
