@@ -88,7 +88,7 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             els.setScheduleTimes.className = "sp-schedule-times" + (state.scheduleTrigger === "time" ? "" : " sp-hidden");
         }
         if (els.setScheduleSensor) {
-            els.setScheduleSensor.className = "sp-schedule-times" + (state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
+            els.setScheduleSensor.className = "sp-schedule-times sp-schedule-sensor" + (state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
         }
         if (els.setScheduleActions) {
             els.setScheduleActions.className = "sp-schedule-times" + (state.scheduleTrigger === "time" || state.scheduleTrigger === "sensor" ? "" : " sp-hidden");

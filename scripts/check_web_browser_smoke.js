@@ -3332,6 +3332,7 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const disabledButton = card.getByRole("button", { name: "Disabled", exact: true });
   const timeFields = card.locator("#sp-set-schedule-on-hour");
   const sensorField = card.locator("#sp-set-schedule-presence");
+  const sensorSection = card.locator(".sp-schedule-sensor");
   const sensorFieldLabel = card.getByText("Sensor Entity", { exact: true });
   const actions = card.locator("#sp-set-schedule-actions");
   const actionSelect = card.locator("#sp-set-schedule-mode");
@@ -3413,6 +3414,10 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   );
   assert(await sensorField.isVisible(), `${label}: Sensor mode should show the sensor entity`);
   assert(await sensorFieldLabel.isVisible(), `${label}: Sensor mode should label the sensor entity clearly`);
+  assert(
+    Number.parseFloat(await sensorSection.evaluate((element) => getComputedStyle(element).marginBottom)) >= 22,
+    `${label}: Sensor mode should leave space below the sensor entity field`,
+  );
   assert.strictEqual(
     await sensorField.getAttribute("placeholder"),
     "Sensor Entity",

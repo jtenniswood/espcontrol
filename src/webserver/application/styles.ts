@@ -439,6 +439,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-disclosure.sp-open .sp-disclosure-chevron{transform:rotate(180deg)}" +
         ".sp-disclosure.sp-open .sp-disclosure-body{display:block}" +
         ".sp-schedule-times.sp-hidden{display:none}" +
+        ".sp-schedule-sensor{margin-bottom:28px}" +
         ".sp-info-panel{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:16px;" +
         "background:rgba(92,115,231,.12);border:1px solid rgba(92,115,231,.22);border-radius:8px;" +
         "color:var(--text2);font-size:.82rem;line-height:1.35}" +
@@ -580,6 +581,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".card{border-radius:10px;margin-bottom:10px}" +
         ".card-header{min-height:56px;box-sizing:border-box}" +
         ".sp-field{margin-bottom:22px}" +
+        ".sp-schedule-sensor{margin-bottom:22px}" +
         ".sp-toggle-row{gap:16px}" +
         ".sp-toggle-label{min-width:0;line-height:1.35}" +
         ".sp-range-row{gap:10px}" +

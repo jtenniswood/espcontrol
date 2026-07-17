@@ -37,7 +37,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
         scheduleBody.appendChild(scheduleTimes);
         els.setScheduleTimes = scheduleTimes;
         var scheduleSensor: any = document.createElement("div");
-        scheduleSensor.className = "sp-schedule-times";
+        scheduleSensor.className = "sp-schedule-times sp-schedule-sensor";
         var schedulePresenceField: any = document.createElement("div");
         schedulePresenceField.className = "sp-field";
         schedulePresenceField.appendChild(fieldLabel("Sensor Entity", "sp-set-schedule-presence"));
