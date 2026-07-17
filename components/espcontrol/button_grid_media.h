@@ -2670,7 +2670,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       ctx->artist_gap = pad > 1 ? pad / 2 : 0;
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-        media_title_font, pad, row_span == 1, true, 0);
+        media_title_font, pad, true, true, 0);
       media_position_now_playing_artist(ctx);
       return;
     }

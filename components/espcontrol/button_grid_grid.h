@@ -719,7 +719,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       display_apply_main_width(ctx->artist_lbl, display);
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-        title_font, pad, row_span == 1, true, 0, false);
+        title_font, pad, true, true, 0, false);
       media_position_now_playing_artist(ctx);
     }
     media_cover_art_refresh_geometry(ctx);

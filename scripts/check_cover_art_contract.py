@@ -262,13 +262,27 @@ for required in (
     "lv_obj_t *artist_lbl = lv_label_create(s.btn);",
     "ctx->artist_lbl = artist_lbl;",
     "lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);",
+    "media_title_font, pad, true, true, 0);",
 ):
     if required not in cover_details:
         raise SystemExit(f"Cover art track-details layout contract missing: {required}")
 if "ctx->artist_lbl = s.text_lbl;" in cover_details:
     raise SystemExit("Cover art artist metadata must not reuse the static card caption label")
 
+for required in (
+    "bool highlight_playing = true;",
+    "ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);",
+):
+    if required not in media:
+        raise SystemExit(f"Media control playing-highlight contract missing: {required}")
+
+media_driver = (ROOT / "components" / "espcontrol" / "button_grid_media_driver.h").read_text(encoding="utf-8")
+if "if (control) control->highlight_playing = false;" not in media_driver:
+    raise SystemExit("Cover art control modals must not highlight their parent card while playing")
+
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+if "title_font, pad, true, true, 0, false);" not in grid:
+    raise SystemExit("Cover art layout refresh must keep track titles limited to two lines")
 media_art_start = grid.find("inline void subscribe_media_cover_art(")
 media_art_end = grid.find("\ninline void setup_card_visual(", media_art_start)
 if media_art_start < 0 or media_art_end < 0:
