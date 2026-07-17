@@ -245,7 +245,7 @@ if "state->artist.clear()" in metadata:
 for required in (
     "inline bool media_cover_art_uses_screensaver_fonts(int row_span, int col_span)",
     "return row_span >= 2 && col_span >= 2;",
-    "inline bool media_cover_art_uses_compact_detail_fonts(int row_span,",
+    "inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)",
     "return row_span == 2 && col_span == 2;",
     "inline bool media_cover_art_limits_title_to_two_lines(int row_span,",
     "return row_span == 1 || (row_span == 2 && col_span == 2);",
