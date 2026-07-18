@@ -867,6 +867,7 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
                                                  MediaVolumeCtx *ctx) {
   if (!state || !ctx) return;
   ctx->available = state->available;
+  ctx->volume_known = state->volume_known;
   const auto previous_volume_control_mode = ctx->volume_control_mode;
   ctx->volume_control_mode = state->volume_control_mode;
   if (previous_volume_control_mode != ctx->volume_control_mode &&
@@ -924,6 +925,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   ctx->artist = state->artist;
   ctx->friendly_name = state->friendly_name;
   ctx->duration = state->duration;
+  ctx->volume_known = state->volume_known;
   const auto previous_volume_control_mode = ctx->volume_control_mode;
   ctx->volume_control_mode = state->volume_control_mode;
   if (previous_volume_control_mode != ctx->volume_control_mode &&
@@ -1991,7 +1993,7 @@ inline void media_control_refresh_volume_controls(MediaControlCtx *ctx) {
   media_volume_set_button_enabled(
     ui.volume_minus_btn,
     espcontrol::media::volume_decrease_enabled(
-      ctx->volume_control_mode, ctx->current_pct));
+      ctx->volume_control_mode, ctx->current_pct, ctx->volume_known));
   media_volume_set_button_enabled(
     ui.volume_plus_btn,
     espcontrol::media::volume_increase_enabled(
@@ -2047,7 +2049,7 @@ inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
   const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto command = espcontrol::media::volume_command(
     ctx->volume_control_mode, current_pct, pct,
-    media_control_volume_max_pct(ctx));
+    media_control_volume_max_pct(ctx), ctx->volume_known);
   if (ctx->volume_control_mode !=
       espcontrol::media::VolumeControlMode::ABSOLUTE) {
     if (send_action) send_media_volume_command(ctx->entity_id, command);
@@ -3045,6 +3047,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   ctx->label = espcontrol_i18n(std::string("Device Volume"));
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
+  ctx->volume_known = true;
   ctx->pending_pct = -1;
   ctx->pending_until_ms = 0;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);

@@ -116,6 +116,7 @@ struct MediaVolumeCtx {
   std::function<void(bool)> set_mic_muted;
   espcontrol::media::VolumeControlMode volume_control_mode =
     espcontrol::media::VolumeControlMode::ABSOLUTE;
+  bool volume_known = false;
   bool available = true;
 };
 
@@ -3066,7 +3067,8 @@ inline void media_volume_refresh_controls(MediaVolumeCtx *ctx) {
   }
   media_volume_set_button_enabled(
     ui.minus_btn,
-    espcontrol::media::volume_decrease_enabled(mode, ctx->current_pct));
+    espcontrol::media::volume_decrease_enabled(
+      mode, ctx->current_pct, ctx->volume_known));
   media_volume_set_button_enabled(
     ui.plus_btn,
     espcontrol::media::volume_increase_enabled(
@@ -3106,7 +3108,7 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
   const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto mode = media_volume_effective_control_mode(ctx);
   const auto command = espcontrol::media::volume_command(
-    mode, current_pct, pct, media_volume_max_pct(ctx));
+    mode, current_pct, pct, media_volume_max_pct(ctx), ctx->volume_known);
   if (!ctx->apply_percent &&
       mode != espcontrol::media::VolumeControlMode::ABSOLUTE) {
     if (send_action) send_media_volume_command(ctx->entity_id, command);

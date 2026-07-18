@@ -43,6 +43,10 @@ int main() {
          VolumeCommandKind::STEP_DOWN);
   assert(volume_command(VolumeControlMode::STEP, 0, -1, 100).kind ==
          VolumeCommandKind::NONE);
+  assert(volume_command(VolumeControlMode::STEP, 0, -1, 100, false).kind ==
+         VolumeCommandKind::STEP_DOWN);
+  assert(volume_command(VolumeControlMode::STEP, 0, 1, 40, false).kind ==
+         VolumeCommandKind::STEP_UP);
   assert(volume_command(VolumeControlMode::READ_ONLY, 30, 31, 100).kind ==
          VolumeCommandKind::NONE);
 
@@ -53,6 +57,8 @@ int main() {
   assert(volume_display_value(VolumeControlMode::STEP, 65, 40) == 65);
   assert(volume_display_value(VolumeControlMode::READ_ONLY, 65, 40) == 65);
   assert(volume_decrease_enabled(VolumeControlMode::STEP, 30));
+  assert(volume_decrease_enabled(VolumeControlMode::STEP, 0, false));
+  assert(!volume_decrease_enabled(VolumeControlMode::ABSOLUTE, 0, false));
   assert(!volume_decrease_enabled(VolumeControlMode::READ_ONLY, 30));
   assert(volume_increase_enabled(VolumeControlMode::STEP, 39, 40));
   assert(!volume_increase_enabled(VolumeControlMode::STEP, 40, 40));
