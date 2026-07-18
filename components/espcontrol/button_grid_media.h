@@ -896,6 +896,7 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
   ctx->current_pct = pct;
   media_volume_set_card_value(ctx, pct);
   media_volume_set_modal_value(ctx, pct);
+  media_volume_refresh_controls(ctx);
 }
 
 inline void media_playback_apply_state_to_volumes(MediaPlaybackState *state) {
