@@ -88,6 +88,21 @@ api:
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
 
+# Advertise EspControl-specific metadata so local companion apps receive the
+# fixed physical card grid directly from the display during discovery.
+mdns:
+  services:
+    - service: "_espcontrol"
+      protocol: "_tcp"
+      port: 80
+      txt:
+        schema: "1"
+        model: "${device_slug}"
+        name: "${friendly_name}"
+        slots: "${espcontrol_slots}"
+        columns: "${espcontrol_grid_columns}"
+        rows: "${espcontrol_grid_rows}"
+
 interval:
   - interval: 5s
     then:

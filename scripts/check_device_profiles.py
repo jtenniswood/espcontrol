@@ -187,6 +187,34 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
 
 
+def test_desktop_discovery_grid_metadata(profiles: dict[str, dict]) -> None:
+    core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
+    required_metadata = (
+        'service: "_espcontrol"',
+        'protocol: "_tcp"',
+        'schema: "1"',
+        'model: "${device_slug}"',
+        'name: "${friendly_name}"',
+        'slots: "${espcontrol_slots}"',
+        'columns: "${espcontrol_grid_columns}"',
+        'rows: "${espcontrol_grid_rows}"',
+    )
+    for value in required_metadata:
+        assert value in core, f"desktop discovery metadata is missing {value}"
+
+    for slug, profile in profiles.items():
+        package = (ROOT / "devices" / slug / "packages.yaml").read_text(encoding="utf-8")
+        columns = int(profile["layout"]["cols"])
+        rows = int(profile["layout"]["rows"])
+        slots = int(profile["slots"])
+        assert columns * rows == slots, f"{slug}: desktop discovery grid does not match slot count"
+        assert f'espcontrol_slots: "{slots}"' in package, f"{slug}: advertised slot count is stale"
+        assert f'espcontrol_grid_columns: "{columns}"' in package, (
+            f"{slug}: advertised column count is stale"
+        )
+        assert f'espcontrol_grid_rows: "{rows}"' in package, f"{slug}: advertised row count is stale"
+
+
 def test_upgrades_do_not_reset_saved_panel_config() -> None:
     display = (ROOT / "common" / "config" / "display.yaml").read_text(encoding="utf-8")
     generator = (ROOT / "scripts" / "generate_device_slots.py").read_text(encoding="utf-8")
@@ -633,6 +661,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_desktop_discovery_grid_metadata(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()

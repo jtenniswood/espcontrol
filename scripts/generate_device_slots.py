@@ -37,6 +37,9 @@ def package_substitution_lines(device: dict) -> list[str]:
         '  cover_art_placeholder_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/common/assets/cover_art_placeholder.svg"',
         f'  device_slug: "{device["slug"]}"',
         f'  firmware_manifest_slug: "{device["slug"]}"',
+        f'  espcontrol_slots: "{device["slots"]}"',
+        f'  espcontrol_grid_columns: "{device["cols"]}"',
+        f'  espcontrol_grid_rows: "{device["slots"] // device["cols"]}"',
     ]
     if package.get("firmwareVersion"):
         lines.append(f'  firmware_version: "{package["firmwareVersion"]}"')
