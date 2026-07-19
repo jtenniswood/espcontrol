@@ -110,6 +110,57 @@ export const ENTITY_CATALOG = {
         "voice_services_enabled"
       ]
     },
+    "alarm_delay_audio": {
+      "domain": "switch",
+      "name": "Alarm Delay: Audio",
+      "objectIds": [
+        "alarm_delay__audio",
+        "alarm_delay_audio",
+        "alarm_delay_audio_enabled"
+      ]
+    },
+    "alarm_delay_tts": {
+      "domain": "switch",
+      "name": "Alarm Delay: TTS",
+      "objectIds": [
+        "alarm_delay__tts",
+        "alarm_delay_tts",
+        "alarm_delay_tts_enabled"
+      ]
+    },
+    "alarm_delay_entry_announcement": {
+      "domain": "text",
+      "name": "Alarm Delay: Entry Announcement",
+      "objectIds": [
+        "alarm_delay__entry_announcement",
+        "alarm_delay_entry_announcement"
+      ]
+    },
+    "alarm_delay_exit_announcement": {
+      "domain": "text",
+      "name": "Alarm Delay: Exit Announcement",
+      "objectIds": [
+        "alarm_delay__exit_announcement",
+        "alarm_delay_exit_announcement"
+      ]
+    },
+    "alarm_delay_beep_volume": {
+      "domain": "number",
+      "name": "Alarm Delay: Beep Volume",
+      "objectIds": [
+        "alarm_delay__beep_volume",
+        "alarm_delay_beep_volume"
+      ]
+    },
+    "alarm_delay_final_countdown": {
+      "domain": "number",
+      "name": "Alarm Delay: Final Countdown",
+      "objectIds": [
+        "alarm_delay__final_countdown",
+        "alarm_delay_final_countdown",
+        "alarm_delay_final_countdown_seconds"
+      ]
+    },
     "screen_temperature_degree_symbol": {
       "domain": "switch",
       "name": "Screen: Temperature Degree Symbol",
@@ -684,6 +735,14 @@ export const ENTITY_CATALOG = {
     ],
     "settings_voice": [
       "voice_services"
+    ],
+    "settings_alarm_audio": [
+      "alarm_delay_audio",
+      "alarm_delay_tts",
+      "alarm_delay_entry_announcement",
+      "alarm_delay_exit_announcement",
+      "alarm_delay_beep_volume",
+      "alarm_delay_final_countdown"
     ],
     "settings_optional": [
       "screen_rotation"

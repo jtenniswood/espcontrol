@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 86,
+    "entityNames": 92,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -969,11 +969,14 @@
             "screen_schedule_clock_default_brightness": "\"10\"",
             "voice_wake_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac\"",
             "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\"",
-            "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\""
+            "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\"",
+            "alarm_delay_entry_beep_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/adafd6fab84bf013c950ab25fda30ee628335690/devices/esp32-p4-86/device/alarm_delay_entry_beep.flac\"",
+            "alarm_delay_exit_beep_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/adafd6fab84bf013c950ab25fda30ee628335690/devices/esp32-p4-86/device/alarm_delay_exit_beep.flac\""
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
           "localVoiceServices": true,
+          "alarmDelayAudio": true,
           "networkCoprocessor": true,
           "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
@@ -5817,6 +5820,81 @@
         ],
         "groups": [
           "settings_voice"
+        ]
+      },
+      {
+        "key": "alarm_delay_audio",
+        "domain": "switch",
+        "name": "Alarm Delay: Audio",
+        "objectIds": [
+          "alarm_delay__audio",
+          "alarm_delay_audio",
+          "alarm_delay_audio_enabled"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_tts",
+        "domain": "switch",
+        "name": "Alarm Delay: TTS",
+        "objectIds": [
+          "alarm_delay__tts",
+          "alarm_delay_tts",
+          "alarm_delay_tts_enabled"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_entry_announcement",
+        "domain": "text",
+        "name": "Alarm Delay: Entry Announcement",
+        "objectIds": [
+          "alarm_delay__entry_announcement",
+          "alarm_delay_entry_announcement"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_exit_announcement",
+        "domain": "text",
+        "name": "Alarm Delay: Exit Announcement",
+        "objectIds": [
+          "alarm_delay__exit_announcement",
+          "alarm_delay_exit_announcement"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_beep_volume",
+        "domain": "number",
+        "name": "Alarm Delay: Beep Volume",
+        "objectIds": [
+          "alarm_delay__beep_volume",
+          "alarm_delay_beep_volume"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_final_countdown",
+        "domain": "number",
+        "name": "Alarm Delay: Final Countdown",
+        "objectIds": [
+          "alarm_delay__final_countdown",
+          "alarm_delay_final_countdown",
+          "alarm_delay_final_countdown_seconds"
+        ],
+        "groups": [
+          "settings_alarm_audio"
         ]
       },
       {

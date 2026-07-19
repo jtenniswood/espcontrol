@@ -977,10 +977,51 @@ async function assertSettingsPage(page, label, options = {}) {
       has: page.locator(".card-header h3", { hasText: /^Voice Services$/ }),
     })
     .first();
+  const alarmDelayAudioCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Alarm Delay Audio$/ }),
+    })
+    .first();
   if (options.slug === "esp32-p4-86") {
     assert(
       await voiceServicesCard.isVisible(),
       `${label}: voice services settings card is available for the voice-capable panel`,
+    );
+    assert(
+      await alarmDelayAudioCard.isVisible(),
+      `${label}: alarm delay audio settings are available for the speaker panel`,
+    );
+    await alarmDelayAudioCard.locator(".card-header").click();
+    const alarmDelayAudioToggle = alarmDelayAudioCard.locator("#sp-set-alarm-delay-audio");
+    async function setAlarmDelayAudioEnabled(enabled) {
+      await alarmDelayAudioToggle.evaluate((input, checked) => {
+        input.checked = checked;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }, enabled);
+    }
+    await setAlarmDelayAudioEnabled(true);
+    const entryAnnouncement = alarmDelayAudioCard.locator("#sp-set-alarm-delay-entry-announcement");
+    const exitAnnouncement = alarmDelayAudioCard.locator("#sp-set-alarm-delay-exit-announcement");
+    async function changeAnnouncement(input, value) {
+      await input.evaluate((element, nextValue) => {
+        element.value = nextValue;
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+      }, value);
+    }
+    await changeAnnouncement(entryAnnouncement, "Updated entry announcement");
+    await changeAnnouncement(exitAnnouncement, "Updated exit announcement");
+    await setAlarmDelayAudioEnabled(false);
+    await setAlarmDelayAudioEnabled(true);
+    assert.strictEqual(
+      await entryAnnouncement.inputValue(),
+      "Updated entry announcement",
+      `${label}: entry announcement state survives settings UI synchronization`,
+    );
+    assert.strictEqual(
+      await exitAnnouncement.inputValue(),
+      "Updated exit announcement",
+      `${label}: exit announcement state survives settings UI synchronization`,
     );
   } else {
     assert(
@@ -991,6 +1032,11 @@ async function assertSettingsPage(page, label, options = {}) {
       await voiceServicesCard.count(),
       0,
       `${label}: voice services settings card is hidden on panels without local voice`,
+    );
+    assert.strictEqual(
+      await alarmDelayAudioCard.count(),
+      0,
+      `${label}: alarm delay audio settings are hidden on panels without speaker support`,
     );
   }
   const nightScheduleCard = page

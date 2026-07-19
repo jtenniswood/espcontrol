@@ -9,6 +9,12 @@ export const SSE_ALIAS_GROUPS = {
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
   voiceServices: ["switch-voice_services", "switch-voice_services_enabled"],
+  alarmDelayAudio: ["switch-alarm_delay__audio", "switch-alarm_delay_audio", "switch-alarm_delay_audio_enabled"],
+  alarmDelayTts: ["switch-alarm_delay__tts", "switch-alarm_delay_tts", "switch-alarm_delay_tts_enabled"],
+  alarmDelayEntryAnnouncement: ["text-alarm_delay__entry_announcement", "text-alarm_delay_entry_announcement"],
+  alarmDelayExitAnnouncement: ["text-alarm_delay__exit_announcement", "text-alarm_delay_exit_announcement"],
+  alarmDelayBeepVolume: ["number-alarm_delay__beep_volume", "number-alarm_delay_beep_volume"],
+  alarmDelayFinalCountdown: ["number-alarm_delay__final_countdown", "number-alarm_delay_final_countdown", "number-alarm_delay_final_countdown_seconds"],
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
@@ -52,6 +58,12 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, "text-clock_bar_temperature_entities");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.networkStatus, "switch-screen__network_status_icon");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.voiceServices, "switch-voice_services");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayAudio, "switch-alarm_delay__audio");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayTts, "switch-alarm_delay__tts");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayEntryAnnouncement, "text-alarm_delay__entry_announcement");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayExitAnnouncement, "text-alarm_delay__exit_announcement");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayBeepVolume, "number-alarm_delay__beep_volume");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayFinalCountdown, "number-alarm_delay__final_countdown");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, "switch-screen__temperature_degree_symbol");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.subpageChevron, "switch-screen__subpage_chevron");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverTimeout, "number-screensaver_timeout");

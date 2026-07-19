@@ -424,6 +424,29 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {")
     lines.append("              id(display_takeover_end).execute(static_cast<int>(kind));")
     lines.append("            };")
+    if package_data(device).get("alarmDelayAudio"):
+        lines.extend(
+            [
+                "            cfg.alarm_delay_audio.enabled = []() {",
+                "              return id(alarm_delay_audio_enabled).state;",
+                "            };",
+                "            cfg.alarm_delay_audio.tts_enabled = []() {",
+                "              return id(alarm_delay_tts_enabled).state && id(voice_services_enabled).state;",
+                "            };",
+                "            cfg.alarm_delay_audio.final_countdown_seconds = []() {",
+                "              return static_cast<int>(id(alarm_delay_final_countdown_seconds).state);",
+                "            };",
+                "            cfg.alarm_delay_audio.play_beep = [](AlarmDelayAudioMode mode) {",
+                "              id(play_alarm_delay_beep).execute(mode == AlarmDelayAudioMode::ENTRY);",
+                "            };",
+                "            cfg.alarm_delay_audio.announce = [](AlarmDelayAudioMode mode) {",
+                "              id(announce_alarm_delay).execute(mode == AlarmDelayAudioMode::ENTRY);",
+                "            };",
+                "            cfg.alarm_delay_audio.stop = []() {",
+                "              id(stop_alarm_delay_audio).execute();",
+                "            };",
+            ]
+        )
     if image_card_count > 0:
         lines.append("            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {")
         for num in range(1, image_card_count + 1):

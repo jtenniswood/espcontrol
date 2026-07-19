@@ -23,6 +23,124 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             window.setTimeout(function (this: any) { els.setVoiceServicesToggle.focus(); }, 150);
         }
     }
+    function syncAlarmDelayAudioUi(this: any) {
+        if (els.setAlarmDelayAudioToggle)
+            els.setAlarmDelayAudioToggle.checked = !!state.alarmDelayAudioOn;
+        if (els.setAlarmDelayTtsToggle)
+            els.setAlarmDelayTtsToggle.checked = !!state.alarmDelayTtsOn;
+        if (els.alarmDelayAudioOptions)
+            els.alarmDelayAudioOptions.style.display = state.alarmDelayAudioOn ? "" : "none";
+        if (els.alarmDelayTtsOptions)
+            els.alarmDelayTtsOptions.style.display = state.alarmDelayAudioOn && state.alarmDelayTtsOn ? "" : "none";
+        syncInput(els.setAlarmDelayEntryAnnouncement, state.alarmDelayEntryAnnouncement);
+        syncInput(els.setAlarmDelayExitAnnouncement, state.alarmDelayExitAnnouncement);
+        if (els.setAlarmDelayBeepVolume)
+            els.setAlarmDelayBeepVolume.value = String(Math.round(state.alarmDelayBeepVolume * 100));
+        if (els.setAlarmDelayBeepVolumeVal)
+            els.setAlarmDelayBeepVolumeVal.textContent = Math.round(state.alarmDelayBeepVolume * 100) + "%";
+        if (els.setAlarmDelayFinalCountdown)
+            els.setAlarmDelayFinalCountdown.value = String(state.alarmDelayFinalCountdown);
+    }
+    function buildAlarmDelayAudioSettingsCard(this: any) {
+        if (!(CFG.features && CFG.features.alarmDelayAudio))
+            return null;
+        var body: any = document.createElement("div");
+        var master: any = toggleRow("Alarm Delay Audio", "sp-set-alarm-delay-audio", state.alarmDelayAudioOn);
+        body.appendChild(master.row);
+        els.setAlarmDelayAudioToggle = master.input;
+        master.input.addEventListener("change", function (this: any) {
+            state.alarmDelayAudioOn = this.checked;
+            postAlarmDelayAudio(state.alarmDelayAudioOn);
+            syncAlarmDelayAudioUi();
+        });
+
+        var options: any = condField();
+        els.alarmDelayAudioOptions = options;
+        var tts: any = toggleRow("TTS Announcements", "sp-set-alarm-delay-tts", state.alarmDelayTtsOn);
+        options.appendChild(tts.row);
+        els.setAlarmDelayTtsToggle = tts.input;
+        tts.input.addEventListener("change", function (this: any) {
+            state.alarmDelayTtsOn = this.checked;
+            postAlarmDelayTts(state.alarmDelayTtsOn);
+            syncAlarmDelayAudioUi();
+        });
+
+        var ttsOptions: any = condField();
+        els.alarmDelayTtsOptions = ttsOptions;
+        function announcementInput(label: any, id: any, value: any, fallback: any, stateKey: any, postValue: any) {
+            var field: any = document.createElement("div");
+            field.className = "sp-field";
+            field.appendChild(fieldLabel(label, id));
+            var input: any = document.createElement("input");
+            input.type = "text";
+            input.className = "sp-input";
+            input.id = id;
+            input.maxLength = 120;
+            input.value = value;
+            input.addEventListener("change", function (this: any) {
+                var normalized: any = normalizeAlarmDelayAnnouncement(this.value, fallback);
+                this.value = normalized;
+                state[stateKey] = normalized;
+                postValue(normalized);
+            });
+            field.appendChild(input);
+            ttsOptions.appendChild(field);
+            return input;
+        }
+        els.setAlarmDelayEntryAnnouncement = announcementInput(
+            "Entry Announcement", "sp-set-alarm-delay-entry-announcement",
+            state.alarmDelayEntryAnnouncement, DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT,
+            "alarmDelayEntryAnnouncement",
+            postAlarmDelayEntryAnnouncement);
+        els.setAlarmDelayExitAnnouncement = announcementInput(
+            "Exit Announcement", "sp-set-alarm-delay-exit-announcement",
+            state.alarmDelayExitAnnouncement, DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT,
+            "alarmDelayExitAnnouncement",
+            postAlarmDelayExitAnnouncement);
+        options.appendChild(ttsOptions);
+
+        var volume: any = createRangeSlider("Beep Volume", state.alarmDelayBeepVolume * 100, null);
+        volume.range.id = "sp-set-alarm-delay-beep-volume";
+        volume.range.min = "5";
+        volume.range.max = "100";
+        volume.range.step = "5";
+        volume.range.addEventListener("input", function (this: any) {
+            state.alarmDelayBeepVolume = normalizeAlarmDelayBeepVolume(parseFloat(this.value) / 100);
+            volume.val.textContent = Math.round(state.alarmDelayBeepVolume * 100) + "%";
+        });
+        volume.range.addEventListener("change", function (this: any) {
+            postAlarmDelayBeepVolume(normalizeAlarmDelayBeepVolume(parseFloat(this.value) / 100));
+        });
+        options.appendChild(volume.wrap);
+        els.setAlarmDelayBeepVolume = volume.range;
+        els.setAlarmDelayBeepVolumeVal = volume.val;
+
+        var countdownField: any = document.createElement("div");
+        countdownField.className = "sp-field";
+        countdownField.appendChild(fieldLabel("Faster Beeps During Final Seconds", "sp-set-alarm-delay-final-countdown"));
+        var countdown: any = document.createElement("input");
+        countdown.type = "number";
+        countdown.className = "sp-input";
+        countdown.id = "sp-set-alarm-delay-final-countdown";
+        countdown.min = "0";
+        countdown.max = "60";
+        countdown.step = "1";
+        countdown.value = String(state.alarmDelayFinalCountdown);
+        countdown.addEventListener("change", function (this: any) {
+            state.alarmDelayFinalCountdown = normalizeAlarmDelayFinalCountdown(this.value);
+            this.value = String(state.alarmDelayFinalCountdown);
+            postAlarmDelayFinalCountdown(state.alarmDelayFinalCountdown);
+        });
+        countdownField.appendChild(countdown);
+        options.appendChild(countdownField);
+        els.setAlarmDelayFinalCountdown = countdown;
+        body.appendChild(options);
+        body.appendChild(infoPanel(
+            "sp-alarm-delay-audio-info",
+            "Entry and exit beeps use the panel speaker. TTS is sent as a Home Assistant announcement event only while Voice Services are enabled."));
+        syncAlarmDelayAudioUi();
+        return makeCollapsibleCard("Alarm Delay Audio", body, true);
+    }
     function coverArtTrackOverlayDurationSupported(this: any) {
         return !!(CFG && CFG.coverArtSquareOverlay);
     }
@@ -263,6 +381,8 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         "settingsStatusHeader": staticGlobal(settingsStatusHeader),
         "appendSettingsSection": staticGlobal(appendSettingsSection),
         "openVoiceServicesSettings": staticGlobal(openVoiceServicesSettings),
+        "syncAlarmDelayAudioUi": staticGlobal(syncAlarmDelayAudioUi),
+        "buildAlarmDelayAudioSettingsCard": staticGlobal(buildAlarmDelayAudioSettingsCard),
         "coverArtTrackOverlayDurationSupported": staticGlobal(coverArtTrackOverlayDurationSupported),
         "infoPanel": staticGlobal(infoPanel),
         "statusBadge": staticGlobal(statusBadge),

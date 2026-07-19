@@ -40,7 +40,11 @@
     "panelNormalized": {
       "indoorTempEnable": false, "outdoorTempEnable": false, "indoorTempEntity": "", "outdoorTempEntity": "",
       "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "networkStatusIcon": true,
-      "voiceServices": false, "temperatureDegreeSymbol": true, "subpageChevron": true,
+      "voiceServices": false, "alarmDelayAudio": false, "alarmDelayTts": true,
+      "alarmDelayEntryAnnouncement": "Please disarm the alarm",
+      "alarmDelayExitAnnouncement": "Alarm arming, please leave the house",
+      "alarmDelayBeepVolume": 0.45, "alarmDelayFinalCountdown": 10,
+      "temperatureDegreeSymbol": true, "subpageChevron": true,
       "timezone": "Europe/London (GMT+0)", "temperatureUnit": "°F", "language": "en", "clockFormat": "12h",
       "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
       "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
@@ -100,5 +104,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 626871, "gzip": 148946 }
+  "bundleSize": { "minified": 637303, "gzip": 150991 }
 }

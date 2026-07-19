@@ -113,6 +113,7 @@ CANONICAL_PACKAGE_KEYS = (
     "deviceFontPackageKey",
     "touchscreenPackage",
     "localVoiceServices",
+    "alarmDelayAudio",
     "networkCoprocessor",
     "esp32C6FirmwareUpdate",
     "ethernetSelectable",
@@ -657,6 +658,7 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
         "improvSerial",
         "touchscreenPackage",
         "localVoiceServices",
+        "alarmDelayAudio",
         "apiNavigateAction",
         "esp32C6FirmwareUpdate",
     ):
@@ -878,6 +880,8 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
         features["internalRelays"] = copy.deepcopy(profile["internalRelays"])
     if package.get("localVoiceServices"):
         features["voiceServices"] = True
+    if package.get("alarmDelayAudio"):
+        features["alarmDelayAudio"] = True
     if package.get("subpageConfigChunks"):
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
     return features

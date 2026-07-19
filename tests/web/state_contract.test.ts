@@ -50,6 +50,9 @@ export function runStateContractTests(): void {
   equal(first.powerModeSupported, false, "power control waits for firmware feature detection");
   equal(first.screenRotationInitialReady, false, "rotation-capable devices wait for the initial event");
   equal(first.timezoneOptions.length, 2, "startup copies embedded timezone options");
+  equal(first.alarmDelayAudioOn, false, "alarm delay audio defaults off");
+  equal(first.alarmDelayTtsOn, true, "alarm delay TTS defaults on");
+  equal(first.alarmDelayFinalCountdown, 10, "alarm delay final countdown defaults to ten seconds");
   first.grid[0] = 9;
   first.buttons[0]!.label = "Changed";
   equal(second.grid[0], 0, "state factories do not share grid arrays");
@@ -94,6 +97,12 @@ export function runStateContractTests(): void {
     clockBarTemperatureEntities: "text-clock_bar_temperature_entities",
     networkStatus: "switch-screen__network_status_icon",
     voiceServices: "switch-voice_services",
+    alarmDelayAudio: "switch-alarm_delay__audio",
+    alarmDelayTts: "switch-alarm_delay__tts",
+    alarmDelayEntryAnnouncement: "text-alarm_delay__entry_announcement",
+    alarmDelayExitAnnouncement: "text-alarm_delay__exit_announcement",
+    alarmDelayBeepVolume: "number-alarm_delay__beep_volume",
+    alarmDelayFinalCountdown: "number-alarm_delay__final_countdown",
     temperatureDegreeSymbol: "switch-screen__temperature_degree_symbol",
     subpageChevron: "switch-screen__subpage_chevron",
     screensaverTimeout: "number-screensaver_timeout",
