@@ -182,6 +182,88 @@ inline MediaControlCtx *media_driver_create_control(
       environment.volume_width_compensation_percent));
 }
 
+inline void media_driver_bind_cover_art_route(
+    MediaNowPlayingCtx *now_playing, MediaControlCtx *control,
+    const std::string &primary_entity,
+    const std::string &secondary_entity) {
+  if (!now_playing || primary_entity.empty()) return;
+  now_playing->primary_entity = primary_entity;
+  now_playing->secondary_entity = secondary_entity;
+  now_playing->active_entity.clear();
+
+  MediaPlaybackState *primary = media_playback_ensure_state(primary_entity);
+  if (!primary) return;
+  media_playback_attach_now_playing(primary, now_playing);
+  media_playback_subscribe_playback_state(primary);
+  media_playback_subscribe_metadata(primary);
+  media_playback_subscribe_content(primary);
+  media_playback_subscribe_progress(primary);
+
+  MediaPlaybackState *secondary = nullptr;
+  if (!secondary_entity.empty() && secondary_entity != primary_entity) {
+    secondary = media_playback_ensure_state(secondary_entity);
+    if (secondary) {
+      media_playback_attach_now_playing(secondary, now_playing);
+      media_playback_subscribe_playback_state(secondary);
+      media_playback_subscribe_metadata(secondary);
+      media_playback_subscribe_content(secondary);
+      media_playback_subscribe_progress(secondary);
+    }
+  }
+
+  subscribe_media_cover_art(now_playing, primary_entity);
+  if (secondary) subscribe_media_cover_art(now_playing, secondary_entity);
+
+  now_playing->refresh_entity_route = [now_playing, control]() {
+    MediaPlaybackState *primary_state =
+      media_playback_find_state(now_playing->primary_entity);
+    MediaPlaybackState *secondary_state =
+      media_playback_find_state(now_playing->secondary_entity);
+    const bool use_secondary = espcontrol::cover_art::use_secondary_media_entity(
+      primary_state && primary_state->external_source,
+      !now_playing->secondary_entity.empty(),
+      secondary_state && secondary_state->available,
+      media_playback_has_current_content(secondary_state));
+    const std::string next_entity = use_secondary
+      ? now_playing->secondary_entity : now_playing->primary_entity;
+    if (next_entity.empty() || next_entity == now_playing->active_entity) return;
+
+    ESP_LOGI("media_card", "Cover art entity switched from %s to %s",
+             now_playing->active_entity.empty() ? "<none>" : now_playing->active_entity.c_str(),
+             next_entity.c_str());
+    now_playing->active_entity = next_entity;
+
+    if (now_playing->cover_art) {
+      ImageCardCtx *art = now_playing->cover_art;
+      image_card_clear_media_artwork(art);
+      art->entity_id = next_entity;
+      art->access_token.clear();
+      subscribe_image_card_access_token(art, next_entity);
+      image_card_request_media_artwork(art);
+    }
+
+    if (now_playing->progress_slider) {
+      SliderCtx *slider = static_cast<SliderCtx *>(
+        lv_obj_get_user_data(now_playing->progress_slider));
+      if (slider) {
+        media_playback_detach_slider(slider);
+        slider->entity_id = next_entity;
+        subscribe_media_slider_state(
+          lv_obj_get_parent(now_playing->progress_slider),
+          now_playing->progress_slider, next_entity);
+      }
+    }
+
+    if (control) {
+      media_playback_detach_control(control);
+      control->entity_id = next_entity;
+      subscribe_media_control_state(control);
+    }
+  };
+  now_playing->refresh_entity_route();
+  media_playback_apply_state_to_now_playing(primary, now_playing);
+}
+
 inline bool media_driver_bind_data(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const MediaDriverEnvironment &environment) {
@@ -234,17 +316,23 @@ inline bool media_driver_bind_data(
     if (environment.grid_config) {
       setup_media_cover_art(slot, config, *environment.grid_config);
     }
-    if (mode == "now_playing" ||
-        (mode == "cover_art" && media_cover_art_details_enabled(config))) {
+    if (mode == "now_playing") {
       subscribe_media_now_playing_state(now_playing, config.entity);
     }
-    subscribe_media_cover_art(now_playing, config.entity);
+    if (mode == "now_playing") {
+      subscribe_media_cover_art(now_playing, config.entity);
+    }
+    MediaControlCtx *control = nullptr;
     if (mode == "cover_art" &&
         media_cover_art_press_action(config) == "control_modal") {
-      MediaControlCtx *control = media_driver_create_control(
+      control = media_driver_create_control(
         slot, config, context, environment);
       if (control) control->highlight_playing = false;
-      subscribe_media_control_state(control);
+    }
+    if (mode == "cover_art") {
+      media_driver_bind_cover_art_route(
+        now_playing, control, config.entity,
+        media_cover_art_secondary_entity(config));
     }
   } else {
     lv_obj_t *slider_obj = slot.sensor_container
@@ -296,7 +384,11 @@ inline bool media_driver_handle_click(
       if (!control) control = grid_media_control_runtime_for_owner(button);
       if (control) media_control_open_modal(control);
     } else {
-      send_media_playback_action(config.entity, "play_pause");
+      ImageCardCtx *art = button
+        ? static_cast<ImageCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
+      send_media_playback_action(
+        art && !art->entity_id.empty() ? art->entity_id : config.entity,
+        "play_pause");
     }
   } else if (media_playback_button_mode(mode)) {
     send_media_playback_action(config.entity, mode);

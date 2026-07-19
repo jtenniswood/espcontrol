@@ -41,6 +41,19 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
             },
         });
         els.setCoverArtMediaPlayer = coverArtEntityInp;
+        var secondaryCoverArtEntityField: any = document.createElement("div");
+        secondaryCoverArtEntityField.className = "sp-field";
+        secondaryCoverArtEntityField.appendChild(fieldLabel("External Source Media Entity", "sp-set-ss-cover-art-secondary-player"));
+        var secondaryCoverArtEntityInp: any = entityInput("sp-set-ss-cover-art-secondary-player", state.coverArtSecondaryMediaPlayerEntity, "e.g. media_player.apple_tv", ["media_player"]);
+        secondaryCoverArtEntityField.appendChild(secondaryCoverArtEntityInp);
+        coverArtOnlyOptions.appendChild(secondaryCoverArtEntityField);
+        bindTextPost(secondaryCoverArtEntityInp, entityName("screen_saver_cover_art_secondary_entity"), {
+            onBlur: function (this: any, value?: any) {
+                state.coverArtSecondaryMediaPlayerEntity = value;
+            },
+            post: postCoverArtSecondaryMediaPlayerEntity,
+        });
+        els.setCoverArtSecondaryMediaPlayer = secondaryCoverArtEntityInp;
         var coverArtDelayField: any = document.createElement("div");
         coverArtDelayField.className = "sp-field";
         coverArtDelayField.appendChild(fieldLabel("Show After", "sp-set-ss-cover-art-delay"));

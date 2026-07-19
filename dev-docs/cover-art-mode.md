@@ -35,6 +35,10 @@ layout, downloading, and presentation responsibilities distinct.
   message.
 - A touch dismisses the takeover and the configured return delay controls when
   it can appear again.
+- An optional secondary media entity may become the active player while the
+  primary player reports TV, line-in, or HDMI. Routing switches the complete
+  playback presentation together and invalidates callbacks and artwork owned by
+  the previous entity.
 
 ## Memory and Performance Contract
 

@@ -93,6 +93,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   nowPlayingControl: "none",
   coverArtAction: "play_pause",
   showTrackDetails: false,
+  secondaryEntity: "",
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
@@ -109,6 +110,11 @@ assert.strictEqual(model.decodeMediaCardConfigV1({
   sensor: "cover_art",
   options: "cover_art_details",
 }).showTrackDetails, true, "Media decoder exposes optional cover-art track details");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "cover_art",
+  options: "cover_art_secondary_entity=media_player.apple_tv",
+}).secondaryEntity, "media_player.apple_tv", "Media decoder exposes the external-source player");
 assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "controls",
@@ -122,6 +128,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   nowPlayingControl: "none",
   coverArtAction: "control_modal",
   showTrackDetails: false,
+  secondaryEntity: "",
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,
@@ -600,6 +607,22 @@ assert.strictEqual(
   }).coverArtMediaPlayerEntity,
   "media_player.living",
   "legacy sleep prevention media player imports into cover art media player"
+);
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({
+    cover_art_secondary_media_player_entity: "media_player.apple_tv",
+  }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h",
+    clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
+    ntpServer1: "0.pool.ntp.org", ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org",
+    coverArtHomeAssistantProtocol: "http", coverArtHomeAssistantPort: 8123,
+    autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
+    screenRotationOptions: ["0", "90", "180", "270"],
+  }).coverArtSecondaryMediaPlayerEntity,
+  "media_player.apple_tv",
+  "secondary cover art media player survives backup import"
 );
 assert.strictEqual(panelSettings.clockBrightnessDay, 44, "panel day clock brightness imports");
 assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock brightness imports");

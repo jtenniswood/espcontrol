@@ -649,6 +649,29 @@ text:
         - script.execute: cover_art_resubscribe
 
   - platform: template
+    name: "${entity_screen_saver_cover_art_secondary_entity}"
+    internal: true
+    id: cover_art_secondary_media_player_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:video-input-hdmi"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - globals.set:
+            id: cover_art_subscribed_entity
+            value: '""'
+        - script.execute: cover_art_playback_stopped
+        - script.execute: cover_art_resubscribe
+
+  - platform: template
     name: "${entity_screen_saver_cover_art_conditions}"
     internal: true
     id: cover_art_attribute_conditions

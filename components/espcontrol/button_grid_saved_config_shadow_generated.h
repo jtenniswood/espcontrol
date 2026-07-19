@@ -225,6 +225,11 @@ inline bool normalize_saved_config_media_shadow(Config &config) {
     if (saved_config_shadow_trim(cfg_option_value(source, "label_display")) == "label") saved_config_shadow_append_option(out, "label_display", "label");
     if (saved_config_shadow_trim(cfg_option_value(source, "number_display")) == "volume") saved_config_shadow_append_option(out, "number_display", "volume");
     if (max_volume != SAVED_CONFIG_SHADOW_MEDIA_VOLUME_DEFAULT) saved_config_shadow_append_option(out, "volume_max", std::to_string(max_volume));
+  } else if (config.sensor == "cover_art") {
+    if (saved_config_shadow_trim(cfg_option_value(source, "cover_art_action")) == "control_modal") saved_config_shadow_append_option(out, "cover_art_action", "control_modal");
+    if (cfg_option_token_present(source, "cover_art_details")) saved_config_shadow_append_option(out, "cover_art_details");
+    const std::string secondary_entity = saved_config_shadow_trim(cfg_option_value(source, "cover_art_secondary_entity"));
+    if (!secondary_entity.empty()) saved_config_shadow_append_option(out, "cover_art_secondary_entity", secondary_entity);
   } else if (config.sensor == "playlist") {
     const std::string content_id = saved_config_shadow_trim(cfg_option_value(source, "playlist_content_id"));
     const std::string content_type = saved_config_shadow_trim(cfg_option_value(source, "playlist_content_type"));

@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 91,
+    "entityNames": 92,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -4319,6 +4319,20 @@
             ]
           },
           {
+            "name": "cover_art_secondary_entity",
+            "label": "External Source Media Entity",
+            "kind": "text",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "equals",
+                "value": "cover_art"
+              }
+            ]
+          },
+          {
             "name": "volume_max",
             "label": "Maximum Volume",
             "kind": "number",
@@ -4482,6 +4496,7 @@
             "number_display",
             "cover_art_action",
             "cover_art_details",
+            "cover_art_secondary_entity",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",
@@ -6075,6 +6090,19 @@
           "screen_saver__cover_art_entity",
           "screen_saver_cover_art_entity",
           "cover_art_media_player_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_cover_art_secondary_entity",
+        "domain": "text",
+        "name": "Screen Saver: External Source Media Entity",
+        "objectIds": [
+          "screen_saver__external_source_media_entity",
+          "screen_saver_cover_art_secondary_entity",
+          "cover_art_secondary_media_player_entity"
         ],
         "groups": [
           "settings"

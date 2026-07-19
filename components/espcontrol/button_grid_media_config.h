@@ -35,6 +35,7 @@ struct ConfigV1 {
   NowPlayingControl now_playing_control = NowPlayingControl::NONE;
   CoverArtAction cover_art_action = CoverArtAction::PLAY_PAUSE;
   bool show_track_details = false;
+  std::string secondary_entity;
   ControlLabelDisplay control_label_display = ControlLabelDisplay::STATUS;
   ControlNumberDisplay control_number_display = ControlNumberDisplay::ICON;
   int max_volume_percent = 100;
@@ -81,6 +82,8 @@ inline ConfigV1 decode_config_v1(const ParsedCfg &saved) {
   }
   config.show_track_details = cfg_option_token_present(
       saved.options, MEDIA_COVER_ART_DETAILS_OPTION);
+  config.secondary_entity = trim_saved_option_value(
+      cfg_option_value(saved.options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION));
   if (cfg_option_value(saved.options, LABEL_DISPLAY_OPTION) == "label") {
     config.control_label_display = ControlLabelDisplay::LABEL;
   }

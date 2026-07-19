@@ -72,6 +72,8 @@ Now Playing works best on wider or larger cards because it has more room for tra
 
 Cover Art shows the current artwork reported by the selected media player. Choose a square card size: **1x1**, **2x2**, or **3x3**. EspControl crops the image to fill the tile without stretching it.
 
+If the main player is a soundbar or speaker that reports an external `TV`, `Line-in`, or `HDMI` source, you can set **External Source Media Entity** to the connected player, such as an Apple TV. While that external source is active, the card takes its artwork, track details, progress, and Play/Pause or **All Controls** actions from the connected player. It switches back to the main player for normal playback, and safely falls back if the connected player is unavailable.
+
 Enable **Show Track Details** to place the current title and artist over the artwork. EspControl adds an artwork-derived dark tint so the text remains readable. If artwork is unavailable, the title and artist remain visible on the card's normal background. The setting is off by default, so existing Cover Art cards remain image-only.
 
 Choose what happens when the artwork is tapped:

@@ -142,6 +142,7 @@ export interface AppState {
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaverOn: boolean;
   coverArtMediaPlayerEntity: string;
+  coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtFilteringEnabled: boolean;
   coverArtDelay: number;

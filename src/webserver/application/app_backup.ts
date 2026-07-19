@@ -62,6 +62,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity || state.coverArtMediaPlayerEntity,
                 cover_art_screensaver: state.coverArtScreensaverOn,
                 cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
+                cover_art_secondary_media_player_entity: state.coverArtSecondaryMediaPlayerEntity,
                 cover_art_attribute_conditions: state.coverArtAttributeConditions,
                 cover_art_delay: state.coverArtDelay,
                 cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
@@ -249,6 +250,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
                     postCoverArtScreensaver(importedSettings.coverArtScreensaver);
                     postCoverArtMediaPlayerEntity(importedSettings.coverArtMediaPlayerEntity);
+                    postCoverArtSecondaryMediaPlayerEntity(importedSettings.coverArtSecondaryMediaPlayerEntity);
                     postCoverArtConditions(importedSettings.coverArtAttributeConditions);
                     postCoverArtDelay(importedSettings.coverArtDelay);
                     postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
@@ -306,6 +308,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;
                     state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
                     state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;
+                    state.coverArtSecondaryMediaPlayerEntity = importedSettings.coverArtSecondaryMediaPlayerEntity;
                     state.coverArtAttributeConditions = importedSettings.coverArtAttributeConditions;
                     state.coverArtDelay = importedSettings.coverArtDelay;
                     state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
@@ -331,6 +334,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     syncInput(els.setPresence, state.presenceEntity);
                     syncMediaPlayerSleepPreventionUi();
                     syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
+                    syncInput(els.setCoverArtSecondaryMediaPlayer, state.coverArtSecondaryMediaPlayerEntity);
                     syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions);
                     syncCoverArtScreensaverUi();
                     if (els.setAutoUpdate)

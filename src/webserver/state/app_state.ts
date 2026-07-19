@@ -41,7 +41,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     networkTransport: "wifi", wifiStrengthPercent: 100,
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
     mediaPlayerSleepPreventionOn: true, mediaPlayerSleepPreventionEntity: "",
-    coverArtScreensaverOn: false, coverArtMediaPlayerEntity: "", coverArtAttributeConditions: "",
+    coverArtScreensaverOn: false, coverArtMediaPlayerEntity: "", coverArtSecondaryMediaPlayerEntity: "", coverArtAttributeConditions: "",
     coverArtFilteringEnabled: false, coverArtDelay: 10, coverArtTrackOverlayDuration: 5,
     coverArtHideExternalInputOn: true, homeAssistantArtworkProtocol: "http", coverArtHomeAssistantPort: 8123,
     screensaverMode: "disabled", _screensaverModeReceived: false, screensaverAction: "off",

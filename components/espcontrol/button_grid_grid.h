@@ -414,7 +414,9 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->media_artwork_width_compensation_percent = cfg.media_artwork_width_compensation_percent;
   media_ctx->cover_art = art;
   media_ctx->cover_overlay = overlay;
-  if (image_only && media_ctx->btn) lv_obj_set_user_data(media_ctx->btn, art);
+  if (media_ctx->btn && media_cover_art_press_action(p) == "play_pause") {
+    lv_obj_set_user_data(media_ctx->btn, art);
+  }
   if (art->image_ready) {
     image_card_set_widget_source(img, art->image);
     if (overlay) {
@@ -430,12 +432,22 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
                                       const std::string &entity_id) {
   if (!ctx || !ctx->cover_art || entity_id.empty()) return;
   ImageCardCtx *art = ctx->cover_art;
+  MediaPlaybackState *playback = media_playback_find_state(entity_id);
   const uint32_t generation = ha_subscription_generation();
   ha_subscribe_attribute(
     entity_id,
     std::string("entity_picture"),
     std::function<void(esphome::StringRef)>(
-      [art, entity_id, generation](esphome::StringRef picture) {
+      [art, playback, entity_id, generation](esphome::StringRef picture) {
+        if (media_playback_generation_valid(playback, generation)) {
+          const std::string value = string_ref_limited(
+            picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
+          const bool present = !value.empty() && value != "unknown" &&
+                               value != "unavailable";
+          if (present) playback->artwork_content_mask |= 1u;
+          else playback->artwork_content_mask &= static_cast<uint8_t>(~1u);
+          media_playback_apply_state_to_now_playing(playback);
+        }
         if (!image_card_context_current(art, entity_id, generation)) return;
         image_card_handle_media_artwork_picture(art, picture, false);
       })
@@ -444,7 +456,16 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     entity_id,
     std::string("entity_picture_local"),
     std::function<void(esphome::StringRef)>(
-      [art, entity_id, generation](esphome::StringRef picture) {
+      [art, playback, entity_id, generation](esphome::StringRef picture) {
+        if (media_playback_generation_valid(playback, generation)) {
+          const std::string value = string_ref_limited(
+            picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
+          const bool present = !value.empty() && value != "unknown" &&
+                               value != "unavailable";
+          if (present) playback->artwork_content_mask |= 2u;
+          else playback->artwork_content_mask &= static_cast<uint8_t>(~2u);
+          media_playback_apply_state_to_now_playing(playback);
+        }
         if (!image_card_context_current(art, entity_id, generation)) return;
         image_card_handle_media_artwork_picture(art, picture, true);
       })

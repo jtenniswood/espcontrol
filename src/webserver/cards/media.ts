@@ -511,6 +511,31 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 }
             }
             if (b.sensor === "cover_art") {
+                var secondaryEntityField: any = helpers.renderCardEntityField(panel, b, helpers, {
+                    entity: {
+                        label: "External Source Media Entity",
+                        idSuffix: "media-cover-art-secondary-entity",
+                        value: function (this: any) { return mediaCoverArtSecondaryEntity(b); },
+                        placeholder: "e.g. media_player.apple_tv",
+                        domains: ["media_player"],
+                        bindName: null,
+                        rerender: false,
+                    },
+                });
+                var secondaryEntityInput: any = secondaryEntityField.input;
+                function saveSecondaryEntity(this: any) {
+                    setMediaCoverArtSecondaryEntity(b, secondaryEntityInput.value);
+                    helpers.saveField("options", b.options);
+                }
+                secondaryEntityInput.addEventListener("input", saveSecondaryEntity);
+                secondaryEntityInput.addEventListener("change", saveSecondaryEntity);
+                secondaryEntityInput.addEventListener("blur", saveSecondaryEntity);
+                secondaryEntityInput.addEventListener("keydown", function (this: any, event?: any) {
+                    if (event.key === "Enter") {
+                        saveSecondaryEntity();
+                        this.blur();
+                    }
+                });
                 helpers.renderCardSegmentControl(panel, b, helpers, {
                     segment: Object.assign({}, MEDIA_CARD_METADATA.coverArtAction, {
                         inputId: helpers.idPrefix + "media-cover-art-action",

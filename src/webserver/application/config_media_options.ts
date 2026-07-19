@@ -58,6 +58,10 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
             if (configOptionEnabled(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
                 coverArtOut = setConfigOption(coverArtOut, MEDIA_COVER_ART_DETAILS_OPTION, true);
             }
+            var secondaryEntity: any = configOptionValue(options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION).trim();
+            if (secondaryEntity) {
+                coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION, secondaryEntity);
+            }
             return coverArtOut;
         }
         if (mode !== "volume" && mode !== "position")
@@ -94,6 +98,17 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         if (!b)
             return "";
         b.options = setConfigOption(b.options, MEDIA_COVER_ART_DETAILS_OPTION, !!enabled);
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
+    }
+    function mediaCoverArtSecondaryEntity(this: any, b?: any) {
+        return configOptionValue(b && b.options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION).trim();
+    }
+    function setMediaCoverArtSecondaryEntity(this: any, b?: any, entity?: any) {
+        if (!b)
+            return "";
+        b.options = setConfigOptionValue(
+            b.options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION, String(entity || "").trim());
         b.options = normalizeMediaOptions(b.options, b.sensor);
         return b.options;
     }
@@ -184,6 +199,8 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         "setMediaCoverArtAction": staticGlobal(setMediaCoverArtAction),
         "mediaCoverArtDetailsEnabled": staticGlobal(mediaCoverArtDetailsEnabled),
         "setMediaCoverArtDetailsEnabled": staticGlobal(setMediaCoverArtDetailsEnabled),
+        "mediaCoverArtSecondaryEntity": staticGlobal(mediaCoverArtSecondaryEntity),
+        "setMediaCoverArtSecondaryEntity": staticGlobal(setMediaCoverArtSecondaryEntity),
         "normalizeMediaLabelDisplayMode": staticGlobal(normalizeMediaLabelDisplayMode),
         "normalizeMediaNumberDisplayMode": staticGlobal(normalizeMediaNumberDisplayMode),
         "mediaVolumeMax": staticGlobal(mediaVolumeMax),

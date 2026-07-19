@@ -186,6 +186,10 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                     state.mediaPlayerSleepPreventionEntity = val;
                 syncInput(els.setCoverArtMediaPlayer, val);
             },
+            "text-screen_saver__external_source_media_entity": function (this: any, val?: any) {
+                state.coverArtSecondaryMediaPlayerEntity = val;
+                syncInput(els.setCoverArtSecondaryMediaPlayer, val);
+            },
             "text-screen_saver__cover_art_conditions": function (this: any, val?: any) {
                 state.coverArtAttributeConditions = val;
                 syncInput(els.setCoverArtConditions, val);

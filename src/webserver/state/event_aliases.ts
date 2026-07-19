@@ -23,6 +23,7 @@ export const SSE_ALIAS_GROUPS = {
   mediaPlayerSleepPreventionEntity: ["text-media_player_sleep_prevention_entity"],
   coverArt: ["switch-screen_saver__cover_art", "switch-screen_saver_cover_art", "switch-screensaver_cover_art"],
   coverArtEntity: ["text-screen_saver__cover_art_entity", "text-screen_saver_cover_art_entity", "text-cover_art_media_player_entity"],
+  coverArtSecondaryEntity: ["text-screen_saver__external_source_media_entity", "text-screen_saver_cover_art_secondary_entity", "text-cover_art_secondary_media_player_entity"],
   coverArtConditions: ["text-screen_saver__cover_art_conditions", "text-screen_saver_cover_art_conditions", "text-cover_art_attribute_conditions"],
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
@@ -72,6 +73,7 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPreventionEntity, "text-media_player_sleep_prevention_entity");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArt, "switch-screen_saver__cover_art");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtEntity, "text-screen_saver__cover_art_entity");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtSecondaryEntity, "text-screen_saver__external_source_media_entity");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtConditions, "text-screen_saver__cover_art_conditions");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtDelay, "number-screen_saver__cover_art_delay");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.trackOverlayDuration, "number-screen_saver__track_overlay_duration");

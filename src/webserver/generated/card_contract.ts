@@ -2677,6 +2677,20 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         ]
       },
       {
+        "name": "cover_art_secondary_entity",
+        "label": "External Source Media Entity",
+        "kind": "text",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "sensor",
+            "operator": "equals",
+            "value": "cover_art"
+          }
+        ]
+      },
+      {
         "name": "volume_max",
         "label": "Maximum Volume",
         "kind": "number",
@@ -2840,6 +2854,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "number_display",
         "cover_art_action",
         "cover_art_details",
+        "cover_art_secondary_entity",
         "volume_max",
         "playlist_content_id",
         "playlist_content_type",
@@ -4418,6 +4433,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "confirmation_required": "confirmation_required",
   "cover_art_action": "cover_art_action",
   "cover_art_details": "cover_art_details",
+  "cover_art_secondary_entity": "cover_art_secondary_entity",
   "cover_mode": "cover_mode",
   "cover_position": "cover_position",
   "cover_tabs": "cover_tabs",

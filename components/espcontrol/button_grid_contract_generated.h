@@ -294,6 +294,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRMATION_MODE = "confirmatio
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRMATION_REQUIRED = "confirmation_required";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_ART_ACTION = "cover_art_action";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_ART_DETAILS = "cover_art_details";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_ART_SECONDARY_ENTITY = "cover_art_secondary_entity";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_MODE = "cover_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_POSITION = "cover_position";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_TABS = "cover_tabs";

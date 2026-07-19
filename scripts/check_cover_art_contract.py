@@ -11,6 +11,17 @@ SOURCE = r'''
 #include "cover_art.h"
 using namespace espcontrol::cover_art;
 int main() {
+  assert(external_media_source("TV"));
+  assert(external_media_source(" line-in "));
+  assert(external_media_source("Line In"));
+  assert(external_media_source("HDMI"));
+  assert(external_media_source("hdmi 1"));
+  assert(!external_media_source("Spotify"));
+  assert(!use_secondary_media_entity(false, true, true, true));
+  assert(!use_secondary_media_entity(true, false, true, true));
+  assert(!use_secondary_media_entity(true, true, false, true));
+  assert(!use_secondary_media_entity(true, true, true, false));
+  assert(use_secondary_media_entity(true, true, true, true));
   PolicyInput p; assert(!policy_allows_display(p));
   p.enabled = p.media_playing = p.entity_configured = true; assert(policy_allows_display(p));
   p.external_input_active = p.hide_external_input = true;

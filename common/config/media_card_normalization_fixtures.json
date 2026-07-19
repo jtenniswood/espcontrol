@@ -135,6 +135,21 @@
     }
   },
   {
+    "name": "cover art preserves external source media entity",
+    "input": "media_player.soundbar;Cover Art;Music;Auto;cover_art;;media;;cover_art_secondary_entity=media_player.apple_tv,cover_art_details",
+    "expected": {
+      "entity": "media_player.soundbar",
+      "label": "Cover Art",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "cover_art_details,cover_art_secondary_entity=media_player.apple_tv"
+    }
+  },
+  {
     "name": "legacy now playing cover art option becomes subtype",
     "input": "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art",
     "expected": {

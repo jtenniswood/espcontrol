@@ -13,13 +13,14 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 ## Settings
 
 - **Show Cover Art** - enables the cover art display and keeps the screen awake while artwork is shown.
+- **External Source Media Entity** - optionally selects the player connected through a soundbar or speaker's `TV`, `Line-in`, or `HDMI` input. While that input is active and the connected player has current media, its playback state, artwork, details, progress, and filtering attributes drive the cover-art screen.
 - **Media Player Entity** - chooses the media player entity to watch, such as `media_player.living_room`.
 - **Show After** - chooses how long cover art waits before appearing, from 3 seconds to 5 minutes.
 - **Show After** also controls how long cover art waits before returning after you dismiss it by touch. The countdown restarts after every touch, so cover art returns only after the selected time has passed since your most recent touch.
 - **Show Track Details For** - controls how long track information is shown over the artwork on the 4-inch square displays.
 - **Advanced Options** - contains playback, source, and filtering controls you may not need every day.
 - **Keep Screen Awake During Playback** - is on by default and prevents the display from sleeping while media plays when **Show Cover Art** is enabled. It does not bypass the **Show After** delay, and has no effect while cover art is disabled.
-- **Hide for external source inputs** - hides cover art when the selected media player source is `TV` or `Line-in`.
+- **Hide for external source inputs** - hides cover art when the selected media player source is `TV`, `Line-in`, or `HDMI`. A usable **External Source Media Entity** overrides this setting; if it becomes unavailable, the hide setting applies again.
 - **Advanced Filtering** - reveals **Only Show When**, which limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
 
 Playback time and the progress bar appear only when Home Assistant provides a usable media duration. Live radio streams without a duration continue to show artwork and track details without an empty progress line.

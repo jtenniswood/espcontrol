@@ -248,6 +248,15 @@ export const ENTITY_CATALOG = {
         "cover_art_media_player_entity"
       ]
     },
+    "screen_saver_cover_art_secondary_entity": {
+      "domain": "text",
+      "name": "Screen Saver: External Source Media Entity",
+      "objectIds": [
+        "screen_saver__external_source_media_entity",
+        "screen_saver_cover_art_secondary_entity",
+        "cover_art_secondary_media_player_entity"
+      ]
+    },
     "screen_saver_cover_art_conditions": {
       "domain": "text",
       "name": "Screen Saver: Cover Art Conditions",
@@ -671,6 +680,7 @@ export const ENTITY_CATALOG = {
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",
       "screen_saver_cover_art_entity",
+      "screen_saver_cover_art_secondary_entity",
       "screen_saver_cover_art_conditions",
       "screen_saver_cover_art_delay",
       "screen_saver_track_overlay_duration",

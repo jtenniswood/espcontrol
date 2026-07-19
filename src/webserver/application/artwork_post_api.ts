@@ -16,6 +16,9 @@ export function installArtworkPostApiModule(): GlobalDescriptors {
     function postCoverArtMediaPlayerEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("screen_saver_cover_art_entity"), entityObjectIds("screen_saver_cover_art_entity"), value);
     }
+    function postCoverArtSecondaryMediaPlayerEntity(this: any, value?: any) {
+        return postTextWithObjectIds(entityName("screen_saver_cover_art_secondary_entity"), entityObjectIds("screen_saver_cover_art_secondary_entity"), value);
+    }
     function postCoverArtConditions(this: any, value?: any) {
         return postTextWithObjectIds(entityName("screen_saver_cover_art_conditions"), entityObjectIds("screen_saver_cover_art_conditions"), value);
     }
@@ -52,6 +55,7 @@ export function installArtworkPostApiModule(): GlobalDescriptors {
         "postMediaPlayerSleepPreventionEntity": staticGlobal(postMediaPlayerSleepPreventionEntity),
         "postCoverArtScreensaver": staticGlobal(postCoverArtScreensaver),
         "postCoverArtMediaPlayerEntity": staticGlobal(postCoverArtMediaPlayerEntity),
+        "postCoverArtSecondaryMediaPlayerEntity": staticGlobal(postCoverArtSecondaryMediaPlayerEntity),
         "postCoverArtConditions": staticGlobal(postCoverArtConditions),
         "coverArtHideExternalInputPostUrls": staticGlobal(coverArtHideExternalInputPostUrls),
         "postCoverArtHideExternalInput": staticGlobal(postCoverArtHideExternalInput),

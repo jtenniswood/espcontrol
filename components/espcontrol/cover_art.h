@@ -3,6 +3,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -18,6 +19,33 @@ constexpr uint32_t ARTWORK_ATTRIBUTE_RETRY_MS = 1500;
 constexpr uint32_t SUBSCRIPTION_RECONCILE_MS = 5000;
 constexpr size_t MAX_ARTWORK_URL_LENGTH = 4096;
 constexpr int ACCENT_SAMPLE_GRID = 20;
+
+inline std::string normalized_media_source(std::string source) {
+  while (!source.empty() && std::isspace(static_cast<unsigned char>(source.front()))) {
+    source.erase(source.begin());
+  }
+  while (!source.empty() && std::isspace(static_cast<unsigned char>(source.back()))) {
+    source.pop_back();
+  }
+  for (char &ch : source) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return source;
+}
+
+inline bool external_media_source(const std::string &source) {
+  const std::string normalized = normalized_media_source(source);
+  return normalized == "tv" || normalized == "line-in" ||
+         normalized == "line in" || normalized.rfind("hdmi", 0) == 0;
+}
+
+inline bool use_secondary_media_entity(bool primary_external,
+                                       bool secondary_configured,
+                                       bool secondary_available,
+                                       bool secondary_has_content) {
+  return primary_external && secondary_configured && secondary_available &&
+         secondary_has_content;
+}
 
 struct AccentColor {
   uint8_t red{0};

@@ -160,6 +160,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
       "number_display",
       "cover_art_action",
       "cover_art_details",
+      "cover_art_secondary_entity",
       "volume_max",
       "playlist_content_id",
       "playlist_content_type",
@@ -439,6 +440,8 @@ export function normalizeSavedConfigMediaShadow(input: Partial<CardConfig>): Car
   const out: string[] = []; const maxVolume = normalizedMediaVolume(optionValue(source, "volume_max"));
   if (config.sensor === "control_modal") {
     if (optionValue(source, "label_display").trim() === "label") out.push("label_display=label"); if (optionValue(source, "number_display").trim() === "volume") out.push("number_display=volume"); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push("volume_max=" + maxVolume);
+  } else if (config.sensor === "cover_art") {
+    if (optionValue(source, "cover_art_action").trim() === "control_modal") out.push("cover_art_action=control_modal"); if (optionPresent(source, "cover_art_details")) out.push("cover_art_details"); const secondaryEntity = optionValue(source, "cover_art_secondary_entity").trim(); if (secondaryEntity) out.push("cover_art_secondary_entity=" + encodeOptionValue(secondaryEntity));
   } else if (config.sensor === "playlist") {
     for (const [name, defaultValue] of [["playlist_content_id", ""], ["playlist_content_type", "playlist"], ["playlist_player_source", ""]] as const) { const value = optionValue(source, name).trim() || defaultValue; if (value && value !== defaultValue) out.push(name + "=" + encodeOptionValue(value)); }
   } else if (config.sensor === "volume" || config.sensor === "position") {

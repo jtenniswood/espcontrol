@@ -51,6 +51,7 @@ substitutions:
   entity_media_player_sleep_prevention_entity: "Media Player Sleep Prevention Entity"
   entity_screen_saver_cover_art: "Screen Saver: Cover Art"
   entity_screen_saver_cover_art_entity: "Screen Saver: Cover Art Entity"
+  entity_screen_saver_cover_art_secondary_entity: "Screen Saver: External Source Media Entity"
   entity_screen_saver_cover_art_conditions: "Screen Saver: Cover Art Conditions"
   entity_screen_saver_cover_art_delay: "Screen Saver: Cover Art Delay"
   entity_screen_saver_track_overlay_duration: "Screen Saver: Show Track Overlay"

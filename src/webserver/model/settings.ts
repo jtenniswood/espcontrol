@@ -316,6 +316,7 @@ export interface BackupPanelSettingsState {
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
   coverArtMediaPlayerEntity: string;
+  coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtDelay: unknown;
   coverArtTrackOverlayDuration: unknown;
@@ -437,6 +438,7 @@ export function normalizeBackupPanelSettings(
     mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
+    coverArtSecondaryMediaPlayerEntity: String(settings.cover_art_secondary_media_player_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
     coverArtDelay: normalizeCoverArtDelay(
       objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,

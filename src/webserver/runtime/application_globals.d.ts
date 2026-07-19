@@ -110,6 +110,7 @@ declare global {
   var MEDIA_CARD_METADATA: any;
   var MEDIA_COVER_ART_ACTION_OPTION: any;
   var MEDIA_COVER_ART_DETAILS_OPTION: any;
+  var MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION: any;
   var MEDIA_COVER_ART_OPTION: any;
   var MEDIA_LABEL_DISPLAY_OPTION: any;
   var MEDIA_NUMBER_DISPLAY_OPTION: any;
@@ -667,6 +668,7 @@ declare global {
   var mediaBehaviorSpec: any;
   var mediaCoverArtAction: any;
   var mediaCoverArtDetailsEnabled: any;
+  var mediaCoverArtSecondaryEntity: any;
   var mediaDefaultMode: any;
   var mediaEditorMode: any;
   var mediaEditorValidMode: any;
@@ -844,6 +846,7 @@ declare global {
   var postCoverArtDelay: any;
   var postCoverArtHideExternalInput: any;
   var postCoverArtMediaPlayerEntity: any;
+  var postCoverArtSecondaryMediaPlayerEntity: any;
   var postCoverArtScreensaver: any;
   var postCoverArtTrackOverlayDuration: any;
   var postFirmwareAutoUpdate: any;
@@ -1049,6 +1052,7 @@ declare global {
   var setMediaLabelDisplayMode: any;
   var setMediaCoverArtAction: any;
   var setMediaCoverArtDetailsEnabled: any;
+  var setMediaCoverArtSecondaryEntity: any;
   var setMediaNumberDisplayMode: any;
   var setMediaPlaylistContentId: any;
   var setMediaPlaylistContentType: any;

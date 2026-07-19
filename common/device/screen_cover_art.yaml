@@ -50,10 +50,31 @@ globals:
   - id: cover_art_external_input_active
     type: bool
     initial_value: 'false'
+  - id: cover_art_primary_external_input_active
+    type: bool
+    initial_value: 'false'
+  - id: cover_art_secondary_available
+    type: bool
+    initial_value: 'false'
+  - id: cover_art_secondary_content_mask
+    type: uint8_t
+    initial_value: '0'
+  - id: cover_art_secondary_route_active
+    type: bool
+    initial_value: 'false'
+  - id: cover_art_active_media_player_entity
+    type: std::string
+    initial_value: '""'
   - id: cover_art_attribute_conditions_match
     type: bool
     initial_value: 'true'
   - id: cover_art_subscribed_entity
+    type: std::string
+    initial_value: '""'
+  - id: cover_art_subscribed_primary_entity
+    type: std::string
+    initial_value: '""'
+  - id: cover_art_subscribed_secondary_entity
     type: std::string
     initial_value: '""'
   - id: cover_art_last_playback_state
@@ -172,7 +193,10 @@ interval:
               return !id(cover_art_media_player_entity).state.empty() &&
                      (id(cover_art_screensaver_enabled).state ||
                       id(media_player_sleep_prevention_enabled).state) &&
-                     id(cover_art_media_player_entity).state != id(cover_art_subscribed_entity);
+                     (id(cover_art_active_media_player_entity).empty() ||
+                      id(cover_art_active_media_player_entity) != id(cover_art_subscribed_entity) ||
+                      id(cover_art_media_player_entity).state != id(cover_art_subscribed_primary_entity) ||
+                      id(cover_art_secondary_media_player_entity).state != id(cover_art_subscribed_secondary_entity));
           then:
             - script.execute: cover_art_resubscribe
 
@@ -189,10 +213,10 @@ interval:
               float shared_duration = 0.0f;
               float shared_position = 0.0f;
               media_playback_prepare_cover_art_progress(
-                id(cover_art_media_player_entity).state,
+                id(cover_art_active_media_player_entity),
                 id(cover_art_media_playing));
               bool shared_progress = media_playback_state_snapshot(
-                id(cover_art_media_player_entity).state,
+                id(cover_art_active_media_player_entity),
                 shared_playing,
                 shared_duration,
                 shared_position);
@@ -605,9 +629,9 @@ script:
                   lambda: |-
                     #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
                     media_playback_prepare_cover_art_progress(
-                      id(cover_art_media_player_entity).state,
+                      id(cover_art_active_media_player_entity),
                       id(cover_art_media_playing));
-                    return media_playback_state_has_progress(id(cover_art_media_player_entity).state);
+                    return media_playback_state_has_progress(id(cover_art_active_media_player_entity));
                     #else
                     return espcontrol::cover_art::progress_available(id(cover_art_media_duration));
                     #endif
@@ -724,6 +748,11 @@ script:
           id(cover_art_album).clear();
           id(cover_art_media_source).clear();
           id(cover_art_external_input_active) = false;
+          id(cover_art_primary_external_input_active) = false;
+          id(cover_art_secondary_available) = false;
+          id(cover_art_secondary_content_mask) = 0;
+          id(cover_art_secondary_route_active) = false;
+          id(cover_art_active_media_player_entity).clear();
           id(cover_art_last_playback_state).clear();
           id(cover_art_api_wait_logged) = false;
           id(cover_art_media_position) = 0.0f;
@@ -1116,10 +1145,10 @@ script:
       - lambda: |-
           #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
           media_playback_prepare_cover_art_progress(
-            id(cover_art_media_player_entity).state,
+            id(cover_art_active_media_player_entity),
             id(cover_art_media_playing));
           const bool progress_available =
-            media_playback_state_has_progress(id(cover_art_media_player_entity).state);
+            media_playback_state_has_progress(id(cover_art_active_media_player_entity));
           #else
           const bool progress_available =
             espcontrol::cover_art::progress_available(id(cover_art_media_duration));
@@ -1153,10 +1182,10 @@ script:
           float shared_duration = 0.0f;
           float shared_position = 0.0f;
           media_playback_prepare_cover_art_progress(
-            id(cover_art_media_player_entity).state,
+            id(cover_art_active_media_player_entity),
             id(cover_art_media_playing));
           bool shared_progress = media_playback_state_snapshot(
-            id(cover_art_media_player_entity).state,
+            id(cover_art_active_media_player_entity),
             shared_playing,
             shared_duration,
             shared_position);
@@ -1261,9 +1290,9 @@ script:
                   lambda: |-
                     #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
                     media_playback_prepare_cover_art_progress(
-                      id(cover_art_media_player_entity).state,
+                      id(cover_art_active_media_player_entity),
                       id(cover_art_media_playing));
-                    return media_playback_state_has_progress(id(cover_art_media_player_entity).state);
+                    return media_playback_state_has_progress(id(cover_art_active_media_player_entity));
                     #else
                     return espcontrol::cover_art::progress_available(id(cover_art_media_duration));
                     #endif
@@ -1605,7 +1634,7 @@ script:
                id(cover_art_external_input_active))) {
             return;
           }
-          const std::string cover_entity = id(cover_art_media_player_entity).state;
+          const std::string cover_entity = id(cover_art_active_media_player_entity);
           if (cover_entity.empty()) return;
           ++id(cover_art_request_id);
           id(cover_art_artwork_pending_count) = 0;
@@ -1673,11 +1702,28 @@ script:
     mode: restart
     then:
       - lambda: |-
-          const std::string cover_entity = id(cover_art_media_player_entity).state;
+          const std::string primary_entity = id(cover_art_media_player_entity).state;
+          const std::string secondary_entity = id(cover_art_secondary_media_player_entity).state;
+          if (secondary_entity.empty() || secondary_entity == primary_entity) {
+            id(cover_art_secondary_available) = false;
+            id(cover_art_secondary_content_mask) = 0;
+          }
+          const bool use_secondary = espcontrol::cover_art::use_secondary_media_entity(
+            id(cover_art_primary_external_input_active),
+            !secondary_entity.empty() && secondary_entity != primary_entity,
+            id(cover_art_secondary_available),
+            id(cover_art_secondary_content_mask) != 0);
+          const std::string cover_entity = use_secondary ? secondary_entity : primary_entity;
+          id(cover_art_secondary_route_active) = use_secondary;
+          id(cover_art_external_input_active) =
+            id(cover_art_primary_external_input_active) && !use_secondary;
+          id(cover_art_active_media_player_entity) = cover_entity;
           if (!id(cover_art_screensaver_enabled).state &&
               !id(media_player_sleep_prevention_enabled).state) {
             id(cover_art_empty_entity_logged) = false;
             id(cover_art_subscribed_entity).clear();
+            id(cover_art_subscribed_primary_entity).clear();
+            id(cover_art_subscribed_secondary_entity).clear();
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
             media_playback_reset_cover_art_progress_subscriptions();
@@ -1686,6 +1732,8 @@ script:
           }
           if (cover_entity.empty()) {
             id(cover_art_subscribed_entity).clear();
+            id(cover_art_subscribed_primary_entity).clear();
+            id(cover_art_subscribed_secondary_entity).clear();
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
             media_playback_reset_cover_art_progress_subscriptions();
@@ -1698,6 +1746,8 @@ script:
           }
           if (!ha_api_available()) {
             id(cover_art_subscribed_entity).clear();
+            id(cover_art_subscribed_primary_entity).clear();
+            id(cover_art_subscribed_secondary_entity).clear();
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
             media_playback_reset_cover_art_progress_subscriptions();
@@ -1710,18 +1760,36 @@ script:
           }
           id(cover_art_api_wait_logged) = false;
           id(cover_art_empty_entity_logged) = false;
-          const bool already_subscribed = cover_entity == id(cover_art_subscribed_entity);
+          const bool already_subscribed =
+            cover_entity == id(cover_art_subscribed_entity) &&
+            primary_entity == id(cover_art_subscribed_primary_entity) &&
+            secondary_entity == id(cover_art_subscribed_secondary_entity);
           if (!already_subscribed) {
+            const std::string previous_entity = id(cover_art_subscribed_entity);
             ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
             media_playback_reset_cover_art_progress_subscriptions();
             #endif
             id(cover_art_subscription_generation)++;
             id(cover_art_subscribed_entity) = cover_entity;
+            id(cover_art_subscribed_primary_entity) = primary_entity;
+            id(cover_art_subscribed_secondary_entity) = secondary_entity;
             id(cover_art_last_playback_state).clear();
             id(cover_art_media_source).clear();
             id(cover_art_album).clear();
-            id(cover_art_external_input_active) = false;
+            if (!previous_entity.empty() && previous_entity != cover_entity) {
+              id(cover_art_runtime).clear_image();
+              id(cover_art_title).clear();
+              id(cover_art_artist).clear();
+              id(cover_art_media_duration) = 0.0f;
+              id(cover_art_media_position) = 0.0f;
+              id(cover_art_last_progress_percent) = -1;
+              id(cover_art_downloaded_image)->cancel_update();
+              id(cover_art_downloaded_image)->release();
+              lv_obj_add_flag(id(cover_art_image_widget), LV_OBJ_FLAG_HIDDEN);
+              lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
+              lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
+            }
             ESP_LOGI("cover_art", "Subscribing to artwork entity: %s", cover_entity.c_str());
           } else {
             ESP_LOGI("cover_art", "Refreshing artwork entity: %s", cover_entity.c_str());
@@ -1755,12 +1823,92 @@ script:
             id(cover_art_last_progress_percent) = -1;
           };
 
+          std::function<void()> reconcile_entity_route = [subscription_generation]() {
+            if (subscription_generation != id(cover_art_subscription_generation)) return;
+            const std::string primary = id(cover_art_media_player_entity).state;
+            const std::string secondary = id(cover_art_secondary_media_player_entity).state;
+            const bool desired_secondary = espcontrol::cover_art::use_secondary_media_entity(
+              id(cover_art_primary_external_input_active),
+              !secondary.empty() && secondary != primary,
+              id(cover_art_secondary_available),
+              id(cover_art_secondary_content_mask) != 0);
+            if (desired_secondary != id(cover_art_secondary_route_active)) {
+              id(cover_art_resubscribe).execute();
+              return;
+            }
+            id(cover_art_external_input_active) =
+              id(cover_art_primary_external_input_active) && !desired_secondary;
+            id(cover_art_apply_external_input_policy).execute();
+          };
+
+          if (!already_subscribed) {
+            ha_subscribe_attribute(
+              primary_entity,
+              std::string("source"),
+              std::function<void(esphome::StringRef)>(
+                [primary_entity, subscription_generation, reconcile_entity_route](esphome::StringRef source) {
+                  if (subscription_generation != id(cover_art_subscription_generation) ||
+                      primary_entity != id(cover_art_media_player_entity).state) return;
+                  std::string next = string_ref_limited(source, HA_STATE_TEXT_MAX_LEN);
+                  if (next == "unknown" || next == "unavailable") next.clear();
+                  const bool external = espcontrol::cover_art::external_media_source(next);
+                  if (external == id(cover_art_primary_external_input_active)) return;
+                  id(cover_art_primary_external_input_active) = external;
+                  ESP_LOGI("cover_art", "Primary media source for %s: '%s' (external=%s)",
+                           primary_entity.c_str(), next.c_str(), external ? "true" : "false");
+                  reconcile_entity_route();
+                }),
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
+
+            if (!secondary_entity.empty() && secondary_entity != primary_entity) {
+              ha_subscribe_state(
+                secondary_entity,
+                std::function<void(esphome::StringRef)>(
+                  [secondary_entity, subscription_generation, reconcile_entity_route](esphome::StringRef state) {
+                    if (subscription_generation != id(cover_art_subscription_generation) ||
+                        secondary_entity != id(cover_art_secondary_media_player_entity).state) return;
+                    std::string next = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+                    const bool available = next != "unknown" && next != "unavailable";
+                    id(cover_art_secondary_available) = available;
+                    if (!available) id(cover_art_secondary_content_mask) = 0;
+                    reconcile_entity_route();
+                  }),
+                HA_SUBSCRIPTION_SCOPE_COVER_ART
+              );
+
+              auto subscribe_secondary_content_probe =
+                [secondary_entity, subscription_generation, reconcile_entity_route](
+                    const std::string &attribute, uint8_t bit) {
+                  ha_subscribe_attribute(
+                    secondary_entity,
+                    attribute,
+                    std::function<void(esphome::StringRef)>(
+                      [secondary_entity, subscription_generation, reconcile_entity_route, bit](esphome::StringRef value) {
+                        if (subscription_generation != id(cover_art_subscription_generation) ||
+                            secondary_entity != id(cover_art_secondary_media_player_entity).state) return;
+                        std::string next = string_ref_limited(value, 4096);
+                        const bool present = !next.empty() && next != "unknown" && next != "unavailable";
+                        if (present) id(cover_art_secondary_content_mask) |= bit;
+                        else id(cover_art_secondary_content_mask) &= static_cast<uint8_t>(~bit);
+                        reconcile_entity_route();
+                      }),
+                    HA_SUBSCRIPTION_SCOPE_COVER_ART
+                  );
+                };
+              subscribe_secondary_content_probe(std::string("media_title"), 1u);
+              subscribe_secondary_content_probe(std::string("entity_picture"), 2u);
+              subscribe_secondary_content_probe(std::string("entity_picture_local"), 4u);
+              subscribe_secondary_content_probe(std::string("media_content_id"), 8u);
+            }
+          }
+
           std::function<void(esphome::StringRef)> handle_playback_state =
             [cover_entity, subscription_generation](esphome::StringRef state) {
               if ((!id(cover_art_screensaver_enabled).state &&
                    !id(media_player_sleep_prevention_enabled).state) ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
               bool playing = state_text == "playing" || state_text == "buffering";
               if (state_text == id(cover_art_last_playback_state) &&
@@ -1822,7 +1970,7 @@ script:
              invalidate_stale_media_duration](esphome::StringRef title) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string next = string_ref_limited(title, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_title)) return;
@@ -1859,7 +2007,7 @@ script:
              invalidate_stale_media_duration](esphome::StringRef artist) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string next = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_artist)) return;
@@ -1890,7 +2038,7 @@ script:
              invalidate_stale_media_duration](esphome::StringRef album) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string next = string_ref_limited(album, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_album)) return;
@@ -1921,25 +2069,15 @@ script:
              invalidate_stale_media_duration](esphome::StringRef source) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string next = string_ref_limited(source, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
-              std::string normalized_source = next;
-              for (char &ch : normalized_source) {
-                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-              }
-              bool external = normalized_source == "tv" ||
-                              normalized_source == "line-in" ||
-                              normalized_source == "line in";
-              if (next == id(cover_art_media_source) &&
-                  external == id(cover_art_external_input_active)) return;
+              if (next == id(cover_art_media_source)) return;
               invalidate_stale_media_duration();
               id(cover_art_media_source) = next;
-              id(cover_art_external_input_active) = external;
               mark_artwork_refresh_needed();
-              ESP_LOGI("cover_art", "Media source for %s: '%s' (external=%s)",
-                       cover_entity.c_str(), next.c_str(), external ? "true" : "false");
-              id(cover_art_apply_external_input_policy).execute();
+              ESP_LOGI("cover_art", "Active media source for %s: '%s'",
+                       cover_entity.c_str(), next.c_str());
               id(cover_art_sync_track_text).execute();
               if (id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) &&
                   id(cover_art_attribute_conditions_match) &&
@@ -2037,7 +2175,7 @@ script:
                apply_cover_art_condition_policy, condition_index](esphome::StringRef value) {
                 if (!id(cover_art_screensaver_enabled).state ||
                     subscription_generation != id(cover_art_subscription_generation) ||
-                    cover_entity != id(cover_art_media_player_entity).state) return;
+                    cover_entity != id(cover_art_active_media_player_entity)) return;
                 std::string actual = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
                 if (actual == "unknown" || actual == "unavailable") actual.clear();
                 const std::string &attribute = (*cover_art_conditions)[condition_index].first;
@@ -2066,7 +2204,7 @@ script:
             [cover_entity, subscription_generation](esphome::StringRef picture, bool local) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
 
               constexpr size_t COVER_ART_URL_MAX_LEN = espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH;
               std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
@@ -2148,7 +2286,7 @@ script:
             [cover_entity, subscription_generation](esphome::StringRef duration) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               id(cover_art_last_duration_callback_ms) = millis();
               std::string value = string_ref_limited(duration, HA_SHORT_STATE_MAX_LEN);
               float next_duration = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
@@ -2178,7 +2316,7 @@ script:
             [cover_entity, subscription_generation](esphome::StringRef position) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string value = string_ref_limited(position, HA_SHORT_STATE_MAX_LEN);
               float next_position = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
               if (next_position < 0.0f) next_position = 0.0f;
@@ -2207,7 +2345,7 @@ script:
             [cover_entity, subscription_generation](esphome::StringRef updated_at) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
-                  cover_entity != id(cover_art_media_player_entity).state) return;
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string value = string_ref_limited(updated_at, HA_STATE_TEXT_MAX_LEN);
               int yr, mo, dy, hr, mn, sc;
               if (sscanf(value.c_str(), "%d-%d-%dT%d:%d:%d", &yr, &mo, &dy, &hr, &mn, &sc) != 6 &&
