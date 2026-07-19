@@ -89,10 +89,15 @@ export {
 } from "./subpage";
 
 export {
+  DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT,
+  DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT,
   normalizeBackupPanelSettings,
   normalizeBackupScreenSettings,
   normalizeClockBrightness,
   normalizeCoverArtDelay,
+  normalizeAlarmDelayAnnouncement,
+  normalizeAlarmDelayBeepVolume,
+  normalizeAlarmDelayFinalCountdown,
   normalizeHexColor,
   normalizeHour,
   normalizeHomeAssistantArtworkPort,

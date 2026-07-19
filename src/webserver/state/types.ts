@@ -9,6 +9,7 @@ export interface DeviceConfigFeatures {
   screenRotationOptions?: readonly string[];
   subpageConfigChunks?: number;
   voiceServices?: boolean;
+  alarmDelayAudio?: boolean;
 }
 
 export interface DeviceConfig {
@@ -100,6 +101,12 @@ export interface AppState {
   clockBarTimeOn: boolean;
   networkStatusOn: boolean;
   voiceServicesOn: boolean;
+  alarmDelayAudioOn: boolean;
+  alarmDelayTtsOn: boolean;
+  alarmDelayEntryAnnouncement: string;
+  alarmDelayExitAnnouncement: string;
+  alarmDelayBeepVolume: number;
+  alarmDelayFinalCountdown: number;
   networkTransport: string;
   wifiStrengthPercent: number;
   temperatureDegreeSymbolOn: boolean;

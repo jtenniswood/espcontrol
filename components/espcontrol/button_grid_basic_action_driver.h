@@ -161,6 +161,8 @@ inline AlarmActionCtx *basic_action_driver_bind_alarm_action(
   card->grid_cols = grid_cols;
   card->begin_display_takeover = grid_config.begin_display_takeover;
   card->end_display_takeover = grid_config.end_display_takeover;
+  card->audio_hooks = grid_config.alarm_delay_audio;
+  alarm_delay_audio_register_context(card);
   alarm_set_card_state_colors(card, card->on_color);
 
   AlarmActionCtx *action = context.surface == Surface::SUBPAGE

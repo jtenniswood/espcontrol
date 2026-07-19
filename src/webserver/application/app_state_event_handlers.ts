@@ -51,6 +51,30 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.voiceServicesOn = d.value === true || val === "ON";
                 syncClockBarUi();
             },
+            "switch-alarm_delay__audio": function (this: any, val?: any, d?: any) {
+                state.alarmDelayAudioOn = d.value === true || val === "ON";
+                syncAlarmDelayAudioUi();
+            },
+            "switch-alarm_delay__tts": function (this: any, val?: any, d?: any) {
+                state.alarmDelayTtsOn = d.value === true || val === "ON";
+                syncAlarmDelayAudioUi();
+            },
+            "text-alarm_delay__entry_announcement": function (this: any, val?: any) {
+                state.alarmDelayEntryAnnouncement = normalizeAlarmDelayAnnouncement(val, DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT);
+                syncAlarmDelayAudioUi();
+            },
+            "text-alarm_delay__exit_announcement": function (this: any, val?: any) {
+                state.alarmDelayExitAnnouncement = normalizeAlarmDelayAnnouncement(val, DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT);
+                syncAlarmDelayAudioUi();
+            },
+            "number-alarm_delay__beep_volume": function (this: any, val?: any) {
+                state.alarmDelayBeepVolume = normalizeAlarmDelayBeepVolume(val);
+                syncAlarmDelayAudioUi();
+            },
+            "number-alarm_delay__final_countdown": function (this: any, val?: any) {
+                state.alarmDelayFinalCountdown = normalizeAlarmDelayFinalCountdown(val);
+                syncAlarmDelayAudioUi();
+            },
             "switch-screen__temperature_degree_symbol": function (this: any, val?: any, d?: any) {
                 state.temperatureDegreeSymbolOn = d.value === true || val === "ON";
                 syncClockBarUi();

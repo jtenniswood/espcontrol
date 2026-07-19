@@ -132,6 +132,10 @@ media_player:
         file: ${voice_timer_alert_file}
       - id: voice_stt_failure_chime
         file: ${voice_stt_failure_chime_file}
+      - id: alarm_delay_entry_beep
+        file: ${alarm_delay_entry_beep_file}
+      - id: alarm_delay_exit_beep
+        file: ${alarm_delay_exit_beep_file}
     volume_min: 0.0
     volume_max: 1.0
     volume_increment: 0.005
@@ -146,6 +150,10 @@ media_player:
       format: NONE
       sample_rate: 48000
     on_announcement:
+      - lambda: |-
+          id(alarm_delay_beep_announcement_active) =
+            id(alarm_delay_beep_requested);
+          id(alarm_delay_beep_requested) = false;
       - mixer_speaker.apply_ducking:
           id: voice_media_mixing_input
           decibel_reduction: 20
@@ -286,6 +294,31 @@ globals:
     restore_value: false
     initial_value: "false"
 
+  - id: alarm_delay_saved_volume
+    type: float
+    restore_value: false
+    initial_value: "0.6"
+
+  - id: alarm_delay_volume_overridden
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_audio_session_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_beep_requested
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_beep_announcement_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
   - id: voice_tts_uri_sent
     type: bool
     restore_value: false
@@ -392,6 +425,125 @@ micro_wake_word:
               format: "Ignoring wake word while muted"
 
 script:
+  - id: play_alarm_delay_beep
+    mode: restart
+    parameters:
+      entry_delay: bool
+    then:
+      - if:
+          condition:
+            or:
+              - not:
+                  media_player.is_announcing:
+                    id: voice_media_player
+              - lambda: return id(alarm_delay_beep_announcement_active);
+          then:
+            - lambda: |-
+                id(alarm_delay_audio_session_active) = true;
+                if (!id(alarm_delay_volume_overridden)) {
+                  id(alarm_delay_saved_volume) = id(voice_media_player).volume;
+                  id(alarm_delay_volume_overridden) = true;
+                }
+            - media_player.volume_set:
+                id: voice_media_player
+                volume: !lambda return id(alarm_delay_beep_volume).state;
+            - switch.turn_on: speaker_amplifier_enable
+            - lambda: |-
+                id(alarm_delay_beep_requested) = true;
+                id(alarm_delay_beep_announcement_active) = false;
+            - if:
+                condition:
+                  lambda: return entry_delay;
+                then:
+                  - media_player.speaker.play_on_device_media_file:
+                      id: voice_media_player
+                      media_file: alarm_delay_entry_beep
+                      announcement: true
+                else:
+                  - media_player.speaker.play_on_device_media_file:
+                      id: voice_media_player
+                      media_file: alarm_delay_exit_beep
+                      announcement: true
+            - delay: 250ms
+            - lambda: |-
+                id(alarm_delay_beep_requested) = false;
+                id(alarm_delay_beep_announcement_active) = false;
+            - if:
+                condition:
+                  lambda: return id(alarm_delay_volume_overridden);
+                then:
+                  - media_player.volume_set:
+                      id: voice_media_player
+                      volume: !lambda return id(alarm_delay_saved_volume);
+                  - lambda: id(alarm_delay_volume_overridden) = false;
+
+  - id: announce_alarm_delay
+    mode: parallel
+    max_runs: 2
+    parameters:
+      entry_delay: bool
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: voice_services_enabled
+              - switch.is_on: alarm_delay_tts_enabled
+          then:
+            # Home Assistant can turn this event into TTS for the panel's
+            # Voice Media Player. Local beeps pause while TTS is announcing.
+            - homeassistant.event:
+                event: esphome.alarm_delay_announcement
+                data:
+                  device: !lambda return App.get_name().str();
+                  model: ${device_slug}
+                  delay_type: !lambda |-
+                    return entry_delay ? std::string("entry") : std::string("exit");
+                  message: !lambda |-
+                    return entry_delay
+                      ? id(alarm_delay_entry_announcement).state
+                      : id(alarm_delay_exit_announcement).state;
+
+  - id: stop_alarm_delay_audio
+    mode: restart
+    then:
+      - script.stop: play_alarm_delay_beep
+      - if:
+          condition:
+            lambda: return id(alarm_delay_audio_session_active);
+          then:
+            - if:
+                condition:
+                  and:
+                    - lambda: return id(alarm_delay_beep_announcement_active);
+                    - media_player.is_announcing:
+                        id: voice_media_player
+                then:
+                  - media_player.stop:
+                      id: voice_media_player
+                      announcement: true
+            - if:
+                condition:
+                  lambda: return id(alarm_delay_volume_overridden);
+                then:
+                  - media_player.volume_set:
+                      id: voice_media_player
+                      volume: !lambda return id(alarm_delay_saved_volume);
+            - if:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                      id: voice_media_player
+                then:
+                  - mixer_speaker.apply_ducking:
+                      id: voice_media_mixing_input
+                      decibel_reduction: 0
+                      duration: 250ms
+            - lambda: |-
+                id(alarm_delay_volume_overridden) = false;
+                id(alarm_delay_audio_session_active) = false;
+                id(alarm_delay_beep_requested) = false;
+                id(alarm_delay_beep_announcement_active) = false;
+
   - id: open_device_volume_control
     mode: restart
     then:
@@ -1156,6 +1308,30 @@ voice_assistant:
 
 switch:
   - platform: template
+    id: alarm_delay_audio_enabled
+    name: "${entity_alarm_delay_audio}"
+    icon: mdi:alarm-bell
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - lambda: alarm_delay_audio_refresh_contexts();
+    on_turn_off:
+      - lambda: alarm_delay_audio_stop();
+
+  - platform: template
+    id: alarm_delay_tts_enabled
+    name: "${entity_alarm_delay_tts}"
+    icon: mdi:account-voice
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
     id: voice_services_enabled
     name: "${entity_voice_services}"
     icon: mdi:account-voice
@@ -1262,3 +1438,62 @@ switch:
     pin: GPIO53
     restore_mode: ALWAYS_OFF
     entity_category: config
+
+text:
+  - platform: template
+    id: alarm_delay_entry_announcement
+    name: "${entity_alarm_delay_entry_announcement}"
+    icon: mdi:message-alert
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: "Please disarm the alarm"
+    max_length: 120
+    mode: text
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    id: alarm_delay_exit_announcement
+    name: "${entity_alarm_delay_exit_announcement}"
+    icon: mdi:message-alert
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: "Alarm arming, please leave the house"
+    max_length: 120
+    mode: text
+    web_server:
+      sorting_group_id: sg_display
+
+number:
+  - platform: template
+    id: alarm_delay_beep_volume
+    name: "${entity_alarm_delay_beep_volume}"
+    icon: mdi:volume-medium
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 0.45
+    min_value: 0.05
+    max_value: 1.0
+    step: 0.05
+    mode: slider
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    id: alarm_delay_final_countdown_seconds
+    name: "${entity_alarm_delay_final_countdown}"
+    icon: mdi:timer-alert
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 10
+    min_value: 0
+    max_value: 60
+    step: 1
+    mode: box
+    unit_of_measurement: s
+    web_server:
+      sorting_group_id: sg_display

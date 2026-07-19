@@ -199,6 +199,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             voiceServicesCard = makeCollapsibleCard("Voice Services", voiceServicesBody, true);
             els.voiceServicesCard = voiceServicesCard;
         }
+        var alarmDelayAudioCard: any = buildAlarmDelayAudioSettingsCard();
         var rotationCard: any = null;
         if (CFG.features && CFG.features.screenRotation) {
             var rotationBody: any = document.createElement("div");
@@ -380,6 +381,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             clockBarCard,
             coverArtCard,
             voiceServicesCard,
+            alarmDelayAudioCard,
             rotationCard,
         ]);
         appendSettingsSection(config, "Sleep & Schedule", [

@@ -41,6 +41,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                 clock_bar_time: state.clockBarTimeOn,
                 network_status_icon: state.networkStatusOn,
                 voice_services: state.voiceServicesOn,
+                alarm_delay_audio: state.alarmDelayAudioOn,
+                alarm_delay_tts: state.alarmDelayTtsOn,
+                alarm_delay_entry_announcement: state.alarmDelayEntryAnnouncement,
+                alarm_delay_exit_announcement: state.alarmDelayExitAnnouncement,
+                alarm_delay_beep_volume: state.alarmDelayBeepVolume,
+                alarm_delay_final_countdown: state.alarmDelayFinalCountdown,
                 temperature_degree_symbol: state.temperatureDegreeSymbolOn,
                 subpage_chevron: state.subpageChevronsOn,
                 timezone: state.timezone,
@@ -199,6 +205,14 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postNetworkStatusIcon(importedSettings.networkStatusIcon);
                     if (CFG.features && CFG.features.voiceServices)
                         postVoiceServices(importedSettings.voiceServices);
+                    if (CFG.features && CFG.features.alarmDelayAudio) {
+                        postAlarmDelayAudio(importedSettings.alarmDelayAudio);
+                        postAlarmDelayTts(importedSettings.alarmDelayTts);
+                        postAlarmDelayEntryAnnouncement(importedSettings.alarmDelayEntryAnnouncement);
+                        postAlarmDelayExitAnnouncement(importedSettings.alarmDelayExitAnnouncement);
+                        postAlarmDelayBeepVolume(importedSettings.alarmDelayBeepVolume);
+                        postAlarmDelayFinalCountdown(importedSettings.alarmDelayFinalCountdown);
+                    }
                     postTemperatureDegreeSymbol(importedSettings.temperatureDegreeSymbol);
                     postSubpageChevron(importedSettings.subpageChevron);
                     var importedTimezone: any = importedSettings.timezone;
@@ -269,6 +283,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.clockBarTimeOn = importedSettings.clockBarTime;
                     state.networkStatusOn = importedSettings.networkStatusIcon;
                     state.voiceServicesOn = importedSettings.voiceServices;
+                    state.alarmDelayAudioOn = importedSettings.alarmDelayAudio;
+                    state.alarmDelayTtsOn = importedSettings.alarmDelayTts;
+                    state.alarmDelayEntryAnnouncement = importedSettings.alarmDelayEntryAnnouncement;
+                    state.alarmDelayExitAnnouncement = importedSettings.alarmDelayExitAnnouncement;
+                    state.alarmDelayBeepVolume = importedSettings.alarmDelayBeepVolume;
+                    state.alarmDelayFinalCountdown = importedSettings.alarmDelayFinalCountdown;
                     state.temperatureDegreeSymbolOn = importedSettings.temperatureDegreeSymbol;
                     state.subpageChevronsOn = importedSettings.subpageChevron;
                     state.timezone = importedTimezone;
@@ -304,6 +324,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.screenRotation = importedScreenRotation;
                     syncTemperatureUi();
                     syncClockBarUi();
+                    syncAlarmDelayAudioUi();
                     if (els.setTemperatureUnit)
                         els.setTemperatureUnit.value = state.temperatureUnit;
                     syncInput(els.setPresence, state.presenceEntity);

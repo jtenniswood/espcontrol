@@ -65,6 +65,24 @@ script:
           cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
             id(display_takeover_end).execute(static_cast<int>(kind));
           };
+          cfg.alarm_delay_audio.enabled = []() {
+            return id(alarm_delay_audio_enabled).state;
+          };
+          cfg.alarm_delay_audio.tts_enabled = []() {
+            return id(alarm_delay_tts_enabled).state && id(voice_services_enabled).state;
+          };
+          cfg.alarm_delay_audio.final_countdown_seconds = []() {
+            return static_cast<int>(id(alarm_delay_final_countdown_seconds).state);
+          };
+          cfg.alarm_delay_audio.play_beep = [](AlarmDelayAudioMode mode) {
+            id(play_alarm_delay_beep).execute(mode == AlarmDelayAudioMode::ENTRY);
+          };
+          cfg.alarm_delay_audio.announce = [](AlarmDelayAudioMode mode) {
+            id(announce_alarm_delay).execute(mode == AlarmDelayAudioMode::ENTRY);
+          };
+          cfg.alarm_delay_audio.stop = []() {
+            id(stop_alarm_delay_audio).execute();
+          };
           static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
             id(image_card_download_1),
             id(image_card_download_2),
@@ -156,6 +174,24 @@ esphome:
             };
             cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
               id(display_takeover_end).execute(static_cast<int>(kind));
+            };
+            cfg.alarm_delay_audio.enabled = []() {
+              return id(alarm_delay_audio_enabled).state;
+            };
+            cfg.alarm_delay_audio.tts_enabled = []() {
+              return id(alarm_delay_tts_enabled).state && id(voice_services_enabled).state;
+            };
+            cfg.alarm_delay_audio.final_countdown_seconds = []() {
+              return static_cast<int>(id(alarm_delay_final_countdown_seconds).state);
+            };
+            cfg.alarm_delay_audio.play_beep = [](AlarmDelayAudioMode mode) {
+              id(play_alarm_delay_beep).execute(mode == AlarmDelayAudioMode::ENTRY);
+            };
+            cfg.alarm_delay_audio.announce = [](AlarmDelayAudioMode mode) {
+              id(announce_alarm_delay).execute(mode == AlarmDelayAudioMode::ENTRY);
+            };
+            cfg.alarm_delay_audio.stop = []() {
+              id(stop_alarm_delay_audio).execute();
             };
             static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
               id(image_card_download_1),
@@ -301,6 +337,24 @@ esphome:
             };
             cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
               id(display_takeover_end).execute(static_cast<int>(kind));
+            };
+            cfg.alarm_delay_audio.enabled = []() {
+              return id(alarm_delay_audio_enabled).state;
+            };
+            cfg.alarm_delay_audio.tts_enabled = []() {
+              return id(alarm_delay_tts_enabled).state && id(voice_services_enabled).state;
+            };
+            cfg.alarm_delay_audio.final_countdown_seconds = []() {
+              return static_cast<int>(id(alarm_delay_final_countdown_seconds).state);
+            };
+            cfg.alarm_delay_audio.play_beep = [](AlarmDelayAudioMode mode) {
+              id(play_alarm_delay_beep).execute(mode == AlarmDelayAudioMode::ENTRY);
+            };
+            cfg.alarm_delay_audio.announce = [](AlarmDelayAudioMode mode) {
+              id(announce_alarm_delay).execute(mode == AlarmDelayAudioMode::ENTRY);
+            };
+            cfg.alarm_delay_audio.stop = []() {
+              id(stop_alarm_delay_audio).execute();
             };
             static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
               id(image_card_download_1),

@@ -28,6 +28,7 @@
 #include "i18n_generated.h"
 #include "icons.h"
 #include "backlight.h"
+#include "alarm_delay_audio.h"
 
 // Public compatibility include. Device YAML includes this file, while the
 // implementation is split into focused headers below for easier review.

@@ -69,6 +69,22 @@ If Home Assistant reports an alarm arming delay or pending entry delay, the pane
 
 The delay display follows the alarm entity updates from Home Assistant, so it works whether Home Assistant sends the total delay once or keeps sending updated remaining-time values during the countdown.
 
+### Alarm Delay Audio
+
+The **ESP32-P4 86 Panel** can also provide audible entry and exit delay feedback. This is off by default, so updating does not make an existing alarm setup start sounding unexpectedly.
+
+Open **Settings → Alarm Delay Audio** to configure:
+
+- **Alarm Delay Audio** — enables all alarm delay sounds.
+- **TTS Announcements** — sends the configured entry or exit message to Home Assistant when Voice Services are enabled. Home Assistant can use the `esphome.alarm_delay_announcement` event as a TTS automation hook for the panel's Voice Media Player. The event's `device` field is the individual ESPHome node name, while `model` identifies the panel model.
+- **Entry Announcement** and **Exit Announcement** — the message supplied to that hook.
+- **Beep Volume** — the local warning-beep volume.
+- **Faster Beeps During Final Seconds** — changes the final countdown period; the default is 10 seconds.
+
+The exit delay uses a lower single tone, while the entry delay uses a higher double tone. Beeps repeat every second and change to every 700 ms during the final countdown. They stop when the countdown reaches zero or the alarm leaves `arming`/`pending`, including when it is disarmed, armed, triggered, or unavailable. TTS is skipped silently when Voice Services are off; local beeps continue.
+
+Firmware compile checks confirm that the speaker panel and non-speaker panels build safely, but they cannot prove sound level, tone clarity, or media restoration. After installing the test firmware on an ESP32-P4 86 Panel, physically check both alarm delays, the faster final countdown, immediate stopping after disarm, Voice Services off, and normal media playback after the alarm clears.
+
 ## How It Works on the Panel
 
 - The card subscribes to the alarm entity state in Home Assistant.
