@@ -60,7 +60,6 @@ declare global {
   var COVER_CONTROL_TABS_OPTION: any;
   var ClipboardFeature: any;
   var DATE_TIME_CARD_METADATA: any;
-  var DEFAULT_COLOR_PRESET: any;
   var DEVICE_ID: any;
   var DOMAIN_ICONS: any;
   var DOOR_WINDOW_CARD_METADATA: any;
@@ -169,7 +168,6 @@ declare global {
   var SWITCH_CONFIRM_ON_OPTION: any;
   var SWITCH_CONFIRM_YES_OPTION: any;
   var TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE: any;
-  var THEME_PRESETS: any;
   var TOTAL_SLOTS: any;
   var VACUUM_CARD_METADATA: any;
   var VACUUM_CARD_MODES: any;
@@ -440,7 +438,6 @@ declare global {
   var defaultButtonTypeForPicker: any;
   var defaultCardTypeForPicker: any;
   var defaultClockBarTemperatureEntity: any;
-  var defaultTheme: any;
   var defaultTimezoneCardEntity: any;
   var defaultTimezoneOptions: any;
   var defaultTimezoneOptionsForDevice: any;
@@ -778,7 +775,6 @@ declare global {
   var normalizeSwitchConfirmationOptions: any;
   var normalizeTabList: any;
   var normalizeTemperatureUnit: any;
-  var normalizeTheme: any;
   var normalizeTimeOfDay: any;
   var normalizeTodoCountDisplay: any;
   var normalizeTodoOptions: any;
@@ -1143,7 +1139,6 @@ declare global {
   var syncScreensaverTimeoutUi: any;
   var syncTabChrome: any;
   var syncTemperatureUi: any;
-  var syncThemeUi: any;
   var tabListIsDefault: any;
   var temperatureUnitSymbol: any;
   var textInput: any;

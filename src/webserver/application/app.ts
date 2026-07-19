@@ -50,7 +50,6 @@ export function installAppModule(): GlobalDescriptors {
         document.head.appendChild(fonts);
         buildUI();
         addSupportButton();
-        syncThemeUi();
         syncClockBarUi();
         setupPreviewEvents();
         renderPreview();

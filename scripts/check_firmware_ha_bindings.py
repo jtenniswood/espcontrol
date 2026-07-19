@@ -5721,7 +5721,7 @@ def run_self_test() -> int:
         "  ESP_LOGI(\"image_card\", \"Closing image modal for %s\", ctx->entity_id.c_str());\n"
         "}\n"
         "inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg,\n"
-        "                            const ThemePalette &palette) {\n"
+        "                            bool bind_click_handler = false) {\n"
         "  lv_obj_t *loading = image_card_loading_widget(widget);\n"
         "  image_card_set_loading_state(loading, \"Too many\");\n"
         "  return true;\n"
