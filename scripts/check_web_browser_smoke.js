@@ -1107,9 +1107,41 @@ async function assertSettingsPage(page, label, options = {}) {
     await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
     `${label}: media player entity field should render when cover art is enabled`,
   );
+  const screensaverSettings = coverArtCard
+    .getByRole("button", { name: "Screensaver Settings", exact: true })
+    .locator("..");
+  const secondaryMediaPlayer = coverArtCard
+    .getByRole("button", { name: "Secondary Media Player", exact: true })
+    .locator("..");
+  assert(await screensaverSettings.isVisible(), `${label}: cover art screensaver settings panel should render`);
+  assert(await secondaryMediaPlayer.isVisible(), `${label}: cover art secondary media player panel should render`);
+  assert(
+    !(await screensaverSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: cover art screensaver settings should start collapsed`,
+  );
+  assert(
+    !(await secondaryMediaPlayer.getAttribute("class")).includes("sp-open"),
+    `${label}: cover art secondary media player should start collapsed`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-player").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: cover art primary entity should remain outside collapsible panels`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+    false,
+    `${label}: cover art show-after field should begin inside collapsed screensaver settings`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-secondary-player").isVisible(),
+    false,
+    `${label}: cover art secondary entity should begin inside its collapsed panel`,
+  );
+  await screensaverSettings.locator("> .sp-disclosure-button").click();
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
-    `${label}: cover art show-after field should render when cover art is enabled`,
+    `${label}: cover art show-after field should render inside screensaver settings`,
   );
   assert.deepStrictEqual(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay option").evaluateAll(
@@ -1122,6 +1154,28 @@ async function assertSettingsPage(page, label, options = {}) {
     await page.locator("#sp-set-ss-track-overlay").count(),
     options.coverArtSquareOverlay ? 1 : 0,
     `${label}: track overlay duration visibility should match square cover art layout`,
+  );
+  if (options.coverArtSquareOverlay) {
+    assert(
+      await coverArtCard.locator("#sp-set-ss-track-overlay").isVisible(),
+      `${label}: track overlay duration should render inside screensaver settings`,
+    );
+  }
+  await secondaryMediaPlayer.locator("> .sp-disclosure-button").click();
+  const coverArtSecondaryInfo = coverArtCard.locator("#sp-set-ss-cover-art-secondary-player-info");
+  assert(await coverArtSecondaryInfo.isVisible(), `${label}: cover art secondary player explanation should render`);
+  assert.strictEqual(
+    await coverArtSecondaryInfo.getAttribute("role"),
+    "note",
+    `${label}: cover art secondary player explanation should be announced as a note`,
+  );
+  assert(
+    (await coverArtSecondaryInfo.textContent()).includes("Line In, TV, or HDMI"),
+    `${label}: cover art secondary player explanation should describe external sources`,
+  );
+  assert(
+    await coverArtCard.locator("#sp-set-ss-cover-art-secondary-player").isVisible(),
+    `${label}: cover art secondary entity should render inside its panel`,
   );
   assert(
     await coverArtCard
