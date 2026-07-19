@@ -406,7 +406,6 @@ export function installSettingsPageModule(): GlobalDescriptors {
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
         var systemSettingsCards: any = buildSystemSettingsCards();
         appendSettingsSection(config, "Display", [
-            powerCard,
             appearanceCard,
             backlightCard,
             clockBarCard,
@@ -426,6 +425,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             temperatureCard,
         ]);
         appendSettingsSection(config, "System", [
+            powerCard,
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,
             systemSettingsCards.homeAssistantSettingsCard,
