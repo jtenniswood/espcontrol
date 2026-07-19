@@ -74,6 +74,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 screen_rotation: state.screenRotation,
             },
             screen: {
+                power_mode: normalizePowerMode(state.powerMode),
                 brightness_day: Math.round(state.brightnessDayVal),
                 brightness_night: Math.round(state.brightnessNightVal),
                 automatic_brightness: !!state.automaticBrightnessEnabled,
@@ -341,6 +342,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                         scheduleClockTextColor: state.scheduleClockTextColor,
                         scheduleSensorActivation: state.scheduleSensorActivation,
                     });
+                    state.powerMode = importedScreenSettings.powerMode;
                     state.brightnessDayVal = importedScreenSettings.brightnessDayVal;
                     state.brightnessNightVal = importedScreenSettings.brightnessNightVal;
                     state.automaticBrightnessEnabled = importedScreenSettings.automaticBrightnessEnabled;
@@ -357,6 +359,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.scheduleDimmedBrightness = importedScreenSettings.scheduleDimmedBrightness;
                     state.scheduleClockBrightness = importedScreenSettings.scheduleClockBrightness;
                     state.scheduleClockTextColor = importedScreenSettings.scheduleClockTextColor;
+                    if (state.powerModeSupported)
+                        postPowerMode(state.powerMode);
                     postNumber(entityName("screen_daytime_brightness"), state.brightnessDayVal);
                     postNumber(entityName("screen_nighttime_brightness"), state.brightnessNightVal);
                     postAutomaticBrightnessEnabled(state.automaticBrightnessEnabled);
@@ -381,6 +385,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                         els.setNightBrightness.value = state.brightnessNightVal;
                         els.setNightBrightnessVal.textContent = Math.round(state.brightnessNightVal) + "%";
                     }
+                    syncPowerModeUi();
                     syncScreenScheduleUi();
                 }
                 state.selectedSlots = [];

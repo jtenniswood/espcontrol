@@ -350,9 +350,9 @@ number:
     name: "${entity_screen_schedule_wake_brightness}"
     internal: true
     id: schedule_wake_brightness
-    min_value: 10
+    min_value: 1
     max_value: 100
-    step: 5
+    step: 1
     initial_value: 10
     optimistic: true
     restore_value: true
@@ -434,9 +434,9 @@ number:
     name: "${entity_screen_daytime_brightness}"
     internal: true
     id: brightness_day
-    min_value: 10
+    min_value: 1
     max_value: 100
-    step: 5
+    step: 1
     initial_value: 100
     optimistic: true
     restore_value: true
@@ -453,9 +453,9 @@ number:
     name: "${entity_screen_nighttime_brightness}"
     internal: true
     id: brightness_night
-    min_value: 10
+    min_value: 1
     max_value: 100
-    step: 5
+    step: 1
     initial_value: 75
     optimistic: true
     restore_value: true

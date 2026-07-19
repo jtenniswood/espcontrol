@@ -58,9 +58,14 @@ export function normalizeCoverArtDelay(value: unknown): number {
 export function normalizeScheduleWakeBrightness(value: unknown): number {
   const n = parseFloat(String(value));
   if (!Number.isFinite(n) || n <= 0) return 10;
-  if (n < 10) return 10;
+  if (n < 1) return 1;
   if (n > 100) return 100;
   return Math.round(n);
+}
+
+export function normalizePowerMode(value: unknown): string {
+  const mode = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return mode === "battery_saver" || mode === "battery" ? "Battery Saver" : "Normal";
 }
 
 export function normalizeScheduleClockBrightness(value: unknown): number {
@@ -165,6 +170,7 @@ export function normalizeNtpServer(value: unknown, fallback: string): string {
 }
 
 export interface BackupScreenSettingsState {
+  powerMode: string;
   brightnessDayVal: number;
   brightnessNightVal: number;
   automaticBrightnessEnabled: boolean;
@@ -199,6 +205,7 @@ export function normalizeBackupScreenSettings(
   const legacyScheduleEnabled = !!screenSettings.schedule_enabled;
   const scheduleTrigger = normalizeScheduleTrigger(screenSettings.schedule_trigger, legacyScheduleEnabled);
   return {
+    powerMode: normalizePowerMode(screenSettings.power_mode),
     brightnessDayVal: numberOrFallback(screenSettings.brightness_day, 100),
     brightnessNightVal: numberOrFallback(screenSettings.brightness_night, 75),
     automaticBrightnessEnabled: objectValue(screenSettings, "automatic_brightness") != null

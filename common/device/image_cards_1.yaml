@@ -31,4 +31,13 @@ interval:
   - interval: 250ms
     then:
       - lambda: |-
+          if (power_mode_defer_display_work(
+                id(power_mode_battery_saver) ? espcontrol::PowerMode::BATTERY_SAVER
+                                             : espcontrol::PowerMode::NORMAL,
+                id(display_mode_controller).current_mode_is(
+                    espcontrol::DisplayMode::DISPLAY_OFF))) {
+            id(battery_image_refresh_deferred) = true;
+            return;
+          }
+          id(battery_image_refresh_deferred) = false;
           image_card_refresh_due();

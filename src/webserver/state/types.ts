@@ -101,6 +101,8 @@ export interface AppState {
   networkStatusOn: boolean;
   voiceServicesOn: boolean;
   networkTransport: string;
+  powerMode: string;
+  powerModeSupported: boolean;
   wifiStrengthPercent: number;
   temperatureDegreeSymbolOn: boolean;
   subpageChevronsOn: boolean;

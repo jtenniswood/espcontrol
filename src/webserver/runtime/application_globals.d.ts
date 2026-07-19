@@ -124,6 +124,7 @@ declare global {
   var PUSH_CARD_METADATA: any;
   var PreviewFeature: any;
   var PreviewGridFeature: any;
+  var POWER_MODE_UNAVAILABLE: any;
   var SCREENSAVER_ACTION_UNAVAILABLE: any;
   var SCREENSAVER_TIMEOUT_OPTIONS: any;
   var SCREEN_LOCK_CARD_METADATA: any;
@@ -755,6 +756,7 @@ declare global {
   var normalizeMediaVolumeMax: any;
   var normalizeNetworkTransport: any;
   var normalizeNtpServer: any;
+  var normalizePowerMode: any;
   var normalizePresenceOptions: any;
   var normalizeScheduleClockBrightness: any;
   var normalizeScheduleDimmedBrightness: any;
@@ -869,6 +871,7 @@ declare global {
   var postScreensaverAction: any;
   var postScreensaverDimmedBrightness: any;
   var postScreensaverMode: any;
+  var postPowerMode: any;
   var postScreensaverTimeout: any;
   var postSelect: any;
   var postSelectWithObjectId: any;
@@ -883,6 +886,7 @@ declare global {
   var postVoiceServices: any;
   var postWithObjectId: any;
   var postWithObjectIds: any;
+  var powerModeControlState: any;
   var presenceActiveColorEnabled: any;
   var previewDropIdx: any;
   var previewHtmlValue: any;
@@ -1117,6 +1121,7 @@ declare global {
   var syncClockBarItemElement: any;
   var syncClockBarUi: any;
   var syncClockScreensaverControls: any;
+  var syncPowerModeUi: any;
   var syncColorUi: any;
   var syncConfigLockUi: any;
   var syncCoverArtScreensaverUi: any;

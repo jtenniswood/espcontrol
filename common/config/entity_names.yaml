@@ -36,6 +36,7 @@ substitutions:
   entity_screen_temperature_degree_symbol: "Screen: Temperature Degree Symbol"
   entity_screen_subpage_chevron: "Screen: Subpage Chevron"
   entity_screen_temperature_unit: "Screen: Temperature Unit"
+  entity_screen_power_mode: "Screen: Power Mode"
   entity_indoor_temp_entity: "Indoor Temp Entity"
   entity_outdoor_temp_entity: "Outdoor Temp Entity"
   entity_screensaver_mode: "Screensaver Mode"

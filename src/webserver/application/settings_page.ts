@@ -7,6 +7,34 @@ export function installSettingsPageModule(): GlobalDescriptors {
         page.className = "sp-page";
         var config: any = document.createElement("div");
         config.className = "sp-config fade-in";
+        var powerBody: any = document.createElement("div");
+        var powerInfo: any = infoPanel("sp-power-mode-info", "Update the device firmware to use Power Mode.");
+        powerBody.appendChild(powerInfo);
+        els.setPowerModeInfoText = powerInfo.lastChild;
+        var powerField: any = document.createElement("div");
+        powerField.className = "sp-field";
+        powerField.appendChild(fieldLabel("Power Mode", "sp-set-power-mode"));
+        var powerSelect: any = document.createElement("select");
+        powerSelect.className = "sp-select";
+        powerSelect.id = "sp-set-power-mode";
+        ["Normal", "Battery Saver"].forEach(function (this: any, option?: any) {
+            var item: any = document.createElement("option");
+            item.value = option;
+            item.textContent = option;
+            powerSelect.appendChild(item);
+        });
+        powerSelect.value = normalizePowerMode(state.powerMode);
+        powerSelect.disabled = !state.powerModeSupported;
+        powerSelect.addEventListener("change", function (this: any) {
+            state.powerMode = normalizePowerMode(this.value);
+            syncPowerModeUi();
+            postPowerMode(state.powerMode);
+        });
+        powerField.appendChild(powerSelect);
+        powerBody.appendChild(powerField);
+        els.setPowerMode = powerSelect;
+        syncPowerModeUi();
+        var powerCard: any = makeCollapsibleCard("Power", powerBody, true);
         var appearBody: any = document.createElement("div");
         var onColor: any = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (this: any, hex?: any) {
             postText(entityName("button_on_color"), hex);
@@ -43,10 +71,12 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.setLanguage = languageSelect;
         var blBody: any = document.createElement("div");
         var daySlider: any = createRangeSlider("Daytime Brightness", state.brightnessDayVal, entityName("screen_daytime_brightness"));
+        daySlider.range.id = "sp-set-day-brightness";
         blBody.appendChild(daySlider.wrap);
         els.setDayBrightness = daySlider.range;
         els.setDayBrightnessVal = daySlider.val;
         var nightSlider: any = createRangeSlider("Nighttime Brightness", state.brightnessNightVal, entityName("screen_nighttime_brightness"));
+        nightSlider.range.id = "sp-set-night-brightness";
         blBody.appendChild(nightSlider.wrap);
         els.setNightBrightness = nightSlider.range;
         els.setNightBrightnessVal = nightSlider.val;
@@ -375,6 +405,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
         var systemSettingsCards: any = buildSystemSettingsCards();
         appendSettingsSection(config, "Display", [
+            powerCard,
             appearanceCard,
             backlightCard,
             clockBarCard,

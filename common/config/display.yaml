@@ -14,6 +14,18 @@ globals:
     type: bool
     restore_value: yes
     initial_value: 'false'
+  - id: power_mode_battery_saver
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: power_mode_normal_wifi_request_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: battery_image_refresh_deferred
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 esphome:
   on_boot:
@@ -56,8 +68,28 @@ esphome:
             set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
         - script.execute: clock_bar_hide
         - script.execute: clock_bar_apply
+        - lambda: |-
+            id(power_mode_battery_saver) =
+                power_mode_is_battery_saver(id(screen_power_mode).current_option());
+        - script.execute: power_mode_apply
 
 script:
+  - id: power_mode_apply
+    mode: restart
+    then:
+      - script.execute: power_mode_apply_network
+      - if:
+          condition:
+            lambda: |-
+              return power_mode_flush_deferred_work(
+                  id(power_mode_battery_saver) ? espcontrol::PowerMode::BATTERY_SAVER
+                                               : espcontrol::PowerMode::NORMAL,
+                  id(battery_image_refresh_deferred));
+          then:
+            - lambda: |-
+                id(battery_image_refresh_deferred) = false;
+                image_card_refresh_due();
+
   - id: clock_bar_hide
     mode: restart
     then:
@@ -418,6 +450,27 @@ switch:
       - script.execute: cover_art_apply_external_input_policy
 
 select:
+  - platform: template
+    name: "${entity_screen_power_mode}"
+    internal: true
+    id: screen_power_mode
+    entity_category: config
+    icon: "mdi:battery-heart-variant"
+    optimistic: true
+    restore_value: true
+    initial_option: "Normal"
+    options:
+      - "Normal"
+      - "Battery Saver"
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - lambda: |-
+            id(power_mode_battery_saver) =
+                power_mode_is_battery_saver(id(screen_power_mode).current_option());
+        - script.execute: power_mode_apply
+
   - platform: template
     name: "${entity_screen_saver_action}"
     internal: true

@@ -46,6 +46,8 @@ export function runStateContractTests(): void {
   equal(first.buttons.length, 4, "startup creates one card per device slot");
   equal(first.buttons[0]?.icon, "Auto", "startup card defaults remain compatible");
   equal(first.screenRotation, "180", "startup uses the device rotation default");
+  equal(first.powerMode, "Normal", "startup preserves current power behaviour");
+  equal(first.powerModeSupported, false, "power control waits for firmware feature detection");
   equal(first.screenRotationInitialReady, false, "rotation-capable devices wait for the initial event");
   equal(first.timezoneOptions.length, 2, "startup copies embedded timezone options");
   first.grid[0] = 9;

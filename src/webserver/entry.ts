@@ -132,6 +132,7 @@ function startEspControl(): void {
     createBackupFeature: BackupFeature.createBackupFeature,
     createSettingsUiFeature: SettingsFeature.createSettingsUiFeature,
     screensaverControlState: SettingsFeature.screensaverControlState,
+    powerModeControlState: SettingsFeature.powerModeControlState,
     timedSettingLabel: SettingsFeature.timedSettingLabel,
     ...UiTokens,
     ...AppState,

@@ -99,6 +99,7 @@ export {
   normalizeHomeAssistantArtworkProtocol,
   normalizeLanguage,
   normalizeNtpServer,
+  normalizePowerMode,
   normalizeScheduleClockBrightness,
   normalizeScheduleDimmedBrightness,
   normalizeScheduleMode,

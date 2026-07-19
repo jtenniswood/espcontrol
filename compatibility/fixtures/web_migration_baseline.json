@@ -63,7 +63,7 @@
       "schedule_wake_timeout": 30
     },
     "screenNormalized": {
-      "brightnessDayVal": 80, "brightnessNightVal": 20, "automaticBrightnessEnabled": true,
+      "powerMode": "Normal", "brightnessDayVal": 80, "brightnessNightVal": 20, "automaticBrightnessEnabled": true,
       "brightnessDawnTime": "06:00", "brightnessDuskTime": "18:00", "scheduleTrigger": "time",
       "scheduleEnabled": true, "scheduleSensorActivation": "on", "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
       "scheduleWakeTimeout": 30, "scheduleWakeBrightness": 10, "scheduleDimmedBrightness": 10,
@@ -100,5 +100,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 624096, "gzip": 148222 }
+  "bundleSize": { "minified": 626871, "gzip": 148946 }
 }

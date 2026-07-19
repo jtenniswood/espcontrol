@@ -16,16 +16,24 @@ Sunrise and sunset times are calculated on-device from your selected timezone us
 
 Configured in the **Brightness** section of the **Settings** tab in [Setup](/features/setup).
 
-- **Daytime Brightness** — screen brightness during the day (10%–100%, default 100%).
-- **Nighttime Brightness** — screen brightness at night (10%–100%, default 75%).
+- **Daytime Brightness** — screen brightness during the day (1%–100%, default 100%).
+- **Nighttime Brightness** — screen brightness at night (1%–100%, default 75%).
 - **Automatic Brightness** — when enabled, EspControl uses the calculated sunrise and sunset times. Turn it off to set manual **Dawn** and **Dusk** times for the day/night brightness changeover.
 - **Dawn / Dusk** — shown when **Automatic Brightness** is off. These manual times decide when the panel switches between **Daytime Brightness** and **Nighttime Brightness**.
 
 Sunrise and sunset times are derived from the timezone set in [Time Settings](/features/clock).
 
+## Battery Saver
+
+Choose **Settings > Display > Power > Battery Saver** when the panel is running from a battery. Battery Saver keeps the panel connected to Home Assistant, but lets the Wi-Fi radio use light/modem sleep and defers image-card downloads and other display-only work while the display is off.
+
+Battery Saver does not change any brightness, screensaver, schedule, voice-service, or relay setting. You remain in control of every brightness level from 1% to 100%. For the largest saving, combine Battery Saver with a short screensaver timeout and **Display Off** rather than a dimmed screen or clock.
+
+Voice processing and an energised relay can use considerably more power than the sleeping Wi-Fi radio, so turn those features off separately when they are not required. Switching back to **Normal** restores the original responsive Wi-Fi behaviour without changing the saved display settings.
+
 ## Home Assistant Control
 
-The panel exposes **Screen: Automatic Brightness**, **Screen: Brightness Dawn Time**, and **Screen: Brightness Dusk Time** to Home Assistant. Turn **Screen: Automatic Brightness** off when you want fixed manual dawn and dusk times instead of the calculated sunrise and sunset times.
+The panel exposes **Screen: Power Mode**, **Screen: Automatic Brightness**, **Screen: Brightness Dawn Time**, and **Screen: Brightness Dusk Time** to Home Assistant. Turn **Screen: Automatic Brightness** off when you want fixed manual dawn and dusk times instead of the calculated sunrise and sunset times.
 
 For example, you can set Dawn to `07:00` and Dusk to `22:00` if you want the panel to stay in daytime brightness for a fixed daily window. Turning automatic brightness back on returns the panel to the calculated sunrise and sunset times for the selected timezone.
 

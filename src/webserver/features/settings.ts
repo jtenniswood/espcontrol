@@ -1,4 +1,4 @@
-import { normalizeScreensaverAction } from "../model/settings";
+import { normalizePowerMode, normalizeScreensaverAction } from "../model/settings";
 
 export interface ScreensaverControlState {
   readonly mode: string;
@@ -7,6 +7,35 @@ export interface ScreensaverControlState {
   readonly dayBrightnessLabel: string;
   readonly nightBrightnessLabel: string;
   readonly dimBrightnessLabel: string;
+}
+
+export interface PowerModeControlState {
+  readonly mode: string;
+  readonly disabled: boolean;
+  readonly description: string;
+}
+
+export function powerModeControlState(mode: unknown, supported: boolean): PowerModeControlState {
+  const normalized = normalizePowerMode(mode);
+  if (!supported) {
+    return {
+      mode: normalized,
+      disabled: true,
+      description: "Update the device firmware to use Power Mode.",
+    };
+  }
+  if (normalized === "Battery Saver") {
+    return {
+      mode: normalized,
+      disabled: false,
+      description: "Wi-Fi light sleep and reduced display-only work are active. For the best battery life, select Display Off below. Brightness, voice services and relays remain under your control.",
+    };
+  }
+  return {
+    mode: normalized,
+    disabled: false,
+    description: "Normal keeps the current responsive Wi-Fi behaviour. Changing this mode never changes your brightness, screensaver, voice or relay settings.",
+  };
 }
 
 export interface SettingsUiDependencies {

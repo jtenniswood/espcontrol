@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 85,
+    "entityNames": 86,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -5849,6 +5849,18 @@
         "key": "screen_temperature_unit",
         "domain": "select",
         "name": "Screen: Temperature Unit",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_power_mode",
+        "domain": "select",
+        "name": "Screen: Power Mode",
+        "objectIds": [
+          "screen__power_mode",
+          "screen_power_mode"
+        ],
         "groups": [
           "settings"
         ]

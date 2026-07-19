@@ -432,6 +432,9 @@ assert.strictEqual(layoutPlan.buttons[1].entity, "light.kitchen", "backup layout
 
 assert.strictEqual(model.normalizeTemperatureUnit("fahrenheit"), "\u00B0F", "temperature unit normalization");
 assert.strictEqual(model.normalizeScheduleWakeTimeout(1), 10, "wake timeout minimum");
+assert.strictEqual(model.normalizeScheduleWakeBrightness(1), 1, "wake brightness supports one percent");
+assert.strictEqual(model.normalizePowerMode("battery-saver"), "Battery Saver", "battery power mode normalization");
+assert.strictEqual(model.normalizePowerMode("unexpected"), "Normal", "unknown power mode defaults to Normal");
 assert.strictEqual(model.normalizeCoverArtDelay(0), 3, "legacy immediate cover art delay migrates to three seconds");
 assert.strictEqual(model.normalizeCoverArtDelay(60), 60, "valid cover art delay remains unchanged");
 assert.strictEqual(model.normalizeCoverArtDelay(900), 300, "cover art delay clamps to the supported maximum");
@@ -462,6 +465,7 @@ assert.deepStrictEqual(
     scheduleClockTextColor: "ABCDEF",
   })),
   {
+    powerMode: "Normal",
     brightnessDayVal: 88,
     brightnessNightVal: 55,
     automaticBrightnessEnabled: false,
