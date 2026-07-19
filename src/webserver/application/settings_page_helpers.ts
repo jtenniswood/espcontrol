@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installSettingsPageHelpersModule(): GlobalDescriptors {
     // ── Settings Page Helpers ──────────────────────────────────────────
@@ -67,7 +68,7 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
 
         var ttsOptions: any = condField();
         els.alarmDelayTtsOptions = ttsOptions;
-        function announcementInput(label: any, id: any, value: any, fallback: any, stateKey: any, postValue: any) {
+        function announcementInput(label: any, id: any, value: any, fallback: any, stateKey: "alarmDelayEntryAnnouncement" | "alarmDelayExitAnnouncement", postValue: any) {
             var field: any = document.createElement("div");
             field.className = "sp-field";
             field.appendChild(fieldLabel(label, id));

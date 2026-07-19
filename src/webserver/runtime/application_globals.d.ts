@@ -1092,7 +1092,6 @@ declare global {
   var splitSubpageConfigChunks: any;
   var startFirmwareInstallRefresh: any;
   var startInitialScreenRotationCheck: any;
-  var state: any;
   var statusBadge: any;
   var stopFirmwareInstallRefresh: any;
   var stopFirmwareInstallRefreshIfComplete: any;

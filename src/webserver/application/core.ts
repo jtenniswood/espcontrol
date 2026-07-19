@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import { CARD_RUNTIME_SPECS } from "../generated/card_contract";
 export function installCore(): GlobalDescriptors {

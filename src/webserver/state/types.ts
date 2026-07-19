@@ -1,4 +1,6 @@
 import type { CardConfig } from "../contracts/types";
+import type { ClipboardEntry } from "../features/clipboard";
+import type { SlotSizeMap } from "../model/grid";
 
 export interface DeviceConfigFeatures {
   internalRelays?: readonly { readonly key: string; readonly label: string }[];
@@ -74,6 +76,31 @@ export interface FirmwareVersionInfo {
   ota_url?: string;
   ota_filename?: string;
   ota_md5?: string;
+}
+
+export interface RuntimeSubpage {
+  order: string[];
+  buttons: CardConfig[];
+  grid: number[];
+  sizes: SlotSizeMap;
+  backLabel?: string;
+}
+
+export interface AppClipboard {
+  buttons: ClipboardEntry[];
+}
+
+export interface SettingsDraft {
+  key: string;
+  slot: number;
+  homeSlot: number | null;
+  isSub: boolean;
+  dirty: boolean;
+  button: CardConfig;
+  isNew?: boolean;
+  pos?: number;
+  typeSelected?: boolean;
+  autoSelectedButton?: CardConfig | null;
 }
 
 export interface AppState {
@@ -208,14 +235,14 @@ export interface AppState {
   clockBarTempRestoreIndoor: boolean;
   clockBarTempRestoreOutdoor: boolean;
   clockBarTempRestoreEntities: string[];
-  subpages: Record<string, unknown>;
+  subpages: Record<string, RuntimeSubpage>;
   subpageRaw: Record<string, Record<string, string>>;
   subpageSavePending: Record<string, string>;
   editingSubpage: number | null;
   subpageSelectedSlots: number[];
   subpageLastClicked: number;
-  clipboard: unknown;
-  settingsDraft: unknown;
+  clipboard: AppClipboard | null;
+  settingsDraft: SettingsDraft | null;
   entityPostPaths: Record<string, string>;
   entityNames: Record<string, string[]>;
 }

@@ -13,3 +13,4 @@ and firmware behavior.
 - [ADR 0004: Generated Device Slots](0004-generated-device-slots.md)
 - [ADR 0005: GitHub Pages Runtime Assets](0005-github-pages-runtime-assets.md)
 - [ADR 0006: Hybrid Compiled Firmware Modules](0006-hybrid-compiled-firmware-modules.md)
+- [ADR 0008: Typed Web State Boundary](0008-typed-web-state-boundary.md)

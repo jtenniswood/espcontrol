@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function registerSensorCardTypes(): GlobalDescriptors {
     // Read-only sensor card: displays either numeric data or a text state.

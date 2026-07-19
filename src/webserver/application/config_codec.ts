@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import {
     migrateSavedConfigVacuumLegacy,
@@ -793,13 +794,15 @@ export function installConfigCodecModule(): GlobalDescriptors {
         }
     }
     function getSubpage(this: any, homeSlot?: any) {
-        if (!state.subpages[homeSlot]) {
-            state.subpages[homeSlot] = { order: [], buttons: [], grid: [], sizes: {}, backLabel: "Back" };
+        var subpage = state.subpages[homeSlot];
+        if (!subpage) {
+            subpage = { order: [], buttons: [], grid: [], sizes: {}, backLabel: "Back" };
+            state.subpages[homeSlot] = subpage;
         }
-        else if (!state.subpages[homeSlot].backLabel) {
-            state.subpages[homeSlot].backLabel = backLabelFromOrder(state.subpages[homeSlot].order);
+        else if (!subpage.backLabel) {
+            subpage.backLabel = backLabelFromOrder(subpage.order);
         }
-        return state.subpages[homeSlot];
+        return subpage;
     }
     function buildSubpageGrid(this: any, sp?: any) {
         var result: any = EspControlModel.buildSubpageGrid(sp, NUM_SLOTS, GRID_COLS);

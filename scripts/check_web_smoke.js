@@ -42,6 +42,10 @@ function loadHooks() {
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
+  assert(
+    !Object.prototype.hasOwnProperty.call(sandbox, "state"),
+    "application state must remain inside the typed module boundary",
+  );
   assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups);
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }

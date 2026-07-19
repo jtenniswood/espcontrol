@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function registerSubpageCardTypes(): GlobalDescriptors {
     // Navigation folder: tap opens a nested grid screen with its own button layout

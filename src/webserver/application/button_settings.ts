@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installButtonSettingsModule(): GlobalDescriptors {
     // ── Button settings panel (unified) ────────────────────────────────────
@@ -91,7 +92,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             return;
         var liveButton: any = pendingNewDraft ? null : c.buttons[bIdx];
         var draftKey: any = pendingNewDraft
-            ? state.settingsDraft.key
+            ? state.settingsDraft!.key
             : (c.isSub ? "sub:" + state.editingSubpage : "main") + ":" + slot;
         function cloneButtonConfig(this: any, src?: any) {
             return EspControlModel.cloneCardConfig(src);
@@ -110,8 +111,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 button: cloneButtonConfig(liveButton),
             };
         }
-        var b: any = state.settingsDraft.button;
-        var isNewDraft: any = !!state.settingsDraft.isNew;
+        var b: any = state.settingsDraft!.button;
+        var isNewDraft: any = !!state.settingsDraft!.isNew;
         var title: any = document.createElement("div");
         title.className = "sp-section-title";
         title.textContent = "Settings";
@@ -573,7 +574,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 }
             });
         }
-        var isNewDraftWithoutType: any = isNewDraft && !state.settingsDraft.typeSelected;
+        var isNewDraftWithoutType: any = isNewDraft && !state.settingsDraft?.typeSelected;
         var rawTypeDef: any = isNewDraftWithoutType ? null : (BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""]);
         var typeDef: any = rawTypeDef;
         {

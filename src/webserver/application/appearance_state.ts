@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installAppearanceStateModule(): GlobalDescriptors {
     // ── Appearance State ───────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function registerLockCardTypes(): GlobalDescriptors {
     // Lock card: lock/unlock toggle with safe default-to-lock behavior and state display.

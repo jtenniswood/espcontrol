@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function registerActionCardTypes(): GlobalDescriptors {
     // Action card: one-tap Home Assistant shortcuts for scenes, scripts, buttons, and helpers.

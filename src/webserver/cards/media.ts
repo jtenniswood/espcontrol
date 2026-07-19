@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function registerMediaCardTypes(): GlobalDescriptors {
     // Media player card: playback buttons, volume, track position, or now-playing details.

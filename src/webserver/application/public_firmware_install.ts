@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installPublicFirmwareInstallModule(): GlobalDescriptors {
     // ── Public Firmware Web OTA ────────────────────────────────────────────

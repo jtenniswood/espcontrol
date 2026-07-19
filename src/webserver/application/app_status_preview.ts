@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installAppStatusPreviewModule(): GlobalDescriptors {
     // ── Clock (minute-aligned) ─────────────────────────────────────────────
@@ -241,7 +242,7 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
     }
     function gridHasAny(this: any) {
         for (var i: any = 0; i < NUM_SLOTS; i++) {
-            if (state.grid[i] > 0)
+            if ((state.grid[i] ?? 0) > 0)
                 return true;
         }
         return false;
@@ -255,7 +256,7 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
                 return;
             var pos: any = 0;
             for (var i: any = 0; i < NUM_SLOTS; i++) {
-                if (state.buttons[i].entity && pos < NUM_SLOTS) {
+                if (state.buttons[i]?.entity && pos < NUM_SLOTS) {
                     state.grid[pos] = i + 1;
                     pos++;
                 }

@@ -135,7 +135,6 @@ function startEspControl(): void {
     timedSettingLabel: SettingsFeature.timedSettingLabel,
     ...UiTokens,
     ...AppState,
-    ...AppInstance,
     ...EventAliases,
     ...EventState,
     ...FirmwareEvents,

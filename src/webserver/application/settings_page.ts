@@ -1,3 +1,4 @@
+import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installSettingsPageModule(): GlobalDescriptors {
     // ── Settings Page ──────────────────────────────────────────────────────
@@ -145,7 +146,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         var ntpList: any = document.createElement("div");
         ntpList.className = "sp-field-stack";
         els.setNtpServerFields = ntpList;
-        function addNtpServerInput(this: any, id?: any, stateKey?: any, postName?: any, placeholder?: any, ariaLabel?: any) {
+        function addNtpServerInput(this: any, id: any, stateKey: "ntpServer1" | "ntpServer2" | "ntpServer3", postName: any, placeholder: any, ariaLabel: any) {
             var input: any = textInput(id, state[stateKey], placeholder);
             input.setAttribute("aria-label", ariaLabel);
             input.addEventListener("blur", function (this: any) {
