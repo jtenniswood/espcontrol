@@ -854,6 +854,56 @@ const confirmBothSwitch = hooks.parseButtonConfig("switch.printer;Printer;Printe
 assert.strictEqual(hooks.switchConfirmationMode(confirmBothSwitch), "both", "switch both confirmation mode");
 assert.strictEqual(hooks.switchConfirmationMessage(confirmBothSwitch), "Toggle this device?", "switch both confirmation default message");
 
+const confirmGarage = {
+  entity: "cover.garage_door",
+  label: "Garage",
+  icon: "Garage",
+  icon_on: "Garage Open",
+  sensor: "",
+  unit: "",
+  type: "garage",
+  precision: "",
+  options: "confirm_off,confirm_message=Are you sure?,confirm_yes=Close It,confirm_no=Leave It",
+};
+assertButtonRoundTrip(hooks, "garage close confirmation", confirmGarage, false);
+const parsedConfirmGarage = hooks.parseButtonConfig(hooks.serializeButtonConfig(confirmGarage));
+assert.strictEqual(hooks.garageConfirmationEnabled(parsedConfirmGarage), true, "garage confirmation enabled");
+assert.strictEqual(hooks.garageConfirmationMessage(parsedConfirmGarage), "Are you sure?", "garage confirmation message");
+assert.strictEqual(hooks.garageConfirmationYesText(parsedConfirmGarage), "Close It", "garage confirmation yes text");
+assert.strictEqual(hooks.garageConfirmationNoText(parsedConfirmGarage), "Leave It", "garage confirmation no text");
+assert.strictEqual(hooks.garageConfirmationMode(parsedConfirmGarage), "off", "garage confirmation defaults to off mode");
+const confirmOnGarage = hooks.parseButtonConfig("cover.garage_door;Garage;Garage;Garage Open;;;garage;;confirm_on");
+assert.strictEqual(hooks.garageConfirmationEnabled(confirmOnGarage), true, "garage on confirmation enabled");
+assert.strictEqual(hooks.garageConfirmationMode(confirmOnGarage), "on", "garage on confirmation mode");
+assert.strictEqual(hooks.garageConfirmationMessage(confirmOnGarage), "Open the garage door?", "garage on confirmation default message");
+assert.strictEqual(hooks.serializeButtonConfig(confirmOnGarage), "cover.garage_door;Garage;Garage;Garage Open;;;garage;;confirm_on", "garage on confirmation round-trip");
+const confirmBothGarage = hooks.parseButtonConfig("cover.garage_door;Garage;Garage;Garage Open;;;garage;;confirm_off,confirm_on");
+assert.strictEqual(hooks.garageConfirmationMode(confirmBothGarage), "both", "garage both confirmation mode");
+assert.strictEqual(hooks.garageConfirmationMessage(confirmBothGarage), "Open or close the garage door?", "garage both confirmation default message");
+const openGarageFromCloseConfirmation = hooks.parseButtonConfig(
+  "cover.garage_door;Open;Garage;Auto;open;;garage;;confirm_off,confirm_message=Close%20the%20garage%20door%3F"
+);
+assert.strictEqual(openGarageFromCloseConfirmation.options, "confirm_on", "open garage command aligns confirmation direction and default message");
+assert.strictEqual(hooks.garageConfirmationMode(openGarageFromCloseConfirmation), "on", "open garage command requires open confirmation");
+assert.strictEqual(hooks.garageConfirmationMessage(openGarageFromCloseConfirmation), "Open the garage door?", "open garage command uses open default message");
+const closeGarageFromOpenConfirmation = hooks.parseButtonConfig(
+  "cover.garage_door;Close;Garage;Auto;close;;garage;;confirm_on,confirm_message=Check%20the%20driveway,confirm_yes=Proceed,confirm_no=Wait"
+);
+assert.strictEqual(
+  closeGarageFromOpenConfirmation.options,
+  "confirm_off,confirm_message=Check the driveway,confirm_yes=Proceed,confirm_no=Wait",
+  "close garage command aligns confirmation direction while preserving custom text"
+);
+assert.strictEqual(hooks.garageConfirmationMode(closeGarageFromOpenConfirmation), "off", "close garage command requires close confirmation");
+const confirmGarageWithLabelDisplay = hooks.parseButtonConfig(
+  "cover.garage_door;Garage;Garage;Garage Open;;;garage;;label_display=status,confirm_off"
+);
+assert.strictEqual(hooks.garageLabelDisplayMode(confirmGarageWithLabelDisplay), "status", "garage confirmation preserves label display");
+assert.strictEqual(hooks.garageConfirmationEnabled(confirmGarageWithLabelDisplay), true, "garage confirmation preserved alongside label display");
+hooks.setGarageConfirmationOptions(confirmGarageWithLabelDisplay, "", "", "", "");
+assert.strictEqual(hooks.garageConfirmationEnabled(confirmGarageWithLabelDisplay), false, "garage confirmation can be cleared");
+assert.strictEqual(hooks.garageLabelDisplayMode(confirmGarageWithLabelDisplay), "status", "clearing garage confirmation preserves label display");
+
 assertButtonRoundTrip(hooks, "delimiter button", {
   entity: "sensor.kitchen_temperature",
   label: "Kitchen; west, 50% | prep: zone",

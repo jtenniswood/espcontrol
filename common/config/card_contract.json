@@ -1247,6 +1247,41 @@
           "values": ["label", "status"],
           "defaultValue": "label",
           "omitDefault": true
+        },
+        {
+          "name": "confirmation_mode",
+          "label": "Confirmation Required",
+          "kind": "choice",
+          "values": ["", "off", "on", "both"],
+          "defaultValue": "",
+          "omitDefault": true,
+          "storage": ["confirm_off", "confirm_on"]
+        },
+        {
+          "name": "confirm_message",
+          "label": "Message",
+          "kind": "text",
+          "defaultValue": "Close the garage door?",
+          "omitDefault": true,
+          "defaultValueByMode": {
+            "off": "Close the garage door?",
+            "on": "Open the garage door?",
+            "both": "Open or close the garage door?"
+          }
+        },
+        {
+          "name": "confirm_yes",
+          "label": "Confirm Button",
+          "kind": "text",
+          "defaultValue": "Yes",
+          "omitDefault": true
+        },
+        {
+          "name": "confirm_no",
+          "label": "Cancel Button",
+          "kind": "text",
+          "defaultValue": "No",
+          "omitDefault": true
         }
       ],
       "normalization": {
@@ -1262,7 +1297,7 @@
           "options": { "policy": "hook", "hook": "normalize_access_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["label_display"],
+        "canonicalOptionOrder": ["label_display", "confirm_off", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
         "optionHook": "normalize_access_options"
       },
       "default": {

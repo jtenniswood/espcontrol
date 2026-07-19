@@ -23,12 +23,30 @@ Unlike a **Cover** card, it does not show a slider. It normally shows your label
    - **Status** keeps the live door state visible on the card.
 5. Choose the icons. Toggle cards use closed and open icons, while Open and Close command cards use a single icon.
 6. Set a **Label** (optional). If left blank, toggle cards use the entity's friendly name from Home Assistant, and command cards show **Open** or **Close**.
+7. Optionally turn on **Confirmation Required** if opening or closing this door by accident would be a problem.
 
 ## How It Works on the Panel
 
 - In **Toggle** mode, tapping the card sends a toggle action to Home Assistant.
 - In **Open** mode, tapping the card sends `cover.open_cover`.
 - In **Close** mode, tapping the card sends `cover.close_cover`.
+- If **Confirmation Required** is on, the panel asks before opening or closing the door.
 - Toggle cards light up while the door is open, opening, or closing.
 - Toggle cards can show the Home Assistant state, such as **Open**, **Closed**, **Opening**, or **Closing**, either briefly or all the time depending on **Label Display**.
 - Open and Close command cards briefly flash when tapped. They do not stay highlighted based on the live door state.
+
+## Confirmation
+
+Use **Confirmation Required** for doors where an accidental tap would be a problem, such as a garage that opens onto a busy street.
+
+On a **Toggle** card, enabling it shows three extra fields:
+
+- **When** - choose whether the popup appears when closing, opening, or both.
+- **Message** - the text shown in the confirmation popup. Defaults to "Close the garage door?",
+  "Open the garage door?", or "Open or close the garage door?" depending on **When**.
+- **Confirm Button** - the button that allows the action.
+- **Cancel Button** - the button that leaves the door alone.
+
+On an **Open** or **Close** command card, there is only one direction the card can trigger, so enabling **Confirmation Required** shows the **Message**, **Confirm Button**, and **Cancel Button** fields directly, without a **When** choice.
+
+The default behavior is off, so existing cards keep working exactly as before.

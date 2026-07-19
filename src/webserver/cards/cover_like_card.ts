@@ -8,6 +8,59 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
         mode = String(mode || "");
         return values.indexOf(mode) >= 0 ? mode : "";
     }
+    function renderCoverLikeConfirmationSettings(this: any, panel?: any, b?: any, helpers?: any, confirmConfig?: any, isCommandMode?: any, commandDirection?: any) {
+        var metadata: any = confirmConfig.metadata;
+        var confirmOn: any = confirmConfig.enabled(b);
+        var confirmMode: any = isCommandMode ? commandDirection : (confirmConfig.mode(b) || "off");
+        var confirmToggle: any = helpers.renderCardOptionToggle(panel, b, helpers, metadata.confirmationToggle);
+        var confirmSection: any = condField();
+        if (confirmOn)
+            confirmSection.classList.add("sp-visible");
+        if (!isCommandMode) {
+            helpers.renderCardSegmentControl(confirmSection, b, helpers, Object.assign({}, metadata.confirmationMode, {
+                value: function (this: any) { return confirmMode; },
+                onSelect: function (this: any, b?: any, helpers?: any, value?: any) {
+                    var previousDefault: any = confirmConfig.defaultMessageForMode(confirmMode);
+                    confirmMode = value;
+                    if (!messageInput.value || messageInput.value === previousDefault) {
+                        messageInput.value = confirmConfig.defaultMessageForMode(confirmMode);
+                    }
+                    saveConfirmationOptions();
+                },
+            }));
+        }
+        var messageField: any = helpers.renderCardTextField(confirmSection, b, helpers, metadata.confirmationMessage);
+        var messageInput: any = messageField.input;
+        messageInput.maxLength = 72;
+        var yesField: any = helpers.renderCardTextField(confirmSection, b, helpers, metadata.confirmationYes);
+        var yesInput: any = yesField.input;
+        yesInput.maxLength = 20;
+        var noField: any = helpers.renderCardTextField(confirmSection, b, helpers, metadata.confirmationNo);
+        var noInput: any = noField.input;
+        noInput.maxLength = 20;
+        panel.appendChild(confirmSection);
+        function saveConfirmationOptions(this: any) {
+            confirmConfig.setOptions(b, confirmToggle.input.checked ? confirmMode : "", messageInput.value || confirmConfig.defaultMessageForMode(confirmMode), yesInput.value || SWITCH_CONFIRM_DEFAULT_YES, noInput.value || SWITCH_CONFIRM_DEFAULT_NO);
+            helpers.saveField("options", b.options);
+        }
+        confirmToggle.input.addEventListener("change", function (this: any) {
+            confirmSection.classList.toggle("sp-visible", this.checked);
+            if (this.checked) {
+                if (!messageInput.value)
+                    messageInput.value = confirmConfig.defaultMessageForMode(confirmMode);
+                if (!yesInput.value)
+                    yesInput.value = SWITCH_CONFIRM_DEFAULT_YES;
+                if (!noInput.value)
+                    noInput.value = SWITCH_CONFIRM_DEFAULT_NO;
+            }
+            saveConfirmationOptions();
+        });
+        [messageInput, yesInput, noInput].forEach(function (this: any, input?: any) {
+            input.addEventListener("input", saveConfirmationOptions);
+            input.addEventListener("change", saveConfirmationOptions);
+            input.addEventListener("blur", saveConfirmationOptions);
+        });
+    }
     function registerCoverLikeCardType(this: any, config?: any) {
         var metadata: any = config.metadata;
         function normalizeMode(this: any, mode?: any) {
@@ -137,6 +190,9 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
                         label: "Open Icon",
                     });
                 }
+                if (config.confirmation) {
+                    renderCoverLikeConfirmationSettings(panel, b, helpers, config.confirmation, commandMode(mode), mode === "open" ? "on" : "off");
+                }
             },
             renderPreview: function (this: any, b?: any, helpers?: any) {
                 var mode: any = normalizeMode(b.sensor);
@@ -154,6 +210,7 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
     return {
         "coverLikeModeValues": staticGlobal(coverLikeModeValues),
         "normalizeCoverLikeMode": staticGlobal(normalizeCoverLikeMode),
+        "renderCoverLikeConfirmationSettings": staticGlobal(renderCoverLikeConfirmationSettings),
         "registerCoverLikeCardType": staticGlobal(registerCoverLikeCardType),
     };
 }

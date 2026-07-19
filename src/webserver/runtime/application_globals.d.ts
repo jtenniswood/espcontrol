@@ -530,6 +530,13 @@ declare global {
   var formatHour: any;
   var formatTimezoneOption: any;
   var garageCommandMode: any;
+  var garageConfirmationDefaultMessageForMode: any;
+  var garageConfirmationEnabled: any;
+  var garageConfirmationMessage: any;
+  var garageConfirmationMode: any;
+  var garageConfirmationModeStorage: any;
+  var garageConfirmationNoText: any;
+  var garageConfirmationYesText: any;
   var garageLabelDisplayMode: any;
   var garageModeDefaultIcon: any;
   var garageModeDefaultLabel: any;
@@ -726,6 +733,7 @@ declare global {
   var normalizeFanControlOptions: any;
   var normalizeFanControlTabs: any;
   var normalizeFanControlType: any;
+  var normalizeGarageConfirmationOptions: any;
   var normalizeGarageLabelDisplayMode: any;
   var normalizeGarageMode: any;
   var normalizeGarageOptions: any;
@@ -936,6 +944,7 @@ declare global {
   var renderClockBarLayout: any;
   var renderClockBarSelectionBar: any;
   var renderCoverControlTabSettings: any;
+  var renderCoverLikeConfirmationSettings: any;
   var renderFanControlTabSettings: any;
   var renderFanControlTypeField: any;
   var renderFirmwareUpdateStatus: any;
@@ -1033,6 +1042,7 @@ declare global {
   var setFavicon: any;
   var setFirmwareUpdateInfo: any;
   var setFirmwareVersion: any;
+  var setGarageConfirmationOptions: any;
   var setGarageLabelDisplayMode: any;
   var setGateLabelDisplayMode: any;
   var setImageIconEnabled: any;

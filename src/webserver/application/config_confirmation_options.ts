@@ -107,6 +107,87 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
         b.options = out;
         return b.options;
     }
+    function garageConfirmationModeStorage(this: any) {
+        var spec: any = cardContractOptionSpec("garage", "confirmation_mode");
+        return spec && spec.storage && spec.storage.length >= 2
+            ? spec.storage
+            : [SWITCH_CONFIRM_OFF_OPTION, SWITCH_CONFIRM_ON_OPTION];
+    }
+    function garageConfirmationEnabled(this: any, b?: any) {
+        return !!garageConfirmationMode(b);
+    }
+    function garageConfirmationMode(this: any, b?: any) {
+        var options: any = b && b.options;
+        var storage: any = garageConfirmationModeStorage();
+        var confirmClose: any = configOptionEnabled(options, storage[0]);
+        var confirmOpen: any = configOptionEnabled(options, storage[1]);
+        if (confirmClose && confirmOpen)
+            return "both";
+        if (confirmOpen)
+            return "on";
+        if (confirmClose)
+            return "off";
+        return "";
+    }
+    function garageConfirmationDefaultMessageForMode(this: any, mode?: any) {
+        var spec: any = cardContractOptionSpec("garage", SWITCH_CONFIRM_MESSAGE_OPTION);
+        var defaults: any = spec && spec.defaultValueByMode || {};
+        if (mode && defaults[mode])
+            return defaults[mode];
+        return cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_MESSAGE_OPTION, SWITCH_CONFIRM_DEFAULT_MESSAGE);
+    }
+    function garageConfirmationMessage(this: any, b?: any) {
+        return configOptionValue(b && b.options, SWITCH_CONFIRM_MESSAGE_OPTION) ||
+            garageConfirmationDefaultMessageForMode(garageConfirmationMode(b));
+    }
+    function garageConfirmationYesText(this: any, b?: any) {
+        return configOptionValue(b && b.options, SWITCH_CONFIRM_YES_OPTION) ||
+            cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_YES_OPTION, SWITCH_CONFIRM_DEFAULT_YES);
+    }
+    function garageConfirmationNoText(this: any, b?: any) {
+        return configOptionValue(b && b.options, SWITCH_CONFIRM_NO_OPTION) ||
+            cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO);
+    }
+    function normalizeGarageConfirmationOptions(this: any, out?: any, options?: any, requestedMode?: any) {
+        var storedMode: any = garageConfirmationMode({ options: options });
+        var mode: any = storedMode && (requestedMode === "on" || requestedMode === "off")
+            ? requestedMode
+            : storedMode;
+        if (!mode)
+            return out;
+        var storage: any = garageConfirmationModeStorage();
+        out = setConfigOption(out, storage[0], mode === "off" || mode === "both");
+        out = setConfigOption(out, storage[1], mode === "on" || mode === "both");
+        var msg: any = configOptionValue(options, SWITCH_CONFIRM_MESSAGE_OPTION);
+        var yes: any = configOptionValue(options, SWITCH_CONFIRM_YES_OPTION);
+        var no: any = configOptionValue(options, SWITCH_CONFIRM_NO_OPTION);
+        var storedDefaultMessage: any = garageConfirmationDefaultMessageForMode(storedMode);
+        if (msg && msg !== garageConfirmationDefaultMessageForMode(mode) && msg !== storedDefaultMessage) {
+            out = setConfigOptionValue(out, SWITCH_CONFIRM_MESSAGE_OPTION, msg);
+        }
+        if (yes && yes !== cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_YES_OPTION, SWITCH_CONFIRM_DEFAULT_YES)) {
+            out = setConfigOptionValue(out, SWITCH_CONFIRM_YES_OPTION, yes);
+        }
+        if (no && no !== cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO)) {
+            out = setConfigOptionValue(out, SWITCH_CONFIRM_NO_OPTION, no);
+        }
+        return out;
+    }
+    function setGarageConfirmationOptions(this: any, b?: any, mode?: any, message?: any, yesText?: any, noText?: any) {
+        if (!b)
+            return "";
+        mode = mode === true ? "off" : mode;
+        mode = mode === "on" || mode === "both" || mode === "off" ? mode : "";
+        var storage: any = garageConfirmationModeStorage();
+        b.options = setConfigOption(b.options, storage[0], mode === "off" || mode === "both");
+        b.options = setConfigOption(b.options, storage[1], mode === "on" || mode === "both");
+        var msgDefault: any = mode ? garageConfirmationDefaultMessageForMode(mode) : "";
+        b.options = setConfigOptionValue(b.options, SWITCH_CONFIRM_MESSAGE_OPTION, mode && message && message !== msgDefault ? message : "");
+        b.options = setConfigOptionValue(b.options, SWITCH_CONFIRM_YES_OPTION, mode && yesText && yesText !== cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_YES_OPTION, SWITCH_CONFIRM_DEFAULT_YES) ? yesText : "");
+        b.options = setConfigOptionValue(b.options, SWITCH_CONFIRM_NO_OPTION, mode && noText && noText !== cardContractOptionDefaultValue("garage", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO) ? noText : "");
+        b.options = normalizeGarageOptions(b.options, b.sensor);
+        return b.options;
+    }
     function actionCardIsScript(this: any, b?: any) {
         var value: any = typeof b === "string" ? b : b && b.sensor;
         return value === "script.turn_on";
@@ -225,6 +306,15 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
         "switchConfirmationNoText": staticGlobal(switchConfirmationNoText),
         "normalizeSwitchConfirmationOptions": staticGlobal(normalizeSwitchConfirmationOptions),
         "setSwitchConfirmationOptions": staticGlobal(setSwitchConfirmationOptions),
+        "garageConfirmationModeStorage": staticGlobal(garageConfirmationModeStorage),
+        "garageConfirmationEnabled": staticGlobal(garageConfirmationEnabled),
+        "garageConfirmationMode": staticGlobal(garageConfirmationMode),
+        "garageConfirmationDefaultMessageForMode": staticGlobal(garageConfirmationDefaultMessageForMode),
+        "garageConfirmationMessage": staticGlobal(garageConfirmationMessage),
+        "garageConfirmationYesText": staticGlobal(garageConfirmationYesText),
+        "garageConfirmationNoText": staticGlobal(garageConfirmationNoText),
+        "normalizeGarageConfirmationOptions": staticGlobal(normalizeGarageConfirmationOptions),
+        "setGarageConfirmationOptions": staticGlobal(setGarageConfirmationOptions),
         "actionCardIsScript": staticGlobal(actionCardIsScript),
         "actionScriptConfirmationEnabled": staticGlobal(actionScriptConfirmationEnabled),
         "actionScriptConfirmationDefaultMessage": staticGlobal(actionScriptConfirmationDefaultMessage),

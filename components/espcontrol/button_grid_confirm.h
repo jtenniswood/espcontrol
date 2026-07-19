@@ -55,13 +55,16 @@ inline void switch_confirmation_hide_modal() {
 
 inline void switch_confirmation_confirm() {
   SwitchConfirmationModalUi &ui = switch_confirmation_modal_ui();
+  bool is_garage_command = ui.cfg.type == "garage" && garage_command_mode(ui.cfg.sensor);
   if (action_script_confirmation_enabled(ui.cfg)) {
     send_action_card_action(ui.cfg);
+  } else if (is_garage_command) {
+    send_cover_command_action(ui.cfg);
   } else if (!ui.cfg.entity.empty()) {
     if (ui.turn_on) send_turn_on_action(ui.cfg.entity);
     else send_turn_off_action(ui.cfg.entity);
   }
-  if (ui.btn_obj && !action_script_confirmation_enabled(ui.cfg)) {
+  if (ui.btn_obj && !action_script_confirmation_enabled(ui.cfg) && !is_garage_command) {
     if (ui.turn_on) lv_obj_add_state(ui.btn_obj, LV_STATE_CHECKED);
     else lv_obj_clear_state(ui.btn_obj, LV_STATE_CHECKED);
   }

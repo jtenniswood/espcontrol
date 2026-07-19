@@ -227,9 +227,34 @@ inline void access_cover_driver_add_config_click(
     lv_obj_add_event_cb(button, [](lv_event_t *event) {
       ParsedCfg *value = static_cast<ParsedCfg *>(
         lv_event_get_user_data(event));
-      if (value) send_cover_command_action(*value);
+      if (!value) return;
+      lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(event));
+      bool pending_open = value->sensor == "open";
+      if (garage_confirmation_required(*value, pending_open) && target) {
+        switch_confirmation_open_modal(*value, target, pending_open);
+      } else {
+        send_cover_command_action(*value);
+      }
     }, LV_EVENT_CLICKED, saved);
   }
+}
+
+inline void access_cover_driver_add_confirmable_toggle_click(
+    lv_obj_t *button, const ParsedCfg &config) {
+  ParsedCfg *saved = grid_delete_with_owner(button, new ParsedCfg(config));
+  lv_obj_add_event_cb(button, [](lv_event_t *event) {
+    ParsedCfg *value = static_cast<ParsedCfg *>(
+      lv_event_get_user_data(event));
+    if (!value || value->entity.empty()) return;
+    lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(event));
+    bool currently_on = target && lv_obj_has_state(target, LV_STATE_CHECKED);
+    if (garage_confirmation_required(*value, !currently_on) && target) {
+      switch_confirmation_open_modal(*value, target, !currently_on);
+    } else {
+      set_card_checked_state(target, true);
+      send_toggle_action(value->entity);
+    }
+  }, LV_EVENT_CLICKED, saved);
 }
 
 inline bool access_cover_driver_bind_subpage(
@@ -257,7 +282,9 @@ inline bool access_cover_driver_bind_subpage(
         if (environment.add_parent_indicator) {
           environment.add_parent_indicator(config.entity);
         }
-        if (environment.add_toggle_click) {
+        if (context.runtime.type == Type::GARAGE) {
+          access_cover_driver_add_confirmable_toggle_click(slot.btn, config);
+        } else if (environment.add_toggle_click) {
           environment.add_toggle_click(slot.btn, config.entity, true);
         }
       }
@@ -323,10 +350,20 @@ inline bool access_cover_driver_handle_main_click(
         ? garage_command_mode(config.sensor)
         : gate_command_mode(config.sensor);
       if (command) {
-        send_cover_command_action(config);
+        bool pending_open = config.sensor == "open";
+        if (garage_confirmation_required(config, pending_open) && button) {
+          switch_confirmation_open_modal(config, button, pending_open);
+        } else {
+          send_cover_command_action(config);
+        }
       } else if (!config.entity.empty()) {
-        set_card_checked_state(button, true);
-        send_toggle_action(config.entity);
+        bool currently_on = button && lv_obj_has_state(button, LV_STATE_CHECKED);
+        if (garage_confirmation_required(config, !currently_on) && button) {
+          switch_confirmation_open_modal(config, button, !currently_on);
+        } else {
+          set_card_checked_state(button, true);
+          send_toggle_action(config.entity);
+        }
       }
     } else if (context.runtime.type == Type::LOCK) {
       if (lock_command_mode(config.sensor)) {

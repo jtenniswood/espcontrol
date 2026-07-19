@@ -59,6 +59,40 @@ export function registerGarageCardTypes(): GlobalDescriptors {
             field: "label",
             rerender: true,
         },
+        confirmationToggle: {
+            label: "Confirmation Required",
+            idSuffix: "garage-confirm-toggle",
+            checked: function (this: any, b?: any) { return garageConfirmationEnabled(b); },
+        },
+        confirmationMode: {
+            label: "When",
+            options: [
+                ["off", "Close"],
+                ["on", "Open"],
+                ["both", "Both"],
+            ],
+        },
+        confirmationMessage: {
+            label: "Message",
+            idSuffix: "garage-confirm-message",
+            placeholder: SWITCH_CONFIRM_DEFAULT_MESSAGE,
+            bindName: null,
+            value: function (this: any, b?: any) { return garageConfirmationMessage(b); },
+        },
+        confirmationYes: {
+            label: "Confirm Button",
+            idSuffix: "garage-confirm-yes",
+            placeholder: SWITCH_CONFIRM_DEFAULT_YES,
+            bindName: null,
+            value: function (this: any, b?: any) { return garageConfirmationYesText(b); },
+        },
+        confirmationNo: {
+            label: "Cancel Button",
+            idSuffix: "garage-confirm-no",
+            placeholder: SWITCH_CONFIRM_DEFAULT_NO,
+            bindName: null,
+            value: function (this: any, b?: any) { return garageConfirmationNoText(b); },
+        },
         preview: {
             badge: "garage",
         },
@@ -79,6 +113,13 @@ export function registerGarageCardTypes(): GlobalDescriptors {
         normalizeOptions: normalizeGarageOptions,
         labelDisplayMode: garageLabelDisplayMode,
         setLabelDisplayMode: setGarageLabelDisplayMode,
+        confirmation: {
+            metadata: GARAGE_CARD_METADATA,
+            enabled: garageConfirmationEnabled,
+            mode: garageConfirmationMode,
+            defaultMessageForMode: garageConfirmationDefaultMessageForMode,
+            setOptions: setGarageConfirmationOptions,
+        },
     });
     return {
         "GARAGE_MODE_OPTIONS": liveGlobal(() => GARAGE_MODE_OPTIONS, (value?: any) => { GARAGE_MODE_OPTIONS = value; }),

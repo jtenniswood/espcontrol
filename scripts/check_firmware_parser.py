@@ -416,6 +416,18 @@ int main() {
   assert(cover_bad_tabs.options == "cover_tabs=position");
   auto cover_non_modal_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;toggle;;cover;;cover_tabs=controls%7Cposition");
   assert(cover_non_modal_tabs.options == "");
+  auto garage_open_from_close_confirmation = parse_cfg("cover.garage_door;Open;Garage;Auto;open;;garage;;confirm_off,confirm_message=Close%20the%20garage%20door%3F");
+  assert(garage_open_from_close_confirmation.options == "confirm_on");
+  assert(garage_confirmation_required(garage_open_from_close_confirmation, true));
+  assert(!garage_confirmation_required(garage_open_from_close_confirmation, false));
+  assert(switch_confirmation_message(garage_open_from_close_confirmation) == "Open the garage door?");
+  auto garage_close_from_open_confirmation = parse_cfg("cover.garage_door;Close;Garage;Auto;close;;garage;;confirm_on,confirm_message=Check%20the%20driveway,confirm_yes=Proceed,confirm_no=Wait");
+  assert(garage_close_from_open_confirmation.options == "confirm_off,confirm_message=Check the driveway,confirm_yes=Proceed,confirm_no=Wait");
+  assert(!garage_confirmation_required(garage_close_from_open_confirmation, true));
+  assert(garage_confirmation_required(garage_close_from_open_confirmation, false));
+  assert(switch_confirmation_message(garage_close_from_open_confirmation) == "Check the driveway");
+  assert(switch_confirmation_yes_text(garage_close_from_open_confirmation) == "Proceed");
+  assert(switch_confirmation_no_text(garage_close_from_open_confirmation) == "Wait");
 
   set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
