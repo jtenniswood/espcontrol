@@ -1975,6 +1975,10 @@ def self_test() -> None:
                 f"saved configuration input {saved_config_input} does not select compiled firmware tests"
             )
 
+    config_store_selected, _, _ = changed_plan(["components/espcontrol/configuration_store.cpp"])
+    if "mutations" not in task_ids(config_store_selected):
+        raise AssertionError("configuration store changes do not select mutation checks")
+
     generated_selected, _, generated_fallback = changed_plan(["components/espcontrol/i18n_generated.h"])
     if generated_fallback is not None or "generated" not in task_ids(generated_selected):
         raise AssertionError("generated inputs do not select their validation task")
