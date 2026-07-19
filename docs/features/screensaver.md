@@ -35,6 +35,8 @@ When the screensaver activates, you can choose what happens:
 - **Clock** — shows a large drifting clock at reduced brightness (the default). The clock repositions itself periodically to prevent burn-in.
 - **Display Off** — switches to a black screen and turns the backlight off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk; this should not be visible.
 
+For battery-powered panels, select **Battery Saver** under **Settings > Display > Power** and use **Display Off** for the greatest saving. Battery Saver does not replace the timeout or brightness controls; it keeps those choices under your control.
+
 When Screen Dimmed is selected, set **Dimmed Screen Brightness**. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values. Clock brightness uses the same sunrise and sunset calculation as the main screen brightness.
 
 ## Sensor

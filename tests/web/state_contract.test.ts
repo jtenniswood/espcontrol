@@ -46,6 +46,8 @@ export function runStateContractTests(): void {
   equal(first.buttons.length, 4, "startup creates one card per device slot");
   equal(first.buttons[0]?.icon, "Auto", "startup card defaults remain compatible");
   equal(first.screenRotation, "180", "startup uses the device rotation default");
+  equal(first.powerMode, "Normal", "startup preserves current power behaviour");
+  equal(first.powerModeSupported, false, "power control waits for firmware feature detection");
   equal(first.screenRotationInitialReady, false, "rotation-capable devices wait for the initial event");
   equal(first.timezoneOptions.length, 2, "startup copies embedded timezone options");
   equal(first.alarmDelayAudioOn, false, "alarm delay audio defaults off");
@@ -72,6 +74,9 @@ export function runStateContractTests(): void {
     "number-track_overlay_duration",
     "number-screen_saver__show_track_overlay",
   ].join("|"), "track-overlay aliases remain exact");
+  equal(SSE_ALIAS_GROUPS.powerMode.join("|"), [
+    "select-screen__power_mode", "select-screen_power_mode",
+  ].join("|"), "power-mode aliases retain both supported object ids");
 
   first.selectedSlots = [1, 2];
   first.lastClickedSlot = 2;
@@ -124,6 +129,7 @@ export function runStateContractTests(): void {
     scheduleClockTextColor: "text-screen__schedule_clock_text_color",
     screenActiveTimezone: "text_sensor-screen__active_timezone",
     screenLanguage: "select-screen__language",
+    powerMode: "select-screen__power_mode",
     ntpServer1: "text-screen__ntp_server_1",
     ntpServer2: "text-screen__ntp_server_2",
     ntpServer3: "text-screen__ntp_server_3",
@@ -137,7 +143,8 @@ export function runStateContractTests(): void {
   applySseHandlerAliases(handlers);
   handlers["switch-clock_bar_enabled"]?.("ON", {}, "switch-clock_bar_enabled");
   handlers["text-ntp_server_1"]?.("time.example", {}, "text-ntp_server_1");
-  equal(calls.join(","), "clockBar,ntpServer1", "legacy aliases dispatch to their canonical handlers");
+  handlers["select-screen_power_mode"]?.("Battery Saver", {}, "select-screen_power_mode");
+  equal(calls.join(","), "clockBar,ntpServer1,powerMode", "legacy aliases dispatch to their canonical handlers");
 
   const clockState = createInitialState(deviceConfig());
   applyClockBarStateValue(clockState, "ON", { id: "switch-screen__clock_bar", value: true }, "switch-screen__clock_bar");

@@ -256,6 +256,12 @@ function seededEvents() {
       option: ["Auto", "°C", "°F"],
     },
     {
+      id: "select-screen__power_mode",
+      state: "Normal",
+      value: "Normal",
+      option: ["Normal", "Battery Saver"],
+    },
+    {
       id: "switch-screen__temperature_degree_symbol",
       state: "ON",
       value: true,
@@ -770,6 +776,20 @@ async function assertSettingsPage(page, label, options = {}) {
     true,
     `${label}: color controls should be visible`,
   );
+  assert.strictEqual(
+    await page.locator("#sp-set-power-mode").isEnabled(),
+    true,
+    `${label}: current firmware should enable Power Mode`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-set-power-mode").inputValue(),
+    "Normal",
+    `${label}: existing devices should start in Normal power mode`,
+  );
+  for (const brightnessId of ["#sp-set-day-brightness", "#sp-set-night-brightness"]) {
+    assert.strictEqual(await page.locator(brightnessId).getAttribute("min"), "1", `${label}: brightness should allow one percent`);
+    assert.strictEqual(await page.locator(brightnessId).getAttribute("step"), "1", `${label}: brightness should use one-percent steps`);
+  }
   assert.deepStrictEqual(
     await page
       .locator("#sp-settings .sp-settings-status-title")
@@ -2183,6 +2203,7 @@ function backupFixture(device, slots) {
       screen_rotation: "90",
     },
     screen: {
+      power_mode: "Battery Saver",
       brightness_day: 88,
       brightness_night: 55,
       automatic_brightness: false,
@@ -2488,6 +2509,17 @@ async function assertBackupImportSmoke(page, posts, testCase) {
   for (const [expected, label] of screensaverImportPosts) {
     await waitForPost(posts, expected, label, before);
   }
+  await waitForPost(
+    posts,
+    {
+      domain: "select",
+      name: "screen__power_mode",
+      action: "set",
+      option: "Battery Saver",
+    },
+    "backup power mode import",
+    before,
+  );
   await waitForPost(
     posts,
     {

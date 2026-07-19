@@ -51,6 +51,13 @@ api:
     - script.execute: ha_restore_after_api
 
 script:
+  # Power Mode still reduces display-only work on Ethernet builds. There is no
+  # WiFi modem to manage, so the network half is intentionally a no-op.
+  - id: power_mode_apply_network
+    mode: restart
+    then:
+      - lambda: 'ESP_LOGD("power_mode", "Ethernet transport has no WiFi power mode");'
+
   - id: ha_restore_after_api
     mode: restart
     then:

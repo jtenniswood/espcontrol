@@ -444,9 +444,9 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         var range: any = document.createElement("input");
         range.type = "range";
         range.className = "sp-range";
-        range.min = "10";
+        range.min = "1";
         range.max = "100";
-        range.step = "5";
+        range.step = "1";
         range.value = String(initial);
         var val: any = document.createElement("span");
         val.className = "sp-range-val";

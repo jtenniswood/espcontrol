@@ -109,6 +109,11 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 updateTempPreview();
                 renderPreview();
             },
+            "select-screen__power_mode": function (this: any, val?: any, d?: any) {
+                state.powerModeSupported = true;
+                state.powerMode = normalizePowerMode(d.value || val);
+                syncPowerModeUi();
+            },
             "number-screensaver_timeout": function (this: any, val?: any, d?: any) {
                 applyScreensaverTimeoutState(d);
             },

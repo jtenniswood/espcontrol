@@ -99,7 +99,7 @@ If a card already occupies the space needed for a larger size, the setup page tr
 
 ## Device Settings
 
-The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls.
+The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls. Battery-powered panels can use **Display > Power > Battery Saver** to enable Wi-Fi light sleep and reduce background display work without changing their chosen brightness levels.
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
 

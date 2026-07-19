@@ -157,6 +157,15 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         return _settingsUiFeature.inlineDisclosure(title, bodyElement, defaultOpen, badgeElement);
     }
     // ── Settings sync helpers ───────────────────────────────────────────
+    function syncPowerModeUi(this: any) {
+        var controlState: any = powerModeControlState(state.powerMode, state.powerModeSupported);
+        if (els.setPowerMode) {
+            els.setPowerMode.value = controlState.mode;
+            els.setPowerMode.disabled = controlState.disabled;
+        }
+        if (els.setPowerModeInfoText)
+            els.setPowerModeInfoText.textContent = controlState.description;
+    }
     function syncClockScreensaverControls(this: any) {
         var controlState: any = screensaverControlState(state.screensaverAction, state.clockBrightnessDay, state.clockBrightnessNight, state.screensaverDimmedBrightness);
         var mode: any = controlState.mode;
@@ -379,6 +388,7 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         "statusBadge": staticGlobal(statusBadge),
         "disclosureBadge": staticGlobal(disclosureBadge),
         "inlineDisclosure": staticGlobal(inlineDisclosure),
+        "syncPowerModeUi": staticGlobal(syncPowerModeUi),
         "syncClockScreensaverControls": staticGlobal(syncClockScreensaverControls),
         "syncMediaPlayerSleepPreventionUi": staticGlobal(syncMediaPlayerSleepPreventionUi),
         "syncCoverArtScreensaverUi": staticGlobal(syncCoverArtScreensaverUi),

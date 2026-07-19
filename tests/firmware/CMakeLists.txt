@@ -41,6 +41,12 @@ target_compile_options(display_mode_controller_test PRIVATE -Wall -Wextra -Werro
 target_include_directories(display_mode_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME display_mode_controller_test COMMAND display_mode_controller_test)
 
+add_executable(power_mode_test power_mode_test.cpp)
+target_compile_features(power_mode_test PRIVATE cxx_std_17)
+target_compile_options(power_mode_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(power_mode_test PRIVATE ../../components/espcontrol)
+add_test(NAME power_mode_test COMMAND power_mode_test)
+
 add_executable(ha_read_coordinator_test ha_read_coordinator_test.cpp)
 target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
 target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)

@@ -6,9 +6,10 @@
 # =============================================================================
 
 wifi:
-  power_save_mode: none
+  power_save_mode: light
   reboot_timeout: 30min
   on_connect:
+    - script.execute: power_mode_apply_network
     - script.execute: network_status_refresh
     - script.execute: ntp_servers_apply_after_network
     - script.stop: wifi_reconnect_flow
@@ -45,6 +46,27 @@ api:
     - script.execute: ha_restore_after_api
 
 script:
+  - id: power_mode_apply_network
+    mode: restart
+    then:
+      - lambda: |-
+          #ifdef USE_WIFI_RUNTIME_POWER_SAVE
+          const auto mode = id(power_mode_battery_saver)
+              ? espcontrol::PowerMode::BATTERY_SAVER
+              : espcontrol::PowerMode::NORMAL;
+          const auto action = espcontrol::power_mode_network_action(
+              mode, id(power_mode_normal_wifi_request_active));
+          if (action == espcontrol::NetworkPowerAction::REQUEST_HIGH_PERFORMANCE) {
+            if (wifi::global_wifi_component->request_high_performance()) {
+              id(power_mode_normal_wifi_request_active) = true;
+            }
+          } else if (action == espcontrol::NetworkPowerAction::RELEASE_HIGH_PERFORMANCE) {
+            if (wifi::global_wifi_component->release_high_performance()) {
+              id(power_mode_normal_wifi_request_active) = false;
+            }
+          }
+          #endif
+
   - id: ha_restore_after_api
     mode: restart
     then:

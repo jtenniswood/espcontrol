@@ -183,6 +183,14 @@ export const ENTITY_CATALOG = {
       "domain": "select",
       "name": "Screen: Temperature Unit"
     },
+    "screen_power_mode": {
+      "domain": "select",
+      "name": "Screen: Power Mode",
+      "objectIds": [
+        "screen__power_mode",
+        "screen_power_mode"
+      ]
+    },
     "indoor_temp_entity": {
       "domain": "text",
       "name": "Indoor Temp Entity"
@@ -662,6 +670,7 @@ export const ENTITY_CATALOG = {
       "screen_temperature_degree_symbol",
       "screen_subpage_chevron",
       "screen_temperature_unit",
+      "screen_power_mode",
       "indoor_temp_entity",
       "outdoor_temp_entity",
       "screensaver_mode",

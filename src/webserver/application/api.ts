@@ -83,6 +83,15 @@ export function installApiModule(): GlobalDescriptors {
     function postScreensaverMode(this: any, value?: any) {
         return postTextWithObjectIds(entityName("screensaver_mode"), entityObjectIds("screensaver_mode"), value);
     }
+    var POWER_MODE_UNAVAILABLE: any = "Power Mode is not available on this firmware. Update the device firmware, then reload this page.";
+    function postPowerMode(this: any, value?: any) {
+        if (!state.powerModeSupported) {
+            showBanner(POWER_MODE_UNAVAILABLE, "error");
+            syncPowerModeUi();
+            return;
+        }
+        postSelectWithObjectIds(entityName("screen_power_mode"), entityObjectIds("screen_power_mode"), normalizePowerMode(value), POWER_MODE_UNAVAILABLE);
+    }
     function postFirmwareAutoUpdate(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("firmware_auto_update"), entityObjectIds("firmware_auto_update"), on);
     }
@@ -189,6 +198,8 @@ export function installApiModule(): GlobalDescriptors {
         "postButtonPress": staticGlobal(postButtonPress),
         "postSwitch": staticGlobal(postSwitch),
         "postScreensaverMode": staticGlobal(postScreensaverMode),
+        "POWER_MODE_UNAVAILABLE": liveGlobal(() => POWER_MODE_UNAVAILABLE, (value?: any) => { POWER_MODE_UNAVAILABLE = value; }),
+        "postPowerMode": staticGlobal(postPowerMode),
         "postFirmwareAutoUpdate": staticGlobal(postFirmwareAutoUpdate),
         "postC6FirmwareAutoUpdate": staticGlobal(postC6FirmwareAutoUpdate),
         "postFirmwareUpdateFrequency": staticGlobal(postFirmwareUpdateFrequency),

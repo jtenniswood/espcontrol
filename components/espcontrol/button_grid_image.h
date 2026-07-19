@@ -2141,7 +2141,21 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx) {
   }
 }
 
+using ImageCardRefreshDeferPredicate = bool (*)();
+
+inline ImageCardRefreshDeferPredicate &image_card_refresh_defer_predicate() {
+  static ImageCardRefreshDeferPredicate predicate = nullptr;
+  return predicate;
+}
+
+inline void image_card_set_refresh_defer_predicate(
+    ImageCardRefreshDeferPredicate predicate) {
+  image_card_refresh_defer_predicate() = predicate;
+}
+
 inline void refresh_image_cards() {
+  ImageCardRefreshDeferPredicate predicate = image_card_refresh_defer_predicate();
+  if (predicate != nullptr && predicate()) return;
   if (!ha_api_connected()) return;
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
