@@ -38,6 +38,7 @@ export const SSE_ALIAS_GROUPS = {
   scheduleClockTextColor: ["text-screen__schedule_clock_text_color", "text-screen_schedule_clock_text_color", "text-schedule_clock_text_color"],
   screenActiveTimezone: ["text_sensor-screen__active_timezone", "text_sensor-screen_active_timezone", "text_sensor:Screen: Active Timezone"],
   screenLanguage: ["select-screen__language", "select-screen_language"],
+  powerMode: ["select-screen__power_mode", "select-screen_power_mode"],
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
@@ -87,6 +88,7 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleClockTextColor, "text-screen__schedule_clock_text_color");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screenActiveTimezone, "text_sensor-screen__active_timezone");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screenLanguage, "select-screen__language");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.powerMode, "select-screen__power_mode");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer1, "text-screen__ntp_server_1");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer2, "text-screen__ntp_server_2");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer3, "text-screen__ntp_server_3");
