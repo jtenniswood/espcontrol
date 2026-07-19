@@ -39,5 +39,9 @@ interval:
             id(battery_image_refresh_deferred) = true;
             return;
           }
-          id(battery_image_refresh_deferred) = false;
+          if (id(battery_image_refresh_deferred)) {
+            id(battery_image_refresh_deferred) = false;
+            refresh_image_cards();
+            return;
+          }
           image_card_refresh_due();

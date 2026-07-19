@@ -71,6 +71,15 @@ esphome:
         - lambda: |-
             id(power_mode_battery_saver) =
                 espcontrol::power_mode_is_battery_saver(id(screen_power_mode).current_option());
+            image_card_set_refresh_defer_predicate([]() -> bool {
+              const bool defer = espcontrol::power_mode_defer_display_work(
+                  id(power_mode_battery_saver) ? espcontrol::PowerMode::BATTERY_SAVER
+                                               : espcontrol::PowerMode::NORMAL,
+                  id(display_mode_controller).current_mode_is(
+                      espcontrol::DisplayMode::DISPLAY_OFF));
+              if (defer) id(battery_image_refresh_deferred) = true;
+              return defer;
+            });
         - script.execute: power_mode_apply
 
 script:
@@ -88,7 +97,7 @@ script:
           then:
             - lambda: |-
                 id(battery_image_refresh_deferred) = false;
-                image_card_refresh_due();
+                refresh_image_cards();
 
   - id: clock_bar_hide
     mode: restart
