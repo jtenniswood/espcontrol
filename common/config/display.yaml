@@ -452,7 +452,6 @@ switch:
 select:
   - platform: template
     name: "${entity_screen_power_mode}"
-    internal: true
     id: screen_power_mode
     entity_category: config
     icon: "mdi:battery-heart-variant"

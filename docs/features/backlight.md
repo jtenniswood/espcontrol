@@ -25,7 +25,7 @@ Sunrise and sunset times are derived from the timezone set in [Time Settings](/f
 
 ## Battery Saver
 
-Choose **Settings > Display > Power > Battery Saver** when the panel is running from a battery. Battery Saver keeps the panel connected to Home Assistant, but lets the Wi-Fi radio use light/modem sleep and defers image-card downloads and other display-only work while the display is off.
+Choose **Settings > System > Power > Battery Saver** when the panel is running from a battery. Battery Saver keeps the panel connected to Home Assistant, but lets the Wi-Fi radio use light/modem sleep and defers image-card downloads and other display-only work while the display is off.
 
 Battery Saver does not change any brightness, screensaver, schedule, voice-service, or relay setting. You remain in control of every brightness level from 1% to 100%. For the largest saving, combine Battery Saver with a short screensaver timeout and **Display Off** rather than a dimmed screen or clock.
 
