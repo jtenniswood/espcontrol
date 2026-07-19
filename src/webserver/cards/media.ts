@@ -511,7 +511,42 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 }
             }
             if (b.sensor === "cover_art") {
-                var secondaryEntityField: any = helpers.renderCardEntityField(panel, b, helpers, {
+                var cardSettingsDisclosure: any = helpers.disclosureSection(
+                    "Card Settings",
+                    helpers.idPrefix + "media-cover-art-card-settings",
+                    false);
+                var cardSettings: any = cardSettingsDisclosure.section;
+                helpers.renderCardSegmentControl(cardSettings, b, helpers, {
+                    segment: Object.assign({}, MEDIA_CARD_METADATA.coverArtAction, {
+                        inputId: helpers.idPrefix + "media-cover-art-action",
+                        value: function (this: any) { return mediaCoverArtAction(b); },
+                        onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
+                            setMediaCoverArtAction(button, value);
+                            cardHelpers.saveField("options", button.options);
+                        },
+                    }),
+                });
+                var detailsToggle: any = helpers.toggleRow(
+                    "Show Track Details",
+                    helpers.idPrefix + "media-cover-art-details",
+                    mediaCoverArtDetailsEnabled(b));
+                cardSettings.appendChild(detailsToggle.row);
+                detailsToggle.input.addEventListener("change", function (this: any) {
+                    setMediaCoverArtDetailsEnabled(b, this.checked);
+                    helpers.saveField("options", b.options);
+                    renderPreview();
+                });
+                panel.appendChild(cardSettingsDisclosure.panel);
+
+                var secondaryPlayerDisclosure: any = helpers.disclosureSection(
+                    "Secondary Media Player",
+                    helpers.idPrefix + "media-cover-art-secondary-player",
+                    false);
+                var secondaryPlayerSettings: any = secondaryPlayerDisclosure.section;
+                secondaryPlayerSettings.appendChild(infoPanel(
+                    helpers.idPrefix + "media-cover-art-secondary-player-info",
+                    "Use a second media entity when the primary player switches to a Line In, TV, or HDMI source. Artwork, track details, progress, and controls will follow the second player while it has current media."));
+                var secondaryEntityField: any = helpers.renderCardEntityField(secondaryPlayerSettings, b, helpers, {
                     entity: {
                         label: "External Source Media Entity",
                         idSuffix: "media-cover-art-secondary-entity",
@@ -536,27 +571,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                         this.blur();
                     }
                 });
-                helpers.renderCardSegmentControl(panel, b, helpers, {
-                    segment: Object.assign({}, MEDIA_CARD_METADATA.coverArtAction, {
-                        inputId: helpers.idPrefix + "media-cover-art-action",
-                        value: function (this: any) { return mediaCoverArtAction(b); },
-                        onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
-                            setMediaCoverArtAction(button, value);
-                            cardHelpers.saveField("options", button.options);
-                            renderButtonSettings();
-                        },
-                    }),
-                });
-                var detailsToggle: any = helpers.toggleRow(
-                    "Show Track Details",
-                    helpers.idPrefix + "media-cover-art-details",
-                    mediaCoverArtDetailsEnabled(b));
-                panel.appendChild(detailsToggle.row);
-                detailsToggle.input.addEventListener("change", function (this: any) {
-                    setMediaCoverArtDetailsEnabled(b, this.checked);
-                    helpers.saveField("options", b.options);
-                    renderPreview();
-                });
+                panel.appendChild(secondaryPlayerDisclosure.panel);
             }
             if (b.sensor === "control_modal") {
                 var labelDisplay: any = helpers.renderCardSegmentControl(panel, b, helpers, {

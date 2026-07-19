@@ -1925,6 +1925,74 @@ async function assertCoverSettingsPanels(page, label) {
   });
 }
 
+async function assertMediaCoverArtSettingsPanels(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.locator("#sp-inp-type").selectOption("media_cover_art");
+
+  const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-cover-art-card-settings"),
+  });
+  const secondaryPlayer = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-cover-art-secondary-player"),
+  });
+  assert(await cardSettings.isVisible(), `${label}: Cover Art card settings panel should render`);
+  assert(await secondaryPlayer.isVisible(), `${label}: Cover Art secondary media player panel should render`);
+  assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: Cover Art card settings should start collapsed`);
+  assert(!(await secondaryPlayer.getAttribute("class")).includes("sp-open"), `${label}: Cover Art secondary media player should start collapsed`);
+  assert.strictEqual(
+    await page.locator("#sp-inp-entity").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: Cover Art primary entity should remain outside collapsible panels`,
+  );
+  assert.strictEqual(
+    await cardSettings.locator(".sp-field").filter({ hasText: "Press Action" }).count(),
+    1,
+    `${label}: Cover Art Press Action should be inside Card Settings`,
+  );
+  assert.strictEqual(
+    await cardSettings.locator("#sp-inp-media-cover-art-details").count(),
+    1,
+    `${label}: Cover Art track details toggle should be inside Card Settings`,
+  );
+  assert.strictEqual(
+    await secondaryPlayer.locator("#sp-inp-media-cover-art-secondary-entity").count(),
+    1,
+    `${label}: Cover Art secondary entity should be inside Secondary Media Player`,
+  );
+
+  await cardSettings.locator("> .sp-disclosure-button").click();
+  assert(
+    await cardSettings.getByText("Press Action", { exact: true }).isVisible(),
+    `${label}: Cover Art Card Settings should reveal Press Action`,
+  );
+  assert(
+    await cardSettings.getByText("Show Track Details", { exact: true }).isVisible(),
+    `${label}: Cover Art Card Settings should reveal Show Track Details`,
+  );
+  await secondaryPlayer.locator("> .sp-disclosure-button").click();
+  const info = secondaryPlayer.locator("#sp-inp-media-cover-art-secondary-player-info");
+  assert(await info.isVisible(), `${label}: Cover Art secondary media player explanation should be visible`);
+  assert.strictEqual(await info.getAttribute("role"), "note", `${label}: Cover Art secondary explanation should be announced as a note`);
+  assert(
+    (await info.textContent()).includes("Line In, TV, or HDMI"),
+    `${label}: Cover Art secondary explanation should describe external sources`,
+  );
+  assert(
+    await secondaryPlayer.getByText("External Source Media Entity", { exact: true }).isVisible(),
+    `${label}: Cover Art secondary entity picker should be visible`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
 async function assertAlarmSettingsPanels(page, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -3679,6 +3747,7 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCoverSettingsPanels(page, testCase.name);
+    await assertMediaCoverArtSettingsPanels(page, testCase.name);
     await assertAlarmSettingsPanels(page, testCase.name);
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     if (testCase.exerciseInteractions) {
