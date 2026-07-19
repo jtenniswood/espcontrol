@@ -1,3 +1,6 @@
+#ifndef ESPCONTROL_POWER_MODE_H
+#define ESPCONTROL_POWER_MODE_H
+
 #pragma once
 
 #include <string>
@@ -43,3 +46,5 @@ inline bool power_mode_flush_deferred_work(PowerMode mode, bool work_deferred) {
 }
 
 }  // namespace espcontrol
+
+#endif  // ESPCONTROL_POWER_MODE_H

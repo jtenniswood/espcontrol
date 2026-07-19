@@ -84,7 +84,7 @@ script:
           const auto mode = id(power_mode_battery_saver)
               ? espcontrol::PowerMode::BATTERY_SAVER
               : espcontrol::PowerMode::NORMAL;
-          const auto action = power_mode_network_action(
+          const auto action = espcontrol::power_mode_network_action(
               mode, id(power_mode_normal_wifi_request_active));
           if (action == espcontrol::NetworkPowerAction::REQUEST_HIGH_PERFORMANCE) {
             if (wifi::global_wifi_component->request_high_performance()) {

@@ -70,7 +70,7 @@ esphome:
         - script.execute: clock_bar_apply
         - lambda: |-
             id(power_mode_battery_saver) =
-                power_mode_is_battery_saver(id(screen_power_mode).current_option());
+                espcontrol::power_mode_is_battery_saver(id(screen_power_mode).current_option());
         - script.execute: power_mode_apply
 
 script:
@@ -81,7 +81,7 @@ script:
       - if:
           condition:
             lambda: |-
-              return power_mode_flush_deferred_work(
+              return espcontrol::power_mode_flush_deferred_work(
                   id(power_mode_battery_saver) ? espcontrol::PowerMode::BATTERY_SAVER
                                                : espcontrol::PowerMode::NORMAL,
                   id(battery_image_refresh_deferred));
@@ -468,7 +468,7 @@ select:
       then:
         - lambda: |-
             id(power_mode_battery_saver) =
-                power_mode_is_battery_saver(id(screen_power_mode).current_option());
+                espcontrol::power_mode_is_battery_saver(id(screen_power_mode).current_option());
         - script.execute: power_mode_apply
 
   - platform: template
