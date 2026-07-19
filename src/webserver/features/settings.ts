@@ -28,7 +28,7 @@ export function powerModeControlState(mode: unknown, supported: boolean): PowerM
     return {
       mode: normalized,
       disabled: false,
-      description: "Wi-Fi light sleep and reduced display-only work are active. For the best battery life, select Display Off below. Brightness, voice services and relays remain under your control.",
+      description: "Wi-Fi light sleep and reduced display-only work are active. For the best battery life, select Display Off. Brightness, voice services and relays remain under your control.",
     };
   }
   return {

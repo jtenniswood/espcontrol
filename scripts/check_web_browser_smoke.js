@@ -3417,7 +3417,6 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const disabledButton = card.getByRole("button", { name: "Disabled", exact: true });
   const timeFields = card.locator("#sp-set-schedule-on-hour");
   const sensorField = card.locator("#sp-set-schedule-presence");
-  const sensorSection = card.locator(".sp-schedule-sensor");
   const sensorFieldLabel = card.getByText("Sensor Entity", { exact: true });
   const sensorActivation = card.locator("#sp-set-schedule-sensor-activation");
   const actions = card.locator("#sp-set-schedule-actions");
@@ -3426,6 +3425,16 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const dimmedBrightness = card.locator("#sp-set-schedule-dimmed-brightness");
   const clockBrightness = card.locator("#sp-set-schedule-clock-brightness");
   const clockTextColor = card.locator("#sp-set-schedule-clock-text-color");
+  async function actionGroupGap() {
+    return actions.evaluate((element) => {
+      let previous = element.previousElementSibling;
+      while (previous && getComputedStyle(previous).display === "none") {
+        previous = previous.previousElementSibling;
+      }
+      if (!previous) return 0;
+      return element.getBoundingClientRect().top - previous.getBoundingClientRect().bottom;
+    });
+  }
 
   let before = posts.length;
   await timeButton.click();
@@ -3452,6 +3461,10 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     `${label}: Time mode should hide the sensor activation field`,
   );
   assert(await actions.isVisible(), `${label}: Time mode should show night action controls`);
+  assert(
+    (await actionGroupGap()) >= 22,
+    `${label}: Time mode should leave space before the night action controls`,
+  );
   assert(await wakeTimeout.isVisible(), `${label}: Screen Off should show wake controls`);
   assert.strictEqual(
     await dimmedBrightness.isVisible(),
@@ -3505,10 +3518,6 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   );
   assert(await sensorField.isVisible(), `${label}: Sensor mode should show the sensor entity`);
   assert(await sensorFieldLabel.isVisible(), `${label}: Sensor mode should label the sensor entity clearly`);
-  assert(
-    Number.parseFloat(await sensorSection.evaluate((element) => getComputedStyle(element).marginBottom)) >= 22,
-    `${label}: Sensor mode should leave space below the sensor entity field`,
-  );
   assert.strictEqual(
     await sensorField.getAttribute("placeholder"),
     "Sensor Entity",
@@ -3521,6 +3530,10 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     `${label}: Sensor mode should default to activating when the sensor is off`,
   );
   assert(await actions.isVisible(), `${label}: Sensor mode should show night action controls`);
+  assert(
+    (await actionGroupGap()) >= 22,
+    `${label}: Sensor mode should leave space before the night action controls`,
+  );
   assert.strictEqual(
     await actionSelect.inputValue(),
     "clock",

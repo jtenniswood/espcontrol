@@ -28,6 +28,12 @@ DEVICE_DEVICE_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/device.yaml
 DEVICE_SENSOR_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/sensors.yaml")))
 DEVICE_PACKAGE_PATHS = tuple(sorted((ROOT / "devices").glob("*/packages.yaml")))
 DEVICE_TOUCH_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/*.yaml")))
+DISPLAY_TAKEOVER_BACKLIGHT_DEVICE_SLUGS = frozenset(
+    {
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+    }
+)
 CONNECTIVITY_PATHS = (
     ROOT / "common" / "addon" / "connectivity.yaml",
     ROOT / "common" / "addon" / "connectivity_deployed.yaml",
@@ -2142,8 +2148,8 @@ def firmware_screen_wake_button_errors(backlight_path: Path, root: Path) -> list
         errors.append(f"{rel}: enable Screen: Wake by default")
     if re.search(r'^\s+entity_category:', button_block, re.MULTILINE):
         errors.append(f"{rel}: keep Screen: Wake operational rather than a configuration entity")
-    if not re.search(r'^\s+icon:\s*["\']?mdi:monitor-arrow-up["\']?\s*$', button_block, re.MULTILINE):
-        errors.append(f"{rel}: use mdi:monitor-arrow-up for Screen: Wake")
+    if not re.search(r'^\s+icon:\s*["\']?mdi:monitor-shimmer["\']?\s*$', button_block, re.MULTILINE):
+        errors.append(f"{rel}: use mdi:monitor-shimmer for Screen: Wake")
 
     required_sequence = (
         "      - script.execute: cover_art_pause_after_touch\n"
@@ -2152,6 +2158,102 @@ def firmware_screen_wake_button_errors(backlight_path: Path, root: Path) -> list
     )
     if "on_press:" not in button_block or required_sequence not in button_block:
         errors.append(f"{rel}: run the complete touch-equivalent Screen: Wake sequence")
+    return errors
+
+
+def firmware_display_backlight_manual_sleep_errors(
+    backlight_path: Path,
+    device_paths: tuple[Path, ...],
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    if not backlight_path.exists():
+        return errors
+
+    backlight_rel = backlight_path.relative_to(root)
+    backlight_text = backlight_path.read_text(encoding="utf-8")
+    handler_body = yaml_script_body(backlight_text, "display_backlight_handle_off")
+    if handler_body is None:
+        errors.append(f"{backlight_rel}: missing shared display_backlight_handle_off script")
+    else:
+        if (
+            "!id(display_mode_controller).target_mode_is(" not in handler_body
+            or "espcontrol::DisplayMode::DISPLAY_OFF" not in handler_body
+        ):
+            errors.append(
+                f"{backlight_rel}: ignore only controller-owned DISPLAY_OFF backlight events"
+            )
+        if "script.execute: screen_schedule_manual_sleep" not in handler_body:
+            errors.append(
+                f"{backlight_rel}: route visible display modes into persistent manual sleep"
+            )
+        if "espcontrol::DisplayMode::ACTIVE" in handler_body:
+            errors.append(
+                f"{backlight_rel}: do not limit Home Assistant manual sleep to ACTIVE mode"
+            )
+
+    for path in device_paths:
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        text = path.read_text(encoding="utf-8")
+        light_match = re.search(
+            r"(?ms)^light:\s*\n(?P<section>.*?)(?=^[a-zA-Z_][\w-]*:\s*(?:#.*)?$|\Z)",
+            text,
+        )
+        backlight_block: str | None = None
+        if light_match:
+            for item in re.finditer(
+                r"(?ms)^  - platform:\s*[^\n]+\n(?P<body>.*?)(?=^  - platform:|\Z)",
+                light_match.group("section"),
+            ):
+                candidate = item.group(0)
+                if re.search(
+                    r"^\s+id:\s*display_backlight\s*$", candidate, re.MULTILINE
+                ):
+                    backlight_block = candidate
+                    break
+
+        if backlight_block is None:
+            errors.append(f"{rel}: missing display_backlight light definition")
+            continue
+
+        off_match = re.search(
+            r"(?ms)^    on_turn_off:\s*\n(?P<body>.*?)(?=^    [a-zA-Z_][\w-]*:\s*|\Z)",
+            backlight_block,
+        )
+        if off_match is None:
+            errors.append(f"{rel}: route Display Backlight OFF into manual sleep")
+            continue
+
+        off_body = off_match.group("body")
+        handler_index = off_body.find("script.execute: display_backlight_handle_off")
+        if handler_index == -1:
+            errors.append(
+                f"{rel}: route Display Backlight OFF through display_backlight_handle_off"
+            )
+        if "espcontrol::DisplayMode::ACTIVE" in off_body:
+            errors.append(f"{rel}: do not gate manual sleep on ACTIVE display mode")
+        if "script.execute: screen_schedule_manual_sleep" in off_body:
+            errors.append(f"{rel}: use the shared display backlight OFF handler")
+
+        slug = rel.parts[1] if len(rel.parts) > 1 else ""
+        if slug in DISPLAY_TAKEOVER_BACKLIGHT_DEVICE_SLUGS:
+            interactive_index = off_body.find("DisplayTakeoverKind::INTERACTIVE")
+            critical_index = off_body.find("DisplayTakeoverKind::CRITICAL")
+            restore_index = off_body.find("script.execute: backlight_apply_brightness")
+            else_index = off_body.find("            else:", restore_index)
+            if not (
+                interactive_index != -1
+                and critical_index > interactive_index
+                and restore_index > critical_index
+                and else_index > restore_index
+                and handler_index > else_index
+            ):
+                errors.append(
+                    f"{rel}: preserve display takeover recovery before manual sleep handling"
+                )
+
     return errors
 
 
@@ -2839,6 +2941,11 @@ def run_scan() -> int:
         )
     )
     errors.extend(firmware_screen_wake_button_errors(BACKLIGHT_PATH, ROOT))
+    errors.extend(
+        firmware_display_backlight_manual_sleep_errors(
+            BACKLIGHT_PATH, DEVICE_DEVICE_PATHS, ROOT
+        )
+    )
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
@@ -3426,6 +3533,33 @@ def expect_screen_wake_button_errors(name: str, text: str, expected: tuple[str, 
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_display_backlight_manual_sleep_errors(
+    name: str,
+    backlight_text: str,
+    device_texts: dict[str, str],
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        backlight_path = root / "common" / "addon" / "backlight.yaml"
+        backlight_path.parent.mkdir(parents=True)
+        backlight_path.write_text(backlight_text, encoding="utf-8")
+        device_paths: list[Path] = []
+        for slug, text in device_texts.items():
+            path = root / "devices" / slug / "device" / "device.yaml"
+            path.parent.mkdir(parents=True)
+            path.write_text(text, encoding="utf-8")
+            device_paths.append(path)
+
+        errors = firmware_display_backlight_manual_sleep_errors(
+            backlight_path, tuple(device_paths), root
+        )
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_clock_screensaver_overlay_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -3608,6 +3742,76 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def run_self_test() -> int:
+    valid_backlight_off_handler = (
+        "script:\n"
+        "  - id: display_backlight_handle_off\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return !id(display_mode_controller).target_mode_is(\n"
+        "                  espcontrol::DisplayMode::DISPLAY_OFF);\n"
+        "          then:\n"
+        "            - script.execute: screen_schedule_manual_sleep\n"
+    )
+    valid_simple_backlight = (
+        "light:\n"
+        "  - platform: monochromatic\n"
+        "    id: display_backlight\n"
+        "    on_turn_off:\n"
+        "      then:\n"
+        "        - script.execute: display_backlight_handle_off\n"
+    )
+    valid_takeover_backlight = (
+        "light:\n"
+        "  - platform: monochromatic\n"
+        "    id: display_backlight\n"
+        "    on_turn_off:\n"
+        "      then:\n"
+        "        - if:\n"
+        "            condition:\n"
+        "              lambda: |-\n"
+        "                return controller.takeover_active(DisplayTakeoverKind::INTERACTIVE) ||\n"
+        "                       controller.takeover_active(DisplayTakeoverKind::CRITICAL);\n"
+        "            then:\n"
+        "              - script.execute: backlight_apply_brightness\n"
+        "            else:\n"
+        "              - script.execute: display_backlight_handle_off\n"
+    )
+    expect_display_backlight_manual_sleep_errors(
+        "all visible modes use shared manual sleep handler",
+        valid_backlight_off_handler,
+        {
+            "simple-display": valid_simple_backlight,
+            "guition-esp32-p4-jc8012p4a1": valid_takeover_backlight,
+        },
+        (),
+    )
+    expect_display_backlight_manual_sleep_errors(
+        "ACTIVE-only manual sleep is rejected",
+        valid_backlight_off_handler,
+        {
+            "simple-display": valid_simple_backlight.replace(
+                "        - script.execute: display_backlight_handle_off\n",
+                "        - if:\n"
+                "            condition:\n"
+                "              lambda: 'return controller.target_mode_is(espcontrol::DisplayMode::ACTIVE);'\n"
+                "            then:\n"
+                "              - script.execute: screen_schedule_manual_sleep\n",
+            )
+        },
+        (
+            "route Display Backlight OFF through display_backlight_handle_off",
+            "do not gate manual sleep on ACTIVE display mode",
+            "use the shared display backlight OFF handler",
+        ),
+    )
+    expect_display_backlight_manual_sleep_errors(
+        "takeover recovery remains ahead of manual sleep",
+        valid_backlight_off_handler,
+        {"guition-esp32-p4-jc8012p4a1-v2": valid_simple_backlight},
+        ("preserve display takeover recovery before manual sleep handling",),
+    )
     expect_screen_wake_button_errors(
         "missing Screen: Wake button",
         "script:\n  - id: screensaver_wake\n",
@@ -3628,7 +3832,7 @@ def run_self_test() -> int:
             "keep Screen: Wake exposed to Home Assistant",
             "enable Screen: Wake by default",
             "keep Screen: Wake operational",
-            "use mdi:monitor-arrow-up",
+            "use mdi:monitor-shimmer",
             "complete touch-equivalent Screen: Wake sequence",
         ),
     )
@@ -3637,7 +3841,7 @@ def run_self_test() -> int:
         "button:\n"
         "  - platform: template\n"
         "    name: \"${entity_screen_wake}\"\n"
-        "    icon: mdi:monitor-arrow-up\n"
+        "    icon: mdi:monitor-shimmer\n"
         "    disabled_by_default: false\n"
         "    on_press:\n"
         "      - script.execute: cover_art_pause_after_touch\n"
@@ -5721,7 +5925,7 @@ def run_self_test() -> int:
         "  ESP_LOGI(\"image_card\", \"Closing image modal for %s\", ctx->entity_id.c_str());\n"
         "}\n"
         "inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg,\n"
-        "                            const ThemePalette &palette) {\n"
+        "                            bool bind_click_handler = false) {\n"
         "  lv_obj_t *loading = image_card_loading_widget(widget);\n"
         "  image_card_set_loading_state(loading, \"Too many\");\n"
         "  return true;\n"

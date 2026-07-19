@@ -163,23 +163,6 @@ export function installStylesModule(): GlobalDescriptors {
         "background:rgba(92,156,245,.08) !important;cursor:default;pointer-events:none}" +
         ".sp-btn.sp-drop-placeholder{box-shadow:0 0 0 2px rgba(92,156,245,.6),0 0 12px rgba(92,156,245,.25) !important;" +
         "background:rgba(92,156,245,.08) !important}" +
-        "#sp-app[data-screen-theme='light'] .sp-screen{background:#fff}" +
-        "#sp-app[data-screen-theme='dark'] .sp-screen{background:#000}" +
-        "#sp-app[data-screen-theme='light'] .sp-clockbar-item,#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='light'] .sp-voice-preview,#sp-app[data-screen-theme='light'] .sp-btn-icon,#sp-app[data-screen-theme='light'] .sp-btn-label,#sp-app[data-screen-theme='light'] .sp-sensor-preview,#sp-app[data-screen-theme='light'] .sp-sensor-unit,#sp-app[data-screen-theme='light'] .sp-media-now-title,#sp-app[data-screen-theme='light'] .sp-media-now-artist{color:#000}" +
-        "#sp-app[data-screen-theme='dark'] .sp-clockbar-item,#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-voice-preview,#sp-app[data-screen-theme='dark'] .sp-btn-icon,#sp-app[data-screen-theme='dark'] .sp-btn-label,#sp-app[data-screen-theme='dark'] .sp-sensor-preview,#sp-app[data-screen-theme='dark'] .sp-sensor-unit,#sp-app[data-screen-theme='dark'] .sp-media-now-title,#sp-app[data-screen-theme='dark'] .sp-media-now-artist{color:#fff}" +
-        "#sp-app[data-screen-theme='light'] .sp-clockbar-item:not(.sp-selected):hover,#sp-app[data-screen-theme='dark'] .sp-clockbar-item:not(.sp-selected):hover{background:transparent;border-color:transparent}" +
-        "#sp-app[data-screen-theme='light'] .sp-media-h-slider{background:var(--screen-secondary)}" +
-        "#sp-app[data-screen-theme='light'] .sp-media-h-slider span{background:#000}" +
-        "#sp-app[data-screen-theme='dark'] .sp-media-h-slider{background:var(--screen-tertiary)}" +
-        "#sp-app[data-screen-theme='dark'] .sp-media-h-slider span{background:#fff}" +
-        "#sp-app[data-screen-theme='light'] .sp-empty-cell{border-color:rgba(0,0,0,.22)}" +
-        "#sp-app[data-screen-theme='dark'] .sp-empty-cell{border-color:rgba(255,255,255,.15)}" +
-        "#sp-app[data-screen-theme='light'] .sp-drag-active .sp-empty-cell:hover{border-color:rgba(0,0,0,.22)}" +
-        "#sp-app[data-screen-theme='dark'] .sp-drag-active .sp-empty-cell:hover{border-color:rgba(255,255,255,.15)}" +
-        "#sp-app[data-screen-theme='light'] .sp-add-pill{border-color:rgba(0,0,0,.18);background:rgba(0,0,0,.04)}" +
-        "#sp-app[data-screen-theme='dark'] .sp-add-pill{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.06)}" +
-        "#sp-app[data-screen-theme='light'] .sp-add-icon{color:rgba(0,0,0,.82)}" +
-        "#sp-app[data-screen-theme='dark'] .sp-add-icon{color:rgba(255,255,255,.82)}" +
         (CFG.dragAnimation ? ".sp-btn.sp-dragging{opacity:.4;transform:scale(.95)}" +
             ".sp-empty-cell.sp-drop-placeholder{border-color:rgba(92,156,245,.5)}" : "") +
         ".sp-hint{text-align:center;font-size:.7rem;color:var(--text3);padding:8px 0 12px;user-select:none}" +
@@ -451,7 +434,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-disclosure.sp-open .sp-disclosure-chevron{transform:rotate(180deg)}" +
         ".sp-disclosure.sp-open .sp-disclosure-body{display:block}" +
         ".sp-schedule-times.sp-hidden{display:none}" +
-        ".sp-schedule-sensor{margin-bottom:28px}" +
+        "#sp-set-schedule-actions{margin-top:28px}" +
         ".sp-info-panel{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:16px;" +
         "background:rgba(92,115,231,.12);border:1px solid rgba(92,115,231,.22);border-radius:8px;" +
         "color:var(--text2);font-size:.82rem;line-height:1.35}" +
@@ -591,7 +574,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".card{border-radius:10px;margin-bottom:10px}" +
         ".card-header{min-height:56px;box-sizing:border-box}" +
         ".sp-field{margin-bottom:22px}" +
-        ".sp-schedule-sensor{margin-bottom:22px}" +
+        "#sp-set-schedule-actions{margin-top:22px}" +
         ".sp-toggle-row{gap:16px}" +
         ".sp-toggle-label{min-width:0;line-height:1.35}" +
         ".sp-range-row{gap:10px}" +

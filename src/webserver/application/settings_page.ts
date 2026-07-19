@@ -36,7 +36,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         syncPowerModeUi();
         var powerCard: any = makeCollapsibleCard("Power", powerBody, true);
         var appearBody: any = document.createElement("div");
-        var onColor: any = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (this: any, hex?: any) {
+        var onColor: any = colorField("sp-set-on-color", WEB_UI_COLORS.primary, function (this: any, hex?: any) {
             postText(entityName("button_on_color"), hex);
         });
         appearBody.appendChild(onColor);

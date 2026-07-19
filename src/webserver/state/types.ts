@@ -80,7 +80,6 @@ export interface AppState {
   grid: number[];
   sizes: Record<string, number>;
   buttons: CardConfig[];
-  theme: string;
   onColor: string;
   selectedSlots: number[];
   lastClickedSlot: number;

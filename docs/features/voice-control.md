@@ -211,6 +211,46 @@ During a voice interaction:
 
 If you manually dismiss the cover-art screen, the panel should respect that and return to the normal screen timeout behaviour instead of immediately reopening cover art.
 
+## External Voice Responses
+
+The panel sends an `esphome.tts_uri` event to Home Assistant whenever an Assist response has reusable audio. This lets a Home Assistant automation play the exact response on another speaker without asking the text-to-speech provider to generate it again.
+
+For streaming-capable responses, the event is sent as soon as the stream is available. Other responses send the event after Home Assistant finishes generating the audio. Each response sends no more than one event.
+
+The event data looks like this:
+
+```yaml
+event_type: esphome.tts_uri
+data:
+  device_id: 0123456789abcdef0123456789abcdef
+  node: hallway-screen
+  uri: http://homeassistant.local:8123/api/tts_proxy/example.flac
+```
+
+Home Assistant adds `device_id` automatically. Use it to distinguish this panel from other ESPHome voice devices. `node` is the panel's ESPHome device name and `uri` is the temporary audio URL.
+
+The following Home Assistant automation sends responses from one panel to a Music Assistant player. Replace the example device ID and media player with your own:
+
+```yaml
+alias: Play panel voice responses through Music Assistant
+triggers:
+  - trigger: event
+    event_type: esphome.tts_uri
+    event_data:
+      device_id: 0123456789abcdef0123456789abcdef
+actions:
+  - action: music_assistant.play_announcement
+    target:
+      entity_id: media_player.living_room
+    data:
+      url: "{{ trigger.event.data.uri }}"
+mode: restart
+```
+
+The event does not mute the panel or select an external speaker by itself. Leave the panel unmuted to hear both outputs, or manage its **Voice Media Player** mute state separately if you want external-only playback. Muting that media player also silences other audio that uses the panel speaker.
+
+The URL should be played as soon as the event arrives and must be reachable from the external player or Music Assistant server. Low-latency playback requires a conversation agent and text-to-speech engine that support streaming, plus a target player that can begin playing an in-progress HTTP stream. Other combinations still receive the completed audio URL.
+
 ## Volume Control
 
 The panel exposes **Voice Media Player** in Home Assistant. This controls the device speaker used for voice responses, announcements, chimes, and media playback.

@@ -319,6 +319,11 @@ globals:
     restore_value: false
     initial_value: "false"
 
+  - id: voice_tts_uri_sent
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
 micro_wake_word:
   id: onboard_wake_word
   microphone:
@@ -1022,7 +1027,9 @@ voice_assistant:
   auto_gain: 31dBFS
   volume_multiplier: 1.0
   on_start:
-    - lambda: id(voice_interaction_active) = true;
+    - lambda: |-
+        id(voice_interaction_active) = true;
+        id(voice_tts_uri_sent) = false;
     - script.stop: release_voice_after_response
     - micro_wake_word.disable_model: wake_word_stop
     - script.execute: restore_voice_home_ui
@@ -1123,6 +1130,17 @@ voice_assistant:
         level: INFO
         tag: voice
         format: "Intent handling started"
+  on_intent_progress:
+    - if:
+        condition:
+          lambda: return !x.empty() && !id(voice_tts_uri_sent);
+        then:
+          - lambda: id(voice_tts_uri_sent) = true;
+          - homeassistant.event:
+              event: esphome.tts_uri
+              data:
+                node: !lambda return App.get_name();
+                uri: !lambda return x;
   on_intent_end:
     - text_sensor.template.publish:
         id: voice_assistant_stage
@@ -1146,6 +1164,16 @@ voice_assistant:
         args: [x.c_str()]
     - script.execute: activate_stop_word_once
   on_tts_end:
+    - if:
+        condition:
+          lambda: return !x.empty() && !id(voice_tts_uri_sent);
+        then:
+          - lambda: id(voice_tts_uri_sent) = true;
+          - homeassistant.event:
+              event: esphome.tts_uri
+              data:
+                node: !lambda return App.get_name();
+                uri: !lambda return x;
     - script.execute: restore_voice_home_ui
     - text_sensor.template.publish:
         id: voice_assistant_stage

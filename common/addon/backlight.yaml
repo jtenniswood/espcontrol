@@ -18,7 +18,7 @@ button:
   - platform: template
     id: screen_wake
     name: "${entity_screen_wake}"
-    icon: "mdi:monitor-arrow-up"
+    icon: "mdi:monitor-shimmer"
     disabled_by_default: false
     on_press:
       - script.execute: cover_art_pause_after_touch
@@ -883,6 +883,21 @@ script:
     mode: restart
     then:
       - script.execute: display_mode_reconcile
+
+  # Home Assistant exposes the physical backlight as a light entity. Treat an
+  # OFF command as persistent manual sleep whenever another visible display
+  # mode is active. Internal automatic and scheduled OFF transitions already
+  # target DISPLAY_OFF, so they must not create a manual-sleep request.
+  - id: display_backlight_handle_off
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::DISPLAY_OFF);
+          then:
+            - script.execute: screen_schedule_manual_sleep
 
   # Touchscreen long-press sleep. This is stronger than the automatic schedule;
   # the next tap wakes it.

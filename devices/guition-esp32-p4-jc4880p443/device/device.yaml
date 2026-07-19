@@ -125,8 +125,9 @@ esp32_hosted:
   d1_pin: GPIO15
   d2_pin: GPIO16
   d3_pin: GPIO17
-  # Camera snapshots benefit from the ESP-Hosted default high-speed link.
-  sdio_frequency: 40MHz
+  # Use the lower SDIO clock for reliable ESP32-C6 communication across
+  # production panels; camera transfers remain supported at this speed.
+  sdio_frequency: 20MHz
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)
@@ -230,13 +231,7 @@ light:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
-        - if:
-            condition:
-              lambda: |-
-                return id(display_mode_controller).target_mode_is(
-                    espcontrol::DisplayMode::ACTIVE);
-            then:
-              - script.execute: screen_schedule_manual_sleep
+        - script.execute: display_backlight_handle_off
 
 # ---------------------------------------------------------------------------
 # I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)

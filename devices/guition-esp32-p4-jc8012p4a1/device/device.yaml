@@ -271,13 +271,7 @@ light:
               - delay: 10ms
               - script.execute: backlight_apply_brightness
             else:
-              - if:
-                  condition:
-                    lambda: |-
-                      return id(display_mode_controller).target_mode_is(
-                          espcontrol::DisplayMode::ACTIVE);
-                  then:
-                    - script.execute: screen_schedule_manual_sleep
+              - script.execute: display_backlight_handle_off
 
 # ---------------------------------------------------------------------------
 # I2C bus and touchscreen (GSL3680 capacitive, wakes screensaver on touch)
