@@ -353,6 +353,15 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   MediaNowPlayingCtx *media_ctx =
     static_cast<MediaNowPlayingCtx *>(lv_obj_get_user_data(s.sensor_container));
   if (!media_ctx || !media_ctx->btn) return;
+  // Phase 2 also runs when a different card changes. Keep a healthy artwork
+  // widget in place instead of releasing its image buffer and downloading the
+  // same cover again. A genuinely changed cover-art card is cleaned up before
+  // this function runs, so it arrives here without an existing context.
+  if (media_ctx->cover_art && media_ctx->cover_art->widget &&
+      media_cover_art_enabled(p) && !p.entity.empty()) {
+    media_cover_art_refresh_geometry(media_ctx);
+    return;
+  }
   clear_media_cover_art(media_ctx);
   if (!media_cover_art_enabled(p) || p.entity.empty()) return;
   ImageCardCtx *art = acquire_image_card_context(cfg, p.entity);

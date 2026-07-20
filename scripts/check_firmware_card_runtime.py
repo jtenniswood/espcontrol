@@ -169,6 +169,8 @@ def check_root(root: Path) -> list[str]:
                 "main_config_snapshots[i] != slots[i].config->state",
                 "reconstruct_main_cards && reconstruct_slot[idx - 1]",
                 "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
+                "media_ctx->cover_art && media_ctx->cover_art->widget",
+                "media_cover_art_refresh_geometry(media_ctx);",
             )
             for guard in live_rebuild_guards:
                 if guard not in text:
@@ -185,6 +187,19 @@ def check_root(root: Path) -> list[str]:
             ):
                 failures.append(
                     "components/espcontrol/button_grid_media_driver.h: reuse unchanged main-grid media controls during live refresh"
+                )
+            bind_cover_art = function_body(media_driver_text, "media_driver_bind_cover_art_route")
+            if bind_cover_art is None or any(
+                guard not in bind_cover_art
+                for guard in (
+                    "const bool route_config_changed",
+                    "if (route_config_changed) now_playing->active_entity.clear();",
+                    "if (now_playing->progress_slider)",
+                    "if (control)",
+                )
+            ):
+                failures.append(
+                    "components/espcontrol/button_grid_media_driver.h: preserve and rebind unchanged cover-art routes during live refresh"
                 )
         visual_setup = function_body(text, "setup_card_visual")
         if visual_setup is not None:

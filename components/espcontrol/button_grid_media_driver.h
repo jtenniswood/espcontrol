@@ -201,9 +201,12 @@ inline void media_driver_bind_cover_art_route(
   // Clear the old route before attaching playback state because attachment
   // can immediately apply cached state and invoke the route callback.
   now_playing->refresh_entity_route = nullptr;
+  const bool route_config_changed =
+    now_playing->primary_entity != primary_entity ||
+    now_playing->secondary_entity != secondary_entity;
   now_playing->primary_entity = primary_entity;
   now_playing->secondary_entity = secondary_entity;
-  now_playing->active_entity.clear();
+  if (route_config_changed) now_playing->active_entity.clear();
 
   MediaPlaybackState *primary = media_playback_ensure_state(primary_entity);
   if (!primary) return;
@@ -268,22 +271,24 @@ inline void media_driver_bind_cover_art_route(
       }
     }
 
-    if (entity_changed && now_playing->progress_slider) {
+    if (now_playing->progress_slider) {
       SliderCtx *slider = static_cast<SliderCtx *>(
         lv_obj_get_user_data(now_playing->progress_slider));
       if (slider) {
-        media_playback_detach_slider(slider);
-        slider->entity_id = next_entity;
+        if (entity_changed) {
+          media_playback_detach_slider(slider);
+          slider->entity_id = next_entity;
+        }
         subscribe_media_slider_state(
           lv_obj_get_parent(now_playing->progress_slider),
           now_playing->progress_slider, next_entity);
       }
     }
 
-    if (entity_changed && control) {
-      // A newly bound control already targets the primary entity. Rebind it
-      // only when the active route genuinely switches to another entity.
-      if (control->entity_id != next_entity) {
+    if (control) {
+      // A newly bound or reused control may already target this entity. Only
+      // detach it when the active route genuinely switches to another one.
+      if (entity_changed && control->entity_id != next_entity) {
         media_playback_detach_control(control);
         control->entity_id = next_entity;
       }
