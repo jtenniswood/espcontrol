@@ -1,5 +1,6 @@
 #include "ha_read_coordinator.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <functional>
 #include <string>
@@ -11,6 +12,7 @@ namespace {
 struct FakeTransport {
   using State = std::string;
   using Callback = std::function<void(State)>;
+  using Key = std::pair<std::string, std::string>;
 
   struct Request {
     std::string entity_id;
@@ -18,18 +20,22 @@ struct FakeTransport {
     Callback callback;
   };
 
+  struct CachedValue {
+    Key key;
+    std::string value;
+  };
+
   bool api_available = true;
   bool connected = true;
-  std::vector<Request> reads;
+  bool reset_ready = true;
+  size_t reset_requests = 0;
+  size_t owned_removals = 0;
+  size_t external_subscriptions = 2;
   std::vector<Request> subscriptions;
-  size_t replay_calls = 0;
+  std::vector<CachedValue> cache;
 
   bool available() const { return api_available; }
   bool state_connected() const { return connected; }
-
-  void get(std::string entity_id, std::string attribute, Callback callback) {
-    reads.push_back({std::move(entity_id), std::move(attribute), std::move(callback)});
-  }
 
   void subscribe(const std::string &entity_id,
                  const std::string &attribute,
@@ -37,18 +43,53 @@ struct FakeTransport {
     subscriptions.push_back({entity_id, attribute, std::move(callback)});
   }
 
-  void replay(const std::string &, const std::string &, Callback) {
-    replay_calls++;
+  void replay(const std::string &entity_id,
+              const std::string &attribute,
+              Callback callback) {
+    for (const auto &entry : cache) {
+      if (entry.key == Key(entity_id, attribute)) {
+        callback(entry.value);
+        return;
+      }
+    }
   }
 
-  void deliver_read(size_t index, const std::string &state) {
-    Callback callback = reads.at(index).callback;
-    callback(state);
+  void begin_reset() {
+    reset_requests++;
+    connected = false;
   }
 
-  void publish(size_t index, const std::string &state) {
-    Callback callback = subscriptions.at(index).callback;
-    callback(state);
+  bool poll_reset() const { return reset_ready && !connected; }
+
+  void remove_owned_subscriptions() {
+    subscriptions.clear();
+    owned_removals++;
+  }
+
+  void prune_cache(const std::vector<Key> &active_keys) {
+    cache.erase(
+        std::remove_if(cache.begin(), cache.end(),
+                       [&active_keys](const CachedValue &entry) {
+                         return std::find(active_keys.begin(), active_keys.end(), entry.key) ==
+                                active_keys.end();
+                       }),
+        cache.end());
+  }
+
+  void set_cache(const std::string &entity_id,
+                 const std::string &attribute,
+                 const std::string &value) {
+    cache.push_back({{entity_id, attribute}, value});
+  }
+
+  void publish(const std::string &entity_id,
+               const std::string &attribute,
+               const std::string &state) {
+    for (const auto &request : subscriptions) {
+      if (request.entity_id == entity_id && request.attribute == attribute) {
+        request.callback(state);
+      }
+    }
   }
 };
 
@@ -73,161 +114,162 @@ void require(bool condition, const char *message) {
   if (!condition) fail(message);
 }
 
-void disconnected_read_flushes_after_reconnect() {
+void build_generation(Coordinator &coordinator,
+                      const std::string &entity_id,
+                      std::function<void(std::string)> callback) {
+  coordinator.bump_generation(1u);
+  require(coordinator.subscribe(entity_id, "", std::move(callback), 1u, 10, 5),
+          "generation subscription should register");
+  coordinator.commit_generation();
+}
+
+void same_keys_reuse_transport_channel() {
   Coordinator coordinator;
-  coordinator.transport().connected = false;
+  int first_calls = 0;
+  build_generation(coordinator, "sensor.same", [&](std::string) { first_calls++; });
+  require(coordinator.transport().subscriptions.size() == 1,
+          "first generation should create one transport channel");
+  const size_t resets = coordinator.transport().reset_requests;
+  coordinator.transport().connected = true;
+
+  int second_calls = 0;
+  build_generation(coordinator, "sensor.same", [&](std::string) { second_calls++; });
+  require(coordinator.transport().reset_requests == resets,
+          "same key set should not recycle the API transport");
+  coordinator.transport().publish("sensor.same", "", "on");
+  require(first_calls == 0 && second_calls == 1,
+          "replacement generation should exclusively receive state");
+}
+
+void new_entity_rebuilds_transport_and_receives_state() {
+  Coordinator coordinator;
+  build_generation(coordinator, "sensor.old", [](std::string) {});
+  const size_t resets = coordinator.transport().reset_requests;
+  coordinator.transport().connected = true;
+
   std::string received;
-  require(coordinator.get("sensor.room", "", [&](std::string value) { received = value; },
-                          false, 10, 5),
-          "disconnected read should queue");
-  require(coordinator.deferred_count() == 1 && coordinator.transport().reads.empty(),
-          "disconnected read was not deferred");
+  build_generation(coordinator, "sensor.new", [&](std::string value) { received = value; });
+  require(coordinator.transport().reset_requests == resets + 1,
+          "new entity should recycle the transport");
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.transport().subscriptions[0].entity_id == "sensor.new",
+          "stale entity remained after transport rebuild");
   coordinator.transport().connected = true;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 1, "reconnected read was not sent");
-  coordinator.transport().deliver_read(0, "ready");
-  require(received == "ready", "reconnected callback was not invoked");
+  coordinator.transport().publish("sensor.new", "", "ready");
+  require(received == "ready", "new entity did not receive future state");
 }
 
-void low_memory_preserves_deferred_work() {
+void unrelated_transport_subscriptions_are_preserved() {
   Coordinator coordinator;
-  coordinator.transport().connected = false;
-  int calls = 0;
-  require(coordinator.get("sensor.heap", "", [&](std::string) { calls++; }, false, 10, 5),
-          "read should queue before heap pressure");
-  coordinator.transport().connected = true;
-  coordinator.heap_probe().enough = false;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.deferred_count() == 1 && coordinator.transport().reads.empty(),
-          "low-memory flush should retain work");
-  coordinator.heap_probe().enough = true;
-  coordinator.flush(8, 10, 5);
-  coordinator.transport().deliver_read(0, "ok");
-  require(calls == 1, "deferred low-memory read did not recover");
+  const size_t external = coordinator.transport().external_subscriptions;
+  build_generation(coordinator, "sensor.owned", [](std::string) {});
+  build_generation(coordinator, "sensor.replacement", [](std::string) {});
+  require(coordinator.transport().external_subscriptions == external,
+          "transport reset removed unrelated subscriptions");
 }
 
-void duplicate_reads_fan_out_once() {
+void repeated_gets_share_one_persistent_channel() {
   Coordinator coordinator;
-  coordinator.transport().connected = false;
   int first = 0;
   int second = 0;
-  require(coordinator.get("sensor.same", "", [&](std::string) { first++; }, false, 10, 5),
-          "first duplicate read should queue");
-  require(coordinator.get("sensor.same", "", [&](std::string) { second++; }, false, 10, 5),
-          "second duplicate read should join");
-  require(coordinator.deferred_count() == 1, "duplicate reads were not coalesced");
+  require(coordinator.get("camera.room", "entity_picture",
+                          [&](std::string) { first++; }, true, 10, 5),
+          "first read should register");
+  require(coordinator.get("camera.room", "entity_picture",
+                          [&](std::string) { second++; }, true, 10, 5),
+          "second read should join the channel");
+  coordinator.poll_transport_reset();
+  require(coordinator.transport().subscriptions.size() == 1,
+          "duplicate reads created duplicate transport entries");
   coordinator.transport().connected = true;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 1, "duplicate reads sent more than once");
-  coordinator.transport().deliver_read(0, "on");
-  require(first == 1 && second == 1, "duplicate callbacks did not fan out");
+  coordinator.transport().publish("camera.room", "entity_picture", "/first.jpg");
+  coordinator.transport().publish("camera.room", "entity_picture", "/second.jpg");
+  require(first == 1 && second == 1, "one-shot read callbacks were not consumed once");
 }
 
-void reentrant_reads_are_deferred() {
+void cached_get_replays_without_retaining_callback() {
   Coordinator coordinator;
-  int nested = 0;
-  require(coordinator.get(
-              "sensor.outer", "",
-              [&](std::string) {
-                require(coordinator.get("sensor.inner", "", [&](std::string) { nested++; },
-                                        false, 10, 5),
-                        "nested read should queue");
-              },
-              false, 10, 5),
-          "outer read should send");
-  coordinator.transport().deliver_read(0, "outer");
-  require(coordinator.deferred_count() == 1 && coordinator.transport().reads.size() == 1,
-          "reentrant read was sent inside callback");
-  coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 2, "reentrant read did not flush");
-  coordinator.transport().deliver_read(1, "inner");
-  require(nested == 1, "reentrant callback did not run");
+  coordinator.transport().set_cache("sensor.cached", "", "warm");
+  std::string received;
+  require(coordinator.get("sensor.cached", "", [&](std::string value) { received = value; },
+                          false, 10, 5),
+          "cached read should register");
+  require(received == "warm" && coordinator.subscription_count() == 0,
+          "cached read was not replayed immediately");
+}
+
+void churn_stays_bounded_to_active_generation() {
+  Coordinator coordinator;
+  for (int index = 0; index < 100; index++) {
+    coordinator.transport().connected = true;
+    build_generation(
+        coordinator, "sensor.churn_" + std::to_string(index), [](std::string) {});
+    require(coordinator.channel_count() == 1,
+            "channel storage grew beyond the active generation");
+    require(coordinator.transport().subscriptions.size() == 1,
+            "transport storage grew beyond the active generation");
+  }
+}
+
+void latest_generation_wins_during_pending_reset() {
+  Coordinator coordinator;
+  coordinator.transport().reset_ready = false;
+  build_generation(coordinator, "sensor.first", [](std::string) {});
+  require(coordinator.transport_reset_pending(), "reset should remain pending");
+
+  coordinator.bump_generation(1u);
+  require(coordinator.subscribe("sensor.latest", "", [](std::string) {}, 1u, 10, 5),
+          "latest generation should register while reset is pending");
+  coordinator.commit_generation();
+  coordinator.transport().reset_ready = true;
+  coordinator.poll_transport_reset();
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.transport().subscriptions[0].entity_id == "sensor.latest",
+          "pending reset did not coalesce to the latest generation");
+}
+
+void low_heap_rejects_new_work_without_losing_existing_channels() {
+  Coordinator coordinator;
+  build_generation(coordinator, "sensor.stable", [](std::string) {});
+  coordinator.heap_probe().enough = false;
+  require(!coordinator.subscribe("sensor.pressure", "", [](std::string) {}, 1u, 10, 5),
+          "low heap should defer a new subscription");
+  require(coordinator.channel_count() == 1,
+          "low-heap rejection damaged the active channel set");
 }
 
 void cancellation_is_safe_during_callback() {
   Coordinator coordinator;
   constexpr uint32_t scope = 1u << 2;
   int calls = 0;
+  coordinator.bump_generation(scope);
   require(coordinator.subscribe(
               "sensor.cancel", "",
               [&](std::string) {
                 calls++;
                 coordinator.reset_subscriptions(scope);
               },
-              scope),
+              scope, 10, 5),
           "subscription should register");
-  coordinator.transport().publish(0, "first");
-  coordinator.transport().publish(0, "second");
+  coordinator.commit_generation();
+  coordinator.transport().connected = true;
+  coordinator.transport().publish("sensor.cancel", "", "first");
+  coordinator.transport().publish("sensor.cancel", "", "second");
   require(calls == 1 && coordinator.subscription_count() == 0,
           "callback cancellation was not deferred safely");
-}
-
-void stale_generations_do_not_deliver() {
-  Coordinator coordinator;
-  int calls = 0;
-  require(coordinator.get("sensor.stale", "", [&](std::string) { calls++; }, false, 10, 5),
-          "stale read should send");
-  uint32_t old_generation = coordinator.generation();
-  coordinator.bump_generation(1u);
-  require(coordinator.generation() != old_generation, "generation did not advance");
-  coordinator.transport().deliver_read(0, "late");
-  require(calls == 0, "stale in-flight callback was delivered");
-
-  coordinator.transport().connected = false;
-  require(coordinator.get("sensor.queued", "", [&](std::string) { calls++; }, false, 10, 5),
-          "queued stale read should be accepted");
-  coordinator.bump_generation(1u);
-  require(coordinator.deferred_count() == 0, "generation cleanup retained deferred work");
-}
-
-void attribute_requests_preserve_attribute() {
-  Coordinator coordinator;
-  require(coordinator.get("media_player.room", "media_title", [](std::string) {}, true, 10, 5),
-          "attribute read should send");
-  require(coordinator.transport().reads.size() == 1 &&
-              coordinator.transport().reads[0].attribute == "media_title",
-          "attribute read lost its attribute");
-}
-
-void repeated_subscriptions_reuse_transport_channel() {
-  Coordinator coordinator;
-  int first_calls = 0;
-  int second_calls = 0;
-  require(coordinator.subscribe(
-              "sensor.same", "", [&](std::string) { first_calls++; }, 1u),
-          "first subscription should register");
-  require(coordinator.transport().subscriptions.size() == 1,
-          "first subscription should create a transport channel");
-  coordinator.transport().publish(0, "first");
-  require(first_calls == 1, "first subscription did not receive state");
-
-  coordinator.bump_generation(1u);
-  require(coordinator.subscribe(
-              "sensor.same", "", [&](std::string) { second_calls++; }, 1u),
-          "replacement subscription should register");
-  require(coordinator.transport().subscriptions.size() == 1,
-          "replacement subscription duplicated the transport channel");
-  coordinator.transport().publish(0, "second");
-  require(first_calls == 1 && second_calls == 1,
-          "replacement subscription did not exclusively receive state");
-
-  require(coordinator.subscribe(
-              "sensor.same", "friendly_name", [](std::string) {}, 1u),
-          "attribute subscription should register");
-  require(coordinator.transport().subscriptions.size() == 2,
-          "different attributes should use distinct transport channels");
 }
 
 }  // namespace
 
 int main() {
-  disconnected_read_flushes_after_reconnect();
-  low_memory_preserves_deferred_work();
-  duplicate_reads_fan_out_once();
-  reentrant_reads_are_deferred();
+  same_keys_reuse_transport_channel();
+  new_entity_rebuilds_transport_and_receives_state();
+  unrelated_transport_subscriptions_are_preserved();
+  repeated_gets_share_one_persistent_channel();
+  cached_get_replays_without_retaining_callback();
+  churn_stays_bounded_to_active_generation();
+  latest_generation_wins_during_pending_reset();
+  low_heap_rejects_new_work_without_losing_existing_channels();
   cancellation_is_safe_during_callback();
-  stale_generations_do_not_deliver();
-  attribute_requests_preserve_attribute();
-  repeated_subscriptions_reuse_transport_channel();
   return EXIT_SUCCESS;
 }

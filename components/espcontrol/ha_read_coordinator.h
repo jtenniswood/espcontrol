@@ -1,19 +1,23 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-// Instance-owned Home Assistant read state. Transport and HeapProbe are
-// compile-time policies so production calls remain direct and allocation-free
-// beyond the callback ownership already required by ESPHome's API.
+// Coordinates every EspControl Home Assistant read through one persistent
+// transport channel per entity/attribute. Generations describe the channels
+// used by the current card tree; replacing a generation can therefore recycle
+// stale ESPHome API subscriptions instead of retaining them for the life of the
+// device.
 template<typename Transport, typename HeapProbe>
 class HaReadCoordinator {
  public:
   using State = typename Transport::State;
   using Callback = typename Transport::Callback;
+  using Key = std::pair<std::string, std::string>;
 
   explicit HaReadCoordinator(Transport transport = Transport(), HeapProbe heap_probe = HeapProbe())
       : transport_(std::move(transport)), heap_probe_(std::move(heap_probe)) {}
@@ -28,6 +32,8 @@ class HaReadCoordinator {
   uint32_t &generation_ref() { return generation_; }
   size_t deferred_count() const { return deferred_.size(); }
   size_t subscription_count() const { return subscriptions_.size(); }
+  size_t channel_count() const { return channels_.size(); }
+  bool transport_reset_pending() const { return transport_reset_pending_; }
 
   bool get(const std::string &entity_id,
            const std::string &attribute,
@@ -38,33 +44,30 @@ class HaReadCoordinator {
     if (!available() || entity_id.empty() || !callback) return false;
     if (!heap_probe_.available("Home Assistant state request", min_free, min_largest)) return false;
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
-    if (callback_depth_ != 0 || !state_connected()) {
+    if (callback_depth_ != 0) {
       return queue(entity_id, attribute, std::move(callback_ref), has_attribute);
     }
-    dispatch_one(entity_id, attribute, std::move(callback_ref), has_attribute, generation_);
-    return true;
+    return attach_get(entity_id, has_attribute ? attribute : std::string(), std::move(callback_ref));
   }
 
   bool subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback,
-                 uint32_t scope) {
+                 uint32_t scope,
+                 size_t min_free,
+                 size_t min_largest) {
     if (!available() || entity_id.empty() || !callback) return false;
+    if (!heap_probe_.available("Home Assistant state subscription", min_free, min_largest)) return false;
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
-    subscriptions_.push_back({callback_ref, scope});
-    std::shared_ptr<SubscriptionChannel> channel = find_subscription_channel(
-        entity_id, attribute);
+    subscriptions_.push_back({callback_ref, scope, false});
+    std::shared_ptr<Channel> channel = ensure_channel(entity_id, attribute);
     if (!channel) {
-      channel = std::make_shared<SubscriptionChannel>();
-      channel->entity_id = entity_id;
-      channel->attribute = attribute;
-      subscription_channels_.push_back(channel);
-      transport_.subscribe(
-          entity_id, attribute,
-          [this, channel](State state) { invoke_channel(channel, state); });
+      *callback_ref = nullptr;
+      release_null_subscriptions();
+      return false;
     }
     release_expired_channel_callbacks(channel);
-    channel->callbacks.push_back(callback_ref);
+    channel->callbacks.push_back({callback_ref, false});
     transport_.replay(
         entity_id, attribute,
         [this, callback_ref](State state) { invoke(callback_ref, state); });
@@ -74,7 +77,8 @@ class HaReadCoordinator {
   void flush(size_t max_requests,
              size_t min_free,
              size_t min_largest) {
-    if (callback_depth_ != 0 || !state_connected()) return;
+    poll_transport_reset();
+    if (callback_depth_ != 0) return;
     size_t processed = 0;
     while (!deferred_.empty() && processed < max_requests) {
       DeferredRequest request = std::move(deferred_.front());
@@ -85,9 +89,10 @@ class HaReadCoordinator {
         deferred_.insert(deferred_.begin(), std::move(request));
         return;
       }
-      dispatch_many(
-          std::move(request.entity_id), std::move(request.attribute),
-          std::move(request.callbacks), request.has_attribute, request.generation);
+      const std::string attribute = request.has_attribute ? request.attribute : std::string();
+      for (auto &callback : request.callbacks) {
+        attach_get(request.entity_id, attribute, std::move(callback));
+      }
       processed++;
     }
     release_empty_deferred_storage();
@@ -108,8 +113,56 @@ class HaReadCoordinator {
   void bump_generation(uint32_t default_scope) {
     generation_++;
     if (generation_ == 0) generation_ = 1;
+    collecting_generation_ = true;
     reset_deferred();
     reset_subscriptions(default_scope);
+    for (const auto &channel : channels_) {
+      if (!channel) continue;
+      release_expired_channel_callbacks(channel);
+      channel->seen_generation = channel->callbacks.empty() ? 0 : generation_;
+    }
+  }
+
+  void commit_generation() {
+    collecting_generation_ = false;
+    bool key_set_changed = false;
+    for (const auto &channel : channels_) {
+      if (!channel) continue;
+      release_expired_channel_callbacks(channel);
+      const bool desired = channel_desired(channel);
+      if (desired != channel->transport_active) key_set_changed = true;
+    }
+    if (key_set_changed) start_transport_reset();
+    poll_transport_reset();
+  }
+
+  bool poll_transport_reset() {
+    if (!transport_reset_pending_) return true;
+    if (!transport_.poll_reset()) return false;
+
+    transport_.remove_owned_subscriptions();
+    for (const auto &channel : channels_) {
+      if (channel) channel->transport_active = false;
+    }
+    channels_.erase(
+        std::remove_if(channels_.begin(), channels_.end(),
+                       [this](const std::shared_ptr<Channel> &channel) {
+                         return !channel || !channel_desired(channel);
+                       }),
+        channels_.end());
+
+    std::vector<Key> active_keys;
+    active_keys.reserve(channels_.size());
+    for (const auto &channel : channels_) {
+      active_keys.push_back({channel->entity_id, channel->attribute});
+      transport_.subscribe(
+          channel->entity_id, channel->attribute,
+          [this, channel](State state) { invoke_channel(channel, state); });
+      channel->transport_active = true;
+    }
+    transport_.prune_cache(active_keys);
+    transport_reset_pending_ = false;
+    return true;
   }
 
  private:
@@ -124,15 +177,60 @@ class HaReadCoordinator {
   struct SubscriptionRef {
     std::shared_ptr<Callback> callback;
     uint32_t scope = 0;
+    bool once = false;
   };
 
-  struct SubscriptionChannel {
+  struct ChannelCallback {
+    std::weak_ptr<Callback> callback;
+    bool once = false;
+  };
+
+  struct Channel {
     std::string entity_id;
     std::string attribute;
-    std::vector<std::weak_ptr<Callback>> callbacks;
+    std::vector<ChannelCallback> callbacks;
+    uint32_t seen_generation = 0;
+    bool transport_active = false;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
+
+  bool attach_get(const std::string &entity_id,
+                  const std::string &attribute,
+                  std::shared_ptr<Callback> callback_ref) {
+    std::shared_ptr<Channel> channel = ensure_channel(entity_id, attribute);
+    if (!channel) return false;
+
+    bool replayed = false;
+    transport_.replay(
+        entity_id, attribute,
+        [this, callback_ref, &replayed](State state) {
+          replayed = true;
+          invoke(callback_ref, state);
+        });
+    if (replayed) return true;
+
+    subscriptions_.push_back({callback_ref, 0, true});
+    release_expired_channel_callbacks(channel);
+    channel->callbacks.push_back({callback_ref, true});
+    return true;
+  }
+
+  std::shared_ptr<Channel> ensure_channel(const std::string &entity_id,
+                                          const std::string &attribute) {
+    std::shared_ptr<Channel> channel = find_channel(entity_id, attribute);
+    if (!channel) {
+      channel = std::make_shared<Channel>();
+      channel->entity_id = entity_id;
+      channel->attribute = attribute;
+      channel->seen_generation = generation_;
+      channels_.push_back(channel);
+      if (!collecting_generation_) start_transport_reset();
+    } else {
+      channel->seen_generation = generation_;
+    }
+    return channel;
+  }
 
   bool queue(const std::string &entity_id,
              const std::string &attribute,
@@ -152,33 +250,6 @@ class HaReadCoordinator {
     return true;
   }
 
-  void dispatch_one(std::string entity_id,
-                    std::string attribute,
-                    std::shared_ptr<Callback> callback,
-                    bool has_attribute,
-                    uint32_t generation) {
-    transport_.get(
-        std::move(entity_id), has_attribute ? std::move(attribute) : std::string(),
-        [this, callback, generation](State state) {
-          if (generation == generation_) invoke(callback, state);
-        });
-  }
-
-  void dispatch_many(std::string entity_id,
-                     std::string attribute,
-                     std::vector<std::shared_ptr<Callback>> callbacks,
-                     bool has_attribute,
-                     uint32_t generation) {
-    auto callback_refs =
-        std::make_shared<std::vector<std::shared_ptr<Callback>>>(std::move(callbacks));
-    transport_.get(
-        std::move(entity_id), has_attribute ? std::move(attribute) : std::string(),
-        [this, callback_refs, generation](State state) {
-          if (generation != generation_) return;
-          for (const auto &callback : *callback_refs) invoke(callback, state);
-        });
-  }
-
   void invoke(const std::shared_ptr<Callback> &callback, State state) {
     if (!callback || !*callback) return;
     callback_depth_++;
@@ -191,60 +262,69 @@ class HaReadCoordinator {
     }
   }
 
-  std::shared_ptr<SubscriptionChannel> find_subscription_channel(
-      const std::string &entity_id, const std::string &attribute) {
-    for (const auto &channel : subscription_channels_) {
-      if (channel && channel->entity_id == entity_id &&
-          channel->attribute == attribute) {
+  std::shared_ptr<Channel> find_channel(const std::string &entity_id,
+                                        const std::string &attribute) {
+    for (const auto &channel : channels_) {
+      if (channel && channel->entity_id == entity_id && channel->attribute == attribute) {
         return channel;
       }
     }
     return nullptr;
   }
 
-  void release_expired_channel_callbacks(
-      const std::shared_ptr<SubscriptionChannel> &channel) {
-    if (!channel) return;
-    size_t write_index = 0;
-    for (size_t read_index = 0; read_index < channel->callbacks.size(); read_index++) {
-      std::shared_ptr<Callback> callback = channel->callbacks[read_index].lock();
-      if (!callback || !*callback) continue;
-      if (write_index != read_index) {
-        channel->callbacks[write_index] = channel->callbacks[read_index];
-      }
-      write_index++;
-    }
-    channel->callbacks.resize(write_index);
-    if (channel->callbacks.empty()) {
-      std::vector<std::weak_ptr<Callback>>().swap(channel->callbacks);
-    }
+  bool channel_desired(const std::shared_ptr<Channel> &channel) const {
+    return channel && (channel->seen_generation == generation_ || !channel->callbacks.empty());
   }
 
-  void invoke_channel(const std::shared_ptr<SubscriptionChannel> &channel,
-                      State state) {
+  void release_expired_channel_callbacks(const std::shared_ptr<Channel> &channel) {
+    if (!channel) return;
+    channel->callbacks.erase(
+        std::remove_if(channel->callbacks.begin(), channel->callbacks.end(),
+                       [](const ChannelCallback &entry) {
+                         std::shared_ptr<Callback> callback = entry.callback.lock();
+                         return !callback || !*callback;
+                       }),
+        channel->callbacks.end());
+    if (channel->callbacks.empty()) std::vector<ChannelCallback>().swap(channel->callbacks);
+  }
+
+  void invoke_channel(const std::shared_ptr<Channel> &channel, State state) {
     if (!channel) return;
     const size_t callback_count = channel->callbacks.size();
     for (size_t index = 0; index < callback_count; index++) {
-      std::weak_ptr<Callback> weak_callback = channel->callbacks[index];
-      std::shared_ptr<Callback> callback = weak_callback.lock();
-      if (callback && *callback) invoke(callback, state);
+      const ChannelCallback entry = channel->callbacks[index];
+      std::shared_ptr<Callback> callback = entry.callback.lock();
+      if (!callback || !*callback) continue;
+      invoke(callback, state);
+      if (entry.once && callback && *callback) *callback = nullptr;
     }
     release_expired_channel_callbacks(channel);
+    release_null_subscriptions();
   }
 
   void release_subscriptions(uint32_t scope) {
-    size_t write_index = 0;
-    for (size_t read_index = 0; read_index < subscriptions_.size(); read_index++) {
-      SubscriptionRef &ref = subscriptions_[read_index];
-      if (scope == 0 || (ref.scope & scope) != 0) {
-        if (ref.callback && *ref.callback) *ref.callback = nullptr;
-        continue;
-      }
-      if (write_index != read_index) subscriptions_[write_index] = std::move(ref);
-      write_index++;
+    for (auto &ref : subscriptions_) {
+      if (!ref.callback || !*ref.callback) continue;
+      if (scope == 0 || (ref.scope & scope) != 0) *ref.callback = nullptr;
     }
-    subscriptions_.resize(write_index);
+    release_null_subscriptions();
+    for (const auto &channel : channels_) release_expired_channel_callbacks(channel);
+  }
+
+  void release_null_subscriptions() {
+    subscriptions_.erase(
+        std::remove_if(subscriptions_.begin(), subscriptions_.end(),
+                       [](const SubscriptionRef &ref) {
+                         return !ref.callback || !*ref.callback;
+                       }),
+        subscriptions_.end());
     if (subscriptions_.empty()) std::vector<SubscriptionRef>().swap(subscriptions_);
+  }
+
+  void start_transport_reset() {
+    if (transport_reset_pending_) return;
+    transport_.begin_reset();
+    transport_reset_pending_ = true;
   }
 
   void release_empty_deferred_storage() {
@@ -256,8 +336,10 @@ class HaReadCoordinator {
   HeapProbe heap_probe_;
   std::vector<DeferredRequest> deferred_;
   std::vector<SubscriptionRef> subscriptions_;
-  std::vector<std::shared_ptr<SubscriptionChannel>> subscription_channels_;
+  std::vector<std::shared_ptr<Channel>> channels_;
   uint32_t generation_ = 1;
   uint32_t pending_reset_mask_ = 0;
   uint8_t callback_depth_ = 0;
+  bool collecting_generation_ = false;
+  bool transport_reset_pending_ = false;
 };

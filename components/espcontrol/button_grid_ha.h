@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -98,6 +99,10 @@ inline void ha_state_cache_store(const std::string &entity_id,
     value->assign(state.c_str(), state.size());
     return;
   }
+  if (!ha_internal_heap_available(
+          "Home Assistant state cache",
+          HA_READ_INTERNAL_FREE_MIN_BYTES,
+          HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return;
   ha_state_cache().push_back({entity_id, attribute, std::string(state.c_str(), state.size())});
 }
 
@@ -108,20 +113,21 @@ struct EspHomeHaReadTransport {
   bool available() const { return ha_api_available(); }
   bool state_connected() const { return ha_api_state_connected(); }
 
-  void get(std::string entity_id, std::string attribute, Callback callback) {
-    esphome::api::global_api_server->get_home_assistant_state(
-        std::move(entity_id), std::move(attribute), std::move(callback));
-  }
-
   void subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback) {
-    esphome::api::global_api_server->subscribe_home_assistant_state(
+    auto *server = esphome::api::global_api_server;
+    if (server == nullptr) return;
+    const size_t before = server->get_state_subs().size();
+    server->subscribe_home_assistant_state(
         entity_id, attribute,
         [entity_id, attribute, callback](esphome::StringRef state) {
           ha_state_cache_store(entity_id, attribute, state);
           callback(state);
         });
+    if (server->get_state_subs().size() > before) {
+      owned_subscription_indices.push_back(server->get_state_subs().size() - 1);
+    }
   }
 
   void replay(const std::string &entity_id,
@@ -133,6 +139,55 @@ struct EspHomeHaReadTransport {
       callback(esphome::StringRef(*cached));
     }
   }
+
+  void begin_reset() {
+    reset_requested = true;
+    auto *server = esphome::api::global_api_server;
+    if (server == nullptr || !server->is_connected()) return;
+    esphome::api::DisconnectRequest request;
+    for (const auto &client : server->active_clients()) {
+      if (client && !client->is_marked_for_removal()) {
+        client->on_disconnect_request(request);
+      }
+    }
+  }
+
+  bool poll_reset() const {
+    if (!reset_requested) return true;
+    return !ha_api_connected();
+  }
+
+  void remove_owned_subscriptions() {
+    auto *server = esphome::api::global_api_server;
+    if (server != nullptr && !owned_subscription_indices.empty()) {
+      auto &subscriptions = const_cast<
+          std::vector<esphome::api::APIServer::HomeAssistantStateSubscription> &>(
+              server->get_state_subs());
+      std::sort(owned_subscription_indices.begin(), owned_subscription_indices.end(),
+                std::greater<size_t>());
+      for (size_t index : owned_subscription_indices) {
+        if (index < subscriptions.size()) subscriptions.erase(subscriptions.begin() + index);
+      }
+    }
+    std::vector<size_t>().swap(owned_subscription_indices);
+    reset_requested = false;
+  }
+
+  void prune_cache(const std::vector<std::pair<std::string, std::string>> &active_keys) {
+    auto &cache = ha_state_cache();
+    cache.erase(
+        std::remove_if(cache.begin(), cache.end(),
+                       [&active_keys](const HaStateCacheEntry &entry) {
+                         return std::find(active_keys.begin(), active_keys.end(),
+                                          std::make_pair(entry.entity_id, entry.attribute)) ==
+                                active_keys.end();
+                       }),
+        cache.end());
+    if (cache.empty()) std::vector<HaStateCacheEntry>().swap(cache);
+  }
+
+  std::vector<size_t> owned_subscription_indices;
+  bool reset_requested = false;
 };
 
 struct EspHomeHaHeapProbe {
@@ -167,6 +222,14 @@ inline void bump_ha_subscription_generation() {
       HA_SUBSCRIPTION_SCOPE_DEFAULT | HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
 }
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED 1
+
+inline void ha_commit_subscription_generation() {
+  ha_read_coordinator().commit_generation();
+}
+
+inline void ha_poll_subscription_refresh() {
+  ha_read_coordinator().poll_transport_reset();
+}
 
 inline void ha_flush_deferred_state_requests(size_t max_requests = 8) {
   ha_read_coordinator().flush(
@@ -262,7 +325,9 @@ inline bool ha_cancel_action_response_callback(uint32_t call_id, const char *err
 inline bool ha_subscribe_state(const std::string &entity_id,
                                HomeAssistantStateCallback callback,
                                uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  return ha_read_coordinator().subscribe(entity_id, std::string(), std::move(callback), scope);
+  return ha_read_coordinator().subscribe(
+      entity_id, std::string(), std::move(callback), scope,
+      HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES);
 }
 
 inline bool ha_get_state(const std::string &entity_id,
@@ -276,7 +341,9 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    const std::string &attribute,
                                    HomeAssistantStateCallback callback,
                                    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  return ha_read_coordinator().subscribe(entity_id, attribute, std::move(callback), scope);
+  return ha_read_coordinator().subscribe(
+      entity_id, attribute, std::move(callback), scope,
+      HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES);
 }
 
 inline bool ha_get_attribute(const std::string &entity_id,

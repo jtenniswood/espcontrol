@@ -89,6 +89,11 @@ api:
         todo_cancel_pending_request("api disconnected");
 
 interval:
+  - interval: 250ms
+    then:
+      - lambda: |-
+          ha_poll_subscription_refresh();
+
   - interval: 5s
     then:
       - lambda: |-
