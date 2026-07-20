@@ -309,10 +309,11 @@ class AsyncEventSourceResponse {
   AsyncEventSourceResponse(const AsyncWebServerRequest *request, esphome::web_server_idf::AsyncEventSource *server,
                            esphome::web_server::WebServer *ws);
 
-  void deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
+  bool deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
   void process_deferred_queue_();
   void process_buffer_();
   bool can_grow_event_storage_(size_t allocation_bytes, const char *stage);
+  void abort_low_memory_stream_(const char *stage);
 
   static void destroy(void *p);
   AsyncEventSource *server_;
