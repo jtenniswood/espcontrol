@@ -13,10 +13,6 @@ export function installAppEventsModule(): GlobalDescriptors {
             setConfigLocked(false);
             if (els.banner)
                 els.banner.className = "sp-banner";
-            els.root.querySelectorAll(".sp-apply-btn").forEach(function (this: any, btn?: any) {
-                btn.disabled = false;
-                btn.textContent = "Apply Configuration";
-            });
             clearTimeout(migrationTimer);
             migrationTimer = setTimeout(scheduleMigration, 5000);
             clearTimeout(sliderMigrationTimer);

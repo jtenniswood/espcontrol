@@ -2804,6 +2804,11 @@ async function assertEditSmoke(page, posts, errors) {
   const before = posts.length;
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
+  assert.strictEqual(
+    await page.locator(".sp-apply-bar, .sp-apply-btn").count(),
+    0,
+    "automatic configuration should not render an Apply control",
+  );
 
   await page.locator('.sp-main [data-slot="1"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -2869,6 +2874,17 @@ async function assertEditSmoke(page, posts, errors) {
     },
     "media card edit",
     before,
+  );
+
+  assert.strictEqual(
+    posts.slice(before).filter((post) => post.name === "Apply Configuration").length,
+    0,
+    "saving cards should not post the legacy Apply Configuration button",
+  );
+  assert.strictEqual(
+    await page.locator("#sp-app.sp-config-locked").count(),
+    0,
+    "automatic card saves should leave the editor unlocked",
   );
 
   assert.deepStrictEqual(

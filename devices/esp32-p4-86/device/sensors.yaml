@@ -181,6 +181,7 @@ script:
           grid_refresh_layout(slots, cfg,
             id(button_order).state,
             id(main_page)->obj);
+          id(clock_bar_apply).execute();
           if (id(config_apply_reconstruct)) {
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,
               id(button_order).state,

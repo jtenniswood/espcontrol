@@ -60,7 +60,7 @@ With the display connected to WiFi and paired with Home Assistant, you're ready 
 2. **Open that address in a browser** — for example, `http://espcontrol.local`. This opens the device's built-in web page.
 3. **Add your cards.** On the **Screen** tab, tap an empty slot and choose the card type you want. For example, a **Switch** card controls a Home Assistant entity, while a **Sensor** card displays a reading.
 4. **Adjust your settings.** On the **Settings** tab, set your active card colour, temperatures, screensaver timeout, brightness, and more.
-5. **That's it** — changes apply to the display automatically a few seconds after you make them. No restart needed.
+5. **That's it** — changes apply to the display automatically after a short delay. New Home Assistant entities and cover art may take a few extra seconds to appear, but the display does not restart.
 
 That's it — your panel is ready to use. See the [Setup](/features/setup) guide for a full walkthrough of every setting.
 
