@@ -38,6 +38,10 @@ async def to_code(config):
 
     comp_dir = os.path.dirname(os.path.abspath(__file__))
     comp_include_dir = comp_dir.replace("\\", "/")
+    cg.add_global(
+        cg.RawStatement('#include "esphome/components/espcontrol/espcontrol_app.h"'),
+        prepend=True,
+    )
     cg.add_build_flag(f"-I{comp_dir}")
     cg.add_global(cg.RawStatement(f'#include "{comp_include_dir}/clock_bar.h"'), prepend=True)
     cg.add_global(cg.RawStatement(f'#include "{comp_include_dir}/backlight.h"'), prepend=True)
