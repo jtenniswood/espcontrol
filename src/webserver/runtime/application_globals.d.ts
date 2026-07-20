@@ -87,6 +87,7 @@ declare global {
   var GENERATED_ICON_NAMES: any;
   var GRID_COLS: any;
   var GRID_ROWS: any;
+  var HA_DEFAULT_URL: any;
   var ICON_EXCEPTIONS: any;
   var ICON_NAMES: any;
   var ICON_OPTIONS: any;
@@ -556,6 +557,9 @@ declare global {
   var getTzId: any;
   var gridHasAny: any;
   var gridPreviewBlockedByRotationStartup: any;
+  var haDirectorySettings: any;
+  var haEntityNamesFromStates: any;
+  var haWebSocketUrl: any;
   var handleBtnClick: any;
   var handleDocumentSelectionMouseDown: any;
   var handleWebServerPingEvent: any;
@@ -914,6 +918,7 @@ declare global {
   var readNumberMeta: any;
   var refreshEntityDatalist: any;
   var refreshFirmwareVersion: any;
+  var refreshHaEntityDirectory: any;
   var refreshScreensaverTimeout: any;
   var registerButtonType: any;
   var registerCoverLikeCardType: any;
@@ -948,6 +953,7 @@ declare global {
   var renderFanControlTypeField: any;
   var renderFirmwareUpdateStatus: any;
   var renderFirmwareVersion: any;
+  var renderHaDirectoryStatus: any;
   var renderImageLabelSettings: any;
   var renderImageModalSettings: any;
   var renderInternalRelayField: any;
@@ -970,6 +976,7 @@ declare global {
   var sanitizeClimateRangeValue: any;
   var saveButtonConfig: any;
   var saveClockBarTemperatureSettings: any;
+  var saveHaDirectorySettings: any;
   var saveSubpageConfig: any;
   var saveSubpageEntity: any;
   var scaledCqw: any;
@@ -1044,6 +1051,7 @@ declare global {
   var setGarageConfirmationOptions: any;
   var setGarageLabelDisplayMode: any;
   var setGateLabelDisplayMode: any;
+  var setHaDirectoryStatus: any;
   var setImageIconEnabled: any;
   var setImageLabelEnabled: any;
   var setImageModalMode: any;

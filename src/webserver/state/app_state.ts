@@ -77,5 +77,6 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     clockBarTempRestoreEntities: [], subpages: {}, subpageRaw: {}, subpageSavePending: {}, editingSubpage: null,
     subpageSelectedSlots: [], subpageLastClicked: -1, clipboard: null, settingsDraft: null,
     entityPostPaths: {}, entityNames: {},
+    haEntityNames: {}, haDirectoryStatus: "", haDirectoryStatusKind: "",
   };
 }

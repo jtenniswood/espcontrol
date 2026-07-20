@@ -57,6 +57,17 @@ The setup page uses these card names and grouped modes on the device. For a quic
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
+### Entity Autocomplete (Optional)
+
+By default, entity fields only suggest entities already used on the panel. To have them suggest **every entity from your Home Assistant** as you type, open **Settings > System > Home Assistant Settings** on the panel's web page and fill in:
+
+- **Home Assistant URL** - where your browser can reach Home Assistant, for example `http://homeassistant.local:8123`. Use an `https://` address if your Home Assistant uses SSL.
+- **Access Token** - a long-lived access token, created in Home Assistant under your profile > **Security** > **Long-lived access tokens**.
+
+Once saved, the status line shows how many entities were found, and every entity field suggests matching entities with their friendly names as you type. Clear the token to turn the feature off.
+
+Privacy note: the URL and token are stored only in your browser and your browser talks to Home Assistant directly. Nothing is saved on the panel, and the token is not included in panel backups. Each browser you use needs its own copy of the token.
+
 Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
 For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).

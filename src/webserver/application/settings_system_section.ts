@@ -306,6 +306,40 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         haPortField.appendChild(haPortInput);
         homeAssistantSettingsBody.appendChild(haPortField);
         els.setCoverArtHomeAssistantPort = haPortInput;
+        var haDirectorySaved: any = haDirectorySettings();
+        var haDirUrlField: any = document.createElement("div");
+        haDirUrlField.className = "sp-field";
+        haDirUrlField.appendChild(fieldLabel("Home Assistant URL", "sp-set-ha-directory-url"));
+        var haDirUrlInput: any = textInput("sp-set-ha-directory-url", haDirectorySaved.url, "http://homeassistant.local:8123");
+        haDirUrlField.appendChild(haDirUrlInput);
+        homeAssistantSettingsBody.appendChild(haDirUrlField);
+        var haDirTokenField: any = document.createElement("div");
+        haDirTokenField.className = "sp-field";
+        haDirTokenField.appendChild(fieldLabel("Access Token (entity autocomplete)", "sp-set-ha-directory-token"));
+        var haDirTokenInput: any = document.createElement("input");
+        haDirTokenInput.className = "sp-input";
+        haDirTokenInput.id = "sp-set-ha-directory-token";
+        haDirTokenInput.type = "password";
+        haDirTokenInput.autocomplete = "off";
+        haDirTokenInput.value = haDirectorySaved.token;
+        haDirTokenInput.placeholder = "Long-lived access token";
+        haDirTokenField.appendChild(haDirTokenInput);
+        homeAssistantSettingsBody.appendChild(haDirTokenField);
+        var haDirHint: any = document.createElement("div");
+        haDirHint.className = "sp-fw-status";
+        haDirHint.textContent = "Optional: suggests your Home Assistant entities while typing. Stored in this browser only — never on the device.";
+        homeAssistantSettingsBody.appendChild(haDirHint);
+        var haDirStatus: any = document.createElement("div");
+        haDirStatus.className = "sp-fw-status";
+        homeAssistantSettingsBody.appendChild(haDirStatus);
+        els.haDirectoryStatus = haDirStatus;
+        renderHaDirectoryStatus();
+        function saveHaDirectoryInputs(this: any) {
+            saveHaDirectorySettings(haDirUrlInput.value, haDirTokenInput.value);
+            refreshHaEntityDirectory();
+        }
+        haDirUrlInput.addEventListener("change", saveHaDirectoryInputs);
+        haDirTokenInput.addEventListener("change", saveHaDirectoryInputs);
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
             backupCard: backupCard,
