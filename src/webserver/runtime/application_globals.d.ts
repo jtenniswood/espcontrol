@@ -199,6 +199,7 @@ declare global {
   var actionCardStateEntity: any;
   var actionCardStatePrecision: any;
   var actionCardStateUnit: any;
+  var clearActionModeOptions: any;
   var actionScriptConfirmationDefaultMessage: any;
   var actionScriptConfirmationEnabled: any;
   var actionScriptConfirmationMessage: any;
@@ -1222,6 +1223,7 @@ declare global {
   var copyCardBackgroundOptions: any;
   var countCardImageUsage: any;
   var deleteCardImage: any;
+  var deleteCardImageSafely: any;
   var listCardImages: any;
   var normalizeCardBackgroundImageId: any;
   var renameCardImage: any;

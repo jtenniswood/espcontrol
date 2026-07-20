@@ -64,6 +64,7 @@ struct GridConfig {
 };
 
 #include "button_grid_image.h"
+#include "button_grid_card_background.h"
 
 inline void grid_log_memory(const char *stage) {
 #ifdef ESP_PLATFORM

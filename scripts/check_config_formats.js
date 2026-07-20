@@ -526,6 +526,26 @@ assert(
   hooks.normalizeActionOptions(backgroundOption + ",confirm_on=true", "script.turn_on").includes(backgroundOption),
   "action option normalization preserves card backgrounds"
 );
+const optionSelectActionWithBackground = {
+  type: "action",
+  sensor: "input_select.select_option",
+  options: backgroundOption + ",state_entity=sensor.stale",
+};
+assert.strictEqual(
+  hooks.clearActionModeOptions(optionSelectActionWithBackground),
+  backgroundOption,
+  "switching to option-select mode preserves the card background"
+);
+const localActionWithBackground = {
+  type: "action",
+  sensor: "local",
+  options: backgroundOption + ",state_entity=sensor.stale",
+};
+assert.strictEqual(
+  hooks.clearActionModeOptions(localActionWithBackground),
+  backgroundOption,
+  "switching to local-action mode preserves the card background"
+);
 assert(
   hooks.normalizeGarageOptions(backgroundOption + ",label_display=status", "").includes(backgroundOption),
   "garage option normalization preserves card backgrounds"

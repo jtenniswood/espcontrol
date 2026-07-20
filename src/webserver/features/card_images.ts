@@ -78,6 +78,48 @@ export interface CardImageBackupDependencies {
   setImageId(button: CardConfig, id: string): void;
 }
 
+export interface CardImageReferenceSnapshot {
+  readonly changed: number;
+  restore(): void;
+  persist(): void;
+}
+
+export interface CardImageDeletionDependencies {
+  waitForPendingPosts(): Promise<unknown>;
+  resetPostError(): void;
+  clearReferences(): CardImageReferenceSnapshot;
+  postsHadError(): boolean;
+  deleteImage(): Promise<void>;
+  rerender(): void;
+}
+
+export const CARD_IMAGE_SAVE_FAILURE_MESSAGE =
+  "Card changes could not be saved, so the image was not deleted.";
+
+export async function deleteCardImageConfigurationFirst(
+  dependencies: CardImageDeletionDependencies,
+): Promise<boolean> {
+  await dependencies.waitForPendingPosts();
+  dependencies.resetPostError();
+  const snapshot = dependencies.clearReferences();
+  await dependencies.waitForPendingPosts();
+  if (dependencies.postsHadError()) {
+    snapshot.restore();
+    dependencies.resetPostError();
+    snapshot.persist();
+    await dependencies.waitForPendingPosts();
+    dependencies.rerender();
+    throw new Error(CARD_IMAGE_SAVE_FAILURE_MESSAGE);
+  }
+  try {
+    await dependencies.deleteImage();
+  } catch (error) {
+    dependencies.rerender();
+    throw error;
+  }
+  return true;
+}
+
 interface CardImageListPayload {
   readonly available?: unknown;
   readonly requires_usb_flash?: unknown;

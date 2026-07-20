@@ -1,4 +1,5 @@
 import {
+  deleteCardImageConfigurationFirst,
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
   type CardImageItem,
@@ -73,6 +74,23 @@ export function installCardImageServiceModule(): GlobalDescriptors {
         return cardImagesFeature.delete(id);
     }
 
+    function deleteCardImageSafely(this: any, id?: any) {
+        id = normalizeCardBackgroundImageId(id);
+        if (!id)
+            return Promise.reject(new Error("Invalid card image ID."));
+        return deleteCardImageConfigurationFirst({
+            waitForPendingPosts: function () { return postQueueIdle(); },
+            resetPostError: function () { resetPostQueueError(); },
+            clearReferences: function () { return clearCardImageReferences(id); },
+            postsHadError: function () { return postQueueHadError(); },
+            deleteImage: function () { return deleteCardImage(id); },
+            rerender: function () {
+                renderPreview();
+                renderButtonSettings();
+            },
+        });
+    }
+
     return {
         "_cardImageLibrary": liveGlobal(
             () => cardImagesFeature.cachedImages(),
@@ -96,5 +114,6 @@ export function installCardImageServiceModule(): GlobalDescriptors {
         "uploadCardImage": staticGlobal(uploadCardImage),
         "renameCardImage": staticGlobal(renameCardImage),
         "deleteCardImage": staticGlobal(deleteCardImage),
+        "deleteCardImageSafely": staticGlobal(deleteCardImageSafely),
     };
 }

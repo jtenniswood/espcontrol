@@ -142,6 +142,12 @@ class CardImageStore {
     uint32_t crc32;
   };
 
+  struct CardImageIndexEntry {
+    uint32_t offset;
+    char name[48];
+  };
+  static_assert(sizeof(CardImageIndexEntry) == 52, "Card image index entry must remain stable");
+
   struct CardImageCacheHeader {
     uint32_t magic;
     uint32_t version;
@@ -160,8 +166,10 @@ class CardImageStore {
   size_t index_slot_offset_(size_t slot);
   bool load_index_();
   bool read_index_slot_(size_t slot, CardImageIndexHeader &header,
-                        std::vector<uint32_t> &offsets);
-  bool persist_index_();
+                        std::vector<uint32_t> &offsets,
+                        std::vector<std::string> &names);
+  bool persist_index_(int name_override_index = -1,
+                      const std::string *name_override = nullptr);
   bool index_region_available_() const;
   void scan_legacy_index_();
   void ensure_index_();
@@ -196,6 +204,7 @@ class CardImageStore {
   size_t active_index_slot_{0};
   std::vector<CardImageInfo> images_{};
   std::vector<CardImageCacheInfo> caches_{};
+  std::vector<std::pair<size_t, std::string>> recovered_index_names_{};
   struct RamImageCache {
     std::string id;
     uint32_t source_crc32{0};

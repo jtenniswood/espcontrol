@@ -194,6 +194,7 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             actionCardStatePrecision: actionCardStatePrecision,
             actionCardStateDisplayMode: actionCardStateDisplayMode,
             actionCardIsLocal: actionCardIsLocal,
+            clearActionModeOptions: clearActionModeOptions,
             actionScriptConfirmationEnabled: actionScriptConfirmationEnabled,
             actionScriptConfirmationMessage: actionScriptConfirmationMessage,
             actionScriptConfirmationYesText: actionScriptConfirmationYesText,

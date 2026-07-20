@@ -41,9 +41,6 @@ static constexpr int JPEG_SCANLINE_BATCH = 8;
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 static jpeg_decoder_handle_t p4_jpeg_decoder() {
   static jpeg_decoder_handle_t decoder = nullptr;
-  static bool initialization_attempted = false;
-  if (!initialization_attempted) {
-    initialization_attempted = true;
   static bool attempted = false;
   if (!attempted) {
     attempted = true;
@@ -131,16 +128,6 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   }
   if (scaled == nullptr) return false;
 
-  uint32_t crop_width = source_width;
-  uint32_t crop_height = source_height;
-  if (static_cast<uint64_t>(source_width) * target_height >
-      static_cast<uint64_t>(source_height) * target_width) {
-    crop_width = std::max<uint32_t>(1, static_cast<uint64_t>(source_height) * target_width / target_height);
-  } else {
-    crop_height = std::max<uint32_t>(1, static_cast<uint64_t>(source_width) * target_height / target_width);
-  }
-  uint32_t crop_x = (source_width - crop_width) / 2;
-  uint32_t crop_y = (source_height - crop_height) / 2;
   static constexpr uint32_t PPA_SCALE_FRACTIONAL_STEPS = 16;
   static constexpr uint32_t PPA_MAX_SCALE_UNITS = 4095;
   P4CoverScalePlan plan = p4_cover_scale_plan(
@@ -156,10 +143,6 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   config.in.buffer = source;
   config.in.pic_w = source_stride_pixels;
   config.in.pic_h = source_height;
-  config.in.block_w = crop_width;
-  config.in.block_h = crop_height;
-  config.in.block_offset_x = crop_x;
-  config.in.block_offset_y = crop_y;
   config.in.block_w = plan.crop_width;
   config.in.block_h = plan.crop_height;
   config.in.block_offset_x = plan.crop_x;
@@ -173,8 +156,6 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   config.out.block_offset_y = 0;
   config.out.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
   config.rotation_angle = PPA_SRM_ROTATION_ANGLE_0;
-  config.scale_x = static_cast<float>(target_width) / crop_width;
-  config.scale_y = static_cast<float>(target_height) / crop_height;
   config.scale_x = static_cast<float>(plan.scale_units) / PPA_SCALE_FRACTIONAL_STEPS;
   config.scale_y = config.scale_x;
   config.mode = PPA_TRANS_MODE_BLOCKING;
@@ -214,7 +195,6 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
     return 0;
   }
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
-  if (!this->decode_started_) {
   if (!this->decode_started_ && this->image_->hardware_acceleration_enabled()) {
     int hardware_result = this->decode_hardware_(buffer, size);
     if (hardware_result != 0) return hardware_result;
@@ -232,8 +212,6 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
-  jpeg_decoder_handle_t decoder = p4_jpeg_decoder();
-  if (decoder == nullptr) return 0;
   if (!p4_jpeg_hardware_target_supported(
         this->image_->image_type() == image::ImageType::IMAGE_TYPE_RGB565)) {
     p4_release_jpeg_workspace();
@@ -248,14 +226,6 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   jpeg_decode_picture_info_t info{};
   if (jpeg_decoder_get_info(buffer, size, &info) != ESP_OK || info.width == 0 || info.height == 0 ||
       info.sample_method == JPEG_DOWN_SAMPLING_GRAY) {
-    return 0;
-  }
-
-  uint32_t mcu_width = info.sample_method == JPEG_DOWN_SAMPLING_YUV444 ? 8 : 16;
-  uint32_t mcu_height = info.sample_method == JPEG_DOWN_SAMPLING_YUV420 ? 16 : 8;
-  uint32_t padded_width = align_up(info.width, mcu_width);
-  uint32_t padded_height = align_up(info.height, mcu_height);
-    p4_release_jpeg_workspace();
     return 0;
   }
 
@@ -300,23 +270,6 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   bool ppa_scaled = false;
   if (target_width > 0 && target_height > 0 &&
       this->image_->get_resize_mode() == ImageResizeMode::COVER &&
-      (target_width != static_cast<int>(info.width) || target_height != static_cast<int>(info.height))) {
-    ppa_scaled = p4_scale_rgb565(workspace.output, padded_width, info.width, info.height,
-                                 target_width, target_height, workspace.scaled, workspace.scaled_capacity);
-  }
-  if (ppa_scaled) {
-    if (!this->set_size(target_width, target_height)) return DECODE_ERROR_OUT_OF_MEMORY;
-    this->draw_rgb565_frame(target_width, target_height, static_cast<size_t>(target_width) * 2,
-                            workspace.scaled);
-  } else {
-    if (!this->set_size(info.width, info.height)) return DECODE_ERROR_OUT_OF_MEMORY;
-    this->draw_rgb565_frame(info.width, info.height, static_cast<size_t>(padded_width) * 2,
-                            workspace.output);
-  }
-
-  this->decoded_bytes_ = size;
-  ESP_LOGI(TAG, "ESP32-P4 hardware JPEG decoded %ux%u in %lu ms (PPA scale: %s)", info.width, info.height,
-           static_cast<unsigned long>(millis() - started_at), ppa_scaled ? "yes" : "no");
       (target_width != static_cast<int>(info.width) ||
        target_height != static_cast<int>(info.height))) {
     ppa_scaled = p4_scale_rgb565(workspace.output, padded_width, info.width, info.height,

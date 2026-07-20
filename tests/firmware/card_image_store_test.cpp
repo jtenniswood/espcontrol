@@ -84,12 +84,48 @@ size_t newest_index_offset() {
   return PARTITION_SIZE - CARD_IMAGE_FLASH_SECTOR_SIZE;
 }
 
+size_t index_slot_offset(size_t slot) {
+  return PARTITION_SIZE -
+         (CARD_IMAGE_INDEX_SECTORS - slot) * CARD_IMAGE_FLASH_SECTOR_SIZE;
+}
+
 uint32_t index_generation(size_t slot) {
   StoredIndexHeader header{};
   size_t offset = PARTITION_SIZE -
                   (CARD_IMAGE_INDEX_SECTORS - slot) * CARD_IMAGE_FLASH_SECTOR_SIZE;
   std::memcpy(&header, flash.bytes.data() + offset, sizeof(header));
   return header.generation;
+}
+
+size_t next_index_offset() {
+  return index_generation(0) > index_generation(1)
+           ? index_slot_offset(1) : index_slot_offset(0);
+}
+
+void write_legacy_index(size_t slot, uint32_t generation,
+                        const std::vector<uint32_t> &offsets) {
+  std::vector<uint8_t> sector(CARD_IMAGE_FLASH_SECTOR_SIZE, 0xFF);
+  auto *header = reinterpret_cast<StoredIndexHeader *>(sector.data());
+  header->magic = 0x43494E58;
+  header->version = 1;
+  header->generation = generation;
+  header->count = static_cast<uint32_t>(offsets.size());
+  auto *stored_offsets = reinterpret_cast<uint32_t *>(sector.data() + sizeof(*header));
+  std::memcpy(stored_offsets, offsets.data(), offsets.size() * sizeof(uint32_t));
+  uint32_t crc = 0xFFFFFFFFu;
+  auto update = [&crc](const uint8_t *data, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+      crc ^= data[i];
+      for (int bit = 0; bit < 8; bit++) {
+        crc = (crc >> 1) ^ ((crc & 1) ? 0xEDB88320u : 0u);
+      }
+    }
+  };
+  update(reinterpret_cast<const uint8_t *>(&header->generation), sizeof(header->generation));
+  update(reinterpret_cast<const uint8_t *>(&header->count), sizeof(header->count));
+  update(reinterpret_cast<const uint8_t *>(stored_offsets), offsets.size() * sizeof(uint32_t));
+  header->crc32 = crc ^ 0xFFFFFFFFu;
+  std::memcpy(flash.bytes.data() + index_slot_offset(slot), sector.data(), sector.size());
 }
 
 size_t data_capacity() {
@@ -173,6 +209,82 @@ void test_failed_index_write_rolls_back_upload() {
   }
   TestCardImageStore rebooted;
   expect(rebooted.list().empty(), "failed commit must not leave a visible image");
+}
+
+void test_failed_journal_erase_retains_original_name() {
+  flash.reset();
+  std::string id;
+  {
+    TestCardImageStore store;
+    CardImageInfo uploaded = upload(store);
+    id = uploaded.id;
+    flash.fail_erase_at = next_index_offset();
+    CardImageInfo ignored;
+    expect(store.rename(id, "Unsafe rename", ignored) == ESP_FAIL,
+           "journal erase failure should fail rename");
+    flash.fail_erase_at.reset();
+    expect(store.list()[0].name == id, "failed erase should retain the in-memory name");
+  }
+  TestCardImageStore rebooted;
+  expect(rebooted.list()[0].name == id, "failed erase should retain the persisted name");
+}
+
+void test_failed_journal_write_retains_original_name() {
+  flash.reset();
+  std::string id;
+  {
+    TestCardImageStore store;
+    CardImageInfo uploaded = upload(store);
+    id = uploaded.id;
+    flash.fail_write_at = next_index_offset();
+    CardImageInfo ignored;
+    expect(store.rename(id, "Unsafe rename", ignored) == ESP_FAIL,
+           "journal write failure should fail rename");
+    flash.fail_write_at.reset();
+    expect(store.list()[0].name == id, "failed write should retain the in-memory name");
+  }
+  TestCardImageStore rebooted;
+  expect(rebooted.list()[0].name == id, "failed write should retain the persisted name");
+}
+
+void test_rename_survives_one_damaged_journal_slot() {
+  flash.reset();
+  std::string id;
+  {
+    TestCardImageStore store;
+    id = upload(store).id;
+    CardImageInfo renamed;
+    expect(store.rename(id, "Journal name", renamed) == ESP_OK, "rename should commit metadata");
+  }
+  flash.corrupt(index_slot_offset(1));
+  TestCardImageStore rebooted;
+  auto images = rebooted.list();
+  expect(images.size() == 1 && images[0].name == "Journal name",
+         "the surviving journal slot should preserve rename metadata");
+}
+
+void test_legacy_index_migrates_on_rename() {
+  flash.reset();
+  std::string id;
+  size_t offset = 0;
+  {
+    TestCardImageStore store;
+    CardImageInfo uploaded = upload(store);
+    id = uploaded.id;
+    offset = uploaded.offset;
+  }
+  write_legacy_index(0, 10, {static_cast<uint32_t>(offset)});
+  write_legacy_index(1, 11, {static_cast<uint32_t>(offset)});
+  {
+    TestCardImageStore migrated;
+    expect(migrated.list()[0].name == id, "legacy index should fall back to the image header name");
+    CardImageInfo renamed;
+    expect(migrated.rename(id, "Migrated name", renamed) == ESP_OK,
+           "legacy index should migrate when metadata changes");
+  }
+  TestCardImageStore rebooted;
+  expect(rebooted.list()[0].name == "Migrated name",
+         "the migrated metadata journal should survive reboot");
 }
 
 void test_failed_record_erase_stops_upload() {
@@ -328,6 +440,10 @@ int main() {
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();
+  test_failed_journal_erase_retains_original_name();
+  test_failed_journal_write_retains_original_name();
+  test_rename_survives_one_damaged_journal_slot();
+  test_legacy_index_migrates_on_rename();
   test_failed_record_erase_stops_upload();
   test_failed_payload_write_is_not_committed();
   test_corrupt_latest_index_recovers_from_records();

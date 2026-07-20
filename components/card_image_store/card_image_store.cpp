@@ -17,7 +17,8 @@ namespace esphome::card_image_store {
 static const char *const TAG = "card_image_store";
 static constexpr uint32_t CARD_IMAGE_MAGIC = 0x43494D47;  // CIMG
 static constexpr uint32_t CARD_IMAGE_INDEX_MAGIC = 0x43494E58;  // CINX
-static constexpr uint32_t CARD_IMAGE_INDEX_VERSION = 1;
+static constexpr uint32_t CARD_IMAGE_INDEX_VERSION_LEGACY = 1;
+static constexpr uint32_t CARD_IMAGE_INDEX_VERSION = 2;
 static constexpr uint32_t CARD_IMAGE_CACHE_MAGIC = 0x4354484D;  // CTHM
 static constexpr uint32_t CARD_IMAGE_CACHE_VERSION = 1;
 static constexpr size_t CARD_IMAGE_RAM_CACHE_MAX_BYTES = 1536 * 1024;
@@ -199,38 +200,63 @@ CardImageCacheInfo CardImageStore::cache_info_from_header_(const CardImageCacheH
 }
 
 bool CardImageStore::read_index_slot_(size_t slot, CardImageIndexHeader &header,
-                                      std::vector<uint32_t> &offsets) {
+                                      std::vector<uint32_t> &offsets,
+                                      std::vector<std::string> &names) {
   const esp_partition_t *partition = this->partition_();
   if (partition == nullptr || slot >= CARD_IMAGE_INDEX_SECTORS) return false;
   size_t slot_offset = this->index_slot_offset_(slot);
   if (esp_partition_read(partition, slot_offset, &header, sizeof(header)) != ESP_OK) return false;
-  size_t max_entries = (CARD_IMAGE_FLASH_SECTOR_SIZE - sizeof(header)) / sizeof(uint32_t);
-  if (header.magic != CARD_IMAGE_INDEX_MAGIC || header.version != CARD_IMAGE_INDEX_VERSION ||
-      header.count > max_entries) {
+  if (header.magic != CARD_IMAGE_INDEX_MAGIC ||
+      (header.version != CARD_IMAGE_INDEX_VERSION_LEGACY &&
+       header.version != CARD_IMAGE_INDEX_VERSION)) {
+    return false;
+  }
+  size_t entry_size = header.version == CARD_IMAGE_INDEX_VERSION
+                        ? sizeof(CardImageIndexEntry) : sizeof(uint32_t);
+  size_t max_entries = (CARD_IMAGE_FLASH_SECTOR_SIZE - sizeof(header)) / entry_size;
+  if (header.count > max_entries) {
     return false;
   }
   offsets.resize(header.count);
-  if (!offsets.empty() &&
-      esp_partition_read(partition, slot_offset + sizeof(header), offsets.data(),
-                         offsets.size() * sizeof(uint32_t)) != ESP_OK) {
-    return false;
+  names.assign(header.count, "");
+  std::vector<CardImageIndexEntry> entries;
+  const uint8_t *payload = nullptr;
+  size_t payload_size = header.count * entry_size;
+  if (header.version == CARD_IMAGE_INDEX_VERSION) {
+    entries.resize(header.count);
+    if (!entries.empty() &&
+        esp_partition_read(partition, slot_offset + sizeof(header), entries.data(),
+                           payload_size) != ESP_OK) {
+      return false;
+    }
+    for (size_t i = 0; i < entries.size(); i++) {
+      if (entries[i].name[sizeof(entries[i].name) - 1] != '\0') return false;
+      offsets[i] = entries[i].offset;
+      names[i] = normalize_name(entries[i].name);
+    }
+    payload = reinterpret_cast<const uint8_t *>(entries.data());
+  } else {
+    if (!offsets.empty() &&
+        esp_partition_read(partition, slot_offset + sizeof(header), offsets.data(),
+                           payload_size) != ESP_OK) {
+      return false;
+    }
+    payload = reinterpret_cast<const uint8_t *>(offsets.data());
   }
   uint32_t crc = 0xFFFFFFFFu;
   crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(&header.generation), sizeof(header.generation));
   crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(&header.count), sizeof(header.count));
-  if (!offsets.empty()) {
-    crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(offsets.data()),
-                        offsets.size() * sizeof(uint32_t));
-  }
+  if (payload_size > 0) crc = crc32_update_(crc, payload, payload_size);
   return (crc ^ 0xFFFFFFFFu) == header.crc32;
 }
 
 bool CardImageStore::load_index_() {
   CardImageIndexHeader headers[CARD_IMAGE_INDEX_SECTORS]{};
   std::vector<uint32_t> offsets[CARD_IMAGE_INDEX_SECTORS];
+  std::vector<std::string> names[CARD_IMAGE_INDEX_SECTORS];
   bool valid[CARD_IMAGE_INDEX_SECTORS]{};
   for (size_t slot = 0; slot < CARD_IMAGE_INDEX_SECTORS; slot++) {
-    valid[slot] = this->read_index_slot_(slot, headers[slot], offsets[slot]);
+    valid[slot] = this->read_index_slot_(slot, headers[slot], offsets[slot], names[slot]);
   }
   // Preserve the newest readable journal position even when recovery must scan
   // the data records. The rebuilt index must be written to the other slot with
@@ -243,7 +269,18 @@ bool CardImageStore::load_index_() {
   }
   // One valid slot means the journal is degraded. Rebuild it by scanning the
   // data records instead of silently accepting a potentially stale index.
-  if (!valid[0] || !valid[1]) return false;
+  if (!valid[0] || !valid[1]) {
+    this->recovered_index_names_.clear();
+    size_t surviving = valid[1] ? 1 : 0;
+    if (valid[surviving]) {
+      for (size_t i = 0; i < offsets[surviving].size(); i++) {
+        if (!names[surviving][i].empty()) {
+          this->recovered_index_names_.push_back({offsets[surviving][i], names[surviving][i]});
+        }
+      }
+    }
+    return false;
+  }
 
   size_t first = valid[1] && (!valid[0] || headers[1].generation > headers[0].generation) ? 1 : 0;
   size_t order[CARD_IMAGE_INDEX_SECTORS] = {first, 1 - first};
@@ -253,7 +290,8 @@ bool CardImageStore::load_index_() {
     std::vector<CardImageCacheInfo> loaded_caches;
     loaded.reserve(offsets[candidate].size());
     bool records_valid = true;
-    for (uint32_t raw_offset : offsets[candidate]) {
+    for (size_t entry_index = 0; entry_index < offsets[candidate].size(); entry_index++) {
+      uint32_t raw_offset = offsets[candidate][entry_index];
       size_t offset = raw_offset;
       uint32_t magic = 0;
       if ((offset % CARD_IMAGE_FLASH_SECTOR_SIZE) != 0 || offset >= this->data_capacity_() ||
@@ -269,7 +307,9 @@ bool CardImageStore::load_index_() {
           records_valid = false;
           break;
         }
-        loaded.push_back(this->info_from_header_(record, offset));
+        CardImageInfo info = this->info_from_header_(record, offset);
+        if (!names[candidate][entry_index].empty()) info.name = names[candidate][entry_index];
+        loaded.push_back(std::move(info));
       } else if (magic == CARD_IMAGE_CACHE_MAGIC) {
         CardImageCacheHeader record{};
         if (esp_partition_read(this->partition_(), offset, &record, sizeof(record)) != ESP_OK ||
@@ -310,10 +350,12 @@ bool CardImageStore::index_region_available_() const {
   return true;
 }
 
-bool CardImageStore::persist_index_() {
+bool CardImageStore::persist_index_(int name_override_index,
+                                    const std::string *name_override) {
   const esp_partition_t *partition = this->partition_();
   if (partition == nullptr || !this->index_region_available_()) return false;
-  size_t max_entries = (CARD_IMAGE_FLASH_SECTOR_SIZE - sizeof(CardImageIndexHeader)) / sizeof(uint32_t);
+  size_t max_entries = (CARD_IMAGE_FLASH_SECTOR_SIZE - sizeof(CardImageIndexHeader)) /
+                       sizeof(CardImageIndexEntry);
   size_t entry_count = this->images_.size() + this->caches_.size();
   if (entry_count > max_entries) {
     ESP_LOGW(TAG, "Too many card image records for persistent index: %zu", entry_count);
@@ -327,20 +369,29 @@ bool CardImageStore::persist_index_() {
   header->version = CARD_IMAGE_INDEX_VERSION;
   header->generation = this->index_generation_ + 1;
   header->count = static_cast<uint32_t>(entry_count);
-  auto *stored_offsets = reinterpret_cast<uint32_t *>(sector.data() + sizeof(CardImageIndexHeader));
+  auto *entries = reinterpret_cast<CardImageIndexEntry *>(sector.data() + sizeof(CardImageIndexHeader));
   size_t stored = 0;
-  for (const auto &image : this->images_) {
-    stored_offsets[stored++] = static_cast<uint32_t>(image.offset);
+  for (size_t image_index = 0; image_index < this->images_.size(); image_index++) {
+    const auto &image = this->images_[image_index];
+    const std::string &stored_name =
+      name_override != nullptr && static_cast<int>(image_index) == name_override_index
+        ? *name_override : image.name;
+    entries[stored].offset = static_cast<uint32_t>(image.offset);
+    memset(entries[stored].name, 0, sizeof(entries[stored].name));
+    strlcpy(entries[stored].name, normalize_name(stored_name).c_str(), sizeof(entries[stored].name));
+    stored++;
   }
   for (const auto &cache : this->caches_) {
-    stored_offsets[stored++] = static_cast<uint32_t>(cache.offset);
+    entries[stored].offset = static_cast<uint32_t>(cache.offset);
+    memset(entries[stored].name, 0, sizeof(entries[stored].name));
+    stored++;
   }
   uint32_t crc = 0xFFFFFFFFu;
   crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(&header->generation), sizeof(header->generation));
   crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(&header->count), sizeof(header->count));
   if (entry_count > 0) {
-    crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(stored_offsets),
-                        entry_count * sizeof(uint32_t));
+    crc = crc32_update_(crc, reinterpret_cast<const uint8_t *>(entries),
+                        entry_count * sizeof(CardImageIndexEntry));
   }
   header->crc32 = crc ^ 0xFFFFFFFFu;
 
@@ -371,7 +422,14 @@ void CardImageStore::scan_legacy_index_() {
         ESP_LOGW(TAG, "Ignoring card image with invalid CRC at 0x%zx", offset);
         continue;
       }
-      this->images_.push_back(this->info_from_header_(header, offset));
+      CardImageInfo info = this->info_from_header_(header, offset);
+      for (const auto &name : this->recovered_index_names_) {
+        if (name.first == offset && !name.second.empty()) {
+          info.name = name.second;
+          break;
+        }
+      }
+      this->images_.push_back(std::move(info));
     } else if (magic == CARD_IMAGE_CACHE_MAGIC) {
       CardImageCacheHeader header{};
       if (esp_partition_read(partition, offset, &header, sizeof(header)) != ESP_OK ||
@@ -395,6 +453,7 @@ void CardImageStore::ensure_index_() {
              this->images_.size(), this->caches_.size(),
              static_cast<unsigned long>(esphome::millis() - started_at));
   }
+  this->recovered_index_names_.clear();
   bool cache_layout_changed = this->purge_caches_outside_cache_region_();
   if ((!loaded || cache_layout_changed) &&
       !this->persist_index_() && !this->index_region_available_()) {
@@ -572,22 +631,15 @@ esp_err_t CardImageStore::rename(const std::string &id, const std::string &name,
   this->ensure_index_();
   int index = this->find_index_(id);
   if (index < 0) return ESP_ERR_NOT_FOUND;
-  for (const auto &reader : this->readers_) {
-    if (reader.first == id && reader.second > 0) return ESP_ERR_INVALID_STATE;
+  std::string normalized = normalize_name(name);
+  if (normalized.empty()) normalized = id;
+  if (this->images_[index].name == normalized) {
+    out = this->images_[index];
+    return ESP_OK;
   }
-  CardImageHeader header{};
-  if (!this->read_header_(this->images_[index].offset, header) || !this->header_valid_(header, this->images_[index].offset)) {
-    return ESP_ERR_INVALID_STATE;
-  }
-  strlcpy(header.name, normalize_name(name).c_str(), sizeof(header.name));
-  uint8_t sector[CARD_IMAGE_FLASH_SECTOR_SIZE];
-  esp_err_t err = esp_partition_read(this->partition_(), this->images_[index].offset, sector, sizeof(sector));
-  if (err == ESP_OK) memcpy(sector, &header, sizeof(header));
-  if (err == ESP_OK) err = esp_partition_erase_range(this->partition_(), this->images_[index].offset, sizeof(sector));
-  if (err == ESP_OK) err = esp_partition_write(this->partition_(), this->images_[index].offset, sector, sizeof(sector));
-  if (err != ESP_OK) return err;
-  out = this->info_from_header_(header, this->images_[index].offset);
-  this->images_[index] = out;
+  if (!this->persist_index_(index, &normalized)) return ESP_FAIL;
+  this->images_[index].name = normalized;
+  out = this->images_[index];
   return ESP_OK;
 }
 

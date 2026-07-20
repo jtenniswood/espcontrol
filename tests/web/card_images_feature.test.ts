@@ -1,7 +1,9 @@
 import type { CardConfig } from "../../src/webserver/contracts/types";
 import {
+  CARD_IMAGE_SAVE_FAILURE_MESSAGE,
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
+  deleteCardImageConfigurationFirst,
   type CardImageHttpRequest,
   type CardImageHttpResponse,
 } from "../../src/webserver/features/card_images";
@@ -187,4 +189,79 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   ];
   existingProvider.remapImportedReferences({ buttons }, { "old-1": "new-1" });
   equal(buttons[0]?.options, "bg_image=new-1", "restored IDs are remapped through the asset provider");
+
+  async function deletionScenario(options: {
+    readonly references: string[];
+    readonly postFailure?: boolean;
+    readonly deleteFailure?: boolean;
+  }): Promise<{
+    deleted: boolean;
+    rerenders: number;
+    error: string;
+    references: string[];
+    persistedReferences: string[];
+    restoredPosts: number;
+  }> {
+    let deleted = false;
+    let rerenders = 0;
+    let waits = 0;
+    let postError = false;
+    let restoredPosts = 0;
+    let error = "";
+    const references = options.references.slice();
+    let persistedReferences = references.slice();
+    try {
+      await deleteCardImageConfigurationFirst({
+        async waitForPendingPosts() {
+          waits++;
+          if (waits !== 2) return;
+          postError = !!options.postFailure;
+          persistedReferences = postError && references.length > 1
+            ? [references[0] || "", ...options.references.slice(1)]
+            : references.slice();
+        },
+        resetPostError() { postError = false; },
+        clearReferences() {
+          const before = references.slice();
+          references.fill("");
+          return {
+            changed: before.filter(Boolean).length,
+            restore() { references.splice(0, references.length, ...before); },
+            persist() {
+              restoredPosts++;
+              persistedReferences = before.slice();
+            },
+          };
+        },
+        postsHadError() { return postError; },
+        async deleteImage() {
+          if (options.deleteFailure) throw new Error("Image could not be deleted.");
+          deleted = true;
+        },
+        rerender() { rerenders++; },
+      });
+    } catch (caught) {
+      error = (caught as Error).message;
+    }
+    return { deleted, rerenders, error, references, persistedReferences, restoredPosts };
+  }
+
+  deepEqual(await deletionScenario({ references: [] }), {
+    deleted: true, rerenders: 0, error: "", references: [], persistedReferences: [], restoredPosts: 0,
+  }, "unreferenced images delete immediately after the queue boundary");
+  deepEqual(await deletionScenario({ references: ["main"] }), {
+    deleted: true, rerenders: 0, error: "", references: [""], persistedReferences: [""], restoredPosts: 0,
+  }, "a main-card reference is persisted before deletion");
+  deepEqual(await deletionScenario({ references: ["main", "subpage"] }), {
+    deleted: true, rerenders: 0, error: "", references: ["", ""],
+    persistedReferences: ["", ""], restoredPosts: 0,
+  }, "shared main and subpage references are cleared together");
+  deepEqual(await deletionScenario({ references: ["main", "subpage"], postFailure: true }), {
+    deleted: false, rerenders: 1, error: CARD_IMAGE_SAVE_FAILURE_MESSAGE,
+    references: ["main", "subpage"], persistedReferences: ["main", "subpage"], restoredPosts: 1,
+  }, "failed configuration posts retain the image and restore every local and persisted reference");
+  deepEqual(await deletionScenario({ references: ["main"], deleteFailure: true }), {
+    deleted: false, rerenders: 1, error: "Image could not be deleted.", references: [""],
+    persistedReferences: [""], restoredPosts: 0,
+  }, "a failed image delete keeps successfully persisted reference clearing");
 }

@@ -8,17 +8,39 @@ export function installConfigPostApiModule(): GlobalDescriptors {
     }
     function clearCardImageReferences(this: any, id?: any) {
         id = normalizeCardBackgroundImageId(id);
+        var entries: any = [];
+        var seen: any = [];
+        var mainSlots: any = [];
+        var subpageKeys: any = [];
+        var snapshot: any = {
+            changed: 0,
+            restore: function (this: any) {
+                entries.forEach(function (this: any, entry?: any) {
+                    entry.button.options = entry.options;
+                });
+            },
+            persist: function (this: any) {
+                mainSlots.forEach(function (this: any, slot?: any) { saveButtonConfig(slot); });
+                subpageKeys.forEach(function (this: any, key?: any) { saveSubpageEntity(key); });
+            },
+        };
         if (!id)
-            return 0;
+            return snapshot;
         var changed: any = 0;
         function clearButtons(this: any, buttons?: any, save?: any) {
             (buttons || []).forEach(function (this: any, button?: any, index?: any) {
                 if (cardBackgroundImage(button && button.options) !== id)
                     return;
+                if (seen.indexOf(button) < 0) {
+                    seen.push(button);
+                    entries.push({ button: button, options: button.options });
+                }
                 button.options = setConfigOptionValue(button.options, CARD_BACKGROUND_IMAGE_OPTION, "");
                 changed++;
-                if (save)
+                if (save) {
                     save(index);
+                    mainSlots.push(index + 1);
+                }
             });
         }
         clearButtons(state.buttons, function (this: any, index?: any) { saveButtonConfig(index + 1); });
@@ -27,10 +49,13 @@ export function installConfigPostApiModule(): GlobalDescriptors {
             var subpage: any = state.subpages[key];
             var before: any = changed;
             clearButtons(subpage && subpage.buttons);
-            if (changed !== before)
+            if (changed !== before) {
                 saveSubpageEntity(key);
+                subpageKeys.push(key);
+            }
         });
-        return changed;
+        snapshot.changed = changed;
+        return snapshot;
     }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];

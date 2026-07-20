@@ -125,8 +125,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
                         (usedByCards === 1 ? "" : "s") + ". Delete it anyway?"))
                         return;
                     setBusy(true);
-                    deleteCardImage(id)
-                        .then(function () { clearCardImageReferences(id); })
+                    deleteCardImageSafely(id)
                         .then(function () { return listCardImages(true); })
                         .then(function (this: any, fresh?: any) {
                             showBanner("Image deleted.", "success");

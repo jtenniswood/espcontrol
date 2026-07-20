@@ -217,9 +217,9 @@ _SOCKET_RESERVED = False
 
 
 def _consume_sockets(config):
-    """Reserve one outbound HTTP socket for each artwork image instance."""
+    """Reserve the shared outbound socket only for network-backed images."""
     if config.get(CONF_LOCAL_ONLY):
-    """Reserve the one outbound socket owned by the shared image service."""
+        return config
     global _SOCKET_RESERVED
     if _SOCKET_RESERVED:
         return config

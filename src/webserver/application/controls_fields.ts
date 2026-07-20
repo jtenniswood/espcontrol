@@ -519,11 +519,11 @@ export function installControlsFieldsModule(): GlobalDescriptors {
             if (used && !window.confirm("This image is used by " + used + " card" +
                 (used === 1 ? "" : "s") + ". Delete it anyway?"))
                 return;
-            deleteCardImage(id).then(function () {
-                clearCardImageReferences(id);
-                setBackground("");
+            deleteCardImageSafely(id).then(function () {
                 return listCardImages(true);
-            }).then(fillSelect);
+            }).then(fillSelect).catch(function (this: any, err?: any) {
+                showBanner(err && err.message || "Could not delete image.", "error");
+            });
         });
         fillSelect(_cardImageLibrary || []);
         listCardImages(false).then(fillSelect);

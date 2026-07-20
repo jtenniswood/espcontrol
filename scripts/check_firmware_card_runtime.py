@@ -45,6 +45,7 @@ LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
 GRID_HEADER = "button_grid_grid.h"
 ACTION_HEADER = "button_grid_actions.h"
 IMAGE_HEADER = "button_grid_image.h"
+CARD_BACKGROUND_HEADER = "button_grid_card_background.h"
 STATUS_ENTITY_HEADER = "button_grid_status_entity_driver.h"
 DATE_TIME_HEADER = "button_grid_date_time_driver.h"
 DATE_TIME_CARDS_HEADER = "button_grid_datetime_cards.h"
@@ -406,6 +407,42 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: tick scheduled card-background retries from the periodic image refresh"
             )
+        for misplaced_owner in (
+            "struct CardBackgroundImageCtx",
+            "card_background_controller()",
+            "card_background_activate_page(",
+            "card_background_schedule_cache_writes(",
+        ):
+            if misplaced_owner in text:
+                failures.append(
+                    f"components/espcontrol/{IMAGE_HEADER}: keep card-background runtime ownership in {CARD_BACKGROUND_HEADER}"
+                )
+    card_background_header = root / "components" / "espcontrol" / CARD_BACKGROUND_HEADER
+    if grid_header.exists():
+        if not card_background_header.exists():
+            failures.append(
+                f"components/espcontrol/{CARD_BACKGROUND_HEADER}: missing dedicated card-background runtime"
+            )
+        else:
+            background_text = card_background_header.read_text(encoding="utf-8")
+            for required_owner in (
+                "struct CardBackgroundImageCtx",
+                "card_background_controller()",
+                "card_background_activate_page(",
+                "card_background_schedule_cache_writes(",
+                "card_background_refresh_due(",
+            ):
+                if required_owner not in background_text:
+                    failures.append(
+                        f"components/espcontrol/{CARD_BACKGROUND_HEADER}: missing runtime owner {required_owner}"
+                    )
+            grid_text = grid_header.read_text(encoding="utf-8")
+            config_at = grid_text.find("struct GridConfig")
+            background_at = grid_text.find(f'#include "{CARD_BACKGROUND_HEADER}"')
+            if background_at < config_at or background_at < 0:
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: include {CARD_BACKGROUND_HEADER} after GridConfig"
+                )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")

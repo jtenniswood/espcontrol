@@ -95,8 +95,6 @@ void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *
   }
 }
 
-void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes, const uint8_t *data) {
-  if (this->failed_ || !data || width <= 0 || height <= 0 || stride_bytes < static_cast<size_t>(width) * 2) {
 void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
                                      const uint8_t *data) {
   if (this->failed_ || !data || width <= 0 || height <= 0 ||
@@ -106,10 +104,6 @@ void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
   int bpp_bytes = this->image_->get_bpp() / 8;
   if (bpp_bytes < 2) return;
 
-  int content_width = this->image_->decode_content_width_ > 0 ? this->image_->decode_content_width_
-                                                              : this->image_->decode_buffer_width_;
-  int content_height = this->image_->decode_content_height_ > 0 ? this->image_->decode_content_height_
-                                                                 : this->image_->decode_buffer_height_;
   int content_width = this->image_->decode_content_width_ > 0
                           ? this->image_->decode_content_width_
                           : this->image_->decode_buffer_width_;
@@ -145,7 +139,6 @@ void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
   for (int dst_y = start_y; dst_y < end_y; dst_y++) {
     int src_y = std::min(height - 1, (dst_y - this->y_offset_) * height / content_height);
     const uint8_t *source_row = data + static_cast<size_t>(src_y) * stride_bytes;
-    uint8_t *destination = this->image_->decode_buffer_ + this->image_->get_position_(start_x, dst_y);
     uint8_t *destination =
         this->image_->decode_buffer_ + this->image_->get_position_(start_x, dst_y);
     for (int dst_x = start_x; dst_x < end_x; dst_x++) {
