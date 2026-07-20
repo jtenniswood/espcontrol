@@ -1565,6 +1565,8 @@ inline void media_playback_subscribe_speaker_discovery(
   state->speaker_discovery_entity = entity_id;
   const uint32_t generation = state->generation;
   const std::string attribute = media_group_discovery_attribute(entity_id);
+  ESP_LOGI("media_group", "Registering speaker discovery %s attribute %s for %s",
+           entity_id.c_str(), attribute.c_str(), state->entity_id.c_str());
   ha_subscribe_attribute(
     entity_id, attribute,
     std::function<void(esphome::StringRef)>(
