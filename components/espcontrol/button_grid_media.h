@@ -2741,7 +2741,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     lv_obj_set_style_opa(row->row, row->available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
   }
   if (row->content_box) {
-    lv_obj_set_style_pad_bottom(row->content_box, show_volume ? 62 : 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(row->content_box, show_volume ? 80 : 8, LV_PART_MAIN);
   }
   if (row->name_label) {
     std::string name = row->friendly_name.empty()
@@ -3055,9 +3055,9 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   if (ctx->label_font) lv_obj_set_style_text_font(row->volume_label, ctx->label_font, LV_PART_MAIN);
 
   row->volume_controls = lv_obj_create(row->row);
-  lv_obj_set_size(row->volume_controls, 88, 54);
-  lv_obj_align(row->volume_controls, LV_ALIGN_BOTTOM_MID, 0, -2);
-  lv_obj_set_style_radius(row->volume_controls, 27, LV_PART_MAIN);
+  lv_obj_set_size(row->volume_controls, 88, 72);
+  lv_obj_align(row->volume_controls, LV_ALIGN_BOTTOM_MID, 0, -4);
+  lv_obj_set_style_radius(row->volume_controls, 36, LV_PART_MAIN);
   lv_obj_set_style_bg_color(row->volume_controls, lv_color_hex(DARK_CONTROL_NEUTRAL), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(row->volume_controls, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(row->volume_controls, 0, LV_PART_MAIN);
@@ -3307,6 +3307,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (content_w < tile_min_w * 2 + tile_gap) column_count = 1;
     lv_coord_t tile_w = (content_w - tile_gap * (column_count - 1)) / column_count;
     lv_coord_t tile_h = climate_control_option_tile_height(layout, tile_w);
+    lv_coord_t speaker_tile_min_h = control_modal_scaled_px(168, layout.short_side);
+    if (tile_h < speaker_tile_min_h) tile_h = speaker_tile_min_h;
     lv_obj_set_style_pad_row(ui.speaker_list, tile_gap, LV_PART_MAIN);
     lv_obj_set_style_pad_column(ui.speaker_list, tile_gap, LV_PART_MAIN);
     for (MediaSpeakerRowState *row : ui.speaker_rows) {
@@ -3317,8 +3319,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
         lv_coord_t controls_w = tile_w * 65 / 100;
         if (controls_w < 88) controls_w = 88;
         if (controls_w > 132) controls_w = 132;
-        lv_obj_set_size(row->volume_controls, controls_w, 54);
-        lv_obj_set_style_radius(row->volume_controls, 27, LV_PART_MAIN);
+        lv_obj_set_size(row->volume_controls, controls_w, 72);
+        lv_obj_set_style_radius(row->volume_controls, 36, LV_PART_MAIN);
       }
     }
   }
