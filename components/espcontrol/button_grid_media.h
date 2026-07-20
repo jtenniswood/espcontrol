@@ -3022,10 +3022,10 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_bg_opa(row->content_box, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(row->content_box, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(row->content_box, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_top(row->content_box, 16, LV_PART_MAIN);
+  lv_obj_set_style_pad_top(row->content_box, 12, LV_PART_MAIN);
   lv_obj_set_style_pad_left(row->content_box, 18, LV_PART_MAIN);
   lv_obj_set_style_pad_right(row->content_box, 18, LV_PART_MAIN);
-  lv_obj_set_style_pad_bottom(row->content_box, 16, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(row->content_box, 12, LV_PART_MAIN);
   lv_obj_set_style_pad_column(row->content_box, 14, LV_PART_MAIN);
   lv_obj_set_layout(row->content_box, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(row->content_box, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
@@ -3317,8 +3317,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
       layout.short_side);
     if (row_gap < 8) row_gap = 8;
-    lv_coord_t row_h = control_modal_scaled_px(128, layout.short_side);
-    if (row_h < 120) row_h = 120;
+    lv_coord_t row_h = control_modal_scaled_px(104, layout.short_side);
+    if (row_h < 100) row_h = 100;
     lv_obj_set_style_pad_row(ui.speaker_list, row_gap, LV_PART_MAIN);
     lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
     for (MediaSpeakerRowState *row : ui.speaker_rows) {
