@@ -1517,9 +1517,19 @@ inline TransientStatusLabel *grid_track_transient_status_label_runtime(
   return ctx;
 }
 
-inline void grid_release_main_runtime_allocations(BtnSlot *slots, int slot_count) {
+inline void grid_release_main_runtime_allocations(
+    BtnSlot *slots, int slot_count, bool release_visual_contexts = false) {
   if (slots == nullptr) return;
   for (int i = 0; i < slot_count; i++) {
+    if (release_visual_contexts) {
+      // The saved config already contains the replacement (or is empty after
+      // deleting a card), so it cannot identify runtime objects owned by the
+      // previous visual. Detach those objects before freeing every allocation
+      // for this persistent slot; setup_card_visual() will rebuild user_data.
+      grid_prepare_media_runtime_for_visual_reset(slots[i].btn);
+      grid_release_runtime_allocations(slots[i].btn);
+      continue;
+    }
     void *visual_context = nullptr;
     void *slider_context = nullptr;
     ParsedCfg config = parse_cfg(slots[i].config->state);
@@ -1605,7 +1615,7 @@ inline void grid_phase2(
   weather_forecast_cancel_pending_requests();
   reset_climate_control_refs();
   clear_internal_relay_watchers();
-  grid_release_main_runtime_allocations(slots, NS);
+  grid_release_main_runtime_allocations(slots, NS, reconstruct_main_cards);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
@@ -1638,6 +1648,28 @@ inline void grid_phase2(
     first_card = slots[0].btn;
   }
   set_media_home_grid_metrics(main_page_obj, COLS, ROWS, first_card);
+
+  if (reconstruct_main_cards) {
+    // Deleted cards are absent from button_order, but their persistent LVGL
+    // slots can still own children and user_data from the previous card. Clear
+    // those visuals too, then keep the unused slot hidden.
+    for (int slot_index = 0; slot_index < NS; slot_index++) {
+      bool active = false;
+      for (int pos = 0; pos < NS; pos++) {
+        if (order.positions[pos] == slot_index + 1) {
+          active = true;
+          break;
+        }
+      }
+      if (active) continue;
+      auto &unused_slot = slots[slot_index];
+      ParsedCfg unused_config = parse_cfg(unused_slot.config->state);
+      const auto unused_context = card_runtime_context(unused_config);
+      setup_card_visual(
+        unused_slot, unused_config, unused_context, cfg, palette, 1, 1);
+      lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
 
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];

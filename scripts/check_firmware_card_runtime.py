@@ -159,6 +159,18 @@ def check_root(root: Path) -> list[str]:
     if grid_header.exists():
         text = grid_header.read_text(encoding="utf-8")
         compact_grid = re.sub(r"\s+", " ", text)
+        if "reconstruct_main_cards" in text:
+            live_rebuild_guards = (
+                "grid_release_main_runtime_allocations(slots, NS, reconstruct_main_cards);",
+                "grid_prepare_media_runtime_for_visual_reset(slots[i].btn);",
+                "if (reconstruct_main_cards) {",
+                "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
+            )
+            for guard in live_rebuild_guards:
+                if guard not in text:
+                    failures.append(
+                        f"components/espcontrol/{GRID_HEADER}: live card rebuild is missing deletion cleanup guard {guard}"
+                    )
         visual_setup = function_body(text, "setup_card_visual")
         if visual_setup is not None:
             clickable_reset = "lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);"
