@@ -1452,6 +1452,10 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             "start helper tracking when grouping support arrives after the modal opens",
         ),
         (
+            "ha_get_attribute(ctx->speaker_group_entity, discovery_attribute, discovery_callback);",
+            "hydrate speaker discovery from the current helper value when the tab opens",
+        ),
+        (
             "media_control_sync_speaker_candidates",
             "synchronize speaker rows when the helper inventory changes",
         ),

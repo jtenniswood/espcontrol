@@ -2973,27 +2973,31 @@ inline void media_control_ensure_speaker_helper_subscription(MediaControlCtx *ct
   }
   ui.speaker_helper_subscribed = true;
   uint32_t generation = ui.speaker_generation;
+  HomeAssistantStateCallback discovery_callback = [ctx, generation](esphome::StringRef value) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (ui.active != ctx || ui.speaker_generation != generation) return;
+    std::string raw(value.c_str(), value.size());
+    ui.speaker_helper_members = ctx->speaker_group_entity ==
+        DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY
+      ? media_group_parse_discovery_data(raw)
+      : media_group_parse_entity_list(raw);
+    std::vector<std::string> candidates = media_group_merge_candidates(
+      ctx->entity_id, ui.speaker_helper_members, ctx->group_members);
+    media_control_refresh_speakers(ctx);
+    media_control_set_speaker_status(candidates.size() <= 1
+      ? espcontrol_i18n("No Speakers") : "");
+  };
+  const std::string discovery_attribute =
+    media_group_discovery_attribute(ctx->speaker_group_entity);
   bool subscribed = ha_subscribe_attribute_reusable(
-    ctx->speaker_group_entity,
-    std::string(media_group_discovery_attribute(ctx->speaker_group_entity)),
-    [ctx, generation](esphome::StringRef value) {
-      MediaControlModalUi &ui = media_control_modal_ui();
-      if (ui.active != ctx || ui.speaker_generation != generation) return;
-      std::string raw(value.c_str(), value.size());
-      ui.speaker_helper_members = ctx->speaker_group_entity ==
-          DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY
-        ? media_group_parse_discovery_data(raw)
-        : media_group_parse_entity_list(raw);
-      std::vector<std::string> candidates = media_group_merge_candidates(
-        ctx->entity_id, ui.speaker_helper_members, ctx->group_members);
-      media_control_refresh_speakers(ctx);
-      media_control_set_speaker_status(candidates.size() <= 1
-        ? espcontrol_i18n("No Speakers") : "");
-    }, HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
+    ctx->speaker_group_entity, discovery_attribute, discovery_callback,
+    HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP);
   if (!subscribed) {
     ui.speaker_helper_subscribed = false;
     media_control_set_speaker_status(espcontrol_i18n("Grouping unavailable"), true);
+    return;
   }
+  ha_get_attribute(ctx->speaker_group_entity, discovery_attribute, discovery_callback);
 }
 
 inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
