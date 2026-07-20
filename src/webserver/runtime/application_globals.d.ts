@@ -272,7 +272,6 @@ declare global {
   var beginNewCardDraft: any;
   var bindTextPost: any;
   var btnDisplayName: any;
-  var buildApplyBar: any;
   var buildClipboardEntry: any;
   var buildCoverArtSettingsCard: any;
   var buildHeader: any;

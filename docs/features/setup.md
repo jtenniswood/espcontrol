@@ -107,7 +107,7 @@ Open **Settings > System > Home Assistant Settings** to change **Home Assistant 
 
 ## Changes Apply Automatically
 
-Edits take effect on the panel by themselves a few seconds after you make them — no apply step and no restart. Layout changes (moving or resizing cards, grid size, rotation) show up immediately.
+Edits take effect on the panel by themselves after a short delay — no apply step and no display restart. Visual changes normally appear in about one to two seconds. When a card starts using a different Home Assistant entity, the panel briefly refreshes its Home Assistant connection so the new state can arrive; state and cover art can take a few more seconds to settle.
 
 ## Restart From Home Assistant
 

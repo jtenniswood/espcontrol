@@ -164,41 +164,6 @@ export function installControlsShellModule(): GlobalDescriptors {
         parent.appendChild(page);
         els.screenPage = page;
     }
-    // ── Shell controls ───────────────────────────────────────────────────
-    function buildApplyBar(this: any) {
-        var bar: any = document.createElement("div");
-        bar.className = "sp-apply-bar";
-        var btn: any = document.createElement("button");
-        btn.className = "sp-apply-btn";
-        btn.textContent = "Apply Configuration";
-        btn.addEventListener("click", function (this: any) {
-            if (isConfigLocked())
-                return;
-            if (document.activeElement && "blur" in document.activeElement) {
-                (document.activeElement as HTMLElement).blur();
-            }
-            setConfigLocked(true, "Applying changes\u2026");
-            setTimeout(function (this: any) {
-                postButtonPress("Apply Configuration").then(function (this: any, response?: any) {
-                    if (response && response.ok) {
-                        // Applied live on-device (grid rebuilt in place, no reboot).
-                        // The device debounces the rebuild ~3s; unlock once it has
-                        // had time to take effect. The event stream stays connected.
-                        setTimeout(function (this: any) { setConfigLocked(false); }, 4500);
-                    }
-                    else if (response) {
-                        setConfigLocked(false);
-                    }
-                });
-            }, 600);
-        });
-        bar.appendChild(btn);
-        var note: any = document.createElement("div");
-        note.className = "sp-apply-note";
-        note.textContent = "Applies your changes to the display";
-        bar.appendChild(note);
-        return bar;
-    }
     function switchTab(this: any, tab?: any) {
         state.activeTab = tab;
         if (els.root)
@@ -225,15 +190,6 @@ export function installControlsShellModule(): GlobalDescriptors {
         }
         if (els.previewMain) {
             els.previewMain.setAttribute("aria-disabled", isConfigLocked() ? "true" : "false");
-        }
-        if (els.root) {
-            var text: any = "Waiting for device\u2026";
-            if ((state.configLockReason || "").indexOf("Restarting") !== -1)
-                text = "Restarting\u2026";
-            els.root.querySelectorAll(".sp-apply-btn").forEach(function (this: any, btn?: any) {
-                btn.disabled = isConfigLocked();
-                btn.textContent = isConfigLocked() ? text : "Apply Configuration";
-            });
         }
         updatePreviewHint();
     }
@@ -269,7 +225,6 @@ export function installControlsShellModule(): GlobalDescriptors {
         "buildUI": staticGlobal(buildUI),
         "buildHeader": staticGlobal(buildHeader),
         "buildScreenPage": staticGlobal(buildScreenPage),
-        "buildApplyBar": staticGlobal(buildApplyBar),
         "switchTab": staticGlobal(switchTab),
         "syncTabChrome": staticGlobal(syncTabChrome),
         "isConfigLocked": staticGlobal(isConfigLocked),

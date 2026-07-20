@@ -65,6 +65,16 @@ esphome:
         - script.execute: clock_bar_apply
 
 script:
+  - id: schedule_card_config_refresh
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_ready);'
+          then:
+            - lambda: 'id(config_apply_reconstruct) = true;'
+            - script.execute: refresh_button_grid
+
   - id: clock_bar_hide
     mode: restart
     then:

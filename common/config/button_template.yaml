@@ -26,13 +26,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_prefix}${num}${entity_subpage_config_suffix}"
@@ -51,13 +45,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_prefix}${num}${entity_subpage_config_ext_suffix}"
@@ -76,13 +64,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_2_prefix}${num}${entity_subpage_config_ext_2_suffix}"
@@ -101,13 +83,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_3_prefix}${num}${entity_subpage_config_ext_3_suffix}"
@@ -126,13 +102,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_4_prefix}${num}${entity_subpage_config_ext_4_suffix}"
@@ -151,13 +121,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_5_prefix}${num}${entity_subpage_config_ext_5_suffix}"
@@ -176,13 +140,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_6_prefix}${num}${entity_subpage_config_ext_6_suffix}"
@@ -201,13 +159,7 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
 
   - platform: template
     name: "${entity_subpage_config_ext_7_prefix}${num}${entity_subpage_config_ext_7_suffix}"
@@ -226,10 +178,4 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        # Auto-apply: rebuild the grid a few seconds after a config change so
-        # edits take effect without an Apply step. The refresh script is
-        # mode: restart with a lead delay, so rapid per-field edits coalesce.
-        # screen_rotation_ready gates boot-time restore floods.
-        - lambda: |-
-            if (id(screen_rotation_ready)) id(config_apply_reconstruct) = true;
-        - script.execute: refresh_button_grid
+        - script.execute: schedule_card_config_refresh
