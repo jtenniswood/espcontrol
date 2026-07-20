@@ -75,6 +75,12 @@ target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
 add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
 
+add_executable(web_event_stream_policy_test web_event_stream_policy_test.cpp)
+target_compile_features(web_event_stream_policy_test PRIVATE cxx_std_17)
+target_compile_options(web_event_stream_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(web_event_stream_policy_test PRIVATE ../../components/web_server_idf)
+add_test(NAME web_event_stream_policy_test COMMAND web_event_stream_policy_test)
+
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
 target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)
