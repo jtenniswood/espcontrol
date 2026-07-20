@@ -252,6 +252,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Solar Power Variant",        "\U000F1A73"},
     {"Speaker",                    "\U000F04C3"},
     {"Speaker Multiple",           "\U000F0D38"},
+    {"Speaker Off",                "\U000F04C4"},
     {"Speaker Pause",              "\U000F1B73"},
     {"Speaker Play",               "\U000F1B72"},
     {"Spotlight",                  "\U000F04C8"},

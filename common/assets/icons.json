@@ -1279,6 +1279,11 @@
       "mdi": "speaker-multiple"
     },
     {
+      "name": "Speaker Off",
+      "codepoint": "F04C4",
+      "mdi": "speaker-off"
+    },
+    {
       "name": "Speaker Pause",
       "codepoint": "F1B73",
       "mdi": "speaker-pause"

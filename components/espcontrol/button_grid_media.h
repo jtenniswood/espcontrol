@@ -78,6 +78,7 @@ struct MediaSpeakerRowState {
   uint32_t pending_until_ms = 0;
   lv_obj_t *row = nullptr;
   lv_obj_t *content_box = nullptr;
+  lv_obj_t *text_box = nullptr;
   lv_obj_t *name_label = nullptr;
   lv_obj_t *speaker_icon = nullptr;
   lv_obj_t *volume_label = nullptr;
@@ -2741,7 +2742,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     lv_obj_set_style_opa(row->row, row->available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
   }
   if (row->content_box) {
-    lv_obj_set_style_pad_bottom(row->content_box, show_volume ? 80 : 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(row->content_box, 10, LV_PART_MAIN);
   }
   if (row->name_label) {
     std::string name = row->friendly_name.empty()
@@ -2751,8 +2752,8 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     lv_obj_set_style_text_color(row->name_label, lv_color_hex(text_color), LV_PART_MAIN);
   }
   if (row->speaker_icon) {
-    if (show_volume) lv_obj_add_flag(row->speaker_icon, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_clear_flag(row->speaker_icon, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(row->speaker_icon, find_icon(row->selected ? "Speaker" : "Speaker Off"));
+    lv_obj_clear_flag(row->speaker_icon, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(row->speaker_icon, lv_color_hex(text_color), LV_PART_MAIN);
   }
   if (row->volume_controls) {
@@ -3003,7 +3004,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
   lv_obj_set_style_border_width(row->row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(row->row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(row->row, 8, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row->row, 0, LV_PART_MAIN);
   lv_obj_clear_flag(row->row, LV_OBJ_FLAG_SCROLLABLE);
   control_modal_apply_pressed_fill(row->row);
   lv_obj_set_user_data(row->row, row);
@@ -3021,58 +3022,73 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_bg_opa(row->content_box, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(row->content_box, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(row->content_box, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_top(row->content_box, 8, LV_PART_MAIN);
-  lv_obj_set_style_pad_left(row->content_box, 6, LV_PART_MAIN);
-  lv_obj_set_style_pad_right(row->content_box, 6, LV_PART_MAIN);
-  lv_obj_set_style_pad_bottom(row->content_box, 8, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(row->content_box, 4, LV_PART_MAIN);
+  lv_obj_set_style_pad_top(row->content_box, 10, LV_PART_MAIN);
+  lv_obj_set_style_pad_left(row->content_box, 14, LV_PART_MAIN);
+  lv_obj_set_style_pad_right(row->content_box, 12, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(row->content_box, 10, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(row->content_box, 12, LV_PART_MAIN);
   lv_obj_set_layout(row->content_box, LV_LAYOUT_FLEX);
-  lv_obj_set_style_flex_flow(row->content_box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
-  lv_obj_set_style_flex_main_place(row->content_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_flow(row->content_box, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row->content_box, LV_FLEX_ALIGN_START, LV_PART_MAIN);
   lv_obj_set_style_flex_cross_place(row->content_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_SCROLLABLE);
 
   row->speaker_icon = lv_label_create(row->content_box);
+  lv_obj_set_width(row->speaker_icon, 46);
   lv_label_set_text(row->speaker_icon, find_icon("Speaker"));
   lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
 
-  row->name_label = lv_label_create(row->content_box);
+  row->text_box = lv_obj_create(row->content_box);
+  lv_obj_set_size(row->text_box, 0, LV_SIZE_CONTENT);
+  lv_obj_set_flex_grow(row->text_box, 1);
+  lv_obj_set_style_bg_opa(row->text_box, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(row->text_box, 2, LV_PART_MAIN);
+  lv_obj_set_layout(row->text_box, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(row->text_box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row->text_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(row->text_box, LV_FLEX_ALIGN_START, LV_PART_MAIN);
+  lv_obj_clear_flag(row->text_box, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(row->text_box, LV_OBJ_FLAG_SCROLLABLE);
+
+  row->name_label = lv_label_create(row->text_box);
   lv_obj_set_width(row->name_label, LV_PCT(100));
   const lv_coord_t speaker_text_h = ctx->label_font && ctx->label_font->line_height > 0
     ? ctx->label_font->line_height : 24;
   lv_obj_set_height(row->name_label, speaker_text_h * 2);
   lv_label_set_long_mode(row->name_label, LV_LABEL_LONG_DOT);
-  lv_obj_set_style_text_align(row->name_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_text_align(row->name_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   lv_obj_set_style_text_color(row->name_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(row->name_label, ctx->label_font, LV_PART_MAIN);
 
-  row->volume_label = lv_label_create(row->content_box);
+  row->volume_label = lv_label_create(row->text_box);
   lv_obj_set_width(row->volume_label, LV_PCT(100));
   lv_obj_set_height(row->volume_label, speaker_text_h);
-  lv_obj_set_style_text_align(row->volume_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_text_align(row->volume_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(row->volume_label, ctx->label_font, LV_PART_MAIN);
 
-  row->volume_controls = lv_obj_create(row->row);
-  lv_obj_set_size(row->volume_controls, 88, 72);
-  lv_obj_align(row->volume_controls, LV_ALIGN_BOTTOM_MID, 0, -4);
-  lv_obj_set_style_radius(row->volume_controls, 36, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(row->volume_controls, lv_color_hex(DARK_CONTROL_NEUTRAL), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(row->volume_controls, LV_OPA_COVER, LV_PART_MAIN);
+  row->volume_controls = lv_obj_create(row->content_box);
+  lv_obj_set_size(row->volume_controls, 126, 64);
+  lv_obj_set_style_radius(row->volume_controls, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(row->volume_controls, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(row->volume_controls, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(row->volume_controls, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(row->volume_controls, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_column(row->volume_controls, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(row->volume_controls, 10, LV_PART_MAIN);
   lv_obj_set_layout(row->volume_controls, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(row->volume_controls, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
   lv_obj_clear_flag(row->volume_controls, LV_OBJ_FLAG_SCROLLABLE);
 
   auto create_volume_button = [&](const char *icon, bool increase) {
     lv_obj_t *btn = lv_btn_create(row->volume_controls);
-    lv_obj_set_size(btn, 0, LV_PCT(100));
-    lv_obj_set_flex_grow(btn, 1);
-    lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_size(btn, 58, 58);
+    lv_obj_set_style_radius(btn, 29, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
@@ -3080,7 +3096,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, icon);
     if (ctx->icon_font) lv_obj_set_style_text_font(label, ctx->icon_font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
     lv_obj_center(label);
     lv_obj_set_user_data(btn, row);
     lv_obj_add_event_cb(btn, [](lv_event_t *event) {
@@ -3165,14 +3181,14 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   ui.speaker_list = lv_obj_create(ui.speakers_box);
   lv_obj_set_width(ui.speaker_list, LV_PCT(100));
   lv_obj_set_flex_grow(ui.speaker_list, 1);
-  lv_obj_set_flex_flow(ui.speaker_list, LV_FLEX_FLOW_ROW_WRAP);
-  lv_obj_set_style_flex_main_place(ui.speaker_list, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_flex_flow(ui.speaker_list, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_flex_main_place(ui.speaker_list, LV_FLEX_ALIGN_START, LV_PART_MAIN);
   lv_obj_set_style_flex_cross_place(ui.speaker_list, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.speaker_list, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.speaker_list, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.speaker_list, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_row(ui.speaker_list, 8, LV_PART_MAIN);
-  lv_obj_set_style_pad_column(ui.speaker_list, 10, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
   lv_obj_add_flag(ui.speaker_list, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_scroll_dir(ui.speaker_list, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(ui.speaker_list, LV_SCROLLBAR_MODE_OFF);
@@ -3296,32 +3312,17 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(ui.content_box, LV_ALIGN_TOP_MID, 0, content_top);
   }
   if (ui.speaker_list) {
-    lv_coord_t tile_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
+    lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
       layout.short_side);
-    if (tile_gap < 8) tile_gap = 8;
-    lv_coord_t tile_min_w = compensated_width(layout.short_side < 520 ? 138 : 168,
-      ctx->width_compensation_percent);
-    if (tile_min_w < 118) tile_min_w = 118;
-    int column_count = content_w >= tile_min_w * 3 + tile_gap * 2 ? 3 : 2;
-    if (layout.sh > layout.sw) column_count = 2;
-    if (content_w < tile_min_w * 2 + tile_gap) column_count = 1;
-    lv_coord_t tile_w = (content_w - tile_gap * (column_count - 1)) / column_count;
-    lv_coord_t tile_h = climate_control_option_tile_height(layout, tile_w);
-    lv_coord_t speaker_tile_min_h = control_modal_scaled_px(168, layout.short_side);
-    if (tile_h < speaker_tile_min_h) tile_h = speaker_tile_min_h;
-    lv_obj_set_style_pad_row(ui.speaker_list, tile_gap, LV_PART_MAIN);
-    lv_obj_set_style_pad_column(ui.speaker_list, tile_gap, LV_PART_MAIN);
+    if (row_gap < 8) row_gap = 8;
+    lv_coord_t row_h = control_modal_scaled_px(112, layout.short_side);
+    if (row_h < 104) row_h = 104;
+    lv_obj_set_style_pad_row(ui.speaker_list, row_gap, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
     for (MediaSpeakerRowState *row : ui.speaker_rows) {
       if (!row || !row->row) continue;
-      lv_obj_set_size(row->row, tile_w, tile_h);
+      lv_obj_set_size(row->row, content_w, row_h);
       lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-      if (row->volume_controls) {
-        lv_coord_t controls_w = tile_w * 65 / 100;
-        if (controls_w < 88) controls_w = 88;
-        if (controls_w > 132) controls_w = 132;
-        lv_obj_set_size(row->volume_controls, controls_w, 72);
-        lv_obj_set_style_radius(row->volume_controls, 36, LV_PART_MAIN);
-      }
     }
   }
   if (ui.title_lbl) {
