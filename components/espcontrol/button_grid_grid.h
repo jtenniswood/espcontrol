@@ -1519,10 +1519,11 @@ inline TransientStatusLabel *grid_track_transient_status_label_runtime(
 }
 
 inline void grid_release_main_runtime_allocations(
-    BtnSlot *slots, int slot_count, bool release_visual_contexts = false) {
+    BtnSlot *slots, int slot_count,
+    const bool *release_visual_contexts = nullptr) {
   if (slots == nullptr) return;
   for (int i = 0; i < slot_count; i++) {
-    if (release_visual_contexts) {
+    if (release_visual_contexts != nullptr && release_visual_contexts[i]) {
       // The saved config already contains the replacement (or is empty after
       // deleting a card), so it cannot identify runtime objects owned by the
       // previous visual. Detach those objects before freeing every allocation
@@ -1601,6 +1602,15 @@ inline void grid_phase2(
   static bool has_icon_on[MAX_GRID_SLOTS] = {};
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
+  static std::string main_config_snapshots[MAX_GRID_SLOTS];
+  static bool main_config_snapshots_initialized = false;
+  bool reconstruct_slot[MAX_GRID_SLOTS] = {};
+  if (reconstruct_main_cards) {
+    for (int i = 0; i < NS; i++) {
+      reconstruct_slot[i] = !main_config_snapshots_initialized ||
+        main_config_snapshots[i] != slots[i].config->state;
+    }
+  }
 
   static std::string sp_entity_ids[MAX_SUBPAGE_ITEMS];
   static int sp_entity_alloc_idx = 0;
@@ -1616,7 +1626,8 @@ inline void grid_phase2(
   weather_forecast_cancel_pending_requests();
   reset_climate_control_refs();
   clear_internal_relay_watchers();
-  grid_release_main_runtime_allocations(slots, NS, reconstruct_main_cards);
+  grid_release_main_runtime_allocations(
+    slots, NS, reconstruct_main_cards ? reconstruct_slot : nullptr);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
@@ -1662,7 +1673,7 @@ inline void grid_phase2(
           break;
         }
       }
-      if (active) continue;
+      if (active || !reconstruct_slot[slot_index]) continue;
       auto &unused_slot = slots[slot_index];
       ParsedCfg unused_config = parse_cfg(unused_slot.config->state);
       const auto unused_context = card_runtime_context(unused_config);
@@ -1687,7 +1698,7 @@ inline void grid_phase2(
     // already freed the previous config's runtime contexts/subscriptions, so
     // this reconstructs against a clean slot; the loop below then wires up the
     // new config. Only requested on an explicit apply (not layout refreshes).
-    if (reconstruct_main_cards) {
+    if (reconstruct_main_cards && reconstruct_slot[idx - 1]) {
       setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
       refresh_card_layout(s, p, cfg, row_span, col_span);
     }
@@ -2020,6 +2031,10 @@ inline void grid_phase2(
   // track image loads without waiting for the next media metadata change.
   if (ha_api_state_connected()) refresh_image_cards();
   refresh_weather_forecast_cards();
+  for (int i = 0; i < NS; i++) {
+    main_config_snapshots[i] = slots[i].config->state;
+  }
+  main_config_snapshots_initialized = true;
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }

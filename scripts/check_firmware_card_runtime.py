@@ -161,9 +161,11 @@ def check_root(root: Path) -> list[str]:
         compact_grid = re.sub(r"\s+", " ", text)
         if "reconstruct_main_cards" in text:
             live_rebuild_guards = (
-                "grid_release_main_runtime_allocations(slots, NS, reconstruct_main_cards);",
+                "reconstruct_main_cards ? reconstruct_slot : nullptr",
                 "grid_prepare_media_runtime_for_visual_reset(slots[i].btn);",
                 "if (reconstruct_main_cards) {",
+                "main_config_snapshots[i] != slots[i].config->state",
+                "reconstruct_main_cards && reconstruct_slot[idx - 1]",
                 "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
             )
             for guard in live_rebuild_guards:
