@@ -122,6 +122,11 @@ struct EspHomeHaReadTransport {
           ha_state_cache_store(entity_id, attribute, state);
           callback(state);
         });
+  }
+
+  void replay(const std::string &entity_id,
+              const std::string &attribute,
+              Callback callback) {
     // Replay the last-known value so runtime re-subscribes start correct; the
     // cache is empty at boot, so boot subscriptions are unaffected.
     if (const std::string *cached = ha_state_cache_find(entity_id, attribute)) {
