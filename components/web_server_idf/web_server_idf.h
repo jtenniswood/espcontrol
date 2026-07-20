@@ -312,6 +312,7 @@ class AsyncEventSourceResponse {
   void deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
   void process_deferred_queue_();
   void process_buffer_();
+  bool can_grow_event_storage_(size_t allocation_bytes, const char *stage);
 
   static void destroy(void *p);
   AsyncEventSource *server_;
@@ -323,6 +324,7 @@ class AsyncEventSourceResponse {
   std::string event_buffer_{""};
   size_t event_bytes_sent_;
   uint16_t consecutive_send_failures_{0};
+  uint32_t last_low_heap_warning_{0};
   static constexpr uint16_t MAX_CONSECUTIVE_SEND_FAILURES = 2500;  // ~20 seconds at 125Hz loop rate
 };
 
