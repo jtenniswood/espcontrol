@@ -2640,6 +2640,12 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     bool enabled = row->entity_id != ctx->entity_id && row->available && !row->pending;
     media_control_apply_availability(row->toggle, row->toggle, enabled);
   }
+  if (row->row) {
+    lv_obj_set_style_bg_opa(row->row, row->selected ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(row->row, lv_color_hex(0x212121), LV_PART_MAIN);
+    lv_obj_set_style_border_width(row->row, row->selected ? 0 : 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(row->row, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
+  }
   bool show_volume = media_control_group_size(ctx) > 1 && row->selected;
   if (row->volume_slider) {
     if (show_volume) lv_obj_clear_flag(row->volume_slider, LV_OBJ_FLAG_HIDDEN);
@@ -2715,7 +2721,8 @@ inline void media_control_refresh_group_volume(MediaControlCtx *ctx) {
   if (!ctx || ui.active != ctx || !ui.group_volume_slider) return;
   std::vector<MediaGroupVolumeState> members = media_control_current_group_volumes(ctx);
   int mean = 0;
-  bool known = media_control_group_size(ctx) > 1 && media_group_mean_volume(members, &mean);
+  size_t group_size = media_control_group_size(ctx);
+  bool known = group_size > 0 && media_group_mean_volume(members, &mean);
   if (known && !ui.updating_group_volume) {
     ui.updating_group_volume = true;
     lv_slider_set_range(ui.group_volume_slider, 0, media_control_volume_max_pct(ctx));
@@ -2724,7 +2731,8 @@ inline void media_control_refresh_group_volume(MediaControlCtx *ctx) {
   }
   media_control_apply_availability(ui.group_volume_slider, ui.group_volume_slider, known);
   if (ui.group_volume_label) {
-    std::string label = espcontrol_i18n(std::string("Group Volume"));
+    std::string label = espcontrol_i18n(
+      std::string(group_size > 1 ? "Group Volume" : "Volume"));
     label += known ? " " + std::to_string(mean) + "%" : " --";
     lv_label_set_text(ui.group_volume_label, label.c_str());
   }
@@ -2866,10 +2874,10 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   row->selected = media_control_group_contains(ctx, entity_id);
   row->row = lv_obj_create(ui.speaker_list);
   lv_obj_set_width(row->row, LV_PCT(100));
-  lv_obj_set_height(row->row, 88);
+  lv_obj_set_height(row->row, 92);
   lv_obj_set_style_bg_opa(row->row, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(row->row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(row->row, 4, LV_PART_MAIN);
+  lv_obj_set_style_radius(row->row, 12, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row->row, 10, LV_PART_MAIN);
   lv_obj_clear_flag(row->row, LV_OBJ_FLAG_SCROLLABLE);
   row->name_label = lv_label_create(row->row);
   lv_obj_set_width(row->name_label, LV_PCT(68));
@@ -2904,8 +2912,10 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   }, LV_EVENT_CLICKED, nullptr);
   row->volume_slider = lv_slider_create(row->row);
   lv_slider_set_range(row->volume_slider, 0, media_control_volume_max_pct(ctx));
-  lv_obj_set_size(row->volume_slider, LV_PCT(75), 12);
-  lv_obj_align(row->volume_slider, LV_ALIGN_BOTTOM_LEFT, 0, -4);
+  lv_obj_set_size(row->volume_slider, LV_PCT(75), 26);
+  lv_obj_align(row->volume_slider, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  lv_obj_set_style_bg_color(row->volume_slider, lv_color_hex(TERTIARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(row->volume_slider, lv_color_hex(current_button_primary_color()), LV_PART_INDICATOR);
   lv_obj_set_user_data(row->volume_slider, row);
   lv_obj_add_event_cb(row->volume_slider, [](lv_event_t *event) {
     MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
@@ -2917,6 +2927,14 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
     send_media_volume_action(row->entity_id, value);
     media_control_refresh_group_volume(media_control_modal_ui().active);
   }, LV_EVENT_RELEASED, nullptr);
+  lv_obj_add_event_cb(row->volume_slider, [](lv_event_t *event) {
+    MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
+      lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
+    if (!row || !row->volume_label) return;
+    char value[8];
+    snprintf(value, sizeof(value), "%d%%", lv_slider_get_value(row->volume_slider));
+    lv_label_set_text(row->volume_label, value);
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
   row->volume_label = lv_label_create(row->row);
   lv_obj_align(row->volume_label, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
   lv_obj_set_style_text_color(row->volume_label, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
@@ -3015,8 +3033,20 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   lv_obj_set_width(ui.group_volume_label, LV_PCT(100));
   lv_obj_set_style_text_color(ui.group_volume_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   ui.group_volume_slider = lv_slider_create(ui.speakers_box);
-  lv_obj_set_size(ui.group_volume_slider, LV_PCT(100), 18);
+  lv_obj_set_size(ui.group_volume_slider, LV_PCT(100), 30);
   lv_slider_set_range(ui.group_volume_slider, 0, media_control_volume_max_pct(ctx));
+  lv_obj_set_style_bg_color(ui.group_volume_slider, lv_color_hex(TERTIARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.group_volume_slider, lv_color_hex(current_button_primary_color()), LV_PART_INDICATOR);
+  lv_obj_add_event_cb(ui.group_volume_slider, [](lv_event_t *event) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (ui.updating_group_volume || !ui.group_volume_label) return;
+    size_t group_size = media_control_group_size(ui.active);
+    std::string label = espcontrol_i18n(
+      std::string(group_size > 1 ? "Group Volume" : "Volume"));
+    label += " " + std::to_string(
+      lv_slider_get_value(static_cast<lv_obj_t *>(lv_event_get_target(event)))) + "%";
+    lv_label_set_text(ui.group_volume_label, label.c_str());
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.group_volume_slider, [](lv_event_t *event) {
     MediaControlModalUi &ui = media_control_modal_ui();
     MediaControlCtx *ctx = ui.active;
@@ -3041,7 +3071,7 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.speaker_list, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.speaker_list, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.speaker_list, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(ui.speaker_list, 4, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(ui.speaker_list, 8, LV_PART_MAIN);
   lv_obj_add_flag(ui.speaker_list, LV_OBJ_FLAG_SCROLLABLE);
   ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
 
