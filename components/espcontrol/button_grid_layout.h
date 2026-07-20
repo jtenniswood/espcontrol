@@ -2,6 +2,8 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+constexpr auto CARD_TEXT_COLOR_PROTECTED_FLAG = LV_OBJ_FLAG_USER_1;
+
 // Parse a 6-char hex color string (no # prefix) into a uint32_t RGB value
 inline uint32_t parse_hex_color(const std::string &hex, bool &valid) {
   valid = hex.length() == 6;
@@ -331,6 +333,7 @@ inline void apply_card_descendant_text_color(lv_obj_t *obj, lv_color_t color) {
   for (int32_t i = 0; i < count; i++) {
     lv_obj_t *child = lv_obj_get_child(obj, i);
     if (!child) continue;
+    if (lv_obj_has_flag(child, CARD_TEXT_COLOR_PROTECTED_FLAG)) continue;
     lv_obj_set_style_text_color(child, color, LV_PART_MAIN);
     apply_card_descendant_text_color(child, color);
   }
@@ -357,10 +360,17 @@ inline void configure_button_label_wrap(lv_obj_t *label) {
   lv_obj_set_width(label, lv_pct(100));
 }
 
+using ButtonLabelTextSyncHook = void (*)(lv_obj_t *, const std::string &);
+inline ButtonLabelTextSyncHook &button_label_text_sync_hook() {
+  static ButtonLabelTextSyncHook hook = nullptr;
+  return hook;
+}
+
 inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) {
   if (!label) return;
   configure_button_label_wrap(label);
   lv_label_set_text(label, text.c_str());
+  if (button_label_text_sync_hook()) button_label_text_sync_hook()(label, text);
   lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 }
 

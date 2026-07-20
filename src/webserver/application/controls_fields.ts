@@ -400,6 +400,136 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         panel.appendChild(helpers.fieldWithControl(segment.label || "Type", segment.inputId || null, control.segment));
         return control;
     }
+    function renderCardBackgroundControl(this: any, panel?: any, b?: any, helpers?: any) {
+        if (!cardBackgroundSupported(b))
+            return null;
+        var field: any = document.createElement("div");
+        field.className = "sp-field sp-card-bg-field";
+        field.appendChild(fieldLabel("Background Image", helpers.idPrefix + "bg-image"));
+        var preview: any = document.createElement("div");
+        preview.className = "sp-card-bg-preview";
+        field.appendChild(preview);
+        var select: any = document.createElement("select");
+        select.className = "sp-select";
+        select.id = helpers.idPrefix + "bg-image";
+        field.appendChild(select);
+        var actions: any = document.createElement("div");
+        actions.className = "sp-card-bg-actions";
+        var upload: any = document.createElement("input");
+        upload.type = "file";
+        upload.accept = "image/*";
+        upload.className = "sp-card-bg-file";
+        var uploadBtn: any = document.createElement("button");
+        uploadBtn.type = "button";
+        uploadBtn.className = "sp-action-btn";
+        uploadBtn.innerHTML = '<span class="mdi mdi-upload"></span>Upload';
+        var clearBtn: any = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "sp-action-btn";
+        clearBtn.innerHTML = '<span class="mdi mdi-close"></span>Clear';
+        var deleteBtn: any = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "sp-action-btn sp-card-bg-delete-btn";
+        deleteBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+        actions.appendChild(upload);
+        actions.appendChild(uploadBtn);
+        actions.appendChild(clearBtn);
+        actions.appendChild(deleteBtn);
+        field.appendChild(actions);
+        var availability: any = document.createElement("div");
+        availability.className = "sp-card-image-storage";
+        field.appendChild(availability);
+        function selectedImage(this: any) {
+            return cardBackgroundImage(b.options);
+        }
+        function setBackground(this: any, id?: any) {
+            id = normalizeCardBackgroundImageId(id);
+            b.options = setConfigOptionValue(b.options, CARD_BACKGROUND_IMAGE_OPTION, id);
+            helpers.saveField("options", b.options);
+            refreshPreview();
+            renderPreview();
+        }
+        function refreshPreview(this: any) {
+            var id: any = selectedImage();
+            preview.style.backgroundImage = id ? "url('" + cardImageUrl(id) + "')" : "";
+            preview.classList.toggle("sp-card-bg-preview-empty", !id);
+            var iconName: any = iconSlug(resolveIcon(b));
+            var title: any = b.label || b.entity || "Configure";
+            preview.innerHTML =
+                '<span class="sp-card-bg-preview-icon mdi mdi-' + iconName + '"></span>' +
+                    '<span class="sp-card-bg-preview-title">' + escHtml(title) + '</span>';
+            clearBtn.disabled = !id;
+            deleteBtn.disabled = !id;
+        }
+        function fillSelect(this: any, items?: any) {
+            var current: any = selectedImage();
+            var info: any = cardImageLibraryInfo();
+            var available: any = !!info.available;
+            select.disabled = !available;
+            uploadBtn.disabled = !available;
+            availability.textContent = info.requiresUsbFlash
+                ? "Background images need one USB reflash to install image storage on this display."
+                : cardBackgroundImageLimitMessage();
+            select.innerHTML = "";
+            var none: any = document.createElement("option");
+            none.value = "";
+            none.textContent = "No image";
+            select.appendChild(none);
+            (items || []).forEach(function (this: any, item?: any) {
+                var option: any = document.createElement("option");
+                option.value = item.id;
+                option.textContent = item.name || item.id;
+                select.appendChild(option);
+            });
+            if (current && !(items || []).some(function (this: any, item?: any) { return item.id === current; })) {
+                var missing: any = document.createElement("option");
+                missing.value = current;
+                missing.textContent = current + " (missing)";
+                select.appendChild(missing);
+            }
+            select.value = current;
+            refreshPreview();
+        }
+        select.addEventListener("change", function (this: any) { setBackground(this.value); });
+        clearBtn.addEventListener("click", function () {
+            select.value = "";
+            setBackground("");
+        });
+        uploadBtn.addEventListener("click", function () { upload.click(); });
+        upload.addEventListener("change", function () {
+            var file: any = upload.files && upload.files[0];
+            if (!file)
+                return;
+            uploadBtn.disabled = true;
+            uploadCardImage(file).then(function (this: any, item?: any) {
+                setBackground(item.id);
+                return listCardImages(true);
+            }).then(fillSelect).catch(function (this: any, err?: any) {
+                showBanner(err && err.message || "Could not upload image.", "error");
+            }).then(function () {
+                upload.value = "";
+                uploadBtn.disabled = !cardImageLibraryInfo().available;
+            });
+        });
+        deleteBtn.addEventListener("click", function () {
+            var id: any = selectedImage();
+            if (!id)
+                return;
+            var used: any = countCardImageUsage(id);
+            if (used && !window.confirm("This image is used by " + used + " card" +
+                (used === 1 ? "" : "s") + ". Delete it anyway?"))
+                return;
+            deleteCardImage(id).then(function () {
+                clearCardImageReferences(id);
+                setBackground("");
+                return listCardImages(true);
+            }).then(fillSelect);
+        });
+        fillSelect(_cardImageLibrary || []);
+        listCardImages(false).then(fillSelect);
+        panel.appendChild(field);
+        return field;
+    }
     function cardSensorPreviewHtml(this: any, b?: any, helpers?: any, value?: any, unit?: any, extraClass?: any, valueClass?: any) {
         var className: any = "sp-sensor-preview" + (extraClass ? " " + extraClass : "") +
             (cardLargeNumbersActiveForCardSize(b, helpers) ? " sp-sensor-preview-large" : "");
@@ -493,6 +623,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         "renderCardActiveColorToggle": staticGlobal(renderCardActiveColorToggle),
         "renderBasicCardFields": staticGlobal(renderBasicCardFields),
         "renderCardSegmentControl": staticGlobal(renderCardSegmentControl),
+        "renderCardBackgroundControl": staticGlobal(renderCardBackgroundControl),
         "cardSensorPreviewHtml": staticGlobal(cardSensorPreviewHtml),
         "cardBadgeLabelHtml": staticGlobal(cardBadgeLabelHtml),
         "cardIconHtml": staticGlobal(cardIconHtml),

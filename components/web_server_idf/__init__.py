@@ -8,7 +8,7 @@ CONFIG_SCHEMA = cv.All(
     cv.only_on_esp32,
 )
 
-AUTO_LOAD = ["web_server"]
+AUTO_LOAD = ["web_server", "card_image_store"]
 
 
 async def to_code(config):

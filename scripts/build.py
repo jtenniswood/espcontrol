@@ -659,6 +659,7 @@ def gen_card_contract_ts(data):
             normalization.pop("hookData", None)
     aliases = data.get("migrationAliases", {})
     option_names = contract_option_names(data)
+    background_types = data["appearance"]["backgroundImage"]["supportedCardTypes"]
     return (
         "// =============================================================================\n"
         "// GENERATED TYPED CARD CONFIG CONTRACT - do not edit by hand\n"
@@ -688,6 +689,7 @@ def gen_card_contract_ts(data):
         f"export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string>> = {json.dumps(code_to_type, indent=2)};\n"
         f"export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRule>> = {json.dumps(large, indent=2)};\n"
         f"export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {json.dumps(option_names, indent=2)};\n"
+        f"export const CARD_CONTRACT_BACKGROUND_IMAGE_TYPES = {js_string_list(background_types)} as const;\n"
         "\n"
         "function cardContractListContains(list: readonly string[] | undefined, value: string): boolean {\n"
         "  return (list || []).indexOf(value) >= 0;\n"
@@ -699,6 +701,10 @@ def gen_card_contract_ts(data):
         "\n"
         "export function cardContractCardKeys(): string[] {\n"
         "  return Object.keys(CARD_CONTRACT_CARDS);\n"
+        "}\n"
+        "\n"
+        "export function cardContractSupportsBackground(type: string | null | undefined): boolean {\n"
+        "  return cardContractListContains(CARD_CONTRACT_BACKGROUND_IMAGE_TYPES, type || \"\");\n"
         "}\n"
         "\n"
         "export function cardRuntimeSpec(type: string | null | undefined): CardRuntimeSpec | null {\n"
@@ -2973,6 +2979,7 @@ def gen_card_contract_h(data):
     climate_behavior = cards["climate"]["behavior"]["climate"]
     large_numbers = data["largeNumbers"]
     option_names = contract_option_names(data)
+    background_types = data["appearance"]["backgroundImage"]["supportedCardTypes"]
     lines = [
         "#pragma once\n",
         "\n",
@@ -2989,6 +2996,7 @@ def gen_card_contract_h(data):
         f'constexpr const char *CARD_CONTRACT_OPTION_SELECT_ACTION = {json.dumps(data["optionSelect"]["canonicalAction"])};\n',
         cpp_string_array("CARD_CONTRACT_OPTION_SELECT_ACTIONS", option_actions),
         cpp_string_array("CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES", groups["brightnessSlider"]),
+        cpp_string_array("CARD_CONTRACT_BACKGROUND_IMAGE_TYPES", background_types),
         cpp_string_array("CARD_CONTRACT_COVER_MODES", contract_card_option_values(cards, "cover", "cover_mode")),
         cpp_string_array("CARD_CONTRACT_COVER_CONTROL_TABS", contract_card_option_values(cards, "cover", "cover_tabs")),
         cpp_string_array("CARD_CONTRACT_GARAGE_MODES", contract_card_option_values(cards, "garage", "garage_mode")),
@@ -3013,6 +3021,12 @@ def gen_card_contract_h(data):
         cpp_string_array("CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS", contract_card_option_values(cards, "climate", "temperature_step")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_PRECISION_VALUES", climate_behavior["precisionValues"]),
         cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", large_numbers["weather"]["precisions"]),
+        "inline bool card_contract_supports_background(const std::string &type) {\n"
+        "  for (const auto *supported : CARD_CONTRACT_BACKGROUND_IMAGE_TYPES) {\n"
+        "    if (type == supported) return true;\n"
+        "  }\n"
+        "  return false;\n"
+        "}\n",
         "".join(
             f"constexpr const char *{option_constant_name(name)} = {json.dumps(value)};\n"
             for name, value in option_names.items()

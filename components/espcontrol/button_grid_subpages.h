@@ -42,6 +42,7 @@ inline std::string decode_compact_subpage_field(const std::string &value, size_t
 }
 
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
+  std::string original_options = b.options;
   if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
   if (fan_card_type(b.type)) {
     b.sensor.clear();
@@ -226,6 +227,9 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   }
   if (b.type == "sensor") {
     b.options = sensor_card_options_normalized(b.options, b.precision);
+  }
+  if (card_background_supported_type(b.type)) {
+    append_card_background_options(b.options, original_options);
   }
   return b;
 }

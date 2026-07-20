@@ -33,11 +33,17 @@ static void jpeg_error_exit(j_common_ptr cinfo) {
 
 static constexpr size_t MAX_JPEG_DOWNLOAD_SIZE = 2 * 1024 * 1024;  // 2 MB
 static constexpr uint32_t JPEG_DECODE_BUDGET_MS = 12;
+static constexpr uint32_t SMALL_JPEG_DECODE_BUDGET_MS = 35;
+static constexpr size_t SMALL_JPEG_MAX_BYTES = 64 * 1024;
+static constexpr int SMALL_JPEG_MAX_SIDE = 256;
 static constexpr int JPEG_SCANLINE_BATCH = 8;
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 static jpeg_decoder_handle_t p4_jpeg_decoder() {
   static jpeg_decoder_handle_t decoder = nullptr;
+  static bool initialization_attempted = false;
+  if (!initialization_attempted) {
+    initialization_attempted = true;
   static bool attempted = false;
   if (!attempted) {
     attempted = true;
@@ -111,6 +117,9 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   ppa_client_handle_t client = p4_ppa_scaler();
   if (client == nullptr || source == nullptr || target_width == 0 || target_height == 0) return false;
   size_t target_size = static_cast<size_t>(target_width) * target_height * 2;
+  // ESP32-P4 PPA requires both the output address and advertised buffer size to
+  // be aligned to the external-RAM cache line. Card dimensions are often odd,
+  // so the exact RGB565 byte count is not necessarily aligned.
   static constexpr size_t PPA_BUFFER_ALIGNMENT = 64;
   size_t required_capacity =
       (target_size + PPA_BUFFER_ALIGNMENT - 1) & ~(PPA_BUFFER_ALIGNMENT - 1);
@@ -122,6 +131,16 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   }
   if (scaled == nullptr) return false;
 
+  uint32_t crop_width = source_width;
+  uint32_t crop_height = source_height;
+  if (static_cast<uint64_t>(source_width) * target_height >
+      static_cast<uint64_t>(source_height) * target_width) {
+    crop_width = std::max<uint32_t>(1, static_cast<uint64_t>(source_height) * target_width / target_height);
+  } else {
+    crop_height = std::max<uint32_t>(1, static_cast<uint64_t>(source_width) * target_height / target_width);
+  }
+  uint32_t crop_x = (source_width - crop_width) / 2;
+  uint32_t crop_y = (source_height - crop_height) / 2;
   static constexpr uint32_t PPA_SCALE_FRACTIONAL_STEPS = 16;
   static constexpr uint32_t PPA_MAX_SCALE_UNITS = 4095;
   P4CoverScalePlan plan = p4_cover_scale_plan(
@@ -137,6 +156,10 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   config.in.buffer = source;
   config.in.pic_w = source_stride_pixels;
   config.in.pic_h = source_height;
+  config.in.block_w = crop_width;
+  config.in.block_h = crop_height;
+  config.in.block_offset_x = crop_x;
+  config.in.block_offset_y = crop_y;
   config.in.block_w = plan.crop_width;
   config.in.block_h = plan.crop_height;
   config.in.block_offset_x = plan.crop_x;
@@ -150,6 +173,8 @@ static bool p4_scale_rgb565(const uint8_t *source, uint32_t source_stride_pixels
   config.out.block_offset_y = 0;
   config.out.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
   config.rotation_angle = PPA_SRM_ROTATION_ANGLE_0;
+  config.scale_x = static_cast<float>(target_width) / crop_width;
+  config.scale_y = static_cast<float>(target_height) / crop_height;
   config.scale_x = static_cast<float>(plan.scale_units) / PPA_SCALE_FRACTIONAL_STEPS;
   config.scale_y = config.scale_x;
   config.mode = PPA_TRANS_MODE_BLOCKING;
@@ -189,6 +214,7 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
     return 0;
   }
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  if (!this->decode_started_) {
   if (!this->decode_started_ && this->image_->hardware_acceleration_enabled()) {
     int hardware_result = this->decode_hardware_(buffer, size);
     if (hardware_result != 0) return hardware_result;
@@ -206,6 +232,8 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
+  jpeg_decoder_handle_t decoder = p4_jpeg_decoder();
+  if (decoder == nullptr) return 0;
   if (!p4_jpeg_hardware_target_supported(
         this->image_->image_type() == image::ImageType::IMAGE_TYPE_RGB565)) {
     p4_release_jpeg_workspace();
@@ -220,6 +248,13 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   jpeg_decode_picture_info_t info{};
   if (jpeg_decoder_get_info(buffer, size, &info) != ESP_OK || info.width == 0 || info.height == 0 ||
       info.sample_method == JPEG_DOWN_SAMPLING_GRAY) {
+    return 0;
+  }
+
+  uint32_t mcu_width = info.sample_method == JPEG_DOWN_SAMPLING_YUV444 ? 8 : 16;
+  uint32_t mcu_height = info.sample_method == JPEG_DOWN_SAMPLING_YUV420 ? 16 : 8;
+  uint32_t padded_width = align_up(info.width, mcu_width);
+  uint32_t padded_height = align_up(info.height, mcu_height);
     p4_release_jpeg_workspace();
     return 0;
   }
@@ -265,6 +300,23 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   bool ppa_scaled = false;
   if (target_width > 0 && target_height > 0 &&
       this->image_->get_resize_mode() == ImageResizeMode::COVER &&
+      (target_width != static_cast<int>(info.width) || target_height != static_cast<int>(info.height))) {
+    ppa_scaled = p4_scale_rgb565(workspace.output, padded_width, info.width, info.height,
+                                 target_width, target_height, workspace.scaled, workspace.scaled_capacity);
+  }
+  if (ppa_scaled) {
+    if (!this->set_size(target_width, target_height)) return DECODE_ERROR_OUT_OF_MEMORY;
+    this->draw_rgb565_frame(target_width, target_height, static_cast<size_t>(target_width) * 2,
+                            workspace.scaled);
+  } else {
+    if (!this->set_size(info.width, info.height)) return DECODE_ERROR_OUT_OF_MEMORY;
+    this->draw_rgb565_frame(info.width, info.height, static_cast<size_t>(padded_width) * 2,
+                            workspace.output);
+  }
+
+  this->decoded_bytes_ = size;
+  ESP_LOGI(TAG, "ESP32-P4 hardware JPEG decoded %ux%u in %lu ms (PPA scale: %s)", info.width, info.height,
+           static_cast<unsigned long>(millis() - started_at), ppa_scaled ? "yes" : "no");
       (target_width != static_cast<int>(info.width) ||
        target_height != static_cast<int>(info.height))) {
     ppa_scaled = p4_scale_rgb565(workspace.output, padded_width, info.width, info.height,
@@ -324,8 +376,12 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
   ESP_LOGD(TAG, "JPEG header: %dx%d, components=%d, progressive=%s",
            src_w, src_h, this->cinfo_.num_components,
            this->cinfo_.progressive_mode ? "yes" : "no");
-  // Request RGB output regardless of input colorspace
-  this->cinfo_.out_color_space = JCS_RGB;
+  this->use_rgb565_ = (this->image_->image_type() == image::ImageType::IMAGE_TYPE_RGB565);
+  this->big_endian_ = this->image_->is_big_endian();
+  this->native_rgb565_output_ = this->use_rgb565_ && !this->big_endian_;
+  // libjpeg-turbo can produce native little-endian RGB565 directly on ESP32,
+  // avoiding a second per-pixel RGB888 conversion pass on the S3.
+  this->cinfo_.out_color_space = this->native_rgb565_output_ ? JCS_RGB565 : JCS_RGB;
   // Use fast integer IDCT — slightly lower quality but faster on ESP32
   // and avoids pulling in the float IDCT code path.
   this->cinfo_.dct_method = JDCT_IFAST;
@@ -400,8 +456,16 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
     return DECODE_ERROR_OUT_OF_MEMORY;
   }
 
-  this->use_rgb565_ = (this->image_->image_type() == image::ImageType::IMAGE_TYPE_RGB565);
-  this->big_endian_ = this->image_->is_big_endian();
+  if (this->use_rgb565_ && (this->x_scale_ != 1.0 || this->y_scale_ != 1.0)) {
+    this->rgb565_frame_stride_ = static_cast<size_t>(this->out_w_) * 2;
+    size_t frame_size = this->rgb565_frame_stride_ * this->out_h_;
+    this->rgb565_frame_buffer_ = static_cast<uint8_t *>(
+        heap_caps_malloc(frame_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (this->rgb565_frame_buffer_ == nullptr) {
+      this->rgb565_frame_stride_ = 0;
+      ESP_LOGW(TAG, "Could not allocate RGB565 staging frame; using scanline scaling");
+    }
+  }
   this->source_size_ = size;
   this->y_ = 0;
   this->decode_started_ = true;
@@ -422,26 +486,30 @@ int JpegDecoder::decode_scanlines_() {
       jpeg_read_scanlines(&this->cinfo_, &row_ptr, 1);
 
       if (this->use_rgb565_) {
-        // Convert RGB888 -> RGB565 in-place (2 bpp fits within the 3 bpp
-        // source buffer, so no separate allocation needed). We read forward
-        // and write forward; the write pointer never overtakes the read
-        // pointer because 2 < 3.
-        uint8_t *dst = this->row_buffer_;
-        for (int x = 0; x < this->out_w_; x++) {
-          uint8_t r = this->row_buffer_[x * 3 + 0];
-          uint8_t g = this->row_buffer_[x * 3 + 1];
-          uint8_t b = this->row_buffer_[x * 3 + 2];
-          uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-          if (this->big_endian_) {
-            dst[0] = rgb565 >> 8;
-            dst[1] = rgb565 & 0xFF;
-          } else {
-            dst[0] = rgb565 & 0xFF;
-            dst[1] = rgb565 >> 8;
+        if (!this->native_rgb565_output_) {
+          // Convert RGB888 -> RGB565 in-place when a non-native byte order is requested.
+          uint8_t *dst = this->row_buffer_;
+          for (int x = 0; x < this->out_w_; x++) {
+            uint8_t r = this->row_buffer_[x * 3 + 0];
+            uint8_t g = this->row_buffer_[x * 3 + 1];
+            uint8_t b = this->row_buffer_[x * 3 + 2];
+            uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+            if (this->big_endian_) {
+              dst[0] = rgb565 >> 8;
+              dst[1] = rgb565 & 0xFF;
+            } else {
+              dst[0] = rgb565 & 0xFF;
+              dst[1] = rgb565 >> 8;
+            }
+            dst += 2;
           }
-          dst += 2;
         }
-        this->draw_rgb565_block(0, this->y_, this->out_w_, 1, this->row_buffer_);
+        if (this->rgb565_frame_buffer_ != nullptr) {
+          memcpy(this->rgb565_frame_buffer_ + static_cast<size_t>(this->y_) * this->rgb565_frame_stride_,
+                 this->row_buffer_, this->rgb565_frame_stride_);
+        } else {
+          this->draw_rgb565_block(0, this->y_, this->out_w_, 1, this->row_buffer_);
+        }
       } else {
         for (int x = 0; x < this->out_w_; x++) {
           Color color(this->row_buffer_[x * 3 + 0], this->row_buffer_[x * 3 + 1], this->row_buffer_[x * 3 + 2]);
@@ -451,7 +519,11 @@ int JpegDecoder::decode_scanlines_() {
       this->y_++;
     }
     App.feed_wdt();
-    if (millis() - start >= JPEG_DECODE_BUDGET_MS) {
+    uint32_t budget = this->source_size_ <= SMALL_JPEG_MAX_BYTES && this->out_w_ <= SMALL_JPEG_MAX_SIDE &&
+                              this->out_h_ <= SMALL_JPEG_MAX_SIDE
+                          ? SMALL_JPEG_DECODE_BUDGET_MS
+                          : JPEG_DECODE_BUDGET_MS;
+    if (millis() - start >= budget) {
       break;
     }
   }
@@ -461,6 +533,10 @@ int JpegDecoder::decode_scanlines_() {
   }
 
   jpeg_finish_decompress(&this->cinfo_);
+  if (this->rgb565_frame_buffer_ != nullptr) {
+    this->draw_rgb565_frame(this->out_w_, this->out_h_, this->rgb565_frame_stride_,
+                            this->rgb565_frame_buffer_);
+  }
   ESP_LOGD(TAG, "JPEG decode finished: output=%dx%d", this->out_w_, this->out_h_);
   size_t decoded = this->source_size_;
   this->decoded_bytes_ = decoded;
@@ -472,6 +548,11 @@ void JpegDecoder::cleanup_() {
   if (this->row_buffer_ != nullptr) {
     free(this->row_buffer_);
     this->row_buffer_ = nullptr;
+  }
+  if (this->rgb565_frame_buffer_ != nullptr) {
+    free(this->rgb565_frame_buffer_);
+    this->rgb565_frame_buffer_ = nullptr;
+    this->rgb565_frame_stride_ = 0;
   }
   if (this->cinfo_created_) {
     if (setjmp(this->jerr_.setjmp_buffer) == 0) {
@@ -486,6 +567,7 @@ void JpegDecoder::cleanup_() {
   this->y_ = 0;
   this->use_rgb565_ = false;
   this->big_endian_ = false;
+  this->native_rgb565_output_ = false;
 }
 
 }  // namespace artwork_image

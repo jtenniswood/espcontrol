@@ -145,6 +145,44 @@
         }
       }
     },
+    "assets": {
+      "card-backgrounds-6": {
+        "capabilities": {
+          "cardBackgrounds": {
+            "maxActive": 6,
+            "partitionBytes": 2097152,
+            "residentFrames": 6
+          }
+        }
+      },
+      "card-backgrounds-9": {
+        "capabilities": {
+          "cardBackgrounds": {
+            "maxActive": 9,
+            "partitionBytes": 2097152,
+            "residentFrames": 9
+          }
+        }
+      },
+      "card-backgrounds-15": {
+        "capabilities": {
+          "cardBackgrounds": {
+            "maxActive": 15,
+            "partitionBytes": 2097152,
+            "residentFrames": 15
+          }
+        }
+      },
+      "card-backgrounds-20": {
+        "capabilities": {
+          "cardBackgrounds": {
+            "maxActive": 20,
+            "partitionBytes": 2097152,
+            "residentFrames": 20
+          }
+        }
+      }
+    },
     "modal": {
       "wide-landscape": {
         "firmware": {
@@ -380,6 +418,7 @@
     "guition-esp32-p4-jc1060p470": {
       "profiles": {
         "platform": "esp32-p4",
+        "assets": "card-backgrounds-15",
         "modal": "wide-landscape",
         "fonts": "large-panel-p4",
         "network": [
@@ -562,6 +601,7 @@
     "guition-esp32-p4-jc4880p443": {
       "profiles": {
         "platform": "esp32-p4",
+        "assets": "card-backgrounds-6",
         "modal": "compact-portrait",
         "fonts": "portrait-panel-p4",
         "network": "c6-firmware-update"
@@ -732,6 +772,7 @@
       "profiles": {
         "platform": "esp32-p4",
         "display": "jc8012p4a1-1280x800",
+        "assets": "card-backgrounds-20",
         "modal": "large-landscape",
         "fonts": "large-panel-p4",
         "network": "c6-firmware-update",
@@ -755,6 +796,7 @@
       "profiles": {
         "platform": "esp32-p4",
         "display": "jc8012p4a1-1280x800",
+        "assets": "card-backgrounds-20",
         "modal": "large-landscape",
         "fonts": "large-panel-p4",
         "network": "c6-firmware-update",
@@ -770,6 +812,7 @@
     "esp32-p4-86": {
       "profiles": {
         "platform": "esp32-p4",
+        "assets": "card-backgrounds-9",
         "modal": "large-square",
         "fonts": "compact-panel",
         "network": [
@@ -960,6 +1003,7 @@
     "guition-esp32-s3-4848s040": {
       "profiles": {
         "platform": "esp32-s3",
+        "assets": "card-backgrounds-9",
         "modal": "compact-square-constrained",
         "fonts": "compact-panel"
       },

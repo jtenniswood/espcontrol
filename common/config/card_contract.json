@@ -153,8 +153,15 @@
   "optionNames": [
     "state_low_label",
     "state_high_label",
+    "bg_image",
     "media_cover_art"
   ],
+  "appearance": {
+    "backgroundImage": {
+      "option": "bg_image",
+      "supportedCardTypes": ["", "action", "push", "media", "light_switch", "internal", "subpage", "garage"]
+    }
+  },
   "cards": {
     "": {
       "label": "Switch",

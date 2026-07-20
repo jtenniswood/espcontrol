@@ -12,6 +12,7 @@ substitutions:
   friendly_name: "EspControl 4inch"
   espcontrol_component_url: "file:///config"
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  partition_table_file: "/config/common/device/partitions_16mb_card_images.csv"
   espcontrol_component_ref: "HEAD"
 
 esphome:

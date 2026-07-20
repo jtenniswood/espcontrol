@@ -52,6 +52,19 @@ export interface BackupImportPlan {
   readonly screen: Record<string, unknown> | null;
 }
 
+export interface BackupArchiveEntry {
+  readonly name: string;
+  readonly bytes: Uint8Array;
+}
+
+export type BackupArchiveEntries = Readonly<Record<string, Uint8Array>>;
+
+export interface BackupAssetProvider<TImportPlan = BackupImportPlan> {
+  createArchiveEntries(): Promise<BackupArchiveEntry[]>;
+  restoreArchiveEntries(entries?: BackupArchiveEntries | null): Promise<Record<string, string>>;
+  remapImportedReferences(plan: TImportPlan, references: Readonly<Record<string, string>>): void;
+}
+
 export interface BackupFeatureDependencies {
   readonly deviceId: string;
   readonly gridCols: number;

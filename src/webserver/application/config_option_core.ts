@@ -1,4 +1,5 @@
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import { cardContractSupportsBackground } from "../generated/card_contract";
 export function installConfigOptionCoreModule(): GlobalDescriptors {
     // ── Config Option Core ─────────────────────────────────────────────
     var SENSOR_STATE_LABELS_OPTION: any = cardContractOptionName("state_labels");
@@ -49,11 +50,13 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
     var IMAGE_LABEL_OPTION: any = cardContractOptionName("image_label");
     var IMAGE_ICON_OPTION: any = cardContractOptionName("image_icon");
     var IMAGE_MODAL_MODE_OPTION: any = cardContractOptionName("image_modal_mode");
+    var CARD_BACKGROUND_IMAGE_OPTION: any = cardContractOptionName("bg_image");
     var LIGHT_CONTROL_TABS_OPTION: any = cardContractOptionName("light_tabs");
     var COVER_CONTROL_TABS_OPTION: any = cardContractOptionName("cover_tabs");
     var CLIMATE_CONTROL_TABS_OPTION: any = cardContractOptionName("climate_tabs");
     var FAN_CONTROL_TABS_OPTION: any = cardContractOptionName("fan_tabs");
     var IMAGE_SLOT_CAPACITY: any = Math.max(0, parseInt(CFG.imageSlotCapacity, 10) || 0);
+    var CARD_BACKGROUND_IMAGE_LIMIT: any = Math.max(0, parseInt(CFG.cardBackgroundImageLimit, 10) || parseInt(CFG.slots, 10) || 0);
     function largeNumbersExplicitlyDisabled(this: any, options?: any) {
         return configOptionValue(options, SENSOR_LARGE_NUMBERS_OPTION) === SENSOR_LARGE_NUMBERS_OFF_VALUE;
     }
@@ -65,6 +68,30 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
             return setConfigOption(out, SENSOR_LARGE_NUMBERS_OPTION, true);
         }
         return out;
+    }
+    function cardBackgroundSupported(this: any, b?: any) {
+        if (!b)
+            return false;
+        return cardContractSupportsBackground(b.type || "");
+    }
+    function normalizeCardBackgroundImageId(this: any, value?: any) {
+        value = String(value || "").trim().toLowerCase();
+        return /^[a-z0-9-]{1,40}$/.test(value) ? value : "";
+    }
+    function cardBackgroundImage(this: any, options?: any) {
+        return normalizeCardBackgroundImageId(configOptionValue(options, CARD_BACKGROUND_IMAGE_OPTION));
+    }
+    function copyCardBackgroundOptions(this: any, out?: any, sourceOptions?: any, b?: any) {
+        if (!cardBackgroundSupported(b))
+            return out || "";
+        var id: any = cardBackgroundImage(sourceOptions);
+        if (!id)
+            return out || "";
+        return setConfigOptionValue(out || "", CARD_BACKGROUND_IMAGE_OPTION, id);
+    }
+    function cardImageUrl(this: any, id?: any) {
+        id = normalizeCardBackgroundImageId(id);
+        return id ? "/card-images/" + id + ".jpg" : "";
     }
     function cardContractOptionSpec(this: any, type?: any, name?: any) {
         var options: any = cardContractOptions(type);
@@ -142,13 +169,20 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "IMAGE_LABEL_OPTION": liveGlobal(() => IMAGE_LABEL_OPTION, (value?: any) => { IMAGE_LABEL_OPTION = value; }),
         "IMAGE_ICON_OPTION": liveGlobal(() => IMAGE_ICON_OPTION, (value?: any) => { IMAGE_ICON_OPTION = value; }),
         "IMAGE_MODAL_MODE_OPTION": liveGlobal(() => IMAGE_MODAL_MODE_OPTION, (value?: any) => { IMAGE_MODAL_MODE_OPTION = value; }),
+        "CARD_BACKGROUND_IMAGE_OPTION": liveGlobal(() => CARD_BACKGROUND_IMAGE_OPTION, (value?: any) => { CARD_BACKGROUND_IMAGE_OPTION = value; }),
         "LIGHT_CONTROL_TABS_OPTION": liveGlobal(() => LIGHT_CONTROL_TABS_OPTION, (value?: any) => { LIGHT_CONTROL_TABS_OPTION = value; }),
         "COVER_CONTROL_TABS_OPTION": liveGlobal(() => COVER_CONTROL_TABS_OPTION, (value?: any) => { COVER_CONTROL_TABS_OPTION = value; }),
         "CLIMATE_CONTROL_TABS_OPTION": liveGlobal(() => CLIMATE_CONTROL_TABS_OPTION, (value?: any) => { CLIMATE_CONTROL_TABS_OPTION = value; }),
         "FAN_CONTROL_TABS_OPTION": liveGlobal(() => FAN_CONTROL_TABS_OPTION, (value?: any) => { FAN_CONTROL_TABS_OPTION = value; }),
         "IMAGE_SLOT_CAPACITY": liveGlobal(() => IMAGE_SLOT_CAPACITY, (value?: any) => { IMAGE_SLOT_CAPACITY = value; }),
+        "CARD_BACKGROUND_IMAGE_LIMIT": liveGlobal(() => CARD_BACKGROUND_IMAGE_LIMIT, (value?: any) => { CARD_BACKGROUND_IMAGE_LIMIT = value; }),
         "largeNumbersExplicitlyDisabled": staticGlobal(largeNumbersExplicitlyDisabled),
         "copyLargeNumbersOption": staticGlobal(copyLargeNumbersOption),
+        "cardBackgroundSupported": staticGlobal(cardBackgroundSupported),
+        "normalizeCardBackgroundImageId": staticGlobal(normalizeCardBackgroundImageId),
+        "cardBackgroundImage": staticGlobal(cardBackgroundImage),
+        "copyCardBackgroundOptions": staticGlobal(copyCardBackgroundOptions),
+        "cardImageUrl": staticGlobal(cardImageUrl),
         "cardContractOptionSpec": staticGlobal(cardContractOptionSpec),
         "cardContractOptionSupportedFor": staticGlobal(cardContractOptionSupportedFor),
         "cardContractOptionDefaultValue": staticGlobal(cardContractOptionDefaultValue),

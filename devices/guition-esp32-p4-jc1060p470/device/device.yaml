@@ -10,6 +10,7 @@ substitutions:
   espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
   mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+  partition_table_file: "../../../common/device/partitions_16mb_card_images.csv"
 
 # ---------------------------------------------------------------------------
 # ESP32-P4 platform (16MB flash, ESP-IDF framework)
@@ -17,6 +18,7 @@ substitutions:
 esp32:
   variant: esp32p4
   flash_size: 16MB
+  partitions: ${partition_table_file}
   cpu_frequency: 360MHZ
   engineering_sample: true
   framework:
@@ -62,7 +64,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image]
+    components: [espcontrol, web_server_idf, artwork_image, card_image_store]
     refresh: 1s
 
 espcontrol:
@@ -73,6 +75,21 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-Wno-deprecated-declarations"
+      - "-DESPCONTROL_MAX_GRID_SLOTS=15"
+      - "-DESPCONTROL_DISABLE_TODO=1"
+      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
+      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+      # Separate marker for the JC1060P470 boot-loop fix so ESPHome cannot
+      # silently reuse the earlier 10:42 build that still crashes.
+      - "-DESPCONTROL_JC1060P470_BOOTFIX_20260522=1"
+      # Rebuild marker for the JC1060P470 OTA flash erase watchdog increase.
+      - "-DESPCONTROL_JC1060P470_OTA_WDT_20260526=1"
+    build_src_flags:
+      - "-Wno-literal-suffix"
   build_flags:
     - "-Wno-deprecated-declarations"
     - "-DESPCONTROL_DISABLE_TODO=1"

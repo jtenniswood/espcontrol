@@ -95,7 +95,9 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             ? state.settingsDraft!.key
             : (c.isSub ? "sub:" + state.editingSubpage : "main") + ":" + slot;
         function cloneButtonConfig(this: any, src?: any) {
-            return EspControlModel.cloneCardConfig(src);
+            var cloned: any = EspControlModel.cloneCardConfig(src);
+            normalizeButtonConfig(cloned);
+            return cloned;
         }
         function copyButtonConfig(this: any, target?: any, src?: any) {
             EspControlModel.copyCardConfig(target, src);
@@ -236,6 +238,18 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             if (count <= imageSlotCapacity())
                 return true;
             showImageCardLimitBanner();
+            return false;
+        }
+        function validateCardBackgroundImageLimit(this: any) {
+            var count: any = cardBackgroundImageCountWithCandidate({
+                isSub: c.isSub,
+                homeSlot: state.editingSubpage,
+                slot: slot,
+                button: b,
+            });
+            if (count <= cardBackgroundImageLimit())
+                return true;
+            showCardBackgroundImageLimitBanner();
             return false;
         }
         function applyCardSizeConstraint(this: any, savedButton?: any) {
@@ -641,6 +655,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             renderCardActiveColorToggle: renderCardActiveColorToggle,
             renderBasicCardFields: renderBasicCardFields,
             renderCardSegmentControl: renderCardSegmentControl,
+            renderCardBackgroundControl: renderCardBackgroundControl,
             requireField: requireField,
             clearFieldError: clearFieldError,
             toggleRow: toggleRow,
@@ -693,6 +708,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             });
             panel.appendChild(patternField.field);
         }
+        renderCardBackgroundControl(panel, b, typeHelpers);
         var saveRow: any = document.createElement("div");
         saveRow.className = "sp-btn-row sp-btn-row--save";
         if (!isNewDraft) {
@@ -718,6 +734,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             if (!validateSettingsDraft())
                 return;
             if (!validateImageCardLimit())
+                return;
+            if (!validateCardBackgroundImageLimit())
                 return;
             if (!validateConfigSize())
                 return;

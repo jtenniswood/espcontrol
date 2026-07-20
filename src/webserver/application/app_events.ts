@@ -7,9 +7,10 @@ export function installAppEventsModule(): GlobalDescriptors {
             _eventSource.close();
             _eventSource = null;
         }
-        function markConnected(this: any) {
+        function markConnected(this: any, resetOrderState?: any) {
             resetStateForConnection(state);
-            orderReceived = false;
+            if (resetOrderState)
+                orderReceived = false;
             setConfigLocked(false);
             if (els.banner)
                 els.banner.className = "sp-banner";
@@ -110,12 +111,16 @@ export function installAppEventsModule(): GlobalDescriptors {
             console.log("[state] unhandled:", id, val);
         }
         if (!eventStreamEnabled()) {
-            loadInitialState(handleState, markConnected);
+            loadInitialState(handleState, function () {
+                markConnected(false);
+            });
             return;
         }
         var source: any = new EventSource("/events");
         _eventSource = source;
-        source.addEventListener("open", markConnected);
+        source.addEventListener("open", function () {
+            markConnected(true);
+        });
         source.addEventListener("error", function (this: any) {
             handleDisconnected(source);
         });

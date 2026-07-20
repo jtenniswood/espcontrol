@@ -6,6 +6,32 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         var b: any = state.buttons[slot - 1];
         postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
     }
+    function clearCardImageReferences(this: any, id?: any) {
+        id = normalizeCardBackgroundImageId(id);
+        if (!id)
+            return 0;
+        var changed: any = 0;
+        function clearButtons(this: any, buttons?: any, save?: any) {
+            (buttons || []).forEach(function (this: any, button?: any, index?: any) {
+                if (cardBackgroundImage(button && button.options) !== id)
+                    return;
+                button.options = setConfigOptionValue(button.options, CARD_BACKGROUND_IMAGE_OPTION, "");
+                changed++;
+                if (save)
+                    save(index);
+            });
+        }
+        clearButtons(state.buttons, function (this: any, index?: any) { saveButtonConfig(index + 1); });
+        clearButtons(state.settingsDraft && [state.settingsDraft.button]);
+        Object.keys(state.subpages || {}).forEach(function (this: any, key?: any) {
+            var subpage: any = state.subpages[key];
+            var before: any = changed;
+            clearButtons(subpage && subpage.buttons);
+            if (changed !== before)
+                saveSubpageEntity(key);
+        });
+        return changed;
+    }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];
         var count: any = (CFG.features && CFG.features.subpageConfigChunks) || keys.length;
@@ -57,6 +83,7 @@ export function installConfigPostApiModule(): GlobalDescriptors {
     }
     return {
         "saveButtonConfig": staticGlobal(saveButtonConfig),
+        "clearCardImageReferences": staticGlobal(clearCardImageReferences),
         "subpageEntityKeys": staticGlobal(subpageEntityKeys),
         "SUBPAGE_RAW_CHUNK_FIELDS": liveGlobal(() => SUBPAGE_RAW_CHUNK_FIELDS, (value?: any) => { SUBPAGE_RAW_CHUNK_FIELDS = value; }),
         "subpageChunkShouldPost": staticGlobal(subpageChunkShouldPost),

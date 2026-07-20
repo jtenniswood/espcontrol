@@ -401,6 +401,11 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
+        refresh_body = function_body(text, "image_card_refresh_due")
+        if refresh_body is None or "card_background_refresh_due();" not in refresh_body:
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: tick scheduled card-background retries from the periodic image refresh"
+            )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")
@@ -1043,7 +1048,10 @@ def run_self_test() -> None:
         ),
         (
             {"button_grid_image.h": "for (int i = 0; i < count; i++) {}\n"},
-            ("reset every image-card context, including disabled slots",),
+            (
+                "reset every image-card context, including disabled slots",
+                "tick scheduled card-background retries from the periodic image refresh",
+            ),
         ),
         (
             {
@@ -1190,6 +1198,20 @@ def run_self_test() -> None:
                 "button_grid_image.h": (
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                    "inline void image_card_refresh_due() {}\n"
+                )
+            },
+            ("tick scheduled card-background retries from the periodic image refresh",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                    "inline void image_card_refresh_due() {\n"
+                    "  card_background_refresh_due();\n"
                     "}\n"
                 )
             },

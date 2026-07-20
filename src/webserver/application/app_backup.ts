@@ -18,7 +18,95 @@ export function installAppBackupModule(): GlobalDescriptors {
     function backupExportFileName(this: any, value?: any) {
         var date: any = value || new Date();
         return "espcontrol-" + backupExportScreenSizeSlug(CFG.screenSize) + "-" +
-            backupExportFileDate(date) + ".json";
+            backupExportFileDate(date) + ".zip";
+    }
+    function backupZipCrc32(this: any, bytes?: any) {
+        var crc: any = 0xFFFFFFFF;
+        for (var i: any = 0; i < bytes.length; i++) {
+            crc ^= bytes[i];
+            for (var bit: any = 0; bit < 8; bit++)
+                crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+    function backupZipU16(this: any, value?: any) {
+        return new Uint8Array([value & 255, (value >>> 8) & 255]);
+    }
+    function backupZipU32(this: any, value?: any) {
+        return new Uint8Array([value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255]);
+    }
+    function backupCreateZip(this: any, entries?: any) {
+        var chunks: any = [];
+        var central: any = [];
+        var offset: any = 0;
+        entries.forEach(function (this: any, entry?: any) {
+            var name: any = new TextEncoder().encode(entry.name);
+            var body: any = entry.bytes instanceof Uint8Array ? entry.bytes : new Uint8Array(entry.bytes);
+            var crc: any = backupZipCrc32(body);
+            var local: any = [backupZipU32(0x04034b50), backupZipU16(20), backupZipU16(0), backupZipU16(0),
+                backupZipU16(0), backupZipU16(0), backupZipU32(crc), backupZipU32(body.length),
+                backupZipU32(body.length), backupZipU16(name.length), backupZipU16(0), name, body];
+            chunks.push.apply(chunks, local);
+            var centralEntry: any = [backupZipU32(0x02014b50), backupZipU16(20), backupZipU16(20),
+                backupZipU16(0), backupZipU16(0), backupZipU16(0), backupZipU16(0), backupZipU32(crc),
+                backupZipU32(body.length), backupZipU32(body.length), backupZipU16(name.length), backupZipU16(0),
+                backupZipU16(0), backupZipU16(0), backupZipU16(0), backupZipU32(0), backupZipU32(offset), name];
+            central.push.apply(central, centralEntry);
+            offset += 30 + name.length + body.length;
+        });
+        var centralSize: any = central.reduce(function (this: any, total?: any, part?: any) { return total + part.length; }, 0);
+        chunks.push.apply(chunks, central);
+        chunks.push(backupZipU32(0x06054b50), backupZipU16(0), backupZipU16(0),
+            backupZipU16(entries.length), backupZipU16(entries.length), backupZipU32(centralSize),
+            backupZipU32(offset), backupZipU16(0));
+        return new Blob(chunks, { type: "application/zip" });
+    }
+    function backupReadStoredZip(this: any, buffer?: any) {
+        var bytes: any = new Uint8Array(buffer);
+        var view: any = new DataView(buffer);
+        var entries: any = {};
+        var offset: any = 0;
+        while (offset + 4 <= bytes.length && view.getUint32(offset, true) === 0x04034b50) {
+            if (offset + 30 > bytes.length)
+                throw new Error("Invalid ZIP backup.");
+            var flags: any = view.getUint16(offset + 6, true);
+            var compression: any = view.getUint16(offset + 8, true);
+            var size: any = view.getUint32(offset + 18, true);
+            var nameLength: any = view.getUint16(offset + 26, true);
+            var extraLength: any = view.getUint16(offset + 28, true);
+            if ((flags & 8) || compression !== 0)
+                throw new Error("Unsupported ZIP backup format.");
+            var nameStart: any = offset + 30;
+            var dataStart: any = nameStart + nameLength + extraLength;
+            var dataEnd: any = dataStart + size;
+            if (dataEnd > bytes.length)
+                throw new Error("Invalid ZIP backup.");
+            var name: any = new TextDecoder().decode(bytes.slice(nameStart, nameStart + nameLength));
+            entries[name] = bytes.slice(dataStart, dataEnd);
+            offset = dataEnd;
+        }
+        if (!entries["backup.json"])
+            throw new Error("ZIP backup is missing backup.json.");
+        return entries;
+    }
+    function backupDownload(this: any, blob?: any, name?: any) {
+        var url: any = URL.createObjectURL(blob);
+        var a: any = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    function backupImageArchiveEntries(this: any) {
+        return cardImageBackupAssetProvider.createArchiveEntries();
+    }
+    function backupRestoreArchivedImages(this: any, entries?: any) {
+        return cardImageBackupAssetProvider.restoreArchiveEntries(entries);
+    }
+    function backupRemapImportedImageReferences(this: any, backupPlan?: any, idMap?: any) {
+        cardImageBackupAssetProvider.remapImportedReferences(backupPlan || {}, idMap || {});
     }
     function exportConfig(this: any) {
         var data: any = createBackupConfig({
@@ -100,22 +188,21 @@ export function installAppBackupModule(): GlobalDescriptors {
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         });
-        var json: any = JSON.stringify(data, null, 2);
-        var blob: any = new Blob([json], { type: "application/json" });
-        var url: any = URL.createObjectURL(blob);
-        var name: any = backupExportFileName();
-        var a: any = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        backupImageArchiveEntries()
+            .then(function (this: any, imageEntries?: any) {
+                imageEntries.unshift({ name: "backup.json", bytes: new TextEncoder().encode(JSON.stringify(data, null, 2)) });
+                backupDownload(backupCreateZip(imageEntries), backupExportFileName());
+                showBanner("Backup exported with " + Math.max(0, imageEntries.length - 2) + " image" +
+                    (imageEntries.length === 3 ? "" : "s") + ".", "success");
+            })
+            .catch(function (this: any, err?: any) {
+                showBanner(err && err.message || "Could not create backup with images.", "error");
+            });
     }
     function importConfig(this: any) {
         var input: any = document.createElement("input");
         input.type = "file";
-        input.accept = ".json";
+        input.accept = ".json,.zip";
         input.style.display = "none";
         var importPostThrottleMs: any = 75;
         function cleanupInput(this: any) {
@@ -133,10 +220,10 @@ export function installAppBackupModule(): GlobalDescriptors {
                 cleanupInput();
                 showBanner("Invalid file \u2014 could not read backup", "error");
             };
-            reader.onload = function (this: any) {
+            function processImportText(this: any, importText?: any, zipEntries?: any) {
                 var data: any;
                 try {
-                    data = JSON.parse(reader.result);
+                    data = JSON.parse(importText);
                 }
                 catch (_) {
                     showBanner("Invalid file \u2014 could not parse JSON", "error");
@@ -155,6 +242,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                 for (var warningIdx: any = 0; warningIdx < backupPlan.warnings.length; warningIdx++) {
                     showBanner(backupPlan.warnings[warningIdx], "warning");
                 }
+                return backupRestoreArchivedImages(zipEntries).then(function (this: any, imageIdMap?: any) {
+                backupRemapImportedImageReferences(backupPlan, imageIdMap);
                 setPostThrottle(importPostThrottleMs);
                 resetPostQueueError();
                 postText(entityName("button_on_color"), backupPlan.config.button_on_color);
@@ -420,8 +509,27 @@ export function installAppBackupModule(): GlobalDescriptors {
                         showBanner("Configuration imported successfully", "success");
                 });
                 cleanupInput();
-            };
-            reader.readAsText(input.files[0]);
+                }).catch(function (this: any, err?: any) {
+                    showBanner(err && err.message || "Could not restore backup images.", "error");
+                    cleanupInput();
+                });
+            }
+            var selectedFile: any = input.files[0];
+            if (/\.zip$/i.test(selectedFile.name || "")) {
+                selectedFile.arrayBuffer()
+                    .then(backupReadStoredZip)
+                    .then(function (this: any, entries?: any) {
+                        return processImportText(new TextDecoder().decode(entries["backup.json"]), entries);
+                    })
+                    .catch(function (this: any, err?: any) {
+                        showBanner(err && err.message || "Invalid ZIP backup", "error");
+                        cleanupInput();
+                    });
+            }
+            else {
+                reader.onload = function () { processImportText(reader.result); };
+                reader.readAsText(selectedFile);
+            }
         });
         document.body.appendChild(input);
         input.click();
@@ -430,6 +538,15 @@ export function installAppBackupModule(): GlobalDescriptors {
         "backupExportScreenSizeSlug": staticGlobal(backupExportScreenSizeSlug),
         "backupExportFileDate": staticGlobal(backupExportFileDate),
         "backupExportFileName": staticGlobal(backupExportFileName),
+        "backupZipCrc32": staticGlobal(backupZipCrc32),
+        "backupZipU16": staticGlobal(backupZipU16),
+        "backupZipU32": staticGlobal(backupZipU32),
+        "backupCreateZip": staticGlobal(backupCreateZip),
+        "backupReadStoredZip": staticGlobal(backupReadStoredZip),
+        "backupDownload": staticGlobal(backupDownload),
+        "backupImageArchiveEntries": staticGlobal(backupImageArchiveEntries),
+        "backupRestoreArchivedImages": staticGlobal(backupRestoreArchivedImages),
+        "backupRemapImportedImageReferences": staticGlobal(backupRemapImportedImageReferences),
         "exportConfig": staticGlobal(exportConfig),
         "importConfig": staticGlobal(importConfig),
     };

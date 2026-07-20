@@ -72,6 +72,11 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-btn:hover{filter:brightness(1.15)}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{border-color:var(--accent)}" +
+        ".sp-btn-has-bg{background-repeat:no-repeat}" +
+        ".sp-btn-has-bg .sp-btn-icon,.sp-btn-has-bg .sp-btn-label,.sp-btn-has-bg .sp-sensor-badge," +
+        ".sp-btn-has-bg .sp-sensor-preview,.sp-btn-has-bg .sp-media-now-title,.sp-btn-has-bg .sp-media-now-artist{" +
+        "color:#fff;filter:drop-shadow(0 2px 3px rgba(0,0,0,.72)) drop-shadow(0 0 8px rgba(0,0,0,.35))}" +
+        ".sp-btn-icon,.sp-btn-label,.sp-sensor-badge,.sp-sensor-preview,.sp-media-now-title,.sp-media-now-artist,.sp-media-h-slider,.sp-media-position-time{position:relative;z-index:1}" +
         ".sp-btn-icon{font-size:var(--btn-icon);line-height:1;color:#fff}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);" +
         "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--btn-lines);" +
@@ -339,6 +344,37 @@ export function installStylesModule(): GlobalDescriptors {
         "cursor:pointer;box-sizing:border-box}" +
         ".sp-entity-option:hover,.sp-entity-option:focus{background:var(--accent-soft);outline:none}" +
         ".sp-field-error{font-size:.75rem;color:#f66f81;margin-top:6px;line-height:1.35}" +
+        ".sp-card-bg-field{display:grid;gap:10px}" +
+        ".sp-card-bg-preview{width:min(220px,100%);aspect-ratio:1/1;border:1px solid var(--border);border-radius:8px;" +
+        "background:#111 center/cover no-repeat;box-sizing:border-box;position:relative;overflow:hidden;" +
+        "display:flex;flex-direction:column;justify-content:space-between;padding:14px}" +
+        ".sp-card-bg-preview-empty{background:linear-gradient(135deg,var(--surface2),var(--surface));}" +
+        ".sp-card-bg-preview-icon,.sp-card-bg-preview-title{position:relative;z-index:1;color:#fff;" +
+        "filter:drop-shadow(0 2px 3px rgba(0,0,0,.72)) drop-shadow(0 0 8px rgba(0,0,0,.35))}" +
+        ".sp-card-bg-preview-icon{font-size:34px;line-height:1}" +
+        ".sp-card-bg-preview-title{font-size:1rem;line-height:1.2;font-weight:500;display:-webkit-box;" +
+        "-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
+        ".sp-card-bg-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
+        ".sp-card-bg-file{display:none}" +
+        ".sp-card-bg-actions .sp-action-btn{padding:8px 12px;display:inline-flex;align-items:center;gap:6px}" +
+        ".sp-card-bg-actions .sp-action-btn:disabled{opacity:.45;cursor:not-allowed}" +
+        ".sp-card-image-manager{display:grid;gap:14px}" +
+        ".sp-card-image-manager-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
+        ".sp-card-image-manager-file{display:none}" +
+        ".sp-card-image-storage{color:var(--text2);font-size:.8rem;line-height:1.35}" +
+        ".sp-card-image-manager-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}" +
+        ".sp-card-image-manager-empty{border:1px dashed var(--border);border-radius:8px;padding:18px;" +
+        "color:var(--text2);font-size:.875rem;text-align:center}" +
+        ".sp-card-image-item{border:1px solid var(--border);border-radius:8px;background:var(--surface2);" +
+        "overflow:hidden;display:grid;min-width:0}" +
+        ".sp-card-image-thumb{height:96px;background:#111 center/cover no-repeat;border-bottom:1px solid var(--border)}" +
+        ".sp-card-image-meta{display:grid;gap:4px;padding:10px;min-width:0}" +
+        ".sp-card-image-name{color:var(--text);font-size:.84rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+        ".sp-card-image-detail{color:var(--text3);font-size:.74rem}" +
+        ".sp-card-image-rename{margin:0 10px 8px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}" +
+        ".sp-card-image-rename .sp-input{height:34px;padding:7px 9px;font-size:.8rem}" +
+        ".sp-card-image-rename .sp-action-btn{padding:7px 10px}" +
+        ".sp-card-image-delete{justify-self:start;margin:0 10px 10px;padding:7px 10px}" +
         ".sp-icon-picker{position:relative}" +
         ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
         "border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.875rem;" +

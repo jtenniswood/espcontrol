@@ -8,6 +8,7 @@ export function installAppTestHooksBackup(): GlobalDescriptors {
             normalizeBackupConfig: normalizeBackupConfig,
             planBackupImport: planBackupImport,
             backupExportFileName: backupExportFileName,
+            backupRestoreArchivedImages: backupRestoreArchivedImages,
         });
     }
     return {};
