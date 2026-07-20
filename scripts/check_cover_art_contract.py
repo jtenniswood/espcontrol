@@ -303,7 +303,9 @@ if "ctx->artist_lbl = s.text_lbl;" in cover_details:
 
 for required in (
     "bool highlight_playing = true;",
-    "ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);",
+    "set_card_checked_state(ctx->btn, ctx->available &&",
+    "ctx->group_only ? media_control_group_size(ctx) > 1",
+    ": ctx->highlight_playing && ctx->playing));",
 ):
     if required not in media:
         raise SystemExit(f"Media control playing-highlight contract missing: {required}")
