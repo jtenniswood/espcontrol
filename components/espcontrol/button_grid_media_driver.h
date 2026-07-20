@@ -219,9 +219,12 @@ inline void media_driver_bind_cover_art_route(
       media_playback_find_state(now_playing->primary_entity);
     MediaPlaybackState *secondary_state =
       media_playback_find_state(now_playing->secondary_entity);
+    const bool secondary_configured =
+      !now_playing->secondary_entity.empty() &&
+      now_playing->secondary_entity != now_playing->primary_entity;
     const bool use_secondary = espcontrol::cover_art::use_secondary_media_entity(
       primary_state && primary_state->external_source,
-      !now_playing->secondary_entity.empty(),
+      secondary_configured,
       secondary_state && secondary_state->available,
       media_playback_has_current_content(secondary_state));
     const bool external_source_fallback =
@@ -247,7 +250,6 @@ inline void media_driver_bind_cover_art_route(
         art->entity_id.clear();
       } else {
         art->entity_id = next_entity;
-        subscribe_image_card_access_token(art, next_entity);
         image_card_request_media_artwork(art);
       }
     }

@@ -41,8 +41,8 @@ inline bool external_media_source(const std::string &source) {
 
 inline bool media_entity_state_usable(const std::string &state) {
   const std::string normalized = normalized_media_source(state);
-  return !normalized.empty() && normalized != "off" &&
-         normalized != "unknown" && normalized != "unavailable";
+  return normalized == "playing" || normalized == "paused" ||
+         normalized == "buffering";
 }
 
 inline bool use_secondary_media_entity(bool primary_external,

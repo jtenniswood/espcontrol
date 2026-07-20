@@ -687,6 +687,16 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media lifecycle guard {needle}"
                 )
+        route_body = function_body(text, "media_driver_bind_cover_art_route") or ""
+        if route_body:
+            if "now_playing->secondary_entity != now_playing->primary_entity" not in route_body:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: treat a matching secondary cover-art entity as unconfigured"
+                )
+            if "subscribe_image_card_access_token" in route_body:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: avoid duplicate access-token subscriptions on cover-art route switches"
+                )
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"

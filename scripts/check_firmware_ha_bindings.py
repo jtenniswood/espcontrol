@@ -794,6 +794,12 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
     resubscribe_body = yaml_script_body(text, "cover_art_resubscribe") or ""
     if "ha_get_" in resubscribe_body:
         errors.append(f"{rel}: avoid retained one-shot reads in the cover art subscription lifecycle")
+    if resubscribe_body and (
+        "primary_entity != id(cover_art_subscribed_primary_entity)" not in resubscribe_body
+        or "secondary_entity != id(cover_art_subscribed_secondary_entity)" not in resubscribe_body
+        or "id(cover_art_primary_external_input_active) = false" not in resubscribe_body
+    ):
+        errors.append(f"{rel}: reset cached route probes when configured cover art entities change")
     if ("espcontrol::cover_art::external_media_source" not in text or
             "espcontrol::cover_art::use_secondary_media_entity" not in text):
         errors.append(f"{rel}: use the shared TV, line-in, and HDMI media-entity router")

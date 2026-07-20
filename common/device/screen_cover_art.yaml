@@ -1739,6 +1739,13 @@ script:
       - lambda: |-
           const std::string primary_entity = id(cover_art_media_player_entity).state;
           const std::string secondary_entity = id(cover_art_secondary_media_player_entity).state;
+          if (primary_entity != id(cover_art_subscribed_primary_entity)) {
+            id(cover_art_primary_external_input_active) = false;
+          }
+          if (secondary_entity != id(cover_art_subscribed_secondary_entity)) {
+            id(cover_art_secondary_available) = false;
+            id(cover_art_secondary_content_mask) = 0;
+          }
           if (secondary_entity.empty() || secondary_entity == primary_entity) {
             id(cover_art_secondary_available) = false;
             id(cover_art_secondary_content_mask) = 0;
