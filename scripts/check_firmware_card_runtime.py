@@ -163,6 +163,8 @@ def check_root(root: Path) -> list[str]:
             live_rebuild_guards = (
                 "reconstruct_main_cards ? reconstruct_slot : nullptr",
                 "grid_prepare_media_runtime_for_visual_reset(slots[i].btn);",
+                "control_context = grid_media_control_runtime_for_owner(slots[i].btn);",
+                "slots[i].btn, visual_context, slider_context, control_context",
                 "if (reconstruct_main_cards) {",
                 "main_config_snapshots[i] != slots[i].config->state",
                 "reconstruct_main_cards && reconstruct_slot[idx - 1]",
@@ -173,6 +175,17 @@ def check_root(root: Path) -> list[str]:
                     failures.append(
                         f"components/espcontrol/{GRID_HEADER}: live card rebuild is missing deletion cleanup guard {guard}"
                     )
+        media_driver_header = root / "components" / "espcontrol" / "button_grid_media_driver.h"
+        if media_driver_header.exists():
+            media_driver_text = media_driver_header.read_text(encoding="utf-8")
+            create_control = function_body(media_driver_text, "media_driver_create_control")
+            if create_control is None or (
+                "context.surface == Surface::MAIN_GRID" not in create_control
+                or "grid_media_control_runtime_for_owner(slot.btn)" not in create_control
+            ):
+                failures.append(
+                    "components/espcontrol/button_grid_media_driver.h: reuse unchanged main-grid media controls during live refresh"
+                )
         visual_setup = function_body(text, "setup_card_visual")
         if visual_setup is not None:
             clickable_reset = "lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);"

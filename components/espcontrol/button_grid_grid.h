@@ -1229,6 +1229,10 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
         static_cast<MediaPlaylistCtx *>(allocation.ptr));
     } else if (allocation.deleter == grid_delete_media_now_playing_runtime_ptr) {
       MediaNowPlayingCtx *ctx = static_cast<MediaNowPlayingCtx *>(allocation.ptr);
+      // Cover-art routing captures its associated control context. Clear the
+      // callback before that control is released so no cleanup side effect can
+      // invoke a callback that still points at the old control.
+      ctx->refresh_entity_route = nullptr;
       clear_media_cover_art(ctx);
       media_playback_detach_now_playing(ctx);
       ctx->title_lbl = nullptr;
@@ -1253,7 +1257,7 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
 
 inline void grid_release_runtime_allocations(
     lv_obj_t *owner, void *preserve_primary = nullptr,
-    void *preserve_secondary = nullptr) {
+    void *preserve_secondary = nullptr, void *preserve_tertiary = nullptr) {
   if (owner == nullptr) return;
   std::vector<GridRuntimeAllocation> &allocations = grid_runtime_allocations();
   size_t write_index = 0;
@@ -1265,7 +1269,8 @@ inline void grid_release_runtime_allocations(
       // persistent Phase 1 widgets; deleting them here leaves LVGL user_data
       // pointing at freed memory before the media driver rebinds subscriptions.
       if (allocation.ptr == preserve_primary ||
-          allocation.ptr == preserve_secondary) {
+          allocation.ptr == preserve_secondary ||
+          allocation.ptr == preserve_tertiary) {
         if (write_index != read_index) allocations[write_index] = allocation;
         write_index++;
         continue;
@@ -1309,6 +1314,12 @@ inline AlarmActionCtx *grid_track_alarm_action_runtime(lv_obj_t *owner,
 inline MediaControlCtx *grid_track_media_control_runtime(lv_obj_t *owner,
                                                          MediaControlCtx *ctx) {
   if (owner != nullptr && ctx != nullptr) {
+    for (const GridRuntimeAllocation &allocation : grid_runtime_allocations()) {
+      if (allocation.owner == owner && allocation.ptr == ctx &&
+          allocation.deleter == grid_delete_media_control_runtime_ptr) {
+        return ctx;
+      }
+    }
     grid_runtime_allocations().push_back({
       owner,
       ctx,
@@ -1534,6 +1545,7 @@ inline void grid_release_main_runtime_allocations(
     }
     void *visual_context = nullptr;
     void *slider_context = nullptr;
+    void *control_context = nullptr;
     ParsedCfg config = parse_cfg(slots[i].config->state);
     const auto context = card_runtime_context(config);
     if (espcontrol::cards::media_driver_matches(context) &&
@@ -1546,6 +1558,12 @@ inline void grid_release_main_runtime_allocations(
         if (now_playing != nullptr && now_playing->progress_slider != nullptr) {
           slider_context = lv_obj_get_user_data(now_playing->progress_slider);
         }
+        if (mode == "cover_art" &&
+            media_cover_art_press_action(config) == "control_modal") {
+          control_context = grid_media_control_runtime_for_owner(slots[i].btn);
+        }
+      } else if (mode == "control_modal") {
+        control_context = grid_media_control_runtime_for_owner(slots[i].btn);
       } else if (mode != "playlist" && !media_playback_button_mode(mode) &&
                  mode != "control_modal" && mode != "volume") {
         lv_obj_t *slider = static_cast<lv_obj_t *>(
@@ -1554,7 +1572,7 @@ inline void grid_release_main_runtime_allocations(
       }
     }
     grid_release_runtime_allocations(
-      slots[i].btn, visual_context, slider_context);
+      slots[i].btn, visual_context, slider_context, control_context);
   }
 }
 

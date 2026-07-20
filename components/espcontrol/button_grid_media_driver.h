@@ -172,6 +172,16 @@ inline SliderCtx *media_driver_track_slider(
 inline MediaControlCtx *media_driver_create_control(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const MediaDriverEnvironment &environment) {
+  // Main-grid widgets persist across a Phase 2 data refresh. Reuse the control
+  // associated with an unchanged card so cover-art routing never briefly holds
+  // a pointer to a control that has just been destroyed.
+  if (context.surface == Surface::MAIN_GRID) {
+    if (MediaControlCtx *existing =
+          grid_media_control_runtime_for_owner(slot.btn)) {
+      lv_obj_set_user_data(slot.btn, existing);
+      return existing;
+    }
+  }
   return media_driver_track_control(
     context, slot.btn,
     create_media_control_context(
