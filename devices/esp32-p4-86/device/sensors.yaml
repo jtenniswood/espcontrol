@@ -122,9 +122,72 @@ script:
           apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
           apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
           // END GENERATED REFRESH GRID WIRING
+          #define SP_CFG(n) subpage_##n##_config
+          #define SP_EXT(n) subpage_##n##_config_ext
+          #define SP_EXT2(n) subpage_##n##_config_ext_2
+          #define SP_EXT3(n) subpage_##n##_config_ext_3
+          #define SP_EXT4(n) subpage_##n##_config_ext_4
+          #define SP_EXT5(n) subpage_##n##_config_ext_5
+          #define SP_EXT6(n) subpage_##n##_config_ext_6
+          #define SP_EXT7(n) subpage_##n##_config_ext_7
+          esphome::text::Text *sp_cfgs[] = {
+            SP_CFG(1), SP_CFG(2), SP_CFG(3), SP_CFG(4),
+            SP_CFG(5), SP_CFG(6), SP_CFG(7), SP_CFG(8),
+            SP_CFG(9),
+          };
+          esphome::text::Text *sp_ext[] = {
+            SP_EXT(1), SP_EXT(2), SP_EXT(3), SP_EXT(4),
+            SP_EXT(5), SP_EXT(6), SP_EXT(7), SP_EXT(8),
+            SP_EXT(9),
+          };
+          esphome::text::Text *sp_ext2[] = {
+            SP_EXT2(1), SP_EXT2(2), SP_EXT2(3), SP_EXT2(4),
+            SP_EXT2(5), SP_EXT2(6), SP_EXT2(7), SP_EXT2(8),
+            SP_EXT2(9),
+          };
+          esphome::text::Text *sp_ext3[] = {
+            SP_EXT3(1), SP_EXT3(2), SP_EXT3(3), SP_EXT3(4),
+            SP_EXT3(5), SP_EXT3(6), SP_EXT3(7), SP_EXT3(8),
+            SP_EXT3(9),
+          };
+          esphome::text::Text *sp_ext4[] = {
+            SP_EXT4(1), SP_EXT4(2), SP_EXT4(3), SP_EXT4(4),
+            SP_EXT4(5), SP_EXT4(6), SP_EXT4(7), SP_EXT4(8),
+            SP_EXT4(9),
+          };
+          esphome::text::Text *sp_ext5[] = {
+            SP_EXT5(1), SP_EXT5(2), SP_EXT5(3), SP_EXT5(4),
+            SP_EXT5(5), SP_EXT5(6), SP_EXT5(7), SP_EXT5(8),
+            SP_EXT5(9),
+          };
+          esphome::text::Text *sp_ext6[] = {
+            SP_EXT6(1), SP_EXT6(2), SP_EXT6(3), SP_EXT6(4),
+            SP_EXT6(5), SP_EXT6(6), SP_EXT6(7), SP_EXT6(8),
+            SP_EXT6(9),
+          };
+          esphome::text::Text *sp_ext7[] = {
+            SP_EXT7(1), SP_EXT7(2), SP_EXT7(3), SP_EXT7(4),
+            SP_EXT7(5), SP_EXT7(6), SP_EXT7(7), SP_EXT7(8),
+            SP_EXT7(9),
+          };
+          #undef SP_CFG
+          #undef SP_EXT
+          #undef SP_EXT2
+          #undef SP_EXT3
+          #undef SP_EXT4
+          #undef SP_EXT5
+          #undef SP_EXT6
+          #undef SP_EXT7
           grid_refresh_layout(slots, cfg,
             id(button_order).state,
             id(main_page)->obj);
+          if (id(config_apply_reconstruct)) {
+            grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,
+              id(button_order).state,
+              id(button_on_color).state,
+              id(main_page)->obj, true);
+            id(config_apply_reconstruct) = false;
+          }
       - script.execute: clock_bar_apply
 
 esphome:

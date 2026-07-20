@@ -99,9 +99,44 @@ script:
           apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
           apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
           // END GENERATED REFRESH GRID WIRING
+          #define SP_CFG(n) subpage_##n##_config
+          #define SP_EXT(n) subpage_##n##_config_ext
+          #define SP_EXT2(n) subpage_##n##_config_ext_2
+          #define SP_EXT3(n) subpage_##n##_config_ext_3
+          esphome::text::Text *sp_cfgs[] = {
+            SP_CFG(1), SP_CFG(2), SP_CFG(3), SP_CFG(4),
+            SP_CFG(5), SP_CFG(6), SP_CFG(7), SP_CFG(8),
+            SP_CFG(9),
+          };
+          esphome::text::Text *sp_ext[] = {
+            SP_EXT(1), SP_EXT(2), SP_EXT(3), SP_EXT(4),
+            SP_EXT(5), SP_EXT(6), SP_EXT(7), SP_EXT(8),
+            SP_EXT(9),
+          };
+          esphome::text::Text *sp_ext2[] = {
+            SP_EXT2(1), SP_EXT2(2), SP_EXT2(3), SP_EXT2(4),
+            SP_EXT2(5), SP_EXT2(6), SP_EXT2(7), SP_EXT2(8),
+            SP_EXT2(9),
+          };
+          esphome::text::Text *sp_ext3[] = {
+            SP_EXT3(1), SP_EXT3(2), SP_EXT3(3), SP_EXT3(4),
+            SP_EXT3(5), SP_EXT3(6), SP_EXT3(7), SP_EXT3(8),
+            SP_EXT3(9),
+          };
+          #undef SP_CFG
+          #undef SP_EXT
+          #undef SP_EXT2
+          #undef SP_EXT3
           grid_refresh_layout(slots, cfg,
             id(button_order).state,
             id(main_page)->obj);
+          if (id(config_apply_reconstruct)) {
+            grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,
+              id(button_order).state,
+              id(button_on_color).state,
+              id(main_page)->obj, true);
+            id(config_apply_reconstruct) = false;
+          }
       - script.execute: clock_bar_apply
 
 esphome:
