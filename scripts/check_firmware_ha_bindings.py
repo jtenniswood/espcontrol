@@ -230,15 +230,19 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
-    if "callback_depth_ != 0 || !state_connected()" not in coordinator_text:
+    if (
+        "if (callback_depth_ != 0)" not in coordinator_text
+        or "return queue(entity_id, attribute" not in coordinator_text
+        or "return attach_get(entity_id" not in coordinator_text
+    ):
         errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
     if (
         "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
         or "request.entity_id == entity_id" not in read_boundary_text
-        or "for (const auto &callback : *callback_refs)" not in read_boundary_text
+        or "for (auto &callback : request.callbacks)" not in read_boundary_text
     ):
         errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-    if "subscriptions_.push_back({callback_ref, scope})" not in coordinator_text:
+    if "subscriptions_.push_back({callback_ref, scope, false})" not in coordinator_text:
         errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
     if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
         errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
