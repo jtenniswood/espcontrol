@@ -90,6 +90,7 @@ media_control=Sterowanie multimediami
 playlist=Playlista
 medium=Medium
 mode=Tryb
+group=Grupa
 monthly=Co miesiąc
 more=więcej
 more_items=Więcej elementów

@@ -90,6 +90,7 @@ media_control=Nadzor predstavnosti
 playlist=Seznam predvajanja
 medium=Srednje
 mode=Način
+group=Skupina
 monthly=Mesečno
 more=več
 more_items=Več elementov

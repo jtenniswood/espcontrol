@@ -97,6 +97,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Media") == 0) return "Média";
   if (std::strcmp(text, "Media Control") == 0) return "Ovládání médií";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
+  if (std::strcmp(text, "Group") == 0) return "Skupina";
   if (std::strcmp(text, "Monthly") == 0) return "Měsíčně";
   if (std::strcmp(text, "more") == 0) return "další";
   if (std::strcmp(text, "More items") == 0) return "Další položky";
@@ -323,6 +324,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediestyring";
   if (std::strcmp(text, "Playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(text, "Mode") == 0) return "Tilstand";
+  if (std::strcmp(text, "Group") == 0) return "Gruppe";
   if (std::strcmp(text, "Monthly") == 0) return "Månedligt";
   if (std::strcmp(text, "more") == 0) return "mere";
   if (std::strcmp(text, "More items") == 0) return "Flere elementer";
@@ -545,6 +547,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediensteuerung";
   if (std::strcmp(text, "Playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
+  if (std::strcmp(text, "Group") == 0) return "Gruppe";
   if (std::strcmp(text, "Monthly") == 0) return "Monatlich";
   if (std::strcmp(text, "more") == 0) return "weitere";
   if (std::strcmp(text, "More items") == 0) return "Weitere Elemente";
@@ -762,6 +765,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Control multimedia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
+  if (std::strcmp(text, "Group") == 0) return "Grupo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensual";
   if (std::strcmp(text, "more") == 0) return "más";
   if (std::strcmp(text, "More items") == 0) return "Más elementos";
@@ -991,6 +995,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Soittolista";
   if (std::strcmp(text, "Medium") == 0) return "Keskitaso";
   if (std::strcmp(text, "Mode") == 0) return "Tila";
+  if (std::strcmp(text, "Group") == 0) return "Ryhmä";
   if (std::strcmp(text, "Monthly") == 0) return "Kuukausittain";
   if (std::strcmp(text, "more") == 0) return "lisää";
   if (std::strcmp(text, "More items") == 0) return "Lisää kohteita";
@@ -1219,6 +1224,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Media") == 0) return "Média";
   if (std::strcmp(text, "Media Control") == 0) return "Contrôle multimédia";
   if (std::strcmp(text, "Playlist") == 0) return "Liste de lecture";
+  if (std::strcmp(text, "Group") == 0) return "Groupe";
   if (std::strcmp(text, "Monthly") == 0) return "Mensuel";
   if (std::strcmp(text, "more") == 0) return "de plus";
   if (std::strcmp(text, "More items") == 0) return "Plus d’éléments";
@@ -1445,6 +1451,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(text, "Medium") == 0) return "Közepes";
   if (std::strcmp(text, "Mode") == 0) return "Mód";
+  if (std::strcmp(text, "Group") == 0) return "Csoport";
   if (std::strcmp(text, "Monthly") == 0) return "Havonta";
   if (std::strcmp(text, "more") == 0) return "további";
   if (std::strcmp(text, "More items") == 0) return "További elemek";
@@ -1675,6 +1682,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Controllo multimediale";
   if (std::strcmp(text, "Medium") == 0) return "Medio";
   if (std::strcmp(text, "Mode") == 0) return "Modalità";
+  if (std::strcmp(text, "Group") == 0) return "Gruppo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensile";
   if (std::strcmp(text, "more") == 0) return "altri";
   if (std::strcmp(text, "More items") == 0) return "Altri elementi";
@@ -1901,6 +1909,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediekontroll";
   if (std::strcmp(text, "Playlist") == 0) return "Spilleliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
+  if (std::strcmp(text, "Group") == 0) return "Gruppe";
   if (std::strcmp(text, "Monthly") == 0) return "Månedlig";
   if (std::strcmp(text, "more") == 0) return "flere";
   if (std::strcmp(text, "More items") == 0) return "Flere elementer";
@@ -2126,6 +2135,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediabediening";
   if (std::strcmp(text, "Playlist") == 0) return "Afspeellijst";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
+  if (std::strcmp(text, "Group") == 0) return "Groep";
   if (std::strcmp(text, "Monthly") == 0) return "Maandelijks";
   if (std::strcmp(text, "more") == 0) return "meer";
   if (std::strcmp(text, "More items") == 0) return "Meer items";
@@ -2348,6 +2358,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Sterowanie multimediami";
   if (std::strcmp(text, "Playlist") == 0) return "Playlista";
   if (std::strcmp(text, "Mode") == 0) return "Tryb";
+  if (std::strcmp(text, "Group") == 0) return "Grupa";
   if (std::strcmp(text, "Monthly") == 0) return "Co miesiąc";
   if (std::strcmp(text, "more") == 0) return "więcej";
   if (std::strcmp(text, "More items") == 0) return "Więcej elementów";
@@ -2572,6 +2583,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Controle de mídia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
+  if (std::strcmp(text, "Group") == 0) return "Grupo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
   if (std::strcmp(text, "more") == 0) return "mais";
   if (std::strcmp(text, "More items") == 0) return "Mais itens";
@@ -2798,6 +2810,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Controlo multimédia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
+  if (std::strcmp(text, "Group") == 0) return "Grupo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
   if (std::strcmp(text, "more") == 0) return "mais";
   if (std::strcmp(text, "More items") == 0) return "Mais itens";
@@ -3027,6 +3040,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Listă de redare";
   if (std::strcmp(text, "Medium") == 0) return "Mediu";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
+  if (std::strcmp(text, "Group") == 0) return "Grup";
   if (std::strcmp(text, "Monthly") == 0) return "Lunar";
   if (std::strcmp(text, "more") == 0) return "încă";
   if (std::strcmp(text, "More items") == 0) return "Mai multe elemente";
@@ -3258,6 +3272,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Ovládanie médií";
   if (std::strcmp(text, "Playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
+  if (std::strcmp(text, "Group") == 0) return "Skupina";
   if (std::strcmp(text, "Monthly") == 0) return "Mesačne";
   if (std::strcmp(text, "more") == 0) return "ďalšie";
   if (std::strcmp(text, "More items") == 0) return "Ďalšie položky";
@@ -3489,6 +3504,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(text, "Medium") == 0) return "Srednje";
   if (std::strcmp(text, "Mode") == 0) return "Način";
+  if (std::strcmp(text, "Group") == 0) return "Skupina";
   if (std::strcmp(text, "Monthly") == 0) return "Mesečno";
   if (std::strcmp(text, "more") == 0) return "več";
   if (std::strcmp(text, "More items") == 0) return "Več elementov";
@@ -3716,6 +3732,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediekontroll";
   if (std::strcmp(text, "Playlist") == 0) return "Spellista";
   if (std::strcmp(text, "Mode") == 0) return "Läge";
+  if (std::strcmp(text, "Group") == 0) return "Grupp";
   if (std::strcmp(text, "Monthly") == 0) return "Månadsvis";
   if (std::strcmp(text, "more") == 0) return "fler";
   if (std::strcmp(text, "More items") == 0) return "Fler objekt";
@@ -3942,6 +3959,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Çalma listesi";
   if (std::strcmp(text, "Medium") == 0) return "Orta";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
+  if (std::strcmp(text, "Group") == 0) return "Grup";
   if (std::strcmp(text, "Monthly") == 0) return "Aylık";
   if (std::strcmp(text, "more") == 0) return "daha";
   if (std::strcmp(text, "More items") == 0) return "Daha fazla öğe";
@@ -4179,6 +4197,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Список відтворення";
   if (std::strcmp(text, "Medium") == 0) return "Середньо";
   if (std::strcmp(text, "Mode") == 0) return "Режим";
+  if (std::strcmp(text, "Group") == 0) return "Група";
   if (std::strcmp(text, "Monthly") == 0) return "Щомісяця";
   if (std::strcmp(text, "more") == 0) return "ще";
   if (std::strcmp(text, "More items") == 0) return "Більше елементів";
@@ -4419,6 +4438,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Playlist";
   if (std::strcmp(key, "medium") == 0) return "Medium";
   if (std::strcmp(key, "mode") == 0) return "Mode";
+  if (std::strcmp(key, "group") == 0) return "Group";
   if (std::strcmp(key, "monthly") == 0) return "Monthly";
   if (std::strcmp(key, "more") == 0) return "more";
   if (std::strcmp(key, "more_items") == 0) return "More items";
@@ -4655,6 +4675,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "media") == 0) return "Média";
   if (std::strcmp(key, "media_control") == 0) return "Ovládání médií";
   if (std::strcmp(key, "mode") == 0) return "Režim";
+  if (std::strcmp(key, "group") == 0) return "Skupina";
   if (std::strcmp(key, "monthly") == 0) return "Měsíčně";
   if (std::strcmp(key, "more") == 0) return "další";
   if (std::strcmp(key, "more_items") == 0) return "Další položky";
@@ -4882,6 +4903,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediestyring";
   if (std::strcmp(key, "playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(key, "mode") == 0) return "Tilstand";
+  if (std::strcmp(key, "group") == 0) return "Gruppe";
   if (std::strcmp(key, "monthly") == 0) return "Månedligt";
   if (std::strcmp(key, "more") == 0) return "mere";
   if (std::strcmp(key, "more_items") == 0) return "Flere elementer";
@@ -5105,6 +5127,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediensteuerung";
   if (std::strcmp(key, "playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
+  if (std::strcmp(key, "group") == 0) return "Gruppe";
   if (std::strcmp(key, "monthly") == 0) return "Monatlich";
   if (std::strcmp(key, "more") == 0) return "weitere";
   if (std::strcmp(key, "more_items") == 0) return "Weitere Elemente";
@@ -5323,6 +5346,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Control multimedia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(key, "mode") == 0) return "Modo";
+  if (std::strcmp(key, "group") == 0) return "Grupo";
   if (std::strcmp(key, "monthly") == 0) return "Mensual";
   if (std::strcmp(key, "more") == 0) return "más";
   if (std::strcmp(key, "more_items") == 0) return "Más elementos";
@@ -5553,6 +5577,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Soittolista";
   if (std::strcmp(key, "medium") == 0) return "Keskitaso";
   if (std::strcmp(key, "mode") == 0) return "Tila";
+  if (std::strcmp(key, "group") == 0) return "Ryhmä";
   if (std::strcmp(key, "monthly") == 0) return "Kuukausittain";
   if (std::strcmp(key, "more") == 0) return "lisää";
   if (std::strcmp(key, "more_items") == 0) return "Lisää kohteita";
@@ -5782,6 +5807,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "media") == 0) return "Média";
   if (std::strcmp(key, "media_control") == 0) return "Contrôle multimédia";
   if (std::strcmp(key, "playlist") == 0) return "Liste de lecture";
+  if (std::strcmp(key, "group") == 0) return "Groupe";
   if (std::strcmp(key, "monthly") == 0) return "Mensuel";
   if (std::strcmp(key, "more") == 0) return "de plus";
   if (std::strcmp(key, "more_items") == 0) return "Plus d’éléments";
@@ -6009,6 +6035,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(key, "medium") == 0) return "Közepes";
   if (std::strcmp(key, "mode") == 0) return "Mód";
+  if (std::strcmp(key, "group") == 0) return "Csoport";
   if (std::strcmp(key, "monthly") == 0) return "Havonta";
   if (std::strcmp(key, "more") == 0) return "további";
   if (std::strcmp(key, "more_items") == 0) return "További elemek";
@@ -6240,6 +6267,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Controllo multimediale";
   if (std::strcmp(key, "medium") == 0) return "Medio";
   if (std::strcmp(key, "mode") == 0) return "Modalità";
+  if (std::strcmp(key, "group") == 0) return "Gruppo";
   if (std::strcmp(key, "monthly") == 0) return "Mensile";
   if (std::strcmp(key, "more") == 0) return "altri";
   if (std::strcmp(key, "more_items") == 0) return "Altri elementi";
@@ -6467,6 +6495,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediekontroll";
   if (std::strcmp(key, "playlist") == 0) return "Spilleliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
+  if (std::strcmp(key, "group") == 0) return "Gruppe";
   if (std::strcmp(key, "monthly") == 0) return "Månedlig";
   if (std::strcmp(key, "more") == 0) return "flere";
   if (std::strcmp(key, "more_items") == 0) return "Flere elementer";
@@ -6693,6 +6722,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediabediening";
   if (std::strcmp(key, "playlist") == 0) return "Afspeellijst";
   if (std::strcmp(key, "mode") == 0) return "Modus";
+  if (std::strcmp(key, "group") == 0) return "Groep";
   if (std::strcmp(key, "monthly") == 0) return "Maandelijks";
   if (std::strcmp(key, "more") == 0) return "meer";
   if (std::strcmp(key, "more_items") == 0) return "Meer items";
@@ -6915,6 +6945,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Sterowanie multimediami";
   if (std::strcmp(key, "playlist") == 0) return "Playlista";
   if (std::strcmp(key, "mode") == 0) return "Tryb";
+  if (std::strcmp(key, "group") == 0) return "Grupa";
   if (std::strcmp(key, "monthly") == 0) return "Co miesiąc";
   if (std::strcmp(key, "more") == 0) return "więcej";
   if (std::strcmp(key, "more_items") == 0) return "Więcej elementów";
@@ -7140,6 +7171,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Controle de mídia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
+  if (std::strcmp(key, "group") == 0) return "Grupo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
   if (std::strcmp(key, "more") == 0) return "mais";
   if (std::strcmp(key, "more_items") == 0) return "Mais itens";
@@ -7367,6 +7399,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Controlo multimédia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
+  if (std::strcmp(key, "group") == 0) return "Grupo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
   if (std::strcmp(key, "more") == 0) return "mais";
   if (std::strcmp(key, "more_items") == 0) return "Mais itens";
@@ -7597,6 +7630,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Listă de redare";
   if (std::strcmp(key, "medium") == 0) return "Mediu";
   if (std::strcmp(key, "mode") == 0) return "Mod";
+  if (std::strcmp(key, "group") == 0) return "Grup";
   if (std::strcmp(key, "monthly") == 0) return "Lunar";
   if (std::strcmp(key, "more") == 0) return "încă";
   if (std::strcmp(key, "more_items") == 0) return "Mai multe elemente";
@@ -7829,6 +7863,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Ovládanie médií";
   if (std::strcmp(key, "playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(key, "mode") == 0) return "Režim";
+  if (std::strcmp(key, "group") == 0) return "Skupina";
   if (std::strcmp(key, "monthly") == 0) return "Mesačne";
   if (std::strcmp(key, "more") == 0) return "ďalšie";
   if (std::strcmp(key, "more_items") == 0) return "Ďalšie položky";
@@ -8061,6 +8096,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(key, "medium") == 0) return "Srednje";
   if (std::strcmp(key, "mode") == 0) return "Način";
+  if (std::strcmp(key, "group") == 0) return "Skupina";
   if (std::strcmp(key, "monthly") == 0) return "Mesečno";
   if (std::strcmp(key, "more") == 0) return "več";
   if (std::strcmp(key, "more_items") == 0) return "Več elementov";
@@ -8289,6 +8325,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediekontroll";
   if (std::strcmp(key, "playlist") == 0) return "Spellista";
   if (std::strcmp(key, "mode") == 0) return "Läge";
+  if (std::strcmp(key, "group") == 0) return "Grupp";
   if (std::strcmp(key, "monthly") == 0) return "Månadsvis";
   if (std::strcmp(key, "more") == 0) return "fler";
   if (std::strcmp(key, "more_items") == 0) return "Fler objekt";
@@ -8516,6 +8553,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Çalma listesi";
   if (std::strcmp(key, "medium") == 0) return "Orta";
   if (std::strcmp(key, "mode") == 0) return "Mod";
+  if (std::strcmp(key, "group") == 0) return "Grup";
   if (std::strcmp(key, "monthly") == 0) return "Aylık";
   if (std::strcmp(key, "more") == 0) return "daha";
   if (std::strcmp(key, "more_items") == 0) return "Daha fazla öğe";
@@ -8754,6 +8792,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Список відтворення";
   if (std::strcmp(key, "medium") == 0) return "Середньо";
   if (std::strcmp(key, "mode") == 0) return "Режим";
+  if (std::strcmp(key, "group") == 0) return "Група";
   if (std::strcmp(key, "monthly") == 0) return "Щомісяця";
   if (std::strcmp(key, "more") == 0) return "ще";
   if (std::strcmp(key, "more_items") == 0) return "Більше елементів";

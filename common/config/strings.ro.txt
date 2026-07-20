@@ -90,6 +90,7 @@ media_control=Control media
 playlist=Listă de redare
 medium=Mediu
 mode=Mod
+group=Grup
 monthly=Lunar
 more=încă
 more_items=Mai multe elemente

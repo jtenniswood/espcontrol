@@ -90,6 +90,7 @@ media_control=Control multimedia
 playlist=Lista de reproducción
 medium=Medium
 mode=Modo
+group=Grupo
 monthly=Mensual
 more=más
 more_items=Más elementos

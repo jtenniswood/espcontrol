@@ -90,6 +90,7 @@ media_control=Median ohjaus
 playlist=Soittolista
 medium=Keskitaso
 mode=Tila
+group=Ryhmä
 monthly=Kuukausittain
 more=lisää
 more_items=Lisää kohteita

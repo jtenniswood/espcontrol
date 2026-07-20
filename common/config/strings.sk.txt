@@ -90,6 +90,7 @@ media_control=Ovládanie médií
 playlist=Zoznam skladieb
 medium=Medium
 mode=Režim
+group=Skupina
 monthly=Mesačne
 more=ďalšie
 more_items=Ďalšie položky

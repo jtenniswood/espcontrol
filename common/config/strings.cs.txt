@@ -90,6 +90,7 @@ media_control=Ovládání médií
 playlist=Playlist
 medium=Medium
 mode=Režim
+group=Skupina
 monthly=Měsíčně
 more=další
 more_items=Další položky

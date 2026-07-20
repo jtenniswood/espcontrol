@@ -90,6 +90,7 @@ media_control=Mediabediening
 playlist=Afspeellijst
 medium=Medium
 mode=Modus
+group=Groep
 monthly=Maandelijks
 more=meer
 more_items=Meer items

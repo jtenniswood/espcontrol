@@ -90,6 +90,7 @@ media_control=Керування медіа
 playlist=Список відтворення
 medium=Середньо
 mode=Режим
+group=Група
 monthly=Щомісяця
 more=ще
 more_items=Більше елементів

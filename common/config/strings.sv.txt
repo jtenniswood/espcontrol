@@ -90,6 +90,7 @@ media_control=Mediekontroll
 playlist=Spellista
 medium=Medium
 mode=Läge
+group=Grupp
 monthly=Månadsvis
 more=fler
 more_items=Fler objekt

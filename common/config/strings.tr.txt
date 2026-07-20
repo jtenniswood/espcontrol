@@ -90,6 +90,7 @@ media_control=Medya kontrolü
 playlist=Çalma listesi
 medium=Orta
 mode=Mod
+group=Grup
 monthly=Aylık
 more=daha
 more_items=Daha fazla öğe

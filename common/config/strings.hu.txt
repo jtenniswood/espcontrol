@@ -90,6 +90,7 @@ media_control=Médiavezérlés
 playlist=Lejátszási lista
 medium=Közepes
 mode=Mód
+group=Csoport
 monthly=Havonta
 more=további
 more_items=További elemek
