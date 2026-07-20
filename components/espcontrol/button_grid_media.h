@@ -3022,11 +3022,11 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_bg_opa(row->content_box, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(row->content_box, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(row->content_box, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_top(row->content_box, 10, LV_PART_MAIN);
-  lv_obj_set_style_pad_left(row->content_box, 14, LV_PART_MAIN);
-  lv_obj_set_style_pad_right(row->content_box, 12, LV_PART_MAIN);
-  lv_obj_set_style_pad_bottom(row->content_box, 10, LV_PART_MAIN);
-  lv_obj_set_style_pad_column(row->content_box, 12, LV_PART_MAIN);
+  lv_obj_set_style_pad_top(row->content_box, 16, LV_PART_MAIN);
+  lv_obj_set_style_pad_left(row->content_box, 18, LV_PART_MAIN);
+  lv_obj_set_style_pad_right(row->content_box, 18, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(row->content_box, 16, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(row->content_box, 14, LV_PART_MAIN);
   lv_obj_set_layout(row->content_box, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(row->content_box, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
   lv_obj_set_style_flex_main_place(row->content_box, LV_FLEX_ALIGN_START, LV_PART_MAIN);
@@ -3047,7 +3047,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_border_width(row->text_box, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(row->text_box, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(row->text_box, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(row->text_box, 2, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(row->text_box, 0, LV_PART_MAIN);
   lv_obj_set_layout(row->text_box, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(row->text_box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
   lv_obj_set_style_flex_main_place(row->text_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
@@ -3059,7 +3059,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_width(row->name_label, LV_PCT(100));
   const lv_coord_t speaker_text_h = ctx->label_font && ctx->label_font->line_height > 0
     ? ctx->label_font->line_height : 24;
-  lv_obj_set_height(row->name_label, speaker_text_h * 2);
+  lv_obj_set_height(row->name_label, speaker_text_h);
   lv_label_set_long_mode(row->name_label, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_align(row->name_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   lv_obj_set_style_text_color(row->name_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -3072,7 +3072,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   if (ctx->label_font) lv_obj_set_style_text_font(row->volume_label, ctx->label_font, LV_PART_MAIN);
 
   row->volume_controls = lv_obj_create(row->content_box);
-  lv_obj_set_size(row->volume_controls, 126, 64);
+  lv_obj_set_size(row->volume_controls, 146, 70);
   lv_obj_set_style_radius(row->volume_controls, 0, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(row->volume_controls, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(row->volume_controls, 0, LV_PART_MAIN);
@@ -3081,12 +3081,14 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_pad_column(row->volume_controls, 10, LV_PART_MAIN);
   lv_obj_set_layout(row->volume_controls, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(row->volume_controls, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row->volume_controls, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(row->volume_controls, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_clear_flag(row->volume_controls, LV_OBJ_FLAG_SCROLLABLE);
 
   auto create_volume_button = [&](const char *icon, bool increase) {
     lv_obj_t *btn = lv_btn_create(row->volume_controls);
-    lv_obj_set_size(btn, 58, 58);
-    lv_obj_set_style_radius(btn, 29, LV_PART_MAIN);
+    lv_obj_set_size(btn, 68, 68);
+    lv_obj_set_style_radius(btn, 34, LV_PART_MAIN);
     lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -3315,8 +3317,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
       layout.short_side);
     if (row_gap < 8) row_gap = 8;
-    lv_coord_t row_h = control_modal_scaled_px(112, layout.short_side);
-    if (row_h < 104) row_h = 104;
+    lv_coord_t row_h = control_modal_scaled_px(128, layout.short_side);
+    if (row_h < 120) row_h = 120;
     lv_obj_set_style_pad_row(ui.speaker_list, row_gap, LV_PART_MAIN);
     lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
     for (MediaSpeakerRowState *row : ui.speaker_rows) {
