@@ -777,6 +777,29 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
+  const coverArtPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
+    let section = "";
+    const placement = {};
+    Array.from(config.children).forEach((child, index) => {
+      if (child.classList.contains("sp-settings-status-header")) {
+        section = child.querySelector(".sp-settings-status-title")?.textContent || "";
+        return;
+      }
+      const title = child.querySelector(":scope > .card-header h3")?.textContent || "";
+      if (title) placement[title] = { section, index };
+    });
+    return placement;
+  });
+  assert.strictEqual(
+    coverArtPlacement["Cover Art Screen Saver"]?.section,
+    "Sleep & Schedule",
+    `${label}: cover art settings should be grouped with sleep and schedule controls`,
+  );
+  assert.strictEqual(
+    coverArtPlacement["Cover Art Screen Saver"]?.index,
+    coverArtPlacement.Idle?.index + 1,
+    `${label}: cover art settings should appear immediately below Idle`,
+  );
   const firmwareCard = page
     .locator("#sp-settings .card")
     .filter({

@@ -380,13 +380,13 @@ export function installSettingsPageModule(): GlobalDescriptors {
             appearanceCard,
             backlightCard,
             clockBarCard,
-            coverArtCard,
             voiceServicesCard,
             alarmDelayAudioCard,
             rotationCard,
         ]);
         appendSettingsSection(config, "Sleep & Schedule", [
             idleCard,
+            coverArtCard,
             screensaverCard,
             scheduleCard,
         ]);
