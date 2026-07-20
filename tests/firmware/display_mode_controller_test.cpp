@@ -45,7 +45,7 @@ int main() {
   CHECK(!presence_can_wake_display(controller.resolve()));
 
   for (DisplayMode mode : {DisplayMode::DISPLAY_OFF, DisplayMode::DIMMED,
-                           DisplayMode::CLOCK}) {
+                           DisplayMode::CLOCK, DisplayMode::PHOTOS}) {
     DisplayModeController presence_wake;
     CHECK(presence_wake.request(DisplayRequestSource::PRESENCE_SENSOR, mode));
     CHECK(presence_can_wake_display(presence_wake.resolve()));
@@ -329,6 +329,43 @@ int main() {
   CHECK(takeover.end_takeover(DisplayTakeoverKind::CRITICAL));
   CHECK(decision_is(takeover, DisplayMode::CLOCK,
                     DisplayRequestSource::SCREEN_SCHEDULE));
+
+  // The photo screensaver is an idle-owned presentation: only the idle timer and
+  // the presence sensor may request it, and it loses to the same higher-priority
+  // requests as clock.
+  CHECK(DisplayModeController::request_is_valid(DisplayRequestSource::IDLE_TIMER,
+                                                DisplayMode::PHOTOS));
+  CHECK(DisplayModeController::request_is_valid(
+      DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::PHOTOS));
+  for (DisplayRequestSource source :
+       {DisplayRequestSource::SCREEN_SCHEDULE, DisplayRequestSource::MANUAL_SLEEP,
+        DisplayRequestSource::MEDIA_PLAYBACK, DisplayRequestSource::USER_WAKE,
+        DisplayRequestSource::BOOT_GUARD, DisplayRequestSource::SETUP_TIMEOUT}) {
+    CHECK(!DisplayModeController::request_is_valid(source, DisplayMode::PHOTOS));
+  }
+
+  DisplayModeController photos;
+  CHECK(photos.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::PHOTOS));
+  CHECK(decision_is(photos, DisplayMode::PHOTOS, DisplayRequestSource::IDLE_TIMER));
+
+  // Eligible media outranks the photo screensaver.
+  CHECK(photos.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART));
+  CHECK(decision_is(photos, DisplayMode::COVER_ART,
+                    DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(photos.clear(DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(decision_is(photos, DisplayMode::PHOTOS, DisplayRequestSource::IDLE_TIMER));
+
+  // A schedule request closes the photo screensaver; clearing it resolves back
+  // from live inputs rather than a saved presentation.
+  CHECK(photos.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::DISPLAY_OFF));
+  CHECK(decision_is(photos, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(photos.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(decision_is(photos, DisplayMode::PHOTOS, DisplayRequestSource::IDLE_TIMER));
+
+  // A deliberate wake leaves the photo screensaver for the active UI.
+  CHECK(photos.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE));
+  CHECK(decision_is(photos, DisplayMode::ACTIVE, DisplayRequestSource::USER_WAKE));
 
   // Nested takeovers only finish when every owner has ended its takeover.
   CHECK(controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE));

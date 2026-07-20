@@ -29,6 +29,7 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::SWITCH:
     case Type::LIGHT_SWITCH: return Family::TOGGLE;
     case Type::ACTION: return Family::ACTION;
+    case Type::AGENDA: return Family::AGENDA;
     case Type::VACUUM: return Family::VACUUM;
     case Type::LAWN_MOWER: return Family::MOWER;
     case Type::ALARM: return Family::ALARM;
@@ -180,6 +181,14 @@ inline bool card_runtime_option_select_action(const std::string &action) {
 
 inline const char *card_runtime_option_select_canonical_action() {
   return CARD_CONTRACT_OPTION_SELECT_ACTION;
+}
+
+constexpr const char *card_runtime_option_name_agenda_days() {
+  return CARD_CONTRACT_OPTION_NAME_AGENDA_DAYS;
+}
+
+constexpr const char *card_runtime_option_name_agenda_hide_empty() {
+  return CARD_CONTRACT_OPTION_NAME_AGENDA_HIDE_EMPTY;
 }
 
 constexpr const char *card_runtime_option_name_state_labels() {

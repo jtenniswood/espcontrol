@@ -89,6 +89,9 @@ substitutions:
     }
   battery_status_hide_code: |-
     lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
+  photos_decode_size: "1280"
+  photos_download_budget: "8388608"
+  photos_retain_decoded: "true"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -153,6 +156,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
+  screen_photos:   !include ../../common/device/screen_photos.yaml
   image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)

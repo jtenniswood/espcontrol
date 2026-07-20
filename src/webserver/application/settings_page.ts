@@ -329,6 +329,12 @@ export function installSettingsPageModule(): GlobalDescriptors {
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);
+        // Photo screensaver settings apply to whichever screensaver mode is
+        // active, so they live once here and are shown when the action is Photos.
+        var photosSettingsCard: any = buildPhotoSettingsCard();
+        photosSettingsCard.style.display = "none";
+        ssBody.appendChild(photosSettingsCard);
+        els.setPhotosSettingsCard = photosSettingsCard;
         els.setPresence = presInp;
         els.setSensorClockSelect = sensorClockControls.clockSelect;
         els.setSensorClockField = sensorClockControls.clockField;
@@ -390,6 +396,47 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.setHSTimeout = hsSelect;
         var idleBadge: any = statusBadge("Idle on");
         els.setIdleBadge = idleBadge;
+        // The full agenda view is shared by every agenda card and the
+        // screensaver overlay, so its span is a device setting rather than a
+        // per-card one: it is the surface for seeing more than a glance.
+        var agendaViewBody: any = document.createElement("div");
+        var agendaViewDaysField: any = document.createElement("div");
+        agendaViewDaysField.className = "sp-field";
+        agendaViewDaysField.appendChild(fieldLabel("Days Ahead", "sp-set-agenda-view-days"));
+        var agendaViewDaysInp: any = document.createElement("input");
+        agendaViewDaysInp.type = "number";
+        agendaViewDaysInp.min = "1";
+        agendaViewDaysInp.max = "60";
+        agendaViewDaysInp.step = "1";
+        agendaViewDaysInp.className = "sp-input";
+        agendaViewDaysInp.id = "sp-set-agenda-view-days";
+        agendaViewDaysInp.value = String(state.agendaViewDays != null ? state.agendaViewDays : 30);
+        agendaViewDaysField.appendChild(agendaViewDaysInp);
+        var agendaViewHelp: any = document.createElement("div");
+        agendaViewHelp.className = "sp-help";
+        agendaViewHelp.textContent =
+            "How far ahead the full agenda reaches when you tap an agenda card or the screensaver agenda.";
+        agendaViewDaysField.appendChild(agendaViewHelp);
+        agendaViewBody.appendChild(agendaViewDaysField);
+        agendaViewDaysInp.addEventListener("change", function (this: any) {
+            var n: any = parseInt(this.value, 10);
+            if (!Number.isFinite(n) || n < 1) n = 30;
+            if (n > 60) n = 60;
+            state.agendaViewDays = n;
+            this.value = String(n);
+            postAgendaViewDays(n);
+        });
+        els.setAgendaViewDays = agendaViewDaysInp;
+        var agendaViewHideEmpty: any = toggleRow(
+            "Hide Empty Days", "sp-set-agenda-view-hide-empty", state.agendaViewHideEmpty);
+        agendaViewBody.appendChild(agendaViewHideEmpty.row);
+        agendaViewHideEmpty.input.addEventListener("change", function (this: any) {
+            state.agendaViewHideEmpty = this.checked;
+            postAgendaViewHideEmpty(state.agendaViewHideEmpty);
+        });
+        els.setAgendaViewHideEmpty = agendaViewHideEmpty.input;
+        var agendaViewCard: any = makeCollapsibleCard("Agenda View", agendaViewBody, true);
+
         syncIdleUi();
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
         var systemSettingsCards: any = buildSystemSettingsCards();
@@ -399,6 +446,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             idleCard,
             clockBarCard,
             batteryStatusCard,
+            agendaViewCard,
             rotationCard,
         ]);
         appendSettingsSection(config, "Voice & Sounds", [

@@ -41,7 +41,7 @@ SAVED_CONFIG_FIELDS = [
     "precision",
     "options",
 ]
-NORMALIZATION_FIELD_POLICIES = {"keep", "clear", "default", "default_if_empty", "allowed", "alias", "hook"}
+NORMALIZATION_FIELD_POLICIES = {"keep", "clear", "default", "default_if_empty", "allowed", "alias", "hook", "declared_options"}
 NORMALIZATION_CONDITION_OPERATORS = {"equals", "in", "present"}
 RUNTIME_CAPABILITIES = [
     "informationOnly",

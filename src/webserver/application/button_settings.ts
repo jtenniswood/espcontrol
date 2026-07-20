@@ -346,8 +346,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             initIconPicker(picker, currentVal, onSelect);
             return icf;
         }
-        function entityField(this: any, labelText?: any, inputId?: any, value?: any, placeholder?: any, domains?: any, bindName?: any, rerender?: any, requiredMessage?: any) {
-            var input: any = entityInput(inputId, value, placeholder, domains);
+        function entityField(this: any, labelText?: any, inputId?: any, value?: any, placeholder?: any, domains?: any, bindName?: any, rerender?: any, requiredMessage?: any, multi?: any) {
+            var input: any = entityInput(inputId, value, placeholder, domains, multi);
             var field: any = fieldWithControl(labelText, inputId, input);
             if (bindName)
                 bindField(input, bindName, rerender);

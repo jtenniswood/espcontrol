@@ -9,6 +9,7 @@ constexpr uint8_t REGISTRY_VERSION = 1;
 enum class Family : uint8_t {
   TOGGLE,
   ACTION,
+  AGENDA,
   ALARM,
   ALARM_ACTION,
   DATE_TIME,

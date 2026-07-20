@@ -41,7 +41,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
     }
     function cardSupportsMaxSize(this: any, b?: any) {
-        return !!(b && b.type === "image");
+        return !!(b && (b.type === "image" || b.type === "agenda"));
     }
     function cardSupportsPortraitLargeSize(this: any, b?: any) {
         var tenInch: any = DEVICE_ID === "guition-esp32-p4-jc8012p4a1" ||
@@ -52,7 +52,9 @@ export function installConfigCodecModule(): GlobalDescriptors {
         size = size || CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_PORTRAIT_LARGE)
             return cardSupportsPortraitLargeSize(b) ? size : CARD_SIZE_SINGLE;
-        if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
+        if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL ||
+            size === CARD_SIZE_GIANT_TALL || size === CARD_SIZE_FULL_TALL ||
+            size === CARD_SIZE_GIANT_WIDE || size === CARD_SIZE_FULL_WIDE)
             return cardSupportsMaxSize(b) ? size : CARD_SIZE_SINGLE;
         if (!cardRequiresSquareSize(b))
             return size;
@@ -539,6 +541,17 @@ export function installConfigCodecModule(): GlobalDescriptors {
         }
         else if (isActionOptionSelect || isFanCardType(type)) {
             options = "";
+        }
+        else if (type === "agenda") {
+            // Keep only the declared agenda options, dropping the default day
+            // count and an unset hide-empty flag, in canonical order.
+            var agendaDays: any = configOptionValue(options, "agenda_days");
+            var agendaHideEmpty: any = configOptionEnabled(options, "agenda_hide_empty");
+            options = "";
+            if (agendaDays && String(agendaDays) !== "14")
+                options = setConfigOptionValue(options, "agenda_days", agendaDays);
+            if (agendaHideEmpty)
+                options = setConfigOption(options, "agenda_hide_empty", true);
         }
         else if (type !== "action" && type !== "alarm_action" && !isClimateCardType(type) && type !== "cover" && type !== "garage" && type !== "gate" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && type !== "fan_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
             options = "";

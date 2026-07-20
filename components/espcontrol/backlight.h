@@ -277,6 +277,10 @@ inline bool screensaver_action_dimmed_mode(const std::string &action) {
          action == "Dimmed" || action == "dimmed" || action == "dim";
 }
 
+inline bool screensaver_action_photos_mode(const std::string &action) {
+  return action == "Photos" || action == "photos";
+}
+
 // ── Screensaver layout helpers ──────────────────────────────────────
 
 inline void screensaver_fill_screen(lv_obj_t *obj) {

@@ -47,6 +47,7 @@ export type FieldNormalizationPolicy =
   | { policy: "default_if_empty"; value: string }
   | { policy: "allowed"; values: readonly string[]; aliases?: Readonly<Record<string, string>>; fallback: string }
   | { policy: "alias"; aliases: Readonly<Record<string, string>> }
+  | { policy: "declared_options"; names: readonly string[] }
   | { policy: "hook"; hook: string };
 
 export interface CardNormalizationSpec {

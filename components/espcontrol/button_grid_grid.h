@@ -41,6 +41,12 @@ struct GridConfig {
   const lv_font_t *option_select_value_font = nullptr;
   const lv_font_t *volume_number_font;
   const lv_font_t *volume_label_font = nullptr;
+  const lv_font_t *small_text_font = nullptr;
+  const lv_font_t *agenda_day_font = nullptr;
+  const lv_font_t *agenda_title_font = nullptr;
+  const lv_font_t *agenda_secondary_font = nullptr;
+  const lv_font_t *agenda_date_small_font = nullptr;
+  const lv_font_t *agenda_icon_font = nullptr;
   const lv_font_t *climate_card_icon_font = nullptr;
   const lv_font_t *climate_option_title_font = nullptr;
   const lv_font_t *climate_option_value_font = nullptr;
@@ -87,6 +93,12 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.option_select_value = cfg.option_select_value_font;
   profile.fonts.volume_number = cfg.volume_number_font;
   profile.fonts.volume_label = cfg.volume_label_font;
+  profile.fonts.small_text = cfg.small_text_font;
+  profile.fonts.agenda_day = cfg.agenda_day_font;
+  profile.fonts.agenda_title = cfg.agenda_title_font;
+  profile.fonts.agenda_secondary = cfg.agenda_secondary_font;
+  profile.fonts.agenda_date_small = cfg.agenda_date_small_font;
+  profile.fonts.agenda_icon = cfg.agenda_icon_font;
   profile.fonts.climate_card_icon = cfg.climate_card_icon_font;
   profile.fonts.climate_option_title = cfg.climate_option_title_font;
   profile.fonts.climate_option_value = cfg.climate_option_value_font;
@@ -243,6 +255,9 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_date_time_driver.h"
 #include "button_grid_sensor_driver.h"
 #include "button_grid_weather_driver.h"
+#include "button_grid_agenda_cards.h"
+#include "button_grid_agenda_view.h"
+#include "button_grid_agenda_driver.h"
 #include "button_grid_basic_action_driver.h"
 #include "button_grid_numeric_selectable_driver.h"
 #include "button_grid_cleaning_driver.h"
@@ -485,6 +500,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
   espcontrol::cards::sensor_driver_cleanup(s, p, context);
   espcontrol::cards::weather_driver_cleanup(s, p, context);
+  espcontrol::cards::agenda_driver_cleanup(s, p, context);
   espcontrol::cards::basic_action_driver_cleanup(s, p, context);
   espcontrol::cards::numeric_selectable_driver_cleanup(s, p, context);
   espcontrol::cards::cleaning_driver_cleanup(s, p, context);
@@ -593,6 +609,12 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, context, display, row_span, col_span);
     return;
   }
+  if (espcontrol::cards::agenda_driver_setup_visual(s, p, context, palette, display)) {
+    espcontrol::cards::agenda_driver_attach_interaction(s, p, context);
+    espcontrol::cards::agenda_driver_refresh_layout(
+      s, p, context, display, row_span, col_span);
+    return;
+  }
   if (espcontrol::cards::basic_action_driver_setup_visual(s, p, context)) {
     espcontrol::cards::basic_action_driver_attach_interaction(s, p, context);
     espcontrol::cards::basic_action_driver_refresh_layout(
@@ -645,6 +667,7 @@ inline bool bind_basic_sensor_card(
   if (espcontrol::cards::sensor_driver_bind_data(
         s, p, context, palette)) return true;
   if (espcontrol::cards::weather_driver_bind_data(s, p, context)) return true;
+  if (espcontrol::cards::agenda_driver_bind_data(s, p, context)) return true;
   return false;
 }
 
@@ -942,6 +965,7 @@ inline void grid_phase1(
   display_activate_profile(display);
   // Clear image references before visual setup removes their old LVGL widgets.
   espcontrol::cards::image_driver_reset_pool(cfg);
+  espcontrol::reset_agenda_cards();
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
@@ -988,6 +1012,7 @@ inline void grid_phase1(
 
   bump_ha_subscription_generation();
   reset_calendar_cards();
+  espcontrol::reset_agenda_cards();
   reset_timezone_cards();
   weather_forecast_cancel_pending_requests();
   reset_weather_forecast_cards();
@@ -1610,6 +1635,11 @@ inline void grid_phase2(
   // Image-card contexts may still point at widgets inside subpage screens.
   espcontrol::cards::image_driver_reset_pool(cfg);
   navigation_clear_subpages();
+  // Agenda registrations may point into those screens too. Prune the dead ones
+  // once they are gone rather than clearing the registry: phase 1 has already
+  // registered this build's main-grid cards by now, and wiping them leaves
+  // those cards painted but never serviced.
+  espcontrol::prune_dead_agenda_cards();
   clear_subpage_vacuum_card_text_refs();
 
   bool has_on;

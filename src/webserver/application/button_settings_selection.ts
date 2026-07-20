@@ -131,7 +131,10 @@ export function installButtonSettingsSelectionModule(): GlobalDescriptors {
             (els.selectionBar && els.selectionBar.contains(target)) ||
             (els.settingsOverlay && els.settingsOverlay.contains(target)) ||
             (ctxMenu && ctxMenu.contains(target)) ||
-            (target.closest && target.closest(".sp-ctx-menu")));
+            // Menus that render on document.body to escape the settings
+            // modal's clipping still belong to it: a click inside one must
+            // not read as clicking away from the card.
+            (target.closest && target.closest(".sp-ctx-menu, .sp-cal-colors, .sp-entity-dropdown")));
     }
     function handleDocumentSelectionMouseDown(this: any, e?: any) {
         if (e.button !== 0)

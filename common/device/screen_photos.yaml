@@ -1,0 +1,938 @@
+# =============================================================================
+# PHOTO SCREENSAVER - Full-screen rotating photos from a Home Assistant folder
+# =============================================================================
+# When the screensaver action is "Photos", the panel rotates through the images
+# in a Home Assistant media-source folder. Photos are indexed and resolved to
+# signed, directly-downloadable URLs by the ha_media_source websocket client,
+# then fetched through the shared artwork_image download pipeline and shown on a
+# full-screen LVGL overlay. Optional date/time and weather widgets float over the
+# photo.
+#
+# Ownership and lifecycle mirror the clock screensaver (see screen_clock.yaml and
+# common/addon/backlight.yaml): the display_mode_controller owns the PHOTOS mode
+# decision; show_photos_view / hide_photos_view apply the effect; the rotation
+# interval only advances while PHOTOS is the current mode.
+# =============================================================================
+
+globals:
+  # Fetches and merges upcoming calendar events for the optional agenda overlay.
+  - id: photos_agenda_fetcher
+    type: espcontrol::AgendaFetcher
+    restore_value: false
+  # Advancing the rotation and resolving a signed URL are asynchronous. Each
+  # advance carries a generation so a late resolve callback from a previous photo
+  # (or a dismissed screensaver) cannot overwrite the current one.
+  - id: photos_advance_generation
+    type: uint32_t
+    initial_value: '0'
+  - id: photos_pending_url
+    type: std::string
+    initial_value: '""'
+  # Set true once a photo has actually been decoded, so show_photos_view can hold
+  # the black backdrop until the first image is ready instead of flashing.
+  - id: photos_first_image_ready
+    type: bool
+    initial_value: 'false'
+  # Crossfade bookkeeping: which decode slot is currently on screen (0=a, 1=b)
+  # and which one the in-flight download targets.
+  - id: photos_active_slot
+    type: int
+    initial_value: '0'
+  - id: photos_pending_slot
+    type: int
+    initial_value: '0'
+  # One download at a time: a second advance while one is in flight would
+  # target the same slot and re-fade the photo already on screen. The timestamp
+  # doubles as the rotation clock and as a stale-download escape hatch.
+  - id: photos_download_pending
+    type: bool
+    initial_value: 'false'
+  - id: photos_last_advance_ms
+    type: uint32_t
+    initial_value: '0'
+
+# The websocket client that browses the folder and resolves signed URLs. Its
+# connection is wired from the stored Home Assistant URL/token entities by
+# ha_media_source_apply_connection (see display.yaml).
+ha_media_source:
+  id: photo_media
+
+image:
+  - platform: file
+    file: "${cover_art_placeholder_file}"
+    id: photos_placeholder
+    type: RGB565
+    byte_order: LITTLE_ENDIAN
+
+# Photos decode as a square of the longest screen edge with a COVER crop, so
+# the picture fills the display in either orientation. The download budget is
+# raised on PSRAM-rich panels because full-resolution camera originals
+# routinely exceed the 2MB artwork default (both come from the device
+# generator as substitutions).
+# Two alternating decode slots so the next photo can fade in over the one that
+# is still showing. The rotation downloads into the inactive slot and
+# crossfades its widget on top when the decode completes.
+artwork_image:
+  - url: "https://placehold.co/${photos_decode_size}x${photos_decode_size}/000000/000000.jpg"
+    id: photos_downloaded_image_a
+    format: AUTO
+    type: RGB565
+    byte_order: LITTLE_ENDIAN
+    placeholder: photos_placeholder
+    resize: ${photos_decode_size}x${photos_decode_size}
+    resize_mode: COVER
+    priority: COVER_ART
+    buffer_size: 65536
+    max_download_size: ${photos_download_budget}
+    allow_insecure_local_urls: true
+    on_download_finished:
+      - lvgl.image.update:
+          id: photos_image_widget_a
+          src: photos_downloaded_image_a
+      - script.execute:
+          id: photos_fade_in_slot
+          slot: 0
+    on_error:
+      - script.execute: photos_skip_failed_photo
+  - url: "https://placehold.co/${photos_decode_size}x${photos_decode_size}/000000/000000.jpg"
+    id: photos_downloaded_image_b
+    format: AUTO
+    type: RGB565
+    byte_order: LITTLE_ENDIAN
+    placeholder: photos_placeholder
+    resize: ${photos_decode_size}x${photos_decode_size}
+    resize_mode: COVER
+    priority: COVER_ART
+    buffer_size: 65536
+    max_download_size: ${photos_download_budget}
+    allow_insecure_local_urls: true
+    on_download_finished:
+      - lvgl.image.update:
+          id: photos_image_widget_b
+          src: photos_downloaded_image_b
+      - script.execute:
+          id: photos_fade_in_slot
+          slot: 1
+    on_error:
+      - script.execute: photos_skip_failed_photo
+
+lvgl:
+  top_layer:
+    widgets:
+      - obj:
+          id: photos_screensaver
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          bg_color: 0x000000
+          bg_opa: 100%
+          radius: 0
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: true
+          hidden: true
+          on_press:
+            then:
+              - script.execute: screensaver_wake
+          widgets:
+            # The two photo widgets stack inside their own container so the
+            # crossfade can reorder them without ever covering the overlay text.
+            - obj:
+                id: photos_image_stack
+                x: 0
+                y: 0
+                width: 100%
+                height: 100%
+                bg_opa: 0%
+                radius: 0
+                border_width: 0
+                pad_all: 0
+                scrollable: false
+                clickable: false
+                widgets:
+                  - image:
+                      id: photos_image_widget_a
+                      x: 0
+                      y: 0
+                      width: 100%
+                      height: 100%
+                      src: photos_placeholder
+                      align: CENTER
+                      hidden: true
+                  - image:
+                      id: photos_image_widget_b
+                      x: 0
+                      y: 0
+                      width: 100%
+                      height: 100%
+                      src: photos_placeholder
+                      align: CENTER
+                      hidden: true
+            # Time above date, stacked by a flex column so the labels can never
+            # overlap regardless of each device's font sizes. Every visible text
+            # is paired with an offset black copy behind it — a drop shadow that
+            # keeps contrast on bright photos without a scrim band.
+            - obj:
+                id: photos_datetime_box
+                align: TOP_LEFT
+                x: 24
+                y: 20
+                width: SIZE_CONTENT
+                height: SIZE_CONTENT
+                bg_opa: 0%
+                border_width: 0
+                pad_all: 0
+                scrollable: false
+                clickable: false
+                hidden: true
+                layout:
+                  type: flex
+                  flex_flow: ROW
+                  flex_align_cross: center
+                  pad_column: 14
+                widgets:
+                  # Compact date stack in the events' date-column format
+                  # (weekday / day / month), leading the time at roughly
+                  # the same height.
+                  - obj:
+                      id: photos_date_stack
+                      width: SIZE_CONTENT
+                      height: SIZE_CONTENT
+                      bg_opa: 0%
+                      border_width: 0
+                      pad_all: 0
+                      scrollable: false
+                      clickable: false
+                      layout:
+                        type: flex
+                        flex_flow: COLUMN
+                        flex_align_cross: center
+                        pad_row: 0
+                      widgets:
+                        - obj:
+                            width: SIZE_CONTENT
+                            height: SIZE_CONTENT
+                            bg_opa: 0%
+                            border_width: 0
+                            pad_all: 0
+                            scrollable: false
+                            clickable: false
+                            widgets:
+                              - label:
+                                  id: photos_date_weekday_shadow
+                                  x: 1
+                                  y: 1
+                                  text_font: font_agenda_date_small
+                                  text_color: 0x000000
+                                  opa: 70%
+                                  text: ""
+                              - label:
+                                  id: photos_date_weekday_label
+                                  x: 0
+                                  y: 0
+                                  text_font: font_agenda_date_small
+                                  text_color: 0xFFFFFF
+                                  text: ""
+                        - obj:
+                            width: SIZE_CONTENT
+                            height: SIZE_CONTENT
+                            bg_opa: 0%
+                            border_width: 0
+                            pad_all: 0
+                            scrollable: false
+                            clickable: false
+                            widgets:
+                              - label:
+                                  id: photos_date_day_shadow
+                                  x: 1
+                                  y: 1
+                                  text_font: font_agenda_secondary
+                                  text_color: 0x000000
+                                  opa: 70%
+                                  text: ""
+                              - label:
+                                  id: photos_date_day_label
+                                  x: 0
+                                  y: 0
+                                  text_font: font_agenda_secondary
+                                  text_color: 0xFFFFFF
+                                  text: ""
+                        - obj:
+                            width: SIZE_CONTENT
+                            height: SIZE_CONTENT
+                            bg_opa: 0%
+                            border_width: 0
+                            pad_all: 0
+                            scrollable: false
+                            clickable: false
+                            widgets:
+                              - label:
+                                  id: photos_date_month_shadow
+                                  x: 1
+                                  y: 1
+                                  text_font: font_agenda_date_small
+                                  text_color: 0x000000
+                                  opa: 70%
+                                  text: ""
+                              - label:
+                                  id: photos_date_month_label
+                                  x: 0
+                                  y: 0
+                                  text_font: font_agenda_date_small
+                                  text_color: 0xFFFFFF
+                                  text: ""
+                  - obj:
+                      id: photos_time_wrap
+                      width: SIZE_CONTENT
+                      height: SIZE_CONTENT
+                      bg_opa: 0%
+                      border_width: 0
+                      pad_all: 0
+                      scrollable: false
+                      clickable: false
+                      widgets:
+                        - label:
+                            id: photos_datetime_shadow
+                            x: 2
+                            y: 2
+                            text_font: font_text_title
+                            text_color: 0x000000
+                            opa: 70%
+                            text: ""
+                        - label:
+                            id: photos_datetime_label
+                            x: 0
+                            y: 0
+                            text_font: font_text_title
+                            text_color: 0xFFFFFF
+                            text: ""
+            # Weather icon beside the temperature, bottom right.
+            - obj:
+                id: photos_weather_box
+                align: TOP_RIGHT
+                x: -24
+                y: 20
+                width: SIZE_CONTENT
+                height: SIZE_CONTENT
+                bg_opa: 0%
+                border_width: 0
+                pad_all: 0
+                scrollable: false
+                clickable: false
+                hidden: true
+                layout:
+                  type: flex
+                  flex_flow: ROW
+                  flex_align_cross: center
+                  pad_column: 12
+                widgets:
+                  - obj:
+                      width: SIZE_CONTENT
+                      height: SIZE_CONTENT
+                      bg_opa: 0%
+                      border_width: 0
+                      pad_all: 0
+                      scrollable: false
+                      clickable: false
+                      widgets:
+                        - label:
+                            id: photos_weather_icon_shadow
+                            x: 2
+                            y: 2
+                            text_font: font_icon_main
+                            text_color: 0x000000
+                            opa: 70%
+                            text: ""
+                        - label:
+                            id: photos_weather_icon
+                            x: 0
+                            y: 0
+                            text_font: font_icon_main
+                            text_color: 0xFFFFFF
+                            text: ""
+                  - obj:
+                      width: SIZE_CONTENT
+                      height: SIZE_CONTENT
+                      bg_opa: 0%
+                      border_width: 0
+                      pad_all: 0
+                      scrollable: false
+                      clickable: false
+                      widgets:
+                        - label:
+                            id: photos_weather_temp_shadow
+                            x: 2
+                            y: 2
+                            text_font: font_text_title
+                            text_color: 0x000000
+                            opa: 70%
+                            text: ""
+                        - label:
+                            id: photos_weather_temp
+                            x: 0
+                            y: 0
+                            text_font: font_text_title
+                            text_color: 0xFFFFFF
+                            text: ""
+            # subscribe_weather_state writes the condition text here; the photo
+            # overlay shows temperature instead, so this sink stays hidden.
+            - label:
+                id: photos_weather_condition
+                align: BOTTOM_RIGHT
+                x: -24
+                y: -120
+                text_font: font_text_body
+                text_color: 0xDDDDDD
+                text: ""
+                hidden: true
+            # Optional agenda overlay, top-left: a rounded dark box whose
+            # opacity is user-configurable; the compact event rows are rendered
+            # into it by agenda_overlay_render (style: next event / today /
+            # upcoming).
+            - obj:
+                id: photos_agenda_box
+                align: BOTTOM_MID
+                y: -20
+                width: 92%
+                height: SIZE_CONTENT
+                bg_color: 0x101216
+                bg_opa: 45%
+                radius: 8
+                border_width: 0
+                pad_all: 10
+                scrollable: false
+                clickable: true
+                hidden: true
+                layout:
+                  type: flex
+                  flex_flow: COLUMN
+                  pad_row: 6
+                widgets: []
+                on_click:
+                  then:
+                    # Tap the agenda: open the dedicated two-week agenda view
+                    # right over the screensaver; closing it returns to the
+                    # photos.
+                    - lambda: |-
+                        auto now = panel_time_or_fallback(id(panel_time).now(),
+                                                          id(homeassistant_time).now());
+                        if (!now.is_valid()) return;
+                        espcontrol::agenda_view_open(
+                            id(screensaver_photos_agenda_entities).state,
+                            id(font_agenda_title)->get_lv_font(),
+                            id(font_agenda_secondary)->get_lv_font(),
+                            id(font_agenda_date_small)->get_lv_font(),
+                            id(font_agenda_icon)->get_lv_font(),
+                            id(font_agenda_day)->get_lv_font(),
+                            id(font_icon_main)->get_lv_font(),
+                            id(clock_format_12h),
+                            now.year, now.month, now.day_of_month,
+                            now.hour, now.minute, now.second,
+                            nullptr, 100);
+
+esphome:
+  on_boot:
+    priority: 200
+    then:
+      - script.execute: ha_media_source_apply_connection
+
+script:
+  # Push the stored Home Assistant URL and token into the media-source client,
+  # normalizing the address to a websocket URL first. Called on boot and whenever
+  # either entity changes.
+  - id: ha_media_source_apply_connection
+    mode: restart
+    then:
+      - lambda: |-
+          const std::string url =
+              espcontrol::normalize_ha_websocket_url(id(home_assistant_url).state);
+          id(photo_media).set_connection(url, id(home_assistant_token).state);
+          // Thumbnail paths from the browse response need the Home Assistant
+          // token as a bearer header (they are not signed like resolve_media
+          // URLs). Register the header once; the lambda reads the live token
+          // per request so a token change needs no re-registration.
+          static bool photos_slots_configured = false;
+          if (!photos_slots_configured) {
+            photos_slots_configured = true;
+            auto bearer = []() -> std::string {
+              const std::string &token = id(home_assistant_token).state;
+              return token.empty() ? std::string() : "Bearer " + token;
+            };
+            id(photos_downloaded_image_a)->add_request_header("Authorization", bearer);
+            id(photos_downloaded_image_b)->add_request_header("Authorization", bearer);
+            // Photos are arbitrary and often far larger than the panel. When a
+            // preview cannot use the hardware decoder (e.g. jpegli-encoded
+            // Immich previews), let the software decoder downscale below the
+            // target so the decode is fast enough not to stall rotation.
+            id(photos_downloaded_image_a)->set_software_downscale_allowed(true);
+            id(photos_downloaded_image_b)->set_software_downscale_allowed(true);
+          }
+      # Point the client at the configured folder (no-op if unchanged).
+      - lambda: 'id(photo_media).set_folder(id(screensaver_photos_folder).state);'
+
+  # Advance to the next photo and start resolving/downloading it. Runs only while
+  # PHOTOS is the current or target mode; the reconcile loop calls this on the
+  # configured interval.
+  - id: photos_screensaver_advance
+    mode: restart
+    then:
+      - lambda: |-
+          if (id(photo_media).index().empty()) {
+            // Nothing indexed yet (or folder empty). Ask the client to browse if
+            // it is ready; the rotation interval will retry the first advance.
+            if (id(photo_media).ready() && !id(photo_media).index_loading()) {
+              id(photo_media).refresh_index();
+            }
+            return;
+          }
+          // One in-flight photo at a time; a stacked second download would
+          // re-fade the slot that is already showing. Stale escapes after 60s.
+          if (id(photos_download_pending) &&
+              millis() - id(photos_last_advance_ms) < 60000) {
+            return;
+          }
+
+          const espcontrol::PhotoOrder order = id(screensaver_photos_shuffle).state
+              ? espcontrol::PhotoOrder::SHUFFLE
+              : espcontrol::PhotoOrder::SEQUENTIAL;
+          // The index stores PSRAM-backed strings; copy into a std::string for
+          // the resolve call.
+          const auto &next_ref =
+              id(photo_media).mutable_index().advance(order, esphome::random_uint32());
+          if (next_ref.empty()) return;
+          const std::string next(next_ref.c_str(), next_ref.size());
+
+          id(photos_download_pending) = true;
+          id(photos_last_advance_ms) = millis();
+          const uint32_t generation = ++id(photos_advance_generation);
+          id(photo_media).resolve(next, [generation](const std::string &url) {
+            if (generation != id(photos_advance_generation)) return;  // superseded
+            if (url.empty()) {
+              id(photos_download_pending) = false;
+              return;
+            }
+            id(photos_pending_url) = url;
+            // Download into the slot that is NOT on screen, so the current
+            // photo stays visible until the new one is ready to fade in.
+            const int target = 1 - id(photos_active_slot);
+            id(photos_pending_slot) = target;
+            if (target == 0) {
+              id(photos_downloaded_image_a)->request_update_url(url);
+            } else {
+              id(photos_downloaded_image_b)->request_update_url(url);
+            }
+          });
+
+  # Crossfade the freshly decoded slot over the one currently showing, then
+  # hide the old widget once the fade has finished.
+  - id: photos_fade_in_slot
+    mode: restart
+    parameters:
+      slot: int
+    then:
+      - lambda: |-
+          id(photos_download_pending) = false;
+          // Count the per-photo duration from when the photo actually appears,
+          // not from when its download started — a slow decode must not make
+          // the next advance fire the moment this one lands.
+          id(photos_last_advance_ms) = millis();
+          if (slot != id(photos_pending_slot)) return;  // stale completion
+          lv_obj_t *incoming = slot == 0 ? id(photos_image_widget_a)
+                                         : id(photos_image_widget_b);
+          // If this slot is already on screen (a re-download landed in the
+          // visible slot), the content has been swapped in place by the image
+          // update; restarting the fade from transparent would blink black.
+          const bool already_showing =
+              id(photos_first_image_ready) && slot == id(photos_active_slot) &&
+              !lv_obj_has_flag(incoming, LV_OBJ_FLAG_HIDDEN);
+          id(photos_first_image_ready) = true;
+          if (already_showing) return;
+          lv_image_set_inner_align(incoming, LV_IMAGE_ALIGN_COVER);
+          lv_obj_move_foreground(incoming);  // within photos_image_stack only
+          lv_obj_set_style_opa(incoming, LV_OPA_TRANSP, 0);
+          lv_obj_clear_flag(incoming, LV_OBJ_FLAG_HIDDEN);
+          lv_obj_fade_in(incoming, 400, 0);
+          id(photos_active_slot) = slot;
+      - delay: 450ms
+      - lambda: |-
+          // Hide whichever widget is no longer active; keep its decoded buffer
+          // so the next advance can simply overwrite it.
+          lv_obj_t *outgoing = id(photos_active_slot) == 0
+                                   ? id(photos_image_widget_b)
+                                   : id(photos_image_widget_a);
+          lv_obj_add_flag(outgoing, LV_OBJ_FLAG_HIDDEN);
+
+  # A photo that fails to download or decode (unsupported format, oversized
+  # file) should not leave the previous photo on screen for a full cycle; move
+  # on after a short pause. Only while the photo screensaver is showing.
+  - id: photos_skip_failed_photo
+    mode: restart
+    then:
+      - lambda: 'id(photos_download_pending) = false;'
+      - if:
+          condition:
+            lambda: |-
+              return id(espcontrol_app).display().current_mode_is(
+                  espcontrol::DisplayMode::PHOTOS);
+          then:
+            - delay: 2s
+            - script.execute: photos_screensaver_advance
+
+  # Apply the optional date/time and weather widgets' visibility and content.
+  - id: photos_apply_widgets
+    mode: restart
+    then:
+      - lambda: |-
+          espcontrol::agenda_overlay_box() = id(photos_agenda_box);
+          const bool show_time = id(screensaver_photos_show_datetime).state;
+          const bool show_date = id(screensaver_photos_show_date).state;
+          const bool show_datetime = show_time || show_date;
+          if (show_time) lv_obj_clear_flag(id(photos_time_wrap), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(photos_time_wrap), LV_OBJ_FLAG_HIDDEN);
+          if (show_date) lv_obj_clear_flag(id(photos_date_stack), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(photos_date_stack), LV_OBJ_FLAG_HIDDEN);
+          const bool show_weather = id(screensaver_photos_show_weather).state &&
+                                    !id(screensaver_photos_weather_entity).state.empty();
+          ESP_LOGI("agenda", "apply_widgets: datetime=%d weather=%d agenda_sw=%d cals='%s'",
+                   (int) show_datetime, (int) show_weather,
+                   (int) id(screensaver_photos_show_agenda).state,
+                   id(screensaver_photos_agenda_entities).state.c_str());
+          if (show_datetime) lv_obj_clear_flag(id(photos_datetime_box), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(photos_datetime_box), LV_OBJ_FLAG_HIDDEN);
+          if (show_weather) lv_obj_clear_flag(id(photos_weather_box), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(photos_weather_box), LV_OBJ_FLAG_HIDDEN);
+          const bool show_agenda = id(screensaver_photos_show_agenda).state &&
+                                   !id(screensaver_photos_agenda_entities).state.empty();
+          if (!show_agenda) lv_obj_add_flag(id(photos_agenda_box), LV_OBJ_FLAG_HIDDEN);
+          float opacity = id(screensaver_photos_agenda_opacity).state;
+          if (std::isnan(opacity) || opacity < 0) opacity = 45;
+          lv_obj_set_style_bg_opa(id(photos_agenda_box),
+                                  (lv_opa_t)(opacity * 255 / 100), 0);
+      - script.execute: photos_refresh_datetime
+      - script.execute: photos_agenda_refresh
+
+  # Fetch the upcoming events for the agenda overlay. Runs when the screensaver
+  # shows, when the agenda config changes, and on a slow interval while visible.
+  - id: photos_agenda_refresh
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(screensaver_photos_show_agenda).state ||
+              id(screensaver_photos_agenda_entities).state.empty()) {
+            ESP_LOGD("agenda", "Refresh skipped: agenda disabled or no calendars");
+            return;
+          }
+          auto now = panel_time_or_fallback(id(panel_time).now(),
+                                            id(homeassistant_time).now());
+          ESP_LOGI("agenda", "Refresh requested (time_valid=%d, on_ready=%d, box_hidden=%d)",
+                   (int) now.is_valid(),
+                   (int) id(photos_agenda_fetcher).has_on_ready(),
+                   (int) lv_obj_has_flag(id(photos_agenda_box), LV_OBJ_FLAG_HIDDEN));
+          if (!now.is_valid()) return;
+          // Render the agenda into the overlay box whenever a fetch completes.
+          // Registered here, at the point of use, so a response can never
+          // arrive without a renderer attached.
+          id(photos_agenda_fetcher).set_on_ready([](const espcontrol::AgendaList &list) {
+            auto render_now = panel_time_or_fallback(id(panel_time).now(),
+                                                     id(homeassistant_time).now());
+            int32_t render_today = render_now.is_valid()
+                ? espcontrol::agenda_days_from_civil(render_now.year, render_now.month,
+                                                     render_now.day_of_month)
+                : 0;
+            const std::string style_opt = id(screensaver_photos_agenda_style).current_option();
+            espcontrol::AgendaOverlayStyle style =
+                style_opt == "Today" ? espcontrol::AgendaOverlayStyle::TODAY
+                : style_opt == "Upcoming" ? espcontrol::AgendaOverlayStyle::UPCOMING
+                                          : espcontrol::AgendaOverlayStyle::NEXT_EVENT;
+            const bool has_content = espcontrol::agenda_overlay_render(
+                id(photos_agenda_box), list, style, render_today, id(clock_format_12h),
+                id(font_agenda_title)->get_lv_font(),
+                id(font_agenda_secondary)->get_lv_font(),
+                id(font_agenda_date_small)->get_lv_font(),
+                id(font_agenda_icon)->get_lv_font(),
+                id(font_agenda_day)->get_lv_font(),
+                (int) id(screensaver_photos_agenda_limit).state,
+                id(screensaver_photos_agenda_entities).state.c_str());
+            // The box is bottom-anchored and sized to its content: it must be
+            // re-aligned after rows are added, or it keeps the height it had
+            // when empty and the extra rows fall off the bottom of the screen.
+            lv_obj_update_layout(id(photos_agenda_box));
+            lv_obj_align(id(photos_agenda_box), LV_ALIGN_BOTTOM_MID, 0, -20);
+            const bool show = has_content && id(screensaver_photos_show_agenda).state;
+            ESP_LOGI("agenda", "Overlay render: content=%d switch=%d children=%u",
+                     (int) has_content, (int) id(screensaver_photos_show_agenda).state,
+                     (unsigned) lv_obj_get_child_count(id(photos_agenda_box)));
+            if (show) lv_obj_clear_flag(id(photos_agenda_box), LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(id(photos_agenda_box), LV_OBJ_FLAG_HIDDEN);
+          });
+          id(photos_agenda_fetcher).set_entities(
+              espcontrol::agenda_entity_ids(
+                  id(screensaver_photos_agenda_entities).state));
+          // Fetch well past the row limit so the overlay's "+N more" marker
+          // reports a real count rather than the fetch ceiling.
+          id(photos_agenda_fetcher).set_max_events(20);
+          char start[24];
+          snprintf(start, sizeof(start), "%04d-%02d-%02d %02d:%02d:%02d",
+                   now.year, now.month, now.day_of_month, now.hour, now.minute, now.second);
+          // Window end: 14 days ahead at midnight.
+          int32_t today = espcontrol::agenda_days_from_civil(now.year, now.month,
+                                                             now.day_of_month);
+          int ey = 0, em = 0, ed = 0;
+          int days_ahead = (int) id(screensaver_photos_agenda_days).state;
+          if (days_ahead < 1) days_ahead = 14;
+          espcontrol::agenda_civil_from_days(today + days_ahead, &ey, &em, &ed);
+          char end[24];
+          snprintf(end, sizeof(end), "%04d-%02d-%02d 00:00:00", ey, em, ed);
+          const int64_t now_epoch = static_cast<int64_t>(today) * 86400 +
+                                    now.hour * 3600 + now.minute * 60 + now.second;
+          id(photos_agenda_fetcher).refresh(std::string(start), std::string(end), now_epoch);
+
+  # Refresh the date/time label from the panel clock. Cheap; called each second
+  # while the photo screensaver is visible.
+  - id: photos_refresh_datetime
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(screensaver_photos_show_datetime).state &&
+              !id(screensaver_photos_show_date).state) return;
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          if (!time.is_valid()) return;
+          char buf[8];
+          format_clock_time_without_suffix(buf, sizeof(buf), time.hour, time.minute,
+                                           id(clock_format_12h));
+          lv_label_set_text(id(photos_datetime_label), buf);
+          lv_label_set_text(id(photos_datetime_shadow), buf);
+          static const char *const kWeekdays[] = {
+            "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+          static const char *const kMonths[] = {
+            "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+            "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+          const int wd = time.day_of_week >= 1 && time.day_of_week <= 7
+                             ? time.day_of_week - 1 : 0;
+          const int mo = time.month >= 1 && time.month <= 12 ? time.month - 1 : 0;
+          char day_buf[4];
+          snprintf(day_buf, sizeof(day_buf), "%d", time.day_of_month);
+          lv_label_set_text(id(photos_date_weekday_label), kWeekdays[wd]);
+          lv_label_set_text(id(photos_date_weekday_shadow), kWeekdays[wd]);
+          lv_label_set_text(id(photos_date_day_label), day_buf);
+          lv_label_set_text(id(photos_date_day_shadow), day_buf);
+          lv_label_set_text(id(photos_date_month_label), kMonths[mo]);
+          lv_label_set_text(id(photos_date_month_shadow), kMonths[mo]);
+          // The weather icon text is written by the shared weather subscription,
+          // which doesn't know about the shadow copy; mirror it here.
+          const char *icon_text = lv_label_get_text(id(photos_weather_icon));
+          if (strcmp(icon_text, lv_label_get_text(id(photos_weather_icon_shadow))) != 0) {
+            lv_label_set_text(id(photos_weather_icon_shadow), icon_text);
+          }
+
+  # Subscribe the weather widget to the configured weather entity.
+  - id: photos_subscribe_weather
+    mode: restart
+    then:
+      - lambda: |-
+          const std::string entity = id(screensaver_photos_weather_entity).state;
+          if (entity.empty() || !id(screensaver_photos_show_weather).state) return;
+          subscribe_weather_state(id(photos_weather_icon), id(photos_weather_condition),
+                                  entity);
+          ha_subscribe_attribute(
+              entity, std::string("temperature"),
+              std::function<void(esphome::StringRef)>([](esphome::StringRef value) {
+                std::string text = std::string(value.c_str(), value.size());
+                if (text.empty()) return;
+                // Trim to a whole degree and append a degree glyph.
+                double parsed = atof(text.c_str());
+                char buf[12];
+                snprintf(buf, sizeof(buf), "%d°", (int) lround(parsed));
+                lv_label_set_text(id(photos_weather_temp), buf);
+                lv_label_set_text(id(photos_weather_temp_shadow), buf);
+              }));
+
+  # Show the photo screensaver overlay.
+  - id: show_photos_view
+    mode: restart
+    parameters:
+      generation: int
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(espcontrol_app).display().takeover_active(
+                         espcontrol::DisplayTakeoverKind::INTERACTIVE) &&
+                  id(espcontrol_app).display().transition_is_current(
+                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::PHOTOS);
+          then:
+            - lambda: 'navigation_return_home(id(main_page)->obj);'
+            - lvgl.widget.hide: dim_screensaver_touch_guard
+            # Reset the rotation clock so whatever photo is shown now gets a full
+            # interval before the next change, instead of the timer firing an
+            # advance the moment the screensaver reappears.
+            - lambda: 'id(photos_last_advance_ms) = millis();'
+            # Only fetch immediately when there is nothing retained to show yet
+            # (the first activation after boot). When a photo was retained across
+            # the previous dismissal it reappears instantly below, and the
+            # rotation interval advances on cadence — kicking an advance here
+            # would crossfade to a new photo seconds after activation.
+            - if:
+                condition:
+                  lambda: 'return !id(photos_first_image_ready);'
+                then:
+                  - script.execute: photos_screensaver_advance
+            - script.execute: photos_apply_widgets
+            - script.execute: photos_subscribe_weather
+            - script.execute: clock_bar_hide
+            - script.wait: clock_bar_hide
+            - lambda: |-
+                if (!id(espcontrol_app).display().transition_is_current(
+                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::PHOTOS)) {
+                  id(show_photos_view).stop();
+                  return;
+                }
+                lv_obj_t *temperature_labels[] = { id(temperatures) };
+                hide_clock_bar_top_layer_widgets(temperature_labels, 1,
+                                                 id(display_time),
+                                                 id(network_status_button));
+                network_status_hide_modal();
+                refresh_screensaver_fullscreen(id(photos_screensaver), id(dim_screensaver_touch_guard));
+                // Reveal a retained photo if one is loaded; otherwise the overlay
+                // fades in as black until the first crossfade brings one in.
+                if (id(photos_first_image_ready)) {
+                  lv_obj_t *active = id(photos_active_slot) == 0
+                                         ? id(photos_image_widget_a)
+                                         : id(photos_image_widget_b);
+                  lv_image_set_inner_align(active, LV_IMAGE_ALIGN_COVER);
+                  lv_obj_set_style_opa(active, LV_OPA_COVER, 0);
+                  lv_obj_clear_flag(active, LV_OBJ_FLAG_HIDDEN);
+                }
+                // Present the overlay transparent over the current screen, then
+                // fade it in below — a direct crossfade from the UI to the photo
+                // at full backlight, with no dip to black. The photo image covers
+                // the overlay, so fading the overlay's opacity dissolves the photo
+                // in over whatever was showing.
+                lv_obj_set_style_opa(id(photos_screensaver), LV_OPA_TRANSP, 0);
+                lv_obj_clear_flag(id(photos_screensaver), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(id(photos_screensaver));
+            # Bring the backlight to full without a dip (a no-op when already
+            # active), then crossfade the photo overlay in over the current UI.
+            - light.turn_on:
+                id: display_backlight
+                brightness: 100%
+                transition_length: 200ms
+            - lambda: 'lv_obj_fade_in(id(photos_screensaver), 500, 0);'
+          else:
+            - lambda: 'ESP_LOGD("photos", "Skipping photo screensaver while image modal is active");'
+
+  # Hide the photo screensaver overlay and release its decoded image so the
+  # download buffer is available to cover art or image cards.
+  - id: hide_photos_view
+    mode: single
+    then:
+      # No-op unless the overlay is actually showing, so the generic
+      # "hide for every non-PHOTOS mode" call in the apply cascade is cheap.
+      - if:
+          condition:
+            lambda: |-
+              return !lv_obj_has_flag(id(photos_screensaver), LV_OBJ_FLAG_HIDDEN);
+          then:
+            - script.stop: photos_fade_in_slot
+            - lvgl.widget.hide: photos_screensaver
+            - lambda: |-
+                id(photos_advance_generation)++;  // cancel any in-flight resolve
+                id(photos_download_pending) = false;
+                const bool retain = std::string("${photos_retain_decoded}") == "true";
+                auto *active_image = id(photos_active_slot) == 0
+                                         ? id(photos_downloaded_image_a)
+                                         : id(photos_downloaded_image_b);
+                auto *inactive_image = id(photos_active_slot) == 0
+                                           ? id(photos_downloaded_image_b)
+                                           : id(photos_downloaded_image_a);
+                lv_obj_t *active_widget = id(photos_active_slot) == 0
+                                              ? id(photos_image_widget_a)
+                                              : id(photos_image_widget_b);
+                lv_obj_t *inactive_widget = id(photos_active_slot) == 0
+                                                ? id(photos_image_widget_b)
+                                                : id(photos_image_widget_a);
+                // The inactive slot is always released; detach its widget first.
+                lv_obj_add_flag(inactive_widget, LV_OBJ_FLAG_HIDDEN);
+                lv_image_set_src(inactive_widget, id(photos_placeholder)->get_lv_image_dsc());
+                inactive_image->release();
+                if (retain) {
+                  // Keep the photo that was showing so the screensaver can
+                  // reappear with it instantly instead of starting black. The
+                  // hidden parent overlay keeps it off screen meanwhile.
+                } else {
+                  lv_obj_add_flag(active_widget, LV_OBJ_FLAG_HIDDEN);
+                  lv_image_set_src(active_widget, id(photos_placeholder)->get_lv_image_dsc());
+                  active_image->release();
+                  id(photos_first_image_ready) = false;
+                }
+            - script.execute: clock_bar_apply
+
+  # Keep the overlay above any screen changes or top-layer overlays that appear
+  # after the screensaver starts. Mirrors clock_screensaver_keep_on_top.
+  - id: photos_screensaver_keep_on_top
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(espcontrol_app).display().current_mode_is(
+                espcontrol::DisplayMode::PHOTOS)) return;
+          // The agenda view opens above the screensaver; raising the
+          // screensaver while it is up would cover it.
+          if (control_modal_active().overlay != nullptr) return;
+          lv_obj_t *temperature_labels[] = { id(temperatures) };
+          hide_clock_bar_top_layer_widgets(temperature_labels, 1,
+                                           id(display_time),
+                                           id(network_status_button));
+          network_status_hide_modal();
+          refresh_screensaver_fullscreen(id(photos_screensaver), id(dim_screensaver_touch_guard));
+          lv_obj_move_foreground(id(photos_screensaver));
+
+interval:
+  # Advance the photo and keep the overlay on top / date-time fresh.
+  - interval: 1s
+    then:
+      - script.execute: photos_screensaver_keep_on_top
+      - if:
+          condition:
+            lambda: |-
+              return id(espcontrol_app).display().current_mode_is(
+                  espcontrol::DisplayMode::PHOTOS);
+          then:
+            - script.execute: photos_refresh_datetime
+  # Refresh the agenda periodically so new/changed events show up. The
+  # refresh script gates itself on the agenda config; only the presentation
+  # mode is checked here.
+  - interval: 10min
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(espcontrol_app).display().current_mode_is(
+                         espcontrol::DisplayMode::PHOTOS);
+          then:
+            - script.execute: photos_agenda_refresh
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(espcontrol_app).display().current_mode_is(
+                    espcontrol::DisplayMode::PHOTOS))
+                return false;
+              // Advance when the configured photo duration has elapsed since
+              // the last advance — including the one show_photos_view kicks at
+              // activation, so the timer and the activation kick share one
+              // clock. The advance script itself serializes in-flight
+              // downloads; this only paces the cadence.
+              float secs = id(screensaver_photos_interval).state;
+              if (std::isnan(secs) || secs < 5) secs = 30;
+              const uint32_t now = millis();
+              if (id(photos_last_advance_ms) != 0 &&
+                  now - id(photos_last_advance_ms) < (uint32_t)(secs * 1000)) {
+                return false;
+              }
+              return true;
+          then:
+            - script.execute: photos_screensaver_advance

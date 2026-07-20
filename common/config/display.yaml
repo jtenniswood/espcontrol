@@ -154,6 +154,105 @@ script:
                                     id(indoor_temp), id(outdoor_temp));
 
 switch:
+  # The tapped agenda view is a shared surface, opened from any agenda card or
+  # the screensaver overlay, so its span and empty-day handling are device
+  # settings rather than per-card ones: the view is meant to show more than
+  # the glance it was opened from.
+  - platform: template
+    name: "${entity_agenda_view_hide_empty_days}"
+    internal: true
+    id: agenda_view_hide_empty_days
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:calendar-remove"
+    web_server:
+      sorting_group_id: sg_display
+
+  # Photo screensaver options.
+  - platform: template
+    name: "${entity_screen_saver_photos_shuffle}"
+    internal: true
+    id: screensaver_photos_shuffle
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:shuffle-variant"
+    web_server:
+      sorting_group_id: sg_screensaver
+
+  - platform: template
+    name: "${entity_screen_saver_photos_show_datetime}"
+    internal: true
+    id: screensaver_photos_show_datetime
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:clock-outline"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_on:
+      - script.execute: photos_apply_widgets
+    on_turn_off:
+      - script.execute: photos_apply_widgets
+
+  - platform: template
+    name: "${entity_screen_saver_photos_show_date}"
+    internal: true
+    id: screensaver_photos_show_date
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:calendar-today"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_on:
+      - script.execute: photos_apply_widgets
+    on_turn_off:
+      - script.execute: photos_apply_widgets
+
+  - platform: template
+    name: "${entity_screen_saver_photos_show_weather}"
+    internal: true
+    id: screensaver_photos_show_weather
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:weather-partly-cloudy"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_on:
+      - script.execute: photos_apply_widgets
+      - script.execute: photos_subscribe_weather
+    on_turn_off:
+      - script.execute: photos_apply_widgets
+
+  - platform: template
+    name: "${entity_screen_saver_photos_agenda_hide_empty}"
+    internal: true
+    id: screensaver_photos_agenda_hide_empty
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:calendar-remove"
+    web_server:
+      sorting_group_id: sg_screensaver
+
+  - platform: template
+    name: "${entity_screen_saver_photos_show_agenda}"
+    internal: true
+    id: screensaver_photos_show_agenda
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:calendar-clock"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_turn_on:
+      - script.execute: photos_apply_widgets
+    on_turn_off:
+      - script.execute: photos_apply_widgets
+
   - platform: template
     name: "${entity_screen_clock_bar}"
     internal: true
@@ -422,6 +521,25 @@ switch:
 
 select:
   - platform: template
+    name: "${entity_screen_saver_photos_agenda_style}"
+    internal: true
+    id: screensaver_photos_agenda_style
+    entity_category: config
+    icon: "mdi:view-agenda-outline"
+    optimistic: true
+    restore_value: true
+    initial_option: "Next Event"
+    options:
+      - "Next Event"
+      - "Today"
+      - "Upcoming"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photos_apply_widgets
+
+  - platform: template
     name: "${entity_screen_saver_action}"
     internal: true
     id: screensaver_action
@@ -434,6 +552,7 @@ select:
       - "Display Off"
       - "Screen Dimmed"
       - "Clock"
+      - "Photos"
     web_server:
       sorting_group_id: sg_screensaver
     on_value:
@@ -442,6 +561,7 @@ select:
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+            id(screensaver_action_photos) = screensaver_action_photos_mode(action);
         - if:
             condition:
               lambda: |-
@@ -651,6 +771,106 @@ text:
         - script.execute: cover_art_playback_stopped
         - script.execute: cover_art_resubscribe
 
+  # Home Assistant connection used by the web configurator to suggest entities.
+  # Stored on the device so any browser opening the setup page shares them.
+  - platform: template
+    name: "${entity_home_assistant_url}"
+    internal: true
+    id: home_assistant_url
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 200
+    mode: text
+    entity_category: config
+    icon: "mdi:home-assistant"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: ha_media_source_apply_connection
+
+  - platform: template
+    name: "${entity_home_assistant_token}"
+    internal: true
+    id: home_assistant_token
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 250
+    mode: text
+    entity_category: config
+    icon: "mdi:key-variant"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: ha_media_source_apply_connection
+
+  # Photo screensaver: media-source folder to rotate through, and an optional
+  # weather entity for the overlay widget.
+  - platform: template
+    name: "${entity_screen_saver_photos_folder}"
+    internal: true
+    id: screensaver_photos_folder
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 250
+    mode: text
+    entity_category: config
+    icon: "mdi:folder-multiple-image"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - lambda: 'id(photo_media).set_folder(id(screensaver_photos_folder).state);'
+
+  - platform: template
+    name: "${entity_screen_saver_photos_weather_entity}"
+    internal: true
+    id: screensaver_photos_weather_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 120
+    mode: text
+    entity_category: config
+    icon: "mdi:weather-partly-cloudy"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photos_subscribe_weather
+
+  # Photo screensaver agenda: comma-separated calendar.* entities to show.
+  - platform: template
+    name: "${entity_screen_saver_photos_agenda_entities}"
+    internal: true
+    id: screensaver_photos_agenda_entities
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 250
+    mode: text
+    entity_category: config
+    icon: "mdi:calendar-clock"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photos_apply_widgets
+
   - platform: template
     name: "${entity_screen_saver_cover_art_secondary_entity}"
     internal: true
@@ -698,6 +918,78 @@ text:
         - script.execute: cover_art_resubscribe
 
 number:
+  - platform: template
+    name: "${entity_agenda_view_days}"
+    internal: true
+    id: agenda_view_days
+    entity_category: config
+    icon: "mdi:calendar-expand-horizontal"
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    min_value: 1
+    max_value: 60
+    step: 1
+    unit_of_measurement: "d"
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "${entity_screen_saver_photos_agenda_opacity}"
+    internal: true
+    id: screensaver_photos_agenda_opacity
+    entity_category: config
+    icon: "mdi:circle-opacity"
+    optimistic: true
+    restore_value: true
+    initial_value: 45
+    min_value: 0
+    max_value: 90
+    step: 5
+    unit_of_measurement: "%"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photos_apply_widgets
+
+  - platform: template
+    name: "${entity_screen_saver_photos_agenda_limit}"
+    internal: true
+    id: screensaver_photos_agenda_limit
+    entity_category: config
+    icon: "mdi:format-list-numbered"
+    optimistic: true
+    restore_value: true
+    initial_value: 5
+    min_value: 1
+    max_value: 10
+    step: 1
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photos_agenda_refresh
+
+  - platform: template
+    name: "${entity_screen_saver_photos_agenda_days}"
+    internal: true
+    id: screensaver_photos_agenda_days
+    entity_category: config
+    icon: "mdi:calendar-range"
+    optimistic: true
+    restore_value: true
+    initial_value: 14
+    min_value: 1
+    max_value: 30
+    step: 1
+    unit_of_measurement: "d"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: photos_agenda_refresh
+
   - platform: template
     name: "${entity_screen_saver_daytime_clock_brightness}"
     internal: true
@@ -768,6 +1060,23 @@ number:
               lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::DIMMED);'
             then:
               - script.execute: screensaver_dimmed_refresh_brightness
+
+  # How long each photo stays on screen in the photo screensaver.
+  - platform: template
+    name: "${entity_screen_saver_photos_interval}"
+    internal: true
+    id: screensaver_photos_interval
+    min_value: 5
+    max_value: 3600
+    step: 5
+    initial_value: 30
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:timer-outline"
+    web_server:
+      sorting_group_id: sg_screensaver
 
   - platform: template
     name: "${entity_screen_saver_cover_art_delay}"

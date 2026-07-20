@@ -292,13 +292,288 @@ export function installControlsFieldsModule(): GlobalDescriptors {
             helpers.saveField("options", b.options);
         }
     }
+    // ── Calendar list editor ───────────────────────────────────────────
+    // One row per calendar: an entity box plus the colour its events take on
+    // the panel. Serialises to the "calendar.family:#66BB6A, calendar.work"
+    // form the firmware parses, so the stored value stays a plain string.
+    // Positions match the firmware's default palette in
+    // button_grid_agenda_cards.h.
+    var AGENDA_CALENDAR_PALETTE: any = ["66BB6A", "EF5350", "42A5F5", "AB47BC", "FFB300", "26C6DA"];
+    // The first six are the firmware's own palette, so the presets a calendar
+    // is offered match the colours the panel assigns by position.
+    var AGENDA_COLOR_PRESETS: any = [
+        { name: "Green", hex: "66BB6A" },
+        { name: "Red", hex: "EF5350" },
+        { name: "Blue", hex: "42A5F5" },
+        { name: "Purple", hex: "AB47BC" },
+        { name: "Amber", hex: "FFB300" },
+        { name: "Cyan", hex: "26C6DA" },
+        { name: "Pink", hex: "EC407A" },
+        { name: "Indigo", hex: "5C6BC0" },
+        { name: "Teal", hex: "26A69A" },
+        { name: "Orange", hex: "FF7043" },
+        { name: "Lime", hex: "9CCC65" },
+        { name: "Slate", hex: "90A4AE" },
+    ];
+    var agendaColorMenuCleanup: any = null;
+    function closeAgendaColorMenu(this: any) {
+        if (agendaColorMenuCleanup) {
+            agendaColorMenuCleanup();
+            agendaColorMenuCleanup = null;
+        }
+        var open: any = document.querySelector(".sp-cal-colors");
+        if (open && open.parentNode)
+            open.parentNode.removeChild(open);
+    }
+    // The menu lives on document.body with fixed positioning: the settings
+    // modal scrolls its own content, and would otherwise clip it.
+    function openAgendaColorMenu(this: any, anchor?: any, current?: any, onPick?: any) {
+        closeAgendaColorMenu();
+        var menu: any = document.createElement("div");
+        menu.className = "sp-cal-colors";
+        var grid: any = document.createElement("div");
+        grid.className = "sp-cal-colors-grid";
+        AGENDA_COLOR_PRESETS.forEach(function (this: any, preset?: any) {
+            var dot: any = document.createElement("button");
+            dot.type = "button";
+            dot.className = "sp-cal-color" +
+                (String(current || "").toUpperCase() === preset.hex ? " sp-selected" : "");
+            dot.style.backgroundColor = "#" + preset.hex;
+            dot.title = preset.name;
+            dot.addEventListener("click", function (this: any) {
+                onPick(preset.hex);
+                closeAgendaColorMenu();
+            });
+            grid.appendChild(dot);
+        });
+        menu.appendChild(grid);
+        var customRow: any = document.createElement("label");
+        customRow.className = "sp-cal-custom";
+        customRow.textContent = "Custom";
+        var custom: any = document.createElement("input");
+        custom.type = "color";
+        custom.value = "#" + (String(current || "").length === 6 ? current : "66BB6A");
+        custom.addEventListener("input", function (this: any) {
+            onPick(this.value.replace("#", "").toUpperCase());
+        });
+        customRow.appendChild(custom);
+        menu.appendChild(customRow);
+        document.body.appendChild(menu);
+        var rect: any = anchor.getBoundingClientRect();
+        var below: any = (window.innerHeight || 0) - rect.bottom;
+        // Measure after insertion rather than assuming a width, so the clamp
+        // keeps the menu on screen whatever the theme sizes it to.
+        var width: any = menu.offsetWidth || 200;
+        menu.style.left =
+            Math.max(8, Math.min(rect.left, (window.innerWidth || 0) - width - 8)) + "px";
+        if (below < 180 && rect.top > below)
+            menu.style.bottom = ((window.innerHeight || 0) - rect.top + 6) + "px";
+        else
+            menu.style.top = (rect.bottom + 6) + "px";
+        function onDocumentMouseDown(this: any, e?: any) {
+            if (!menu.contains(e.target))
+                closeAgendaColorMenu();
+        }
+        // Capture, so Escape dismisses this menu before the document-level
+        // handler that would close the whole settings dialog.
+        function onKeyDown(this: any, e?: any) {
+            if (e.key !== "Escape")
+                return;
+            e.stopPropagation();
+            closeAgendaColorMenu();
+        }
+        // Fixed positioning does not follow the modal's own scrolling.
+        function onViewportChange(this: any) {
+            closeAgendaColorMenu();
+        }
+        // Deferred: this very click would otherwise close the menu at once.
+        setTimeout(function (this: any) {
+            document.addEventListener("mousedown", onDocumentMouseDown);
+        }, 0);
+        document.addEventListener("keydown", onKeyDown, true);
+        window.addEventListener("scroll", onViewportChange, true);
+        window.addEventListener("resize", onViewportChange);
+        agendaColorMenuCleanup = function (this: any) {
+            document.removeEventListener("mousedown", onDocumentMouseDown);
+            document.removeEventListener("keydown", onKeyDown, true);
+            window.removeEventListener("scroll", onViewportChange, true);
+            window.removeEventListener("resize", onViewportChange);
+        };
+    }
+    function parseCalendarList(this: any, value?: any) {
+        var rows: any = [];
+        String(value || "").split(",").forEach(function (this: any, part?: any) {
+            var text: any = String(part || "").trim();
+            if (!text)
+                return;
+            var at: any = text.indexOf(":#");
+            var entity: any = at === -1 ? text : text.slice(0, at).trim();
+            var color: any = at === -1 ? "" : text.slice(at + 2).trim().toUpperCase();
+            if (!/^[0-9A-F]{6}$/.test(color))
+                color = "";
+            rows.push({ entity: entity, color: color });
+        });
+        return rows;
+    }
+    function serializeCalendarList(this: any, rows?: any) {
+        return rows.filter(function (this: any, row?: any) {
+            return String(row.entity || "").trim();
+        }).map(function (this: any, row?: any) {
+            var entity: any = String(row.entity).trim();
+            return row.color ? entity + ":#" + row.color : entity;
+        }).join(", ");
+    }
+    function calendarPaletteColor(this: any, index?: any) {
+        return AGENDA_CALENDAR_PALETTE[index % AGENDA_CALENDAR_PALETTE.length];
+    }
+    // Calendars are few, so the picker lists them by friendly name rather than
+    // asking anyone to type an entity id. Where the Home Assistant entity
+    // lookup is available it fills this list; otherwise it falls back to the
+    // calendars already configured on the panel.
+    function refreshKnownCalendars(this: any) {
+        var refresh: any = (globalThis as any).refreshHaEntitiesIfStale;
+        if (typeof refresh === "function")
+            refresh();
+        return entitySuggestions(["calendar"]);
+    }
+    function fillCalendarOptions(this: any, select?: any, current?: any) {
+        var known: any = refreshKnownCalendars();
+        var seen: any = {};
+        select.innerHTML = "";
+        var placeholder: any = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = known.length ? "Select a calendar\u2026" : "No calendars found";
+        select.appendChild(placeholder);
+        known.forEach(function (this: any, item?: any) {
+            var option: any = document.createElement("option");
+            option.value = item.value;
+            option.textContent = item.label || titleFromEntityId(item.value);
+            seen[item.value] = true;
+            select.appendChild(option);
+        });
+        // Keep a configured calendar selectable even when it is not in the
+        // known list yet, so opening the editor cannot silently drop it.
+        if (current && !seen[current]) {
+            var kept: any = document.createElement("option");
+            kept.value = current;
+            kept.textContent = titleFromEntityId(current);
+            select.appendChild(kept);
+        }
+        select.value = current || "";
+    }
+    function calendarListField(this: any, idPrefix?: any, value?: any, onChange?: any) {
+        var rows: any = parseCalendarList(value);
+        // Always keep one row on screen: it gives the picker an empty state to
+        // type into, and a real input for required-field validation to target.
+        if (!rows.length)
+            rows.push({ entity: "", color: "" });
+        var list: any = document.createElement("div");
+        list.className = "sp-cal-list";
+        var firstInput: any = null;
+        function commit(this: any) {
+            if (onChange)
+                onChange(serializeCalendarList(rows));
+        }
+        function render(this: any) {
+            list.innerHTML = "";
+            firstInput = null;
+            rows.forEach(function (this: any, row?: any, index?: any) {
+                var line: any = document.createElement("div");
+                line.className = "sp-cal-row";
+                var input: any = document.createElement("select");
+                input.className = "sp-input";
+                input.id = index === 0 ? idPrefix : idPrefix + "-" + index;
+                fillCalendarOptions(input, row.entity);
+                line.appendChild(input);
+                if (index === 0)
+                    firstInput = input;
+                // Repopulate on open so calendars discovered after this row was
+                // drawn still appear.
+                input.addEventListener("mousedown", function (this: any) {
+                    fillCalendarOptions(input, row.entity);
+                });
+                input.addEventListener("change", function (this: any) {
+                    row.entity = this.value;
+                    // A calendar with no colour yet takes its palette slot, so
+                    // the swatch always shows what the panel will draw.
+                    if (!row.color && String(this.value || "").trim())
+                        row.color = calendarPaletteColor(index);
+                    swatch.style.backgroundColor = "#" + (row.color || calendarPaletteColor(index));
+                    commit();
+                });
+
+                var swatch: any = document.createElement("button");
+                swatch.type = "button";
+                swatch.className = "sp-cal-swatch";
+                swatch.title = "Event colour";
+                swatch.style.backgroundColor = "#" + (row.color || calendarPaletteColor(index));
+                swatch.addEventListener("click", function (this: any) {
+                    openAgendaColorMenu(swatch, row.color || calendarPaletteColor(index),
+                        function (this: any, hex?: any) {
+                            row.color = hex;
+                            swatch.style.backgroundColor = "#" + hex;
+                            commit();
+                        });
+                });
+                line.appendChild(swatch);
+
+                var remove: any = document.createElement("button");
+                remove.type = "button";
+                remove.className = "sp-cal-remove";
+                remove.textContent = "\u00D7";
+                remove.title = "Remove calendar";
+                remove.addEventListener("click", function (this: any) {
+                    if (rows.length > 1)
+                        rows.splice(index, 1);
+                    else
+                        rows[0] = { entity: "", color: "" };
+                    render();
+                    commit();
+                });
+                line.appendChild(remove);
+                list.appendChild(line);
+            });
+        }
+        render();
+
+        var field: any = document.createElement("div");
+        field.className = "sp-field";
+        field.appendChild(fieldLabel("Calendars", idPrefix));
+        field.appendChild(list);
+        var add: any = document.createElement("button");
+        add.type = "button";
+        add.className = "sp-cal-add";
+        add.textContent = "+ Add calendar";
+        add.addEventListener("click", function (this: any) {
+            rows.push({ entity: "", color: "" });
+            render();
+        });
+        field.appendChild(add);
+        return {
+            field: field,
+            list: list,
+            firstInput: function (this: any) { return firstInput; },
+            // Rebuild from a device-pushed value. Skipped while a row has
+            // focus so an incoming update cannot yank the field mid-edit.
+            setValue: function (this: any, next?: any) {
+                if (list.contains(document.activeElement))
+                    return;
+                if (serializeCalendarList(rows) === String(next || "").trim())
+                    return;
+                rows = parseCalendarList(next);
+                if (!rows.length)
+                    rows.push({ entity: "", color: "" });
+                render();
+            },
+        };
+    }
     function renderCardEntityField(this: any, panel?: any, b?: any, helpers?: any, metadata?: any) {
         metadata = metadata || {};
         var entity: any = metadata.entity || {};
         var bindName: any = Object.prototype.hasOwnProperty.call(entity, "bindName") ? entity.bindName : "entity";
         var value: any = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : (bindName ? b[bindName] : "");
         var domains: any = cardMetadataValue(entity.domains, b, helpers) || [];
-        var field: any = helpers.entityField(cardMetadataValue(entity.label, b, helpers) || "Entity", helpers.idPrefix + (entity.idSuffix || "entity"), value || "", cardMetadataValue(entity.placeholder, b, helpers) || "", domains, bindName, entity.rerender !== false, cardMetadataValue(entity.requiredMessage, b, helpers) || "");
+        var field: any = helpers.entityField(cardMetadataValue(entity.label, b, helpers) || "Entity", helpers.idPrefix + (entity.idSuffix || "entity"), value || "", cardMetadataValue(entity.placeholder, b, helpers) || "", domains, bindName, entity.rerender !== false, cardMetadataValue(entity.requiredMessage, b, helpers) || "", !!entity.multi);
         panel.appendChild(field.field);
         return field;
     }
@@ -484,6 +759,9 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         "renderCardModeSelector": staticGlobal(renderCardModeSelector),
         "renderCardLargeNumbersToggle": staticGlobal(renderCardLargeNumbersToggle),
         "syncCardLargeNumbersToggle": staticGlobal(syncCardLargeNumbersToggle),
+        "calendarListField": staticGlobal(calendarListField),
+        "parseCalendarList": staticGlobal(parseCalendarList),
+        "serializeCalendarList": staticGlobal(serializeCalendarList),
         "renderCardEntityField": staticGlobal(renderCardEntityField),
         "renderCardTextField": staticGlobal(renderCardTextField),
         "renderCardNumberField": staticGlobal(renderCardNumberField),

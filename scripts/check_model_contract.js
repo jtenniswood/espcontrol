@@ -304,7 +304,7 @@ assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: 
   "newer version");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
   "no cards");
-assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_PORTRAIT_LARGE + 1 }] },
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_FULL_WIDE + 1 }] },
   "invalid size");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");

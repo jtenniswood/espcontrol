@@ -29,3 +29,22 @@ Date and clock cards are read-only — tapping them does nothing.
 - If the panel has not synced time yet, the card shows `--` until time becomes available.
 
 The same **Date & Time** card settings also include **World Clock**. Choosing that changes the card into a [World Clock](/card-types/timezones) card for another city or timezone.
+
+## Agenda Card
+
+The Agenda card lists your next upcoming calendar event, fetched from one or
+more Home Assistant calendars. Enter one calendar entity, or several separated
+by commas (for example `calendar.family, calendar.work`). The tile shows the
+next event's time (or day, for events beyond today) and its title, refreshing
+every ten minutes.
+
+Pick each calendar from the list in the card's settings and give it a colour;
+its events carry that colour on the panel. **Days Ahead** sets how far forward
+the card looks (1 to 30 days, 14 by default), and **Hide Empty Days** leaves
+days with nothing scheduled out of the full view.
+
+Tapping the card opens that full view: every day in the window, one after
+another, scrolling.
+
+The same upcoming-events list can also be shown on the [photo
+screensaver](/features/screensaver) as an overlay.

@@ -62,6 +62,7 @@ def package_substitution_lines(device: dict) -> list[str]:
         )
     lines.extend(cover_art_substitution_lines(device))
     lines.extend(battery_substitution_lines(device))
+    lines.extend(photos_substitution_lines(device))
     return lines
 
 
@@ -132,6 +133,33 @@ def voice_substitution_lines(device: dict) -> list[str]:
 def cover_art_substitution_lines(device: dict) -> list[str]:
     layout = device.get("cover_art") or {}
     return [f'  {key}: "{value}"' for key, value in layout.items()]
+
+
+def photos_substitution_lines(device: dict) -> list[str]:
+    subs = package_data(device)["substitutions"]
+
+    def dimension(key: str) -> int:
+        try:
+            return int(str(subs.get(key, "0")).strip('"'))
+        except ValueError:
+            return 0
+
+    # Decode square at the longest screen edge so a COVER crop fills the display
+    # in either orientation.
+    decode = max(dimension("screen_width"), dimension("screen_height")) or 480
+    # Full-resolution photos routinely exceed the 2MB artwork default. The P4
+    # panels have the PSRAM headroom for camera originals; the S3 does not.
+    is_s3 = "-s3-" in device["slug"]
+    budget = 2097152 if is_s3 else 8388608
+    # Keeping the last decoded photo across dismissals lets the screensaver
+    # reappear instantly instead of starting black. The S3 releases it, matching
+    # its cover-art policy of freeing decoded images when hidden.
+    retain = "false" if is_s3 else "true"
+    return [
+        f'  photos_decode_size: "{decode}"',
+        f'  photos_download_budget: "{budget}"',
+        f'  photos_retain_decoded: "{retain}"',
+    ]
 
 
 def include_line(key: str, include: str) -> str:
@@ -257,6 +285,7 @@ def package_file_text(device: dict) -> str:
             include_line("screen_setup", "!include ../../common/device/screen_button_setup.yaml"),
             include_line("screen_clock", "!include ../../common/device/screen_clock.yaml"),
             include_line("screen_art", "!include ../../common/device/screen_cover_art.yaml"),
+            include_line("screen_photos", "!include ../../common/device/screen_photos.yaml"),
             *(
                 [
                     include_line(
@@ -409,6 +438,14 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append(f"            cfg.color_correction_green_percent = {correction['green']};")
         lines.append(f"            cfg.color_correction_blue_percent = {correction['blue']};")
     lines.append(f"            cfg.icon_font = id({device['icon_font']})->get_lv_font();")
+    # Every device ships a font_text_small; the agenda card's secondary text
+    # (times, day metadata, markers) uses it as a shared small-text role.
+    lines.append("            cfg.small_text_font = id(font_text_small)->get_lv_font();")
+    lines.append("            cfg.agenda_day_font = id(font_agenda_day)->get_lv_font();")
+    lines.append("            cfg.agenda_title_font = id(font_agenda_title)->get_lv_font();")
+    lines.append("            cfg.agenda_secondary_font = id(font_agenda_secondary)->get_lv_font();")
+    lines.append("            cfg.agenda_date_small_font = id(font_agenda_date_small)->get_lv_font();")
+    lines.append("            cfg.agenda_icon_font = id(font_agenda_icon)->get_lv_font();")
     lines.append(f"            cfg.sp_sensor_font = id({device['sensor_font']})->get_lv_font();")
     lines.append(f"            cfg.sp_large_sensor_font = id({device['large_sensor_font']})->get_lv_font();")
     lines.append(f"            cfg.large_sensor_unit_offset_percent = {device['large_sensor_unit_offset_percent']};")

@@ -16,6 +16,7 @@
 - "\U000F07D0"  # mdi-home-assistant (Setup screens)
 - "\U000F02E9"  # mdi-image (Image card loading state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
+- "\U000F07D9"  # mdi-map-marker-outline (Agenda row location)
 - "\U000F0141"  # mdi-chevron-left
 - "\U000F0142"  # mdi-chevron-right
 - "\U000F0004"  # mdi-account

@@ -138,6 +138,7 @@ export function normalizeScreensaverAction(value: unknown): string {
   const action = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
   if (action === "screen_dimmed" || action === "dimmed" || action === "dim") return "dim";
   if (action === "clock") return "clock";
+  if (action === "photos") return "photos";
   return "off";
 }
 
@@ -145,6 +146,7 @@ export function screensaverActionOption(value: unknown): string {
   const action = normalizeScreensaverAction(value);
   if (action === "dim") return "Screen Dimmed";
   if (action === "clock") return "Clock";
+  if (action === "photos") return "Photos";
   return "Display Off";
 }
 
@@ -276,6 +278,12 @@ export interface BackupPanelSettingsCurrent {
   ntpServer3: string;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  photosFolder: string;
+  photosInterval: number;
+  photosShuffle: boolean;
+  photosShowDatetime: boolean;
+  photosShowWeather: boolean;
+  photosWeatherEntity: string;
   autoUpdate: boolean;
   updateFrequency: string;
   updateFrequencyOptions: readonly string[];
@@ -330,6 +338,12 @@ export interface BackupPanelSettingsState {
   clockBrightnessDay: number;
   clockBrightnessNight: number;
   screensaverDimmedBrightness: number;
+  photosFolder: string;
+  photosInterval: number;
+  photosShuffle: boolean;
+  photosShowDatetime: boolean;
+  photosShowWeather: boolean;
+  photosWeatherEntity: string;
   screensaverTimeout: unknown;
   homeScreenTimeout: unknown;
   screenRotation: string;
@@ -468,6 +482,21 @@ export function normalizeBackupPanelSettings(
     clockBrightnessDay,
     clockBrightnessNight,
     screensaverDimmedBrightness: normalizeScreensaverDimmedBrightness(settings.screensaver_dimmed_brightness),
+    photosFolder: String(settings.screen_saver_photos_folder || current.photosFolder || ""),
+    photosInterval: (() => {
+      const n = parseInt(String(settings.screen_saver_photos_interval), 10);
+      return Number.isFinite(n) && n >= 5 ? n : (current.photosInterval || 30);
+    })(),
+    photosShuffle: settings.screen_saver_photos_shuffle != null
+      ? !!settings.screen_saver_photos_shuffle
+      : !!current.photosShuffle,
+    photosShowDatetime: settings.screen_saver_photos_show_datetime != null
+      ? !!settings.screen_saver_photos_show_datetime
+      : (current.photosShowDatetime != null ? !!current.photosShowDatetime : true),
+    photosShowWeather: settings.screen_saver_photos_show_weather != null
+      ? !!settings.screen_saver_photos_show_weather
+      : !!current.photosShowWeather,
+    photosWeatherEntity: String(settings.screen_saver_photos_weather_entity || current.photosWeatherEntity || ""),
     screensaverTimeout: settings.screensaver_timeout || 300,
     homeScreenTimeout: objectValue(settings, "home_screen_timeout") != null ? settings.home_screen_timeout : 60,
     screenRotation: normalizeScreenRotationValue(settings.screen_rotation, current.screenRotationOptions),

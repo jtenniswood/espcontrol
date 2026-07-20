@@ -100,6 +100,12 @@
       "codepoint": "F02ED",
       "mdi": "image-broken",
       "comment": "Image card unavailable state"
+    },
+    {
+      "name": "Agenda Location",
+      "codepoint": "F07D9",
+      "mdi": "map-marker-outline",
+      "comment": "Agenda row location"
     }
   ],
   "icons": [

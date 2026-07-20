@@ -81,6 +81,9 @@ substitutions:
   cover_art_live_image_updates: "false"
   battery_status_apply_code: ""
   battery_status_hide_code: ""
+  photos_decode_size: "480"
+  photos_download_budget: "2097152"
+  photos_retain_decoded: "false"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -131,6 +134,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
+  screen_photos:   !include ../../common/device/screen_photos.yaml
   image_cards:     !include ../../common/device/image_cards_1.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)

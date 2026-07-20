@@ -949,6 +949,85 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "agenda": {
+    "label": "Agenda",
+    "allowInSubpage": true,
+    "domains": [
+      "calendar"
+    ],
+    "options": [
+      {
+        "name": "agenda_days",
+        "label": "Days Ahead",
+        "kind": "number",
+        "min": 1,
+        "max": 30,
+        "step": 1,
+        "defaultValue": "14",
+        "omitDefault": true
+      },
+      {
+        "name": "agenda_hide_empty",
+        "label": "Hide Empty Days",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "agenda"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "declared_options",
+          "names": [
+            "agenda_days",
+            "agenda_hide_empty"
+          ]
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "agenda_days",
+        "agenda_hide_empty"
+      ]
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": ""
+    }
+  },
   "calendar": {
     "label": "Date & Time",
     "allowInSubpage": true,
@@ -3826,6 +3905,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subpage": true
     }
   },
+  "agenda": {
+    "driver": "agenda",
+    "capabilities": {
+      "informationOnly": true,
+      "subscriptions": true,
+      "actions": false,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
+  },
   "alarm": {
     "driver": "alarm",
     "capabilities": {
@@ -4317,6 +4408,7 @@ export const CARD_CONTRACT_FAN_DEFAULT_ICON_ON: Readonly<Record<string, string>>
 export const CARD_CONTRACT_OPTION_SELECT_ACTION = "input_select.select_option";
 export const CARD_CONTRACT_OPTION_SELECT_ACTIONS = ["input_select.select_option", "select.select_option"] as const;
 export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> = {
+  "agenda": "AG",
   "action": "A",
   "calendar": "D",
   "clock": "CK",
@@ -4357,6 +4449,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "subpage": "G"
 };
 export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string>> = {
+  "AG": "agenda",
   "A": "action",
   "D": "calendar",
   "CK": "clock",
@@ -4422,6 +4515,8 @@ export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRu
 export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
+  "agenda_days": "agenda_days",
+  "agenda_hide_empty": "agenda_hide_empty",
   "alarm_card_type": "alarm_card_type",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",

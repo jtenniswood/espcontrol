@@ -45,7 +45,7 @@
     "options"
   ],
   "runtime": {
-    "drivers": [
+    "drivers": ["agenda", 
       "toggle",
       "action",
       "vacuum",
@@ -100,6 +100,7 @@
       "action": {"driver": "action", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "vacuum": {"driver": "vacuum", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "lawn_mower": {"driver": "lawn_mower", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "agenda": {"driver": "agenda", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "alarm": {"driver": "alarm", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "alarm_action": {"driver": "alarm_action", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "calendar": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
@@ -620,6 +621,45 @@
         "precision": "",
         "options": ""
       }
+    },
+    "agenda": {
+      "label": "Agenda",
+      "allowInSubpage": true,
+      "domains": ["calendar"],
+      "options": [
+        {
+          "name": "agenda_days",
+          "label": "Days Ahead",
+          "kind": "number",
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "defaultValue": "14",
+          "omitDefault": true
+        },
+        {
+          "name": "agenda_hide_empty",
+          "label": "Hide Empty Days",
+          "kind": "flag",
+          "omitDefault": true
+        }
+      ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "default", "value": "Auto" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "agenda" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "declared_options", "names": ["agenda_days", "agenda_hide_empty"] }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["agenda_days", "agenda_hide_empty"]
+      },
+      "default": {"entity": "", "label": "", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "agenda", "precision": "", "options": ""}
     },
     "calendar": {
       "label": "Date & Time",
@@ -2477,6 +2517,7 @@
   },
   "retiredSubpageTypeCodes": [],
   "subpageTypeCodes": {
+    "agenda": "AG",
     "action": "A",
     "calendar": "D",
     "clock": "CK",

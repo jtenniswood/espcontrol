@@ -10,6 +10,12 @@ export const CARD_SIZE_EXTRA_LARGE = 7;
 export const CARD_SIZE_MAX_WIDE = 8;
 export const CARD_SIZE_MAX_TALL = 9;
 export const CARD_SIZE_PORTRAIT_LARGE = 10;
+// Numbered above upstream's portrait size: these ids travel inside exported
+// card transfer codes, so upstream's allocation keeps 10.
+export const CARD_SIZE_GIANT_TALL = 11;
+export const CARD_SIZE_FULL_TALL = 12;
+export const CARD_SIZE_GIANT_WIDE = 13;
+export const CARD_SIZE_FULL_WIDE = 14;
 
 export interface CardSizeDefinition {
   size: number;
@@ -38,6 +44,10 @@ export const CARD_SIZE_DEFINITIONS: readonly CardSizeDefinition[] = [
   { size: CARD_SIZE_MAX_WIDE, token: "h", rowSpan: 2, colSpan: 3, className: "sp-btn-max-wide" },
   { size: CARD_SIZE_MAX_TALL, token: "v", rowSpan: 3, colSpan: 2, className: "sp-btn-max-tall" },
   { size: CARD_SIZE_PORTRAIT_LARGE, token: "p", rowSpan: 4, colSpan: 3, className: "sp-btn-portrait-large" },
+  { size: CARD_SIZE_GIANT_TALL, token: "g", rowSpan: 4, colSpan: 2, className: "sp-btn-giant-tall" },
+  { size: CARD_SIZE_FULL_TALL, token: "f", rowSpan: 5, colSpan: 2, className: "sp-btn-full-tall" },
+  { size: CARD_SIZE_GIANT_WIDE, token: "z", rowSpan: 2, colSpan: 4, className: "sp-btn-giant-wide" },
+  { size: CARD_SIZE_FULL_WIDE, token: "e", rowSpan: 2, colSpan: 5, className: "sp-btn-full-wide" },
 ];
 
 export interface ParsedGridOrder {

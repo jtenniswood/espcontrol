@@ -208,18 +208,49 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
 int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   if (!p4_jpeg_hardware_target_supported(
         this->image_->image_type() == image::ImageType::IMAGE_TYPE_RGB565)) {
+    ESP_LOGD(TAG, "Hardware JPEG skipped: target format is not RGB565");
     p4_release_jpeg_workspace();
     return 0;
   }
   jpeg_decoder_handle_t decoder = p4_jpeg_decoder();
   if (decoder == nullptr) {
+    ESP_LOGW(TAG, "Hardware JPEG skipped: decoder engine unavailable");
     p4_release_jpeg_workspace();
     return 0;
   }
 
+  P4JpegWorkspace &early_workspace = p4_jpeg_workspace();
   jpeg_decode_picture_info_t info{};
-  if (jpeg_decoder_get_info(buffer, size, &info) != ESP_OK || info.width == 0 || info.height == 0 ||
-      info.sample_method == JPEG_DOWN_SAMPLING_GRAY) {
+  esp_err_t info_err = jpeg_decoder_get_info(buffer, size, &info);
+  bool header_ok = info_err == ESP_OK && info.width != 0 && info.height != 0;
+  size_t input_size = size;
+  bool input_prepared = false;
+  if (!header_ok) {
+    // Large front-loaded EXIF/ICC metadata pushes the frame header beyond the
+    // ROM parser's window and it reports a 0x0 image. Strip the metadata into
+    // the input workspace and retry before giving up on hardware decode.
+    if (!p4_ensure_jpeg_buffer(early_workspace.input, early_workspace.input_capacity, size,
+                               JPEG_DEC_ALLOC_INPUT_BUFFER)) {
+      ESP_LOGW(TAG, "ESP32-P4 JPEG workspace allocation failed; using software decoder");
+      p4_release_jpeg_workspace();
+      return 0;
+    }
+    input_size = jpeg_normalize_for_hardware(buffer, size, early_workspace.input);
+    if (input_size != 0) {
+      info_err = jpeg_decoder_get_info(early_workspace.input, input_size, &info);
+      header_ok = info_err == ESP_OK && info.width != 0 && info.height != 0;
+      if (header_ok) {
+        ESP_LOGD(TAG, "Normalized JPEG for hardware decode (%u -> %u bytes)",
+                 (unsigned) size, (unsigned) input_size);
+        input_prepared = true;
+      }
+    }
+  }
+  if (!header_ok || info.sample_method == JPEG_DOWN_SAMPLING_GRAY) {
+    ESP_LOGW(TAG,
+             "Hardware JPEG skipped: header info err=%d size=%ux%u sample_method=%d",
+             (int) info_err, (unsigned) info.width, (unsigned) info.height,
+             (int) info.sample_method);
     p4_release_jpeg_workspace();
     return 0;
   }
@@ -239,7 +270,9 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
     p4_release_jpeg_workspace();
     return 0;
   }
-  memcpy(workspace.input, buffer, size);
+  // When the metadata-stripping retry ran, the input workspace already holds
+  // the stripped stream; a plain copy would clobber it with the original.
+  if (!input_prepared) memcpy(workspace.input, buffer, size);
 
   jpeg_decode_cfg_t decode_config{};
   decode_config.output_format = JPEG_DECODE_OUT_FORMAT_RGB565;
@@ -252,7 +285,7 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
 
   uint32_t output_size = 0;
   uint32_t started_at = millis();
-  esp_err_t err = jpeg_decoder_process(decoder, &decode_config, workspace.input, size,
+  esp_err_t err = jpeg_decoder_process(decoder, &decode_config, workspace.input, input_size,
                                        workspace.output, workspace.output_capacity, &output_size);
   if (err != ESP_OK || output_size < requested_output_size) {
     ESP_LOGW(TAG, "ESP32-P4 JPEG hardware rejected image (error %d); using software decoder", err);
@@ -344,6 +377,13 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
     long best_score = LONG_MAX;
     uint64_t best_area = UINT64_MAX;
     const bool cover_mode = this->image_->get_resize_mode() == ImageResizeMode::COVER;
+    // Normally cover mode refuses any downscale that lands below the target, so
+    // the result still fully covers it. When the slot opts into software
+    // downscale (large arbitrary photos), allow below-target candidates too and
+    // let the closest-to-target score win — a source much larger than the panel
+    // then decodes at a fraction of the cost and the geometry upscales the
+    // slightly smaller result to fill the crop.
+    const bool require_cover_fill = cover_mode && !this->image_->software_downscale_allowed();
     bool found_candidate = false;
     for (unsigned int denom : denoms) {
       this->cinfo_.scale_num = 1;
@@ -351,7 +391,7 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
       jpeg_calc_output_dimensions(&this->cinfo_);
       int candidate_w = static_cast<int>(this->cinfo_.output_width);
       int candidate_h = static_cast<int>(this->cinfo_.output_height);
-      if (cover_mode && (candidate_w < target_w || candidate_h < target_h)) continue;
+      if (require_cover_fill && (candidate_w < target_w || candidate_h < target_h)) continue;
       long score = std::labs(candidate_w - target_w) + std::labs(candidate_h - target_h);
       uint64_t area = static_cast<uint64_t>(candidate_w) * static_cast<uint64_t>(candidate_h);
       if (score < best_score || (score == best_score && area < best_area)) {

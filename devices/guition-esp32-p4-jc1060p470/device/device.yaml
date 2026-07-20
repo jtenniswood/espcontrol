@@ -62,7 +62,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image]
+    components: [espcontrol, web_server_idf, artwork_image, ha_media_source]
     refresh: 1s
 
 espcontrol:

@@ -197,6 +197,13 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             els.setSensorClockBrightnessNight.value = state.clockBrightnessNight;
             els.setSensorClockBrightnessNightVal.textContent = controlState.nightBrightnessLabel;
         }
+        if (els.setPhotosSettingsCard) {
+            els.setPhotosSettingsCard.style.display = mode === "photos" ? "" : "none";
+        }
+        if (els.setPhotosShuffle) els.setPhotosShuffle.checked = !!state.photosShuffle;
+        if (els.setPhotosShowDatetime) els.setPhotosShowDatetime.checked = !!state.photosShowDatetime;
+        if (els.setPhotosShowWeather) els.setPhotosShowWeather.checked = !!state.photosShowWeather;
+        if (els.syncPhotoWeatherField) els.syncPhotoWeatherField();
     }
     function syncMediaPlayerSleepPreventionUi(this: any) {
         if (els.setMediaPlayerSleepPreventionToggle) {
@@ -268,6 +275,7 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             { value: "off", label: "Display Off" },
             { value: "dim", label: "Screen Dimmed" },
             { value: "clock", label: "Clock" },
+            { value: "photos", label: "Photos" },
         ].forEach(function (this: any, opt?: any) {
             var o: any = document.createElement("option");
             o.value = opt.value;

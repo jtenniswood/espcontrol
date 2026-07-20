@@ -68,6 +68,22 @@ export const ENTITY_CATALOG = {
       "domain": "switch",
       "name": "Outdoor Temp Enable"
     },
+    "agenda_view_days": {
+      "domain": "number",
+      "name": "Agenda View: Days Ahead",
+      "objectIds": [
+        "agenda_view__days_ahead",
+        "agenda_view_days"
+      ]
+    },
+    "agenda_view_hide_empty_days": {
+      "domain": "switch",
+      "name": "Agenda View: Hide Empty Days",
+      "objectIds": [
+        "agenda_view__hide_empty_days",
+        "agenda_view_hide_empty_days"
+      ]
+    },
     "screen_clock_bar": {
       "domain": "switch",
       "name": "Screen: Clock Bar",
@@ -324,6 +340,20 @@ export const ENTITY_CATALOG = {
         "home_assistant_artwork_port"
       ]
     },
+    "home_assistant_url": {
+      "domain": "text",
+      "name": "Home Assistant URL",
+      "objectIds": [
+        "home_assistant_url"
+      ]
+    },
+    "home_assistant_token": {
+      "domain": "text",
+      "name": "Home Assistant Token",
+      "objectIds": [
+        "home_assistant_token"
+      ]
+    },
     "screen_saver_daytime_clock_brightness": {
       "domain": "number",
       "name": "Screen Saver: Daytime Clock Brightness",
@@ -351,6 +381,135 @@ export const ENTITY_CATALOG = {
         "screen_saver__dimmed_brightness",
         "screen_saver_dimmed_brightness",
         "screensaver_dimmed_brightness"
+      ]
+    },
+    "screen_saver_photos_folder": {
+      "domain": "text",
+      "name": "Screen Saver: Photos Folder",
+      "objectIds": [
+        "screen_saver__photos_folder",
+        "screen_saver_photos_folder",
+        "screensaver_photos_folder"
+      ]
+    },
+    "screen_saver_photos_interval": {
+      "domain": "number",
+      "name": "Screen Saver: Photo Duration",
+      "objectIds": [
+        "screen_saver__photo_duration",
+        "screen_saver__photos_interval",
+        "screen_saver_photos_interval",
+        "screensaver_photos_interval"
+      ]
+    },
+    "screen_saver_photos_shuffle": {
+      "domain": "switch",
+      "name": "Screen Saver: Shuffle Photos",
+      "objectIds": [
+        "screen_saver__shuffle_photos",
+        "screen_saver__photos_shuffle",
+        "screen_saver_photos_shuffle",
+        "screensaver_photos_shuffle"
+      ]
+    },
+    "screen_saver_photos_show_datetime": {
+      "domain": "switch",
+      "name": "Screen Saver: Photos Show Clock",
+      "objectIds": [
+        "screen_saver__photos_show_clock",
+        "screen_saver__photos_show_datetime",
+        "screen_saver_photos_show_datetime",
+        "screensaver_photos_show_datetime"
+      ]
+    },
+    "screen_saver_photos_show_date": {
+      "domain": "switch",
+      "name": "Screen Saver: Photos Show Date",
+      "objectIds": [
+        "screen_saver__photos_show_date",
+        "screen_saver_photos_show_date",
+        "screensaver_photos_show_date"
+      ]
+    },
+    "screen_saver_photos_show_weather": {
+      "domain": "switch",
+      "name": "Screen Saver: Photos Show Weather",
+      "objectIds": [
+        "screen_saver__photos_show_weather",
+        "screen_saver_photos_show_weather",
+        "screensaver_photos_show_weather"
+      ]
+    },
+    "screen_saver_photos_weather_entity": {
+      "domain": "text",
+      "name": "Screen Saver: Photos Weather Entity",
+      "objectIds": [
+        "screen_saver__photos_weather_entity",
+        "screen_saver_photos_weather_entity",
+        "screensaver_photos_weather_entity"
+      ]
+    },
+    "screen_saver_photos_show_agenda": {
+      "domain": "switch",
+      "name": "Screen Saver: Photos Show Agenda",
+      "objectIds": [
+        "screen_saver__photos_show_agenda",
+        "screen_saver_photos_show_agenda",
+        "screensaver_photos_show_agenda"
+      ]
+    },
+    "screen_saver_photos_agenda_entities": {
+      "domain": "text",
+      "name": "Screen Saver: Photos Agenda Calendars",
+      "objectIds": [
+        "screen_saver__photos_agenda_entities",
+        "screen_saver_photos_agenda_entities",
+        "screensaver_photos_agenda_entities"
+      ]
+    },
+    "screen_saver_photos_agenda_style": {
+      "domain": "select",
+      "name": "Screen Saver: Photos Agenda Style",
+      "objectIds": [
+        "screen_saver__photos_agenda_style",
+        "screen_saver_photos_agenda_style",
+        "screensaver_photos_agenda_style"
+      ]
+    },
+    "screen_saver_photos_agenda_opacity": {
+      "domain": "number",
+      "name": "Screen Saver: Photos Agenda Opacity",
+      "objectIds": [
+        "screen_saver__photos_agenda_opacity",
+        "screen_saver_photos_agenda_opacity",
+        "screensaver_photos_agenda_opacity"
+      ]
+    },
+    "screen_saver_photos_agenda_limit": {
+      "domain": "number",
+      "name": "Screen Saver: Photos Agenda Limit",
+      "objectIds": [
+        "screen_saver__photos_agenda_limit",
+        "screen_saver_photos_agenda_limit",
+        "screensaver_photos_agenda_limit"
+      ]
+    },
+    "screen_saver_photos_agenda_days": {
+      "domain": "number",
+      "name": "Screen Saver: Photos Agenda Days",
+      "objectIds": [
+        "screen_saver__photos_agenda_days",
+        "screen_saver_photos_agenda_days",
+        "screensaver_photos_agenda_days"
+      ]
+    },
+    "screen_saver_photos_agenda_hide_empty": {
+      "domain": "switch",
+      "name": "Screen Saver: Photos Agenda Hide Empty Days",
+      "objectIds": [
+        "screen_saver__photos_agenda_hide_empty",
+        "screen_saver_photos_agenda_hide_empty",
+        "screensaver_photos_agenda_hide_empty"
       ]
     },
     "screensaver_timeout": {
@@ -677,6 +836,8 @@ export const ENTITY_CATALOG = {
     "settings": [
       "indoor_temp_enable",
       "outdoor_temp_enable",
+      "agenda_view_days",
+      "agenda_view_hide_empty_days",
       "screen_clock_bar",
       "screen_clock_bar_time",
       "clock_bar_temperature_entities",
@@ -700,10 +861,26 @@ export const ENTITY_CATALOG = {
       "screen_saver_hide_cover_art_external_input",
       "home_assistant_artwork_protocol",
       "home_assistant_artwork_port",
+      "home_assistant_url",
+      "home_assistant_token",
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
       "screen_saver_clock_brightness",
       "screen_saver_dimmed_brightness",
+      "screen_saver_photos_folder",
+      "screen_saver_photos_interval",
+      "screen_saver_photos_shuffle",
+      "screen_saver_photos_show_datetime",
+      "screen_saver_photos_show_date",
+      "screen_saver_photos_show_weather",
+      "screen_saver_photos_weather_entity",
+      "screen_saver_photos_show_agenda",
+      "screen_saver_photos_agenda_entities",
+      "screen_saver_photos_agenda_style",
+      "screen_saver_photos_agenda_opacity",
+      "screen_saver_photos_agenda_limit",
+      "screen_saver_photos_agenda_days",
+      "screen_saver_photos_agenda_hide_empty",
       "screensaver_timeout",
       "home_screen_timeout",
       "screen_saver_clock",

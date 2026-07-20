@@ -33,9 +33,28 @@ When the screensaver activates, you can choose what happens:
 
 - **Screen Dimmed** — keeps the normal screen visible, but lowers the backlight. The first tap wakes the screen instead of pressing a card.
 - **Clock** — shows a large drifting clock at reduced brightness (the default). The clock repositions itself periodically to prevent burn-in.
+- **Photos** — rotates through the photos in a Home Assistant media folder, optionally with the date, time, and current weather shown over the picture. See [Photos](#photos) below.
 - **Display Off** — switches to a black screen and turns the backlight off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk; this should not be visible.
 
 When Screen Dimmed is selected, set **Dimmed Screen Brightness**. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values. Clock brightness uses the same sunrise and sunset calculation as the main screen brightness.
+
+### Photos
+
+The photo screensaver shows pictures from a folder in Home Assistant's [media sources](https://www.home-assistant.io/more-info/local-media/setup-media/) — for example a folder you keep in `config/www` or the Home Assistant `media` folder. Photos change on a timer, and the panel can float the date, time, and current weather over each picture.
+
+Because browsing a media folder needs an authenticated connection, the panel connects to Home Assistant over its websocket API. Enter your Home Assistant address and a long-lived access token in the **Home Assistant** connection fields on the Settings page. The token is stored on the panel and is included in configuration backups, so keep exported backups private.
+
+Then set:
+
+- **Photos Folder** — the media-source folder to show, for example `media-source://media_source/local/photos`. Point it at a folder, not a single file.
+- **Seconds Per Photo** — how long each picture stays on screen before the next one.
+- **Shuffle** — show the photos in a random order instead of in sequence.
+- **Show Date and Time** — float the current date and time over the photo.
+- **Show Weather** — float the current conditions and temperature over the photo. Enter a Home Assistant `weather.` entity to use.
+
+::: tip
+The panel needs to reach the photos over your local network. Folders in Home Assistant's `config/www` are served without a login and work well; large folders take a moment to list the first time.
+:::
 
 ## Sensor
 

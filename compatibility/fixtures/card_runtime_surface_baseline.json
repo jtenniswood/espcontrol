@@ -623,6 +623,37 @@
       }
     },
     {
+      "name": "agenda: default",
+      "sourceKind": "contract",
+      "sourceType": "agenda",
+      "mode": "default",
+      "canonicalType": "agenda",
+      "web": {
+        "registration": "agenda",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "ed94befcf474a03b"
+        }
+      },
+      "firmware": {
+        "family": "AGENDA"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "action_response"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "calendar: date",
       "sourceKind": "contract",
       "sourceType": "calendar",

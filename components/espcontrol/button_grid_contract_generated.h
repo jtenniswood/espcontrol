@@ -16,6 +16,7 @@ enum class CardTypeId : uint8_t {
   ACTION,
   VACUUM,
   LAWN_MOWER,
+  AGENDA,
   ALARM,
   ALARM_ACTION,
   CALENDAR,
@@ -56,6 +57,7 @@ enum class CardTypeId : uint8_t {
 };
 
 enum class CardDriverId : uint8_t {
+  AGENDA,
   TOGGLE,
   ACTION,
   VACUUM,
@@ -124,6 +126,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "action") return CardTypeId::ACTION;
   if (type == "vacuum") return CardTypeId::VACUUM;
   if (type == "lawn_mower") return CardTypeId::LAWN_MOWER;
+  if (type == "agenda") return CardTypeId::AGENDA;
   if (type == "alarm") return CardTypeId::ALARM;
   if (type == "alarm_action") return CardTypeId::ALARM_ACTION;
   if (type == "calendar") return CardTypeId::CALENDAR;
@@ -169,6 +172,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::ACTION: return {type, CardDriverId::ACTION, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::VACUUM: return {type, CardDriverId::VACUUM, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::LAWN_MOWER: return {type, CardDriverId::LAWN_MOWER, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
+    case CardTypeId::AGENDA: return {type, CardDriverId::AGENDA, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::ALARM: return {type, CardDriverId::ALARM, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::ALARM_ACTION: return {type, CardDriverId::ALARM_ACTION, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::CALENDAR: return {type, CardDriverId::DATE_TIME, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
@@ -283,6 +287,8 @@ inline const char *const CARD_CONTRACT_CLIMATE_PRECISION_VALUES[] = {"", "1", "2
 inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today", "tomorrow"};
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIONS = "actions";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_COLOR = "active_color";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_AGENDA_DAYS = "agenda_days";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_AGENDA_HIDE_EMPTY = "agenda_hide_empty";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ALARM_CARD_TYPE = "alarm_card_type";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CLIMATE_TABS = "climate_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_MESSAGE = "confirm_message";
@@ -549,6 +555,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "lawn_mower") return "Lawn Mower";
   if (type == "alarm") return "Alarm";
   if (type == "alarm_action") return "Alarm";
+  if (type == "agenda") return "Agenda";
   if (type == "calendar") return "Date & Time";
   if (type == "clock") return "Date & Time";
   if (type == "climate") return "Climate";
@@ -593,6 +600,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "lawn_mower") return true;
   if (type == "alarm") return true;
   if (type == "alarm_action") return true;
+  if (type == "agenda") return true;
   if (type == "calendar") return true;
   if (type == "clock") return true;
   if (type == "climate") return true;
@@ -637,6 +645,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "lawn_mower") return "Robot Mower";
   if (type == "alarm") return "Security";
   if (type == "alarm_action") return "Shield Lock";
+  if (type == "agenda") return "Auto";
   if (type == "calendar") return "Auto";
   if (type == "clock") return "Auto";
   if (type == "climate") return "Thermostat";
@@ -681,6 +690,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "lawn_mower") return "Auto";
   if (type == "alarm") return "Auto";
   if (type == "alarm_action") return "Auto";
+  if (type == "agenda") return "Auto";
   if (type == "calendar") return "Auto";
   if (type == "clock") return "Auto";
   if (type == "climate") return "Auto";
@@ -751,6 +761,7 @@ inline bool card_contract_large_numbers_supported(const std::string &type, const
 }
 
 inline const char *card_contract_subpage_type_code(const std::string &type) {
+  if (type == "agenda") return "AG";
   if (type == "action") return "A";
   if (type == "calendar") return "D";
   if (type == "clock") return "CK";
@@ -793,6 +804,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
 }
 
 inline std::string card_contract_subpage_type_from_code(const std::string &code) {
+  if (code == "AG") return "agenda";
   if (code == "A") return "action";
   if (code == "D") return "calendar";
   if (code == "CK") return "clock";

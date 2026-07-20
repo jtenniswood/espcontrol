@@ -53,6 +53,7 @@ CONF_RESIZE_MODE = "resize_mode"
 CONF_PRIORITY = "priority"
 CONF_HARDWARE_ACCELERATION = "hardware_acceleration"
 CONF_P4_PIPELINE = "p4_pipeline"
+CONF_MAX_DOWNLOAD_SIZE = "max_download_size"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -198,6 +199,7 @@ ARTWORK_IMAGE_SCHEMA = (
             ),
             cv.Optional(CONF_PLACEHOLDER): cv.use_id(Image_),
             cv.Optional(CONF_BUFFER_SIZE, default=65536): cv.int_range(256, 524288),
+            cv.Optional(CONF_MAX_DOWNLOAD_SIZE): cv.int_range(65536, 16 * 1024 * 1024),
             cv.Optional(CONF_ALLOW_INSECURE_LOCAL_URLS, default=False): cv.boolean,
             cv.Optional(CONF_HARDWARE_ACCELERATION, default=True): cv.boolean,
             cv.Optional(CONF_P4_PIPELINE, default="DISABLED"): cv.one_of(
@@ -336,6 +338,8 @@ async def to_code(config):
     await cg.register_parented(var, config[CONF_HTTP_REQUEST_ID])
     cg.add(var.set_request_priority(getattr(ImageRequestPriority, config[CONF_PRIORITY])))
     cg.add(var.set_hardware_acceleration(config[CONF_HARDWARE_ACCELERATION]))
+    if CONF_MAX_DOWNLOAD_SIZE in config:
+        cg.add(var.set_max_download_size(config[CONF_MAX_DOWNLOAD_SIZE]))
     cg.add(
         var.set_p4_pipeline_priority(
             getattr(P4PipelinePriority, f"P4_PIPELINE_{config[CONF_P4_PIPELINE]}")

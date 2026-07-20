@@ -141,6 +141,7 @@ struct P4PipelineJob {
   ArtworkImage *owner{nullptr};
   uint32_t generation{0};
   uint8_t priority{0};
+  size_t max_bytes{ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE};
   uint64_t sequence{0};
   char *url{nullptr};
   std::vector<http_request::Header> headers;
@@ -198,7 +199,8 @@ class P4ImagePipeline {
   }
 
   bool submit(ArtworkImage *owner, uint32_t generation, uint8_t priority,
-              const std::string &url, std::vector<http_request::Header> &headers) {
+              const std::string &url, std::vector<http_request::Header> &headers,
+              size_t max_bytes) {
     if (!this->ready_ || !owner || url.empty()) return false;
     auto *job = new (std::nothrow) P4PipelineJob();
     if (!job) return false;
@@ -212,6 +214,7 @@ class P4ImagePipeline {
     job->owner = owner;
     job->generation = generation;
     job->priority = priority;
+    job->max_bytes = max_bytes;
 
     this->lock_();
     this->cancel_locked_(owner);
@@ -370,7 +373,8 @@ class P4ImagePipeline {
     if (evt->event_id != HTTP_EVENT_ON_DATA || evt->data_len <= 0) return ESP_OK;
     if (transfer->first_byte_ms == 0) transfer->first_byte_ms = now;
     size_t incoming = static_cast<size_t>(evt->data_len);
-    if (incoming > ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE - transfer->size) {
+    const size_t max_bytes = transfer->job->max_bytes;
+    if (incoming > max_bytes - transfer->size) {
       transfer->allocation_failed = true;
       return ESP_FAIL;
     }
@@ -380,15 +384,14 @@ class P4ImagePipeline {
       if (transfer->capacity == 0 && evt->client != nullptr) {
         int64_t content_length = esp_http_client_get_content_length(evt->client);
         if (content_length > 0) {
-          reported_content_length = static_cast<uint64_t>(content_length) >
-                                            ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE
-                                        ? ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE + 1
+          reported_content_length = static_cast<uint64_t>(content_length) > max_bytes
+                                        ? max_bytes + 1
                                         : static_cast<size_t>(content_length);
         }
       }
       size_t next_capacity = p4_pipeline_transfer_capacity(
           transfer->capacity, required, reported_content_length, 16384,
-          ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE);
+          max_bytes);
       if (next_capacity == 0) {
         transfer->allocation_failed = true;
         return ESP_FAIL;
@@ -1160,7 +1163,7 @@ bool ArtworkImage::start_p4_pipeline_(std::vector<http_request::Header> &headers
   this->p4_pipeline_generation_++;
   if (!P4ImagePipeline::instance().submit(
           this, this->p4_pipeline_generation_, static_cast<uint8_t>(this->p4_pipeline_priority_),
-          this->url_, headers)) {
+          this->url_, headers, this->max_download_buffer_size_)) {
     return false;
   }
   this->p4_pipeline_pending_ = true;

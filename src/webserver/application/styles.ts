@@ -105,7 +105,7 @@ export function installStylesModule(): GlobalDescriptors {
         "overflow:hidden;word-break:break-word;min-height:0}" +
         ".sp-image-label-shadow{position:absolute;inset:1px -1px -1px 1px;color:rgba(0,0,0,.5)}" +
         ".sp-image-label-main{position:relative;color:#fff}" +
-        ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text,.sp-btn-max-wide .sp-image-label-text,.sp-btn-max-tall .sp-image-label-text,.sp-btn-portrait-large .sp-image-label-text{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+        ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text,.sp-btn-max-wide .sp-image-label-text,.sp-btn-max-tall .sp-image-label-text,.sp-btn-portrait-large .sp-image-label-text,.sp-btn-giant-tall .sp-image-label-text,.sp-btn-full-tall .sp-image-label-text,.sp-btn-giant-wide .sp-image-label-text,.sp-btn-full-wide .sp-image-label-text{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-media-h-slider{position:absolute;left:8%;right:8%;bottom:10%;height:7.5%;border-radius:999px;" +
         "background:var(--screen-tertiary);overflow:hidden;pointer-events:none}" +
         ".sp-media-h-slider span{display:block;width:62%;height:100%;background:#fff;border-radius:999px}" +
@@ -147,6 +147,10 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-btn-max-wide{grid-row:span 2;grid-column:span 3}" +
         ".sp-btn-max-tall{grid-row:span 3;grid-column:span 2}" +
         ".sp-btn-portrait-large{grid-row:span 4;grid-column:span 3}" +
+        ".sp-btn-giant-tall{grid-row:span 4;grid-column:span 2}" +
+        ".sp-btn-full-tall{grid-row:span 5;grid-column:span 2}" +
+        ".sp-btn-giant-wide{grid-row:span 2;grid-column:span 4}" +
+        ".sp-btn-full-wide{grid-row:span 2;grid-column:span 5}" +
         ".sp-empty-cell{border:2px dashed rgba(255,255,255,.15);background:transparent;" +
         "border-radius:var(--empty-r);display:flex;align-items:center;justify-content:center;" +
         "cursor:pointer;transition:border-color .2s,background-color .2s}" +
@@ -330,9 +334,9 @@ export function installStylesModule(): GlobalDescriptors {
         "background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}" +
         "select option{background:var(--surface);color:var(--text)}" +
         ".sp-entity-input-wrap{position:relative}" +
-        ".sp-entity-dropdown{display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;" +
+        ".sp-entity-dropdown{display:none;position:fixed;" +
         "background:var(--surface2);border:1px solid var(--border);border-radius:8px;max-height:220px;" +
-        "overflow-y:auto;z-index:60;box-shadow:var(--shadow-3);padding:0}" +
+        "overflow-y:auto;z-index:220;box-shadow:var(--shadow-3);padding:0}" +
         ".sp-entity-dropdown.sp-open{display:block}" +
         ".sp-entity-option{display:block;width:100%;padding:10px 12px;background:transparent;border:0;" +
         "color:var(--text);font-size:.875rem;line-height:1.4;font-family:inherit;text-align:left;" +
@@ -415,6 +419,14 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-clock-brightness-field{margin:18px 0 22px}" +
         ".sp-cond-field{padding:0 0 4px;display:none}" +
         ".sp-cond-field.sp-visible{display:block}" +
+        // A revealed group of conditional fields, set apart under its toggle
+        // by a soft accent rail so the nested content reads as one unit.
+        ".sp-cond-group{display:none;border-left:2px solid var(--accent-soft);" +
+        "padding-left:16px;margin:2px 0 24px}" +
+        ".sp-cond-group.sp-visible{display:block}" +
+        ".sp-cond-group>.sp-field{margin-bottom:20px}" +
+        ".sp-cond-group>.sp-field:last-child,.sp-cond-group>.sp-toggle-row:last-child{margin-bottom:0}" +
+        ".sp-cond-group>.sp-toggle-row{margin-bottom:0}" +
         ".sp-action-confirm-section.sp-visible{margin-bottom:28px}" +
         ".sp-cond-field.sp-climate-settings-gap.sp-visible{margin-bottom:24px}" +
         ".sp-disclosure{border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02);margin-top:4px}" +
@@ -462,6 +474,31 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-color-swatch input{position:absolute;inset:-8px;width:calc(100% + 16px);" +
         "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
         ".sp-color-row .sp-input{flex:1}" +
+        ".sp-cal-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}" +
+        ".sp-cal-row .sp-input{flex:1;min-width:0}" +
+        ".sp-cal-swatch{width:38px;height:38px;flex:none;border-radius:8px;" +
+        "border:1px solid var(--border);cursor:pointer;padding:0}" +
+        ".sp-cal-swatch:hover{border-color:var(--accent)}" +
+        ".sp-cal-colors{position:fixed;z-index:220;background:var(--surface2);" +
+        "border:1px solid var(--border);border-radius:10px;padding:10px;" +
+        "box-shadow:var(--shadow-3);width:200px}" +
+        ".sp-cal-colors-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}" +
+        ".sp-cal-color{width:24px;height:24px;border-radius:6px;border:1px solid transparent;" +
+        "cursor:pointer;padding:0}" +
+        ".sp-cal-color:hover{border-color:var(--text)}" +
+        ".sp-cal-color.sp-selected{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}" +
+        ".sp-cal-custom{display:flex;align-items:center;justify-content:space-between;" +
+        "gap:8px;margin-top:10px;font-size:.8rem;color:var(--text2)}" +
+        ".sp-cal-custom input{width:38px;height:26px;padding:0;border:1px solid var(--border);" +
+        "border-radius:6px;background:transparent;cursor:pointer}" +
+        ".sp-cal-remove{flex:none;width:34px;height:34px;border-radius:8px;" +
+        "border:1px solid var(--border);background:transparent;color:var(--text2);" +
+        "font-size:1.1rem;line-height:1;cursor:pointer}" +
+        ".sp-cal-remove:hover{border-color:var(--accent);color:var(--text)}" +
+        ".sp-cal-add{margin-top:2px;padding:6px 10px;border-radius:8px;" +
+        "border:1px dashed var(--border);background:transparent;color:var(--text2);" +
+        "font-size:.8rem;cursor:pointer;font-family:inherit}" +
+        ".sp-cal-add:hover{border-color:var(--accent);color:var(--text)}" +
         ".sp-number-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}" +
         ".sp-number-row:last-child{margin-bottom:0}" +
         ".sp-number{width:80px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);" +

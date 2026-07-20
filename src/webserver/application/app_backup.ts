@@ -77,6 +77,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                 clock_brightness_day: state.clockBrightnessDay,
                 clock_brightness_night: state.clockBrightnessNight,
                 screensaver_dimmed_brightness: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightness),
+                screen_saver_photos_folder: state.photosFolder,
+                screen_saver_photos_interval: state.photosInterval,
+                screen_saver_photos_shuffle: !!state.photosShuffle,
+                screen_saver_photos_show_datetime: !!state.photosShowDatetime,
+                screen_saver_photos_show_weather: !!state.photosShowWeather,
+                screen_saver_photos_weather_entity: state.photosWeatherEntity,
                 screensaver_timeout: state.screensaverTimeout,
                 home_screen_timeout: state.homeScreenTimeout,
                 screen_rotation: state.screenRotation,
@@ -188,6 +194,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                         ntpServer3: state.ntpServer3,
                         coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
                         coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
+                        photosFolder: state.photosFolder,
+                        photosInterval: state.photosInterval,
+                        photosShuffle: state.photosShuffle,
+                        photosShowDatetime: state.photosShowDatetime,
+                        photosShowWeather: state.photosShowWeather,
+                        photosWeatherEntity: state.photosWeatherEntity,
                         autoUpdate: state.autoUpdate,
                         updateFrequency: state.updateFrequency,
                         updateFrequencyOptions: state.updateFreqOptions,
@@ -270,6 +282,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postClockBrightnessDay(importedClockBrightnessDay);
                     postClockBrightnessNight(importedClockBrightnessNight);
                     postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
+                    postScreensaverPhotosFolder(importedSettings.photosFolder);
+                    postScreensaverPhotosInterval(importedSettings.photosInterval);
+                    postScreensaverPhotosShuffle(importedSettings.photosShuffle);
+                    postScreensaverPhotosShowDatetime(importedSettings.photosShowDatetime);
+                    postScreensaverPhotosShowWeather(importedSettings.photosShowWeather);
+                    postScreensaverPhotosWeatherEntity(importedSettings.photosWeatherEntity);
                     postScreensaverTimeout(importedSettings.screensaverTimeout);
                     postHomeScreenTimeout(importedSettings.homeScreenTimeout);
                     var importedScreenRotation: any = importedSettings.screenRotation;
@@ -323,6 +341,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.clockBrightnessDay = importedClockBrightnessDay;
                     state.clockBrightnessNight = importedClockBrightnessNight;
                     state.screensaverDimmedBrightness = importedScreensaverDimmedBrightness;
+                    state.photosFolder = importedSettings.photosFolder;
+                    state.photosInterval = importedSettings.photosInterval;
+                    state.photosShuffle = importedSettings.photosShuffle;
+                    state.photosShowDatetime = importedSettings.photosShowDatetime;
+                    state.photosShowWeather = importedSettings.photosShowWeather;
+                    state.photosWeatherEntity = importedSettings.photosWeatherEntity;
                     state.screensaverTimeout = importedSettings.screensaverTimeout;
                     state.homeScreenTimeout = importedSettings.homeScreenTimeout;
                     state.screenRotation = importedScreenRotation;

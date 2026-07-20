@@ -1,0 +1,92 @@
+[
+  {
+    "name": "default agenda card stays canonical",
+    "input": "calendar.family;;Auto;Auto;;;agenda;;",
+    "expected": {
+      "entity": "calendar.family",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "agenda keeps a comma separated calendar list and label",
+    "input": "calendar.family,calendar.work;Family;Auto;Auto;;;agenda;;",
+    "expected": {
+      "entity": "calendar.family,calendar.work",
+      "label": "Family",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "agenda resets icons and clears unsupported fields",
+    "input": "calendar.family;Agenda;Bell;Bell Ring;sensor.unused;unit;agenda;2;large_numbers,unknown=1",
+    "expected": {
+      "entity": "calendar.family",
+      "label": "Agenda",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "agenda keeps its declared days option",
+    "input": "calendar.family;;Auto;Auto;;;agenda;;agenda_days=7",
+    "expected": {
+      "entity": "calendar.family",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": "agenda_days=7"
+    }
+  },
+  {
+    "name": "agenda keeps declared options and drops the rest",
+    "input": "calendar.family;;Auto;Auto;;;agenda;;agenda_days=7,bogus=1,large_numbers",
+    "expected": {
+      "entity": "calendar.family",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": "agenda_days=7"
+    }
+  },
+  {
+    "name": "agenda reorders its options canonically",
+    "input": "calendar.family;;Auto;Auto;;;agenda;;agenda_hide_empty,agenda_days=21",
+    "expected": {
+      "entity": "calendar.family",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": "agenda_days=21,agenda_hide_empty"
+    }
+  }
+]

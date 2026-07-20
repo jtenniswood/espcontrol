@@ -57,6 +57,8 @@ constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_disp
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
 constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *AGENDA_DAYS_OPTION = card_runtime_option_name_agenda_days();
+constexpr const char *AGENDA_HIDE_EMPTY_OPTION = card_runtime_option_name_agenda_hide_empty();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
@@ -1362,6 +1364,21 @@ inline int media_volume_max_percent(const ParsedCfg &p) {
   return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal")
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
+}
+
+// How many days ahead an agenda card covers; the contract bounds it to 1..30.
+inline int agenda_card_days(const ParsedCfg &p) {
+  const std::string value = cfg_option_value(p.options, AGENDA_DAYS_OPTION);
+  if (value.empty()) return 14;
+  int days = atoi(value.c_str());
+  if (days < 1) days = 1;
+  if (days > 30) days = 30;
+  return days;
+}
+
+// Whether the card's full view omits days with nothing scheduled.
+inline bool agenda_card_hides_empty_days(const ParsedCfg &p) {
+  return cfg_option_enabled(p.options, AGENDA_HIDE_EMPTY_OPTION);
 }
 
 inline bool media_control_card_show_status_label(const ParsedCfg &p) {

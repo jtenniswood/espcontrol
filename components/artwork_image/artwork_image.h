@@ -104,6 +104,17 @@ class ArtworkImage : public PollingComponent,
   }
   bool can_use_p4_pipeline(const std::string &url) const;
 
+  /** Override the download size limit for this slot (bytes). Full-resolution
+   * photos can exceed the 2MB default that suits cover art and camera tiles. */
+  void set_max_download_size(size_t max_bytes) { this->max_download_buffer_size_ = max_bytes; }
+
+  /** Allow the software JPEG decoder to pick an IDCT downscale that lands
+   * below the cover target when the source is much larger, trading a little
+   * sharpness for a large decode-time reduction. Off by default; only slots
+   * that show large arbitrary photos (the photo screensaver) enable it. */
+  void set_software_downscale_allowed(bool allowed) { this->software_downscale_allowed_ = allowed; }
+  bool software_downscale_allowed() const { return this->software_downscale_allowed_; }
+
   /** Add the request header */
   template<typename V> void add_request_header(const std::string &header, V value) {
     this->request_headers_.push_back(std::pair<std::string, TemplatableValue<std::string> >(header, value));
@@ -252,6 +263,7 @@ class ArtworkImage : public PollingComponent,
    */
   size_t download_buffer_initial_size_;
   size_t max_download_buffer_size_;
+  bool software_downscale_allowed_{false};
   size_t peak_download_buffer_size_{0};
 
   const ImageFormat format_;

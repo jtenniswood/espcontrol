@@ -96,6 +96,20 @@ interval:
           weather_forecast_send_next_queued();
           ha_flush_deferred_state_requests();
           todo_retry_waiting_modal();
+          // Agenda cards fetch on first sight and every ten minutes after;
+          // the call is cheap when no agenda card is configured.
+          espcontrol::agenda_view_settings().days =
+              (int) id(agenda_view_days).state;
+          espcontrol::agenda_view_settings().hide_empty_days =
+              id(agenda_view_hide_empty_days).state;
+          auto agenda_now = panel_time_or_fallback(id(panel_time).now(),
+                                                   id(homeassistant_time).now());
+          if (agenda_now.is_valid()) {
+            espcontrol::agenda_cards_service(
+                agenda_now.year, agenda_now.month, agenda_now.day_of_month,
+                agenda_now.hour, agenda_now.minute, agenda_now.second,
+                id(clock_format_12h));
+          }
 
   - interval: 1h
     then:

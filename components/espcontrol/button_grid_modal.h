@@ -29,6 +29,7 @@ enum class ControlModalKind {
   COVER_CONTROL,
   LIGHT_CONTROL,
   MEDIA_CONTROL,
+  AGENDA_VIEW,
 };
 
 using ControlModalCloseCallback = void (*)();
@@ -91,6 +92,9 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
       return {ControlModalPresentation::IMAGE, ControlModalChrome::BACK,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::TODO_LIST:
+      return {ControlModalPresentation::LIST, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::AGENDA_VIEW:
       return {ControlModalPresentation::LIST, ControlModalChrome::BACK,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::NONE:

@@ -76,6 +76,7 @@
         { "name": "disarm", "config": { "entity": "alarm_control_panel.example", "sensor": "disarm" } }
       ]
     },
+    "agenda": {"classification": "canonical", "canonicalType": "agenda", "webRegistration": "agenda", "firmwareFamily": "AGENDA", "lifecycle": {"subscriptions": ["action_response"], "actions": ["none"], "modalOwner": "none"}, "modes": [{"name": "default", "config": {"entity": "calendar.example"}}]},
     "calendar": {
       "classification": "canonical",
       "canonicalType": "calendar",

@@ -136,6 +136,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
 PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "": "docs/card-types/switches.md",
     "action": "docs/card-types/actions.md",
+    "agenda": "docs/card-types/calendar.md",
     "alarm": "docs/card-types/alarms.md",
     "alarm_action": "docs/card-types/alarms.md",
     "calendar": "docs/card-types/calendar.md",

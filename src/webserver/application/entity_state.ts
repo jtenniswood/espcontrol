@@ -170,14 +170,37 @@ export function installEntityStateModule(): GlobalDescriptors {
     function ensureEntityDropdown(this: any, input?: any) {
         if (!input || input._entityDropdown || !input.parentNode)
             return;
-        var wrap: any = document.createElement("div");
-        wrap.className = "sp-entity-input-wrap";
-        input.parentNode.insertBefore(wrap, input);
-        wrap.appendChild(input);
+        // The dropdown lives on document.body with fixed positioning so the
+        // settings modal's overflow scrolling can never clip it. Stale
+        // dropdowns from re-rendered inputs are pruned here.
+        document.querySelectorAll(".sp-entity-dropdown").forEach(function (this: any, other?: any) {
+            if (other._entityInput && !other._entityInput.isConnected)
+                other.remove();
+        });
         var dropdown: any = document.createElement("div");
         dropdown.className = "sp-entity-dropdown";
-        wrap.appendChild(dropdown);
+        dropdown._entityInput = input;
+        document.body.appendChild(dropdown);
         input._entityDropdown = dropdown;
+    }
+    function positionEntityDropdown(this: any, input?: any, dropdown?: any) {
+        var rect: any = input.getBoundingClientRect();
+        var viewportH: any = window.innerHeight || 0;
+        var below: any = viewportH - rect.bottom - 16;
+        var above: any = rect.top - 16;
+        dropdown.style.left = rect.left + "px";
+        dropdown.style.width = rect.width + "px";
+        if (below < 140 && above > below) {
+            var maxH: any = Math.min(220, above);
+            dropdown.style.maxHeight = maxH + "px";
+            dropdown.style.top = "";
+            dropdown.style.bottom = (viewportH - rect.top + 6) + "px";
+        }
+        else {
+            dropdown.style.maxHeight = Math.min(220, Math.max(below, 140)) + "px";
+            dropdown.style.bottom = "";
+            dropdown.style.top = (rect.bottom + 6) + "px";
+        }
     }
     function closeEntityDropdown(this: any, input?: any) {
         if (input && input._entityDropdown)
@@ -195,8 +218,28 @@ export function installEntityStateModule(): GlobalDescriptors {
             return;
         }
         dropdown.innerHTML = "";
-        var query: any = String(input.value || "").trim().toLowerCase();
+        var raw: any = String(input.value || "");
+        var prefix: any = "";
+        var chosen: any = [];
+        if (input._entityMulti) {
+            // Comma-separated list: suggest against the segment after the last
+            // comma and keep the earlier entries as a prefix on selection.
+            var comma: any = raw.lastIndexOf(",");
+            if (comma !== -1) {
+                prefix = raw.slice(0, comma + 1);
+                raw = raw.slice(comma + 1);
+                chosen = prefix.split(",").map(function (this: any, part?: any) {
+                    // Entries may carry a ":#RRGGBB" color suffix; dedup on
+                    // the bare entity id.
+                    return part.trim().toLowerCase().split(":#")[0];
+                }).filter(Boolean);
+            }
+        }
+        input._entityMultiPrefix = prefix;
+        var query: any = raw.trim().toLowerCase();
         var items: any = entitySuggestions(input._entityDomains || []).filter(function (this: any, item?: any) {
+            if (chosen.indexOf(item.value.toLowerCase()) !== -1)
+                return false;
             if (!query)
                 return true;
             return item.value.toLowerCase().indexOf(query) !== -1 ||
@@ -210,7 +253,8 @@ export function installEntityStateModule(): GlobalDescriptors {
             option.addEventListener("mousedown", function (this: any, e?: any) {
                 e.preventDefault();
                 input._entitySuppressDropdown = true;
-                input.value = item.value;
+                var listPrefix: any = input._entityMulti ? String(input._entityMultiPrefix || "") : "";
+                input.value = listPrefix ? listPrefix.replace(/\s+$/, "") + " " + item.value : item.value;
                 rememberEntityName(item.value, item.label || titleFromEntityId(item.value));
                 input.dispatchEvent(new Event("input", { bubbles: true }));
                 input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -219,12 +263,16 @@ export function installEntityStateModule(): GlobalDescriptors {
             });
             dropdown.appendChild(option);
         });
-        dropdown.classList.toggle("sp-open", document.activeElement === input && items.length > 0);
+        var open: any = document.activeElement === input && items.length > 0;
+        if (open)
+            positionEntityDropdown(input, dropdown);
+        dropdown.classList.toggle("sp-open", open);
     }
-    function attachEntitySuggestions(this: any, input?: any, domains?: any) {
+    function attachEntitySuggestions(this: any, input?: any, domains?: any, multi?: any) {
         if (!input || input._entitySuggestionsAttached)
             return input;
         input._entityDomains = domains || [];
+        input._entityMulti = !!multi;
         input._entitySuggestionsAttached = true;
         input.addEventListener("focus", function (this: any) { refreshEntityDatalist(input); });
         input.addEventListener("input", function (this: any) {
@@ -241,9 +289,9 @@ export function installEntityStateModule(): GlobalDescriptors {
         refreshEntityDatalist(input);
         return input;
     }
-    function entityInput(this: any, id?: any, value?: any, placeholder?: any, domains?: any) {
+    function entityInput(this: any, id?: any, value?: any, placeholder?: any, domains?: any, multi?: any) {
         var el: any = textInput(id, value, placeholder);
-        return attachEntitySuggestions(el, domains);
+        return attachEntitySuggestions(el, domains, multi);
     }
     function rememberEntityPostPath(this: any, data?: any) {
         var preferred: any = parseEntityId(data && data.name_id) || parseEntityId(data && data.id);

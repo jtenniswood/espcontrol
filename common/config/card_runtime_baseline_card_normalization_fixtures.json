@@ -300,6 +300,21 @@
     }
   },
   {
+    "name": "agenda: default",
+    "input": "~calendar.example,,Auto,Auto,,,agenda,,",
+    "expected": {
+      "entity": "calendar.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "agenda",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "calendar: date",
     "input": "~sensor.date,,Auto,Auto,,,calendar,,",
     "expected": {

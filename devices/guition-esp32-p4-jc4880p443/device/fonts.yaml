@@ -102,3 +102,46 @@ font:
     glyphs:
       - "0123456789.-°/%"
       - ":"
+
+  # Agenda card/overlay event titles (medium weight, Calendar-Card-Pro-style)
+  - file: "gfonts://Roboto@Medium"
+    id: font_agenda_title
+    size: 26
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Medium"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Agenda times, locations, and day headings
+  - file: "gfonts://Roboto"
+    id: font_agenda_secondary
+    size: 22
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Agenda date-column day number (digits only)
+  - file: "gfonts://Roboto@Light"
+    id: font_agenda_day
+    size: 32
+    bpp: 4
+    glyphs: "0123456789"
+
+  # Agenda date-column weekday/month (uppercase only)
+  - file: "gfonts://Roboto"
+    id: font_agenda_date_small
+    size: 16
+    bpp: 4
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+  # Agenda inline row icons (clock beside times, pin beside locations)
+  - file: '${mdi_font_file}'
+    id: font_agenda_icon
+    size: 22
+    bpp: 4
+    glyphs:
+      - "\U000F0150"  # mdi-clock-outline
+      - "\U000F07D9"  # mdi-map-marker-outline

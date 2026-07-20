@@ -41,6 +41,7 @@ interface PickerDetails {
 }
 
 const INFO_ONLY_CARD_TYPES = new Set([
+  "agenda",
   "sensor",
   "calendar",
   "clock",
@@ -80,6 +81,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
   vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
+  agenda: { icon: "calendar-clock", description: "Show upcoming calendar events." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
 };
 

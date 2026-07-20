@@ -55,7 +55,9 @@
       "coverArtHideExternalInput": true, "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
       "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
-      "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
+      "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90",
+      "photosFolder": "", "photosInterval": 30, "photosShuffle": false,
+      "photosShowDatetime": true, "photosShowWeather": false, "photosWeatherEntity": ""
     },
     "screenInput": {
       "brightness_day": 80,
@@ -105,5 +107,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 639142, "gzip": 152002 }
+  "bundleSize": { "minified": 672831, "gzip": 158843 }
 }

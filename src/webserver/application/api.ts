@@ -122,12 +122,61 @@ export function installApiModule(): GlobalDescriptors {
         }
         postNumberWithObjectIds(entityName("screensaver_timeout"), entityObjectIds("screensaver_timeout"), value);
     }
+    function postAgendaViewDays(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("agenda_view_days"), entityObjectIds("agenda_view_days"), value);
+    }
+    function postAgendaViewHideEmpty(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("agenda_view_hide_empty_days"), entityObjectIds("agenda_view_hide_empty_days"), on);
+    }
     var SCREENSAVER_ACTION_UNAVAILABLE: any = "Screen dimmed screensaver is not available on this firmware. Update the device firmware, then reload this page.";
     function postScreensaverAction(this: any, value?: any) {
         postSelectWithObjectIds(entityName("screen_saver_action"), entityObjectIds("screen_saver_action"), screensaverActionOption(value), SCREENSAVER_ACTION_UNAVAILABLE);
     }
     function postScreensaverDimmedBrightness(this: any, value?: any) {
         postNumberWithObjectIds(entityName("screen_saver_dimmed_brightness"), entityObjectIds("screen_saver_dimmed_brightness"), value, SCREENSAVER_ACTION_UNAVAILABLE);
+    }
+    var PHOTOS_UNAVAILABLE: any = "The photo screensaver is not available on this firmware. Update the device firmware, then reload this page.";
+    function postScreensaverPhotosFolder(this: any, value?: any) {
+        postTextWithObjectIds(entityName("screen_saver_photos_folder"), entityObjectIds("screen_saver_photos_folder"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosInterval(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("screen_saver_photos_interval"), entityObjectIds("screen_saver_photos_interval"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosShuffle(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("screen_saver_photos_shuffle"), entityObjectIds("screen_saver_photos_shuffle"), on, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosShowDatetime(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("screen_saver_photos_show_datetime"), entityObjectIds("screen_saver_photos_show_datetime"), on, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosShowWeather(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("screen_saver_photos_show_weather"), entityObjectIds("screen_saver_photos_show_weather"), on, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosWeatherEntity(this: any, value?: any) {
+        postTextWithObjectIds(entityName("screen_saver_photos_weather_entity"), entityObjectIds("screen_saver_photos_weather_entity"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosShowAgenda(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("screen_saver_photos_show_agenda"), entityObjectIds("screen_saver_photos_show_agenda"), on, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosAgendaEntities(this: any, value?: any) {
+        postTextWithObjectIds(entityName("screen_saver_photos_agenda_entities"), entityObjectIds("screen_saver_photos_agenda_entities"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosAgendaStyle(this: any, value?: any) {
+        postSelectWithObjectIds(entityName("screen_saver_photos_agenda_style"), entityObjectIds("screen_saver_photos_agenda_style"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosAgendaOpacity(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("screen_saver_photos_agenda_opacity"), entityObjectIds("screen_saver_photos_agenda_opacity"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosAgendaLimit(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("screen_saver_photos_agenda_limit"), entityObjectIds("screen_saver_photos_agenda_limit"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosAgendaDays(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("screen_saver_photos_agenda_days"), entityObjectIds("screen_saver_photos_agenda_days"), value, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosAgendaHideEmpty(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("screen_saver_photos_agenda_hide_empty"), entityObjectIds("screen_saver_photos_agenda_hide_empty"), on, PHOTOS_UNAVAILABLE);
+    }
+    function postScreensaverPhotosShowDate(this: any, on?: any) {
+        postSwitchWithObjectIds(entityName("screen_saver_photos_show_date"), entityObjectIds("screen_saver_photos_show_date"), on, PHOTOS_UNAVAILABLE);
     }
     function postHomeScreenTimeout(this: any, value?: any) {
         postNumberWithObjectIds(entityName("home_screen_timeout"), entityObjectIds("home_screen_timeout"), value);
@@ -201,9 +250,25 @@ export function installApiModule(): GlobalDescriptors {
         "postSelectWithObjectId": staticGlobal(postSelectWithObjectId),
         "postSelectWithObjectIds": staticGlobal(postSelectWithObjectIds),
         "postScreensaverTimeout": staticGlobal(postScreensaverTimeout),
+        "postAgendaViewDays": staticGlobal(postAgendaViewDays),
+        "postAgendaViewHideEmpty": staticGlobal(postAgendaViewHideEmpty),
         "SCREENSAVER_ACTION_UNAVAILABLE": liveGlobal(() => SCREENSAVER_ACTION_UNAVAILABLE, (value?: any) => { SCREENSAVER_ACTION_UNAVAILABLE = value; }),
         "postScreensaverAction": staticGlobal(postScreensaverAction),
         "postScreensaverDimmedBrightness": staticGlobal(postScreensaverDimmedBrightness),
+        "postScreensaverPhotosFolder": staticGlobal(postScreensaverPhotosFolder),
+        "postScreensaverPhotosShowAgenda": staticGlobal(postScreensaverPhotosShowAgenda),
+        "postScreensaverPhotosAgendaEntities": staticGlobal(postScreensaverPhotosAgendaEntities),
+        "postScreensaverPhotosAgendaStyle": staticGlobal(postScreensaverPhotosAgendaStyle),
+        "postScreensaverPhotosAgendaOpacity": staticGlobal(postScreensaverPhotosAgendaOpacity),
+        "postScreensaverPhotosInterval": staticGlobal(postScreensaverPhotosInterval),
+        "postScreensaverPhotosShuffle": staticGlobal(postScreensaverPhotosShuffle),
+        "postScreensaverPhotosShowDatetime": staticGlobal(postScreensaverPhotosShowDatetime),
+        "postScreensaverPhotosShowDate": staticGlobal(postScreensaverPhotosShowDate),
+        "postScreensaverPhotosAgendaLimit": staticGlobal(postScreensaverPhotosAgendaLimit),
+        "postScreensaverPhotosAgendaDays": staticGlobal(postScreensaverPhotosAgendaDays),
+        "postScreensaverPhotosAgendaHideEmpty": staticGlobal(postScreensaverPhotosAgendaHideEmpty),
+        "postScreensaverPhotosShowWeather": staticGlobal(postScreensaverPhotosShowWeather),
+        "postScreensaverPhotosWeatherEntity": staticGlobal(postScreensaverPhotosWeatherEntity),
         "postHomeScreenTimeout": staticGlobal(postHomeScreenTimeout),
         "postSwitchWithObjectId": staticGlobal(postSwitchWithObjectId),
         "postSwitchWithObjectIds": staticGlobal(postSwitchWithObjectIds),

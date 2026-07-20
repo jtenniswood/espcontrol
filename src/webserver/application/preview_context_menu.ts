@@ -151,6 +151,16 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         if (cardSupportsMaxSize(b)) {
             options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max wide (3x2)" });
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
+            // Oversize spans only make sense on grids big enough to hold them.
+            var gridRows: any = GRID_COLS > 0 ? Math.floor(NUM_SLOTS / GRID_COLS) : 0;
+            if (gridRows >= 4 && GRID_COLS >= 2)
+                options.push({ size: CARD_SIZE_GIANT_TALL, label: "Giant tall (4 rows)" });
+            if (gridRows >= 5 && GRID_COLS >= 2)
+                options.push({ size: CARD_SIZE_FULL_TALL, label: "Full tall (5 rows)" });
+            if (GRID_COLS >= 4 && gridRows >= 2)
+                options.push({ size: CARD_SIZE_GIANT_WIDE, label: "Giant wide (4 columns)" });
+            if (GRID_COLS >= 5 && gridRows >= 2)
+                options.push({ size: CARD_SIZE_FULL_WIDE, label: "Full wide (5 columns)" });
         }
         if (cardSupportsPortraitLargeSize(b))
             options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Portrait (3x4)" });

@@ -83,14 +83,20 @@ assert.strictEqual(
   "backup export filename includes screen size and date"
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
-assert.deepStrictEqual(
-  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-2),
-  [
+{
+  // Order is not pinned: grids wide or tall enough also offer the oversize
+  // spans, which sort after these.
+  const imageSizes = plain(hooks.cardSizeMenuOptions({ type: "image" }));
+  for (const shape of [
     { size: 8, label: "Max wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
-  ],
-  "camera card size menu exposes the two max shapes"
-);
+  ]) {
+    assert(
+      imageSizes.some((option) => option.size === shape.size && option.label === shape.label),
+      `camera card size menu exposes ${shape.label}`
+    );
+  }
+}
 assert(
   !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9),
   "non-camera card size menus do not expose max shapes"

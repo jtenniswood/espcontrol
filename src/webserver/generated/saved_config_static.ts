@@ -4,7 +4,33 @@
 // =============================================================================
 import type { CardConfig } from "../contracts/types";
 
+function filterDeclaredOptions(options: string, declared: string[]): string {
+  const present = new Map<string, string>();
+  for (const part of String(options || "").split(",")) {
+    const text = part.trim();
+    if (!text) continue;
+    const eq = text.indexOf("=");
+    present.set(eq === -1 ? text : text.slice(0, eq), text);
+  }
+  const kept: string[] = [];
+  for (const name of declared) {
+    const entry = present.get(name);
+    if (entry !== undefined) kept.push(entry);
+  }
+  return kept.join(",");
+}
+
 export function normalizeSavedConfigStatic(config: CardConfig): boolean {
+  if (config.type === "agenda") {
+    config.icon = "Auto";
+    config.icon_on = "Auto";
+    config.sensor = "";
+    config.unit = "";
+    config.type = "agenda";
+    config.precision = "";
+    config.options = filterDeclaredOptions(config.options, ["agenda_days", "agenda_hide_empty"]);
+    return true;
+  }
   if (config.type === "internal") {
     config.type = "internal";
     config.options = "";

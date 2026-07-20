@@ -79,6 +79,9 @@ globals:
   - id: screensaver_action_dimmed
     type: bool
     initial_value: 'false'
+  - id: screensaver_action_photos
+    type: bool
+    initial_value: 'false'
   # Connectivity setup must remain visible even when a restored time-based
   # schedule would otherwise keep the panel dark while time is unavailable.
   - id: connectivity_setup_display_active
@@ -93,6 +96,7 @@ esphome:
           auto update_screensaver_action_cache = []() {
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_photos) = screensaver_action_photos_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
           };
           update_screensaver_action_cache();
@@ -177,6 +181,18 @@ script:
                       generation: !lambda 'return generation;'
                       target_mode: !lambda 'return target_mode;'
                   - script.wait: cover_art_hide_effect
+            # The photo overlay lives on the top layer, so it must be dismissed
+            # for every mode other than PHOTOS or it would stay above the target.
+            # A wake to ACTIVE keeps the overlay up until the active effect's
+            # delayed hide below, so the waking touch cannot fall through to a
+            # card underneath — the same cooldown the clock screensaver uses.
+            - if:
+                condition:
+                  lambda: |-
+                    return target_mode != static_cast<int>(espcontrol::DisplayMode::PHOTOS) &&
+                           target_mode != static_cast<int>(espcontrol::DisplayMode::ACTIVE);
+                then:
+                  - script.execute: hide_photos_view
             - if:
                 condition:
                   lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::ACTIVE);'
@@ -274,6 +290,18 @@ script:
                                                 - lambda: |-
                                                     id(espcontrol_app).display().complete_transition(
                                                         static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART);
+                                              else:
+                                                - if:
+                                                    condition:
+                                                      lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::PHOTOS);'
+                                                    then:
+                                                      - script.execute:
+                                                          id: show_photos_view
+                                                          generation: !lambda 'return generation;'
+                                                      - script.wait: show_photos_view
+                                                      - lambda: |-
+                                                          id(espcontrol_app).display().complete_transition(
+                                                              static_cast<uint32_t>(generation), espcontrol::DisplayMode::PHOTOS);
 
   - id: display_mode_effect_active
     mode: restart
@@ -285,7 +313,9 @@ script:
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - if:
           condition:
-            lambda: 'return previous_mode == static_cast<int>(espcontrol::DisplayMode::CLOCK);'
+            lambda: |-
+              return previous_mode == static_cast<int>(espcontrol::DisplayMode::CLOCK) ||
+                     previous_mode == static_cast<int>(espcontrol::DisplayMode::PHOTOS);
           then:
             - script.execute: clock_bar_apply
             - if:
@@ -294,6 +324,8 @@ script:
                 then:
                   - script.execute: navigate_after_api
             - script.execute: backlight_apply_brightness
+            # The waking touch's release must land on the still-visible overlay,
+            # not on a card underneath; hide it only after this settle window.
             - delay: 300ms
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
@@ -301,8 +333,10 @@ script:
                   id(display_mode_effect_active).stop();
                 }
             - script.execute: hide_clock_view
+            - script.execute: hide_photos_view
           else:
             - script.execute: hide_clock_view
+            - script.execute: hide_photos_view
             - delay: 100ms
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
@@ -409,6 +443,7 @@ script:
               transition.target_mode == espcontrol::DisplayMode::SETUP_DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::CLOCK ||
+              transition.target_mode == espcontrol::DisplayMode::PHOTOS ||
               transition.target_mode == espcontrol::DisplayMode::COVER_ART ||
               transition.target_mode == espcontrol::DisplayMode::DISPLAY_OFF;
 
@@ -603,24 +638,34 @@ script:
                 else:
                   - if:
                       condition:
-                        lambda: 'return id(screensaver_action_clock);'
+                        lambda: 'return id(screensaver_action_photos);'
                       then:
+                        # Photos overlay the existing UI like the clock; the apply
+                        # cascade hides cover art for any non-cover-art target.
                         - script.execute:
                             id: display_mode_request_automatic
-                            target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CLOCK);'
+                            target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::PHOTOS);'
                       else:
-                        - script.execute: hide_cover_art_view
                         - if:
                             condition:
-                              lambda: 'return id(screensaver_action_dimmed);'
+                              lambda: 'return id(screensaver_action_clock);'
                             then:
                               - script.execute:
                                   id: display_mode_request_automatic
-                                  target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DIMMED);'
+                                  target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CLOCK);'
                             else:
-                              - script.execute:
-                                  id: display_mode_request_automatic
-                                  target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
+                              - script.execute: hide_cover_art_view
+                              - if:
+                                  condition:
+                                    lambda: 'return id(screensaver_action_dimmed);'
+                                  then:
+                                    - script.execute:
+                                        id: display_mode_request_automatic
+                                        target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DIMMED);'
+                                  else:
+                                    - script.execute:
+                                        id: display_mode_request_automatic
+                                        target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
             - globals.set:
                 id: screensaver_sensor_sleep_pending
                 value: 'false'

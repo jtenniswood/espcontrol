@@ -52,6 +52,16 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.batteryStatusOn = d.value === true || val === "ON";
                 syncClockBarUi();
             },
+            "number-agenda_view__days_ahead": function (this: any, val?: any) {
+                var n: any = parseInt(val, 10);
+                state.agendaViewDays = Number.isFinite(n) && n >= 1 ? n : 30;
+                syncInput(els.setAgendaViewDays, String(state.agendaViewDays));
+            },
+            "switch-agenda_view__hide_empty_days": function (this: any, val?: any, d?: any) {
+                state.agendaViewHideEmpty = d.value === true || val === "ON";
+                if (els.setAgendaViewHideEmpty)
+                    els.setAgendaViewHideEmpty.checked = state.agendaViewHideEmpty;
+            },
             "switch-voice_services": function (this: any, val?: any, d?: any) {
                 state.voiceServicesOn = d.value === true || val === "ON";
                 syncClockBarUi();
@@ -167,6 +177,70 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
             "number-screen_saver__dimmed_brightness": function (this: any, val?: any) {
                 state.screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(val);
                 syncClockScreensaverControls();
+            },
+            "switch-screen_saver__photos_show_agenda": function (this: any, val?: any, d?: any) {
+                state.photosShowAgenda = d.value === true || val === "ON";
+                if (els.setPhotosShowAgenda) els.setPhotosShowAgenda.checked = state.photosShowAgenda;
+                if (els.syncPhotoAgendaFields) els.syncPhotoAgendaFields();
+            },
+            "text-screen_saver__photos_agenda_entities": function (this: any, val?: any) {
+                state.photosAgendaEntities = val || "";
+                if (els.setPhotosAgendaCalendars)
+                    els.setPhotosAgendaCalendars.setValue(state.photosAgendaEntities);
+            },
+            "select-screen_saver__photos_agenda_style": function (this: any, val?: any) {
+                state.photosAgendaStyle = val || "Next Event";
+                syncInput(els.setPhotosAgendaStyle, state.photosAgendaStyle);
+            },
+            "number-screen_saver__photos_agenda_opacity": function (this: any, val?: any) {
+                var n: any = parseFloat(val);
+                state.photosAgendaOpacity = Number.isFinite(n) ? n : 45;
+                syncInput(els.setPhotosAgendaOpacity, String(state.photosAgendaOpacity));
+            },
+            "number-screen_saver__photos_agenda_limit": function (this: any, val?: any) {
+                var n: any = parseInt(val, 10);
+                state.photosAgendaLimit = Number.isFinite(n) && n >= 1 ? n : 5;
+                syncInput(els.setPhotosAgendaLimit, String(state.photosAgendaLimit));
+            },
+            "switch-screen_saver__photos_agenda_hide_empty": function (this: any, val?: any, d?: any) {
+                state.photosAgendaHideEmpty = d.value === true || val === "ON";
+                if (els.setPhotosAgendaHideEmpty)
+                    els.setPhotosAgendaHideEmpty.checked = state.photosAgendaHideEmpty;
+            },
+            "number-screen_saver__photos_agenda_days": function (this: any, val?: any) {
+                var n: any = parseInt(val, 10);
+                state.photosAgendaDays = Number.isFinite(n) && n >= 1 ? n : 14;
+                syncInput(els.setPhotosAgendaDays, String(state.photosAgendaDays));
+            },
+            "text-screen_saver__photos_folder": function (this: any, val?: any) {
+                state.photosFolder = val || "";
+                syncInput(els.setPhotosFolder, state.photosFolder);
+            },
+            "number-screen_saver__photo_duration": function (this: any, val?: any) {
+                var n: any = parseInt(val, 10);
+                state.photosInterval = Number.isFinite(n) && n >= 5 ? n : 30;
+                syncInput(els.setPhotosInterval, String(state.photosInterval));
+            },
+            "switch-screen_saver__shuffle_photos": function (this: any, val?: any, d?: any) {
+                state.photosShuffle = d.value === true || val === "ON";
+                if (els.setPhotosShuffle) els.setPhotosShuffle.checked = state.photosShuffle;
+            },
+            "switch-screen_saver__photos_show_clock": function (this: any, val?: any, d?: any) {
+                state.photosShowDatetime = d.value === true || val === "ON";
+                if (els.setPhotosShowDatetime) els.setPhotosShowDatetime.checked = state.photosShowDatetime;
+            },
+            "switch-screen_saver__photos_show_date": function (this: any, val?: any, d?: any) {
+                state.photosShowDate = d.value === true || val === "ON";
+                if (els.setPhotosShowDate) els.setPhotosShowDate.checked = state.photosShowDate;
+            },
+            "switch-screen_saver__photos_show_weather": function (this: any, val?: any, d?: any) {
+                state.photosShowWeather = d.value === true || val === "ON";
+                if (els.setPhotosShowWeather) els.setPhotosShowWeather.checked = state.photosShowWeather;
+                syncClockScreensaverControls();
+            },
+            "text-screen_saver__photos_weather_entity": function (this: any, val?: any) {
+                state.photosWeatherEntity = val || "";
+                syncInput(els.setPhotosWeatherEntity, state.photosWeatherEntity);
             },
             "text-presence_sensor_entity": function (this: any, val?: any) {
                 state.presenceEntity = val;

@@ -36,6 +36,10 @@ export function installGridModule(): GlobalDescriptors {
     var CARD_SIZE_MAX_WIDE: any = EspControlModel.CARD_SIZE_MAX_WIDE;
     var CARD_SIZE_MAX_TALL: any = EspControlModel.CARD_SIZE_MAX_TALL;
     var CARD_SIZE_PORTRAIT_LARGE: any = EspControlModel.CARD_SIZE_PORTRAIT_LARGE;
+    var CARD_SIZE_GIANT_TALL: any = EspControlModel.CARD_SIZE_GIANT_TALL;
+    var CARD_SIZE_FULL_TALL: any = EspControlModel.CARD_SIZE_FULL_TALL;
+    var CARD_SIZE_GIANT_WIDE: any = EspControlModel.CARD_SIZE_GIANT_WIDE;
+    var CARD_SIZE_FULL_WIDE: any = EspControlModel.CARD_SIZE_FULL_WIDE;
     function sizeFromToken(this: any, token?: any) {
         return EspControlModel.sizeFromToken(token);
     }
@@ -115,6 +119,10 @@ export function installGridModule(): GlobalDescriptors {
         "CARD_SIZE_MAX_WIDE": liveGlobal(() => CARD_SIZE_MAX_WIDE, (value?: any) => { CARD_SIZE_MAX_WIDE = value; }),
         "CARD_SIZE_MAX_TALL": liveGlobal(() => CARD_SIZE_MAX_TALL, (value?: any) => { CARD_SIZE_MAX_TALL = value; }),
         "CARD_SIZE_PORTRAIT_LARGE": liveGlobal(() => CARD_SIZE_PORTRAIT_LARGE, (value?: any) => { CARD_SIZE_PORTRAIT_LARGE = value; }),
+        "CARD_SIZE_GIANT_TALL": liveGlobal(() => CARD_SIZE_GIANT_TALL, (value?: any) => { CARD_SIZE_GIANT_TALL = value; }),
+        "CARD_SIZE_FULL_TALL": liveGlobal(() => CARD_SIZE_FULL_TALL, (value?: any) => { CARD_SIZE_FULL_TALL = value; }),
+        "CARD_SIZE_GIANT_WIDE": liveGlobal(() => CARD_SIZE_GIANT_WIDE, (value?: any) => { CARD_SIZE_GIANT_WIDE = value; }),
+        "CARD_SIZE_FULL_WIDE": liveGlobal(() => CARD_SIZE_FULL_WIDE, (value?: any) => { CARD_SIZE_FULL_WIDE = value; }),
         "sizeFromToken": staticGlobal(sizeFromToken),
         "sizeToken": staticGlobal(sizeToken),
         "sizeRowSpan": staticGlobal(sizeRowSpan),
