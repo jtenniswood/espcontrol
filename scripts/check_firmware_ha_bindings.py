@@ -1448,12 +1448,16 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             "reuse modal-scoped speaker attribute subscriptions",
         ),
         (
-            "media_control_ensure_speaker_helper_subscription(ctx);",
-            "start helper tracking when grouping support arrives after the modal opens",
+            "media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);",
+            "register speaker discovery during normal startup subscriptions",
         ),
         (
-            "ha_get_attribute(ctx->speaker_group_entity, discovery_attribute, discovery_callback);",
-            "hydrate speaker discovery from the current helper value when the tab opens",
+            "media_group_parse_discovery_items(raw)",
+            "hydrate speaker names and volumes from the discovery helper",
+        ),
+        (
+            "state->speaker_discovery_subscribed = false;",
+            "restore speaker discovery when the grid rebuilds its startup subscriptions",
         ),
         (
             "media_control_sync_speaker_candidates",
@@ -1481,7 +1485,7 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             errors.append(f"{rel}: {message}")
     if (
         text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 1
-        or "media_group_parse_discovery_data(raw)" not in text
+        or "media_group_parse_discovery_items(raw)" not in text
     ):
         errors.append(f"{rel}: parse both current members and discovery candidates without truncation")
     if "inline void media_control_subscribe_speaker" in text:

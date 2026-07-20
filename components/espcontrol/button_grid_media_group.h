@@ -6,6 +6,13 @@
 constexpr uint64_t MEDIA_PLAYER_FEATURE_GROUPING = 524288ULL;
 constexpr const char *DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY = "sensor.speaker_group";
 
+struct MediaGroupDiscoveryItem {
+  std::string entity_id;
+  std::string friendly_name;
+  int volume_pct = 0;
+  bool volume_known = false;
+};
+
 inline std::string media_group_trim(std::string value) {
   size_t first = value.find_first_not_of(" \t\r\n");
   if (first == std::string::npos) return "";
@@ -89,6 +96,54 @@ inline std::vector<std::string> media_group_parse_discovery_data(const std::stri
     media_group_append_unique(out, entity_id);
     if (end == std::string::npos) break;
     start = end + 1;
+  }
+  return out;
+}
+
+inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
+    const std::string &raw) {
+  std::vector<MediaGroupDiscoveryItem> out;
+  size_t p1 = raw.find('|');
+  size_t p2 = p1 == std::string::npos ? std::string::npos : raw.find('|', p1 + 1);
+  size_t p3 = p2 == std::string::npos ? std::string::npos : raw.find('|', p2 + 1);
+  std::string ids = raw.substr(0, p1);
+  std::string names = p1 == std::string::npos ? "" : raw.substr(
+    p1 + 1, p2 == std::string::npos ? std::string::npos : p2 - p1 - 1);
+  std::string volumes = p2 == std::string::npos ? "" : raw.substr(
+    p2 + 1, p3 == std::string::npos ? std::string::npos : p3 - p2 - 1);
+  auto split = [](const std::string &value) {
+    std::vector<std::string> parts;
+    size_t start = 0;
+    while (start <= value.size()) {
+      size_t end = value.find(',', start);
+      parts.push_back(media_group_trim(value.substr(
+        start, end == std::string::npos ? std::string::npos : end - start)));
+      if (end == std::string::npos) break;
+      start = end + 1;
+    }
+    return parts;
+  };
+  std::vector<std::string> entity_ids = split(ids);
+  std::vector<std::string> friendly_names = split(names);
+  std::vector<std::string> volume_values = split(volumes);
+  for (size_t i = 0; i < entity_ids.size(); i++) {
+    std::string entity_id = entity_ids[i];
+    if (!entity_id.empty() && entity_id.rfind("media_player.", 0) != 0) {
+      entity_id = "media_player." + entity_id;
+    }
+    if (!media_group_valid_entity_id(entity_id)) continue;
+    MediaGroupDiscoveryItem item;
+    item.entity_id = entity_id;
+    if (i < friendly_names.size()) item.friendly_name = friendly_names[i];
+    if (i < volume_values.size()) {
+      char *end = nullptr;
+      float volume = std::strtof(volume_values[i].c_str(), &end);
+      if (end && end != volume_values[i].c_str()) {
+        item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
+        item.volume_known = true;
+      }
+    }
+    out.push_back(std::move(item));
   }
   return out;
 }

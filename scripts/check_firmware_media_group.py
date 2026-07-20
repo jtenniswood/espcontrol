@@ -107,6 +107,15 @@ int main() {
   assert((media_group_parse_discovery_data(
     "media_player.office, patio |Office,Patio|0.14,0.25") ==
     std::vector<std::string>{"media_player.office", "media_player.patio"}));
+  auto discovered = media_group_parse_discovery_items(
+    "office,kitchen|Office,Kitchen|0.14,0.25|Sonos,Sonos");
+  assert(discovered.size() == 2);
+  assert(discovered[0].entity_id == "media_player.office");
+  assert(discovered[0].friendly_name == "Office");
+  assert(discovered[0].volume_known && discovered[0].volume_pct == 14);
+  assert(discovered[1].entity_id == "media_player.kitchen");
+  assert(discovered[1].friendly_name == "Kitchen");
+  assert(discovered[1].volume_known && discovered[1].volume_pct == 25);
   assert(media_group_discovery_entity("") == "sensor.speaker_group");
   assert(media_group_discovery_entity("media_player.compatible") ==
     "media_player.compatible");
