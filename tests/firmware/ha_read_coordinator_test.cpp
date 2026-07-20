@@ -22,6 +22,7 @@ struct FakeTransport {
   bool connected = true;
   std::vector<Request> reads;
   std::vector<Request> subscriptions;
+  size_t replay_calls = 0;
 
   bool available() const { return api_available; }
   bool state_connected() const { return connected; }
@@ -34,6 +35,10 @@ struct FakeTransport {
                  const std::string &attribute,
                  Callback callback) {
     subscriptions.push_back({entity_id, attribute, std::move(callback)});
+  }
+
+  void replay(const std::string &, const std::string &, Callback) {
+    replay_calls++;
   }
 
   void deliver_read(size_t index, const std::string &state) {
@@ -184,6 +189,35 @@ void attribute_requests_preserve_attribute() {
           "attribute read lost its attribute");
 }
 
+void repeated_subscriptions_reuse_transport_channel() {
+  Coordinator coordinator;
+  int first_calls = 0;
+  int second_calls = 0;
+  require(coordinator.subscribe(
+              "sensor.same", "", [&](std::string) { first_calls++; }, 1u),
+          "first subscription should register");
+  require(coordinator.transport().subscriptions.size() == 1,
+          "first subscription should create a transport channel");
+  coordinator.transport().publish(0, "first");
+  require(first_calls == 1, "first subscription did not receive state");
+
+  coordinator.bump_generation(1u);
+  require(coordinator.subscribe(
+              "sensor.same", "", [&](std::string) { second_calls++; }, 1u),
+          "replacement subscription should register");
+  require(coordinator.transport().subscriptions.size() == 1,
+          "replacement subscription duplicated the transport channel");
+  coordinator.transport().publish(0, "second");
+  require(first_calls == 1 && second_calls == 1,
+          "replacement subscription did not exclusively receive state");
+
+  require(coordinator.subscribe(
+              "sensor.same", "friendly_name", [](std::string) {}, 1u),
+          "attribute subscription should register");
+  require(coordinator.transport().subscriptions.size() == 2,
+          "different attributes should use distinct transport channels");
+}
+
 }  // namespace
 
 int main() {
@@ -194,5 +228,6 @@ int main() {
   cancellation_is_safe_during_callback();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
+  repeated_subscriptions_reuse_transport_channel();
   return EXIT_SUCCESS;
 }
