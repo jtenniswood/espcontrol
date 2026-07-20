@@ -2715,7 +2715,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       {
         "name": "speaker_group_entity",
-        "label": "Compatible Speakers Group",
+        "label": "Speaker Discovery Entity",
         "kind": "text",
         "omitDefault": true,
         "applicability": [

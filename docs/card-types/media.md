@@ -88,23 +88,35 @@ Cover Art uses one of the display's shared image download slots. If all slots ar
 
 All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
 
-Add a **Compatible Speakers Group** to include a fourth **Speakers** tab. The tab is shown only when the main player reports Home Assistant's grouping capability. Leaving this field empty keeps the existing three-tab popup unchanged.
+When the main player reports Home Assistant's grouping capability, All Controls includes a fourth **Speakers** tab. By default, EspControl reads the compatible-speaker inventory from `sensor.speaker_group`.
 
 ## Speaker Groups
 
 Speaker Group opens the same speaker panel directly, without the playback, progress, and single-player volume tabs. It lets you join and unjoin compatible speakers and control the volume of speakers that are currently grouped.
 
-### Create the Compatible Speakers Group
+### Create the Speaker Discovery Sensor
 
-EspControl needs a Home Assistant media-player Group helper as its list of possible speakers:
+EspControl uses the same `sensor.speaker_group` template format as ESPHome Media Player. For Sonos, add this to Home Assistant's `configuration.yaml`:
 
-1. In Home Assistant, open **Settings > Devices & Services > Helpers**.
-2. Create a **Group** helper containing the media players that can play together.
-3. Put only mutually compatible players in the helper. For example, keep Sonos players with other Sonos players supported by the same Home Assistant integration.
-4. In EspControl, select the main **Entity** that grouping actions should use.
-5. Enter the helper's `media_player` entity in **Compatible Speakers Group**, for example `media_player.downstairs_speakers`.
+```yaml
+template:
+  - sensor:
+      - name: "Speaker Group"
+        unique_id: speaker_group
+        state: >
+          {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
+          {{ s | count }}
+        attributes:
+          data: >
+            {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
+            {{ s | map("replace", "media_player.", "") | join(",") }}|{{ s | map("state_attr", "friendly_name") | join(",") }}|{{ s | map("state_attr", "volume_level") | join(",") }}
+```
 
-Home Assistant does not expose enough integration-registry information through EspControl's device connection to prove that two players are compatible. The panel checks that the main player advertises grouping support, but the helper is the source of truth for which speakers to offer. Speakers already in the live group are also shown even when they are missing from the helper, so they can still be controlled or removed.
+Restart Home Assistant after adding the template. Replace `sonos` with the integration name when using another compatible speaker platform.
+
+The optional **Speaker Discovery Entity** card setting remains available as an override. A Home Assistant media-player Group helper can be entered there for a manually maintained list; otherwise leave it blank to use `sensor.speaker_group` automatically.
+
+Home Assistant does not expose enough integration-registry information directly through EspControl's device connection to prove that two players are compatible, so the template performs discovery inside Home Assistant. Speakers already in the live group are also shown even when they are missing from the discovery sensor, so they can still be controlled or removed.
 
 The main speaker is always selected. Selecting another speaker sends `media_player.join` with the complete selected group; clearing one sends `media_player.unjoin` to that speaker. A row shows a pending state while Home Assistant handles the request. If an integration rejects an incompatible request, the selection is restored and the panel shows an error.
 

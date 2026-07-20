@@ -2974,11 +2974,16 @@ inline void media_control_ensure_speaker_helper_subscription(MediaControlCtx *ct
   ui.speaker_helper_subscribed = true;
   uint32_t generation = ui.speaker_generation;
   bool subscribed = ha_subscribe_attribute_reusable(
-    ctx->speaker_group_entity, std::string("entity_id"),
+    ctx->speaker_group_entity,
+    std::string(media_group_discovery_attribute(ctx->speaker_group_entity)),
     [ctx, generation](esphome::StringRef value) {
       MediaControlModalUi &ui = media_control_modal_ui();
       if (ui.active != ctx || ui.speaker_generation != generation) return;
-      ui.speaker_helper_members = media_group_parse_entity_list(value.c_str(), value.size());
+      std::string raw(value.c_str(), value.size());
+      ui.speaker_helper_members = ctx->speaker_group_entity ==
+          DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY
+        ? media_group_parse_discovery_data(raw)
+        : media_group_parse_entity_list(raw);
       std::vector<std::string> candidates = media_group_merge_candidates(
         ctx->entity_id, ui.speaker_helper_members, ctx->group_members);
       media_control_refresh_speakers(ctx);
@@ -3342,7 +3347,7 @@ inline MediaControlCtx *create_media_control_context(
   ctx->entity_id = p.entity;
   ctx->label = media_control_card_label(p);
   ctx->max_pct = media_volume_max_percent(p);
-  ctx->speaker_group_entity = media_speaker_group_entity(p);
+  ctx->speaker_group_entity = media_group_discovery_entity(media_speaker_group_entity(p));
   ctx->group_only = media_card_mode(p.sensor) == "speaker_group";
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;

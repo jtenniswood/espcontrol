@@ -473,20 +473,17 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 : MEDIA_CARD_METADATA);
             if (b.sensor === "control_modal" || b.sensor === "speaker_group") {
                 var groupEntityField: any = helpers.textField(
-                    "Compatible Speakers Group",
+                    "Speaker Discovery Entity (optional)",
                     helpers.idPrefix + "speaker-group-entity",
                     mediaSpeakerGroupEntity(b),
-                    "e.g. media_player.compatible_speakers", "", false);
+                    "Default: sensor.speaker_group", "", false);
                 panel.appendChild(groupEntityField.field);
-                groupEntityField.input.pattern = "media_player\\.[A-Za-z0-9_]+";
+                groupEntityField.input.pattern = "(?:media_player|sensor)\\.[A-Za-z0-9_]+";
                 groupEntityField.input.addEventListener("change", function (this: any) {
                     setMediaSpeakerGroupEntity(b, groupEntityField.input.value);
                     groupEntityField.input.value = mediaSpeakerGroupEntity(b);
                     helpers.saveField("options", b.options);
                 });
-                if (b.sensor === "speaker_group") {
-                    helpers.requireField(groupEntityField.input, "Add a media-player Group helper before saving.");
-                }
             }
             var displayMode: any = helpers.renderCardSegmentControl(panel, b, helpers, {
                 segment: Object.assign({}, MEDIA_CARD_METADATA.displayMode, {

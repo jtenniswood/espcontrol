@@ -4,6 +4,7 @@
 // Included by button_grid.h after the Home Assistant action boundary.
 
 constexpr uint64_t MEDIA_PLAYER_FEATURE_GROUPING = 524288ULL;
+constexpr const char *DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY = "sensor.speaker_group";
 
 inline std::string media_group_trim(std::string value) {
   size_t first = value.find_first_not_of(" \t\r\n");
@@ -72,6 +73,33 @@ inline std::vector<std::string> media_group_parse_entity_list(const char *raw,
 
 inline std::vector<std::string> media_group_parse_entity_list(const std::string &raw) {
   return media_group_parse_entity_list(raw.data(), raw.size());
+}
+
+inline std::vector<std::string> media_group_parse_discovery_data(const std::string &raw) {
+  std::vector<std::string> out;
+  std::string ids = raw.substr(0, raw.find('|'));
+  size_t start = 0;
+  while (start <= ids.size()) {
+    size_t end = ids.find(',', start);
+    std::string entity_id = media_group_trim(ids.substr(
+      start, end == std::string::npos ? std::string::npos : end - start));
+    if (!entity_id.empty() && entity_id.rfind("media_player.", 0) != 0) {
+      entity_id = "media_player." + entity_id;
+    }
+    media_group_append_unique(out, entity_id);
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  return out;
+}
+
+inline std::string media_group_discovery_entity(const std::string &configured) {
+  std::string entity_id = media_group_trim(configured);
+  return entity_id.empty() ? DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY : entity_id;
+}
+
+inline const char *media_group_discovery_attribute(const std::string &entity_id) {
+  return entity_id == DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY ? "data" : "entity_id";
 }
 
 inline uint64_t media_group_parse_supported_features(const std::string &raw) {

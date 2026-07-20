@@ -101,6 +101,17 @@ int main() {
     "[\"media_player.office\", bad, sensor.temperature, media_player.office]") ==
     std::vector<std::string>{"media_player.office"}));
   assert(media_group_parse_entity_list("not a list").empty());
+  assert((media_group_parse_discovery_data(
+    "office,kitchen|Office,Kitchen|0.14,0.25") ==
+    std::vector<std::string>{"media_player.office", "media_player.kitchen"}));
+  assert((media_group_parse_discovery_data(
+    "media_player.office, patio |Office,Patio|0.14,0.25") ==
+    std::vector<std::string>{"media_player.office", "media_player.patio"}));
+  assert(media_group_discovery_entity("") == "sensor.speaker_group");
+  assert(media_group_discovery_entity("media_player.compatible") ==
+    "media_player.compatible");
+  assert(std::string(media_group_discovery_attribute("sensor.speaker_group")) == "data");
+  assert(std::string(media_group_discovery_attribute("media_player.compatible")) == "entity_id");
   std::string long_list = "[";
   for (int i = 0; i < 12; i++) {
     if (i != 0) long_list += ",";

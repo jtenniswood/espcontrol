@@ -1475,8 +1475,11 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
     for token, message in required:
         if token not in text:
             errors.append(f"{rel}: {message}")
-    if text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 2:
-        errors.append(f"{rel}: parse both current members and helper candidates without truncation")
+    if (
+        text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 1
+        or "media_group_parse_discovery_data(raw)" not in text
+    ):
+        errors.append(f"{rel}: parse both current members and discovery candidates without truncation")
     if "inline void media_control_subscribe_speaker" in text:
         subscribe_body = text.split("inline void media_control_subscribe_speaker", 1)[1]
         subscribe_body = subscribe_body.split("\n}\n\ninline void media_control_add_speaker_candidate", 1)[0]
