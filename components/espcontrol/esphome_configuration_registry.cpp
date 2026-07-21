@@ -45,10 +45,10 @@ bool same_object_id(const esphome::EntityBase *entity,
                      candidate.object_id_size) == 0;
 }
 
-template<typename Entity>
-Entity *find_entity(const std::vector<Entity *> &entities,
-                    const ConfigurationEntityView &candidate) {
-  for (Entity *entity : entities) {
+template<typename Container>
+typename Container::value_type find_entity(
+    const Container &entities, const ConfigurationEntityView &candidate) {
+  for (auto *entity : entities) {
     if (is_configuration_entity(entity) &&
         same_object_id(entity, candidate)) {
       return entity;
