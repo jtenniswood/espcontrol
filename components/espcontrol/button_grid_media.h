@@ -2916,6 +2916,20 @@ inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
       }),
     ctx->group_volume_states.end());
   for (const std::string &entity_id : members) {
+    ha_get_state(entity_id, [ctx, entity_id](esphome::StringRef value) {
+      if (media_control_modal_ui().active != ctx) return;
+      for (MediaGroupVolumeState &known : ctx->group_volume_states) {
+        if (known.entity_id != entity_id) continue;
+        known.available = !ha_state_unavailable_ref(value);
+        media_control_refresh_volume(ctx);
+        return;
+      }
+      MediaGroupVolumeState known;
+      known.entity_id = entity_id;
+      known.available = !ha_state_unavailable_ref(value);
+      ctx->group_volume_states.push_back(std::move(known));
+      media_control_refresh_volume(ctx);
+    });
     ha_get_attribute(entity_id, std::string("volume_level"),
       [ctx, entity_id](esphome::StringRef value) {
         if (media_control_modal_ui().active != ctx) return;
@@ -2965,6 +2979,18 @@ inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int p
     if (row) {
       row->volume_pct = volumes[i];
       row->volume_known = true;
+    }
+    bool stored = false;
+    for (MediaGroupVolumeState &known : ctx->group_volume_states) {
+      if (known.entity_id != members[i].entity_id) continue;
+      known.volume_pct = volumes[i];
+      known.volume_known = true;
+      stored = true;
+      break;
+    }
+    if (!stored) {
+      ctx->group_volume_states.push_back(
+        {members[i].entity_id, volumes[i], true, members[i].available});
     }
   }
   media_control_refresh_speakers(ctx);
