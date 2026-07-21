@@ -142,8 +142,7 @@ ConfigurationStore::SlotMetadata ConfigurationStore::inspect_slot(
   return metadata;
 }
 
-LoadResult ConfigurationStore::load(uint8_t *output,
-                                    size_t output_capacity) {
+LoadResult ConfigurationStore::inspect() {
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);
 
@@ -164,23 +163,31 @@ LoadResult ConfigurationStore::load(uint8_t *output,
     return {read_failed ? StoreStatus::READ_FAILED : StoreStatus::EMPTY};
   }
 
-  if (selected->payload_size > output_capacity) {
-    return {StoreStatus::BUFFER_TOO_SMALL, selected->generation,
-            selected->payload_size, selected->slot};
-  }
-  if (selected->payload_size > 0 && output == nullptr) {
-    return {StoreStatus::INVALID_ARGUMENT, selected->generation,
-            selected->payload_size, selected->slot};
-  }
-  if (selected->payload_size > 0 &&
-      !backend_.read(selected->slot, CONFIGURATION_ENVELOPE_HEADER_SIZE,
-                     output, selected->payload_size)) {
-    return {StoreStatus::READ_FAILED, selected->generation,
-            selected->payload_size, selected->slot};
-  }
-
   return {StoreStatus::OK, selected->generation, selected->payload_size,
           selected->slot};
+}
+
+LoadResult ConfigurationStore::load(uint8_t *output,
+                                    size_t output_capacity) {
+  const LoadResult selected = inspect();
+  if (!selected.ok()) return selected;
+
+  if (selected.payload_size > output_capacity) {
+    return {StoreStatus::BUFFER_TOO_SMALL, selected.generation,
+            selected.payload_size, selected.slot};
+  }
+  if (selected.payload_size > 0 && output == nullptr) {
+    return {StoreStatus::INVALID_ARGUMENT, selected.generation,
+            selected.payload_size, selected.slot};
+  }
+  if (selected.payload_size > 0 &&
+      !backend_.read(selected.slot, CONFIGURATION_ENVELOPE_HEADER_SIZE,
+                     output, selected.payload_size)) {
+    return {StoreStatus::READ_FAILED, selected.generation,
+            selected.payload_size, selected.slot};
+  }
+
+  return selected;
 }
 
 CommitResult ConfigurationStore::commit(const uint8_t *payload,

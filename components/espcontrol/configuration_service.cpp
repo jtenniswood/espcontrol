@@ -178,4 +178,46 @@ ServiceSaveResult ConfigurationService::save(uint16_t document_version,
           committed.generation, document_size};
 }
 
+ServiceLoadResult ConfigurationService::ensure_snapshot_exists() {
+  const LoadResult stored = store_.inspect();
+  if (stored.ok()) {
+    return {ServiceStatus::OK, stored.status, 0, stored.generation,
+            stored.payload_size};
+  }
+  if (stored.status != StoreStatus::EMPTY) {
+    return {ServiceStatus::STORE_FAILED, stored.status};
+  }
+
+  // An empty document store can still have legacy preference fields. Loading
+  // once imports those fields before the first revision-aware write is allowed.
+  std::vector<uint8_t> scratch(maximum_document_size());
+  return load(scratch.empty() ? nullptr : scratch.data(), scratch.size());
+}
+
+ServiceSaveResult ConfigurationService::save_if_revision(
+    uint32_t expected_revision, uint16_t document_version,
+    const uint8_t *document, size_t document_size) {
+  if (document_size > 0 && document == nullptr) {
+    return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
+            document_version, 0, document_size};
+  }
+  if (!supported_version(document_version)) {
+    return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
+            document_version, 0, document_size};
+  }
+
+  const ServiceLoadResult current = ensure_snapshot_exists();
+  const uint32_t current_revision =
+      current.status == ServiceStatus::EMPTY ? 0 : current.generation;
+  if (current.status != ServiceStatus::EMPTY && !current.ok()) {
+    return {current.status, current.store_status, document_version,
+            current_revision, document_size};
+  }
+  if (current_revision != expected_revision) {
+    return {ServiceStatus::REVISION_CONFLICT, current.store_status,
+            document_version, current_revision, document_size};
+  }
+  return save(document_version, document, document_size);
+}
+
 }  // namespace espcontrol::configuration

@@ -44,6 +44,7 @@ enum class ServiceStatus : uint8_t {
   BUFFER_TOO_SMALL,
   UNSUPPORTED_VERSION,
   INVALID_DOCUMENT,
+  REVISION_CONFLICT,
   STORE_FAILED,
   LEGACY_READ_FAILED,
   LEGACY_MIRROR_FAILED,
@@ -92,6 +93,20 @@ class ConfigurationService {
   ServiceLoadResult load(uint8_t *output, size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
                          size_t document_size);
+  // Commits only when expected_revision still matches the durable snapshot.
+  // Revision zero represents an empty store. On conflict, generation contains
+  // the current durable revision so the caller can fetch a fresh snapshot.
+  ServiceSaveResult save_if_revision(uint32_t expected_revision,
+                                     uint16_t document_version,
+                                     const uint8_t *document,
+                                     size_t document_size);
+  ServiceSaveResult save_current_if_revision(uint32_t expected_revision,
+                                             const uint8_t *document,
+                                             size_t document_size) {
+    return save_if_revision(expected_revision,
+                            CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
+                            document_size);
+  }
   ServiceSaveResult save_current(const uint8_t *document,
                                  size_t document_size) {
     return save(CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
@@ -104,6 +119,7 @@ class ConfigurationService {
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
                                size_t document_size);
+  ServiceLoadResult ensure_snapshot_exists();
 
   ConfigurationStore &store_;
   LegacyConfigurationAdapter &legacy_;

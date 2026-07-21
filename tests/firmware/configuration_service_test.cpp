@@ -183,6 +183,52 @@ bool malformed_store_document_is_not_treated_as_legacy() {
          legacy.load_calls == 0;
 }
 
+bool revision_aware_save_rejects_stale_writers() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  ConfigurationService service(store, legacy);
+  const std::vector<uint8_t> first = bytes("first");
+  const std::vector<uint8_t> stale = bytes("stale");
+  if (!service.save_current_if_revision(0, first.data(), first.size()).ok()) {
+    return false;
+  }
+
+  const ServiceSaveResult rejected = service.save_current_if_revision(
+      0, stale.data(), stale.size());
+  if (rejected.status != ServiceStatus::REVISION_CONFLICT ||
+      rejected.generation != 1 || legacy.mirror_calls != 1) {
+    return false;
+  }
+
+  std::array<uint8_t, 32> output{};
+  const ServiceLoadResult loaded = service.load(output.data(), output.size());
+  return loaded.ok() && loaded.generation == 1 &&
+         std::equal(first.begin(), first.end(), output.begin());
+}
+
+bool revision_aware_save_imports_legacy_before_comparing() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  legacy.value = bytes("legacy");
+  ConfigurationService service(store, legacy);
+  const std::vector<uint8_t> replacement = bytes("replacement");
+
+  const ServiceSaveResult stale = service.save_current_if_revision(
+      0, replacement.data(), replacement.size());
+  if (stale.status != ServiceStatus::REVISION_CONFLICT ||
+      stale.generation != 1 || legacy.load_calls != 1 ||
+      legacy.mirror_calls != 0) {
+    return false;
+  }
+
+  const ServiceSaveResult saved = service.save_current_if_revision(
+      1, replacement.data(), replacement.size());
+  return saved.ok() && saved.generation == 2 && legacy.load_calls == 1 &&
+         legacy.mirror_calls == 1 && legacy.mirrored == replacement;
+}
+
 }  // namespace
 
 int main() {
@@ -192,6 +238,8 @@ int main() {
       failed_durable_save_never_updates_legacy() &&
       successful_save_dual_writes() &&
       version_and_buffer_failures_are_explicit() &&
-      malformed_store_document_is_not_treated_as_legacy();
+      malformed_store_document_is_not_treated_as_legacy() &&
+      revision_aware_save_rejects_stale_writers() &&
+      revision_aware_save_imports_legacy_before_comparing();
   return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }
