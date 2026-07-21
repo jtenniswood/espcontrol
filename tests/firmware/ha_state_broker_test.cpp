@@ -71,6 +71,10 @@ bool leases_share_one_transport_channel() {
     return false;
   }
   second_lease.reset();
+  if (broker.channel_count() != 1 || broker.transport().close_calls != 0) {
+    return false;
+  }
+  broker.prune();
   return broker.channel_count() == 0 && broker.subscriber_count() == 0 &&
          broker.transport().close_calls == 1;
 }
@@ -130,12 +134,96 @@ bool churn_returns_to_zero_active_storage() {
                                   [](std::string) {});
     if (!lease.valid() || broker.channel_count() != 1) return false;
     lease.reset();
+    broker.prune();
     if (broker.channel_count() != 0 || broker.subscriber_count() != 0) {
       return false;
     }
   }
   return Broker::channel_capacity() == 3 && broker.transport().open_calls == 100 &&
          broker.transport().close_calls == 100;
+}
+
+bool one_shot_get_channel_survives_until_pruned() {
+  Broker broker;
+  int calls = 0;
+  if (!broker.get("camera.room", "entity_picture",
+                  [&](std::string) { ++calls; })) {
+    return false;
+  }
+  broker.transport().publish(0, "/cover.jpg");
+  if (calls != 1 || broker.subscriber_count() != 0 ||
+      broker.channel_count() != 1) {
+    return false;
+  }
+  for (int index = 0; index < 100; ++index) {
+    int replayed = 0;
+    if (!broker.get("camera.room", "entity_picture",
+                    [&](std::string) { ++replayed; }) ||
+        replayed != 1 || broker.transport().open_calls != 1) {
+      return false;
+    }
+  }
+  broker.prune();
+  return broker.channel_count() == 0 && broker.transport().close_calls == 1;
+}
+
+bool generations_swap_leases_atomically() {
+  using Scoped = espcontrol::ha::ScopedStateSubscriptions<Broker, 4>;
+  Broker broker;
+  Scoped scoped(broker);
+  int old_calls = 0;
+  if (!scoped.subscribe("sensor.same", "", [&](std::string) { ++old_calls; }, 1)) {
+    return false;
+  }
+  const uint32_t first_generation = scoped.generation();
+  scoped.begin_generation(1);
+  int new_calls = 0;
+  if (!scoped.subscribe("sensor.same", "", [&](std::string) { ++new_calls; }, 1) ||
+      !scoped.commit_generation()) {
+    return false;
+  }
+  broker.transport().publish(0, "on");
+  return scoped.generation() != first_generation && old_calls == 0 &&
+         new_calls == 1 && broker.transport().open_calls == 1 &&
+         broker.channel_count() == 1 && scoped.active_count() == 1;
+}
+
+bool failed_generation_keeps_previous_leases() {
+  using SmallBroker = espcontrol::ha::StateBroker<FakeTransport, 2, 1>;
+  using Scoped = espcontrol::ha::ScopedStateSubscriptions<SmallBroker, 1>;
+  SmallBroker broker;
+  Scoped scoped(broker);
+  int old_calls = 0;
+  if (!scoped.subscribe("sensor.stable", "", [&](std::string) { ++old_calls; }, 1)) {
+    return false;
+  }
+  const uint32_t stable_generation = scoped.generation();
+  scoped.begin_generation(1);
+  if (scoped.subscribe("sensor.replacement", "", [](std::string) {}, 1) ||
+      scoped.commit_generation()) {
+    return false;
+  }
+  broker.transport().publish(0, "still active");
+  return scoped.generation() == stable_generation && old_calls == 1 &&
+         scoped.active_count() == 1 && scoped.pending_count() == 0;
+}
+
+bool cached_get_requested_in_callback_is_delivered_afterwards() {
+  Broker broker;
+  std::string nested;
+  auto metadata = broker.subscribe(
+      "media_player.room", "media_title", [](std::string) {});
+  broker.transport().publish(0, "Song");
+  auto state = broker.subscribe(
+      "media_player.room", "",
+      [&](std::string) {
+        broker.get("media_player.room", "media_title",
+                   [&](std::string value) { nested = std::move(value); });
+        if (!nested.empty()) nested = "delivered recursively";
+      });
+  broker.transport().publish(1, "playing");
+  return metadata.valid() && state.valid() && nested == "Song" &&
+         broker.subscriber_count() == 2;
 }
 
 bool capacity_failure_does_not_disturb_active_leases() {
@@ -158,7 +246,11 @@ int main() {
                  repeated_gets_are_one_shot_and_bounded() &&
                  callbacks_after_close_are_ignored() &&
                  churn_returns_to_zero_active_storage() &&
-                 capacity_failure_does_not_disturb_active_leases()
+                 capacity_failure_does_not_disturb_active_leases() &&
+                 one_shot_get_channel_survives_until_pruned() &&
+                 generations_swap_leases_atomically() &&
+                 failed_generation_keeps_previous_leases() &&
+                 cached_get_requested_in_callback_is_delivered_afterwards()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

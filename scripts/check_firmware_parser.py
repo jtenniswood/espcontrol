@@ -20,6 +20,7 @@ DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
+CARD_RECONCILER_HEADER = ROOT / "components" / "espcontrol" / "card_reconciler.h"
 CARD_REGISTRY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_registry.h"
 SAVED_CONFIG_VACUUM_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_vacuum_generated.h"
 SAVED_CONFIG_SENSOR_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_sensor_generated.h"
@@ -823,6 +824,7 @@ def main() -> int:
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
+        shutil.copy2(CARD_RECONCILER_HEADER, tmp_path / "card_reconciler.h")
         shutil.copy2(CARD_REGISTRY_HEADER, tmp_path / "button_grid_card_registry.h")
         shutil.copy2(SAVED_CONFIG_VACUUM_HEADER, tmp_path / "button_grid_saved_config_vacuum_generated.h")
         shutil.copy2(SAVED_CONFIG_SENSOR_HEADER, tmp_path / "button_grid_saved_config_sensor_generated.h")
