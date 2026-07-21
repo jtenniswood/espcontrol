@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "ha_state_broker.h"
+#include "ha_state_capacity.h"
 
 #ifdef ESP_PLATFORM
 #include "esp_heap_caps.h"
@@ -67,11 +68,6 @@ inline bool ha_internal_heap_available(const char *stage,
 #endif
   return true;
 }
-
-constexpr size_t HA_STATE_CHANNEL_CAPACITY = MAX_GRID_SLOTS * 8 + 32;
-constexpr size_t HA_SCOPED_LEASE_CAPACITY = MAX_GRID_SLOTS * 12 + 64;
-constexpr size_t HA_STATE_SUBSCRIBER_CAPACITY =
-    HA_SCOPED_LEASE_CAPACITY * 2 + 16;
 
 struct EspHomeHaStateTransport {
   using State = std::string;

@@ -12,6 +12,9 @@
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#ifdef USE_WEBSERVER
+#include "esphome/components/web_server_base/web_server_base.h"
+#endif
 #include "esphome_configuration_registry.h"
 #include "nvs_configuration_storage.h"
 
@@ -123,15 +126,17 @@ void EspControlApp::register_configuration_transport() {
       configuration_->upload == nullptr) {
     return;
   }
-  auto *server = esphome::web_server_idf::global_async_web_server();
-  if (server == nullptr) return;
+  auto *server_base = esphome::web_server_base::global_web_server_base;
+  if (server_base == nullptr) return;
   configuration_->handler = new configuration::ConfigurationHttpHandler(
       configuration_->document_api, configuration_->legacy,
       configuration_->scratch,
       configuration::NvsConfigurationStorage::SLOT_CAPACITY,
       configuration_->upload,
       configuration::NvsConfigurationStorage::SLOT_CAPACITY);
-  server->addHandler(configuration_->handler);
+  // Register through WebServerBase so optional Basic/Digest authentication is
+  // applied to the configuration routes exactly like the built-in web API.
+  server_base->add_handler(configuration_->handler);
   configuration_->transport_registered = true;
   ESP_LOGI(TAG, "Revisioned configuration transport is ready");
 #endif

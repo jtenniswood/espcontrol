@@ -175,6 +175,15 @@ inline CardMutation mutation_for(uint8_t domains) {
   return CardMutation::NONE;
 }
 
+inline bool requires_visual_reconstruction(
+    uint8_t domains, CardMutation mutation,
+    bool binding_runtime_owns_visual_state = false) {
+  return mutation == CardMutation::REPLACE ||
+         (domains & (CHANGE_VISUAL | CHANGE_LAYOUT)) != 0 ||
+         (mutation == CardMutation::REBIND &&
+          binding_runtime_owns_visual_state);
+}
+
 // Planning is pure and allocation-free. The returned pointers refer to the two
 // input graphs, which must remain alive while the plan is being applied.
 template <std::size_t MaxCards>

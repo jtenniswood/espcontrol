@@ -4,10 +4,17 @@
 #include "button_grid_limits.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_string.h"
+#include "ha_state_capacity.h"
 
 int main() {
   static_assert(MAX_GRID_SLOTS == ESPCONTROL_MAX_GRID_SLOTS);
   static_assert(MAX_SUBPAGE_ITEMS == MAX_GRID_SLOTS * MAX_GRID_SLOTS);
+  static_assert(
+      HA_CONFIGURED_CARD_CAPACITY == MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  static_assert(HA_STATE_CHANNEL_CAPACITY >=
+                HA_CONFIGURED_CARD_CAPACITY * 8 + 32);
+  static_assert(HA_SCOPED_LEASE_CAPACITY >=
+                HA_CONFIGURED_CARD_CAPACITY * 12 + 64);
 
   if (string_ref_limited(esphome::StringRef("calendar"), 4) != "cale") return EXIT_FAILURE;
   if (string_ref_limited(esphome::StringRef("clock"), 32) != "clock") return EXIT_FAILURE;

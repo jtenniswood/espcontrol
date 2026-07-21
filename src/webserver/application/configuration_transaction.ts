@@ -6,6 +6,7 @@ import {
   type ConfigurationDomain,
   type ConfigurationRecord,
 } from "../api/configuration_document";
+import { createTransactionId } from "../api/transaction_id";
 import { state } from "../state/app_instance";
 
 const SNAPSHOT_PATH = "/espcontrol/configuration";
@@ -33,7 +34,6 @@ const pendingValues = new Map<string, string>();
 let initialization: Promise<boolean> | null = null;
 let saveTimer: number | null = null;
 let saveActive = false;
-let transactionSequence = 0;
 let waiters: Array<{ resolve: (value: unknown) => void; reject: (reason: unknown) => void }> = [];
 
 function validUnsignedHeader(value: string | null, maximum: number): number | null {
@@ -113,12 +113,6 @@ function findRecord(domain: ConfigurationDomain, name: string, objectIds: string
   return null;
 }
 
-function nextTransaction(): number {
-  transactionSequence = (transactionSequence + 1) >>> 0;
-  if (transactionSequence === 0) transactionSequence = 1;
-  return transactionSequence;
-}
-
 async function formPost(path: string, values: Record<string, string>): Promise<Response> {
   return fetch(path, {
     method: "POST",
@@ -135,7 +129,7 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 async function uploadCandidate(document: Uint8Array): Promise<CommitResult> {
-  const transaction = nextTransaction();
+  const transaction = createTransactionId();
   const begin = await formPost(BEGIN_PATH, {
     transaction: String(transaction),
     expected_revision: String(revision),
