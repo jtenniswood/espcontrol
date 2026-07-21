@@ -555,6 +555,8 @@ esp_err_t CardImageStore::begin_upload(size_t size, CardImageUpload &upload) {
   LockGuard lock(this);
   if (!this->available()) return ESP_ERR_NOT_FOUND;
   if (size == 0 || size > CARD_IMAGE_MAX_BYTES) return ESP_ERR_INVALID_SIZE;
+  this->ensure_index_();
+  if (this->images_.size() >= CARD_IMAGE_INDEX_MAX_RECORDS) return ESP_ERR_NO_MEM;
   int offset = this->find_empty_offset_(size);
   while (offset < 0 && !this->caches_.empty()) {
     const auto evicted = this->caches_.front();
@@ -598,6 +600,24 @@ esp_err_t CardImageStore::commit_upload(CardImageUpload &upload, CardImageInfo &
   if (upload.written != upload.size) return ESP_ERR_INVALID_SIZE;
   if (upload.first_bytes[0] != 0xFF || upload.first_bytes[1] != 0xD8 ||
       upload.last_bytes[0] != 0xFF || upload.last_bytes[1] != 0xD9) return ESP_ERR_INVALID_ARG;
+
+  bool index_cache_evicted = false;
+  while (this->images_.size() + this->caches_.size() >= CARD_IMAGE_INDEX_MAX_RECORDS &&
+         !this->caches_.empty()) {
+    const auto evicted = this->caches_.front();
+    ESP_LOGI(TAG, "Evicting rebuildable RGB565 cache for %s to free image index space",
+             evicted.id.c_str());
+    esp_err_t erase_err = esp_partition_erase_range(
+        this->partition_(), evicted.offset, record_size(evicted.size));
+    if (erase_err != ESP_OK) return erase_err;
+    this->caches_.erase(this->caches_.begin());
+    index_cache_evicted = true;
+  }
+  if (this->images_.size() + this->caches_.size() >= CARD_IMAGE_INDEX_MAX_RECORDS) {
+    return ESP_ERR_NO_MEM;
+  }
+  if (index_cache_evicted && !this->persist_index_()) return ESP_FAIL;
+
   CardImageHeader header{};
   header.magic = CARD_IMAGE_MAGIC;
   header.version = CARD_IMAGE_FORMAT_VERSION;

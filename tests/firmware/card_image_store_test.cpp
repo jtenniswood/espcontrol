@@ -47,7 +47,7 @@ struct FakeFlash {
 };
 
 FakeFlash flash;
-uint8_t random_seed = 0;
+uint32_t random_seed = 0x12345678;
 
 class TestCardImageStore : public CardImageStore {
  public:
@@ -580,6 +580,30 @@ void test_cache_requires_its_source_image() {
          "rejected delayed cache write must not consume flash storage");
 }
 
+void test_upload_evicts_cache_when_index_is_full() {
+  flash.reset();
+  TestCardImageStore store;
+  std::vector<CardImageInfo> images;
+  for (size_t index = 0;
+       index + 1 < esphome::card_image_store::CARD_IMAGE_INDEX_MAX_RECORDS; ++index) {
+    images.push_back(upload(store));
+  }
+
+  constexpr uint16_t width = 16;
+  constexpr uint16_t height = 16;
+  std::vector<uint8_t> pixels(static_cast<size_t>(width) * height * 2, 0x29);
+  expect(store.write_rgb565_cache(images.front().id, images.front().crc32, width, height,
+                                  pixels.data(), pixels.size()) == ESP_OK,
+         "cache fixture should fill the final persistent index entry");
+
+  CardImageInfo added = upload(store);
+  expect(!added.id.empty(), "JPEG upload should evict a disposable cache when the index is full");
+  expect(store.list().size() == esphome::card_image_store::CARD_IMAGE_INDEX_MAX_RECORDS,
+         "full index should retain every source image after cache eviction");
+  expect(find_magic(CACHE_MAGIC) == static_cast<size_t>(-1),
+         "index-space eviction should erase the disposable cache record");
+}
+
 }  // namespace
 
 const esp_partition_t *esp_partition_find_first(int, esp_partition_subtype_t,
@@ -620,7 +644,10 @@ esp_err_t esp_partition_erase_range(const esp_partition_t *, size_t offset,
 
 void esp_fill_random(void *buffer, size_t size) {
   auto *bytes = static_cast<uint8_t *>(buffer);
-  for (size_t i = 0; i < size; i++) bytes[i] = ++random_seed;
+  for (size_t i = 0; i < size; i++) {
+    random_seed = random_seed * 1664525U + 1013904223U;
+    bytes[i] = static_cast<uint8_t>(random_seed >> 24);
+  }
 }
 
 uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
@@ -652,6 +679,7 @@ int main() {
   test_corrupt_image_payload_is_rejected();
   test_cache_is_confined_to_disposable_region();
   test_cache_requires_its_source_image();
+  test_upload_evicts_cache_when_index_is_full();
   std::cout << "Card image store tests passed.\n";
   return 0;
 }
