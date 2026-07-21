@@ -35,9 +35,9 @@ esp32:
       # and LVGL buffers are initialized.
       CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
-      # Keep RGB panel scan-out stable during flash writes and recover display
-      # timing at VSYNC when the ESP-IDF RGB driver needs to restart the panel.
-      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "y"
+      # The RGB driver already restarts after a genuine DMA underflow. Restarting
+      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
+      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
       CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
       CONFIG_SPIRAM_RODATA: "y"
