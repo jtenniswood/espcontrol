@@ -131,6 +131,7 @@ struct MediaControlModalUi {
   bool progress_refresh_pending = false;
   uint32_t speaker_generation = 0;
   uint32_t speaker_last_refresh_ms = 0;
+  uint32_t speaker_last_scroll_ms = 0;
 };
 
 constexpr uint32_t MEDIA_GROUP_ACTION_TIMEOUT_MS = 12000;
@@ -2815,7 +2816,8 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     lv_obj_set_style_opa(row->row, row->available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
     if (media_control_modal_ui().active == ctx) {
       ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
-      lv_obj_set_height(row->row, media_control_speaker_row_height(ctx, row, layout.short_side));
+      const lv_coord_t height = media_control_speaker_row_height(ctx, row, layout.short_side);
+      if (lv_obj_get_height(row->row) != height) lv_obj_set_height(row->row, height);
     }
   }
   if (row->content_box) {
@@ -3159,7 +3161,9 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_add_event_cb(row->row, [](lv_event_t *event) {
     MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
       lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
-    MediaControlCtx *ctx = media_control_modal_ui().active;
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (esphome::millis() - ui.speaker_last_scroll_ms < 250) return;
+    MediaControlCtx *ctx = ui.active;
     if (!ctx || !row || row->pending || row->entity_id == ctx->entity_id) return;
     media_control_toggle_speaker(ctx, row, !row->selected);
   }, LV_EVENT_CLICKED, nullptr);
@@ -3342,6 +3346,9 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   lv_obj_add_flag(ui.speaker_list, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_scroll_dir(ui.speaker_list, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(ui.speaker_list, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_event_cb(ui.speaker_list, [](lv_event_t *) {
+    media_control_modal_ui().speaker_last_scroll_ms = esphome::millis();
+  }, LV_EVENT_SCROLL, nullptr);
   ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
   ui.speaker_last_refresh_ms = esphome::millis();
 
@@ -3390,6 +3397,7 @@ inline void media_control_clear_tab_content() {
   ui.progress_layout_ready = false;
   ui.progress_refresh_pending = false;
   ui.speaker_last_refresh_ms = 0;
+  ui.speaker_last_scroll_ms = 0;
 }
 
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
