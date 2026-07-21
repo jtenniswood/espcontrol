@@ -78,6 +78,14 @@ export function installCardImageServiceModule(): GlobalDescriptors {
         id = normalizeCardBackgroundImageId(id);
         if (!id)
             return Promise.reject(new Error("Invalid card image ID."));
+        if (cardImagesFeature.info().referenceTransactions) {
+            return deleteCardImage(id).then(function () {
+                clearCardImageReferences(id, false);
+                renderPreview();
+                renderButtonSettings();
+                return true;
+            });
+        }
         return deleteCardImageConfigurationFirst({
             waitForPendingPosts: function () { return postQueueIdle(); },
             resetPostError: function () { resetPostQueueError(); },

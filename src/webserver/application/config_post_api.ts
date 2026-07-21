@@ -6,7 +6,8 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         var b: any = state.buttons[slot - 1];
         postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
     }
-    function clearCardImageReferences(this: any, id?: any) {
+    function clearCardImageReferences(this: any, id?: any, persistChanges?: any) {
+        persistChanges = persistChanges !== false;
         id = normalizeCardBackgroundImageId(id);
         var entries: any = [];
         var seen: any = [];
@@ -43,13 +44,15 @@ export function installConfigPostApiModule(): GlobalDescriptors {
                 }
             });
         }
-        clearButtons(state.buttons, function (this: any, index?: any) { saveButtonConfig(index + 1); });
+        clearButtons(state.buttons, persistChanges
+            ? function (this: any, index?: any) { saveButtonConfig(index + 1); }
+            : null);
         clearButtons(state.settingsDraft && [state.settingsDraft.button]);
         Object.keys(state.subpages || {}).forEach(function (this: any, key?: any) {
             var subpage: any = state.subpages[key];
             var before: any = changed;
             clearButtons(subpage && subpage.buttons);
-            if (changed !== before) {
+            if (changed !== before && persistChanges) {
                 saveSubpageEntity(key);
                 subpageKeys.push(key);
             }

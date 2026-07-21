@@ -7,7 +7,10 @@ void EspControlApp::setup() {
   card_assets_.start();
 }
 
-void EspControlApp::loop() { core_.run_once(); }
+void EspControlApp::loop() {
+  core_.run_once();
+  card_assets_.loop();
+}
 
 void EspControlApp::on_shutdown() {
   card_assets_.stop();

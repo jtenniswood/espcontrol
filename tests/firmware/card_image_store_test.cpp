@@ -54,11 +54,33 @@ class TestCardImageStore : public CardImageStore {
   TestCardImageStore() : CardImageStore() {}
 };
 
+class TestReferenceAdapter : public espcontrol::CardAssetReferenceAdapter {
+ public:
+  bool ready() const override { return is_ready; }
+  bool clear_asset_references(const std::string &asset_id) override {
+    cleared_id = asset_id;
+    if (fail_clear) return false;
+    referenced = false;
+    return true;
+  }
+  bool references_asset(const std::string &asset_id) const override {
+    return referenced && asset_id == expected_id;
+  }
+
+  std::string expected_id;
+  std::string cleared_id;
+  bool is_ready{true};
+  bool fail_clear{false};
+  bool referenced{true};
+};
+
 void expect(bool condition, const std::string &message) {
   if (condition) return;
   std::cerr << message << '\n';
   std::exit(1);
 }
+
+std::vector<uint8_t> jpeg_bytes(size_t size = 1024);
 
 void test_card_asset_service_has_one_application_owner() {
   espcontrol::CardAssetService first;
@@ -74,7 +96,44 @@ void test_card_asset_service_has_one_application_owner() {
   expect(!first.stop(), "stopped service cannot be stopped twice");
 }
 
-std::vector<uint8_t> jpeg_bytes(size_t size = 1024) {
+void test_card_asset_service_deletes_only_after_references_persist() {
+  flash.reset();
+  espcontrol::CardAssetService service;
+  expect(service.start(), "asset service should start for deletion transaction");
+  const auto bytes = jpeg_bytes();
+  CardImageUpload transaction;
+  expect(service.begin_upload(bytes.size(), transaction) == ESP_OK,
+         "service upload should reserve storage");
+  expect(service.write_upload(transaction, bytes.data(), bytes.size()) == ESP_OK,
+         "service upload should write the image");
+  CardImageInfo image;
+  expect(service.commit_upload(transaction, image) == ESP_OK,
+         "service upload should commit the image");
+
+  expect(service.delete_with_references(image.id) ==
+             espcontrol::CardAssetDeleteResult::REFERENCES_UNAVAILABLE,
+         "delete should wait for the configuration adapter");
+  CardImageInfo retained;
+  expect(service.find(image.id, retained), "unavailable references must retain the image");
+
+  TestReferenceAdapter adapter;
+  adapter.expected_id = image.id;
+  adapter.fail_clear = true;
+  service.set_reference_adapter(&adapter);
+  expect(service.delete_with_references(image.id) ==
+             espcontrol::CardAssetDeleteResult::PERSISTENCE_FAILED,
+         "failed reference persistence should stop deletion");
+  expect(service.find(image.id, retained), "failed reference persistence must retain the image");
+
+  adapter.fail_clear = false;
+  expect(service.delete_with_references(image.id) == espcontrol::CardAssetDeleteResult::SUCCESS,
+         "retry should clear references and delete the image");
+  expect(adapter.cleared_id == image.id && !service.find(image.id, retained),
+         "the exact image should be erased only after its references clear");
+  expect(service.stop(), "asset service should stop after deletion transaction");
+}
+
+std::vector<uint8_t> jpeg_bytes(size_t size) {
   expect(size >= 4, "JPEG fixture must include start and end markers");
   std::vector<uint8_t> bytes(size, 0x42);
   bytes[0] = 0xFF;
@@ -453,6 +512,7 @@ uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
 
 int main() {
   test_card_asset_service_has_one_application_owner();
+  test_card_asset_service_deletes_only_after_references_persist();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();

@@ -320,6 +320,14 @@ esphome:
               BTN_SLOT(19),
               BTN_SLOT(20),
             };
+            #define MAIN_CFG(n) button_##n##_config
+            esphome::text::Text *main_cfgs[] = {
+              MAIN_CFG(1), MAIN_CFG(2), MAIN_CFG(3), MAIN_CFG(4),
+              MAIN_CFG(5), MAIN_CFG(6), MAIN_CFG(7), MAIN_CFG(8),
+              MAIN_CFG(9), MAIN_CFG(10), MAIN_CFG(11), MAIN_CFG(12),
+              MAIN_CFG(13), MAIN_CFG(14), MAIN_CFG(15), MAIN_CFG(16),
+              MAIN_CFG(17), MAIN_CFG(18), MAIN_CFG(19), MAIN_CFG(20),
+            };
             esphome::text::Text *sp_cfgs[] = {
               SP_CFG(1), SP_CFG(2), SP_CFG(3), SP_CFG(4),
               SP_CFG(5), SP_CFG(6), SP_CFG(7), SP_CFG(8),
@@ -376,7 +384,14 @@ esphome:
               SP_EXT7(13), SP_EXT7(14), SP_EXT7(15), SP_EXT7(16),
               SP_EXT7(17), SP_EXT7(18), SP_EXT7(19), SP_EXT7(20),
             };
+            static espcontrol::LegacyCardConfigAdapter card_config_adapter;
+            card_config_adapter.configure(
+              main_cfgs, sizeof(main_cfgs) / sizeof(main_cfgs[0]),
+              {sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7}, sizeof(sp_cfgs) / sizeof(sp_cfgs[0]));
+            if (auto *assets = espcontrol::card_asset_service())
+              assets->set_reference_adapter(&card_config_adapter);
             #undef BTN_SLOT
+            #undef MAIN_CFG
             #undef SP_CFG
             #undef SP_EXT
             #undef SP_EXT2

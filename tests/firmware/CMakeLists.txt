@@ -60,6 +60,15 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_executable(legacy_card_config_test
+  legacy_card_config_test.cpp
+  ../../components/espcontrol/legacy_card_config.cpp
+)
+target_compile_features(legacy_card_config_test PRIVATE cxx_std_17)
+target_compile_options(legacy_card_config_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(legacy_card_config_test PRIVATE ../../components/espcontrol)
+add_test(NAME legacy_card_config_test COMMAND legacy_card_config_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp

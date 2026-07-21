@@ -91,6 +91,7 @@ std::string list_json() {
   out += ",\"requires_usb_flash\":";
   out += available ? "false" : "true";
   out += ",\"format_version\":" + std::to_string(CARD_IMAGE_FORMAT_VERSION);
+  out += ",\"reference_transactions\":true";
   out += ",\"max_active_backgrounds\":";
 #ifdef ESPCONTROL_MAX_GRID_SLOTS
   out += std::to_string(ESPCONTROL_MAX_GRID_SLOTS);
@@ -184,19 +185,27 @@ bool handle_delete(AsyncWebServerRequest *request) {
                   "Card image storage is unavailable. Reflash this device over USB once to install it.");
     return true;
   }
-  CardImageInfo image;
-  if (!assets->find(id, image)) {
-    request->send(404, "text/plain", "Not found");
-    return true;
-  }
-  const esp_err_t error = assets->erase(id);
-  if (error == ESP_ERR_INVALID_STATE) {
-    request->send(409, "text/plain", "Image is currently in use; try again");
-  } else if (error != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to delete card image: %s", esp_err_to_name(error));
-    request->send(500, "text/plain", "Delete failed");
-  } else {
-    request->send(200, "application/json", "{\"ok\":true}");
+  const CardAssetDeleteResult result = assets->delete_with_references(id);
+  switch (result) {
+    case CardAssetDeleteResult::SUCCESS:
+      request->send(200, "application/json", "{\"ok\":true}");
+      break;
+    case CardAssetDeleteResult::NOT_FOUND:
+      request->send(404, "text/plain", "Not found");
+      break;
+    case CardAssetDeleteResult::BUSY:
+      request->send(409, "text/plain", "Image deletion is already in progress; try again");
+      break;
+    case CardAssetDeleteResult::REFERENCES_UNAVAILABLE:
+      request->send(503, "text/plain", "Card settings are still starting; try again");
+      break;
+    case CardAssetDeleteResult::PERSISTENCE_FAILED:
+      request->send(500, "text/plain",
+                    "Card changes could not be saved, so the image was not deleted.");
+      break;
+    case CardAssetDeleteResult::STORAGE_FAILED:
+      request->send(500, "text/plain", "Image could not be deleted.");
+      break;
   }
   return true;
 }

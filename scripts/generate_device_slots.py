@@ -666,6 +666,8 @@ def phase2_block(device: dict) -> str:
     for num in range(1, device["slots"] + 1):
         lines.append(f"              BTN_SLOT({num}),")
     lines.append("            };")
+    lines.append("            #define MAIN_CFG(n) button_##n##_config")
+    lines.extend(macro_array("main_cfgs", "MAIN_CFG", device["slots"]))
     lines.extend(macro_array("sp_cfgs", "SP_CFG", device["slots"]))
     lines.extend(macro_array("sp_ext", "SP_EXT", device["slots"]))
     lines.extend(macro_array("sp_ext2", "SP_EXT2", device["slots"]))
@@ -675,9 +677,23 @@ def phase2_block(device: dict) -> str:
         lines.extend(macro_array("sp_ext5", "SP_EXT5", device["slots"]))
         lines.extend(macro_array("sp_ext6", "SP_EXT6", device["slots"]))
         lines.extend(macro_array("sp_ext7", "SP_EXT7", device["slots"]))
+    subpage_arrays = ["sp_cfgs", "sp_ext", "sp_ext2", "sp_ext3"]
+    if subpage_chunks >= 8:
+        subpage_arrays.extend(["sp_ext4", "sp_ext5", "sp_ext6", "sp_ext7"])
+    lines.extend(
+        [
+            "            static espcontrol::LegacyCardConfigAdapter card_config_adapter;",
+            "            card_config_adapter.configure(",
+            "              main_cfgs, sizeof(main_cfgs) / sizeof(main_cfgs[0]),",
+            f"              {{{', '.join(subpage_arrays)}}}, sizeof(sp_cfgs) / sizeof(sp_cfgs[0]));",
+            "            if (auto *assets = espcontrol::card_asset_service())",
+            "              assets->set_reference_adapter(&card_config_adapter);",
+        ]
+    )
     lines.extend(
         [
             "            #undef BTN_SLOT",
+            "            #undef MAIN_CFG",
             "            #undef SP_CFG",
             "            #undef SP_EXT",
             "            #undef SP_EXT2",

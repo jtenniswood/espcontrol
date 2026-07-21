@@ -6,7 +6,28 @@
 
 #include "../card_image_store/card_image_store.h"
 
+#ifdef ESP_PLATFORM
+#include "esphome/core/preferences.h"
+#endif
+
 namespace espcontrol {
+
+class CardAssetReferenceAdapter {
+ public:
+  virtual ~CardAssetReferenceAdapter() = default;
+  virtual bool ready() const = 0;
+  virtual bool clear_asset_references(const std::string &asset_id) = 0;
+  virtual bool references_asset(const std::string &asset_id) const = 0;
+};
+
+enum class CardAssetDeleteResult {
+  SUCCESS,
+  NOT_FOUND,
+  BUSY,
+  REFERENCES_UNAVAILABLE,
+  PERSISTENCE_FAILED,
+  STORAGE_FAILED,
+};
 
 // Application-owned boundary for card-image persistence. HTTP and rendering
 // adapters depend on this service rather than constructing or locating their
@@ -17,7 +38,14 @@ class CardAssetService {
 
   bool start();
   bool stop();
+  void loop();
   bool running() const { return running_; }
+
+  void set_reference_adapter(CardAssetReferenceAdapter *adapter);
+  bool supports_reference_transactions() const {
+    return reference_adapter_ != nullptr && reference_adapter_->ready();
+  }
+  CardAssetDeleteResult delete_with_references(const std::string &id);
 
   bool available() { return store_.available(); }
   size_t capacity() { return store_.capacity(); }
@@ -93,7 +121,20 @@ class CardAssetService {
 
   esphome::card_image_store::CardImageStore store_{};
   std::unique_ptr<RuntimeHolderBase> card_background_runtime_{};
+  CardAssetReferenceAdapter *reference_adapter_{nullptr};
+  std::string pending_delete_id_{};
+  bool delete_running_{false};
   bool running_{false};
+
+  bool load_pending_delete();
+  bool save_pending_delete(const std::string &id);
+  bool clear_pending_delete();
+  CardAssetDeleteResult resume_pending_delete();
+
+#ifdef ESP_PLATFORM
+  uint32_t last_resume_attempt_{0};
+  esphome::ESPPreferenceObject pending_delete_preference_{};
+#endif
 };
 
 // Adapters use this narrow registry to reach the service owned by

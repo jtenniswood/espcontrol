@@ -17,6 +17,7 @@ export interface CardImageLibraryInfo {
   readonly available: boolean;
   readonly requiresUsbFlash: boolean;
   readonly formatVersion: number;
+  readonly referenceTransactions: boolean;
   readonly maxActiveBackgrounds: number;
   readonly storageBytes: number;
   readonly usedBytes: number;
@@ -124,6 +125,7 @@ interface CardImageListPayload {
   readonly available?: unknown;
   readonly requires_usb_flash?: unknown;
   readonly format_version?: unknown;
+  readonly reference_transactions?: unknown;
   readonly max_active_backgrounds?: unknown;
   readonly storage_bytes?: unknown;
   readonly used_bytes?: unknown;
@@ -165,6 +167,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     available: false,
     requiresUsbFlash: false,
     formatVersion: 0,
+    referenceTransactions: false,
     maxActiveBackgrounds: dependencies.maxActiveBackgrounds,
     storageBytes: 0,
     usedBytes: 0,
@@ -190,6 +193,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
       available: !!payload?.available,
       requiresUsbFlash: !!payload?.requires_usb_flash,
       formatVersion: integer(payload?.format_version),
+      referenceTransactions: !!payload?.reference_transactions,
       maxActiveBackgrounds: integer(payload?.max_active_backgrounds) || dependencies.maxActiveBackgrounds,
       storageBytes: integer(payload?.storage_bytes),
       usedBytes: integer(payload?.used_bytes),
@@ -318,7 +322,10 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
       const id = dependencies.normalizeId(value);
       if (!id) return;
       const response = await dependencies.fetch(`/api/card-images/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Could not delete image.");
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Could not delete image.");
+      }
       invalidate();
     },
     async readBytes(value) {

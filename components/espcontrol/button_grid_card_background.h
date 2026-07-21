@@ -238,7 +238,7 @@ inline void card_background_request_download(CardBackgroundImageCtx *ctx) {
              state.id.c_str(), cached_size);
     return;
   }
-  auto reader = store.open(state.id);
+  auto reader = assets->open(state.id);
   if (!reader || !ctx->image->request_update_container(reader, ctx->url)) {
     card_background_handle_download_error(ctx);
     return;

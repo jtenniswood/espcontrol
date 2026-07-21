@@ -87,6 +87,7 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     return response({ json: {
       available: true,
       format_version: 2,
+      reference_transactions: true,
       max_active_backgrounds: 6,
       storage_bytes: 8192,
       used_bytes: 4096,
@@ -104,6 +105,7 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     available: true,
     requiresUsbFlash: false,
     formatVersion: 2,
+    referenceTransactions: true,
     maxActiveBackgrounds: 6,
     storageBytes: 8192,
     usedBytes: 4096,
