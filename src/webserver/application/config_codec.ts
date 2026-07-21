@@ -588,7 +588,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
             unit = "";
             precision = "";
         }
-        options = copyCardBackgroundOptions(options, b && b.options, { type: type });
+        options = copyCardBackgroundOptions(options, b && b.options, b || { type: type });
         return trimConfigFields([
             (type === "door_window" || type === "presence" || type === "screen_lock") ? "" : (b && b.entity || ""),
             label,

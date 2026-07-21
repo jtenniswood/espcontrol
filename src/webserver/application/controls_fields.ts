@@ -440,11 +440,11 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         availability.className = "sp-card-image-storage";
         field.appendChild(availability);
         function selectedImage(this: any) {
-            return cardBackgroundImage(b.options);
+            return cardBackgroundImage(b);
         }
         function setBackground(this: any, id?: any) {
             id = normalizeCardBackgroundImageId(id);
-            b.options = setConfigOptionValue(b.options, CARD_BACKGROUND_IMAGE_OPTION, id);
+            setCardBackgroundImage(b, id);
             helpers.saveField("options", b.options);
             refreshPreview();
             renderPreview();

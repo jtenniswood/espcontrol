@@ -123,10 +123,10 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
                 button = candidate.button;
                 matchedCandidate = true;
             }
-            if (cardBackgroundImage(button && button.options))
+            if (cardBackgroundImage(button))
                 count++;
         });
-        if (candidate && !matchedCandidate && cardBackgroundImage(candidate.button && candidate.button.options))
+        if (candidate && !matchedCandidate && cardBackgroundImage(candidate.button))
             count++;
         return count;
     }

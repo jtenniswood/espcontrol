@@ -25,9 +25,9 @@ export function installCardImageServiceModule(): GlobalDescriptors {
     });
     var cardImageBackupAssetProvider = createCardImageBackupAssetProvider(cardImagesFeature, {
         normalizeId: function (value: unknown) { return normalizeCardBackgroundImageId(value); },
-        imageId: function (button: any) { return cardBackgroundImage(button && button.options); },
+        imageId: function (button: any) { return cardBackgroundImage(button); },
         setImageId: function (button: any, id: string) {
-            button.options = setConfigOptionValue(button.options, CARD_BACKGROUND_IMAGE_OPTION, id);
+            setCardBackgroundImage(button, id);
         },
     });
 
@@ -46,7 +46,7 @@ export function installCardImageServiceModule(): GlobalDescriptors {
         var count: any = 0;
         function countButtons(this: any, buttons?: any) {
             (buttons || []).forEach(function (this: any, button?: any) {
-                if (cardBackgroundImage(button && button.options) === id)
+                if (cardBackgroundImage(button) === id)
                     count++;
             });
         }

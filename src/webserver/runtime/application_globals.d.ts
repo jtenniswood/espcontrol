@@ -1215,6 +1215,7 @@ declare global {
   var cardBackgroundImageLimit: any;
   var cardBackgroundImageLimitMessage: any;
   var cardBackgroundSupported: any;
+  var setCardBackgroundImage: any;
   var cardImageLibraryInfo: any;
   var cardImageBackupAssetProvider: any;
   var cardImagesFeature: any;

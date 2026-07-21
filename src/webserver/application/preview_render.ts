@@ -117,7 +117,7 @@ export function installPreviewRenderModule(): GlobalDescriptors {
                         "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
                             " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";
                 }
-                var bgImage: any = cardBackgroundSupported(b) ? cardBackgroundImage(b.options) : "";
+                var bgImage: any = cardBackgroundSupported(b) ? cardBackgroundImage(b) : "";
                 if (bgImage) {
                     btn.className += " sp-btn-has-bg";
                     btn.style.backgroundImage = "url('" + cardImageUrl(bgImage) + "')";

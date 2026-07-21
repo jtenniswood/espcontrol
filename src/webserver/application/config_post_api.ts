@@ -16,7 +16,7 @@ export function installConfigPostApiModule(): GlobalDescriptors {
             changed: 0,
             restore: function (this: any) {
                 entries.forEach(function (this: any, entry?: any) {
-                    entry.button.options = entry.options;
+                    setCardBackgroundImage(entry.button, entry.imageId);
                 });
             },
             persist: function (this: any) {
@@ -29,13 +29,13 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         var changed: any = 0;
         function clearButtons(this: any, buttons?: any, save?: any) {
             (buttons || []).forEach(function (this: any, button?: any, index?: any) {
-                if (cardBackgroundImage(button && button.options) !== id)
+                if (cardBackgroundImage(button) !== id)
                     return;
                 if (seen.indexOf(button) < 0) {
                     seen.push(button);
-                    entries.push({ button: button, options: button.options });
+                    entries.push({ button: button, imageId: cardBackgroundImage(button) });
                 }
-                button.options = setConfigOptionValue(button.options, CARD_BACKGROUND_IMAGE_OPTION, "");
+                setCardBackgroundImage(button, "");
                 changed++;
                 if (save) {
                     save(index);

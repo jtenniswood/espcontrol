@@ -11,12 +11,17 @@ export {
 } from "./backup";
 
 export {
+  CARD_BACKGROUND_IMAGE_OPTION,
   CARD_CONFIG_FIELDS,
+  cardBackgroundAssetId,
+  cardOptionsWithAppearance,
   cardConfigChanged,
   cloneCardConfig,
   copyCardConfig,
   emptyCardConfig,
   parseRawButtonConfig,
+  normalizeCardBackgroundAssetId,
+  setCardBackgroundAssetId,
 } from "./card";
 
 export {
@@ -139,6 +144,11 @@ export type {
 export type {
   DraftCardConfig,
 } from "./card";
+
+export type {
+  CardAppearance,
+  NormalizedCardConfig,
+} from "../contracts/types";
 
 export {
   MEDIA_CARD_CONFIG_VERSION,

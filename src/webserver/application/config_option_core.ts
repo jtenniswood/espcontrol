@@ -75,16 +75,22 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         return cardContractSupportsBackground(b.type || "");
     }
     function normalizeCardBackgroundImageId(this: any, value?: any) {
-        value = String(value || "").trim().toLowerCase();
-        return /^[a-z0-9-]{1,40}$/.test(value) ? value : "";
+        return EspControlModel.normalizeCardBackgroundAssetId(value);
     }
-    function cardBackgroundImage(this: any, options?: any) {
-        return normalizeCardBackgroundImageId(configOptionValue(options, CARD_BACKGROUND_IMAGE_OPTION));
+    function cardBackgroundImage(this: any, cardOrOptions?: any) {
+        if (cardOrOptions && typeof cardOrOptions === "object")
+            return EspControlModel.cardBackgroundAssetId(cardOrOptions);
+        return normalizeCardBackgroundImageId(configOptionValue(cardOrOptions, CARD_BACKGROUND_IMAGE_OPTION));
+    }
+    function setCardBackgroundImage(this: any, b?: any, value?: any) {
+        if (!b)
+            return "";
+        return EspControlModel.setCardBackgroundAssetId(b, value);
     }
     function copyCardBackgroundOptions(this: any, out?: any, sourceOptions?: any, b?: any) {
         if (!cardBackgroundSupported(b))
             return out || "";
-        var id: any = cardBackgroundImage(sourceOptions);
+        var id: any = cardBackgroundImage(b) || cardBackgroundImage(sourceOptions);
         if (!id)
             return out || "";
         return setConfigOptionValue(out || "", CARD_BACKGROUND_IMAGE_OPTION, id);
@@ -181,6 +187,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "cardBackgroundSupported": staticGlobal(cardBackgroundSupported),
         "normalizeCardBackgroundImageId": staticGlobal(normalizeCardBackgroundImageId),
         "cardBackgroundImage": staticGlobal(cardBackgroundImage),
+        "setCardBackgroundImage": staticGlobal(setCardBackgroundImage),
         "copyCardBackgroundOptions": staticGlobal(copyCardBackgroundOptions),
         "cardImageUrl": staticGlobal(cardImageUrl),
         "cardContractOptionSpec": staticGlobal(cardContractOptionSpec),
