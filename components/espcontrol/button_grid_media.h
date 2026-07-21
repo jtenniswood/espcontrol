@@ -14,6 +14,7 @@ enum class MediaControlTab : uint8_t {
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
 constexpr int MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT = 80;
 constexpr int MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM = 200;
+constexpr lv_opa_t MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 
 struct MediaControlCtx {
   std::string entity_id;
@@ -2847,6 +2848,8 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     if (show_volume) lv_obj_clear_flag(row->volume_label, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(row->volume_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(row->volume_label, lv_color_hex(text_color), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(
+      row->volume_label, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA, LV_PART_MAIN);
     char value[8];
     if (row->volume_known) snprintf(value, sizeof(value), "%d%%", row->volume_pct);
     else std::strncpy(value, "--", sizeof(value));
