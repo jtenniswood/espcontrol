@@ -296,6 +296,52 @@ CardImageInfo upload(TestCardImageStore &store, size_t size = 1024) {
   return info;
 }
 
+void test_overlapping_uploads_reserve_distinct_flash_spans() {
+  flash.reset();
+  TestCardImageStore store;
+  auto first_bytes = jpeg_bytes();
+  auto second_bytes = jpeg_bytes();
+  std::fill(first_bytes.begin() + 2, first_bytes.end() - 2, 0x31);
+  std::fill(second_bytes.begin() + 2, second_bytes.end() - 2, 0x72);
+
+  CardImageUpload first;
+  CardImageUpload second;
+  expect(store.begin_upload(first_bytes.size(), first) == ESP_OK,
+         "first concurrent upload should reserve storage");
+  expect(store.begin_upload(second_bytes.size(), second) == ESP_OK,
+         "second concurrent upload should reserve storage");
+  expect(first.offset != second.offset,
+         "overlapping uploads must reserve distinct flash spans");
+
+  const size_t half = first_bytes.size() / 2;
+  expect(store.write_upload(first, first_bytes.data(), half) == ESP_OK,
+         "first concurrent upload should write its first chunk");
+  expect(store.write_upload(second, second_bytes.data(), second_bytes.size()) == ESP_OK,
+         "second concurrent upload should write while the first remains open");
+  expect(store.write_upload(first, first_bytes.data() + half,
+                            first_bytes.size() - half) == ESP_OK,
+         "first concurrent upload should finish after the second");
+
+  CardImageInfo first_image;
+  CardImageInfo second_image;
+  expect(store.commit_upload(second, second_image) == ESP_OK,
+         "second concurrent upload should commit independently");
+  expect(store.commit_upload(first, first_image) == ESP_OK,
+         "first concurrent upload should commit independently");
+
+  for (const auto &fixture : std::vector<std::pair<CardImageInfo, std::vector<uint8_t>>>{
+           {first_image, first_bytes}, {second_image, second_bytes}}) {
+    auto reader = store.open(fixture.first.id);
+    expect(reader != nullptr, "concurrent upload should remain readable");
+    std::vector<uint8_t> actual(fixture.second.size());
+    expect(reader->read(actual.data(), actual.size()) == static_cast<int>(actual.size()),
+           "concurrent upload reader should return the complete image");
+    reader->end();
+    expect(actual == fixture.second,
+           "concurrent upload should preserve only its own JPEG bytes");
+  }
+}
+
 size_t newest_index_offset() {
   return PARTITION_SIZE - CARD_IMAGE_FLASH_SECTOR_SIZE;
 }
@@ -705,6 +751,7 @@ int main() {
   test_card_asset_service_stages_restore_until_commit_or_rollback();
   test_card_asset_service_stages_every_indexed_image();
   test_card_asset_service_retries_restore_recovery_without_pending_delete();
+  test_overlapping_uploads_reserve_distinct_flash_spans();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();

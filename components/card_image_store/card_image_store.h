@@ -201,6 +201,8 @@ class CardImageStore {
                               const uint8_t *buffer, size_t size);
   void erase_ram_caches_for_id_(const std::string &id);
   void erase_caches_for_id_(const std::string &id);
+  bool upload_reserved_(const CardImageUpload &upload) const;
+  void release_upload_(const CardImageUpload &upload);
   int find_index_(const std::string &id) const;
   static uint32_t crc32_update_(uint32_t crc, const uint8_t *data, size_t size);
 
@@ -212,6 +214,11 @@ class CardImageStore {
   size_t active_index_slot_{0};
   std::vector<CardImageInfo> images_{};
   std::vector<CardImageCacheInfo> caches_{};
+  struct UploadReservation {
+    std::string id;
+    layout::RecordSpan span;
+  };
+  std::vector<UploadReservation> upload_reservations_{};
   std::vector<std::pair<size_t, std::string>> recovered_index_names_{};
   struct RamImageCache {
     std::string id;

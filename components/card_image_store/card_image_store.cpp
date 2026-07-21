@@ -487,6 +487,7 @@ size_t CardImageStore::used_bytes() {
   size_t used = 0;
   for (const auto &image : this->images_) used += record_size(image.size);
   for (const auto &cache : this->caches_) used += record_size(cache.size);
+  for (const auto &upload : this->upload_reservations_) used += upload.span.size;
   return used;
 }
 
@@ -524,12 +525,16 @@ bool CardImageStore::purge_caches_outside_cache_region_() {
 int CardImageStore::find_empty_offset_(size_t image_size, bool cache_only) {
   this->ensure_index_();
   std::vector<layout::RecordSpan> records;
-  records.reserve(this->images_.size() + this->caches_.size());
+  records.reserve(this->images_.size() + this->caches_.size() +
+                  this->upload_reservations_.size());
   for (const auto &image : this->images_) {
     records.push_back({image.offset, record_size(image.size)});
   }
   for (const auto &cache : this->caches_) {
     records.push_back({cache.offset, record_size(cache.size)});
+  }
+  for (const auto &upload : this->upload_reservations_) {
+    records.push_back(upload.span);
   }
   size_t start = cache_only ? this->cache_region_start_() : 0;
   return layout::find_empty_offset(this->capacity(), CARD_IMAGE_FLASH_SECTOR_SIZE,
@@ -546,9 +551,33 @@ std::string CardImageStore::next_id_() {
                   "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
                   random[0], random[1], random[2], random[3], random[4], random[5], random[6], random[7],
                   random[8], random[9], random[10], random[11], random[12], random[13], random[14], random[15]);
-    if (this->find_index_(id) < 0) return id;
+    const bool reserved = std::any_of(
+        this->upload_reservations_.begin(), this->upload_reservations_.end(),
+        [&id](const auto &upload) { return upload.id == id; });
+    if (this->find_index_(id) < 0 && !reserved) return id;
   }
   return "";
+}
+
+bool CardImageStore::upload_reserved_(const CardImageUpload &upload) const {
+  return upload.record_size != 0 && std::any_of(
+      this->upload_reservations_.begin(), this->upload_reservations_.end(),
+      [&upload](const auto &reservation) {
+        return reservation.id == upload.id && reservation.span.offset == upload.offset &&
+               reservation.span.size == upload.record_size;
+      });
+}
+
+void CardImageStore::release_upload_(const CardImageUpload &upload) {
+  auto reservation = std::find_if(
+      this->upload_reservations_.begin(), this->upload_reservations_.end(),
+      [&upload](const auto &candidate) {
+        return candidate.id == upload.id && candidate.span.offset == upload.offset &&
+               candidate.span.size == upload.record_size;
+      });
+  if (reservation != this->upload_reservations_.end()) {
+    this->upload_reservations_.erase(reservation);
+  }
 }
 
 esp_err_t CardImageStore::begin_upload(size_t size, CardImageUpload &upload) {
@@ -556,7 +585,8 @@ esp_err_t CardImageStore::begin_upload(size_t size, CardImageUpload &upload) {
   if (!this->available()) return ESP_ERR_NOT_FOUND;
   if (size == 0 || size > CARD_IMAGE_MAX_BYTES) return ESP_ERR_INVALID_SIZE;
   this->ensure_index_();
-  if (this->images_.size() >= CARD_IMAGE_INDEX_MAX_RECORDS) return ESP_ERR_NO_MEM;
+  if (this->images_.size() + this->upload_reservations_.size() >=
+      CARD_IMAGE_INDEX_MAX_RECORDS) return ESP_ERR_NO_MEM;
   int offset = this->find_empty_offset_(size);
   while (offset < 0 && !this->caches_.empty()) {
     const auto evicted = this->caches_.front();
@@ -576,11 +606,20 @@ esp_err_t CardImageStore::begin_upload(size_t size, CardImageUpload &upload) {
   upload.offset = static_cast<size_t>(offset);
   upload.size = size;
   upload.record_size = record_size(size);
-  return esp_partition_erase_range(this->partition_(), upload.offset, upload.record_size);
+  this->upload_reservations_.push_back(
+      {upload.id, {upload.offset, upload.record_size}});
+  const esp_err_t error =
+      esp_partition_erase_range(this->partition_(), upload.offset, upload.record_size);
+  if (error != ESP_OK) {
+    this->release_upload_(upload);
+    upload = {};
+  }
+  return error;
 }
 
 esp_err_t CardImageStore::write_upload(CardImageUpload &upload, const uint8_t *data, size_t size) {
   LockGuard lock(this);
+  if (!this->upload_reserved_(upload)) return ESP_ERR_INVALID_STATE;
   if (data == nullptr || size == 0 || upload.written + size > upload.size) return ESP_ERR_INVALID_ARG;
   for (size_t i = 0; i < size; i++) {
     if (upload.written + i < 2) upload.first_bytes[upload.written + i] = data[i];
@@ -597,12 +636,14 @@ esp_err_t CardImageStore::write_upload(CardImageUpload &upload, const uint8_t *d
 
 esp_err_t CardImageStore::commit_upload(CardImageUpload &upload, CardImageInfo &out) {
   LockGuard lock(this);
+  if (!this->upload_reserved_(upload)) return ESP_ERR_INVALID_STATE;
   if (upload.written != upload.size) return ESP_ERR_INVALID_SIZE;
   if (upload.first_bytes[0] != 0xFF || upload.first_bytes[1] != 0xD8 ||
       upload.last_bytes[0] != 0xFF || upload.last_bytes[1] != 0xD9) return ESP_ERR_INVALID_ARG;
 
   bool index_cache_evicted = false;
-  while (this->images_.size() + this->caches_.size() >= CARD_IMAGE_INDEX_MAX_RECORDS &&
+  while (this->images_.size() + this->caches_.size() +
+             this->upload_reservations_.size() > CARD_IMAGE_INDEX_MAX_RECORDS &&
          !this->caches_.empty()) {
     const auto evicted = this->caches_.front();
     ESP_LOGI(TAG, "Evicting rebuildable RGB565 cache for %s to free image index space",
@@ -613,7 +654,8 @@ esp_err_t CardImageStore::commit_upload(CardImageUpload &upload, CardImageInfo &
     this->caches_.erase(this->caches_.begin());
     index_cache_evicted = true;
   }
-  if (this->images_.size() + this->caches_.size() >= CARD_IMAGE_INDEX_MAX_RECORDS) {
+  if (this->images_.size() + this->caches_.size() +
+      this->upload_reservations_.size() > CARD_IMAGE_INDEX_MAX_RECORDS) {
     return ESP_ERR_NO_MEM;
   }
   if (index_cache_evicted && !this->persist_index_()) return ESP_FAIL;
@@ -634,15 +676,17 @@ esp_err_t CardImageStore::commit_upload(CardImageUpload &upload, CardImageInfo &
     esp_partition_erase_range(this->partition_(), upload.offset, upload.record_size);
     return ESP_FAIL;
   }
+  this->release_upload_(upload);
   upload = {};
   return ESP_OK;
 }
 
 void CardImageStore::abort_upload(CardImageUpload &upload) {
   LockGuard lock(this);
-  if (this->partition_() && upload.record_size) {
+  if (this->partition_() && this->upload_reserved_(upload)) {
     esp_partition_erase_range(this->partition_(), upload.offset, upload.record_size);
   }
+  this->release_upload_(upload);
   upload = {};
 }
 
