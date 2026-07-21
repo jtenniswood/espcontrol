@@ -58,6 +58,11 @@ const esp_partition_t *CardImageStore::partition_() {
       ESP_PARTITION_TYPE_DATA, CARD_IMAGE_PARTITION_SUBTYPE, "card_images");
   if (this->partition_cache_ == nullptr) {
     ESP_LOGW(TAG, "Dedicated card_images partition not found");
+#ifdef ESPCONTROL_CARD_IMAGE_PARTITION_BYTES
+  } else if (this->partition_cache_->size != ESPCONTROL_CARD_IMAGE_PARTITION_BYTES) {
+    ESP_LOGE(TAG, "card_images partition size does not match the generated device capability");
+    this->partition_cache_ = nullptr;
+#endif
   } else if (this->partition_cache_->size < CARD_IMAGE_FLASH_SECTOR_SIZE) {
     ESP_LOGE(TAG, "card_images partition is too small");
     this->partition_cache_ = nullptr;

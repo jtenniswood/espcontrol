@@ -94,6 +94,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  card_asset_capabilities: !include device/card_asset_capabilities.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
   esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
   icons:           !include ../../common/assets/icons.yaml

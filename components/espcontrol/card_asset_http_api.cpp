@@ -104,7 +104,9 @@ std::string list_json() {
   out += ",\"reference_transactions\":true";
   out += ",\"restore_transactions\":true";
   out += ",\"max_active_backgrounds\":";
-#ifdef ESPCONTROL_MAX_GRID_SLOTS
+#ifdef ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE
+  out += std::to_string(ESPCONTROL_CARD_BACKGROUND_MAX_ACTIVE);
+#elif defined(ESPCONTROL_MAX_GRID_SLOTS)
   out += std::to_string(ESPCONTROL_MAX_GRID_SLOTS);
 #else
   out += "0";

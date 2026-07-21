@@ -118,6 +118,8 @@ script:
           };
           static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) <= MAX_GRID_SLOTS,
                         "Card background resident frame budget exceeds this device grid");
+          static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) == CARD_BACKGROUND_RESIDENT_FRAMES,
+                        "Generated card background pool differs from the device capability");
           cfg.card_background_images = card_background_downloaders;
           cfg.card_background_image_count = 20;
           cfg.home_assistant_base_url = []() {
@@ -252,6 +254,8 @@ esphome:
             };
             static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) <= MAX_GRID_SLOTS,
                           "Card background resident frame budget exceeds this device grid");
+            static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) == CARD_BACKGROUND_RESIDENT_FRAMES,
+                          "Generated card background pool differs from the device capability");
             cfg.card_background_images = card_background_downloaders;
             cfg.card_background_image_count = 20;
             cfg.home_assistant_base_url = []() {
@@ -470,6 +474,8 @@ esphome:
             };
             static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) <= MAX_GRID_SLOTS,
                           "Card background resident frame budget exceeds this device grid");
+            static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) == CARD_BACKGROUND_RESIDENT_FRAMES,
+                          "Generated card background pool differs from the device capability");
             cfg.card_background_images = card_background_downloaders;
             cfg.card_background_image_count = 20;
             cfg.home_assistant_base_url = []() {

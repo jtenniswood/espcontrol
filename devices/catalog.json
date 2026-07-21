@@ -7,14 +7,24 @@
       "esp32-p4": {
         "firmware": {
           "build": {
-            "chip": "ESP32-P4"
+            "chip": "ESP32-P4",
+            "flashBytes": 16777216
+          }
+        }
+      },
+      "esp32-p4-32mb": {
+        "firmware": {
+          "build": {
+            "chip": "ESP32-P4",
+            "flashBytes": 33554432
           }
         }
       },
       "esp32-s3": {
         "firmware": {
           "build": {
-            "chip": "ESP32-S3"
+            "chip": "ESP32-S3",
+            "flashBytes": 16777216
           }
         }
       }
@@ -811,7 +821,7 @@
     },
     "esp32-p4-86": {
       "profiles": {
-        "platform": "esp32-p4",
+        "platform": "esp32-p4-32mb",
         "assets": "card-backgrounds-9",
         "modal": "large-square",
         "fonts": "compact-panel",

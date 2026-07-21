@@ -10,7 +10,6 @@ substitutions:
   espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
   mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
-  partition_table_file: "../../../common/device/partitions_16mb_card_images.csv"
 
 # ---------------------------------------------------------------------------
 # ESP32-S3 platform (16MB flash, ESP-IDF framework)
@@ -73,7 +72,6 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-DESPCONTROL_DISABLE_TODO=1"
-    - "-DESPCONTROL_MAX_GRID_SLOTS=9"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
     - "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1"

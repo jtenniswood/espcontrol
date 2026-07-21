@@ -10,7 +10,6 @@ substitutions:
   espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
   mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
-  partition_table_file: "../../../common/device/partitions_16mb_card_images.csv"
 
 # ---------------------------------------------------------------------------
 # ESP32-P4 platform (16MB flash, ESP-IDF framework)
@@ -71,7 +70,6 @@ esphome:
   build_flags:
     - "-Wno-deprecated-declarations"
     - "-DESPCONTROL_DISABLE_TODO=1"
-    - "-DESPCONTROL_MAX_GRID_SLOTS=6"
     # Force cached ESPHome objects to rebuild after the 2026.5
     # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
     - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"

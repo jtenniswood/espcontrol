@@ -83,7 +83,9 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         (
             "generated blocks inside `devices/*/packages.yaml`",
             "generated blocks inside `devices/*/device/sensors.yaml`",
+            "devices/*/device/card_asset_capabilities.yaml",
             "common/device/card_background_images_*.yaml",
+            "common/device/partitions_*mb_card_images.csv",
         ),
         "python3 scripts/generate_device_slots.py",
         "`python3 scripts/generate_device_slots.py --check` and `npm run check:product`",

@@ -457,6 +457,12 @@ def validate_build(slug: str, firmware: dict[str, Any] | None, errors: list[str]
     elif chip not in VALID_CHIP_FAMILIES:
         valid = ", ".join(sorted(VALID_CHIP_FAMILIES))
         errors.append(device_error(slug, f"firmware.build.chip must be one of {valid}"))
+    flash_bytes = build.get("flashBytes")
+    if not is_positive_int(flash_bytes) or flash_bytes % (1024 * 1024) != 0:
+        errors.append(device_error(
+            slug,
+            "firmware.build.flashBytes must be a positive whole number of MiB",
+        ))
 
 
 def validate_fonts(
@@ -967,6 +973,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "display_mode": display.get("mode", "color"),
         "modal": copy.deepcopy(display["modal"]),
         "package": firmware.get("package"),
+        "flash_bytes": firmware["build"]["flashBytes"],
     }
     if "portraitCols" in layout:
         slot["portrait_cols"] = layout["portraitCols"]

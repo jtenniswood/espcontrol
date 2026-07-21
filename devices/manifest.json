@@ -92,7 +92,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -288,7 +289,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -480,7 +482,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -674,7 +677,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -866,7 +870,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 33554432
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -1083,7 +1088,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-S3"
+          "chip": "ESP32-S3",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",

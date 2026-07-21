@@ -45,7 +45,9 @@ full source-to-output ownership table lives in
 - `docs/public/webserver/*/www.js`
 - generated blocks inside `devices/*/packages.yaml`
 - generated blocks inside `devices/*/device/sensors.yaml`
+- `devices/*/device/card_asset_capabilities.yaml`
 - `common/device/card_background_images_*.yaml`
+- `common/device/partitions_*mb_card_images.csv`
 
 The central generator is:
 
@@ -92,7 +94,9 @@ devices/manifest.json
   -> docs/public/device-profiles.json
   -> docs/generated/screens/*.md
   -> generated package and sensor blocks
+  -> device/card_asset_capabilities.yaml
   -> common/device/card_background_images_*.yaml
+  -> common/device/partitions_*mb_card_images.csv
 
 src/webserver/**
   -> docs/public/webserver/<slug>/www.js
