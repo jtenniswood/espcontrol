@@ -98,8 +98,27 @@ export interface CardImageDeletionDependencies {
   rerender(): void;
 }
 
+export interface CardImageDeviceDeletionDependencies {
+  waitForPendingPosts(): Promise<unknown>;
+  resetPostError(): void;
+  deleteImage(): Promise<void>;
+  clearLocalReferences(): void;
+  rerender(): void;
+}
+
 export const CARD_IMAGE_SAVE_FAILURE_MESSAGE =
   "Card changes could not be saved, so the image was not deleted.";
+
+export async function deleteCardImageWithDeviceTransaction(
+  dependencies: CardImageDeviceDeletionDependencies,
+): Promise<boolean> {
+  await dependencies.waitForPendingPosts();
+  dependencies.resetPostError();
+  await dependencies.deleteImage();
+  dependencies.clearLocalReferences();
+  dependencies.rerender();
+  return true;
+}
 
 export async function deleteCardImageConfigurationFirst(
   dependencies: CardImageDeletionDependencies,

@@ -1,5 +1,6 @@
 import {
   deleteCardImageConfigurationFirst,
+  deleteCardImageWithDeviceTransaction,
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
   type CardImageItem,
@@ -79,11 +80,15 @@ export function installCardImageServiceModule(): GlobalDescriptors {
         if (!id)
             return Promise.reject(new Error("Invalid card image ID."));
         if (cardImagesFeature.info().referenceTransactions) {
-            return deleteCardImage(id).then(function () {
-                clearCardImageReferences(id, false);
-                renderPreview();
-                renderButtonSettings();
-                return true;
+            return deleteCardImageWithDeviceTransaction({
+                waitForPendingPosts: function () { return postQueueIdle(); },
+                resetPostError: function () { resetPostQueueError(); },
+                deleteImage: function () { return deleteCardImage(id); },
+                clearLocalReferences: function () { clearCardImageReferences(id, false); },
+                rerender: function () {
+                    renderPreview();
+                    renderButtonSettings();
+                },
             });
         }
         return deleteCardImageConfigurationFirst({

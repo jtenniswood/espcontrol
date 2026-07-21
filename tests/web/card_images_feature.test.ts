@@ -4,6 +4,7 @@ import {
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
   deleteCardImageConfigurationFirst,
+  deleteCardImageWithDeviceTransaction,
   type CardImageHttpRequest,
   type CardImageHttpResponse,
 } from "../../src/webserver/features/card_images";
@@ -339,4 +340,25 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     deleted: false, rerenders: 1, error: "Image could not be deleted.", references: [""],
     persistedReferences: [""], restoredPosts: 0,
   }, "a failed image delete keeps successfully persisted reference clearing");
+
+  let releasePendingPost: (() => void) | undefined;
+  const pendingPost = new Promise<void>((resolve) => { releasePendingPost = resolve; });
+  const deviceDeleteEvents: string[] = [];
+  const deviceDelete = deleteCardImageWithDeviceTransaction({
+    waitForPendingPosts() {
+      deviceDeleteEvents.push("wait");
+      return pendingPost;
+    },
+    resetPostError() { deviceDeleteEvents.push("reset"); },
+    async deleteImage() { deviceDeleteEvents.push("delete"); },
+    clearLocalReferences() { deviceDeleteEvents.push("clear-local"); },
+    rerender() { deviceDeleteEvents.push("rerender"); },
+  });
+  await Promise.resolve();
+  deepEqual(deviceDeleteEvents, ["wait"],
+    "device-owned deletion waits for an already queued card save");
+  releasePendingPost?.();
+  await deviceDelete;
+  deepEqual(deviceDeleteEvents, ["wait", "reset", "delete", "clear-local", "rerender"],
+    "device-owned deletion drains the queue before deleting and updating local state");
 }
