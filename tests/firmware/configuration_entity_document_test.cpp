@@ -126,13 +126,42 @@ bool malformed_records_are_rejected() {
   return reader.inspect().status == EntityDocumentStatus::INVALID_DOCUMENT;
 }
 
+bool partial_and_duplicate_documents_are_rejected() {
+  FakeRegistry registry;
+  registry.entities = {
+      {ConfigurationEntityDomain::TEXT, "button_order", "1"},
+      {ConfigurationEntityDomain::TEXT, "button_1_config", "config"},
+  };
+  EntityConfigurationAdapter adapter(registry);
+  std::array<uint8_t, 256> document{};
+
+  ConfigurationEntityDocumentBuilder partial(document.data(), document.size());
+  ConfigurationEntityView first;
+  if (!registry.read(0, &first) || !partial.append(first)) return false;
+  const EntityDocumentResult partial_result = partial.finish();
+  if (!partial_result.ok() ||
+      adapter.validate(CURRENT_CONFIGURATION_DOCUMENT_VERSION,
+                       document.data(), partial_result.document_size)) {
+    return false;
+  }
+
+  ConfigurationEntityDocumentBuilder duplicate(document.data(),
+                                                 document.size());
+  if (!duplicate.append(first) || !duplicate.append(first)) return false;
+  const EntityDocumentResult duplicate_result = duplicate.finish();
+  return duplicate_result.ok() &&
+         !adapter.validate(CURRENT_CONFIGURATION_DOCUMENT_VERSION,
+                           document.data(), duplicate_result.document_size);
+}
+
 }  // namespace
 
 int main() {
   return legacy_round_trip_keeps_entity_identity_and_values() &&
                  required_capacity_is_reported_without_partial_output() &&
                  invalid_or_unknown_documents_never_apply_partially() &&
-                 malformed_records_are_rejected()
+                 malformed_records_are_rejected() &&
+                 partial_and_duplicate_documents_are_rejected()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

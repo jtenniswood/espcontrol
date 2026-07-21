@@ -214,20 +214,45 @@ LegacyLoadResult EntityConfigurationAdapter::load(uint8_t *output,
 bool EntityConfigurationAdapter::mirror(uint16_t document_version,
                                         const uint8_t *document,
                                         size_t document_size) {
-  if (document_version != CURRENT_CONFIGURATION_DOCUMENT_VERSION) return false;
-  ConfigurationEntityDocumentReader validator(document, document_size);
-  if (!validator.inspect().ok()) return false;
+  if (!validate(document_version, document, document_size)) return false;
   ConfigurationEntityView entity;
-  while (validator.next(&entity)) {
-    if (!registry_.can_apply(entity)) return false;
-  }
-  if (!validator.finished()) return false;
-
   ConfigurationEntityDocumentReader applier(document, document_size);
   while (applier.next(&entity)) {
     if (!registry_.apply(entity)) return false;
   }
   return applier.finished();
+}
+
+bool EntityConfigurationAdapter::validate(uint16_t document_version,
+                                          const uint8_t *document,
+                                          size_t document_size) const {
+  if (document_version != CURRENT_CONFIGURATION_DOCUMENT_VERSION) return false;
+  ConfigurationEntityDocumentReader validator(document, document_size);
+  const EntityDocumentResult inspected = validator.inspect();
+  if (!inspected.ok() || inspected.record_count != registry_.size()) {
+    return false;
+  }
+  ConfigurationEntityView entity;
+  while (validator.next(&entity)) {
+    if (!registry_.can_apply(entity)) return false;
+
+    // A complete document must contain every registry identity exactly once.
+    // Count duplicates without allocating a set: entity counts are bounded by
+    // the generated device profile and saves are infrequent.
+    size_t matches = 0;
+    ConfigurationEntityDocumentReader duplicate_scan(document, document_size);
+    ConfigurationEntityView candidate;
+    while (duplicate_scan.next(&candidate)) {
+      if (candidate.domain == entity.domain &&
+          candidate.object_id_size == entity.object_id_size &&
+          std::memcmp(candidate.object_id, entity.object_id,
+                      entity.object_id_size) == 0) {
+        ++matches;
+      }
+    }
+    if (!duplicate_scan.finished() || matches != 1) return false;
+  }
+  return validator.finished();
 }
 
 }  // namespace espcontrol::configuration

@@ -4,6 +4,7 @@
 
 #include "configuration_document_api.h"
 #include "configuration_entity_document.h"
+#include "configuration_http_handler.h"
 #include "configuration_service.h"
 #include "configuration_store.h"
 #include "espcontrol_app_core.h"
@@ -30,6 +31,7 @@ class EspControlApp : public esphome::Component {
 
  private:
   void bootstrap_configuration();
+  void register_configuration_transport();
 
   EspControlAppCore core_{};
   configuration::EspHomeConfigurationRegistry configuration_registry_{};
@@ -43,7 +45,9 @@ class EspControlApp : public esphome::Component {
   configuration::ConfigurationDocumentApi configuration_document_api_{
       configuration_service_};
   uint8_t *configuration_scratch_{nullptr};
+  uint8_t *configuration_upload_{nullptr};
   bool configuration_ready_{false};
+  bool configuration_transport_registered_{false};
   uint32_t configuration_retry_at_{0};
 };
 

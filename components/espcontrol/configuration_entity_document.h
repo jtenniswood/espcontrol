@@ -100,6 +100,8 @@ class EntityConfigurationAdapter final : public LegacyConfigurationAdapter {
       : registry_(registry) {}
 
   LegacyLoadResult load(uint8_t *output, size_t output_capacity) override;
+  bool validate(uint16_t document_version, const uint8_t *document,
+                size_t document_size) const;
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override;
 

@@ -91,6 +91,14 @@ target_compile_options(configuration_entity_document_test PRIVATE -Wall -Wextra 
 target_include_directories(configuration_entity_document_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_entity_document_test COMMAND configuration_entity_document_test)
 
+add_executable(configuration_upload_session_test
+  configuration_upload_session_test.cpp
+)
+target_compile_features(configuration_upload_session_test PRIVATE cxx_std_17)
+target_compile_options(configuration_upload_session_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(configuration_upload_session_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_upload_session_test COMMAND configuration_upload_session_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
