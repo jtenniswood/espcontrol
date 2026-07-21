@@ -284,9 +284,14 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
 
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   if (!device.rotation || !device.rotation.enabled) continue;
-  const featureConfig = generated.match(/features:\{[^}]*\}/)?.[0] || "";
+  // Scope the lookup to this device's own entry. Matching the bundle globally
+  // silently checked every device against whichever block came first, which
+  // went unnoticed while all devices shared the same rotation values.
+  const deviceStart = generated.indexOf(`"${slug}":{`);
+  assert(deviceStart !== -1, `${slug}: generated web UI must include a device profile entry`);
+  const featureConfig = generated.slice(deviceStart).match(/features:\{[^}]*\}/)?.[0] || "";
   assert(
-    /features:\{[^}]*screenRotation:!0/.test(generated),
+    /screenRotation:!0/.test(featureConfig),
     `${slug}: generated web UI must expose screen rotation when rotation is enabled`
   );
   assert.deepStrictEqual(device.rotation.options, ALL_ROTATIONS, `${slug}: normal rotation options`);
