@@ -2,6 +2,8 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+#include <new>
+
 #ifdef ESP_PLATFORM
 #include "esp_heap_caps.h"
 #endif
@@ -1108,8 +1110,62 @@ struct GridRuntimeAllocation {
   void (*deleter)(void *) = nullptr;
 };
 
-inline std::vector<GridRuntimeAllocation> &grid_runtime_allocations() {
-  static std::vector<GridRuntimeAllocation> allocations;
+constexpr size_t GRID_RUNTIME_ALLOCATION_CAPACITY =
+  static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) * 8;
+
+class GridRuntimeAllocationRegistry {
+ public:
+  GridRuntimeAllocation *begin() { return entries_; }
+  GridRuntimeAllocation *end() {
+    return entries_ == nullptr ? nullptr : entries_ + size_;
+  }
+  const GridRuntimeAllocation *begin() const { return entries_; }
+  const GridRuntimeAllocation *end() const {
+    return entries_ == nullptr ? nullptr : entries_ + size_;
+  }
+
+  bool push_back(const GridRuntimeAllocation &allocation) {
+    if (!ensure_storage() || size_ >= GRID_RUNTIME_ALLOCATION_CAPACITY) {
+      if (!capacity_warning_logged_) {
+        ESP_LOGE("card_runtime",
+                 "Runtime ownership pool exhausted at %u entries",
+                 static_cast<unsigned>(size_));
+        capacity_warning_logged_ = true;
+      }
+      return false;
+    }
+    entries_[size_++] = allocation;
+    return true;
+  }
+
+  GridRuntimeAllocation &operator[](size_t index) { return entries_[index]; }
+  size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
+  void resize(size_t size) {
+    if (size <= size_) size_ = size;
+  }
+
+ private:
+  bool ensure_storage() {
+    if (entries_ != nullptr) return true;
+#ifdef ESP_PLATFORM
+    entries_ = static_cast<GridRuntimeAllocation *>(heap_caps_calloc(
+      GRID_RUNTIME_ALLOCATION_CAPACITY, sizeof(GridRuntimeAllocation),
+      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+#else
+    entries_ = new (std::nothrow)
+      GridRuntimeAllocation[GRID_RUNTIME_ALLOCATION_CAPACITY]();
+#endif
+    return entries_ != nullptr;
+  }
+
+  GridRuntimeAllocation *entries_ = nullptr;
+  size_t size_ = 0;
+  bool capacity_warning_logged_ = false;
+};
+
+inline GridRuntimeAllocationRegistry &grid_runtime_allocations() {
+  static GridRuntimeAllocationRegistry allocations;
   return allocations;
 }
 
@@ -1268,7 +1324,7 @@ inline void grid_release_runtime_allocations(
     lv_obj_t *owner, void *preserve_primary = nullptr,
     void *preserve_secondary = nullptr, void *preserve_tertiary = nullptr) {
   if (owner == nullptr) return;
-  std::vector<GridRuntimeAllocation> &allocations = grid_runtime_allocations();
+  GridRuntimeAllocationRegistry &allocations = grid_runtime_allocations();
   size_t write_index = 0;
   for (size_t read_index = 0; read_index < allocations.size(); read_index++) {
     GridRuntimeAllocation &allocation = allocations[read_index];
@@ -1293,7 +1349,6 @@ inline void grid_release_runtime_allocations(
     write_index++;
   }
   allocations.resize(write_index);
-  if (allocations.empty()) std::vector<GridRuntimeAllocation>().swap(allocations);
 }
 
 template<typename T>

@@ -4,6 +4,7 @@
 
 #ifdef USE_WEBSERVER
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -37,6 +38,9 @@ class ConfigurationHttpHandler final
       esphome::web_server_idf::AsyncWebServerRequest *request) const override;
   void handleRequest(
       esphome::web_server_idf::AsyncWebServerRequest *request) override;
+  uint32_t take_committed_revision() {
+    return committed_revision_.exchange(0);
+  }
 
  private:
   void handle_snapshot(
@@ -51,6 +55,7 @@ class ConfigurationHttpHandler final
   size_t snapshot_capacity_{0};
   ConfigurationUploadSession upload_;
   uint8_t decoded_chunk_[MAX_CHUNK_SIZE]{};
+  std::atomic<uint32_t> committed_revision_{0};
 };
 
 }  // namespace espcontrol::configuration

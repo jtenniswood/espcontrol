@@ -905,6 +905,8 @@ void AsyncResponseStream::printf(const char *fmt, ...) {
 
 #ifdef USE_WEBSERVER
 AsyncEventSource::~AsyncEventSource() {
+  if (global_async_event_source() == this)
+    global_async_event_source() = nullptr;
   for (auto *ses : this->sessions_) {
     delete ses;  // NOLINT(cppcoreguidelines-owning-memory)
   }

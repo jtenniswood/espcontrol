@@ -269,6 +269,11 @@ class AsyncWebHandler {
 class AsyncEventSource;
 class AsyncEventSourceResponse;
 
+inline AsyncEventSource *&global_async_event_source() {
+  static AsyncEventSource *ptr = nullptr;
+  return ptr;
+}
+
 using message_generator_t = json::SerializationBuffer<>(esphome::web_server::WebServer *, void *);
 
 /*
@@ -336,7 +341,10 @@ class AsyncEventSource : public AsyncWebHandler {
   using connect_handler_t = std::function<void(AsyncEventSourceClient *)>;
 
  public:
-  AsyncEventSource(std::string url, esphome::web_server::WebServer *ws) : url_(std::move(url)), web_server_(ws) {}
+  AsyncEventSource(std::string url, esphome::web_server::WebServer *ws) : url_(std::move(url)), web_server_(ws) {
+    if (this->url_ == "/events")
+      global_async_event_source() = this;
+  }
   ~AsyncEventSource() override;
 
   // NOLINTNEXTLINE(readability-identifier-naming)

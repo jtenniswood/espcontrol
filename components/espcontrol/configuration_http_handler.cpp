@@ -223,6 +223,7 @@ void ConfigurationHttpHandler::handle_commit(
                                                              "unavailable",
                 static_cast<unsigned>(saved.revision));
   if (saved.ok()) {
+    committed_revision_.store(saved.revision);
     send_json(request, 200, response);
   } else if (saved.status == DocumentApiStatus::CONFLICT) {
     send_json(request, 409, response);

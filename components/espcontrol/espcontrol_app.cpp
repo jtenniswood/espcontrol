@@ -1,5 +1,7 @@
 #include "espcontrol_app.h"
 
+#include <cstdio>
+
 #include "esp_heap_caps.h"
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
@@ -84,12 +86,13 @@ void EspControlApp::register_configuration_transport() {
   }
   auto *server = esphome::web_server_idf::global_async_web_server();
   if (server == nullptr) return;
-  server->addHandler(new configuration::ConfigurationHttpHandler(
+  configuration_handler_ = new configuration::ConfigurationHttpHandler(
       configuration_document_api_, legacy_configuration_,
       configuration_scratch_,
       configuration::NvsConfigurationStorage::SLOT_CAPACITY,
       configuration_upload_,
-      configuration::NvsConfigurationStorage::SLOT_CAPACITY));
+      configuration::NvsConfigurationStorage::SLOT_CAPACITY);
+  server->addHandler(configuration_handler_);
   configuration_transport_registered_ = true;
   ESP_LOGI(TAG, "Revisioned configuration transport is ready");
 #endif
@@ -99,6 +102,23 @@ void EspControlApp::loop() {
   core_.run_once();
   bootstrap_configuration();
   register_configuration_transport();
+#ifdef USE_WEBSERVER
+  if (configuration_handler_ != nullptr) {
+    const uint32_t revision =
+        configuration_handler_->take_committed_revision();
+    auto *events = esphome::web_server_idf::global_async_event_source();
+    if (revision != 0 && events != nullptr) {
+      char message[32];
+      const int length = std::snprintf(
+          message, sizeof(message), "{\"revision\":%u}",
+          static_cast<unsigned>(revision));
+      if (length > 0 && static_cast<size_t>(length) < sizeof(message)) {
+        events->try_send_nodefer(message, static_cast<size_t>(length),
+                                 "espcontrol_configuration");
+      }
+    }
+  }
+#endif
 }
 
 void EspControlApp::on_shutdown() {

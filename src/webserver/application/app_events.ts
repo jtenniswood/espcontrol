@@ -118,6 +118,9 @@ export function installAppEventsModule(): GlobalDescriptors {
             handleDisconnected(source);
         });
         source.addEventListener("ping", handleWebServerPingEvent);
+        source.addEventListener("espcontrol_configuration", function (this: any) {
+            refreshConfigurationSnapshot();
+        });
         source.addEventListener("state", function (this: any, e?: any) {
             var d: any = parseEntityEventData(e.data);
             if (!d)

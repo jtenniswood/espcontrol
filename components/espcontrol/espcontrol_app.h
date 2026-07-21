@@ -46,6 +46,9 @@ class EspControlApp : public esphome::Component {
       configuration_service_};
   uint8_t *configuration_scratch_{nullptr};
   uint8_t *configuration_upload_{nullptr};
+#ifdef USE_WEBSERVER
+  configuration::ConfigurationHttpHandler *configuration_handler_{nullptr};
+#endif
   bool configuration_ready_{false};
   bool configuration_transport_registered_{false};
   uint32_t configuration_retry_at_{0};
