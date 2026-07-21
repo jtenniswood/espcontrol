@@ -164,7 +164,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 placeholder: "e.g. UPS Runtime",
                 rerender: true,
             });
-            var timeUnitField: any = helpers.selectField("Input Unit", helpers.idPrefix + "time-unit", [
+            var timeUnitField: any = helpers.selectField("Incoming Value Unit", helpers.idPrefix + "time-unit", [
                 ["", "Auto"],
                 ["seconds", "Seconds"],
                 ["minutes", "Minutes"],
@@ -174,6 +174,10 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 setSensorTimeUnit(b, this.value);
                 helpers.saveField("options", b.options);
             });
+            var timeUnitNote: any = document.createElement("div");
+            timeUnitNote.className = "sp-apply-note";
+            timeUnitNote.textContent = "Auto uses the unit reported by Home Assistant. A manual choice overrides it.";
+            timeUnitField.field.appendChild(timeUnitNote);
             timeSection.appendChild(timeUnitField.field);
             panel.appendChild(timeSection);
             var textSection: any = condField();
@@ -368,8 +372,11 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 };
             }
             if (b.precision === "time") {
+                var timeValue: any = sizeColSpan((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) > 1
+                    ? "1h 30m"
+                    : "1h";
                 return {
-                    iconHtml: cardSensorPreviewHtml(b, helpers, "1h 30m", ""),
+                    iconHtml: cardSensorPreviewHtml(b, helpers, timeValue, ""),
                     labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge),
                 };
             }

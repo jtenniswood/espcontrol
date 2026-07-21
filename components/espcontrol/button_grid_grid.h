@@ -638,12 +638,13 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 inline bool bind_basic_sensor_card(
     BtnSlot &s, const ParsedCfg &p,
-    const espcontrol::cards::Context &context, const CardPalette &palette) {
+    const espcontrol::cards::Context &context, const CardPalette &palette,
+    int col_span = 1) {
   if (espcontrol::cards::status_entity_driver_bind_data(
         s, p, context, palette)) return true;
   if (espcontrol::cards::date_time_driver_bind_data(s, p, context)) return true;
   if (espcontrol::cards::sensor_driver_bind_data(
-        s, p, context, palette)) return true;
+        s, p, context, palette, col_span)) return true;
   if (espcontrol::cards::weather_driver_bind_data(s, p, context)) return true;
   return false;
 }
@@ -1680,7 +1681,7 @@ inline void grid_phase2(
       palette, display, s, cfg);
     if (espcontrol::cards::media_driver_bind_main(
           s, p, context, media_environment)) continue;
-    if (bind_basic_sensor_card(s, p, context, palette)) continue;
+    if (bind_basic_sensor_card(s, p, context, palette, col_span)) continue;
     espcontrol::cards::ToggleDriverState toggle_state;
     toggle_state.has_sensor = &has_sensor[idx - 1];
     toggle_state.sensor_text_mode = &sensor_text_mode[idx - 1];
@@ -1902,7 +1903,7 @@ inline void grid_phase2(
         [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
       if (espcontrol::cards::media_driver_bind_subpage(
             sub_slot, sb_cfg, context, media_environment)) continue;
-      if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)) continue;
+      if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;
       action_environment.parent_config = &p;

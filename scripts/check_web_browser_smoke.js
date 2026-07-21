@@ -1943,6 +1943,14 @@ async function assertEmptyCellSettings(page, posts, label) {
     await page.locator("#sp-inp-time-unit").isVisible(),
     `${label}: Time type shows the input unit dropdown`,
   );
+  assert(
+    await page.getByText("Incoming Value Unit", { exact: true }).isVisible(),
+    `${label}: Time input unit uses the clearer incoming-value label`,
+  );
+  assert(
+    await page.getByText("Auto uses the unit reported by Home Assistant. A manual choice overrides it.", { exact: true }).isVisible(),
+    `${label}: Time input unit explains Auto and manual override behaviour`,
+  );
   assert.strictEqual(
     await page.locator("#sp-inp-time-unit").inputValue(),
     "",

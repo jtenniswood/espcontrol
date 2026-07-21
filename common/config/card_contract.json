@@ -1947,7 +1947,7 @@
         },
         {
           "name": "time_unit",
-          "label": "Input Unit",
+          "label": "Incoming Value Unit",
           "kind": "choice",
           "values": ["", "seconds", "minutes", "hours", "days"],
           "defaultValue": "",

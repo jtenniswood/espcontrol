@@ -1567,9 +1567,12 @@ inline bool duration_unit_seconds_multiplier(const std::string &raw_unit,
 }
 
 inline bool format_duration_value(char *buffer, size_t buffer_size,
-                                  double value, const std::string &input_unit) {
+                                  double value, const std::string &input_unit,
+                                  int max_components = 2) {
   if (!buffer || buffer_size == 0) return false;
   buffer[0] = '\0';
+  if (max_components < 1) return false;
+  if (max_components > 4) max_components = 4;
   double multiplier = 0.0;
   if (!std::isfinite(value) || value < 0.0 ||
       !duration_unit_seconds_multiplier(input_unit, multiplier)) return false;
@@ -1592,7 +1595,7 @@ inline bool format_duration_value(char *buffer, size_t buffer_size,
   const char *suffixes[] = {"d", "h", "m", "s"};
   size_t used = 0;
   int components = 0;
-  for (int i = 0; i < 4 && components < 2; ++i) {
+  for (int i = 0; i < 4 && components < max_components; ++i) {
     if (values[i] == 0) continue;
     const int written = std::snprintf(
       buffer + used, buffer_size - used, components == 0 ? "%llu%s" : " %llu%s",
@@ -1610,7 +1613,8 @@ inline bool format_duration_value(char *buffer, size_t buffer_size,
 inline bool format_duration_sensor_state(char *buffer, size_t buffer_size,
                                          const std::string &state, bool has_state,
                                          const std::string &auto_unit, bool has_auto_unit,
-                                         const std::string &manual_unit = "") {
+                                         const std::string &manual_unit = "",
+                                         int max_components = 2) {
   if (!buffer || buffer_size == 0) return false;
   buffer[0] = '\0';
   if (!has_state || (manual_unit.empty() && !has_auto_unit)) return false;
@@ -1620,7 +1624,8 @@ inline bool format_duration_sensor_state(char *buffer, size_t buffer_size,
   const double value = std::strtod(begin, &end);
   while (end && *end && std::isspace(static_cast<unsigned char>(*end))) ++end;
   if (end == begin || !end || *end != '\0') return false;
-  return format_duration_value(buffer, buffer_size, value, input_unit);
+  return format_duration_value(
+    buffer, buffer_size, value, input_unit, max_components);
 }
 
 inline bool is_text_sensor_card(const std::string &type, const std::string &precision) {

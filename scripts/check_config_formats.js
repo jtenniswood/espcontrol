@@ -671,6 +671,7 @@ assert.strictEqual(
   "sensor large-number option blocks time mode"
 );
 assert.deepStrictEqual(Array.from(sensorOptionByName.time_unit.values), ["", "seconds", "minutes", "hours", "days"], "time sensor input unit choices are contract-backed");
+assert.strictEqual(sensorOptionByName.time_unit.label, "Incoming Value Unit", "time sensor unit override has a clear user-facing label");
 assert.strictEqual(sensorOptionByName.active_color.label, "Lit When Active", "sensor active-colour option has a user-facing label");
 assert.deepStrictEqual(
   Array.from(sensorOptionByName.active_color.supportedWhen.precisionNot),

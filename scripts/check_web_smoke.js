@@ -821,15 +821,30 @@ const sensorIconPreview = hooks.buttonTypePreviewFor("sensor", {
 assert(sensorIconPreview.iconHtml.includes("mdi-door"), "sensor icon preview uses the selected icon");
 assert(sensorIconPreview.labelHtml.includes("mdi-toggle-switch"), "sensor icon preview uses the icon badge");
 
-const sensorTimePreview = hooks.buttonTypePreviewFor("sensor", {
+const sensorTimeCard = {
   sensor: "sensor.ups_runtime",
   label: "UPS Runtime",
   type: "sensor",
   precision: "time",
   options: "time_unit=hours,large_numbers",
-}, { cardSize: 4 });
-assert.strictEqual(previewSensorValue(sensorTimePreview), "1h 30m", "sensor Time preview shows compact duration formatting");
+};
+const sensorTimePreview = hooks.buttonTypePreviewFor("sensor", sensorTimeCard, { cardSize: 4 });
+assert.strictEqual(previewSensorValue(sensorTimePreview), "1h 30m", "sensor Time preview shows two duration parts on multi-column cards");
 assert(!sensorTimePreview.iconHtml.includes("sp-sensor-preview-large"), "sensor Time preview remains on the normal responsive layout");
+for (const cardSize of [1, 2, 5]) {
+  assert.strictEqual(
+    previewSensorValue(hooks.buttonTypePreviewFor("sensor", sensorTimeCard, { cardSize })),
+    "1h",
+    `sensor Time preview shows one duration part on single-column card size ${cardSize}`,
+  );
+}
+for (const cardSize of [3, 4, 6, 7, 8, 9, 10]) {
+  assert.strictEqual(
+    previewSensorValue(hooks.buttonTypePreviewFor("sensor", sensorTimeCard, { cardSize })),
+    "1h 30m",
+    `sensor Time preview shows two duration parts on multi-column card size ${cardSize}`,
+  );
+}
 
 const legacyForecastPreview = hooks.buttonTypePreviewFor("weather_forecast", {
   entity: "weather.forecast_home",
