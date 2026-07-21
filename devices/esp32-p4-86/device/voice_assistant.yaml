@@ -132,10 +132,6 @@ media_player:
         file: ${voice_timer_alert_file}
       - id: voice_stt_failure_chime
         file: ${voice_stt_failure_chime_file}
-      - id: alarm_delay_entry_beep
-        file: ${alarm_delay_entry_beep_file}
-      - id: alarm_delay_exit_beep
-        file: ${alarm_delay_exit_beep_file}
     volume_min: 0.0
     volume_max: 1.0
     volume_increment: 0.005
@@ -151,9 +147,8 @@ media_player:
       sample_rate: 48000
     on_announcement:
       - lambda: |-
-          id(alarm_delay_beep_announcement_active) =
-            id(alarm_delay_beep_requested);
-          id(alarm_delay_beep_requested) = false;
+          id(alarm_delay_tts_announcement_active) =
+            id(alarm_delay_tts_pending);
       - mixer_speaker.apply_ducking:
           id: voice_media_mixing_input
           decibel_reduction: 20
@@ -318,12 +313,7 @@ globals:
     restore_value: false
     initial_value: "false"
 
-  - id: alarm_delay_beep_requested
-    type: bool
-    restore_value: false
-    initial_value: "false"
-
-  - id: alarm_delay_beep_announcement_active
+  - id: alarm_delay_tts_announcement_active
     type: bool
     restore_value: false
     initial_value: "false"
@@ -446,11 +436,9 @@ script:
     then:
       - if:
           condition:
-            or:
-              - not:
-                  media_player.is_announcing:
-                    id: voice_media_player
-              - lambda: return id(alarm_delay_beep_announcement_active);
+            not:
+              media_player.is_announcing:
+                id: voice_media_player
           then:
             - lambda: id(alarm_delay_audio_session_active) = true;
             - if:
@@ -463,27 +451,42 @@ script:
                   - media_player.volume_set:
                       id: voice_media_player
                       volume: !lambda return id(alarm_delay_beep_volume).state;
+            - mixer_speaker.apply_ducking:
+                id: voice_media_mixing_input
+                decibel_reduction: 20
+                duration: 0s
             - switch.turn_on: speaker_amplifier_enable
             - lambda: |-
-                id(alarm_delay_beep_requested) = true;
-                id(alarm_delay_beep_announcement_active) = false;
-            - if:
-                condition:
-                  lambda: return entry_delay;
-                then:
-                  - media_player.speaker.play_on_device_media_file:
-                      id: voice_media_player
-                      media_file: alarm_delay_entry_beep
-                      announcement: true
-                else:
-                  - media_player.speaker.play_on_device_media_file:
-                      id: voice_media_player
-                      media_file: alarm_delay_exit_beep
-                      announcement: true
-            - delay: 250ms
-            - lambda: |-
-                id(alarm_delay_beep_requested) = false;
-                id(alarm_delay_beep_announcement_active) = false;
+                constexpr uint32_t sample_rate = 48000U;
+                constexpr size_t chunk_samples = 256U;
+                const AlarmDelayAudioMode mode = entry_delay
+                    ? AlarmDelayAudioMode::ENTRY
+                    : AlarmDelayAudioMode::EXIT;
+                const size_t total_samples =
+                    static_cast<size_t>(alarm_delay_audio_tone_duration_ms(mode)) *
+                    sample_rate / 1000U;
+                int16_t samples[chunk_samples];
+                size_t sample_offset = 0;
+                while (sample_offset < total_samples) {
+                  const size_t count = std::min(
+                      chunk_samples, total_samples - sample_offset);
+                  alarm_delay_audio_fill_tone(
+                      mode, samples, sample_offset, count, sample_rate,
+                      static_cast<float>(id(alarm_delay_beep_volume).state));
+                  const uint8_t *bytes =
+                      reinterpret_cast<const uint8_t *>(samples);
+                  const size_t byte_count = count * sizeof(int16_t);
+                  const size_t written =
+                      id(voice_announcement_mixing_input).play(bytes, byte_count);
+                  if (written != byte_count) {
+                    ESP_LOGW("alarm_audio",
+                             "Alarm tone buffer accepted %u of %u bytes",
+                             static_cast<unsigned>(written),
+                             static_cast<unsigned>(byte_count));
+                    break;
+                  }
+                  sample_offset += count;
+                }
 
   - id: announce_alarm_delay
     mode: parallel
@@ -497,17 +500,31 @@ script:
               - switch.is_on: voice_services_enabled
               - switch.is_on: alarm_delay_tts_enabled
           then:
-            # Home Assistant can turn this event into TTS for the panel's
-            # Voice Media Player. Local beeps pause while TTS is announcing.
-            - lambda: id(alarm_delay_tts_pending) = true;
-            - homeassistant.event:
-                event: esphome.alarm_delay_announcement
-                data:
-                  device: !lambda return App.get_name().str();
-                  model: ${device_slug}
-                  delay_type: !lambda |-
-                    return entry_delay ? std::string("entry") : std::string("exit");
-                  message: !lambda |-
+            - lambda: |-
+                id(alarm_delay_audio_session_active) = true;
+                id(alarm_delay_tts_pending) = true;
+                id(alarm_delay_tts_announcement_active) = false;
+            - logger.log:
+                level: INFO
+                tag: alarm_audio
+                format: "Requesting %s delay announcement from Home Assistant"
+                args: ['entry_delay ? "entry" : "exit"']
+            - homeassistant.action:
+                action: assist_satellite.announce
+                data_template:
+                  # Render in Home Assistant so this remains a native boolean.
+                  preannounce: "{{ false }}"
+                  entity_id: >-
+                    {% set suffixed = 'assist_satellite.' ~ node_slug ~ '_assist_satellite' %}
+                    {% set plain = 'assist_satellite.' ~ node_slug %}
+                    {{ suffixed if states(suffixed) != 'unknown' else plain }}
+                  message: "{{ announcement_message }}"
+                variables:
+                  node_slug: !lambda |-
+                    std::string value = App.get_name().str();
+                    std::replace(value.begin(), value.end(), '-', '_');
+                    return value;
+                  announcement_message: !lambda |-
                     return entry_delay
                       ? id(alarm_delay_entry_announcement).state
                       : id(alarm_delay_exit_announcement).state;
@@ -515,7 +532,7 @@ script:
                 condition:
                   media_player.is_announcing:
                     id: voice_media_player
-                timeout: 3s
+                timeout: 5s
             - if:
                 condition:
                   media_player.is_announcing:
@@ -527,7 +544,9 @@ script:
                           media_player.is_announcing:
                             id: voice_media_player
                       timeout: 30s
-            - lambda: id(alarm_delay_tts_pending) = false;
+            - lambda: |-
+                id(alarm_delay_tts_announcement_active) = false;
+                id(alarm_delay_tts_pending) = false;
 
   - id: stop_alarm_delay_audio
     mode: restart
@@ -542,13 +561,14 @@ script:
             - if:
                 condition:
                   and:
-                    - lambda: return id(alarm_delay_beep_announcement_active);
+                    - lambda: return id(alarm_delay_tts_announcement_active);
                     - media_player.is_announcing:
                         id: voice_media_player
                 then:
                   - media_player.stop:
                       id: voice_media_player
                       announcement: true
+            - speaker.stop: voice_announcement_mixing_input
             - if:
                 condition:
                   lambda: return id(alarm_delay_volume_overridden);
@@ -569,8 +589,7 @@ script:
             - lambda: |-
                 id(alarm_delay_volume_overridden) = false;
                 id(alarm_delay_audio_session_active) = false;
-                id(alarm_delay_beep_requested) = false;
-                id(alarm_delay_beep_announcement_active) = false;
+                id(alarm_delay_tts_announcement_active) = false;
                 id(alarm_delay_tts_pending) = false;
 
   - id: open_device_volume_control
