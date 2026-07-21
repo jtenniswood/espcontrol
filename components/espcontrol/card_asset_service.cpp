@@ -13,7 +13,10 @@
 namespace espcontrol {
 namespace {
 CardAssetService *active_card_asset_service = nullptr;
-constexpr size_t MAX_STAGED_RESTORE_ASSETS = 40;
+constexpr size_t MAX_STAGED_RESTORE_ASSETS =
+    esphome::card_image_store::CARD_IMAGE_INDEX_MAX_RECORDS;
+static_assert(MAX_STAGED_RESTORE_ASSETS <= 0xFF,
+              "Restore session count must fit in its persistent record");
 
 #ifdef ESP_PLATFORM
 constexpr uint32_t PENDING_DELETE_MAGIC = 0x43414444;
@@ -209,19 +212,19 @@ bool CardAssetService::load_restore_session() {
   restore_session_preference_ =
       esphome::global_preferences->make_preference<RestoreSessionRecord>(
           RESTORE_SESSION_PREFERENCE_KEY, true);
-  RestoreSessionRecord record{};
-  if (!restore_session_preference_.load(&record)) return true;
-  record.session[sizeof(record.session) - 1] = '\0';
-  for (auto &id : record.ids) id[sizeof(id) - 1] = '\0';
-  if (record.magic != RESTORE_SESSION_MAGIC || record.version != RESTORE_SESSION_VERSION ||
-      record.count > MAX_STAGED_RESTORE_ASSETS ||
-      record.checksum != restore_checksum(record) || record.session[0] == '\0') {
+  auto record = std::make_unique<RestoreSessionRecord>();
+  if (!restore_session_preference_.load(record.get())) return true;
+  record->session[sizeof(record->session) - 1] = '\0';
+  for (auto &id : record->ids) id[sizeof(id) - 1] = '\0';
+  if (record->magic != RESTORE_SESSION_MAGIC || record->version != RESTORE_SESSION_VERSION ||
+      record->count > MAX_STAGED_RESTORE_ASSETS ||
+      record->checksum != restore_checksum(*record) || record->session[0] == '\0') {
     return true;
   }
-  restore_session_ = record.session;
-  for (size_t index = 0; index < record.count; ++index) {
-    if (!esphome::card_image_store::CardImageStore::id_valid(record.ids[index])) return true;
-    staged_restore_ids_.emplace_back(record.ids[index]);
+  restore_session_ = record->session;
+  for (size_t index = 0; index < record->count; ++index) {
+    if (!esphome::card_image_store::CardImageStore::id_valid(record->ids[index])) return true;
+    staged_restore_ids_.emplace_back(record->ids[index]);
   }
   restore_recovery_needed_ = true;
 #endif
@@ -234,15 +237,16 @@ bool CardAssetService::save_restore_session() {
       staged_restore_ids_.size() > MAX_STAGED_RESTORE_ASSETS) {
     return false;
   }
-  RestoreSessionRecord record{};
-  record.count = static_cast<uint8_t>(staged_restore_ids_.size());
-  std::strncpy(record.session, restore_session_.c_str(), sizeof(record.session) - 1);
+  auto record = std::make_unique<RestoreSessionRecord>();
+  record->count = static_cast<uint8_t>(staged_restore_ids_.size());
+  std::strncpy(record->session, restore_session_.c_str(), sizeof(record->session) - 1);
   for (size_t index = 0; index < staged_restore_ids_.size(); ++index) {
-    std::strncpy(record.ids[index], staged_restore_ids_[index].c_str(),
-                 sizeof(record.ids[index]) - 1);
+    std::strncpy(record->ids[index], staged_restore_ids_[index].c_str(),
+                 sizeof(record->ids[index]) - 1);
   }
-  record.checksum = restore_checksum(record);
-  if (!restore_session_preference_.save(&record) || !esphome::global_preferences->sync()) return false;
+  record->checksum = restore_checksum(*record);
+  if (!restore_session_preference_.save(record.get()) ||
+      !esphome::global_preferences->sync()) return false;
 #endif
   return true;
 }
@@ -250,10 +254,11 @@ bool CardAssetService::save_restore_session() {
 bool CardAssetService::clear_restore_session() {
 #ifdef ESP_PLATFORM
   if (esphome::global_preferences == nullptr) return false;
-  RestoreSessionRecord record{};
-  record.magic = 0;
-  record.version = 0;
-  if (!restore_session_preference_.save(&record) || !esphome::global_preferences->sync()) return false;
+  auto record = std::make_unique<RestoreSessionRecord>();
+  record->magic = 0;
+  record->version = 0;
+  if (!restore_session_preference_.save(record.get()) ||
+      !esphome::global_preferences->sync()) return false;
 #endif
   restore_session_.clear();
   staged_restore_ids_.clear();

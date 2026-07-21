@@ -178,6 +178,29 @@ void test_card_asset_service_stages_restore_until_commit_or_rollback() {
   expect(service.stop(), "asset service should stop after restore staging");
 }
 
+void test_card_asset_service_stages_every_indexed_image() {
+  flash.reset();
+  espcontrol::CardAssetService service;
+  expect(service.start(), "asset service should start for a large restore");
+  const std::string session = service.begin_restore_session();
+  expect(!session.empty(), "large restore should create a durable session token");
+
+  for (size_t index = 0;
+       index < esphome::card_image_store::CARD_IMAGE_INDEX_MAX_RECORDS; ++index) {
+    char id[41];
+    std::snprintf(id, sizeof(id), "restored-image-%02zu", index);
+    expect(service.stage_restored_asset(session, id),
+           "restore journal must accept every image the persistent index can hold");
+  }
+  expect(!service.stage_restored_asset(session, "one-image-past-index-capacity"),
+         "restore journal should stop at the persistent image index capacity");
+
+  expect(service.commit_restore_session(session) ==
+             espcontrol::CardAssetRestoreResult::SUCCESS,
+         "large restore should commit after every image is tracked");
+  expect(service.stop(), "asset service should stop after the large restore");
+}
+
 std::vector<uint8_t> jpeg_bytes(size_t size) {
   expect(size >= 4, "JPEG fixture must include start and end markers");
   std::vector<uint8_t> bytes(size, 0x42);
@@ -559,6 +582,7 @@ int main() {
   test_card_asset_service_has_one_application_owner();
   test_card_asset_service_deletes_only_after_references_persist();
   test_card_asset_service_stages_restore_until_commit_or_rollback();
+  test_card_asset_service_stages_every_indexed_image();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();

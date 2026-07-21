@@ -23,6 +23,11 @@ static constexpr size_t CARD_IMAGE_NAME_MAX_LENGTH = 40;
 static constexpr size_t CARD_IMAGE_FLASH_SECTOR_SIZE = 4096;
 static constexpr uint32_t CARD_IMAGE_FORMAT_VERSION = 2;
 static constexpr size_t CARD_IMAGE_INDEX_SECTORS = 2;
+static constexpr size_t CARD_IMAGE_INDEX_HEADER_SIZE = 5 * sizeof(uint32_t);
+static constexpr size_t CARD_IMAGE_INDEX_ENTRY_SIZE = sizeof(uint32_t) + 48;
+static constexpr size_t CARD_IMAGE_INDEX_MAX_RECORDS =
+    (CARD_IMAGE_FLASH_SECTOR_SIZE - CARD_IMAGE_INDEX_HEADER_SIZE) /
+    CARD_IMAGE_INDEX_ENTRY_SIZE;
 
 struct CardImageInfo {
   std::string id;
@@ -139,12 +144,15 @@ class CardImageStore {
     uint32_t count;
     uint32_t crc32;
   };
+  static_assert(sizeof(CardImageIndexHeader) == CARD_IMAGE_INDEX_HEADER_SIZE,
+                "Card image index header must remain stable");
 
   struct CardImageIndexEntry {
     uint32_t offset;
     char name[48];
   };
-  static_assert(sizeof(CardImageIndexEntry) == 52, "Card image index entry must remain stable");
+  static_assert(sizeof(CardImageIndexEntry) == CARD_IMAGE_INDEX_ENTRY_SIZE,
+                "Card image index entry must remain stable");
 
   struct CardImageCacheHeader {
     uint32_t magic;
