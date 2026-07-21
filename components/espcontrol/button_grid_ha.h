@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdlib>
+#include <cstring>
 #include <new>
 #include <string>
 #include <utility>
@@ -214,7 +215,14 @@ struct EspHomeHaStateTransport {
     if (server == nullptr || !server->is_connected()) return;
     esphome::api::DisconnectRequest request;
     for (const auto &client : server->active_clients()) {
-      if (client && !client->is_marked_for_removal()) {
+      // Home Assistant is the client that owns the remote state subscription
+      // list. Leave diagnostics, OTA and other native API clients connected;
+      // closing a logger between authentication and its subscribe-logs request
+      // can otherwise prevent it from ever completing a handshake.
+      const char *name = client ? client->get_name() : nullptr;
+      if (client && client->is_authenticated() && name != nullptr &&
+          std::strstr(name, "Home Assistant") != nullptr &&
+          !client->is_marked_for_removal()) {
         client->on_disconnect_request(request);
       }
     }
