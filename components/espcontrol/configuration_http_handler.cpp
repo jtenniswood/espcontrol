@@ -47,8 +47,31 @@ int hex_nibble(char value) {
 
 void send_json(esphome::web_server_idf::AsyncWebServerRequest *request,
                int status, const char *body) {
+  const char *response_status = HTTPD_500;
+  switch (status) {
+    case 200:
+      response_status = HTTPD_200;
+      break;
+    case 400:
+      response_status = HTTPD_400;
+      break;
+    case 404:
+      response_status = HTTPD_404;
+      break;
+    case 409:
+      response_status = "409 Conflict";
+      break;
+    case 413:
+      response_status = "413 Content Too Large";
+      break;
+    case 503:
+      response_status = "503 Service Unavailable";
+      break;
+  }
+  httpd_resp_set_status(*request, response_status);
+  httpd_resp_set_type(*request, "application/json");
   httpd_resp_set_hdr(*request, "Cache-Control", "no-store");
-  request->send(status, "application/json", body);
+  httpd_resp_send(*request, body, HTTPD_RESP_USE_STRLEN);
 }
 
 void send_upload_error(
@@ -187,7 +210,9 @@ void ConfigurationHttpHandler::handle_chunk(
     send_upload_error(request, status);
     return;
   }
-  request->send(204);
+  httpd_resp_set_status(*request, HTTPD_204);
+  httpd_resp_set_hdr(*request, "Cache-Control", "no-store");
+  httpd_resp_send(*request, nullptr, 0);
 }
 
 void ConfigurationHttpHandler::handle_commit(
