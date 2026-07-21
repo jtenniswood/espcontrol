@@ -2807,7 +2807,6 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
   if (row->name_label) {
     std::string name = row->friendly_name.empty()
       ? media_control_speaker_fallback_name(row->entity_id) : row->friendly_name;
-    if (row->pending) name += " …";
     lv_label_set_text(row->name_label, name.c_str());
     lv_obj_set_style_text_color(row->name_label, lv_color_hex(text_color), LV_PART_MAIN);
   }
