@@ -65,9 +65,9 @@ Most cards also let you choose an icon and set a label. If the label is left bla
 
 ### Card Background Images
 
-Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, Garage Door, and Vacuum cards, can use a custom background image. In the card settings, use **Background Image** to upload a picture, choose one already stored on the panel, clear the image from that card, or delete it from the panel's small image library.
+Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, and Garage Door cards, can use a custom background image. In the card settings, use **Background Image** to upload a picture, choose one already stored on the panel, clear the image from that card, or delete it from the panel's small image library.
 
-Every card position can have its own background image. The maximum therefore follows the size of the display grid: 6 on the 4.3-inch panel, 9 on the 4-inch and P4-86 panels, 15 on the 7-inch panel, and 20 on either 10.1-inch panel.
+Every supported card position can have its own background image. The maximum therefore follows the size of the display grid: 6 on the 4.3-inch panel, 9 on the 4-inch and P4-86 panels, 15 on the 7-inch panel, and 20 on either 10.1-inch panel.
 
 Displays that were already running EspControl before background images were added need one full USB reflash to install the image-storage area. Until then, the setup page keeps image uploads disabled and explains what is required. Normal over-the-air updates can be used again afterwards.
 

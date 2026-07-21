@@ -80,7 +80,11 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "devices/manifest.json device slot, font role, and profile data",
-        ("generated blocks inside `devices/*/packages.yaml`", "generated blocks inside `devices/*/device/sensors.yaml`"),
+        (
+            "generated blocks inside `devices/*/packages.yaml`",
+            "generated blocks inside `devices/*/device/sensors.yaml`",
+            "common/device/card_background_images_*.yaml",
+        ),
         "python3 scripts/generate_device_slots.py",
         "`python3 scripts/generate_device_slots.py --check` and `npm run check:product`",
     ),
