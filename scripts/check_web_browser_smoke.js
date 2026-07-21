@@ -208,6 +208,7 @@ async function installRoutes(context, slug, configurationTransport = null) {
       requestUrl.pathname === "/espcontrol/configuration"
     ) {
       if (configurationTransport) {
+        configurationTransport.snapshots += 1;
         await route.fulfill({
           status: 200,
           contentType: "application/octet-stream",
@@ -4048,6 +4049,7 @@ async function assertTransactionalConfiguration(browser) {
     transaction: null,
     expectedSize: 0,
     staged: Buffer.alloc(0),
+    snapshots: 0,
     begins: 0,
     chunks: 0,
     commits: 0,
@@ -4087,6 +4089,27 @@ async function assertTransactionalConfiguration(browser) {
     assert(
       !postedPaths.some((pathName) => /apply_configuration|apply configuration/i.test(pathName)),
       "automatic saves should not press a legacy Apply button",
+    );
+    const snapshotsBeforeEvent = transport.snapshots;
+    transport.revision += 1;
+    transport.document = configurationDocument([
+      { domain: 1, objectId: "button_on_color", value: "D4E5F6" },
+    ]);
+    const snapshotRefresh = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+      return response.request().method() === "GET"
+        && responseUrl.pathname === "/espcontrol/configuration";
+    });
+    await page.evaluate(() => {
+      window.__eventSources[0].dispatch("espcontrol_configuration", {
+        data: JSON.stringify({ revision: 3 }),
+      });
+    });
+    await snapshotRefresh;
+    assert.strictEqual(
+      transport.snapshots,
+      snapshotsBeforeEvent + 1,
+      "a committed-revision event should refresh the complete configuration snapshot",
     );
     assert.deepStrictEqual(errors, [], "transactional configuration should not report browser errors");
   } finally {

@@ -159,6 +159,23 @@ def check_root(root: Path) -> list[str]:
     if grid_header.exists():
         text = grid_header.read_text(encoding="utf-8")
         compact_grid = re.sub(r"\s+", " ", text)
+        bounded_ownership_guards = (
+            "class GridRuntimeAllocationRegistry",
+            "GRID_RUNTIME_ALLOCATION_CAPACITY",
+            "static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) * 8",
+            "heap_caps_calloc(",
+            "MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT",
+            "Runtime ownership pool exhausted",
+        )
+        for guard in bounded_ownership_guards:
+            if guard not in text:
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: card runtime ownership is missing bounded-pool guard {guard}"
+                )
+        if re.search(r"std::vector\s*<\s*GridRuntimeAllocation\s*>", text):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: card runtime ownership must not grow a vector during live edits"
+            )
         if "reconstruct_main_cards" in text:
             live_rebuild_guards = (
                 "reconstruct_main_cards ? release_runtime_slot : nullptr",
