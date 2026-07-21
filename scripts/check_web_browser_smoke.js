@@ -128,7 +128,51 @@ function publicFirmwareVersions(slug) {
   };
 }
 
-async function installRoutes(context, slug) {
+function configurationDocument(records) {
+  const encoded = records.map((record) => ({
+    domain: record.domain,
+    objectId: Buffer.from(record.objectId, "utf8"),
+    value: Buffer.from(record.value, "utf8"),
+  }));
+  const size = encoded.reduce(
+    (total, record) => total + 4 + record.objectId.length + record.value.length,
+    8,
+  );
+  const document = Buffer.alloc(size);
+  document.writeUInt32LE(0x31464345, 0);
+  document.writeUInt16LE(1, 4);
+  document.writeUInt16LE(encoded.length, 6);
+  let offset = 8;
+  for (const record of encoded) {
+    document.writeUInt8(record.domain, offset);
+    document.writeUInt8(record.objectId.length, offset + 1);
+    document.writeUInt16LE(record.value.length, offset + 2);
+    offset += 4;
+    record.objectId.copy(document, offset);
+    offset += record.objectId.length;
+    record.value.copy(document, offset);
+    offset += record.value.length;
+  }
+  return document;
+}
+
+function configurationDocumentValue(document, objectId) {
+  const recordCount = document.readUInt16LE(6);
+  let offset = 8;
+  for (let index = 0; index < recordCount; index += 1) {
+    const objectIdSize = document.readUInt8(offset + 1);
+    const valueSize = document.readUInt16LE(offset + 2);
+    offset += 4;
+    const currentObjectId = document.subarray(offset, offset + objectIdSize).toString("utf8");
+    offset += objectIdSize;
+    const value = document.subarray(offset, offset + valueSize).toString("utf8");
+    offset += valueSize;
+    if (currentObjectId === objectId) return value;
+  }
+  return null;
+}
+
+async function installRoutes(context, slug, configurationTransport = null) {
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   assert(
     fs.existsSync(scriptPath),
@@ -156,6 +200,69 @@ async function installRoutes(context, slug) {
         status: 200,
         contentType: "application/javascript",
         body: fs.readFileSync(scriptPath, "utf8"),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/espcontrol/configuration"
+    ) {
+      if (configurationTransport) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/octet-stream",
+          headers: {
+            "X-EspControl-Revision": String(configurationTransport.revision),
+            "X-EspControl-Document-Version": "1",
+          },
+          body: configurationTransport.document,
+        });
+        return;
+      }
+      // The general layout suite exercises compatibility with firmware that
+      // predates revisioned configuration documents. A dedicated scenario
+      // below covers the transactional transport.
+      await route.fulfill({
+        status: 204,
+        contentType: "application/json",
+        body: "",
+      });
+      return;
+    }
+    if (
+      configurationTransport &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname.startsWith("/espcontrol/configuration/")
+    ) {
+      const values = new URLSearchParams(route.request().postData() || "");
+      if (requestUrl.pathname.endsWith("/begin")) {
+        configurationTransport.transaction = values.get("transaction");
+        configurationTransport.expectedSize = Number(values.get("size"));
+        configurationTransport.staged = Buffer.alloc(0);
+        configurationTransport.begins += 1;
+        await route.fulfill({ status: 200, contentType: "application/json", body: '{"status":"ready"}' });
+        return;
+      }
+      if (requestUrl.pathname.endsWith("/chunk")) {
+        assert.strictEqual(values.get("transaction"), configurationTransport.transaction);
+        assert.strictEqual(Number(values.get("offset")), configurationTransport.staged.length);
+        configurationTransport.staged = Buffer.concat([
+          configurationTransport.staged,
+          Buffer.from(values.get("data") || "", "hex"),
+        ]);
+        configurationTransport.chunks += 1;
+        await route.fulfill({ status: 204, contentType: "text/plain", body: "" });
+        return;
+      }
+      assert.strictEqual(values.get("transaction"), configurationTransport.transaction);
+      assert.strictEqual(configurationTransport.staged.length, configurationTransport.expectedSize);
+      configurationTransport.document = configurationTransport.staged;
+      configurationTransport.revision += 1;
+      configurationTransport.commits += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok", revision: configurationTransport.revision }),
       });
       return;
     }
@@ -3931,6 +4038,62 @@ async function runCase(browser, testCase) {
   }
 }
 
+async function assertTransactionalConfiguration(browser) {
+  const slug = "guition-esp32-s3-4848s040";
+  const transport = {
+    revision: 1,
+    document: configurationDocument([
+      { domain: 1, objectId: "button_on_color", value: "0073FF" },
+    ]),
+    transaction: null,
+    expectedSize: 0,
+    staged: Buffer.alloc(0),
+    begins: 0,
+    chunks: 0,
+    commits: 0,
+  };
+  const context = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+  await installRoutes(context, slug, transport);
+  const page = await context.newPage();
+  const errors = [];
+  const postedPaths = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" || message.type() === "warning")
+      errors.push(`[${message.type()}] ${message.text()}`);
+  });
+  page.on("request", (request) => {
+    if (request.method() === "POST") postedPaths.push(new URL(request.url()).pathname);
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => typeof window.postText === "function");
+    await page.evaluate(() => Promise.all([
+      window.postText("Button On Color", "111111"),
+      window.postText("Button On Color", "222222"),
+      window.postText("Button On Color", "A1B2C3"),
+    ]));
+
+    assert.strictEqual(transport.commits, 1, "rapid configuration writes should be coalesced into one revision");
+    assert.strictEqual(transport.begins, 1, "one revision should start one bounded upload");
+    assert(transport.chunks >= 1, "the configuration revision should use the chunk endpoint");
+    assert.strictEqual(
+      configurationDocumentValue(transport.document, "button_on_color"),
+      "A1B2C3",
+      "the committed revision should contain the newest value",
+    );
+    assert(
+      !postedPaths.some((pathName) => /apply_configuration|apply configuration/i.test(pathName)),
+      "automatic saves should not press a legacy Apply button",
+    );
+    assert.deepStrictEqual(errors, [], "transactional configuration should not report browser errors");
+  } finally {
+    await context.close();
+  }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   try {
@@ -3940,6 +4103,7 @@ async function runCase(browser, testCase) {
       await runCase(browser, testCase);
       await assertMobileDeviceViewport(browser, testCase);
     }
+    await assertTransactionalConfiguration(browser);
   } finally {
     await browser.close();
   }

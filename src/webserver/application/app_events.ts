@@ -1,5 +1,6 @@
 import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import { refreshConfigurationSnapshot } from "./configuration_transaction";
 export function installAppEventsModule(): GlobalDescriptors {
     // ── SSE ────────────────────────────────────────────────────────────────
     function connectEvents(this: any) {
@@ -8,6 +9,7 @@ export function installAppEventsModule(): GlobalDescriptors {
             _eventSource = null;
         }
         function markConnected(this: any) {
+            refreshConfigurationSnapshot();
             resetStateForConnection(state);
             orderReceived = false;
             setConfigLocked(false);
