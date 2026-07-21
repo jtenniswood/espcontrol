@@ -12,7 +12,7 @@
     "deviceProfiles": 6,
     "cardTypes": 40,
     "entityNames": 94,
-    "icons": 322,
+    "icons": 323,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
   },
@@ -8032,6 +8032,11 @@
         "name": "Speaker Multiple",
         "codepoint": "F0D38",
         "mdi": "speaker-multiple"
+      },
+      {
+        "name": "Speaker Wireless",
+        "codepoint": "F071F",
+        "mdi": "speaker-wireless"
       },
       {
         "name": "Speaker Off",

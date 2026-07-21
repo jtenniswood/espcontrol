@@ -13,6 +13,7 @@ enum class MediaControlTab : uint8_t {
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
 constexpr int MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT = 80;
+constexpr int MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM = 200;
 
 struct MediaControlCtx {
   std::string entity_id;
@@ -2828,7 +2829,9 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     lv_obj_set_style_text_color(row->name_label, lv_color_hex(text_color), LV_PART_MAIN);
   }
   if (row->speaker_icon) {
-    lv_label_set_text(row->speaker_icon, find_icon(row->selected ? "Speaker" : "Speaker Off"));
+    lv_label_set_text(
+      row->speaker_icon,
+      find_icon(row->selected ? "Speaker Wireless" : "Speaker Off"));
     lv_obj_clear_flag(row->speaker_icon, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(row->speaker_icon, lv_color_hex(text_color), LV_PART_MAIN);
   }
@@ -3174,8 +3177,8 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_shadow_width(row->content_box, 0, LV_PART_MAIN);
   ControlModalLayout speaker_layout = control_modal_calc_layout(ctx->width_compensation_percent);
   const lv_coord_t card_pad_y = control_modal_scaled_px(12, speaker_layout.short_side);
-  const lv_coord_t card_pad_x = control_modal_scaled_px(16, speaker_layout.short_side);
-  const lv_coord_t content_gap = control_modal_scaled_px(10, speaker_layout.short_side);
+  const lv_coord_t card_pad_x = control_modal_scaled_px(18, speaker_layout.short_side);
+  const lv_coord_t content_gap = control_modal_scaled_px(12, speaker_layout.short_side);
   lv_obj_set_style_pad_top(row->content_box, card_pad_y, LV_PART_MAIN);
   lv_obj_set_style_pad_left(row->content_box, card_pad_x, LV_PART_MAIN);
   lv_obj_set_style_pad_right(row->content_box, card_pad_x, LV_PART_MAIN);
@@ -3189,12 +3192,14 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_SCROLLABLE);
 
   row->speaker_icon = lv_label_create(row->content_box);
-  lv_coord_t icon_column_w = control_modal_scaled_px(32, speaker_layout.short_side);
-  if (icon_column_w < 32) icon_column_w = 32;
+  lv_coord_t icon_column_w = control_modal_scaled_px(36, speaker_layout.short_side);
+  if (icon_column_w < 36) icon_column_w = 36;
   lv_obj_set_width(row->speaker_icon, icon_column_w);
   lv_label_set_text(row->speaker_icon, find_icon("Speaker"));
   lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
+  lv_obj_set_style_transform_zoom(
+    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM, LV_PART_MAIN);
 
   row->text_box = lv_obj_create(row->content_box);
   lv_obj_set_size(row->text_box, 0, LV_SIZE_CONTENT);
