@@ -27,14 +27,7 @@ class HaReadCoordinator {
   uint32_t generation() const { return generation_; }
   uint32_t &generation_ref() { return generation_; }
   size_t deferred_count() const { return deferred_.size(); }
-  size_t subscription_count() const {
-    size_t count = 0;
-    for (const SubscriptionRef &ref : subscriptions_) {
-      if (ref.callback && *ref.callback) count++;
-    }
-    return count;
-  }
-  size_t retained_subscription_count() const { return subscriptions_.size(); }
+  size_t subscription_count() const { return subscriptions_.size(); }
 
   bool get(const std::string &entity_id,
            const std::string &attribute,
@@ -55,34 +48,10 @@ class HaReadCoordinator {
   bool subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback,
-                 uint32_t scope,
-                 bool reusable = false) {
+                 uint32_t scope) {
     if (!available() || entity_id.empty() || !callback) return false;
-    if (reusable) {
-      for (SubscriptionRef &ref : subscriptions_) {
-        if (!ref.reuse_key || ref.reuse_key->entity_id != entity_id ||
-            ref.reuse_key->attribute != attribute || ref.scope != scope ||
-            !ref.callback || *ref.callback) {
-          continue;
-        }
-        std::shared_ptr<Callback> callback_ref = ref.callback;
-        *callback_ref = std::move(callback);
-        bool has_attribute = !attribute.empty();
-        if (callback_depth_ != 0 || !state_connected()) {
-          queue(entity_id, attribute, callback_ref, has_attribute);
-        } else {
-          dispatch_one(entity_id, attribute, callback_ref, has_attribute, generation_);
-        }
-        return true;
-      }
-    }
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
-    std::unique_ptr<ReusableSubscriptionKey> reuse_key;
-    if (reusable) {
-      reuse_key = std::make_unique<ReusableSubscriptionKey>(
-          ReusableSubscriptionKey{entity_id, attribute});
-    }
-    subscriptions_.push_back({callback_ref, scope, std::move(reuse_key)});
+    subscriptions_.push_back({callback_ref, scope});
     transport_.subscribe(
         entity_id, attribute,
         [this, callback_ref](State state) { invoke(callback_ref, state); });
@@ -139,17 +108,9 @@ class HaReadCoordinator {
     bool has_attribute = false;
   };
 
-  struct ReusableSubscriptionKey {
-    std::string entity_id;
-    std::string attribute;
-  };
-
   struct SubscriptionRef {
     std::shared_ptr<Callback> callback;
     uint32_t scope = 0;
-    // Normal grid subscriptions deliberately carry no copied entity strings.
-    // Only modal subscriptions that can be rebound need this lookup key.
-    std::unique_ptr<ReusableSubscriptionKey> reuse_key;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
@@ -163,9 +124,6 @@ class HaReadCoordinator {
           request.has_attribute == has_attribute &&
           request.entity_id == entity_id &&
           request.attribute == attribute) {
-        for (const auto &queued_callback : request.callbacks) {
-          if (queued_callback == callback) return true;
-        }
         request.callbacks.push_back(std::move(callback));
         return true;
       }
@@ -220,7 +178,7 @@ class HaReadCoordinator {
       SubscriptionRef &ref = subscriptions_[read_index];
       if (scope == 0 || (ref.scope & scope) != 0) {
         if (ref.callback && *ref.callback) *ref.callback = nullptr;
-        if (!ref.reuse_key) continue;
+        continue;
       }
       if (write_index != read_index) subscriptions_[write_index] = std::move(ref);
       write_index++;

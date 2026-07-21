@@ -100,8 +100,118 @@ inline std::vector<std::string> media_group_parse_discovery_data(const std::stri
   return out;
 }
 
+inline void media_group_json_skip_ws(const std::string &raw, size_t &pos) {
+  while (pos < raw.size() && std::isspace(static_cast<unsigned char>(raw[pos]))) pos++;
+}
+
+inline bool media_group_json_string(const std::string &raw, size_t &pos,
+                                    std::string &value) {
+  media_group_json_skip_ws(raw, pos);
+  if (pos >= raw.size() || raw[pos++] != '"') return false;
+  value.clear();
+  while (pos < raw.size()) {
+    char ch = raw[pos++];
+    if (ch == '"') return true;
+    if (ch != '\\') {
+      value.push_back(ch);
+      continue;
+    }
+    if (pos >= raw.size()) return false;
+    char escaped = raw[pos++];
+    switch (escaped) {
+      case '"': case '\\': case '/': value.push_back(escaped); break;
+      case 'b': value.push_back('\b'); break;
+      case 'f': value.push_back('\f'); break;
+      case 'n': value.push_back('\n'); break;
+      case 'r': value.push_back('\r'); break;
+      case 't': value.push_back('\t'); break;
+      case 'u': {
+        if (pos + 4 > raw.size()) return false;
+        uint32_t codepoint = 0;
+        for (int i = 0; i < 4; i++) {
+          char digit = raw[pos++];
+          codepoint <<= 4;
+          if (digit >= '0' && digit <= '9') codepoint |= digit - '0';
+          else if (digit >= 'a' && digit <= 'f') codepoint |= digit - 'a' + 10;
+          else if (digit >= 'A' && digit <= 'F') codepoint |= digit - 'A' + 10;
+          else return false;
+        }
+        if (codepoint <= 0x7F) {
+          value.push_back(static_cast<char>(codepoint));
+        } else if (codepoint <= 0x7FF) {
+          value.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+          value.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+        } else {
+          value.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+          value.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+          value.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+        }
+        break;
+      }
+      default: return false;
+    }
+  }
+  return false;
+}
+
+inline bool media_group_json_take(const std::string &raw, size_t &pos, char expected) {
+  media_group_json_skip_ws(raw, pos);
+  if (pos >= raw.size() || raw[pos] != expected) return false;
+  pos++;
+  return true;
+}
+
+inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_v2(
+    const std::string &raw) {
+  std::vector<MediaGroupDiscoveryItem> out;
+  size_t pos = 0;
+  if (!media_group_json_take(raw, pos, '[')) return out;
+  media_group_json_skip_ws(raw, pos);
+  if (pos < raw.size() && raw[pos] == ']') return out;
+  while (pos < raw.size()) {
+    if (!media_group_json_take(raw, pos, '[')) return {};
+    std::string entity_id;
+    std::string friendly_name;
+    if (!media_group_json_string(raw, pos, entity_id) ||
+        !media_group_json_take(raw, pos, ',') ||
+        !media_group_json_string(raw, pos, friendly_name) ||
+        !media_group_json_take(raw, pos, ',')) return {};
+    media_group_json_skip_ws(raw, pos);
+    size_t number_start = pos;
+    while (pos < raw.size() && raw[pos] != ']') pos++;
+    if (pos >= raw.size()) return {};
+    std::string volume_text = media_group_trim(raw.substr(number_start, pos - number_start));
+    pos++;
+
+    MediaGroupDiscoveryItem item;
+    item.entity_id = media_group_trim(entity_id);
+    if (!media_group_valid_entity_id(item.entity_id)) return {};
+    item.friendly_name = friendly_name;
+    if (!volume_text.empty() && volume_text != "null") {
+      char *end = nullptr;
+      float volume = std::strtof(volume_text.c_str(), &end);
+      if (!end || end == volume_text.c_str() || *end != '\0' || !std::isfinite(volume)) return {};
+      item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
+      item.volume_known = true;
+    }
+    out.push_back(std::move(item));
+    media_group_json_skip_ws(raw, pos);
+    if (pos < raw.size() && raw[pos] == ']') {
+      pos++;
+      media_group_json_skip_ws(raw, pos);
+      return pos == raw.size() ? out : std::vector<MediaGroupDiscoveryItem>{};
+    }
+    if (!media_group_json_take(raw, pos, ',')) return {};
+  }
+  return {};
+}
+
 inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
     const std::string &raw) {
+  constexpr const char *v2_prefix = "v2|";
+  if (raw.rfind(v2_prefix, 0) == 0) {
+    return media_group_parse_discovery_v2(raw.substr(std::strlen(v2_prefix)));
+  }
   std::vector<MediaGroupDiscoveryItem> out;
   size_t p1 = raw.find('|');
   size_t p2 = p1 == std::string::npos ? std::string::npos : raw.find('|', p1 + 1);
@@ -166,6 +276,19 @@ inline uint64_t media_group_parse_supported_features(const std::string &raw) {
 
 inline bool media_grouping_supported(uint64_t supported_features) {
   return (supported_features & MEDIA_PLAYER_FEATURE_GROUPING) != 0;
+}
+
+inline bool media_group_discovery_available(const std::vector<std::string> &members) {
+  return !members.empty();
+}
+
+inline bool media_group_speaker_tab_available(bool grouping_supported,
+                                              bool discovery_available) {
+  return grouping_supported && discovery_available;
+}
+
+inline bool media_group_defer_volume_actions(size_t group_size) {
+  return group_size > 1;
 }
 
 inline std::vector<std::string> media_group_merge_candidates(

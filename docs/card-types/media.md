@@ -88,7 +88,7 @@ Cover Art uses one of the display's shared image download slots. If all slots ar
 
 All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
 
-When the main player reports Home Assistant's grouping capability, All Controls includes a fourth **Speakers** tab. By default, EspControl reads the compatible-speaker inventory from `sensor.speaker_group`.
+When the main player reports Home Assistant's grouping capability and speaker discovery returns at least one valid player, All Controls includes a fourth **Speakers** tab. By default, EspControl reads the compatible-speaker inventory from `sensor.speaker_group`. If that sensor is missing or empty, the tab stays hidden instead of showing an unusable list.
 
 ## Speaker Groups
 
@@ -96,7 +96,7 @@ Speaker Group opens the same speaker panel directly, without the playback, progr
 
 ### Create the Speaker Discovery Sensor
 
-EspControl uses the same `sensor.speaker_group` template format as ESPHome Media Player. For Sonos, add this to Home Assistant's `configuration.yaml`:
+For Sonos, add this versioned JSON template to Home Assistant's `configuration.yaml`:
 
 ```yaml
 template:
@@ -109,10 +109,16 @@ template:
         attributes:
           data: >
             {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
-            {{ s | map("replace", "media_player.", "") | join(",") }}|{{ s | map("state_attr", "friendly_name") | join(",") }}|{{ s | map("state_attr", "volume_level") | join(",") }}
+            {%- set ns = namespace(items=[]) -%}
+            {%- for entity_id in s -%}
+              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level")]] -%}
+            {%- endfor -%}
+            v2|{{ ns.items | to_json }}
 ```
 
 Restart Home Assistant after adding the template. Replace `sonos` with the integration name when using another compatible speaker platform.
+
+The earlier comma-separated ESPHome Media Player format remains supported for existing installations. The versioned JSON format is recommended because speaker names can safely contain commas and future versions can evolve without changing existing helpers.
 
 The optional **Speaker Discovery Entity** card setting remains available as an override. A Home Assistant media-player Group helper can be entered there for a manually maintained list; otherwise leave it blank to use `sensor.speaker_group` automatically.
 
@@ -122,7 +128,7 @@ The main speaker is always selected. Selecting another speaker sends `media_play
 
 ### Group and Individual Volume
 
-Individual volume controls appear only for speakers in a multi-speaker group. **Group Volume** is the arithmetic mean of the available members' current levels. Moving it applies the same difference to each speaker instead of making every speaker equally loud.
+Individual volume controls appear only for speakers in a multi-speaker group. While grouped, the main Volume tab shows **Group** and its arc represents the arithmetic mean of the available members' current levels. Moving it applies the same difference to each speaker instead of making every speaker equally loud. The display previews the level while dragging and sends one final update per member when the arc is released, avoiding a burst of Home Assistant actions.
 
 For example, `10%`, `25%`, and `40%` has a group level of `25%`. Moving Group Volume to `35%` sends `20%`, `35%`, and `50%`. Each result is limited to `0%` and the card's **Maximum Volume** setting. Group Volume remains disabled until every available member has reported a volume, which avoids losing the existing balance.
 

@@ -238,22 +238,10 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or "for (const auto &callback : *callback_refs)" not in read_boundary_text
     ):
         errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-    if "subscriptions_.push_back({callback_ref, scope, std::move(reuse_key)})" not in coordinator_text:
+    if "subscriptions_.push_back({callback_ref, scope})" not in coordinator_text:
         errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
     if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
         errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
-    if (
-        "ref.reuse_key->entity_id != entity_id" not in coordinator_text
-        or "*callback_ref = std::move(callback)" not in coordinator_text
-        or "dispatch_one(entity_id, attribute, callback_ref, has_attribute, generation_)" not in coordinator_text
-    ):
-        errors.append(f"{rel}: reuse released modal subscription wrappers without transport growth")
-    if (
-        "std::unique_ptr<ReusableSubscriptionKey> reuse_key" not in coordinator_text
-        or "if (reusable)" not in coordinator_text
-        or "if (!ref.reuse_key) continue" not in coordinator_text
-    ):
-        errors.append(f"{rel}: retain entity lookup strings only for reusable subscriptions")
 
     return errors
 
@@ -1436,16 +1424,16 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             "preserve pending speaker selections until Home Assistant responds",
         ),
         (
-            "std::min(row->volume_pct, media_control_volume_max_pct(ctx))",
-            "clamp only the displayed slider while retaining actual speaker volume",
+            "row->volume_pct < media_control_volume_max_pct(ctx)",
+            "apply the configured maximum only to speaker volume increases",
         ),
         (
-            "ha_subscribe_state_reusable",
-            "reuse modal-scoped speaker state subscriptions",
+            "MEDIA_GROUP_REFRESH_INTERVAL_MS",
+            "refresh speaker state only while the modal is open",
         ),
         (
-            "ha_subscribe_attribute_reusable",
-            "reuse modal-scoped speaker attribute subscriptions",
+            "media_control_refresh_speaker_state(ctx, row)",
+            "poll visible speaker rows without lifetime subscriptions",
         ),
         (
             "media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);",
@@ -1488,8 +1476,8 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
         or "media_group_parse_discovery_items(raw)" not in text
     ):
         errors.append(f"{rel}: parse both current members and discovery candidates without truncation")
-    if "inline void media_control_subscribe_speaker" in text:
-        subscribe_body = text.split("inline void media_control_subscribe_speaker", 1)[1]
+    if "inline void media_control_refresh_speaker_state" in text:
+        subscribe_body = text.split("inline void media_control_refresh_speaker_state", 1)[1]
         subscribe_body = subscribe_body.split("\n}\n\ninline void media_control_add_speaker_candidate", 1)[0]
         for token in (
             "ha_get_state(entity_id, state_callback)",

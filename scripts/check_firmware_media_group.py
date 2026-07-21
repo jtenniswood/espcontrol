@@ -116,6 +116,17 @@ int main() {
   assert(discovered[1].entity_id == "media_player.kitchen");
   assert(discovered[1].friendly_name == "Kitchen");
   assert(discovered[1].volume_known && discovered[1].volume_pct == 25);
+  auto discovered_v2 = media_group_parse_discovery_items(
+    "v2|[[\"media_player.office\",\"Office, Upstairs\",0.14],"
+    "[\"media_player.kitchen\",\"K\\u00fcche\",null]]");
+  assert(discovered_v2.size() == 2);
+  assert(discovered_v2[0].entity_id == "media_player.office");
+  assert(discovered_v2[0].friendly_name == "Office, Upstairs");
+  assert(discovered_v2[0].volume_known && discovered_v2[0].volume_pct == 14);
+  assert(discovered_v2[1].friendly_name == u8"Küche");
+  assert(!discovered_v2[1].volume_known);
+  assert(media_group_parse_discovery_items("v2|[[\"media_player.office\"]]").empty());
+  assert(media_group_parse_discovery_items("v2|not-json").empty());
   assert(media_group_discovery_entity("") == "sensor.speaker_group");
   assert(media_group_discovery_entity("media_player.compatible") ==
     "media_player.compatible");
@@ -135,6 +146,14 @@ int main() {
   assert(media_grouping_supported(524288));
   assert(media_grouping_supported(524288 | 1));
   assert(!media_grouping_supported(65536));
+  assert(!media_group_discovery_available({}));
+  assert(media_group_discovery_available({"media_player.office"}));
+  assert(!media_group_speaker_tab_available(false, false));
+  assert(!media_group_speaker_tab_available(true, false));
+  assert(!media_group_speaker_tab_available(false, true));
+  assert(media_group_speaker_tab_available(true, true));
+  assert(!media_group_defer_volume_actions(1));
+  assert(media_group_defer_volume_actions(2));
   assert((media_group_merge_candidates(
     "media_player.office",
     {"media_player.kitchen", "media_player.office"},
@@ -198,6 +217,15 @@ def main() -> int:
              str(source), "-o", str(binary)], check=True
         )
         subprocess.run([str(binary)], check=True)
+    media_header = (ROOT / "components/espcontrol/button_grid_media.h").read_text(
+        encoding="utf-8"
+    )
+    if "ha_subscribe_state_reusable" in media_header or "ha_subscribe_attribute_reusable" in media_header:
+        raise SystemExit("Speaker modal must not install lifetime reusable subscriptions")
+    if "media_group_defer_volume_actions" not in media_header:
+        raise SystemExit("Grouped volume arc must defer actions until release")
+    if "speaker_discovery_available" not in media_header:
+        raise SystemExit("Speaker tab must track discovery availability")
     print("Firmware media-group checks passed.")
     return 0
 

@@ -157,74 +157,6 @@ void cancellation_is_safe_during_callback() {
           "callback cancellation was not deferred safely");
 }
 
-void reusable_subscriptions_rebind_without_transport_growth() {
-  Coordinator coordinator;
-  constexpr uint32_t scope = 1u << 4;
-  int first_calls = 0;
-  int second_calls = 0;
-  require(coordinator.subscribe(
-              "media_player.room", "volume_level",
-              [&](std::string) { first_calls++; }, scope, true),
-          "reusable subscription should register");
-  require(coordinator.transport().subscriptions.size() == 1 &&
-              coordinator.retained_subscription_count() == 1,
-          "reusable subscription did not create one transport wrapper");
-  coordinator.transport().publish(0, "0.25");
-  coordinator.reset_subscriptions(scope);
-  require(coordinator.subscription_count() == 0 &&
-              coordinator.retained_subscription_count() == 1,
-          "reusable reset should retain only the inert transport wrapper");
-  coordinator.transport().publish(0, "0.50");
-  require(first_calls == 1, "released reusable callback still received state");
-  require(coordinator.subscribe(
-              "media_player.room", "volume_level",
-              [&](std::string) { second_calls++; }, scope, true),
-          "reusable subscription should rebind");
-  require(coordinator.transport().subscriptions.size() == 1 &&
-              coordinator.subscription_count() == 1,
-          "reopening a reusable subscription grew the transport list");
-  require(coordinator.transport().reads.size() == 1,
-          "reopening a reusable subscription did not request current state");
-  coordinator.transport().deliver_read(0, "0.60");
-  require(second_calls == 1,
-          "reopened reusable subscription did not rehydrate current state");
-  coordinator.transport().publish(0, "0.75");
-  require(first_calls == 1 && second_calls == 2,
-          "rebound reusable callback did not receive state exactly once");
-}
-
-void disconnected_reusable_rebinds_are_deduplicated() {
-  Coordinator coordinator;
-  constexpr uint32_t scope = 1u << 4;
-  int calls = 0;
-  require(coordinator.subscribe(
-              "media_player.room", "volume_level",
-              [&](std::string) { calls++; }, scope, true),
-          "reusable subscription should register");
-  coordinator.reset_subscriptions(scope);
-  coordinator.transport().connected = false;
-
-  require(coordinator.subscribe(
-              "media_player.room", "volume_level",
-              [&](std::string) { calls++; }, scope, true),
-          "disconnected reusable subscription should rebind");
-  coordinator.reset_subscriptions(scope);
-  require(coordinator.subscribe(
-              "media_player.room", "volume_level",
-              [&](std::string) { calls++; }, scope, true),
-          "repeated disconnected reusable subscription should rebind");
-  require(coordinator.deferred_count() == 1,
-          "repeated reusable rebinds should share one deferred request");
-
-  coordinator.transport().connected = true;
-  coordinator.flush(8, 10, 5);
-  require(coordinator.transport().reads.size() == 1,
-          "repeated reusable rebinds sent more than one read");
-  coordinator.transport().deliver_read(0, "0.60");
-  require(calls == 1,
-          "repeated reusable rebinds delivered the current callback more than once");
-}
-
 void stale_generations_do_not_deliver() {
   Coordinator coordinator;
   int calls = 0;
@@ -260,8 +192,6 @@ int main() {
   duplicate_reads_fan_out_once();
   reentrant_reads_are_deferred();
   cancellation_is_safe_during_callback();
-  reusable_subscriptions_rebind_without_transport_growth();
-  disconnected_reusable_rebinds_are_deduplicated();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
   return EXIT_SUCCESS;

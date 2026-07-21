@@ -233,12 +233,10 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavení WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorů";
   if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
-  if (std::strcmp(text, "Group Volume") == 0) return "Hlasitost skupiny";
   if (std::strcmp(text, "No Speakers") == 0) return "Žádné reproduktory";
   if (std::strcmp(text, "Grouping failed") == 0) return "Seskupení se nezdařilo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizovány";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizace reproduktorů";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Seskupení není k dispozici";
   return text;
 }
 
@@ -454,12 +452,10 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-opsætning";
   if (std::strcmp(text, "Speaker Group") == 0) return "Højttalergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Højttalere";
-  if (std::strcmp(text, "Group Volume") == 0) return "Gruppelydstyrke";
   if (std::strcmp(text, "No Speakers") == 0) return "Ingen højttalere";
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislykkedes";
   if (std::strcmp(text, "Speakers updated") == 0) return "Højttalere opdateret";
   if (std::strcmp(text, "Updating speakers") == 0) return "Opdaterer højttalere";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Gruppering ikke tilgængelig";
   return text;
 }
 
@@ -673,12 +669,10 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-Einrichtung";
   if (std::strcmp(text, "Speaker Group") == 0) return "Lautsprechergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Lautsprecher";
-  if (std::strcmp(text, "Group Volume") == 0) return "Gruppenlautstärke";
   if (std::strcmp(text, "No Speakers") == 0) return "Keine Lautsprecher";
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppierung fehlgeschlagen";
   if (std::strcmp(text, "Speakers updated") == 0) return "Lautsprecher aktualisiert";
   if (std::strcmp(text, "Updating speakers") == 0) return "Lautsprecher werden aktualisiert";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Gruppierung nicht verfügbar";
   return text;
 }
 
@@ -899,12 +893,10 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuración WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de altavoces";
   if (std::strcmp(text, "Speakers") == 0) return "Altavoces";
-  if (std::strcmp(text, "Group Volume") == 0) return "Volumen del grupo";
   if (std::strcmp(text, "No Speakers") == 0) return "Sin altavoces";
   if (std::strcmp(text, "Grouping failed") == 0) return "Error al agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Altavoces actualizados";
   if (std::strcmp(text, "Updating speakers") == 0) return "Actualizando altavoces";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Agrupación no disponible";
   return text;
 }
 
@@ -1135,12 +1127,10 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-asennus";
   if (std::strcmp(text, "Speaker Group") == 0) return "Kaiutinryhmä";
   if (std::strcmp(text, "Speakers") == 0) return "Kaiuttimet";
-  if (std::strcmp(text, "Group Volume") == 0) return "Ryhmän äänenvoimakkuus";
   if (std::strcmp(text, "No Speakers") == 0) return "Ei kaiuttimia";
   if (std::strcmp(text, "Grouping failed") == 0) return "Ryhmittely epäonnistui";
   if (std::strcmp(text, "Speakers updated") == 0) return "Kaiuttimet päivitetty";
   if (std::strcmp(text, "Updating speakers") == 0) return "Päivitetään kaiuttimia";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Ryhmittely ei ole käytettävissä";
   return text;
 }
 
@@ -1354,12 +1344,10 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuration WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Groupe d’enceintes";
   if (std::strcmp(text, "Speakers") == 0) return "Enceintes";
-  if (std::strcmp(text, "Group Volume") == 0) return "Volume du groupe";
   if (std::strcmp(text, "No Speakers") == 0) return "Aucune enceinte";
   if (std::strcmp(text, "Grouping failed") == 0) return "Échec du regroupement";
   if (std::strcmp(text, "Speakers updated") == 0) return "Enceintes mises à jour";
   if (std::strcmp(text, "Updating speakers") == 0) return "Mise à jour des enceintes";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Regroupement indisponible";
   return text;
 }
 
@@ -1590,12 +1578,10 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi beállítás";
   if (std::strcmp(text, "Speaker Group") == 0) return "Hangszórócsoport";
   if (std::strcmp(text, "Speakers") == 0) return "Hangszórók";
-  if (std::strcmp(text, "Group Volume") == 0) return "Csoport hangereje";
   if (std::strcmp(text, "No Speakers") == 0) return "Nincsenek hangszórók";
   if (std::strcmp(text, "Grouping failed") == 0) return "A csoportosítás sikertelen";
   if (std::strcmp(text, "Speakers updated") == 0) return "Hangszórók frissítve";
   if (std::strcmp(text, "Updating speakers") == 0) return "Hangszórók frissítése";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "A csoportosítás nem érhető el";
   return text;
 }
 
@@ -1818,12 +1804,10 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configurazione WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Gruppo di altoparlanti";
   if (std::strcmp(text, "Speakers") == 0) return "Altoparlanti";
-  if (std::strcmp(text, "Group Volume") == 0) return "Volume del gruppo";
   if (std::strcmp(text, "No Speakers") == 0) return "Nessun altoparlante";
   if (std::strcmp(text, "Grouping failed") == 0) return "Raggruppamento non riuscito";
   if (std::strcmp(text, "Speakers updated") == 0) return "Altoparlanti aggiornati";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aggiornamento altoparlanti";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Raggruppamento non disponibile";
   return text;
 }
 
@@ -2042,12 +2026,10 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-oppsett";
   if (std::strcmp(text, "Speaker Group") == 0) return "Høyttalergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Høyttalere";
-  if (std::strcmp(text, "Group Volume") == 0) return "Gruppevolum";
   if (std::strcmp(text, "No Speakers") == 0) return "Ingen høyttalere";
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislyktes";
   if (std::strcmp(text, "Speakers updated") == 0) return "Høyttalere oppdatert";
   if (std::strcmp(text, "Updating speakers") == 0) return "Oppdaterer høyttalere";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Gruppering ikke tilgjengelig";
   return text;
 }
 
@@ -2267,12 +2249,10 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-installatie";
   if (std::strcmp(text, "Speaker Group") == 0) return "Luidsprekergroep";
   if (std::strcmp(text, "Speakers") == 0) return "Luidsprekers";
-  if (std::strcmp(text, "Group Volume") == 0) return "Groepsvolume";
   if (std::strcmp(text, "No Speakers") == 0) return "Geen luidsprekers";
   if (std::strcmp(text, "Grouping failed") == 0) return "Groeperen mislukt";
   if (std::strcmp(text, "Speakers updated") == 0) return "Luidsprekers bijgewerkt";
   if (std::strcmp(text, "Updating speakers") == 0) return "Luidsprekers bijwerken";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Groeperen niet beschikbaar";
   return text;
 }
 
@@ -2491,12 +2471,10 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Konfiguracja WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupa głośników";
   if (std::strcmp(text, "Speakers") == 0) return "Głośniki";
-  if (std::strcmp(text, "Group Volume") == 0) return "Głośność grupy";
   if (std::strcmp(text, "No Speakers") == 0) return "Brak głośników";
   if (std::strcmp(text, "Grouping failed") == 0) return "Grupowanie nie powiodło się";
   if (std::strcmp(text, "Speakers updated") == 0) return "Głośniki zaktualizowane";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizowanie głośników";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Grupowanie niedostępne";
   return text;
 }
 
@@ -2717,12 +2695,10 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuração WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de alto-falantes";
   if (std::strcmp(text, "Speakers") == 0) return "Alto-falantes";
-  if (std::strcmp(text, "Group Volume") == 0) return "Volume do grupo";
   if (std::strcmp(text, "No Speakers") == 0) return "Nenhum alto-falante";
   if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Alto-falantes atualizados";
   if (std::strcmp(text, "Updating speakers") == 0) return "Atualizando alto-falantes";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Agrupamento indisponível";
   return text;
 }
 
@@ -2944,12 +2920,10 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuração WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de colunas";
   if (std::strcmp(text, "Speakers") == 0) return "Colunas";
-  if (std::strcmp(text, "Group Volume") == 0) return "Volume do grupo";
   if (std::strcmp(text, "No Speakers") == 0) return "Sem colunas";
   if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Colunas atualizadas";
   if (std::strcmp(text, "Updating speakers") == 0) return "A atualizar colunas";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Agrupamento indisponível";
   return text;
 }
 
@@ -3180,12 +3154,10 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configurare WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grup de difuzoare";
   if (std::strcmp(text, "Speakers") == 0) return "Difuzoare";
-  if (std::strcmp(text, "Group Volume") == 0) return "Volumul grupului";
   if (std::strcmp(text, "No Speakers") == 0) return "Niciun difuzor";
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruparea a eșuat";
   if (std::strcmp(text, "Speakers updated") == 0) return "Difuzoare actualizate";
   if (std::strcmp(text, "Updating speakers") == 0) return "Se actualizează difuzoarele";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Gruparea nu este disponibilă";
   return text;
 }
 
@@ -3408,12 +3380,10 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavenie WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorov";
   if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
-  if (std::strcmp(text, "Group Volume") == 0) return "Hlasitosť skupiny";
   if (std::strcmp(text, "No Speakers") == 0) return "Žiadne reproduktory";
   if (std::strcmp(text, "Grouping failed") == 0) return "Zoskupenie zlyhalo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizované";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizácia reproduktorov";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Zoskupenie nie je k dispozícii";
   return text;
 }
 
@@ -3640,12 +3610,10 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavitev WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina zvočnikov";
   if (std::strcmp(text, "Speakers") == 0) return "Zvočniki";
-  if (std::strcmp(text, "Group Volume") == 0) return "Glasnost skupine";
   if (std::strcmp(text, "No Speakers") == 0) return "Ni zvočnikov";
   if (std::strcmp(text, "Grouping failed") == 0) return "Združevanje ni uspelo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Zvočniki posodobljeni";
   if (std::strcmp(text, "Updating speakers") == 0) return "Posodabljanje zvočnikov";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Združevanje ni na voljo";
   return text;
 }
 
@@ -3864,12 +3832,10 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-installation";
   if (std::strcmp(text, "Speaker Group") == 0) return "Högtalargrupp";
   if (std::strcmp(text, "Speakers") == 0) return "Högtalare";
-  if (std::strcmp(text, "Group Volume") == 0) return "Gruppvolym";
   if (std::strcmp(text, "No Speakers") == 0) return "Inga högtalare";
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering misslyckades";
   if (std::strcmp(text, "Speakers updated") == 0) return "Högtalare uppdaterade";
   if (std::strcmp(text, "Updating speakers") == 0) return "Uppdaterar högtalare";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Gruppering är inte tillgänglig";
   return text;
 }
 
@@ -4100,12 +4066,10 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi Kurulumu";
   if (std::strcmp(text, "Speaker Group") == 0) return "Hoparlör Grubu";
   if (std::strcmp(text, "Speakers") == 0) return "Hoparlörler";
-  if (std::strcmp(text, "Group Volume") == 0) return "Grup Ses Düzeyi";
   if (std::strcmp(text, "No Speakers") == 0) return "Hoparlör Yok";
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruplama başarısız";
   if (std::strcmp(text, "Speakers updated") == 0) return "Hoparlörler güncellendi";
   if (std::strcmp(text, "Updating speakers") == 0) return "Hoparlörler güncelleniyor";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Gruplama kullanılamıyor";
   return text;
 }
 
@@ -4338,12 +4302,10 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "WiFi Setup") == 0) return "Налаштування WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Група динаміків";
   if (std::strcmp(text, "Speakers") == 0) return "Динаміки";
-  if (std::strcmp(text, "Group Volume") == 0) return "Гучність групи";
   if (std::strcmp(text, "No Speakers") == 0) return "Немає динаміків";
   if (std::strcmp(text, "Grouping failed") == 0) return "Не вдалося згрупувати";
   if (std::strcmp(text, "Speakers updated") == 0) return "Динаміки оновлено";
   if (std::strcmp(text, "Updating speakers") == 0) return "Оновлення динаміків";
-  if (std::strcmp(text, "Grouping unavailable") == 0) return "Групування недоступне";
   return text;
 }
 
@@ -4584,12 +4546,10 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Setup";
   if (std::strcmp(key, "speaker_group") == 0) return "Speaker Group";
   if (std::strcmp(key, "speakers") == 0) return "Speakers";
-  if (std::strcmp(key, "group_volume") == 0) return "Group Volume";
   if (std::strcmp(key, "no_speakers") == 0) return "No Speakers";
   if (std::strcmp(key, "grouping_failed") == 0) return "Grouping failed";
   if (std::strcmp(key, "speakers_updated") == 0) return "Speakers updated";
   if (std::strcmp(key, "updating_speakers") == 0) return "Updating speakers";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Grouping unavailable";
   return key;
 }
 
@@ -4812,12 +4772,10 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavení WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Skupina reproduktorů";
   if (std::strcmp(key, "speakers") == 0) return "Reproduktory";
-  if (std::strcmp(key, "group_volume") == 0) return "Hlasitost skupiny";
   if (std::strcmp(key, "no_speakers") == 0) return "Žádné reproduktory";
   if (std::strcmp(key, "grouping_failed") == 0) return "Seskupení se nezdařilo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizovány";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizace reproduktorů";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Seskupení není k dispozici";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5034,12 +4992,10 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-opsætning";
   if (std::strcmp(key, "speaker_group") == 0) return "Højttalergruppe";
   if (std::strcmp(key, "speakers") == 0) return "Højttalere";
-  if (std::strcmp(key, "group_volume") == 0) return "Gruppelydstyrke";
   if (std::strcmp(key, "no_speakers") == 0) return "Ingen højttalere";
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislykkedes";
   if (std::strcmp(key, "speakers_updated") == 0) return "Højttalere opdateret";
   if (std::strcmp(key, "updating_speakers") == 0) return "Opdaterer højttalere";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Gruppering ikke tilgængelig";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5254,12 +5210,10 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-Einrichtung";
   if (std::strcmp(key, "speaker_group") == 0) return "Lautsprechergruppe";
   if (std::strcmp(key, "speakers") == 0) return "Lautsprecher";
-  if (std::strcmp(key, "group_volume") == 0) return "Gruppenlautstärke";
   if (std::strcmp(key, "no_speakers") == 0) return "Keine Lautsprecher";
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppierung fehlgeschlagen";
   if (std::strcmp(key, "speakers_updated") == 0) return "Lautsprecher aktualisiert";
   if (std::strcmp(key, "updating_speakers") == 0) return "Lautsprecher werden aktualisiert";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Gruppierung nicht verfügbar";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5481,12 +5435,10 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuración WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupo de altavoces";
   if (std::strcmp(key, "speakers") == 0) return "Altavoces";
-  if (std::strcmp(key, "group_volume") == 0) return "Volumen del grupo";
   if (std::strcmp(key, "no_speakers") == 0) return "Sin altavoces";
   if (std::strcmp(key, "grouping_failed") == 0) return "Error al agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Altavoces actualizados";
   if (std::strcmp(key, "updating_speakers") == 0) return "Actualizando altavoces";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Agrupación no disponible";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5718,12 +5670,10 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-asennus";
   if (std::strcmp(key, "speaker_group") == 0) return "Kaiutinryhmä";
   if (std::strcmp(key, "speakers") == 0) return "Kaiuttimet";
-  if (std::strcmp(key, "group_volume") == 0) return "Ryhmän äänenvoimakkuus";
   if (std::strcmp(key, "no_speakers") == 0) return "Ei kaiuttimia";
   if (std::strcmp(key, "grouping_failed") == 0) return "Ryhmittely epäonnistui";
   if (std::strcmp(key, "speakers_updated") == 0) return "Kaiuttimet päivitetty";
   if (std::strcmp(key, "updating_speakers") == 0) return "Päivitetään kaiuttimia";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Ryhmittely ei ole käytettävissä";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5938,12 +5888,10 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuration WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Groupe d’enceintes";
   if (std::strcmp(key, "speakers") == 0) return "Enceintes";
-  if (std::strcmp(key, "group_volume") == 0) return "Volume du groupe";
   if (std::strcmp(key, "no_speakers") == 0) return "Aucune enceinte";
   if (std::strcmp(key, "grouping_failed") == 0) return "Échec du regroupement";
   if (std::strcmp(key, "speakers_updated") == 0) return "Enceintes mises à jour";
   if (std::strcmp(key, "updating_speakers") == 0) return "Mise à jour des enceintes";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Regroupement indisponible";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6175,12 +6123,10 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi beállítás";
   if (std::strcmp(key, "speaker_group") == 0) return "Hangszórócsoport";
   if (std::strcmp(key, "speakers") == 0) return "Hangszórók";
-  if (std::strcmp(key, "group_volume") == 0) return "Csoport hangereje";
   if (std::strcmp(key, "no_speakers") == 0) return "Nincsenek hangszórók";
   if (std::strcmp(key, "grouping_failed") == 0) return "A csoportosítás sikertelen";
   if (std::strcmp(key, "speakers_updated") == 0) return "Hangszórók frissítve";
   if (std::strcmp(key, "updating_speakers") == 0) return "Hangszórók frissítése";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "A csoportosítás nem érhető el";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6404,12 +6350,10 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurazione WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Gruppo di altoparlanti";
   if (std::strcmp(key, "speakers") == 0) return "Altoparlanti";
-  if (std::strcmp(key, "group_volume") == 0) return "Volume del gruppo";
   if (std::strcmp(key, "no_speakers") == 0) return "Nessun altoparlante";
   if (std::strcmp(key, "grouping_failed") == 0) return "Raggruppamento non riuscito";
   if (std::strcmp(key, "speakers_updated") == 0) return "Altoparlanti aggiornati";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aggiornamento altoparlanti";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Raggruppamento non disponibile";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6629,12 +6573,10 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-oppsett";
   if (std::strcmp(key, "speaker_group") == 0) return "Høyttalergruppe";
   if (std::strcmp(key, "speakers") == 0) return "Høyttalere";
-  if (std::strcmp(key, "group_volume") == 0) return "Gruppevolum";
   if (std::strcmp(key, "no_speakers") == 0) return "Ingen høyttalere";
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislyktes";
   if (std::strcmp(key, "speakers_updated") == 0) return "Høyttalere oppdatert";
   if (std::strcmp(key, "updating_speakers") == 0) return "Oppdaterer høyttalere";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Gruppering ikke tilgjengelig";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6854,12 +6796,10 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installatie";
   if (std::strcmp(key, "speaker_group") == 0) return "Luidsprekergroep";
   if (std::strcmp(key, "speakers") == 0) return "Luidsprekers";
-  if (std::strcmp(key, "group_volume") == 0) return "Groepsvolume";
   if (std::strcmp(key, "no_speakers") == 0) return "Geen luidsprekers";
   if (std::strcmp(key, "grouping_failed") == 0) return "Groeperen mislukt";
   if (std::strcmp(key, "speakers_updated") == 0) return "Luidsprekers bijgewerkt";
   if (std::strcmp(key, "updating_speakers") == 0) return "Luidsprekers bijwerken";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Groeperen niet beschikbaar";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7079,12 +7019,10 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Konfiguracja WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupa głośników";
   if (std::strcmp(key, "speakers") == 0) return "Głośniki";
-  if (std::strcmp(key, "group_volume") == 0) return "Głośność grupy";
   if (std::strcmp(key, "no_speakers") == 0) return "Brak głośników";
   if (std::strcmp(key, "grouping_failed") == 0) return "Grupowanie nie powiodło się";
   if (std::strcmp(key, "speakers_updated") == 0) return "Głośniki zaktualizowane";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizowanie głośników";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Grupowanie niedostępne";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7306,12 +7244,10 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupo de alto-falantes";
   if (std::strcmp(key, "speakers") == 0) return "Alto-falantes";
-  if (std::strcmp(key, "group_volume") == 0) return "Volume do grupo";
   if (std::strcmp(key, "no_speakers") == 0) return "Nenhum alto-falante";
   if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Alto-falantes atualizados";
   if (std::strcmp(key, "updating_speakers") == 0) return "Atualizando alto-falantes";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Agrupamento indisponível";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7534,12 +7470,10 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupo de colunas";
   if (std::strcmp(key, "speakers") == 0) return "Colunas";
-  if (std::strcmp(key, "group_volume") == 0) return "Volume do grupo";
   if (std::strcmp(key, "no_speakers") == 0) return "Sem colunas";
   if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Colunas atualizadas";
   if (std::strcmp(key, "updating_speakers") == 0) return "A atualizar colunas";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Agrupamento indisponível";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7771,12 +7705,10 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurare WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grup de difuzoare";
   if (std::strcmp(key, "speakers") == 0) return "Difuzoare";
-  if (std::strcmp(key, "group_volume") == 0) return "Volumul grupului";
   if (std::strcmp(key, "no_speakers") == 0) return "Niciun difuzor";
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruparea a eșuat";
   if (std::strcmp(key, "speakers_updated") == 0) return "Difuzoare actualizate";
   if (std::strcmp(key, "updating_speakers") == 0) return "Se actualizează difuzoarele";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Gruparea nu este disponibilă";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8000,12 +7932,10 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavenie WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Skupina reproduktorov";
   if (std::strcmp(key, "speakers") == 0) return "Reproduktory";
-  if (std::strcmp(key, "group_volume") == 0) return "Hlasitosť skupiny";
   if (std::strcmp(key, "no_speakers") == 0) return "Žiadne reproduktory";
   if (std::strcmp(key, "grouping_failed") == 0) return "Zoskupenie zlyhalo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizované";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizácia reproduktorov";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Zoskupenie nie je k dispozícii";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8233,12 +8163,10 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavitev WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Skupina zvočnikov";
   if (std::strcmp(key, "speakers") == 0) return "Zvočniki";
-  if (std::strcmp(key, "group_volume") == 0) return "Glasnost skupine";
   if (std::strcmp(key, "no_speakers") == 0) return "Ni zvočnikov";
   if (std::strcmp(key, "grouping_failed") == 0) return "Združevanje ni uspelo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Zvočniki posodobljeni";
   if (std::strcmp(key, "updating_speakers") == 0) return "Posodabljanje zvočnikov";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Združevanje ni na voljo";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8458,12 +8386,10 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installation";
   if (std::strcmp(key, "speaker_group") == 0) return "Högtalargrupp";
   if (std::strcmp(key, "speakers") == 0) return "Högtalare";
-  if (std::strcmp(key, "group_volume") == 0) return "Gruppvolym";
   if (std::strcmp(key, "no_speakers") == 0) return "Inga högtalare";
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering misslyckades";
   if (std::strcmp(key, "speakers_updated") == 0) return "Högtalare uppdaterade";
   if (std::strcmp(key, "updating_speakers") == 0) return "Uppdaterar högtalare";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Gruppering är inte tillgänglig";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8695,12 +8621,10 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Kurulumu";
   if (std::strcmp(key, "speaker_group") == 0) return "Hoparlör Grubu";
   if (std::strcmp(key, "speakers") == 0) return "Hoparlörler";
-  if (std::strcmp(key, "group_volume") == 0) return "Grup Ses Düzeyi";
   if (std::strcmp(key, "no_speakers") == 0) return "Hoparlör Yok";
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruplama başarısız";
   if (std::strcmp(key, "speakers_updated") == 0) return "Hoparlörler güncellendi";
   if (std::strcmp(key, "updating_speakers") == 0) return "Hoparlörler güncelleniyor";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Gruplama kullanılamıyor";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8934,12 +8858,10 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "wifi_setup") == 0) return "Налаштування WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Група динаміків";
   if (std::strcmp(key, "speakers") == 0) return "Динаміки";
-  if (std::strcmp(key, "group_volume") == 0) return "Гучність групи";
   if (std::strcmp(key, "no_speakers") == 0) return "Немає динаміків";
   if (std::strcmp(key, "grouping_failed") == 0) return "Не вдалося згрупувати";
   if (std::strcmp(key, "speakers_updated") == 0) return "Динаміки оновлено";
   if (std::strcmp(key, "updating_speakers") == 0) return "Оновлення динаміків";
-  if (std::strcmp(key, "grouping_unavailable") == 0) return "Групування недоступне";
   return espcontrol_i18n_key_en(key);
 }
 

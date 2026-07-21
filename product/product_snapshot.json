@@ -12,7 +12,7 @@
     "deviceProfiles": 6,
     "cardTypes": 40,
     "entityNames": 94,
-    "icons": 320,
+    "icons": 322,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
   },
@@ -1272,6 +1272,7 @@
         "light_control",
         "media",
         "media_control",
+        "media_group",
         "media_play_pause",
         "media_transport",
         "media_volume",
@@ -1649,6 +1650,7 @@
           "defaultDriver": "media_play_pause",
           "modes": {
             "control_modal": "media_control",
+            "speaker_group": "media_group",
             "play_pause": "media_play_pause",
             "previous": "media_transport",
             "next": "media_transport",
@@ -4228,6 +4230,7 @@
             "kind": "choice",
             "values": [
               "control_modal",
+              "speaker_group",
               "play_pause",
               "previous",
               "next",
@@ -4351,7 +4354,25 @@
                 "operator": "in",
                 "value": [
                   "control_modal",
+                  "speaker_group",
                   "volume"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "speaker_group_entity",
+            "label": "Speaker Discovery Entity",
+            "kind": "text",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "in",
+                "value": [
+                  "control_modal",
+                  "speaker_group"
                 ]
               }
             ]
@@ -4500,6 +4521,7 @@
             "cover_art_action",
             "cover_art_details",
             "cover_art_secondary_entity",
+            "speaker_group_entity",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",
@@ -8005,6 +8027,16 @@
         "name": "Speaker",
         "codepoint": "F04C3",
         "mdi": "speaker"
+      },
+      {
+        "name": "Speaker Multiple",
+        "codepoint": "F0D38",
+        "mdi": "speaker-multiple"
+      },
+      {
+        "name": "Speaker Off",
+        "codepoint": "F04C4",
+        "mdi": "speaker-off"
       },
       {
         "name": "Speaker Pause",

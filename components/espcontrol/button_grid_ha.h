@@ -25,7 +25,6 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS = 1u << 3;
-constexpr uint32_t HA_SUBSCRIPTION_SCOPE_MEDIA_GROUP = 1u << 4;
 #define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
 #endif
 
@@ -216,14 +215,6 @@ inline bool ha_subscribe_state(const std::string &entity_id,
   return ha_read_coordinator().subscribe(entity_id, std::string(), std::move(callback), scope);
 }
 
-inline bool ha_subscribe_state_reusable(
-    const std::string &entity_id,
-    HomeAssistantStateCallback callback,
-    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  return ha_read_coordinator().subscribe(
-    entity_id, std::string(), std::move(callback), scope, true);
-}
-
 inline bool ha_get_state(const std::string &entity_id,
                          HomeAssistantStateCallback callback) {
   return ha_read_coordinator().get(
@@ -236,15 +227,6 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    HomeAssistantStateCallback callback,
                                    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
   return ha_read_coordinator().subscribe(entity_id, attribute, std::move(callback), scope);
-}
-
-inline bool ha_subscribe_attribute_reusable(
-    const std::string &entity_id,
-    const std::string &attribute,
-    HomeAssistantStateCallback callback,
-    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  return ha_read_coordinator().subscribe(
-    entity_id, attribute, std::move(callback), scope, true);
 }
 
 inline bool ha_get_attribute(const std::string &entity_id,
