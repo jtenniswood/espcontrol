@@ -337,9 +337,9 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     references: ["main", "subpage"], persistedReferences: ["main", "subpage"], restoredPosts: 1,
   }, "failed configuration posts retain the image and restore every local and persisted reference");
   deepEqual(await deletionScenario({ references: ["main"], deleteFailure: true }), {
-    deleted: false, rerenders: 1, error: "Image could not be deleted.", references: [""],
-    persistedReferences: [""], restoredPosts: 0,
-  }, "a failed image delete keeps successfully persisted reference clearing");
+    deleted: false, rerenders: 1, error: "Image could not be deleted.", references: ["main"],
+    persistedReferences: ["main"], restoredPosts: 1,
+  }, "a failed image delete restores every local and persisted reference");
 
   let releasePendingPost: (() => void) | undefined;
   const pendingPost = new Promise<void>((resolve) => { releasePendingPost = resolve; });

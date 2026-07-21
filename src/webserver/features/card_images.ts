@@ -138,7 +138,14 @@ export async function deleteCardImageConfigurationFirst(
   try {
     await dependencies.deleteImage();
   } catch (error) {
+    snapshot.restore();
+    dependencies.resetPostError();
+    snapshot.persist();
+    await dependencies.waitForPendingPosts();
+    const restoreFailed = dependencies.postsHadError();
+    dependencies.resetPostError();
     dependencies.rerender();
+    if (restoreFailed) throw new Error(CARD_IMAGE_SAVE_FAILURE_MESSAGE);
     throw error;
   }
   return true;
