@@ -66,6 +66,16 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_executable(configuration_document_api_test
+  configuration_document_api_test.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+)
+target_compile_features(configuration_document_api_test PRIVATE cxx_std_17)
+target_compile_options(configuration_document_api_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(configuration_document_api_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_document_api_test COMMAND configuration_document_api_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
