@@ -2353,7 +2353,8 @@ inline void media_control_apply_tab_visibility() {
   MediaControlModalUi &ui = media_control_modal_ui();
   bool progress_supported = media_control_progress_supported(ui.active);
   bool speakers_supported = ui.active && media_group_speaker_tab_available(
-    ui.active->grouping_supported, ui.active->speaker_discovery_available);
+    ui.active->grouping_supported, ui.active->speaker_discovery_available,
+    media_control_group_size(ui.active) > 1);
   bool show_controls = ui.tab == MediaControlTab::CONTROLS;
   bool show_progress = progress_supported && ui.tab == MediaControlTab::PROGRESS;
   bool show_volume = ui.tab == MediaControlTab::VOLUME;
@@ -2428,7 +2429,8 @@ inline bool media_control_ensure_speakers_tab_button(MediaControlCtx *ctx) {
   if (!ctx || ui.active != ctx) return false;
   if (ctx->group_only) return true;
   bool supported = media_group_speaker_tab_available(
-    ctx->grouping_supported, ctx->speaker_discovery_available);
+    ctx->grouping_supported, ctx->speaker_discovery_available,
+    media_control_group_size(ctx) > 1);
   if (!supported) {
     if (ui.speakers_tab) lv_obj_add_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
     if (ui.tab == MediaControlTab::SPEAKERS) {
@@ -2669,10 +2671,6 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   lv_obj_add_event_cb(ui.volume_arc, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (ui.active) {
-      if (media_control_group_size(ui.active) > 1 && ui.volume_arc) {
-        media_control_apply_volume_percent(
-          ui.active, lv_arc_get_value(ui.volume_arc), true, true);
-      }
       ui.active->dragging_volume = false;
       media_control_refresh_volume(ui.active);
     }
@@ -2759,10 +2757,11 @@ inline size_t media_control_group_size(MediaControlCtx *ctx) {
   return current.size();
 }
 
-inline void media_control_set_speaker_status(const char *text, bool error = false) {
+inline void media_control_set_speaker_status(const char *text, bool error = false,
+                                             bool show = false) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ui.speakers_status_lbl) return;
-  if (!error) {
+  if (!error && !show) {
     lv_obj_add_flag(ui.speakers_status_lbl, LV_OBJ_FLAG_HIDDEN);
     return;
   }
@@ -2988,6 +2987,15 @@ inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int p
   std::vector<int> volumes = media_group_delta_volumes(
     members, pct, media_control_volume_max_pct(ctx));
   if (volumes.size() != members.size()) return;
+  if (!send_action) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (ui.active == ctx && ui.volume_pct_lbl) {
+      char value[8];
+      snprintf(value, sizeof(value), "%d", media_control_clamp_volume(ctx, pct));
+      lv_label_set_text(ui.volume_pct_lbl, value);
+    }
+    return;
+  }
   for (size_t i = 0; i < members.size(); i++) {
     if (!members[i].available) continue;
     if (send_action) send_media_volume_action(members[i].entity_id, volumes[i]);
@@ -3275,12 +3283,27 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
         lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
       if (!row || !row->available || !row->volume_known) return;
       const bool increase = reinterpret_cast<uintptr_t>(lv_event_get_user_data(event)) != 0;
+      MediaControlCtx *ctx = media_control_modal_ui().active;
+      if (!ctx) return;
       row->volume_pct = std::max(0, std::min(
-        media_control_volume_max_pct(media_control_modal_ui().active),
+        media_control_volume_max_pct(ctx),
         row->volume_pct + (increase ? 1 : -1)));
+      bool stored = false;
+      for (MediaGroupVolumeState &known : ctx->group_volume_states) {
+        if (known.entity_id != row->entity_id) continue;
+        known.volume_pct = row->volume_pct;
+        known.volume_known = true;
+        known.available = row->available;
+        stored = true;
+        break;
+      }
+      if (!stored) {
+        ctx->group_volume_states.push_back(
+          {row->entity_id, row->volume_pct, true, row->available});
+      }
       send_media_volume_action(row->entity_id, row->volume_pct);
-      media_control_refresh_speaker_row(media_control_modal_ui().active, row);
-      media_control_refresh_group_volume(media_control_modal_ui().active);
+      media_control_refresh_speaker_row(ctx, row);
+      media_control_refresh_group_volume(ctx);
     }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(increase)));
     return btn;
   };
@@ -3334,7 +3357,11 @@ inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
     }
     media_control_refresh_speaker_row(ctx, row);
   }
-  if (ui.speaker_rows.empty()) media_control_set_speaker_status(espcontrol_i18n("No Speakers"));
+  if (ui.speaker_rows.empty()) {
+    media_control_set_speaker_status(espcontrol_i18n("No Speakers"), false, true);
+  } else {
+    media_control_set_speaker_status(nullptr);
+  }
   media_control_refresh_group_volume(ctx);
 }
 
@@ -3453,7 +3480,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
 
   const bool progress_supported = media_control_progress_supported(ctx);
   const bool speakers_supported = media_group_speaker_tab_available(
-    ctx->grouping_supported, ctx->speaker_discovery_available);
+    ctx->grouping_supported, ctx->speaker_discovery_available,
+    media_control_group_size(ctx) > 1);
   const bool show_tabs = !ctx->group_only;
   const int media_control_tab_count = show_tabs
     ? 2 + (progress_supported ? 1 : 0) + (speakers_supported ? 1 : 0) : 0;

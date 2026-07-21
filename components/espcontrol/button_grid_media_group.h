@@ -288,8 +288,9 @@ inline bool media_group_discovery_available(const std::vector<std::string> &memb
 }
 
 inline bool media_group_speaker_tab_available(bool grouping_supported,
-                                              bool discovery_available) {
-  return grouping_supported && discovery_available;
+                                              bool discovery_available,
+                                              bool live_group_available = false) {
+  return grouping_supported && (discovery_available || live_group_available);
 }
 
 inline bool media_group_defer_volume_actions(size_t group_size) {
