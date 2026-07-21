@@ -12,8 +12,8 @@ lvgl:
       pad_all: 0
       widgets:
         - obj:
-            width: $screen_width
-            height: $screen_height
+            width: 100%
+            height: 100%
             bg_opa: 0%
             border_width: 0
             pad_all: 0
