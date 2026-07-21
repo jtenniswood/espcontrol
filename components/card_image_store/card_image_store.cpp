@@ -51,11 +51,6 @@ void CardImageReader::end() {
   this->store_ = nullptr;
 }
 
-CardImageStore &CardImageStore::instance() {
-  static CardImageStore store;
-  return store;
-}
-
 const esp_partition_t *CardImageStore::partition_() {
   if (this->partition_attempted_) return this->partition_cache_;
   this->partition_attempted_ = true;

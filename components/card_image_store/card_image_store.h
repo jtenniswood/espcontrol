@@ -72,7 +72,7 @@ class CardImageReader : public http_request::HttpContainer {
 
 class CardImageStore {
  public:
-  static CardImageStore &instance();
+  CardImageStore();
 
   bool available();
   size_t capacity();
@@ -104,8 +104,6 @@ class CardImageStore {
   static size_t record_size(size_t image_size);
 
  protected:
-  CardImageStore();
-
   class LockGuard {
    public:
     explicit LockGuard(CardImageStore *store) : store_(store) {

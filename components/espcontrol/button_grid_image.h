@@ -10,7 +10,7 @@
 #endif
 
 #include "esphome/core/version.h"
-#include "esphome/components/card_image_store/card_image_store.h"
+#include "card_asset_service.h"
 #include "artwork_controller.h"
 #include "cover_art.h"
 #include "../artwork_image/image_pipeline_policy.h"

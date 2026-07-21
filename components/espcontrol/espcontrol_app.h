@@ -3,6 +3,7 @@
 #include "esphome/core/component.h"
 
 #include "espcontrol_app_core.h"
+#include "card_asset_service.h"
 
 namespace espcontrol {
 
@@ -17,10 +18,13 @@ class EspControlApp : public esphome::Component {
 
   DisplayModeController &display() { return core_.display(); }
   const DisplayModeController &display() const { return core_.display(); }
+  CardAssetService &card_assets() { return card_assets_; }
+  const CardAssetService &card_assets() const { return card_assets_; }
   AppLifecycleState lifecycle_state() const { return core_.lifecycle_state(); }
 
  private:
   EspControlAppCore core_{};
+  CardAssetService card_assets_{};
 };
 
 }  // namespace espcontrol

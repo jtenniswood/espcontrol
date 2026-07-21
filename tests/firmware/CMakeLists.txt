@@ -96,6 +96,7 @@ add_test(NAME card_image_store_layout_test COMMAND card_image_store_layout_test)
 add_executable(card_image_store_test
   card_image_store_test.cpp
   ../../components/card_image_store/card_image_store.cpp
+  ../../components/espcontrol/card_asset_service.cpp
 )
 target_compile_features(card_image_store_test PRIVATE cxx_std_17)
 target_compile_options(card_image_store_test PRIVATE -Wall -Wextra -Werror)
@@ -103,6 +104,7 @@ target_compile_definitions(card_image_store_test PRIVATE USE_ESP32)
 target_include_directories(card_image_store_test PRIVATE
   stubs
   ../../components/card_image_store
+  ../../components/espcontrol
 )
 add_test(NAME card_image_store_test COMMAND card_image_store_test)
 add_executable(image_service_test image_service_test.cpp)

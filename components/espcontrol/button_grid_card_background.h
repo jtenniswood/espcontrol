@@ -4,6 +4,7 @@
 // defined before this header is included by button_grid_grid.h.
 
 #include "card_background_controller.h"
+#include <cassert>
 
 constexpr int CARD_BACKGROUND_IMAGE_MAX_CONTEXTS = MAX_GRID_SLOTS;
 constexpr int CARD_BACKGROUND_IMAGE_MAX_BINDINGS = MAX_GRID_SLOTS;
@@ -27,17 +28,45 @@ struct CardBackgroundWidgetRef {
   std::string id;
 };
 
-inline CardBackgroundImageCtx *card_background_image_contexts() {
-  static CardBackgroundImageCtx contexts[CARD_BACKGROUND_IMAGE_MAX_CONTEXTS];
-  return contexts;
-}
-
 using CardBackgroundController =
   espcontrol::card_background::Controller<CARD_BACKGROUND_IMAGE_MAX_CONTEXTS>;
 
+struct CardBackgroundRuntimeState {
+  CardBackgroundImageCtx contexts[CARD_BACKGROUND_IMAGE_MAX_CONTEXTS];
+  CardBackgroundController controller;
+  std::vector<CardBackgroundWidgetRef> widget_refs;
+  lv_obj_t *active_page = nullptr;
+  lv_timer_t *final_refresh_timer = nullptr;
+  lv_timer_t *cache_write_timer = nullptr;
+  lv_timer_t *next_download_timer = nullptr;
+};
+
+inline void card_background_runtime_shutdown(CardBackgroundRuntimeState &runtime) {
+  if (runtime.final_refresh_timer) lv_timer_del(runtime.final_refresh_timer);
+  if (runtime.cache_write_timer) lv_timer_del(runtime.cache_write_timer);
+  if (runtime.next_download_timer) lv_timer_del(runtime.next_download_timer);
+  runtime.final_refresh_timer = nullptr;
+  runtime.cache_write_timer = nullptr;
+  runtime.next_download_timer = nullptr;
+  for (auto &context : runtime.contexts) {
+    if (context.image) context.image->release();
+    context.image = nullptr;
+  }
+}
+
+inline CardBackgroundRuntimeState &card_background_runtime() {
+  auto *assets = espcontrol::card_asset_service();
+  assert(assets != nullptr);
+  return assets->ensure_card_background_runtime<CardBackgroundRuntimeState>(
+      card_background_runtime_shutdown);
+}
+
+inline CardBackgroundImageCtx *card_background_image_contexts() {
+  return card_background_runtime().contexts;
+}
+
 inline CardBackgroundController &card_background_controller() {
-  static CardBackgroundController controller;
-  return controller;
+  return card_background_runtime().controller;
 }
 
 inline int card_background_context_index(const CardBackgroundImageCtx *ctx) {
@@ -63,28 +92,23 @@ inline CardBackgroundImageCtx *card_background_context_at(int index) {
 }
 
 inline std::vector<CardBackgroundWidgetRef> &card_background_widget_refs() {
-  static std::vector<CardBackgroundWidgetRef> refs;
-  return refs;
+  return card_background_runtime().widget_refs;
 }
 
 inline lv_obj_t *&card_background_active_page() {
-  static lv_obj_t *page = nullptr;
-  return page;
+  return card_background_runtime().active_page;
 }
 
 inline lv_timer_t *&card_background_final_refresh_timer() {
-  static lv_timer_t *timer = nullptr;
-  return timer;
+  return card_background_runtime().final_refresh_timer;
 }
 
 inline lv_timer_t *&card_background_cache_write_timer() {
-  static lv_timer_t *timer = nullptr;
-  return timer;
+  return card_background_runtime().cache_write_timer;
 }
 
 inline lv_timer_t *&card_background_next_download_timer() {
-  static lv_timer_t *timer = nullptr;
-  return timer;
+  return card_background_runtime().next_download_timer;
 }
 
 inline bool card_background_widget_on_page(lv_obj_t *btn, lv_obj_t *page);
@@ -190,20 +214,24 @@ inline void card_background_request_download(CardBackgroundImageCtx *ctx) {
     return;
   }
   ESP_LOGI("card_background", "Decoding card background image: %s (%dx%d)", state.id.c_str(), width, height);
-  auto &store = esphome::card_image_store::CardImageStore::instance();
+  auto *assets = espcontrol::card_asset_service();
+  if (assets == nullptr) {
+    card_background_handle_download_error(ctx);
+    return;
+  }
   esphome::card_image_store::CardImageInfo info;
-  if (!store.find(state.id, info)) {
+  if (!assets->find(state.id, info)) {
     card_background_handle_download_error(ctx);
     return;
   }
   state.source_crc32 = info.crc32;
   size_t cached_size = static_cast<size_t>(width) * height * 2;
   bool cache_started = ctx->image->request_update_rgb565_frame(
-      ctx->url, width, height, [&store, ctx, width, height](uint8_t *buffer, size_t size) {
+      ctx->url, width, height, [assets, ctx, width, height](uint8_t *buffer, size_t size) {
         const auto &current = card_background_state(ctx);
-        return store.read_rgb565_cache(current.id, current.source_crc32,
-                                       static_cast<uint16_t>(width), static_cast<uint16_t>(height),
-                                       buffer, size);
+        return assets->read_rgb565_cache(current.id, current.source_crc32,
+                                         static_cast<uint16_t>(width), static_cast<uint16_t>(height),
+                                         buffer, size);
       });
   if (cache_started) {
     ESP_LOGI("card_background", "Loaded device-sized card background cache: %s (%zu bytes)",
@@ -286,7 +314,9 @@ inline void card_background_schedule_cache_writes() {
       const uint8_t *data = ctx->image->get_buffer_data();
       size_t size = ctx->image->get_active_buffer_size();
       if (data != nullptr && size == static_cast<size_t>(state.width) * state.height * 2) {
-        auto err = esphome::card_image_store::CardImageStore::instance().write_rgb565_cache(
+        auto *assets = espcontrol::card_asset_service();
+        if (assets == nullptr) return;
+        auto err = assets->write_rgb565_cache(
             state.id, state.source_crc32, static_cast<uint16_t>(state.width),
             static_cast<uint16_t>(state.height), data, size);
         if (err != ESP_OK) {

@@ -1,4 +1,5 @@
 #include "card_image_store.h"
+#include "card_asset_service.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -57,6 +58,20 @@ void expect(bool condition, const std::string &message) {
   if (condition) return;
   std::cerr << message << '\n';
   std::exit(1);
+}
+
+void test_card_asset_service_has_one_application_owner() {
+  espcontrol::CardAssetService first;
+  espcontrol::CardAssetService second;
+  expect(espcontrol::card_asset_service() == nullptr, "asset service should start unregistered");
+  expect(first.start(), "application owner should register its asset service");
+  expect(espcontrol::card_asset_service() == &first,
+         "adapters should resolve the application-owned service");
+  expect(!first.start(), "one service cannot be started twice");
+  expect(!second.start(), "a second application owner must not replace the active service");
+  expect(first.stop(), "active service should stop cleanly");
+  expect(espcontrol::card_asset_service() == nullptr, "stopping should remove adapter access");
+  expect(!first.stop(), "stopped service cannot be stopped twice");
 }
 
 std::vector<uint8_t> jpeg_bytes(size_t size = 1024) {
@@ -437,6 +452,7 @@ uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
 }
 
 int main() {
+  test_card_asset_service_has_one_application_owner();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();

@@ -26,6 +26,11 @@ behaviour and method names are unchanged; YAML reaches the controller through
 focused pull request at a time and must not introduce generated `id(...)`
 references into compiled modules.
 
+The card-background feature subsequently adds `CardAssetService` to the same
+owner. Image persistence and the card-background runtime are created and
+released with `EspControlApp`; rendering and HTTP adapters reach that owner
+through the service boundary instead of maintaining independent singletons.
+
 The application core remains independent of ESPHome so ownership and lifecycle
 are covered by executable host tests.
 
