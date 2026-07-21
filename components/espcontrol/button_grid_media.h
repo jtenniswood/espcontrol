@@ -3188,6 +3188,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_obj_set_style_flex_flow(row->content_box, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
   lv_obj_set_style_flex_main_place(row->content_box, LV_FLEX_ALIGN_START, LV_PART_MAIN);
   lv_obj_set_style_flex_cross_place(row->content_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_track_place(row->content_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_SCROLLABLE);
 
