@@ -297,6 +297,15 @@ inline bool media_group_defer_volume_actions(size_t group_size) {
   return group_size > 1;
 }
 
+inline int media_group_step_volume(int current_volume, bool increase,
+                                   int maximum_volume) {
+  current_volume = std::max(0, std::min(100, current_volume));
+  maximum_volume = std::max(1, std::min(100, maximum_volume));
+  if (!increase) return std::max(0, current_volume - 1);
+  if (current_volume >= maximum_volume) return current_volume;
+  return std::min(maximum_volume, current_volume + 1);
+}
+
 inline std::vector<std::string> media_group_merge_candidates(
     const std::string &primary,
     const std::vector<std::string> &helper_members,

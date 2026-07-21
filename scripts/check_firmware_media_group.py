@@ -161,6 +161,10 @@ int main() {
   assert(media_group_speaker_tab_available(true, true));
   assert(!media_group_defer_volume_actions(1));
   assert(media_group_defer_volume_actions(2));
+  assert(media_group_step_volume(80, false, 50) == 79);
+  assert(media_group_step_volume(80, true, 50) == 80);
+  assert(media_group_step_volume(49, true, 50) == 50);
+  assert(media_group_step_volume(0, false, 50) == 0);
   assert((media_group_merge_candidates(
     "media_player.office",
     {"media_player.kitchen", "media_player.office"},

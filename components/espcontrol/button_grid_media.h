@@ -3292,9 +3292,8 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
       const bool increase = reinterpret_cast<uintptr_t>(lv_event_get_user_data(event)) != 0;
       MediaControlCtx *ctx = media_control_modal_ui().active;
       if (!ctx) return;
-      row->volume_pct = std::max(0, std::min(
-        media_control_volume_max_pct(ctx),
-        row->volume_pct + (increase ? 1 : -1)));
+      row->volume_pct = media_group_step_volume(
+        row->volume_pct, increase, media_control_volume_max_pct(ctx));
       bool stored = false;
       for (MediaGroupVolumeState &known : ctx->group_volume_states) {
         if (known.entity_id != row->entity_id) continue;
