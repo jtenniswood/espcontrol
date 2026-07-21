@@ -2778,13 +2778,26 @@ inline std::string media_control_speaker_fallback_name(const std::string &entity
   return sentence_cap_text(name);
 }
 
+inline bool media_control_speaker_row_shows_volume(MediaControlCtx *ctx,
+                                                   MediaSpeakerRowState *row) {
+  if (!ctx || !row || !row->selected) return false;
+  return media_control_group_size(ctx) > 1 || row->entity_id == ctx->entity_id;
+}
+
+inline lv_coord_t media_control_speaker_row_height(MediaControlCtx *ctx,
+                                                   MediaSpeakerRowState *row,
+                                                   lv_coord_t short_side) {
+  const bool show_volume = media_control_speaker_row_shows_volume(ctx, row);
+  lv_coord_t height = control_modal_scaled_px(show_volume ? 92 : 72, short_side);
+  const lv_coord_t minimum = show_volume ? 88 : 68;
+  return height < minimum ? minimum : height;
+}
+
 inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
                                               MediaSpeakerRowState *row) {
   if (!ctx || !row) return;
   if (!row->pending) row->selected = media_control_group_contains(ctx, row->entity_id);
-  const bool grouped = media_control_group_size(ctx) > 1;
-  const bool primary = row->entity_id == ctx->entity_id;
-  const bool show_volume = row->selected && (grouped || primary);
+  const bool show_volume = media_control_speaker_row_shows_volume(ctx, row);
   const bool visible = true;
   const uint32_t bg_color = row->selected ? ctx->accent_color : ctx->secondary_color;
   const uint32_t text_color = row->selected
@@ -2800,6 +2813,10 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     if (clickable) lv_obj_add_flag(row->row, LV_OBJ_FLAG_CLICKABLE);
     else lv_obj_clear_flag(row->row, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_opa(row->row, row->available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+    if (media_control_modal_ui().active == ctx) {
+      ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+      lv_obj_set_height(row->row, media_control_speaker_row_height(ctx, row, layout.short_side));
+    }
   }
   if (row->content_box) {
     lv_obj_set_style_pad_bottom(row->content_box, 10, LV_PART_MAIN);
@@ -3461,13 +3478,13 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
       layout.short_side);
     if (row_gap < 8) row_gap = 8;
-    lv_coord_t row_h = control_modal_scaled_px(104, layout.short_side);
-    if (row_h < 100) row_h = 100;
     lv_obj_set_style_pad_row(ui.speaker_list, row_gap, LV_PART_MAIN);
     lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
     for (MediaSpeakerRowState *row : ui.speaker_rows) {
       if (!row || !row->row) continue;
-      lv_obj_set_size(row->row, content_w, row_h);
+      lv_obj_set_size(
+        row->row, content_w,
+        media_control_speaker_row_height(ctx, row, layout.short_side));
       lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
     }
   }
