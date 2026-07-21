@@ -229,6 +229,33 @@ bool revision_aware_save_imports_legacy_before_comparing() {
          legacy.mirror_calls == 1 && legacy.mirrored == replacement;
 }
 
+bool fixed_scratch_supports_import_save_and_aliased_load() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  legacy.value = bytes("fixed-scratch-legacy");
+  std::array<uint8_t, 256> scratch{};
+  ConfigurationService service(store, legacy, scratch.data(), scratch.size());
+
+  const ServiceLoadResult imported = service.load(scratch.data(), scratch.size());
+  if (!imported.imported_legacy() || imported.generation != 1 ||
+      !std::equal(legacy.value.begin(), legacy.value.end(), scratch.begin())) {
+    return false;
+  }
+
+  const std::vector<uint8_t> replacement = bytes("fixed-scratch-replacement");
+  const ServiceSaveResult saved = service.save_current_if_revision(
+      imported.generation, replacement.data(), replacement.size());
+  if (!saved.ok() || saved.generation != 2 || legacy.mirrored != replacement) {
+    return false;
+  }
+
+  scratch.fill(0);
+  const ServiceLoadResult loaded = service.load(scratch.data(), scratch.size());
+  return loaded.ok() && loaded.generation == 2 &&
+         std::equal(replacement.begin(), replacement.end(), scratch.begin());
+}
+
 }  // namespace
 
 int main() {
@@ -240,6 +267,7 @@ int main() {
       version_and_buffer_failures_are_explicit() &&
       malformed_store_document_is_not_treated_as_legacy() &&
       revision_aware_save_rejects_stale_writers() &&
-      revision_aware_save_imports_legacy_before_comparing();
+      revision_aware_save_imports_legacy_before_comparing() &&
+      fixed_scratch_supports_import_save_and_aliased_load();
   return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }

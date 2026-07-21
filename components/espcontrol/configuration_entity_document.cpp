@@ -189,7 +189,8 @@ LegacyLoadResult EntityConfigurationAdapter::load(uint8_t *output,
   const size_t count = registry_.size();
   for (size_t index = 0; index < count; ++index) {
     ConfigurationEntityView entity;
-    if (!registry_.read(index, &entity) || !builder.append(entity)) {
+    if (!registry_.read(index, &entity) || !registry_.can_apply(entity) ||
+        !builder.append(entity)) {
       return {LegacyStatus::READ_FAILED,
               CURRENT_CONFIGURATION_DOCUMENT_VERSION, 0};
     }

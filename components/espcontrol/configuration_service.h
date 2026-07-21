@@ -89,6 +89,13 @@ class ConfigurationService {
   ConfigurationService(ConfigurationStore &store,
                        LegacyConfigurationAdapter &legacy)
       : store_(store), legacy_(legacy) {}
+  ConfigurationService(ConfigurationStore &store,
+                       LegacyConfigurationAdapter &legacy, uint8_t *scratch,
+                       size_t scratch_capacity)
+      : store_(store),
+        legacy_(legacy),
+        scratch_(scratch),
+        scratch_capacity_(scratch_capacity) {}
 
   ServiceLoadResult load(uint8_t *output, size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
@@ -115,6 +122,14 @@ class ConfigurationService {
 
   size_t maximum_document_size() const;
 
+  // Installs the fixed transaction workspace before the service is first
+  // used. Firmware supplies this from PSRAM; host tools may keep the vector
+  // fallback by leaving it unset.
+  void use_scratch(uint8_t *scratch, size_t scratch_capacity) {
+    scratch_ = scratch;
+    scratch_capacity_ = scratch_capacity;
+  }
+
  private:
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
@@ -123,6 +138,8 @@ class ConfigurationService {
 
   ConfigurationStore &store_;
   LegacyConfigurationAdapter &legacy_;
+  uint8_t *scratch_{nullptr};
+  size_t scratch_capacity_{0};
 };
 
 }  // namespace espcontrol::configuration

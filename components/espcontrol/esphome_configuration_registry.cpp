@@ -229,20 +229,35 @@ bool EspHomeConfigurationRegistry::apply(
   switch (entity.domain) {
     case ConfigurationEntityDomain::TEXT:
 #ifdef USE_TEXT
-      find_entity(esphome::App.get_texts(), entity)
-          ->make_call()
-          .set_value(entity.value, entity.value_size)
-          .perform();
+      {
+        auto *target = find_entity(esphome::App.get_texts(), entity);
+        if (target->state.size() == entity.value_size &&
+            std::memcmp(target->state.data(), entity.value,
+                        entity.value_size) == 0) {
+          return true;
+        }
+        target->make_call()
+            .set_value(entity.value, entity.value_size)
+            .perform();
+      }
       return true;
 #else
       return false;
 #endif
     case ConfigurationEntityDomain::SELECT:
 #ifdef USE_SELECT
-      find_entity(esphome::App.get_selects(), entity)
-          ->make_call()
-          .set_option(entity.value, entity.value_size)
-          .perform();
+      {
+        auto *target = find_entity(esphome::App.get_selects(), entity);
+        const esphome::StringRef current = target->current_option();
+        if (current.size() == entity.value_size &&
+            std::memcmp(current.c_str(), entity.value, entity.value_size) ==
+                0) {
+          return true;
+        }
+        target->make_call()
+            .set_option(entity.value, entity.value_size)
+            .perform();
+      }
       return true;
 #else
       return false;
@@ -254,10 +269,9 @@ bool EspHomeConfigurationRegistry::apply(
         if (!copy_number(entity, value_buffer_, sizeof(value_buffer_), &value)) {
           return false;
         }
-        find_entity(esphome::App.get_numbers(), entity)
-            ->make_call()
-            .set_value(value)
-            .perform();
+        auto *target = find_entity(esphome::App.get_numbers(), entity);
+        if (target->state == value) return true;
+        target->make_call().set_value(value).perform();
         return true;
       }
 #else
@@ -268,7 +282,9 @@ bool EspHomeConfigurationRegistry::apply(
       {
         bool value = false;
         if (!parse_switch(entity, &value)) return false;
-        find_entity(esphome::App.get_switches(), entity)->control(value);
+        auto *target = find_entity(esphome::App.get_switches(), entity);
+        if (target->state == value) return true;
+        target->control(value);
         return true;
       }
 #else
