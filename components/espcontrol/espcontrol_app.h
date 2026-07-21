@@ -2,14 +2,11 @@
 
 #include "esphome/core/component.h"
 
-#include "configuration_document_api.h"
-#include "configuration_entity_document.h"
-#include "configuration_http_handler.h"
-#include "configuration_service.h"
-#include "configuration_store.h"
 #include "espcontrol_app_core.h"
-#include "esphome_configuration_registry.h"
-#include "nvs_configuration_storage.h"
+
+namespace espcontrol::configuration {
+class ConfigurationDocumentApi;
+}
 
 namespace espcontrol {
 
@@ -25,33 +22,16 @@ class EspControlApp : public esphome::Component {
   DisplayModeController &display() { return core_.display(); }
   const DisplayModeController &display() const { return core_.display(); }
   AppLifecycleState lifecycle_state() const { return core_.lifecycle_state(); }
-  configuration::ConfigurationDocumentApi &configuration_document() {
-    return configuration_document_api_;
-  }
+  configuration::ConfigurationDocumentApi &configuration_document();
 
  private:
+  struct ConfigurationRuntime;
+
   void bootstrap_configuration();
   void register_configuration_transport();
 
   EspControlAppCore core_{};
-  configuration::EspHomeConfigurationRegistry configuration_registry_{};
-  configuration::EntityConfigurationAdapter legacy_configuration_{
-      configuration_registry_};
-  configuration::NvsConfigurationStorage configuration_backend_{};
-  configuration::ConfigurationStore configuration_store_{
-      configuration_backend_};
-  configuration::ConfigurationService configuration_service_{
-      configuration_store_, legacy_configuration_};
-  configuration::ConfigurationDocumentApi configuration_document_api_{
-      configuration_service_};
-  uint8_t *configuration_scratch_{nullptr};
-  uint8_t *configuration_upload_{nullptr};
-#ifdef USE_WEBSERVER
-  configuration::ConfigurationHttpHandler *configuration_handler_{nullptr};
-#endif
-  bool configuration_ready_{false};
-  bool configuration_transport_registered_{false};
-  uint32_t configuration_retry_at_{0};
+  ConfigurationRuntime *configuration_{nullptr};
 };
 
 }  // namespace espcontrol

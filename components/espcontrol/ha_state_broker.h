@@ -70,8 +70,11 @@ class StateBroker {
     uint32_t generation_ = 0;
   };
 
-  explicit StateBroker(Transport transport = Transport())
-      : transport_(std::move(transport)) {}
+  // Construct the transport directly in the broker. Passing a default
+  // transport by value creates a second, potentially very large fixed table
+  // on the ESP task stack before it can be moved into place.
+  StateBroker() = default;
+  explicit StateBroker(Transport transport) : transport_(std::move(transport)) {}
 
   StateBroker(const StateBroker &) = delete;
   StateBroker &operator=(const StateBroker &) = delete;

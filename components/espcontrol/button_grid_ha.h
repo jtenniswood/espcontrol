@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <cstdlib>
+#include <new>
 #include <string>
 #include <utility>
 #include <vector>
@@ -142,10 +144,12 @@ struct EspHomeHaStateTransport {
 
   void poll() {
     if (!reset_requested) return;
-    if (ha_api_connected()) {
-      disconnect_clients();
-      return;
-    }
+    // ESPHome runs component loops serially. Mark the current clients to close
+    // before changing the subscription table; their next loop exits before it
+    // can inspect that table, and newly accepted clients see the final table.
+    // Waiting for a moment with no clients is not reliable because Home
+    // Assistant reconnects immediately and can keep the reset pending forever.
+    disconnect_clients();
     auto *server = esphome::api::global_api_server;
     if (server == nullptr) return;
     auto &subscriptions = const_cast<
@@ -203,7 +207,6 @@ struct EspHomeHaStateTransport {
 
   void request_reset() {
     reset_requested = true;
-    disconnect_clients();
   }
 
   static void disconnect_clients() {
@@ -228,13 +231,39 @@ using EspHomeHaSubscriptions = espcontrol::ha::ScopedStateSubscriptions<
     EspHomeHaStateBroker, HA_SCOPED_LEASE_CAPACITY>;
 
 inline EspHomeHaStateBroker &ha_state_broker() {
+#ifdef ESP_PLATFORM
+  static EspHomeHaStateBroker *broker = []() {
+    void *storage = heap_caps_malloc(
+        sizeof(EspHomeHaStateBroker), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (storage == nullptr) {
+      ESP_LOGE("ha", "Unable to reserve Home Assistant broker memory");
+      std::abort();
+    }
+    return new (storage) EspHomeHaStateBroker();
+  }();
+  return *broker;
+#else
   static EspHomeHaStateBroker broker;
   return broker;
+#endif
 }
 
 inline EspHomeHaSubscriptions &ha_state_subscriptions() {
+#ifdef ESP_PLATFORM
+  static EspHomeHaSubscriptions *subscriptions = []() {
+    void *storage = heap_caps_malloc(
+        sizeof(EspHomeHaSubscriptions), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (storage == nullptr) {
+      ESP_LOGE("ha", "Unable to reserve Home Assistant lease memory");
+      std::abort();
+    }
+    return new (storage) EspHomeHaSubscriptions(ha_state_broker());
+  }();
+  return *subscriptions;
+#else
   static EspHomeHaSubscriptions subscriptions(ha_state_broker());
   return subscriptions;
+#endif
 }
 
 inline uint32_t &ha_subscription_generation() {
