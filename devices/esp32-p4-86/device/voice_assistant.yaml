@@ -568,7 +568,13 @@ script:
                   - media_player.stop:
                       id: voice_media_player
                       announcement: true
-            - speaker.stop: voice_announcement_mixing_input
+            - if:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                      id: voice_media_player
+                then:
+                  - speaker.stop: voice_announcement_mixing_input
             - if:
                 condition:
                   lambda: return id(alarm_delay_volume_overridden);
