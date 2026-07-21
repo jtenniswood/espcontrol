@@ -107,6 +107,9 @@ int main() {
   assert((media_group_parse_discovery_data(
     "media_player.office, patio |Office,Patio|0.14,0.25") ==
     std::vector<std::string>{"media_player.office", "media_player.patio"}));
+  assert(media_group_parse_discovery_data("unknown").empty());
+  assert(media_group_parse_discovery_data("unavailable").empty());
+  assert(media_group_parse_discovery_data("null").empty());
   auto discovered = media_group_parse_discovery_items(
     "office,kitchen|Office,Kitchen|0.14,0.25|Sonos,Sonos");
   assert(discovered.size() == 2);
@@ -127,10 +130,14 @@ int main() {
   assert(!discovered_v2[1].volume_known);
   assert(media_group_parse_discovery_items("v2|[[\"media_player.office\"]]").empty());
   assert(media_group_parse_discovery_items("v2|not-json").empty());
+  assert(media_group_parse_discovery_items("unknown").empty());
+  assert(media_group_parse_discovery_items("unavailable").empty());
+  assert(media_group_parse_discovery_items("null").empty());
   assert(media_group_discovery_entity("") == "sensor.speaker_group");
   assert(media_group_discovery_entity("media_player.compatible") ==
     "media_player.compatible");
   assert(std::string(media_group_discovery_attribute("sensor.speaker_group")) == "data");
+  assert(std::string(media_group_discovery_attribute("sensor.sonos_speakers")) == "data");
   assert(std::string(media_group_discovery_attribute("media_player.compatible")) == "entity_id");
   std::string long_list = "[";
   for (int i = 0; i < 12; i++) {

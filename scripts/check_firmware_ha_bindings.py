@@ -1444,7 +1444,7 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             "hydrate speaker names and volumes from the discovery helper",
         ),
         (
-            "state->speaker_discovery_subscribed = false;",
+            "std::vector<MediaSpeakerDiscoveryState>().swap(state->speaker_discoveries);",
             "restore speaker discovery when the grid rebuilds its startup subscriptions",
         ),
         (

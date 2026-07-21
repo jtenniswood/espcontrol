@@ -90,7 +90,9 @@ inline std::vector<std::string> media_group_parse_discovery_data(const std::stri
     size_t end = ids.find(',', start);
     std::string entity_id = media_group_trim(ids.substr(
       start, end == std::string::npos ? std::string::npos : end - start));
-    if (!entity_id.empty() && entity_id.rfind("media_player.", 0) != 0) {
+    if (entity_id == "unknown" || entity_id == "unavailable" || entity_id == "null") {
+      entity_id.clear();
+    } else if (!entity_id.empty() && entity_id.rfind("media_player.", 0) != 0) {
       entity_id = "media_player." + entity_id;
     }
     media_group_append_unique(out, entity_id);
@@ -238,6 +240,9 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
   std::vector<std::string> volume_values = split(volumes);
   for (size_t i = 0; i < entity_ids.size(); i++) {
     std::string entity_id = entity_ids[i];
+    if (entity_id == "unknown" || entity_id == "unavailable" || entity_id == "null") {
+      continue;
+    }
     if (!entity_id.empty() && entity_id.rfind("media_player.", 0) != 0) {
       entity_id = "media_player." + entity_id;
     }
@@ -264,7 +269,7 @@ inline std::string media_group_discovery_entity(const std::string &configured) {
 }
 
 inline const char *media_group_discovery_attribute(const std::string &entity_id) {
-  return entity_id == DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY ? "data" : "entity_id";
+  return entity_id.rfind("sensor.", 0) == 0 ? "data" : "entity_id";
 }
 
 inline uint64_t media_group_parse_supported_features(const std::string &raw) {

@@ -24,6 +24,7 @@ struct MediaControlCtx {
   std::vector<std::string> group_members;
   std::vector<std::string> speaker_helper_members;
   std::vector<MediaGroupDiscoveryItem> speaker_discovery;
+  std::vector<MediaGroupVolumeState> group_volume_states;
   bool speaker_discovery_available = false;
   float duration = 0.0f;
   float position_seconds = 0.0f;
@@ -243,11 +244,13 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_refresh_group_volume(MediaControlCtx *ctx);
+inline void media_control_speaker_action_timer_cb(lv_timer_t *timer);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
 inline void media_control_refresh_speakers(MediaControlCtx *ctx);
 inline void media_control_refresh_speaker_state(MediaControlCtx *ctx,
                                                 MediaSpeakerRowState *row);
+inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx);
 inline size_t media_control_group_size(MediaControlCtx *ctx);
 inline bool media_control_group_volume_percent(MediaControlCtx *ctx, int *pct);
 inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int pct,
@@ -513,6 +516,13 @@ struct MediaPlaybackButtonRef {
   lv_obj_t *status_lbl = nullptr;
 };
 
+struct MediaSpeakerDiscoveryState {
+  std::string entity_id;
+  std::vector<std::string> members;
+  std::vector<MediaGroupDiscoveryItem> items;
+  bool available = false;
+};
+
 struct MediaPlaybackState {
   bool used = false;
   bool state_subscribed = false;
@@ -525,7 +535,6 @@ struct MediaPlaybackState {
   bool content_subscribed = false;
   bool friendly_name_subscribed = false;
   bool grouping_subscribed = false;
-  bool speaker_discovery_subscribed = false;
   uint32_t generation = 0;
   std::string entity_id;
   std::string state_text = "unknown";
@@ -537,10 +546,7 @@ struct MediaPlaybackState {
   std::string current_content_type;
   uint64_t supported_features = 0;
   std::vector<std::string> group_members;
-  std::string speaker_discovery_entity;
-  std::vector<std::string> speaker_helper_members;
-  std::vector<MediaGroupDiscoveryItem> speaker_discovery;
-  bool speaker_discovery_available = false;
+  std::vector<MediaSpeakerDiscoveryState> speaker_discoveries;
   bool has_state = false;
   bool available = true;
   bool playing = false;
@@ -689,7 +695,6 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->content_subscribed = false;
   state->friendly_name_subscribed = false;
   state->grouping_subscribed = false;
-  state->speaker_discovery_subscribed = false;
   state->generation = ha_subscription_generation();
   state->entity_id = entity_id;
   state->state_text = "unknown";
@@ -701,10 +706,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->current_content_type.clear();
   state->supported_features = 0;
   std::vector<std::string>().swap(state->group_members);
-  state->speaker_discovery_entity.clear();
-  std::vector<std::string>().swap(state->speaker_helper_members);
-  std::vector<MediaGroupDiscoveryItem>().swap(state->speaker_discovery);
-  state->speaker_discovery_available = false;
+  std::vector<MediaSpeakerDiscoveryState>().swap(state->speaker_discoveries);
   state->has_state = false;
   state->available = true;
   state->playing = false;
@@ -1044,17 +1046,24 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   ctx->title = state->title;
   ctx->artist = state->artist;
   ctx->friendly_name = state->friendly_name;
+  MediaSpeakerDiscoveryState *discovery = nullptr;
+  for (MediaSpeakerDiscoveryState &candidate : state->speaker_discoveries) {
+    if (candidate.entity_id == ctx->speaker_group_entity) {
+      discovery = &candidate;
+      break;
+    }
+  }
   bool grouping_changed = ctx->grouping_supported != media_grouping_supported(state->supported_features) ||
                           ctx->group_members != state->group_members ||
-                          (ctx->speaker_group_entity == state->speaker_discovery_entity &&
-                           (ctx->speaker_helper_members != state->speaker_helper_members ||
-                            ctx->speaker_discovery_available != state->speaker_discovery_available));
+                          (discovery &&
+                           (ctx->speaker_helper_members != discovery->members ||
+                            ctx->speaker_discovery_available != discovery->available));
   ctx->grouping_supported = media_grouping_supported(state->supported_features);
   ctx->group_members = state->group_members;
-  if (ctx->speaker_group_entity == state->speaker_discovery_entity) {
-    ctx->speaker_helper_members = state->speaker_helper_members;
-    ctx->speaker_discovery = state->speaker_discovery;
-    ctx->speaker_discovery_available = state->speaker_discovery_available;
+  if (discovery) {
+    ctx->speaker_helper_members = discovery->members;
+    ctx->speaker_discovery = discovery->items;
+    ctx->speaker_discovery_available = discovery->available;
   }
   ctx->duration = state->duration;
   ctx->volume_known = state->volume_known;
@@ -1117,6 +1126,19 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
       ctx->pending_until_ms = 0;
       ctx->volume_known = true;
       media_control_set_volume_value(ctx, pct);
+    }
+    bool found_group_volume = false;
+    for (MediaGroupVolumeState &member : ctx->group_volume_states) {
+      if (member.entity_id != ctx->entity_id) continue;
+      member.volume_pct = state->volume_pct;
+      member.volume_known = true;
+      member.available = state->available;
+      found_group_volume = true;
+      break;
+    }
+    if (!found_group_volume) {
+      ctx->group_volume_states.push_back(
+        {ctx->entity_id, state->volume_pct, true, state->available});
     }
   }
 
@@ -1573,9 +1595,12 @@ inline void media_playback_subscribe_grouping(MediaPlaybackState *state) {
 
 inline void media_playback_subscribe_speaker_discovery(
     MediaPlaybackState *state, const std::string &entity_id) {
-  if (!state || state->speaker_discovery_subscribed || entity_id.empty()) return;
-  state->speaker_discovery_subscribed = true;
-  state->speaker_discovery_entity = entity_id;
+  if (!state || entity_id.empty()) return;
+  for (const MediaSpeakerDiscoveryState &discovery : state->speaker_discoveries) {
+    if (discovery.entity_id == entity_id) return;
+  }
+  state->speaker_discoveries.push_back({});
+  state->speaker_discoveries.back().entity_id = entity_id;
   const uint32_t generation = state->generation;
   const std::string attribute = media_group_discovery_attribute(entity_id);
   ESP_LOGI("media_group", "Registering speaker discovery %s attribute %s for %s",
@@ -1585,21 +1610,28 @@ inline void media_playback_subscribe_speaker_discovery(
     std::function<void(esphome::StringRef)>(
       [state, generation, entity_id](esphome::StringRef value) {
         if (!media_playback_generation_valid(state, generation)) return;
+        MediaSpeakerDiscoveryState *discovery = nullptr;
+        for (MediaSpeakerDiscoveryState &candidate : state->speaker_discoveries) {
+          if (candidate.entity_id == entity_id) {
+            discovery = &candidate;
+            break;
+          }
+        }
+        if (!discovery) return;
         std::string raw(value.c_str(), value.size());
-        if (entity_id == DEFAULT_MEDIA_SPEAKER_DISCOVERY_ENTITY) {
-          state->speaker_discovery = media_group_parse_discovery_items(raw);
-          state->speaker_helper_members.clear();
-          for (const MediaGroupDiscoveryItem &item : state->speaker_discovery) {
-            media_group_append_unique(state->speaker_helper_members, item.entity_id);
+        if (std::string(media_group_discovery_attribute(entity_id)) == "data") {
+          discovery->items = media_group_parse_discovery_items(raw);
+          discovery->members.clear();
+          for (const MediaGroupDiscoveryItem &item : discovery->items) {
+            media_group_append_unique(discovery->members, item.entity_id);
           }
         } else {
-          state->speaker_discovery.clear();
-          state->speaker_helper_members = media_group_parse_entity_list(raw);
+          discovery->items.clear();
+          discovery->members = media_group_parse_entity_list(raw);
         }
-        state->speaker_discovery_available = media_group_discovery_available(
-          state->speaker_helper_members);
+        discovery->available = media_group_discovery_available(discovery->members);
         ESP_LOGI("media_group", "Discovered %u compatible speakers from %s",
-                 (unsigned) state->speaker_helper_members.size(), entity_id.c_str());
+                 (unsigned) discovery->members.size(), entity_id.c_str());
         media_playback_apply_state_to_controls(state);
       })
   );
@@ -2577,6 +2609,11 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
 inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || !ui.content_box || ui.volume_arc) return;
+  if (!ui.speaker_action_timer) {
+    ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
+    ui.speaker_last_refresh_ms = 0;
+  }
+  media_control_refresh_group_member_volumes(ctx);
 
   ui.volume_arc = lv_arc_create(ui.content_box);
   if (!ui.volume_arc) return;
@@ -2602,7 +2639,8 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   lv_obj_add_event_cb(ui.volume_arc, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_volume) return;
-    if (!espcontrol::media::volume_arc_interactive(
+    if (media_control_group_size(ui.active) < 2 &&
+        !espcontrol::media::volume_arc_interactive(
           ui.active->volume_control_mode)) return;
     ui.active->dragging_volume = true;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -2801,12 +2839,18 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
 inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
   MediaControlModalUi &ui = media_control_modal_ui();
   MediaControlCtx *ctx = ui.active;
-  if (!ctx || ui.tab != MediaControlTab::SPEAKERS) return;
+  if (!ctx) return;
   uint32_t now = esphome::millis();
   if (now - ui.speaker_last_refresh_ms >= MEDIA_GROUP_REFRESH_INTERVAL_MS) {
     ui.speaker_last_refresh_ms = now;
-    for (MediaSpeakerRowState *row : ui.speaker_rows) {
-      media_control_refresh_speaker_state(ctx, row);
+    if (ha_api_state_connected()) {
+      if (ui.tab == MediaControlTab::SPEAKERS) {
+        for (MediaSpeakerRowState *row : ui.speaker_rows) {
+          media_control_refresh_speaker_state(ctx, row);
+        }
+      } else if (ui.tab == MediaControlTab::VOLUME) {
+        media_control_refresh_group_member_volumes(ctx);
+      }
     }
   }
   bool expired = false;
@@ -2845,10 +2889,57 @@ inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
       state.volume_pct = row->volume_pct;
       state.volume_known = row->volume_known;
       state.available = row->available;
+    } else {
+      for (const MediaGroupVolumeState &known : ctx->group_volume_states) {
+        if (known.entity_id == entity_id) {
+          state = known;
+          break;
+        }
+      }
     }
     volumes.push_back(state);
   }
   return volumes;
+}
+
+inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
+  if (!ctx || media_control_group_size(ctx) < 2 || !ha_api_state_connected()) return;
+  std::vector<std::string> members;
+  media_group_append_unique(members, ctx->entity_id);
+  for (const std::string &entity_id : ctx->group_members) {
+    media_group_append_unique(members, entity_id);
+  }
+  ctx->group_volume_states.erase(
+    std::remove_if(ctx->group_volume_states.begin(), ctx->group_volume_states.end(),
+      [&members](const MediaGroupVolumeState &known) {
+        return std::find(members.begin(), members.end(), known.entity_id) == members.end();
+      }),
+    ctx->group_volume_states.end());
+  for (const std::string &entity_id : members) {
+    ha_get_attribute(entity_id, std::string("volume_level"),
+      [ctx, entity_id](esphome::StringRef value) {
+        if (media_control_modal_ui().active != ctx) return;
+        MediaGroupVolumeState *known = nullptr;
+        for (MediaGroupVolumeState &candidate : ctx->group_volume_states) {
+          if (candidate.entity_id == entity_id) {
+            known = &candidate;
+            break;
+          }
+        }
+        if (!known) {
+          ctx->group_volume_states.push_back({});
+          known = &ctx->group_volume_states.back();
+          known->entity_id = entity_id;
+        }
+        float level = 0.0f;
+        known->volume_known = parse_float_ref(value, level) && std::isfinite(level);
+        if (known->volume_known) {
+          known->volume_pct = std::max(
+            0, std::min(100, static_cast<int>(level * 100.0f + 0.5f)));
+        }
+        media_control_refresh_volume(ctx);
+      });
+  }
 }
 
 inline bool media_control_group_volume_percent(MediaControlCtx *ctx, int *pct) {
@@ -3171,7 +3262,7 @@ inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
     for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
       if (item.entity_id != row->entity_id) continue;
       if (!item.friendly_name.empty()) row->friendly_name = item.friendly_name;
-      if (item.volume_known) {
+      if (item.volume_known && !row->volume_known) {
         row->volume_pct = item.volume_pct;
         row->volume_known = true;
       }
@@ -3555,7 +3646,7 @@ inline MediaControlCtx *create_media_control_context(
 }
 
 inline void media_control_open_modal(MediaControlCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!ctx || !ctx->available || (ctx->group_only && !ctx->grouping_supported)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_CONTROL, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, media_control_hide_modal);
