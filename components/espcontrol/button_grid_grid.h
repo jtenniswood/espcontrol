@@ -1722,6 +1722,7 @@ inline void grid_phase2(
     const uint8_t domains = espcontrol::cards::changed_domains(
       main_card_snapshots[i], current_card_nodes[i]);
     const auto mutation = espcontrol::cards::mutation_for(domains);
+    const auto context = card_runtime_context(config);
     reconstruct_slot[i] = espcontrol::cards::requires_visual_reconstruction(
       domains, mutation, espcontrol::cards::media_driver_matches(context));
     release_runtime_slot[i] =
