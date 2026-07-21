@@ -98,6 +98,13 @@ class ArtworkImage : public PollingComponent,
     this->fixed_height_ = height;
   }
   void set_resize_mode(ImageResizeMode resize_mode) { this->resize_mode_ = resize_mode; }
+  /**
+   * Paint the unused padding pixels (outside the decoded content rect, e.g.
+   * FIT-mode letterbox bars) with a solid RGB565 color, instead of leaving
+   * them at the decode buffer's default black fill. No-op if there's no
+   * active buffer or no padding to paint. RGB565 images only.
+   */
+  void paint_padding(uint8_t r, uint8_t g, uint8_t b);
   void set_request_priority(ImageRequestPriority priority) { this->request_priority_ = priority; }
   void set_p4_pipeline_priority(P4PipelinePriority priority) {
     this->p4_pipeline_priority_ = priority;

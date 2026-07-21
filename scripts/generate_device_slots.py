@@ -269,6 +269,14 @@ def package_file_text(device: dict) -> str:
                 if int(device["image_slot_capacity"]) > 0
                 else []
             ),
+            include_line(
+                "screen_notification",
+                "!include ../../common/device/screen_notification_popup.yaml",
+            ),
+            include_line(
+                "screen_image_notification",
+                "!include ../../common/device/screen_image_notification.yaml",
+            ),
             "  # ---------------------------------------------------------------------------",
             "  # Main page and dynamic sensor subscriptions (after setup screens)",
             "  # ---------------------------------------------------------------------------",

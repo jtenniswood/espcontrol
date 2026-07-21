@@ -1,0 +1,452 @@
+# =============================================================================
+# SCREEN: IMAGE NOTIFICATION POPUP
+# =============================================================================
+# Top-layer overlay that shows an HA-pushed image (e.g. a doorbell camera
+# snapshot) in the same inset rounded panel every other control modal in the
+# app uses, with a top-right X close button and shadow-text title/message
+# overlaid directly on the image (no background box). The device only
+# receives a URL; HA does all image sourcing.
+#
+# Persistent (tap to dismiss):
+#   action: esphome.<device>_send_image_notification
+#   data:
+#     image_url: "/api/camera_proxy/camera.front_door"   # required; relative or http(s)
+#     title: "Front Door"        # optional
+#     message: "Motion detected" # optional
+#     image_sizing: "cover"      # optional: "cover" (default, crops to fill the panel) | "fit" (shows whole image, tinted letterbox bars)
+#     message_id: "doorbell"     # optional, echoed in events
+#
+# Auto-dismissing: esphome.<device>_send_expiring_image_notification (adds timeout: <sec>)
+#
+# On close fires (same as text notifications): esphome.notification_acknowledged
+# (tapped) or esphome.notification_expired (timed out). Payload: device_name, message_id.
+# On download/decode failure, falls back to the text notification popup with the
+# same title/message/timeout/message_id ("Image unavailable" when image-only).
+#
+# image_notification_popup.h is auto-included by ESPHome's component resource system.
+# Reuses cover_art_home_assistant_base_url (screen_cover_art.yaml) to resolve
+# relative URLs, and notification_popup_show (screen_notification_popup.yaml) for fallback.
+# =============================================================================
+
+globals:
+  - id: image_notif_timeout
+    type: int
+    initial_value: '0'
+  - id: image_notif_used_fit
+    type: bool
+    initial_value: 'false'
+  - id: image_notif_title
+    type: std::string
+    initial_value: '""'
+  - id: image_notif_message
+    type: std::string
+    initial_value: '""'
+  - id: image_notif_expected_url
+    type: std::string
+    initial_value: '""'
+
+artwork_image:
+  - url: "http://127.0.0.1/none.jpg"   # placeholder; never fetched (polling: never)
+    id: image_notification_image
+    format: AUTO
+    type: RGB565
+    byte_order: LITTLE_ENDIAN
+    buffer_size: 65536
+    allow_insecure_local_urls: true
+    priority: MODAL
+    p4_pipeline: MODAL
+    on_download_finished:
+      - if:
+          condition:
+            lambda: 'return id(image_notification_image)->get_url() == id(image_notif_expected_url);'
+          then:
+            - script.execute: image_notif_show
+    on_error:
+      - if:
+          condition:
+            lambda: 'return id(image_notification_image)->get_url() == id(image_notif_expected_url);'
+          then:
+            - script.execute: image_notif_fallback_to_text
+
+lvgl:
+  top_layer:
+    widgets:
+      # Root scrim: dark overlay + tap-to-dismiss behind the modal panel.
+      - obj:
+          id: image_notif_root
+          x: 0
+          y: 0
+          width: ${screen_width}
+          height: ${screen_height}
+          bg_color: 0x000000
+          bg_opa: 75%
+          radius: 0
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: true
+          hidden: true
+          on_click:
+            then:
+              - script.execute: image_notif_dismiss_tap
+          widgets:
+            # ---- Modal group: shared control-modal panel look, image fills the
+            # panel edge-to-edge, text sits directly on it (no background box). ----
+            - obj:
+                id: image_notif_modal_group
+                x: 0
+                y: 0
+                width: ${screen_width}
+                height: ${screen_height}
+                bg_opa: 0%
+                radius: 0
+                border_width: 0
+                pad_all: 0
+                scrollable: false
+                scrollbar_mode: "off"
+                clickable: false
+                widgets:
+                  # Panel geometry (size/position/radius) is computed at runtime
+                  # from control_modal_calc_layout(). These are just placeholder
+                  # values so the widget tree is valid before the first
+                  # notification resizes it.
+                  - obj:
+                      id: image_notif_modal_frame
+                      x: 0
+                      y: 0
+                      width: 10px
+                      height: 10px
+                      bg_color: 0x1E1E1E
+                      bg_opa: cover
+                      radius: 18
+                      border_width: 0
+                      pad_all: 0
+                      clip_corner: true
+                      scrollable: false
+                      widgets:
+                        - image:
+                            id: image_notif_modal_image
+                            x: 0
+                            y: 0
+                            width: 10px
+                            height: 10px
+                            radius: 18
+                            clip_corner: true
+                            src: image_notification_image
+                        - obj:
+                            id: image_notif_modal_caption
+                            align: bottom_left
+                            width: 100%
+                            height: SIZE_CONTENT
+                            bg_opa: 0%
+                            border_width: 0
+                            pad_all: 0
+                            scrollable: false
+                            clickable: false
+                            hidden: true
+                            layout:
+                              type: flex
+                              flex_flow: COLUMN
+                              pad_row: 6
+                            widgets:
+                              - obj:
+                                  id: image_notif_modal_title_row
+                                  width: 100%
+                                  height: SIZE_CONTENT
+                                  bg_opa: 0%
+                                  border_width: 0
+                                  pad_all: 0
+                                  scrollable: false
+                                  clickable: false
+                                  hidden: true
+                                  widgets:
+                                    - label:
+                                        id: image_notif_modal_title_shadow
+                                        align: top_left
+                                        x: 1
+                                        y: 1
+                                        text: ""
+                                        text_font: ${setup_body_font_id}
+                                        text_color: 0x000000
+                                        text_opa: 50%
+                                        long_mode: wrap
+                                        width: 100%
+                                    - label:
+                                        id: image_notif_modal_title
+                                        align: top_left
+                                        x: 0
+                                        y: 0
+                                        text: ""
+                                        text_font: ${setup_body_font_id}
+                                        text_color: 0xFFFFFF
+                                        long_mode: wrap
+                                        width: 100%
+                              - obj:
+                                  id: image_notif_modal_message_row
+                                  width: 100%
+                                  height: SIZE_CONTENT
+                                  bg_opa: 0%
+                                  border_width: 0
+                                  pad_all: 0
+                                  scrollable: false
+                                  clickable: false
+                                  hidden: true
+                                  widgets:
+                                    - label:
+                                        id: image_notif_modal_message_shadow
+                                        align: top_left
+                                        x: 1
+                                        y: 1
+                                        text: ""
+                                        text_font: ${label_font}
+                                        text_color: 0x000000
+                                        text_opa: 50%
+                                        long_mode: wrap
+                                        width: 100%
+                                    - label:
+                                        id: image_notif_modal_message
+                                        align: top_left
+                                        x: 0
+                                        y: 0
+                                        text: ""
+                                        text_font: ${label_font}
+                                        text_color: 0xDDDDDD
+                                        long_mode: wrap
+                                        width: 100%
+
+script:
+  # Show the decoded image in the modal panel. Called from
+  # on_download_finished once the loaded URL matches the expected URL.
+  - id: image_notif_show
+    mode: restart
+    then:
+      - script.stop: image_notif_autodismiss
+      - lambda: |-
+          const bool has_title = !id(image_notif_title).empty();
+          const bool has_message = !id(image_notif_message).empty();
+          lv_label_set_text(id(image_notif_modal_title), id(image_notif_title).c_str());
+          lv_label_set_text(id(image_notif_modal_title_shadow), id(image_notif_title).c_str());
+          lv_label_set_text(id(image_notif_modal_message), id(image_notif_message).c_str());
+          lv_label_set_text(id(image_notif_modal_message_shadow), id(image_notif_message).c_str());
+          if (has_title) {
+            lv_obj_clear_flag(id(image_notif_modal_title_row), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(image_notif_modal_title_row), LV_OBJ_FLAG_HIDDEN);
+          }
+          if (has_message) {
+            lv_obj_clear_flag(id(image_notif_modal_message_row), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(image_notif_modal_message_row), LV_OBJ_FLAG_HIDDEN);
+          }
+          if (has_title || has_message) {
+            lv_obj_clear_flag(id(image_notif_modal_caption), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(image_notif_modal_caption), LV_OBJ_FLAG_HIDDEN);
+          }
+      # Tint FIT-mode letterbox padding with a color sampled from the image
+      # itself, instead of leaving it at the decode buffer's default black.
+      - if:
+          condition:
+            lambda: 'return id(image_notif_used_fit);'
+          then:
+            - lambda: |-
+                auto *img = id(image_notification_image);
+                #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+                auto *dsc = img->get_lv_image_dsc();
+                #else
+                auto *dsc = img->get_lv_img_dsc();
+                #endif
+                auto accent = espcontrol::cover_art::darken_accent_color(
+                    espcontrol::cover_art::extract_accent_color_rgb565(
+                        dsc ? dsc->data : nullptr, img->get_width(), img->get_height(),
+                        img->is_big_endian(), img->get_content_offset_x(),
+                        img->get_content_offset_y(), img->get_content_width(),
+                        img->get_content_height()));
+                if (accent.valid) {
+                  img->paint_padding(accent.red, accent.green, accent.blue);
+                }
+      # Refresh the image widget from the decoded buffer.
+      - lvgl.image.update:
+          id: image_notif_modal_image
+          src: image_notification_image
+      # Reveal root above everything else, and mutually exclude the text popup.
+      - lvgl.widget.hide: notification_scrim
+      - lvgl.widget.show: image_notif_root
+      - lambda: 'lv_obj_move_foreground(id(image_notif_root));'
+      - if:
+          condition:
+            lambda: 'return id(image_notif_timeout) > 0;'
+          then:
+            - script.execute: image_notif_autodismiss
+
+  # Auto-dismiss after image_notif_timeout seconds (expiring notifications only).
+  - id: image_notif_autodismiss
+    mode: restart
+    then:
+      - delay: !lambda 'return (uint32_t) id(image_notif_timeout) * 1000u;'
+      - lambda: 'image_notification_fire("esphome.notification_expired");'
+      - script.execute: image_notif_teardown
+
+  # Tap-anywhere-on-panel or X-button dismissal: acknowledge and tear down.
+  # Shared by image_notif_root's on_click and the close button created in
+  # image_notif_modal_frame.
+  - id: image_notif_dismiss_tap
+    mode: restart
+    then:
+      - script.stop: image_notif_autodismiss
+      - lambda: 'image_notification_fire("esphome.notification_acknowledged");'
+      - script.execute: image_notif_teardown
+
+  # Hide the overlay and free the decode buffer.
+  - id: image_notif_teardown
+    mode: restart
+    then:
+      - lvgl.widget.hide: image_notif_root
+      - artwork_image.release: image_notification_image
+
+  # Download/decode failed: free the buffer and hand off to the text popup with
+  # the same title/message/timeout/message_id (localized "Image unavailable" if
+  # there is no text). The text popup then owns dismissal and fires the events.
+  - id: image_notif_fallback_to_text
+    mode: restart
+    then:
+      - script.stop: image_notif_autodismiss
+      - script.execute: image_notif_teardown
+      - script.execute: screensaver_wake
+      - lambda: |-
+          std::string body = id(image_notif_message);
+          if (id(image_notif_title).empty() && body.empty()) {
+            body = espcontrol_i18n(std::string("Image unavailable"));
+          }
+          notification_popup_show(
+            id(notification_scrim),
+            id(notification_title_lbl),
+            id(notification_body_lbl),
+            id(image_notif_title), body,
+            id(image_notif_timeout),
+            s_image_notif_msg_id);
+
+api:
+  actions:
+    - action: send_image_notification
+      variables:
+        image_url: string
+        title: string
+        message: string
+        image_sizing: string
+        message_id: string
+      then:
+        - script.execute: screensaver_wake
+        - lambda: |-
+            id(image_notif_title)   = title;
+            id(image_notif_message) = message;
+            id(image_notif_timeout) = 0;
+            image_notification_set_msg_id(message_id);
+            std::string url = image_notification_resolve_url(
+                image_url, id(cover_art_home_assistant_base_url));
+            auto *img = id(image_notification_image);
+            auto layout = control_modal_calc_layout(100);
+            if (!image_card_memory_available(nullptr, "notification", layout.panel_w, layout.panel_h)) {
+              id(image_notif_fallback_to_text).execute();
+              return;
+            }
+            int request_w = 0;
+            int request_h = 0;
+            image_card_limit_target_size(layout.panel_w, layout.panel_h, &request_w, &request_h);
+            url = image_card_sized_url(url, request_w, request_h);
+            int target_w = layout.panel_w;
+            int target_h = layout.panel_h;
+            auto mode = esphome::artwork_image::ImageResizeMode::COVER;
+            id(image_notif_used_fit) = false;
+            if (image_sizing == "fit") {
+              mode = esphome::artwork_image::ImageResizeMode::FIT;
+              id(image_notif_used_fit) = true;
+            }
+            lv_coord_t radius = control_modal_card_radius(nullptr);
+            lv_obj_set_size(id(image_notif_modal_frame), target_w, target_h);
+            lv_obj_set_pos(id(image_notif_modal_frame), layout.panel_x, layout.panel_y);
+            lv_obj_set_style_radius(id(image_notif_modal_frame), radius, LV_PART_MAIN);
+            lv_obj_set_size(id(image_notif_modal_image), target_w, target_h);
+            lv_obj_set_style_radius(id(image_notif_modal_image), radius, LV_PART_MAIN);
+            if (image_notif_modal_close_btn() == nullptr) {
+              image_notif_modal_close_btn() = control_modal_create_round_button(
+                  id(image_notif_modal_frame), 32, "\U000F0156",
+                  id(font_icon_main)->get_lv_font(), DARK_BORDER, SECONDARY_GREY, 100);
+              lv_obj_add_event_cb(image_notif_modal_close_btn(), [](lv_event_t *) {
+                id(image_notif_dismiss_tap).execute();
+              }, LV_EVENT_CLICKED, nullptr);
+            }
+            control_modal_style_chrome_button(image_notif_modal_close_btn(), layout, true);
+            control_modal_style_translucent_chrome_button(image_notif_modal_close_btn());
+            lv_coord_t content_w = layout.panel_w - layout.inset * 2;
+            if (content_w < 120) content_w = layout.panel_w;
+            lv_obj_set_width(id(image_notif_modal_caption), content_w);
+            lv_obj_align(id(image_notif_modal_caption), LV_ALIGN_BOTTOM_LEFT, layout.inset, -layout.inset);
+            img->set_target_size(target_w, target_h);
+            img->set_resize_mode(mode);
+            id(image_notif_expected_url) = img->request_update_url(url);
+            if (id(image_notif_expected_url).empty()) {
+              id(image_notif_fallback_to_text).execute();
+            }
+    - action: send_expiring_image_notification
+      variables:
+        image_url: string
+        title: string
+        message: string
+        image_sizing: string
+        timeout: int
+        message_id: string
+      then:
+        - script.execute: screensaver_wake
+        - lambda: |-
+            id(image_notif_title)   = title;
+            id(image_notif_message) = message;
+            id(image_notif_timeout) = timeout;
+            image_notification_set_msg_id(message_id);
+            std::string url = image_notification_resolve_url(
+                image_url, id(cover_art_home_assistant_base_url));
+            auto *img = id(image_notification_image);
+            auto layout = control_modal_calc_layout(100);
+            if (!image_card_memory_available(nullptr, "notification", layout.panel_w, layout.panel_h)) {
+              id(image_notif_fallback_to_text).execute();
+              return;
+            }
+            int request_w = 0;
+            int request_h = 0;
+            image_card_limit_target_size(layout.panel_w, layout.panel_h, &request_w, &request_h);
+            url = image_card_sized_url(url, request_w, request_h);
+            int target_w = layout.panel_w;
+            int target_h = layout.panel_h;
+            auto mode = esphome::artwork_image::ImageResizeMode::COVER;
+            id(image_notif_used_fit) = false;
+            if (image_sizing == "fit") {
+              mode = esphome::artwork_image::ImageResizeMode::FIT;
+              id(image_notif_used_fit) = true;
+            }
+            lv_coord_t radius = control_modal_card_radius(nullptr);
+            lv_obj_set_size(id(image_notif_modal_frame), target_w, target_h);
+            lv_obj_set_pos(id(image_notif_modal_frame), layout.panel_x, layout.panel_y);
+            lv_obj_set_style_radius(id(image_notif_modal_frame), radius, LV_PART_MAIN);
+            lv_obj_set_size(id(image_notif_modal_image), target_w, target_h);
+            lv_obj_set_style_radius(id(image_notif_modal_image), radius, LV_PART_MAIN);
+            if (image_notif_modal_close_btn() == nullptr) {
+              image_notif_modal_close_btn() = control_modal_create_round_button(
+                  id(image_notif_modal_frame), 32, "\U000F0156",
+                  id(font_icon_main)->get_lv_font(), DARK_BORDER, SECONDARY_GREY, 100);
+              lv_obj_add_event_cb(image_notif_modal_close_btn(), [](lv_event_t *) {
+                id(image_notif_dismiss_tap).execute();
+              }, LV_EVENT_CLICKED, nullptr);
+            }
+            control_modal_style_chrome_button(image_notif_modal_close_btn(), layout, true);
+            control_modal_style_translucent_chrome_button(image_notif_modal_close_btn());
+            lv_coord_t content_w = layout.panel_w - layout.inset * 2;
+            if (content_w < 120) content_w = layout.panel_w;
+            lv_obj_set_width(id(image_notif_modal_caption), content_w);
+            lv_obj_align(id(image_notif_modal_caption), LV_ALIGN_BOTTOM_LEFT, layout.inset, -layout.inset);
+            img->set_target_size(target_w, target_h);
+            img->set_resize_mode(mode);
+            id(image_notif_expected_url) = img->request_update_url(url);
+            if (id(image_notif_expected_url).empty()) {
+              id(image_notif_fallback_to_text).execute();
+            }
