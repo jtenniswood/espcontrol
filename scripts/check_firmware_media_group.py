@@ -233,6 +233,8 @@ def main() -> int:
         raise SystemExit("Grouped volume arc must defer actions until release")
     if "speaker_discovery_available" not in media_header:
         raise SystemExit("Speaker tab must track discovery availability")
+    if "lv_event_get_target(event) != lv_event_get_current_target(event)" not in media_header:
+        raise SystemExit("Speaker card must ignore clicks bubbled from its volume controls")
     print("Firmware media-group checks passed.")
     return 0
 

@@ -3171,6 +3171,10 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   control_modal_apply_pressed_fill(row->row);
   lv_obj_set_user_data(row->row, row);
   lv_obj_add_event_cb(row->row, [](lv_event_t *event) {
+    // The row contains its own volume buttons. LVGL can bubble their click
+    // events to this callback, but only a direct tap on the card should change
+    // group membership.
+    if (lv_event_get_target(event) != lv_event_get_current_target(event)) return;
     MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
       lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
     MediaControlModalUi &ui = media_control_modal_ui();
