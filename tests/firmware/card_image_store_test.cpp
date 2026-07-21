@@ -526,6 +526,25 @@ void test_cache_is_confined_to_disposable_region() {
   expect(offset >= cache_start, "cache record must stay inside the disposable region");
 }
 
+void test_cache_requires_its_source_image() {
+  flash.reset();
+  TestCardImageStore store;
+  CardImageInfo source = upload(store);
+  constexpr uint16_t width = 16;
+  constexpr uint16_t height = 16;
+  std::vector<uint8_t> pixels(static_cast<size_t>(width) * height * 2, 0x4C);
+
+  expect(store.write_rgb565_cache(source.id, source.crc32 ^ 1, width, height,
+                                  pixels.data(), pixels.size()) == ESP_ERR_INVALID_STATE,
+         "cache should reject a checksum from an outdated source image");
+  expect(store.erase(source.id) == ESP_OK, "source image should be deletable before delayed cache write");
+  expect(store.write_rgb565_cache(source.id, source.crc32, width, height,
+                                  pixels.data(), pixels.size()) == ESP_ERR_NOT_FOUND,
+         "delayed cache write should reject a deleted source image");
+  expect(find_magic(CACHE_MAGIC) == static_cast<size_t>(-1),
+         "rejected delayed cache write must not consume flash storage");
+}
+
 }  // namespace
 
 const esp_partition_t *esp_partition_find_first(int, esp_partition_subtype_t,
@@ -596,6 +615,7 @@ int main() {
   test_recovered_index_stays_ahead_of_surviving_slot();
   test_corrupt_image_payload_is_rejected();
   test_cache_is_confined_to_disposable_region();
+  test_cache_requires_its_source_image();
   std::cout << "Card image store tests passed.\n";
   return 0;
 }

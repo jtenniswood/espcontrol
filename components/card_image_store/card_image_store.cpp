@@ -759,6 +759,9 @@ esp_err_t CardImageStore::write_rgb565_cache(const std::string &id, uint32_t sou
       size != static_cast<size_t>(width) * height * 2 || size > CARD_IMAGE_CACHE_MAX_BYTES) {
     return ESP_ERR_INVALID_ARG;
   }
+  int source_index = this->find_index_(id);
+  if (source_index < 0) return ESP_ERR_NOT_FOUND;
+  if (this->images_[source_index].crc32 != source_crc32) return ESP_ERR_INVALID_STATE;
   if (this->find_cache_index_(id, source_crc32, width, height) >= 0) return ESP_OK;
 
   bool removed_stale_cache = false;
