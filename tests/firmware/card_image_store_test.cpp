@@ -133,6 +133,51 @@ void test_card_asset_service_deletes_only_after_references_persist() {
   expect(service.stop(), "asset service should stop after deletion transaction");
 }
 
+void test_card_asset_service_stages_restore_until_commit_or_rollback() {
+  flash.reset();
+  espcontrol::CardAssetService service;
+  expect(service.start(), "asset service should start for restore staging");
+  TestReferenceAdapter adapter;
+  adapter.referenced = false;
+  service.set_reference_adapter(&adapter);
+
+  const std::string rollback_session = service.begin_restore_session();
+  expect(!rollback_session.empty(), "restore should create a durable session token");
+  const auto bytes = jpeg_bytes();
+  CardImageUpload rollback_upload;
+  expect(service.begin_upload(bytes.size(), rollback_upload) == ESP_OK,
+         "staged upload should reserve storage");
+  expect(service.write_upload(rollback_upload, bytes.data(), bytes.size()) == ESP_OK,
+         "staged upload should write bytes");
+  CardImageInfo rollback_image;
+  expect(service.commit_upload(rollback_upload, rollback_image) == ESP_OK,
+         "staged upload should commit its image record");
+  expect(service.stage_restored_asset(rollback_session, rollback_image.id),
+         "restore session should durably track its new image");
+  expect(service.rollback_restore_session(rollback_session) ==
+             espcontrol::CardAssetRestoreResult::SUCCESS,
+         "rollback should remove every staged image");
+  CardImageInfo found;
+  expect(!service.find(rollback_image.id, found), "rolled-back image should not remain visible");
+
+  const std::string commit_session = service.begin_restore_session();
+  CardImageUpload commit_upload;
+  expect(service.begin_upload(bytes.size(), commit_upload) == ESP_OK,
+         "second staged upload should reserve storage");
+  expect(service.write_upload(commit_upload, bytes.data(), bytes.size()) == ESP_OK,
+         "second staged upload should write bytes");
+  CardImageInfo commit_image;
+  expect(service.commit_upload(commit_upload, commit_image) == ESP_OK,
+         "second staged upload should commit its image record");
+  expect(service.stage_restored_asset(commit_session, commit_image.id),
+         "commit session should track its image");
+  expect(service.commit_restore_session(commit_session) ==
+             espcontrol::CardAssetRestoreResult::SUCCESS,
+         "commit should make the staged restore permanent");
+  expect(service.find(commit_image.id, found), "committed restore image should remain visible");
+  expect(service.stop(), "asset service should stop after restore staging");
+}
+
 std::vector<uint8_t> jpeg_bytes(size_t size) {
   expect(size >= 4, "JPEG fixture must include start and end markers");
   std::vector<uint8_t> bytes(size, 0x42);
@@ -513,6 +558,7 @@ uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
 int main() {
   test_card_asset_service_has_one_application_owner();
   test_card_asset_service_deletes_only_after_references_persist();
+  test_card_asset_service_stages_restore_until_commit_or_rollback();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();

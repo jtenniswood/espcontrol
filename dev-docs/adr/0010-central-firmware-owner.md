@@ -30,6 +30,11 @@ The card-background feature subsequently adds `CardAssetService` to the same
 owner. Image persistence and the card-background runtime are created and
 released with `EspControlApp`; rendering and HTTP adapters reach that owner
 through the service boundary instead of maintaining independent singletons.
+The same service owns durable deletion and backup-restore markers. A legacy
+configuration adapter clears and flushes saved card references before an image
+can be erased. Restored images remain in a device-side staging session until
+the web application confirms that configuration persistence completed; an
+unfinished session is rolled back after restart.
 
 The application core remains independent of ESPHome so ownership and lifecycle
 are covered by executable host tests.

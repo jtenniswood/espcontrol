@@ -88,6 +88,7 @@ export async function runCardImagesFeatureTests(): Promise<void> {
       available: true,
       format_version: 2,
       reference_transactions: true,
+      restore_transactions: true,
       max_active_backgrounds: 6,
       storage_bytes: 8192,
       used_bytes: 4096,
@@ -106,6 +107,7 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     requiresUsbFlash: false,
     formatVersion: 2,
     referenceTransactions: true,
+    restoreTransactions: true,
     maxActiveBackgrounds: 6,
     storageBytes: 8192,
     usedBytes: 4096,
@@ -185,6 +187,77 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   }
   equal(restoreFailure, "restore failed", "restore retains the display failure reason");
   equal(rollbackRequests.at(-1), "DELETE /api/card-images/created-1", "partial restore is rolled back");
+
+  const stagedRequests: string[] = [];
+  const staged = providerFor(async (url, request) => {
+    const method = request?.method || "GET";
+    stagedRequests.push(`${method} ${url}`);
+    if (method === "GET") {
+      return response({ json: {
+        available: true,
+        restore_transactions: true,
+        images: [],
+      } });
+    }
+    if (url === "/api/card-images/restore/begin") {
+      return response({ json: { session: "0123456789abcdef" } });
+    }
+    if (url === "/api/card-images?restore=0123456789abcdef") {
+      return response({ json: { id: "created-stage", name: "created-stage", size: 4 } });
+    }
+    if (url === "/api/card-images/created-stage/rename") {
+      return response({ json: { id: "created-stage", name: "Stage", size: 4 } });
+    }
+    if (url === "/api/card-images/restore/0123456789abcdef/commit") return response();
+    throw new Error(`unexpected request ${method} ${url}`);
+  });
+  deepEqual(
+    await staged.provider.restoreArchiveEntries(manifestEntries([{ id: "old-stage", name: "Stage" }])),
+    { "old-stage": "created-stage" },
+    "transactional restore returns the staged ID mapping",
+  );
+  equal(stagedRequests.includes("POST /api/card-images/restore/0123456789abcdef/commit"), false,
+    "staged assets are not committed before configuration posts complete");
+  await staged.provider.commitRestore?.();
+  equal(stagedRequests.at(-1), "POST /api/card-images/restore/0123456789abcdef/commit",
+    "successful configuration persistence commits the staged assets");
+
+  const stagedRollbackRequests: string[] = [];
+  let stagedUploadCount = 0;
+  const stagedRollback = providerFor(async (url, request) => {
+    const method = request?.method || "GET";
+    stagedRollbackRequests.push(`${method} ${url}`);
+    if (method === "GET") {
+      return response({ json: { available: true, restore_transactions: true, images: [] } });
+    }
+    if (url === "/api/card-images/restore/begin") {
+      return response({ json: { session: "fedcba9876543210" } });
+    }
+    if (url === "/api/card-images?restore=fedcba9876543210") {
+      stagedUploadCount++;
+      return stagedUploadCount === 1
+        ? response({ json: { id: "staged-one", name: "staged-one", size: 4 } })
+        : response({ ok: false, text: "staged upload failed" });
+    }
+    if (url === "/api/card-images/staged-one/rename") {
+      return response({ json: { id: "staged-one", name: "One", size: 4 } });
+    }
+    if (url === "/api/card-images/restore/fedcba9876543210/rollback") return response();
+    throw new Error(`unexpected request ${method} ${url}`);
+  }).provider;
+  let stagedRestoreFailure = "";
+  try {
+    await stagedRollback.restoreArchiveEntries(manifestEntries([
+      { id: "stage-old-1", name: "One" },
+      { id: "stage-old-2", name: "Two" },
+    ]));
+  } catch (error) {
+    stagedRestoreFailure = (error as Error).message;
+  }
+  equal(stagedRestoreFailure, "staged upload failed", "staged restore keeps the upload failure reason");
+  equal(stagedRollbackRequests.at(-1),
+    "POST /api/card-images/restore/fedcba9876543210/rollback",
+    "failed staged restore uses the durable device rollback instead of separate deletes");
 
   const buttons: CardConfig[] = [
     { entity: "", label: "", icon: "", icon_on: "", sensor: "", unit: "", type: "", precision: "", options: "bg_image=old-1" },

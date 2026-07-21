@@ -63,6 +63,8 @@ export interface BackupAssetProvider<TImportPlan = BackupImportPlan> {
   createArchiveEntries(): Promise<BackupArchiveEntry[]>;
   restoreArchiveEntries(entries?: BackupArchiveEntries | null): Promise<Record<string, string>>;
   remapImportedReferences(plan: TImportPlan, references: Readonly<Record<string, string>>): void;
+  commitRestore?(): Promise<void>;
+  rollbackRestore?(): Promise<void>;
 }
 
 export interface BackupFeatureDependencies {

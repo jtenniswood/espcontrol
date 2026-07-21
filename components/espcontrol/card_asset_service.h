@@ -29,6 +29,13 @@ enum class CardAssetDeleteResult {
   STORAGE_FAILED,
 };
 
+enum class CardAssetRestoreResult {
+  SUCCESS,
+  INVALID_SESSION,
+  PERSISTENCE_FAILED,
+  ROLLBACK_FAILED,
+};
+
 // Application-owned boundary for card-image persistence. HTTP and rendering
 // adapters depend on this service rather than constructing or locating their
 // own store.
@@ -46,6 +53,11 @@ class CardAssetService {
     return reference_adapter_ != nullptr && reference_adapter_->ready();
   }
   CardAssetDeleteResult delete_with_references(const std::string &id);
+  std::string begin_restore_session();
+  bool stage_restored_asset(const std::string &session, const std::string &id);
+  void unstage_restored_asset(const std::string &session, const std::string &id);
+  CardAssetRestoreResult commit_restore_session(const std::string &session);
+  CardAssetRestoreResult rollback_restore_session(const std::string &session);
 
   bool available() { return store_.available(); }
   size_t capacity() { return store_.capacity(); }
@@ -123,6 +135,9 @@ class CardAssetService {
   std::unique_ptr<RuntimeHolderBase> card_background_runtime_{};
   CardAssetReferenceAdapter *reference_adapter_{nullptr};
   std::string pending_delete_id_{};
+  std::string restore_session_{};
+  std::vector<std::string> staged_restore_ids_{};
+  bool restore_recovery_needed_{false};
   bool delete_running_{false};
   bool running_{false};
 
@@ -130,10 +145,14 @@ class CardAssetService {
   bool save_pending_delete(const std::string &id);
   bool clear_pending_delete();
   CardAssetDeleteResult resume_pending_delete();
+  bool load_restore_session();
+  bool save_restore_session();
+  bool clear_restore_session();
 
 #ifdef ESP_PLATFORM
   uint32_t last_resume_attempt_{0};
   esphome::ESPPreferenceObject pending_delete_preference_{};
+  esphome::ESPPreferenceObject restore_session_preference_{};
 #endif
 };
 

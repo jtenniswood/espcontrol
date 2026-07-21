@@ -18,6 +18,7 @@ export interface CardImageLibraryInfo {
   readonly requiresUsbFlash: boolean;
   readonly formatVersion: number;
   readonly referenceTransactions: boolean;
+  readonly restoreTransactions: boolean;
   readonly maxActiveBackgrounds: number;
   readonly storageBytes: number;
   readonly usedBytes: number;
@@ -62,10 +63,13 @@ export interface CardImagesFeature {
   invalidate(): void;
   resize(file: Blob): Promise<OptimizedCardImage>;
   upload(file: Blob): Promise<CardImageItem>;
-  uploadBytes(bytes: Uint8Array, failureMessage?: string): Promise<CardImageItem>;
+  uploadBytes(bytes: Uint8Array, failureMessage?: string, restoreSession?: string): Promise<CardImageItem>;
   rename(id: unknown, name: unknown): Promise<CardImageItem>;
   delete(id: unknown): Promise<void>;
   readBytes(id: unknown): Promise<Uint8Array>;
+  beginRestore(): Promise<string | null>;
+  commitRestore(session: string): Promise<void>;
+  rollbackRestore(session: string): Promise<void>;
 }
 
 export interface CardImageReferencePlan {
@@ -126,6 +130,7 @@ interface CardImageListPayload {
   readonly requires_usb_flash?: unknown;
   readonly format_version?: unknown;
   readonly reference_transactions?: unknown;
+  readonly restore_transactions?: unknown;
   readonly max_active_backgrounds?: unknown;
   readonly storage_bytes?: unknown;
   readonly used_bytes?: unknown;
@@ -168,6 +173,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     requiresUsbFlash: false,
     formatVersion: 0,
     referenceTransactions: false,
+    restoreTransactions: false,
     maxActiveBackgrounds: dependencies.maxActiveBackgrounds,
     storageBytes: 0,
     usedBytes: 0,
@@ -194,6 +200,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
       requiresUsbFlash: !!payload?.requires_usb_flash,
       formatVersion: integer(payload?.format_version),
       referenceTransactions: !!payload?.reference_transactions,
+      restoreTransactions: !!payload?.restore_transactions,
       maxActiveBackgrounds: integer(payload?.max_active_backgrounds) || dependencies.maxActiveBackgrounds,
       storageBytes: integer(payload?.storage_bytes),
       usedBytes: integer(payload?.used_bytes),
@@ -215,8 +222,14 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     return item;
   };
 
-  const uploadBytes = (bytes: Uint8Array, failureMessage = "Could not upload image."): Promise<CardImageItem> =>
-    dependencies.fetch("/api/card-images", {
+  const uploadBytes = (
+    bytes: Uint8Array,
+    failureMessage = "Could not upload image.",
+    restoreSession?: string,
+  ): Promise<CardImageItem> =>
+    dependencies.fetch(restoreSession
+      ? `/api/card-images?restore=${encodeURIComponent(restoreSession)}`
+      : "/api/card-images", {
       method: "POST",
       headers: { "Content-Type": "image/jpeg" },
       body: bytes,
@@ -335,6 +348,29 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
       if (!response.ok) throw new Error(`Could not read image ${id}`);
       return new Uint8Array(await response.arrayBuffer());
     },
+    async beginRestore() {
+      if (!libraryInfo.restoreTransactions) return null;
+      const response = await dependencies.fetch("/api/card-images/restore/begin", { method: "POST" });
+      if (!response.ok) throw new Error((await response.text()) || "Could not start backup restore.");
+      const payload = await response.json() as { session?: unknown };
+      const session = String(payload.session || "");
+      if (!/^[a-f0-9]{16}$/.test(session)) throw new Error("Could not start backup restore.");
+      return session;
+    },
+    async commitRestore(session) {
+      const response = await dependencies.fetch(
+        `/api/card-images/restore/${encodeURIComponent(session)}/commit`, { method: "POST" },
+      );
+      if (!response.ok) throw new Error((await response.text()) || "Could not commit backup restore.");
+      invalidate();
+    },
+    async rollbackRestore(session) {
+      const response = await dependencies.fetch(
+        `/api/card-images/restore/${encodeURIComponent(session)}/rollback`, { method: "POST" },
+      );
+      if (!response.ok) throw new Error((await response.text()) || "Could not roll back backup restore.");
+      invalidate();
+    },
   };
 }
 
@@ -342,6 +378,8 @@ export function createCardImageBackupAssetProvider(
   cardImages: CardImagesFeature,
   dependencies: CardImageBackupDependencies,
 ): BackupAssetProvider<CardImageReferencePlan> {
+  let activeRestoreSession: string | null = null;
+  let pendingCreatedIds: string[] = [];
   const createArchiveEntries = async (): Promise<BackupArchiveEntry[]> => {
     const manifest = { format: "espcontrol.card-images", version: 1, images: [] as CardImageManifestItem[] };
     const entries: BackupArchiveEntry[] = [];
@@ -408,28 +446,45 @@ export function createCardImageBackupAssetProvider(
       const info = cardImages.info();
       if (!info.available) throw new Error("Card image storage is unavailable on this display.");
       const existingIds = new Set(existing.map((image) => image.id));
+      const needsUpload = archived.some((image) => !existingIds.has(image.item.id));
+      activeRestoreSession = needsUpload ? await cardImages.beginRestore() : null;
       for (const image of archived) {
         if (existingIds.has(image.item.id)) {
           references[image.item.id] = image.item.id;
           continue;
         }
-        const restored = await cardImages.uploadBytes(image.bytes, "Could not restore an archived card image.");
+        const restored = await cardImages.uploadBytes(
+          image.bytes,
+          "Could not restore an archived card image.",
+          activeRestoreSession || undefined,
+        );
         createdIds.push(restored.id);
         references[image.item.id] = restored.id;
         if (image.item.name && image.item.name !== restored.id) {
           await cardImages.rename(restored.id, image.item.name);
         }
       }
+      pendingCreatedIds = createdIds.slice();
       cardImages.invalidate();
       return references;
     } catch (error) {
-      for (const id of createdIds) {
+      if (activeRestoreSession) {
         try {
-          await cardImages.delete(id);
+          await cardImages.rollbackRestore(activeRestoreSession);
         } catch {
-          // Best-effort rollback keeps the original restore failure visible.
+          // The device retains the durable session and retries after reboot.
+        }
+      } else {
+        for (const id of createdIds) {
+          try {
+            await cardImages.delete(id);
+          } catch {
+            // Best-effort rollback keeps the original restore failure visible.
+          }
         }
       }
+      activeRestoreSession = null;
+      pendingCreatedIds = [];
       cardImages.invalidate();
       throw error;
     }
@@ -450,5 +505,27 @@ export function createCardImageBackupAssetProvider(
     for (const subpage of Object.values(plan.subpages || {})) remap(subpage?.buttons);
   };
 
-  return { createArchiveEntries, restoreArchiveEntries, remapImportedReferences };
+  const commitRestore = async (): Promise<void> => {
+    if (activeRestoreSession) await cardImages.commitRestore(activeRestoreSession);
+    activeRestoreSession = null;
+    pendingCreatedIds = [];
+  };
+
+  const rollbackRestore = async (): Promise<void> => {
+    if (activeRestoreSession) {
+      await cardImages.rollbackRestore(activeRestoreSession);
+    } else {
+      for (const id of pendingCreatedIds) await cardImages.delete(id);
+    }
+    activeRestoreSession = null;
+    pendingCreatedIds = [];
+  };
+
+  return {
+    createArchiveEntries,
+    restoreArchiveEntries,
+    remapImportedReferences,
+    commitRestore,
+    rollbackRestore,
+  };
 }

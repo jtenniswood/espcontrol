@@ -108,6 +108,53 @@ export function installAppBackupModule(): GlobalDescriptors {
     function backupRemapImportedImageReferences(this: any, backupPlan?: any, idMap?: any) {
         cardImageBackupAssetProvider.remapImportedReferences(backupPlan || {}, idMap || {});
     }
+    function backupCommitArchivedImages(this: any) {
+        return cardImageBackupAssetProvider.commitRestore
+            ? cardImageBackupAssetProvider.commitRestore()
+            : Promise.resolve();
+    }
+    function backupRollbackArchivedImages(this: any) {
+        return cardImageBackupAssetProvider.rollbackRestore
+            ? cardImageBackupAssetProvider.rollbackRestore()
+            : Promise.resolve();
+    }
+    function backupCardConfigurationSnapshot(this: any) {
+        var subpages: any = {};
+        Object.keys(state.subpages || {}).forEach(function (key) {
+            var subpage: any = state.subpages[key];
+            if (subpage)
+                subpages[key] = parseSubpageConfig(serializeSubpageConfig(subpage));
+        });
+        return {
+            onColor: state.onColor,
+            order: serializeGrid(state.grid),
+            buttons: (state.buttons || []).map(function (button) {
+                return backupNormalizeButtonConfig(button);
+            }),
+            subpages: subpages,
+        };
+    }
+    function backupRestoreCardConfigurationSnapshot(this: any, snapshot?: any) {
+        resetPostQueueError();
+        postText(entityName("button_on_color"), snapshot.onColor);
+        for (var index: any = 0; index < NUM_SLOTS; index++) {
+            state.buttons[index] = backupNormalizeButtonConfig(snapshot.buttons[index]);
+            saveButtonConfig(index + 1);
+        }
+        state.subpages = snapshot.subpages || {};
+        state.subpageRaw = {};
+        for (var slot: any = 1; slot <= NUM_SLOTS; slot++)
+            saveSubpageEntity(String(slot));
+        postText(entityName("button_order"), snapshot.order);
+        applyImportedButtonOrder(snapshot.order, {});
+        state.onColor = snapshot.onColor;
+        return postQueueIdle().then(function () {
+            if (postQueueHadError())
+                throw new Error("The previous card layout could not be fully restored.");
+            renderPreview();
+            renderButtonSettings();
+        });
+    }
     function exportConfig(this: any) {
         var data: any = createBackupConfig({
             device: DEVICE_ID,
@@ -242,6 +289,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 for (var warningIdx: any = 0; warningIdx < backupPlan.warnings.length; warningIdx++) {
                     showBanner(backupPlan.warnings[warningIdx], "warning");
                 }
+                var cardConfigurationSnapshot: any = backupCardConfigurationSnapshot();
                 return backupRestoreArchivedImages(zipEntries).then(function (this: any, imageIdMap?: any) {
                 backupRemapImportedImageReferences(backupPlan, imageIdMap);
                 setPostThrottle(importPostThrottleMs);
@@ -257,8 +305,9 @@ export function installAppBackupModule(): GlobalDescriptors {
                 state.subpageRaw = {};
                 for (var subpageKey in backupPlan.subpages) {
                     state.subpages[subpageKey] = backupPlan.subpages[subpageKey];
-                    saveSubpageEntity(subpageKey);
                 }
+                for (var subpageSlot: any = 1; subpageSlot <= NUM_SLOTS; subpageSlot++)
+                    saveSubpageEntity(String(subpageSlot));
                 postText(entityName("button_order"), backupPlan.button_order);
                 applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
                 state.onColor = backupPlan.config.button_on_color;
@@ -504,11 +553,20 @@ export function installAppBackupModule(): GlobalDescriptors {
                 renderButtonSettings();
                 switchTab("screen");
                 setPostThrottle(0);
-                postQueueIdle().then(function (this: any) {
-                    if (!postQueueHadError())
-                        showBanner("Configuration imported successfully", "success");
-                });
                 cleanupInput();
+                return postQueueIdle().then(function (this: any) {
+                    if (postQueueHadError())
+                        throw new Error("Some restored settings could not be saved. Staged images were rolled back.");
+                    return backupCommitArchivedImages().then(function () {
+                        showBanner("Configuration imported successfully", "success");
+                    });
+                }).catch(function (this: any, err?: any) {
+                    return backupRestoreCardConfigurationSnapshot(cardConfigurationSnapshot).catch(function () {
+                        // Device rollback below still removes any partially saved staged references.
+                    }).then(function () { return backupRollbackArchivedImages(); }).catch(function () {
+                        throw new Error("Restore recovery is incomplete. Restart the display before trying again.");
+                    }).then(function () { throw err; });
+                });
                 }).catch(function (this: any, err?: any) {
                     showBanner(err && err.message || "Could not restore backup images.", "error");
                     cleanupInput();
@@ -538,6 +596,10 @@ export function installAppBackupModule(): GlobalDescriptors {
         "backupExportScreenSizeSlug": staticGlobal(backupExportScreenSizeSlug),
         "backupExportFileDate": staticGlobal(backupExportFileDate),
         "backupExportFileName": staticGlobal(backupExportFileName),
+        "backupCommitArchivedImages": staticGlobal(backupCommitArchivedImages),
+        "backupRollbackArchivedImages": staticGlobal(backupRollbackArchivedImages),
+        "backupCardConfigurationSnapshot": staticGlobal(backupCardConfigurationSnapshot),
+        "backupRestoreCardConfigurationSnapshot": staticGlobal(backupRestoreCardConfigurationSnapshot),
         "backupZipCrc32": staticGlobal(backupZipCrc32),
         "backupZipU16": staticGlobal(backupZipU16),
         "backupZipU32": staticGlobal(backupZipU32),

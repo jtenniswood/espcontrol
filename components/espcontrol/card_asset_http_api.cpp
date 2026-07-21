@@ -28,6 +28,7 @@ using esphome::web_server_idf::strcasestr_n;
 
 static const char *const TAG = "card_asset_http";
 static constexpr const char *API_PREFIX = "/api/card-images/";
+static constexpr const char *RESTORE_PREFIX = "/api/card-images/restore/";
 
 #ifndef HTTPD_409
 #define HTTPD_409 "409 Conflict"
@@ -80,6 +81,15 @@ std::string item_json(const CardImageInfo &image) {
   return body;
 }
 
+std::string request_query_value(httpd_req_t *request, const char *key) {
+  const size_t length = httpd_req_get_url_query_len(request);
+  if (length == 0) return "";
+  std::string query(length + 1, '\0');
+  if (httpd_req_get_url_query_str(request, query.data(), query.size()) != ESP_OK) return "";
+  const auto value = query_key_value(query.c_str(), length, key);
+  return value.has_value() ? value.value() : "";
+}
+
 std::string list_json() {
   auto *assets = card_asset_service();
   const bool available = assets != nullptr && assets->available();
@@ -92,6 +102,7 @@ std::string list_json() {
   out += available ? "false" : "true";
   out += ",\"format_version\":" + std::to_string(CARD_IMAGE_FORMAT_VERSION);
   out += ",\"reference_transactions\":true";
+  out += ",\"restore_transactions\":true";
   out += ",\"max_active_backgrounds\":";
 #ifdef ESPCONTROL_MAX_GRID_SLOTS
   out += std::to_string(ESPCONTROL_MAX_GRID_SLOTS);
@@ -232,6 +243,7 @@ esp_err_t handle_upload(httpd_req_t *request) {
     return ESP_OK;
   }
   CardImageUpload upload;
+  const std::string restore_session = request_query_value(request, "restore");
   esp_err_t error = assets->begin_upload(request->content_len, upload);
   if (error == ESP_ERR_NO_MEM) {
     httpd_resp_send_err(request, HTTPD_400_BAD_REQUEST, "Not enough image storage space");
@@ -241,12 +253,21 @@ esp_err_t handle_upload(httpd_req_t *request) {
     httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not start image upload");
     return ESP_OK;
   }
+  const std::string upload_id = upload.id;
+  if (!restore_session.empty() && !assets->stage_restored_asset(restore_session, upload_id)) {
+    assets->abort_upload(upload);
+    httpd_resp_set_status(request, HTTPD_409);
+    httpd_resp_set_type(request, "text/plain");
+    httpd_resp_sendstr(request, "Restore session is unavailable");
+    return ESP_OK;
+  }
   auto buffer = std::make_unique<char[]>(1024);
   for (size_t remaining = request->content_len; remaining > 0;) {
     const size_t wanted = std::min<size_t>(remaining, 1024);
     const int received = httpd_req_recv(request, buffer.get(), wanted);
     if (received <= 0) {
       assets->abort_upload(upload);
+      assets->unstage_restored_asset(restore_session, upload_id);
       httpd_resp_send_err(request, HTTPD_400_BAD_REQUEST, "Upload failed");
       return ESP_OK;
     }
@@ -254,6 +275,7 @@ esp_err_t handle_upload(httpd_req_t *request) {
                                  static_cast<size_t>(received));
     if (error != ESP_OK) {
       assets->abort_upload(upload);
+      assets->unstage_restored_asset(restore_session, upload_id);
       ESP_LOGE(TAG, "Failed to write card image chunk: %s", esp_err_to_name(error));
       httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR, "Upload failed");
       return ESP_OK;
@@ -264,6 +286,7 @@ esp_err_t handle_upload(httpd_req_t *request) {
   error = assets->commit_upload(upload, image);
   if (error != ESP_OK) {
     assets->abort_upload(upload);
+    assets->unstage_restored_asset(restore_session, upload_id);
     ESP_LOGE(TAG, "Failed to commit card image: %s", esp_err_to_name(error));
     httpd_resp_send_err(request,
                         error == ESP_ERR_INVALID_ARG ? HTTPD_400_BAD_REQUEST : HTTPD_500_INTERNAL_SERVER_ERROR,
@@ -273,6 +296,54 @@ esp_err_t handle_upload(httpd_req_t *request) {
   const std::string body = item_json(image);
   httpd_resp_set_type(request, "application/json");
   httpd_resp_sendstr(request, body.c_str());
+  return ESP_OK;
+}
+
+esp_err_t handle_restore(httpd_req_t *request) {
+  std::string url(request->uri);
+  const size_t query = url.find('?');
+  if (query != std::string::npos) url.resize(query);
+  auto *assets = card_asset_service();
+  if (assets == nullptr) {
+    send_unavailable(request);
+    return ESP_OK;
+  }
+  if (url == std::string(RESTORE_PREFIX) + "begin") {
+    const std::string session = assets->begin_restore_session();
+    if (session.empty()) {
+      httpd_resp_set_status(request, HTTPD_409);
+      httpd_resp_set_type(request, "text/plain");
+      httpd_resp_sendstr(request, "Another backup restore is already active");
+      return ESP_OK;
+    }
+    const std::string body = "{\"session\":\"" + session + "\"}";
+    httpd_resp_set_type(request, "application/json");
+    httpd_resp_sendstr(request, body.c_str());
+    return ESP_OK;
+  }
+  if (url.rfind(RESTORE_PREFIX, 0) != 0) return ESP_ERR_NOT_FOUND;
+  const std::string rest = url.substr(strlen(RESTORE_PREFIX));
+  const size_t slash = rest.find('/');
+  if (slash == std::string::npos) return ESP_ERR_NOT_FOUND;
+  const std::string session = rest.substr(0, slash);
+  const std::string action = rest.substr(slash + 1);
+  const CardAssetRestoreResult result = action == "commit"
+      ? assets->commit_restore_session(session)
+      : action == "rollback"
+          ? assets->rollback_restore_session(session)
+          : CardAssetRestoreResult::INVALID_SESSION;
+  if (result == CardAssetRestoreResult::SUCCESS) {
+    httpd_resp_set_type(request, "application/json");
+    httpd_resp_sendstr(request, "{\"ok\":true}");
+  } else if (result == CardAssetRestoreResult::INVALID_SESSION) {
+    httpd_resp_set_status(request, HTTPD_409);
+    httpd_resp_set_type(request, "text/plain");
+    httpd_resp_sendstr(request, "Restore session is unavailable");
+  } else {
+    httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR,
+                        action == "rollback" ? "Restore rollback is incomplete"
+                                             : "Restore could not be committed");
+  }
   return ESP_OK;
 }
 
@@ -349,7 +420,14 @@ bool handle_request(AsyncWebServerRequest *request) {
 }
 
 esp_err_t handle_post(httpd_req_t *request) {
-  if (strcmp(request->uri, "/api/card-images") == 0) return handle_upload(request);
+  if (strncmp(request->uri, RESTORE_PREFIX, strlen(RESTORE_PREFIX)) == 0) {
+    return handle_restore(request);
+  }
+  if (strncmp(request->uri, "/api/card-images", strlen("/api/card-images")) == 0 &&
+      (request->uri[strlen("/api/card-images")] == '\0' ||
+       request->uri[strlen("/api/card-images")] == '?')) {
+    return handle_upload(request);
+  }
   if (strncmp(request->uri, API_PREFIX, strlen(API_PREFIX)) == 0) return handle_rename(request);
   return ESP_ERR_NOT_FOUND;
 }
