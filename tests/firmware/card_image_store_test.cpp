@@ -201,6 +201,41 @@ void test_card_asset_service_stages_every_indexed_image() {
   expect(service.stop(), "asset service should stop after the large restore");
 }
 
+void test_card_asset_service_retries_restore_recovery_without_pending_delete() {
+  flash.reset();
+  espcontrol::CardAssetService service;
+  expect(service.start(), "asset service should start for restore recovery");
+  TestReferenceAdapter adapter;
+  adapter.is_ready = false;
+  adapter.referenced = false;
+  service.set_reference_adapter(&adapter);
+
+  const std::string session = service.begin_restore_session();
+  const auto bytes = jpeg_bytes();
+  CardImageUpload upload;
+  expect(service.begin_upload(bytes.size(), upload) == ESP_OK,
+         "recovery fixture should reserve image storage");
+  expect(service.write_upload(upload, bytes.data(), bytes.size()) == ESP_OK,
+         "recovery fixture should write image bytes");
+  CardImageInfo image;
+  expect(service.commit_upload(upload, image) == ESP_OK,
+         "recovery fixture should commit the staged image");
+  expect(service.stage_restored_asset(session, image.id),
+         "recovery fixture should track the staged image");
+  expect(service.rollback_restore_session(session) ==
+             espcontrol::CardAssetRestoreResult::ROLLBACK_FAILED,
+         "unavailable references should leave durable rollback work pending");
+
+  adapter.is_ready = true;
+  service.loop();
+  CardImageInfo found;
+  expect(!service.find(image.id, found),
+         "service loop should retry restore rollback when references become ready");
+  expect(!service.begin_restore_session().empty(),
+         "successful retry should clear the old session for later restores");
+  expect(service.stop(), "asset service should stop after restore recovery");
+}
+
 std::vector<uint8_t> jpeg_bytes(size_t size) {
   expect(size >= 4, "JPEG fixture must include start and end markers");
   std::vector<uint8_t> bytes(size, 0x42);
@@ -602,6 +637,7 @@ int main() {
   test_card_asset_service_deletes_only_after_references_persist();
   test_card_asset_service_stages_restore_until_commit_or_rollback();
   test_card_asset_service_stages_every_indexed_image();
+  test_card_asset_service_retries_restore_recovery_without_pending_delete();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();

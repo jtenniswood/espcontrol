@@ -93,13 +93,14 @@ bool CardAssetService::stop() {
 }
 
 void CardAssetService::loop() {
-  if (!running_ || pending_delete_id_.empty() || delete_running_) return;
+  if (!running_ || delete_running_ ||
+      (pending_delete_id_.empty() && !restore_recovery_needed_)) return;
 #ifdef ESP_PLATFORM
   const uint32_t now = esphome::millis();
   if (last_resume_attempt_ != 0 && now - last_resume_attempt_ < 5000) return;
   last_resume_attempt_ = now;
 #endif
-  resume_pending_delete();
+  if (!pending_delete_id_.empty()) resume_pending_delete();
   if (restore_recovery_needed_ && !delete_running_) {
     rollback_restore_session(restore_session_);
   }
