@@ -1624,18 +1624,61 @@ inline void grid_phase2(
   }
   int ROWS = (NS + COLS - 1) / COLS;
 
+  OrderResult parsed, order;
+  parse_order_string(order_str, NS, parsed);
+  clear_spanned_cells(parsed, NS, COLS, order);
+
   static bool has_sensor[MAX_GRID_SLOTS] = {};
   static bool sensor_text_mode[MAX_GRID_SLOTS] = {};
   static bool has_icon_on[MAX_GRID_SLOTS] = {};
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
-  static std::string main_config_snapshots[MAX_GRID_SLOTS];
+  static espcontrol::cards::CardNode main_card_snapshots[MAX_GRID_SLOTS];
+  static bool main_card_active[MAX_GRID_SLOTS] = {};
   static bool main_config_snapshots_initialized = false;
+  espcontrol::cards::CardNode current_card_nodes[MAX_GRID_SLOTS] = {};
+  bool current_card_active[MAX_GRID_SLOTS] = {};
   bool reconstruct_slot[MAX_GRID_SLOTS] = {};
-  if (reconstruct_main_cards) {
-    for (int i = 0; i < NS; i++) {
-      reconstruct_slot[i] = !main_config_snapshots_initialized ||
-        main_config_snapshots[i] != slots[i].config->state;
+  bool release_runtime_slot[MAX_GRID_SLOTS] = {};
+  for (int pos = 0; pos < NS; ++pos) {
+    const int slot = order.positions[pos];
+    if (slot >= 1 && slot <= NS) current_card_active[slot - 1] = true;
+  }
+  for (int i = 0; i < NS; ++i) {
+    const ParsedCfg config = parse_cfg(slots[i].config->state);
+    const uint64_t layout_signature =
+      espcontrol::cards::combine_card_signatures(
+        static_cast<uint64_t>(order.row_span[i]),
+        static_cast<uint64_t>(order.col_span[i]));
+    current_card_nodes[i] = espcontrol::cards::node_for(
+      config,
+      {espcontrol::cards::CardSurface::MAIN_GRID, 0,
+       static_cast<uint16_t>(i + 1)},
+      layout_signature);
+    if (!reconstruct_main_cards) continue;
+
+    if (!main_config_snapshots_initialized ||
+        main_card_active[i] != current_card_active[i]) {
+      reconstruct_slot[i] = true;
+      release_runtime_slot[i] = true;
+      continue;
+    }
+    if (!current_card_active[i]) continue;
+    const uint8_t domains = espcontrol::cards::changed_domains(
+      main_card_snapshots[i], current_card_nodes[i]);
+    const auto mutation = espcontrol::cards::mutation_for(domains);
+    reconstruct_slot[i] =
+      mutation == espcontrol::cards::CardMutation::REPLACE ||
+      (domains & (espcontrol::cards::CHANGE_VISUAL |
+                  espcontrol::cards::CHANGE_LAYOUT)) != 0;
+    release_runtime_slot[i] =
+      mutation == espcontrol::cards::CardMutation::REPLACE ||
+      mutation == espcontrol::cards::CardMutation::REBIND;
+    if (domains != espcontrol::cards::CHANGE_NONE) {
+      ESP_LOGD("card_runtime",
+               "Card %d mutation=%u domains=0x%02x visual=%d release=%d",
+               i + 1, static_cast<unsigned>(mutation), domains,
+               reconstruct_slot[i], release_runtime_slot[i]);
     }
   }
 
@@ -1654,7 +1697,7 @@ inline void grid_phase2(
   reset_climate_control_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(
-    slots, NS, reconstruct_main_cards ? reconstruct_slot : nullptr);
+    slots, NS, reconstruct_main_cards ? release_runtime_slot : nullptr);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
@@ -1677,9 +1720,6 @@ inline void grid_phase2(
   palette.sensor_val = sensor_val;
   set_current_button_primary_color(palette.on_val);
 
-  OrderResult parsed, order;
-  parse_order_string(order_str, NS, parsed);
-  clear_spanned_cells(parsed, NS, COLS, order);
   lv_obj_t *first_card = nullptr;
   if (order.positions[0] >= 1 && order.positions[0] <= NS) {
     first_card = slots[order.positions[0] - 1].btn;
@@ -2060,7 +2100,8 @@ inline void grid_phase2(
   if (ha_api_state_connected()) refresh_image_cards();
   refresh_weather_forecast_cards();
   for (int i = 0; i < NS; i++) {
-    main_config_snapshots[i] = slots[i].config->state;
+    main_card_snapshots[i] = current_card_nodes[i];
+    main_card_active[i] = current_card_active[i];
   }
   main_config_snapshots_initialized = true;
   grid_log_memory("end");

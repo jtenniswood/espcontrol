@@ -6,6 +6,7 @@
 
 #include "button_grid_contract_generated.h"
 #include "button_grid_card_registry.h"
+#include "card_reconciler.h"
 
 namespace espcontrol::cards {
 
@@ -92,6 +93,46 @@ inline Context context_for(const std::string &type, const std::string &mode,
     context.legacy_dispatch = true;
   }
   return context;
+}
+
+template <typename Config>
+inline card_runtime::CardRuntimeSpec runtime_spec_for(const Config &config) {
+  return context_for(config.type, config.sensor).runtime;
+}
+
+template <typename Config>
+inline uint64_t binding_signature_for(const Config &config) {
+  uint64_t signature = card_signature(config.entity);
+  signature = combine_card_signatures(signature, card_signature(config.sensor));
+  signature = combine_card_signatures(signature, card_signature(config.precision));
+  signature = combine_card_signatures(signature, card_signature(config.options));
+  return signature;
+}
+
+template <typename Config>
+inline uint64_t visual_signature_for(const Config &config) {
+  uint64_t signature = card_signature(config.label);
+  signature = combine_card_signatures(signature, card_signature(config.icon));
+  signature = combine_card_signatures(signature, card_signature(config.icon_on));
+  signature = combine_card_signatures(signature, card_signature(config.unit));
+  signature = combine_card_signatures(signature, card_signature(config.precision));
+  signature = combine_card_signatures(signature, card_signature(config.options));
+  return signature;
+}
+
+template <typename Config>
+inline CardNode node_for(const Config &config, const CardAddress &address,
+                         uint64_t layout_signature = 0) {
+  const card_runtime::CardRuntimeSpec runtime = runtime_spec_for(config);
+  CardNode node;
+  node.address = address;
+  node.type = runtime.type;
+  node.driver = runtime.driver;
+  node.resource_signature = runtime.capabilities;
+  node.binding_signature = binding_signature_for(config);
+  node.visual_signature = visual_signature_for(config);
+  node.layout_signature = layout_signature;
+  return node;
 }
 
 }  // namespace espcontrol::cards

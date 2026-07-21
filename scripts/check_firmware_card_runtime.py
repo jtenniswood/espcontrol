@@ -161,12 +161,13 @@ def check_root(root: Path) -> list[str]:
         compact_grid = re.sub(r"\s+", " ", text)
         if "reconstruct_main_cards" in text:
             live_rebuild_guards = (
-                "reconstruct_main_cards ? reconstruct_slot : nullptr",
+                "reconstruct_main_cards ? release_runtime_slot : nullptr",
                 "grid_prepare_media_runtime_for_visual_reset(slots[i].btn);",
                 "control_context = grid_media_control_runtime_for_owner(slots[i].btn);",
                 "slots[i].btn, visual_context, slider_context, control_context",
-                "if (reconstruct_main_cards) {",
-                "main_config_snapshots[i] != slots[i].config->state",
+                "espcontrol::cards::changed_domains(",
+                "mutation == espcontrol::cards::CardMutation::REBIND",
+                "main_card_snapshots[i] = current_card_nodes[i]",
                 "reconstruct_main_cards && reconstruct_slot[idx - 1]",
                 "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
                 "media_ctx->cover_art && media_ctx->cover_art->widget",

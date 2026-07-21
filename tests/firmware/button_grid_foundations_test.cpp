@@ -22,6 +22,41 @@ int main() {
       card_runtime_context("not_a_card").family != Family::UNKNOWN) {
     return EXIT_FAILURE;
   }
+  struct FullTestConfig {
+    std::string entity;
+    std::string label;
+    std::string icon;
+    std::string icon_on;
+    std::string sensor;
+    std::string unit;
+    std::string type;
+    std::string precision;
+    std::string options;
+  };
+  FullTestConfig base{"media_player.room", "Music", "Auto", "Auto",
+                      "cover_art", "", "media", "", ""};
+  const auto address = espcontrol::cards::CardAddress{
+    espcontrol::cards::CardSurface::MAIN_GRID, 0, 1};
+  const auto base_node = espcontrol::cards::node_for(base, address, 1);
+  FullTestConfig relabelled = base;
+  relabelled.label = "Now playing";
+  const auto relabelled_node = espcontrol::cards::node_for(relabelled, address, 1);
+  const uint8_t relabelled_domains =
+    espcontrol::cards::changed_domains(base_node, relabelled_node);
+  if (espcontrol::cards::mutation_for(relabelled_domains) !=
+        espcontrol::cards::CardMutation::UPDATE_VISUAL ||
+      (relabelled_domains & espcontrol::cards::CHANGE_BINDINGS) != 0) {
+    return EXIT_FAILURE;
+  }
+  FullTestConfig rebound = base;
+  rebound.entity = "media_player.kitchen";
+  const uint8_t rebound_domains = espcontrol::cards::changed_domains(
+    base_node, espcontrol::cards::node_for(rebound, address, 1));
+  if (espcontrol::cards::mutation_for(rebound_domains) !=
+        espcontrol::cards::CardMutation::REBIND ||
+      (rebound_domains & espcontrol::cards::CHANGE_VISUAL) != 0) {
+    return EXIT_FAILURE;
+  }
   const auto door = card_runtime_context("door_window");
   const auto presence = card_runtime_context("presence");
   const auto image = card_runtime_context("image");
