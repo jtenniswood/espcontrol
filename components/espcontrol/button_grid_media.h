@@ -12,6 +12,7 @@ enum class MediaControlTab : uint8_t {
 };
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
+constexpr int MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT = 80;
 
 struct MediaControlCtx {
   std::string entity_id;
@@ -3435,6 +3436,17 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (!tabs[i].btn) continue;
     bool active = tabs[i].tab == ui.tab;
     control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);
+    if (tabs[i].tab == MediaControlTab::SPEAKERS) {
+      lv_obj_t *label = control_modal_icon_label(tabs[i].btn);
+      if (label) {
+        lv_obj_set_style_transform_zoom(
+          label,
+          control_modal_tab_icon_zoom(layout) *
+            MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT / 100,
+          LV_PART_MAIN);
+        control_modal_center_tab_icon(label);
+      }
+    }
   }
 
   const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
