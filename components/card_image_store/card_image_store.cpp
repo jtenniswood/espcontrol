@@ -842,6 +842,24 @@ esp_err_t CardImageStore::write_rgb565_cache(const std::string &id, uint32_t sou
   return ESP_OK;
 }
 
+esp_err_t CardImageStore::reserve_erase(const std::string &id) {
+  LockGuard lock(this);
+  this->ensure_index_();
+  int index = this->find_index_(id);
+  if (index < 0) return ESP_ERR_NOT_FOUND;
+  if (!this->erase_reservation_.empty() && this->erase_reservation_ != id) {
+    return ESP_ERR_INVALID_STATE;
+  }
+  for (const auto &reader : this->readers_) if (reader.first == id && reader.second > 0) return ESP_ERR_INVALID_STATE;
+  this->erase_reservation_ = id;
+  return ESP_OK;
+}
+
+void CardImageStore::cancel_erase(const std::string &id) {
+  LockGuard lock(this);
+  if (this->erase_reservation_ == id) this->erase_reservation_.clear();
+}
+
 esp_err_t CardImageStore::erase(const std::string &id) {
   LockGuard lock(this);
   this->ensure_index_();
@@ -854,12 +872,14 @@ esp_err_t CardImageStore::erase(const std::string &id) {
     this->images_.erase(this->images_.begin() + index);
     this->erase_caches_for_id_(id);
     if (this->index_region_available_()) this->persist_index_();
+    if (this->erase_reservation_ == id) this->erase_reservation_.clear();
   }
   return err;
 }
 
 std::shared_ptr<http_request::HttpContainer> CardImageStore::open(const std::string &id) {
   LockGuard lock(this);
+  if (this->erase_reservation_ == id) return nullptr;
   CardImageInfo info;
   if (!this->find(id, info)) return nullptr;
   auto it = std::find_if(this->readers_.begin(), this->readers_.end(), [&id](const auto &entry) { return entry.first == id; });

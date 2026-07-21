@@ -167,8 +167,16 @@ CardAssetDeleteResult CardAssetService::delete_with_references(const std::string
   if (reference_adapter_ == nullptr || !reference_adapter_->ready()) {
     return CardAssetDeleteResult::REFERENCES_UNAVAILABLE;
   }
-  if (pending_delete_id_.empty() && !save_pending_delete(id)) {
-    return CardAssetDeleteResult::PERSISTENCE_FAILED;
+  if (pending_delete_id_.empty()) {
+    const esp_err_t reserve_error = store_.reserve_erase(id);
+    if (reserve_error != ESP_OK) {
+      return reserve_error == ESP_ERR_INVALID_STATE ? CardAssetDeleteResult::BUSY
+                                                    : CardAssetDeleteResult::STORAGE_FAILED;
+    }
+    if (!save_pending_delete(id)) {
+      store_.cancel_erase(id);
+      return CardAssetDeleteResult::PERSISTENCE_FAILED;
+    }
   }
   return resume_pending_delete();
 }
@@ -188,13 +196,21 @@ CardAssetDeleteResult CardAssetService::resume_pending_delete() {
     delete_running_ = false;
     return cleared ? CardAssetDeleteResult::SUCCESS : CardAssetDeleteResult::PERSISTENCE_FAILED;
   }
+  const esp_err_t reserve_error = store_.reserve_erase(id);
+  if (reserve_error != ESP_OK) {
+    delete_running_ = false;
+    return reserve_error == ESP_ERR_INVALID_STATE ? CardAssetDeleteResult::BUSY
+                                                  : CardAssetDeleteResult::STORAGE_FAILED;
+  }
   if (!reference_adapter_->clear_asset_references(id) ||
       reference_adapter_->references_asset(id)) {
+    store_.cancel_erase(id);
     delete_running_ = false;
     return CardAssetDeleteResult::PERSISTENCE_FAILED;
   }
   const esp_err_t error = store_.erase(id);
   if (error != ESP_OK) {
+    store_.cancel_erase(id);
     delete_running_ = false;
     return error == ESP_ERR_INVALID_STATE ? CardAssetDeleteResult::BUSY
                                           : CardAssetDeleteResult::STORAGE_FAILED;

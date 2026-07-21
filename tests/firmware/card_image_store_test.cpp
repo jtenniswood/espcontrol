@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -60,6 +61,7 @@ class TestReferenceAdapter : public espcontrol::CardAssetReferenceAdapter {
   bool clear_asset_references(const std::string &asset_id) override {
     cleared_id = asset_id;
     if (fail_clear) return false;
+    if (on_clear) on_clear();
     referenced = false;
     return true;
   }
@@ -72,6 +74,7 @@ class TestReferenceAdapter : public espcontrol::CardAssetReferenceAdapter {
   bool is_ready{true};
   bool fail_clear{false};
   bool referenced{true};
+  std::function<void()> on_clear{};
 };
 
 void expect(bool condition, const std::string &message) {
@@ -131,6 +134,42 @@ void test_card_asset_service_deletes_only_after_references_persist() {
   expect(adapter.cleared_id == image.id && !service.find(image.id, retained),
          "the exact image should be erased only after its references clear");
   expect(service.stop(), "asset service should stop after deletion transaction");
+}
+
+void test_card_asset_service_reserves_idle_image_before_clearing_references() {
+  flash.reset();
+  espcontrol::CardAssetService service;
+  expect(service.start(), "asset service should start for reader-safe deletion");
+  const auto bytes = jpeg_bytes();
+  CardImageUpload upload;
+  expect(service.begin_upload(bytes.size(), upload) == ESP_OK,
+         "reader-safe deletion fixture should reserve storage");
+  expect(service.write_upload(upload, bytes.data(), bytes.size()) == ESP_OK,
+         "reader-safe deletion fixture should write the image");
+  CardImageInfo image;
+  expect(service.commit_upload(upload, image) == ESP_OK,
+         "reader-safe deletion fixture should commit the image");
+
+  TestReferenceAdapter adapter;
+  adapter.expected_id = image.id;
+  service.set_reference_adapter(&adapter);
+  auto reader = service.open(image.id);
+  expect(reader != nullptr, "reader-safe deletion fixture should hold an active reader");
+  expect(service.delete_with_references(image.id) == espcontrol::CardAssetDeleteResult::BUSY,
+         "active readers should make deletion busy before references are cleared");
+  expect(adapter.cleared_id.empty() && adapter.referenced,
+         "busy deletion must leave every card reference intact");
+
+  reader->end();
+  std::shared_ptr<esphome::http_request::HttpContainer> racing_reader;
+  adapter.on_clear = [&]() { racing_reader = service.open(image.id); };
+  expect(service.delete_with_references(image.id) == espcontrol::CardAssetDeleteResult::SUCCESS,
+         "idle image should delete after its references persist");
+  expect(racing_reader == nullptr,
+         "erase reservation should reject readers that race with reference clearing");
+  CardImageInfo retained;
+  expect(!service.find(image.id, retained), "reserved deletion should erase the selected image");
+  expect(service.stop(), "asset service should stop after reader-safe deletion");
 }
 
 void test_card_asset_service_stages_restore_until_commit_or_rollback() {
@@ -662,6 +701,7 @@ uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
 int main() {
   test_card_asset_service_has_one_application_owner();
   test_card_asset_service_deletes_only_after_references_persist();
+  test_card_asset_service_reserves_idle_image_before_clearing_references();
   test_card_asset_service_stages_restore_until_commit_or_rollback();
   test_card_asset_service_stages_every_indexed_image();
   test_card_asset_service_retries_restore_recovery_without_pending_delete();

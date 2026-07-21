@@ -91,6 +91,8 @@ class CardImageStore {
   esp_err_t commit_upload(CardImageUpload &upload, CardImageInfo &out);
   void abort_upload(CardImageUpload &upload);
   esp_err_t rename(const std::string &id, const std::string &name, CardImageInfo &out);
+  esp_err_t reserve_erase(const std::string &id);
+  void cancel_erase(const std::string &id);
   esp_err_t erase(const std::string &id);
 
   bool read_rgb565_cache(const std::string &id, uint32_t source_crc32,
@@ -224,6 +226,7 @@ class CardImageStore {
   size_t ram_cache_bytes_{0};
   uint32_t ram_cache_clock_{0};
   std::vector<std::pair<std::string, size_t>> readers_{};
+  std::string erase_reservation_{};
   SemaphoreHandle_t mutex_{nullptr};
 };
 
