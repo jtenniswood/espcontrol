@@ -293,6 +293,7 @@ const ICON_GROUPS = {
   'Remote Up': 'Media & Entertainment',
   'Speaker': 'Media & Entertainment',
   'Speaker Multiple': 'Media & Entertainment',
+  'Speaker Off': 'Media & Entertainment',
   'Speaker Pause': 'Media & Entertainment',
   'Speaker Play': 'Media & Entertainment',
   'Skip Next': 'Media & Entertainment',
