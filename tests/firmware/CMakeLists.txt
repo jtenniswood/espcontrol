@@ -97,6 +97,12 @@ target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
 add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
 
+add_executable(ha_state_broker_test ha_state_broker_test.cpp)
+target_compile_features(ha_state_broker_test PRIVATE cxx_std_17)
+target_compile_options(ha_state_broker_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(ha_state_broker_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_state_broker_test COMMAND ha_state_broker_test)
+
 add_executable(web_event_stream_policy_test web_event_stream_policy_test.cpp)
 target_compile_features(web_event_stream_policy_test PRIVATE cxx_std_17)
 target_compile_options(web_event_stream_policy_test PRIVATE -Wall -Wextra -Werror)
