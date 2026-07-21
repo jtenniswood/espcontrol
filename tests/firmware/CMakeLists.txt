@@ -17,6 +17,12 @@ target_include_directories(button_grid_foundations_test PRIVATE
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
 
+add_executable(card_reconciler_test card_reconciler_test.cpp)
+target_compile_features(card_reconciler_test PRIVATE cxx_std_17)
+target_compile_options(card_reconciler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(card_reconciler_test PRIVATE ../../components/espcontrol)
+add_test(NAME card_reconciler_test COMMAND card_reconciler_test)
+
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
 target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)
