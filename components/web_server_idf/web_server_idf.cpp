@@ -22,6 +22,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+#include "request_uri.h"
 #include "utils.h"
 #include "web_server_idf.h"
 
@@ -266,7 +267,7 @@ void AsyncWebServer::begin() {
 
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
-  if (strcmp(r->uri, "/api/card-images") == 0) {
+  if (request_uri_path_equals(r->uri, "/api/card-images")) {
 #ifdef USE_WEBSERVER_AUTH
     AsyncWebServerRequest req(r);
     auto *server = static_cast<AsyncWebServer *>(r->user_ctx);

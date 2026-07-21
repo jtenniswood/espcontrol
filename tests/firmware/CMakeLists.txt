@@ -8,6 +8,12 @@ target_compile_features(foundation_test PRIVATE cxx_std_17)
 target_compile_options(foundation_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME foundation_test COMMAND foundation_test)
 
+add_executable(request_uri_test request_uri_test.cpp)
+target_compile_features(request_uri_test PRIVATE cxx_std_17)
+target_compile_options(request_uri_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(request_uri_test PRIVATE ../../components/web_server_idf)
+add_test(NAME request_uri_test COMMAND request_uri_test)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)
