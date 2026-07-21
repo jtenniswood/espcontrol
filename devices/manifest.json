@@ -1156,6 +1156,82 @@
           "apiNavigateAction": false
         }
       }
+    },
+    "jc3248w535": {
+      "slots": 6,
+      "layout": {
+        "cols": 2,
+        "rows": 3,
+        "firmwareGrid": "3x2"
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ]
+      },
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "42%",
+          "aspect": "320/480"
+        },
+        "topbar": {
+          "height": 11.25,
+          "padding": "1.25cqw",
+          "fontSize": 6
+        },
+        "grid": {
+          "top": 13,
+          "compactTop": 1.25,
+          "left": 1.56,
+          "right": 1.56,
+          "bottom": 1.25,
+          "gap": 3.12,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 2.5,
+          "padding": 4.38,
+          "iconSize": 14,
+          "labelSize": 5.5,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 2.5
+        },
+        "sensorBadge": {
+          "top": 3.12,
+          "right": 3.12,
+          "fontSize": 5
+        },
+        "subpageBadge": {
+          "bottom": 3.12,
+          "right": 3.12,
+          "fontSize": 6
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "font_mdi_44_icons",
+          "sensor": "font_roboto_light_44_digits",
+          "largeSensor": "font_roboto_thin_110_digits",
+          "mediaTitle": "font_roboto_light_34_text",
+          "volumeNumber": "font_roboto_thin_96_text",
+          "volumeLabel": "font_roboto_regular_22_text",
+          "climateCardIcon": "font_mdi_33_icons",
+          "climateOptionTitle": "font_roboto_regular_20_text",
+          "climateOptionValue": "font_roboto_regular_18_text"
+        },
+        "display": {
+          "wrapTallLabels": false
+        }
+      }
     }
   }
 }
