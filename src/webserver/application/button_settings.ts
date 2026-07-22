@@ -434,7 +434,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 b.icon_on = "Auto";
                 b.unit = "";
                 b.precision = "";
-                b.options = "";
+                b.options = normalizeMediaOptions(
+                    EspControlModel.cardOptionsWithAppearance(b.options, b), b.sensor);
             }
             if (pickerType === "media_cover_art") {
                 b.sensor = "cover_art";

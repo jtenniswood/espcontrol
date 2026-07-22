@@ -2884,7 +2884,22 @@ async function assertEditSmoke(page, posts, errors) {
 
   await page.locator('.sp-main [data-slot="4"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.locator("#sp-inp-label").fill("Living Media");
+  await page.locator("#sp-inp-bg-image").evaluate((select) => {
+    var image = document.createElement("option");
+    image.value = "11111111-1111-4111-8111-111111111111";
+    image.textContent = "Media background";
+    select.appendChild(image);
+    select.value = image.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.locator("#sp-inp-type").evaluate((select) => {
+    var shortcut = document.createElement("option");
+    shortcut.value = "media_control";
+    shortcut.textContent = "Media Control";
+    select.appendChild(shortcut);
+    select.value = shortcut.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
   await page.getByRole("button", { name: "Save" }).click();
   await waitForPost(
     posts,
@@ -2892,8 +2907,9 @@ async function assertEditSmoke(page, posts, errors) {
       domain: "text",
       name: "button_4_config",
       action: "set",
+      value: "media_player.living;All Controls;Auto;Auto;control_modal;;media;;bg_image=11111111-1111-4111-8111-111111111111",
     },
-    "media card edit",
+    "media control shortcut preserves the card background",
     before,
   );
 
