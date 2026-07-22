@@ -296,6 +296,7 @@ const ICON_GROUPS = {
   'Speaker Off': 'Media & Entertainment',
   'Speaker Pause': 'Media & Entertainment',
   'Speaker Play': 'Media & Entertainment',
+  'Speaker Wireless': 'Media & Entertainment',
   'Skip Next': 'Media & Entertainment',
   'Skip Previous': 'Media & Entertainment',
   'Television': 'Media & Entertainment',
