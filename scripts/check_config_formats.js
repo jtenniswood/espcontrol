@@ -492,6 +492,73 @@ assert.strictEqual(
   "Kitchen, Main=Zone 50%",
   "media playlist player source keeps punctuation after parse and serialize"
 );
+const mediaBackgroundButton = {
+  entity: "media_player.office",
+  label: "Playlist",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "playlist",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "playlist_content_id=spotify%3Aplaylist%3Aabc,bg_image=img-1121238-0,bg_dim=60",
+};
+const parsedMediaBackgroundButton = hooks.parseButtonConfig(hooks.serializeButtonConfig(mediaBackgroundButton));
+assert(
+  parsedMediaBackgroundButton.options.includes("bg_image=img-1121238-0"),
+  "media card background image survives serialization"
+);
+assert(
+  !parsedMediaBackgroundButton.options.includes("bg_dim="),
+  "legacy media card background dim is dropped during serialization"
+);
+assert.strictEqual(
+  hooks.normalizeMediaOptions(mediaBackgroundButton.options, "playlist"),
+  "playlist_content_id=spotify%3Aplaylist%3Aabc,bg_image=img-1121238-0",
+  "media card background image survives media option normalization without legacy dim"
+);
+const backgroundOption = "bg_image=img-1121238-0";
+assert(
+  hooks.normalizeSwitchConfirmationOptions(backgroundOption + ",confirm_on=true").includes(backgroundOption),
+  "switch confirmation normalization preserves card backgrounds"
+);
+assert(
+  hooks.normalizeActionOptions(backgroundOption + ",confirm_on=true", "script.turn_on").includes(backgroundOption),
+  "action option normalization preserves card backgrounds"
+);
+const optionSelectActionWithBackground = {
+  type: "action",
+  sensor: "input_select.select_option",
+  options: backgroundOption + ",state_entity=sensor.stale",
+};
+assert.strictEqual(
+  hooks.clearActionModeOptions(optionSelectActionWithBackground),
+  backgroundOption,
+  "switching to option-select mode preserves the card background"
+);
+const localActionWithBackground = {
+  type: "action",
+  sensor: "local",
+  options: backgroundOption + ",state_entity=sensor.stale",
+};
+assert.strictEqual(
+  hooks.clearActionModeOptions(localActionWithBackground),
+  backgroundOption,
+  "switching to local-action mode preserves the card background"
+);
+assert(
+  hooks.normalizeGarageOptions(backgroundOption + ",label_display=status", "").includes(backgroundOption),
+  "garage option normalization preserves card backgrounds"
+);
+assert(
+  hooks.normalizeSubpageOptions(backgroundOption + ",subpage_kind=media", "indicator", "").includes(backgroundOption),
+  "subpage option normalization preserves card backgrounds"
+);
+assert.strictEqual(
+  hooks.cardBackgroundSupported({ type: "vacuum" }),
+  false,
+  "vacuum cards do not advertise unsupported background editing"
+);
 assert.strictEqual(
   hooks.normalizeMediaOptions("volume_max=40", "volume"),
   "volume_max=40",
@@ -2339,6 +2406,32 @@ assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   slot: 2,
   button: switchCardForImageLimit,
 }), true, "saving a non-image card does not consume a firmware image slot");
+const backgroundCardForLimit = Object.assign({}, switchCardForImageLimit, { options: "bg_image=test-image" });
+const backgroundCapacity = hooks.cardBackgroundImageLimit();
+const backgroundLimitSnapshot = {
+  grid: Array.from({ length: backgroundCapacity }, (_, index) => index + 1),
+  buttons: Array.from({ length: backgroundCapacity }, () => backgroundCardForLimit),
+  subpages: {
+    1: {
+      grid: [1, 2],
+      buttons: [backgroundCardForLimit, switchCardForImageLimit],
+    },
+  },
+};
+assert.strictEqual(backgroundCapacity, 15, "background card editor limit matches the built device profile");
+assert.strictEqual(hooks.cardBackgroundImageCountForTest(backgroundLimitSnapshot), backgroundCapacity,
+  "background card count applies to the active page");
+assert.strictEqual(hooks.cardBackgroundImageCountForTest(backgroundLimitSnapshot, {
+  isSub: false,
+  slot: backgroundCapacity + 1,
+  button: backgroundCardForLimit,
+}), backgroundCapacity + 1, "a background beyond the device slot capacity is detected");
+assert.strictEqual(hooks.cardBackgroundImageCountForTest(backgroundLimitSnapshot, {
+  isSub: true,
+  homeSlot: 1,
+  slot: 2,
+  button: backgroundCardForLimit,
+}), 2, "background limits are counted independently for each subpage");
 assertButtonRoundTrip(hooks, "image card default options", {
   entity: "camera.front_door",
   label: "",

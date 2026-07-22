@@ -79,7 +79,7 @@ const hooks = loadHooks();
 assert(hooks, "web test hooks were not exported");
 assert.strictEqual(
   hooks.backupExportFileName(new Date(2026, 5, 9)),
-  "espcontrol-7-inch-2026-06-09.json",
+  "espcontrol-7-inch-2026-06-09.zip",
   "backup export filename includes screen size and date"
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
@@ -213,7 +213,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     .replace(/^-+|-+$/g, "");
   assert.strictEqual(
     generatedHooks.backupExportFileName(new Date(2026, 5, 9)),
-    `espcontrol-${expectedScreenSize}-2026-06-09.json`,
+    `espcontrol-${expectedScreenSize}-2026-06-09.zip`,
     `${slug}: backup export filename includes screen size and date`
   );
   const generatedTimezones = Array.from(generatedHooks.defaultTimezoneOptions());

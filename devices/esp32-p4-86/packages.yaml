@@ -119,6 +119,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  card_asset_capabilities: !include device/card_asset_capabilities.yaml
   touchscreen:     !include device/touchscreen${network_package_suffix}.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
   esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
@@ -168,6 +169,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
+  card_bg_images:  !include ../../common/device/card_background_images_9.yaml
   image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)

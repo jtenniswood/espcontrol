@@ -14,6 +14,7 @@ header-only C++ under `components/espcontrol/`.
 | `components/espcontrol/button_grid_modal.h` | Shared modal registry, lifecycle, LVGL shell, and layout adapters. |
 | `components/espcontrol/button_grid_modal_layout.h` | Pure device-aware frame, tab, and content layout recipes. |
 | `components/espcontrol/button_grid_subpages.h` | Subpage support. |
+| `components/espcontrol/card_background_controller.h` | Host-tested ownership, queueing, retry, readiness, and cache state for card-background decoder resources. |
 | `components/espcontrol/icons.h` | Icon lookup. |
 | `components/espcontrol/i18n_generated.h` | Generated translation strings. |
 
@@ -29,6 +30,11 @@ header-only C++ under `components/espcontrol/`.
 6. Some cards open a shared full-screen modal.
 
 Visual setup and runtime wiring are separate. A new card often needs both.
+
+Card-background LVGL code delegates resource allocation and asynchronous state
+transitions to `card_background_controller.h`. Keep download serialization,
+retry timing, decoder readiness, and binding counts in that controller so the
+widget layer only positions, reveals, and removes LVGL objects.
 
 ## Adding Firmware Support for a Card
 

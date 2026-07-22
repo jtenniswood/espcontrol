@@ -6,6 +6,19 @@
 
 // ── Home Assistant actions ────────────────────────────────────────────
 
+inline std::function<void(lv_obj_t *)> &button_grid_screen_load_callback() {
+  static std::function<void(lv_obj_t *)> callback = nullptr;
+  return callback;
+}
+
+inline void button_grid_load_screen(lv_obj_t *screen) {
+  if (!screen) return;
+  lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  lv_obj_update_layout(screen);
+  auto &callback = button_grid_screen_load_callback();
+  if (callback) callback(screen);
+}
+
 inline bool is_button_entity(const std::string &entity_id) {
   return entity_id.size() > 7 && entity_id.compare(0, 7, "button.") == 0;
 }

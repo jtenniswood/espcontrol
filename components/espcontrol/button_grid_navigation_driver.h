@@ -220,7 +220,7 @@ inline bool navigation_driver_handle_main_click(
   lv_obj_t *screen = button
     ? static_cast<lv_obj_t *>(lv_obj_get_user_data(button)) : nullptr;
   if (screen) {
-    lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+    button_grid_load_screen(screen);
   }
   return true;
 }

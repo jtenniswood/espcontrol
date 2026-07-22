@@ -20,6 +20,12 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             cardContractMigrationAlias: cardContractMigrationAlias,
             cardContractOptionSupportedFor: cardContractOptionSupportedFor,
             cardLargeNumbersEnabled: cardLargeNumbersEnabled,
+            cardBackgroundSupported: cardBackgroundSupported,
+            normalizeSwitchConfirmationOptions: normalizeSwitchConfirmationOptions,
+            setSwitchConfirmationOptions: setSwitchConfirmationOptions,
+            normalizeActionOptions: normalizeActionOptions,
+            normalizeGarageOptions: normalizeGarageOptions,
+            normalizeSubpageOptions: normalizeSubpageOptions,
             switchConfirmationEnabled: switchConfirmationEnabled,
             switchConfirmationMode: switchConfirmationMode,
             switchConfirmationMessage: switchConfirmationMessage,
@@ -133,6 +139,23 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             imageIconEnabled: imageIconEnabled,
             imageModalMode: imageModalMode,
             imageSlotCapacity: imageSlotCapacity,
+            cardBackgroundImageLimit: cardBackgroundImageLimit,
+            cardBackgroundImageCountForTest: function (this: any, snapshot?: any, candidate?: any) {
+                var oldGrid: any = state.grid;
+                var oldButtons: any = state.buttons;
+                var oldSubpages: any = state.subpages;
+                state.grid = (snapshot && snapshot.grid) || [];
+                state.buttons = (snapshot && snapshot.buttons) || [];
+                state.subpages = (snapshot && snapshot.subpages) || {};
+                try {
+                    return cardBackgroundImageCountWithCandidate(candidate);
+                }
+                finally {
+                    state.grid = oldGrid;
+                    state.buttons = oldButtons;
+                    state.subpages = oldSubpages;
+                }
+            },
             imageSlotCapacityMessage: imageSlotCapacityMessage,
             imageCardCountForTest: function (this: any, snapshot?: any, candidate?: any) {
                 var oldGrid: any = state.grid;
@@ -171,6 +194,7 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             actionCardStatePrecision: actionCardStatePrecision,
             actionCardStateDisplayMode: actionCardStateDisplayMode,
             actionCardIsLocal: actionCardIsLocal,
+            clearActionModeOptions: clearActionModeOptions,
             actionScriptConfirmationEnabled: actionScriptConfirmationEnabled,
             actionScriptConfirmationMessage: actionScriptConfirmationMessage,
             actionScriptConfirmationYesText: actionScriptConfirmationYesText,

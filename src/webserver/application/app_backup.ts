@@ -18,7 +18,142 @@ export function installAppBackupModule(): GlobalDescriptors {
     function backupExportFileName(this: any, value?: any) {
         var date: any = value || new Date();
         return "espcontrol-" + backupExportScreenSizeSlug(CFG.screenSize) + "-" +
-            backupExportFileDate(date) + ".json";
+            backupExportFileDate(date) + ".zip";
+    }
+    function backupZipCrc32(this: any, bytes?: any) {
+        var crc: any = 0xFFFFFFFF;
+        for (var i: any = 0; i < bytes.length; i++) {
+            crc ^= bytes[i];
+            for (var bit: any = 0; bit < 8; bit++)
+                crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+    function backupZipU16(this: any, value?: any) {
+        return new Uint8Array([value & 255, (value >>> 8) & 255]);
+    }
+    function backupZipU32(this: any, value?: any) {
+        return new Uint8Array([value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255]);
+    }
+    function backupCreateZip(this: any, entries?: any) {
+        var chunks: any = [];
+        var central: any = [];
+        var offset: any = 0;
+        entries.forEach(function (this: any, entry?: any) {
+            var name: any = new TextEncoder().encode(entry.name);
+            var body: any = entry.bytes instanceof Uint8Array ? entry.bytes : new Uint8Array(entry.bytes);
+            var crc: any = backupZipCrc32(body);
+            var local: any = [backupZipU32(0x04034b50), backupZipU16(20), backupZipU16(0), backupZipU16(0),
+                backupZipU16(0), backupZipU16(0), backupZipU32(crc), backupZipU32(body.length),
+                backupZipU32(body.length), backupZipU16(name.length), backupZipU16(0), name, body];
+            chunks.push.apply(chunks, local);
+            var centralEntry: any = [backupZipU32(0x02014b50), backupZipU16(20), backupZipU16(20),
+                backupZipU16(0), backupZipU16(0), backupZipU16(0), backupZipU16(0), backupZipU32(crc),
+                backupZipU32(body.length), backupZipU32(body.length), backupZipU16(name.length), backupZipU16(0),
+                backupZipU16(0), backupZipU16(0), backupZipU16(0), backupZipU32(0), backupZipU32(offset), name];
+            central.push.apply(central, centralEntry);
+            offset += 30 + name.length + body.length;
+        });
+        var centralSize: any = central.reduce(function (this: any, total?: any, part?: any) { return total + part.length; }, 0);
+        chunks.push.apply(chunks, central);
+        chunks.push(backupZipU32(0x06054b50), backupZipU16(0), backupZipU16(0),
+            backupZipU16(entries.length), backupZipU16(entries.length), backupZipU32(centralSize),
+            backupZipU32(offset), backupZipU16(0));
+        return new Blob(chunks, { type: "application/zip" });
+    }
+    function backupReadStoredZip(this: any, buffer?: any) {
+        var bytes: any = new Uint8Array(buffer);
+        var view: any = new DataView(buffer);
+        var entries: any = {};
+        var offset: any = 0;
+        while (offset + 4 <= bytes.length && view.getUint32(offset, true) === 0x04034b50) {
+            if (offset + 30 > bytes.length)
+                throw new Error("Invalid ZIP backup.");
+            var flags: any = view.getUint16(offset + 6, true);
+            var compression: any = view.getUint16(offset + 8, true);
+            var size: any = view.getUint32(offset + 18, true);
+            var nameLength: any = view.getUint16(offset + 26, true);
+            var extraLength: any = view.getUint16(offset + 28, true);
+            if ((flags & 8) || compression !== 0)
+                throw new Error("Unsupported ZIP backup format.");
+            var nameStart: any = offset + 30;
+            var dataStart: any = nameStart + nameLength + extraLength;
+            var dataEnd: any = dataStart + size;
+            if (dataEnd > bytes.length)
+                throw new Error("Invalid ZIP backup.");
+            var name: any = new TextDecoder().decode(bytes.slice(nameStart, nameStart + nameLength));
+            entries[name] = bytes.slice(dataStart, dataEnd);
+            offset = dataEnd;
+        }
+        if (!entries["backup.json"])
+            throw new Error("ZIP backup is missing backup.json.");
+        return entries;
+    }
+    function backupDownload(this: any, blob?: any, name?: any) {
+        var url: any = URL.createObjectURL(blob);
+        var a: any = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    function backupImageArchiveEntries(this: any) {
+        return cardImageBackupAssetProvider.createArchiveEntries();
+    }
+    function backupRestoreArchivedImages(this: any, entries?: any) {
+        return cardImageBackupAssetProvider.restoreArchiveEntries(entries);
+    }
+    function backupRemapImportedImageReferences(this: any, backupPlan?: any, idMap?: any) {
+        cardImageBackupAssetProvider.remapImportedReferences(backupPlan || {}, idMap || {});
+    }
+    function backupCommitArchivedImages(this: any) {
+        return cardImageBackupAssetProvider.commitRestore
+            ? cardImageBackupAssetProvider.commitRestore()
+            : Promise.resolve();
+    }
+    function backupRollbackArchivedImages(this: any) {
+        return cardImageBackupAssetProvider.rollbackRestore
+            ? cardImageBackupAssetProvider.rollbackRestore()
+            : Promise.resolve();
+    }
+    function backupCardConfigurationSnapshot(this: any) {
+        var subpages: any = {};
+        Object.keys(state.subpages || {}).forEach(function (key) {
+            var subpage: any = state.subpages[key];
+            if (subpage)
+                subpages[key] = parseSubpageConfig(serializeSubpageConfig(subpage));
+        });
+        return {
+            onColor: state.onColor,
+            order: serializeGrid(state.grid),
+            buttons: (state.buttons || []).map(function (button) {
+                return backupNormalizeButtonConfig(button);
+            }),
+            subpages: subpages,
+        };
+    }
+    function backupRestoreCardConfigurationSnapshot(this: any, snapshot?: any) {
+        resetPostQueueError();
+        postText(entityName("button_on_color"), snapshot.onColor);
+        for (var index: any = 0; index < NUM_SLOTS; index++) {
+            state.buttons[index] = backupNormalizeButtonConfig(snapshot.buttons[index]);
+            saveButtonConfig(index + 1);
+        }
+        state.subpages = snapshot.subpages || {};
+        state.subpageRaw = {};
+        for (var slot: any = 1; slot <= NUM_SLOTS; slot++)
+            saveSubpageEntity(String(slot));
+        postText(entityName("button_order"), snapshot.order);
+        applyImportedButtonOrder(snapshot.order, {});
+        state.onColor = snapshot.onColor;
+        return postQueueIdle().then(function () {
+            if (postQueueHadError())
+                throw new Error("The previous card layout could not be fully restored.");
+            renderPreview();
+            renderButtonSettings();
+        });
     }
     function exportConfig(this: any) {
         var data: any = createBackupConfig({
@@ -100,22 +235,21 @@ export function installAppBackupModule(): GlobalDescriptors {
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         });
-        var json: any = JSON.stringify(data, null, 2);
-        var blob: any = new Blob([json], { type: "application/json" });
-        var url: any = URL.createObjectURL(blob);
-        var name: any = backupExportFileName();
-        var a: any = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        backupImageArchiveEntries()
+            .then(function (this: any, imageEntries?: any) {
+                imageEntries.unshift({ name: "backup.json", bytes: new TextEncoder().encode(JSON.stringify(data, null, 2)) });
+                backupDownload(backupCreateZip(imageEntries), backupExportFileName());
+                showBanner("Backup exported with " + Math.max(0, imageEntries.length - 2) + " image" +
+                    (imageEntries.length === 3 ? "" : "s") + ".", "success");
+            })
+            .catch(function (this: any, err?: any) {
+                showBanner(err && err.message || "Could not create backup with images.", "error");
+            });
     }
     function importConfig(this: any) {
         var input: any = document.createElement("input");
         input.type = "file";
-        input.accept = ".json";
+        input.accept = ".json,.zip";
         input.style.display = "none";
         var importPostThrottleMs: any = 75;
         function cleanupInput(this: any) {
@@ -133,10 +267,10 @@ export function installAppBackupModule(): GlobalDescriptors {
                 cleanupInput();
                 showBanner("Invalid file \u2014 could not read backup", "error");
             };
-            reader.onload = function (this: any) {
+            function processImportText(this: any, importText?: any, zipEntries?: any) {
                 var data: any;
                 try {
-                    data = JSON.parse(reader.result);
+                    data = JSON.parse(importText);
                 }
                 catch (_) {
                     showBanner("Invalid file \u2014 could not parse JSON", "error");
@@ -155,6 +289,9 @@ export function installAppBackupModule(): GlobalDescriptors {
                 for (var warningIdx: any = 0; warningIdx < backupPlan.warnings.length; warningIdx++) {
                     showBanner(backupPlan.warnings[warningIdx], "warning");
                 }
+                var cardConfigurationSnapshot: any = backupCardConfigurationSnapshot();
+                return backupRestoreArchivedImages(zipEntries).then(function (this: any, imageIdMap?: any) {
+                backupRemapImportedImageReferences(backupPlan, imageIdMap);
                 setPostThrottle(importPostThrottleMs);
                 resetPostQueueError();
                 postText(entityName("button_on_color"), backupPlan.config.button_on_color);
@@ -168,8 +305,9 @@ export function installAppBackupModule(): GlobalDescriptors {
                 state.subpageRaw = {};
                 for (var subpageKey in backupPlan.subpages) {
                     state.subpages[subpageKey] = backupPlan.subpages[subpageKey];
-                    saveSubpageEntity(subpageKey);
                 }
+                for (var subpageSlot: any = 1; subpageSlot <= NUM_SLOTS; subpageSlot++)
+                    saveSubpageEntity(String(subpageSlot));
                 postText(entityName("button_order"), backupPlan.button_order);
                 applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
                 state.onColor = backupPlan.config.button_on_color;
@@ -415,13 +553,41 @@ export function installAppBackupModule(): GlobalDescriptors {
                 renderButtonSettings();
                 switchTab("screen");
                 setPostThrottle(0);
-                postQueueIdle().then(function (this: any) {
-                    if (!postQueueHadError())
-                        showBanner("Configuration imported successfully", "success");
-                });
                 cleanupInput();
-            };
-            reader.readAsText(input.files[0]);
+                return postQueueIdle().then(function (this: any) {
+                    if (postQueueHadError())
+                        throw new Error("Some restored settings could not be saved. Staged images were rolled back.");
+                    return backupCommitArchivedImages().then(function () {
+                        showBanner("Configuration imported successfully", "success");
+                    });
+                }).catch(function (this: any, err?: any) {
+                    return backupRestoreCardConfigurationSnapshot(cardConfigurationSnapshot).catch(function () {
+                        // Device rollback below still removes any partially saved staged references.
+                    }).then(function () { return backupRollbackArchivedImages(); }).catch(function () {
+                        throw new Error("Restore recovery is incomplete. Restart the display before trying again.");
+                    }).then(function () { throw err; });
+                });
+                }).catch(function (this: any, err?: any) {
+                    showBanner(err && err.message || "Could not restore backup images.", "error");
+                    cleanupInput();
+                });
+            }
+            var selectedFile: any = input.files[0];
+            if (/\.zip$/i.test(selectedFile.name || "")) {
+                selectedFile.arrayBuffer()
+                    .then(backupReadStoredZip)
+                    .then(function (this: any, entries?: any) {
+                        return processImportText(new TextDecoder().decode(entries["backup.json"]), entries);
+                    })
+                    .catch(function (this: any, err?: any) {
+                        showBanner(err && err.message || "Invalid ZIP backup", "error");
+                        cleanupInput();
+                    });
+            }
+            else {
+                reader.onload = function () { processImportText(reader.result); };
+                reader.readAsText(selectedFile);
+            }
         });
         document.body.appendChild(input);
         input.click();
@@ -430,6 +596,19 @@ export function installAppBackupModule(): GlobalDescriptors {
         "backupExportScreenSizeSlug": staticGlobal(backupExportScreenSizeSlug),
         "backupExportFileDate": staticGlobal(backupExportFileDate),
         "backupExportFileName": staticGlobal(backupExportFileName),
+        "backupCommitArchivedImages": staticGlobal(backupCommitArchivedImages),
+        "backupRollbackArchivedImages": staticGlobal(backupRollbackArchivedImages),
+        "backupCardConfigurationSnapshot": staticGlobal(backupCardConfigurationSnapshot),
+        "backupRestoreCardConfigurationSnapshot": staticGlobal(backupRestoreCardConfigurationSnapshot),
+        "backupZipCrc32": staticGlobal(backupZipCrc32),
+        "backupZipU16": staticGlobal(backupZipU16),
+        "backupZipU32": staticGlobal(backupZipU32),
+        "backupCreateZip": staticGlobal(backupCreateZip),
+        "backupReadStoredZip": staticGlobal(backupReadStoredZip),
+        "backupDownload": staticGlobal(backupDownload),
+        "backupImageArchiveEntries": staticGlobal(backupImageArchiveEntries),
+        "backupRestoreArchivedImages": staticGlobal(backupRestoreArchivedImages),
+        "backupRemapImportedImageReferences": staticGlobal(backupRemapImportedImageReferences),
         "exportConfig": staticGlobal(exportConfig),
         "importConfig": staticGlobal(importConfig),
     };

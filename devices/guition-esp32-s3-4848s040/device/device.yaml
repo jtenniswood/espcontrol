@@ -17,6 +17,7 @@ substitutions:
 esp32:
   board: esp32-s3-devkitc-1
   flash_size: 16MB
+  partitions: ${partition_table_file}
   framework:
     type: esp-idf
     # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
@@ -51,7 +52,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb]
+    components: [espcontrol, web_server_idf, artwork_image, card_image_store, mipi_rgb]
     refresh: 1s
 
 espcontrol:
@@ -71,7 +72,6 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-DESPCONTROL_DISABLE_TODO=1"
-    - "-DESPCONTROL_MAX_GRID_SLOTS=9"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
     - "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1"
@@ -383,10 +383,10 @@ display:
     # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
     # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
     setup_priority: 240
-    # Keep the S3 RGB clock conservative while lifting the panel scan rate above
-    # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
-    # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
-    pclk_frequency: 10MHz
+    # JPEG decoding and flash reads compete with RGB scanout for PSRAM bandwidth.
+    # Keep the panel at the stable clock for image-heavy dashboards; higher
+    # clocks can shift the frame vertically or break it into displaced blocks.
+    pclk_frequency: 8MHz
     update_interval: never
     auto_clear_enabled: False
     # Keep the ST7701S panel init sequence on the non-mirrored path. The

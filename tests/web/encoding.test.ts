@@ -1,5 +1,8 @@
 import {
+  cardBackgroundAssetId,
+  cardOptionsWithAppearance,
   chooseSerializedSubpageConfig,
+  cloneCardConfig,
   configOptionEnabled,
   configOptionValue,
   decodeConfigField,
@@ -11,6 +14,7 @@ import {
   serializeLegacySubpageConfig,
   setConfigOption,
   setConfigOptionValue,
+  setCardBackgroundAssetId,
   splitSubpageConfigChunks,
   trimConfigFields,
 } from "../../src/webserver/model";
@@ -51,6 +55,18 @@ export function runEncodingTests(): void {
   equal(configOptionValue(options, "confirm_message"), "Run, now?", "valued options round-trip reserved characters");
   options = setConfigOption(options, "confirm_on", false);
   equal(configOptionEnabled(options, "confirm_on"), false, "flag options can be disabled");
+
+  const appearanceCard = cloneCardConfig({ options: "active_color,bg_image=Kitchen-Scene" });
+  equal(cardBackgroundAssetId(appearanceCard), "kitchen-scene", "appearance is normalized from legacy options");
+  equal(Object.keys(appearanceCard).includes("appearance"), false,
+    "typed appearance does not change saved or backup JSON");
+  appearanceCard.options = "confirm_on";
+  equal(cardOptionsWithAppearance(appearanceCard.options, appearanceCard),
+    "confirm_on,bg_image=kitchen-scene", "typed appearance survives unrelated option normalization");
+  setCardBackgroundAssetId(appearanceCard, "new-scene");
+  equal(appearanceCard.appearance.backgroundAssetId, "new-scene", "typed appearance updates with the card");
+  equal(configOptionValue(appearanceCard.options, "bg_image"), "new-scene",
+    "legacy options stay synchronized at the compatibility boundary");
 
   deepEqual(parseRawButtonConfig("light.kitchen;Kitchen;Lightbulb;Auto;;;;;active_color"), {
     entity: "light.kitchen",

@@ -3,6 +3,8 @@
 
 #include "esphome/core/log.h"
 
+#include <vector>
+
 namespace esphome {
 namespace artwork_image {
 

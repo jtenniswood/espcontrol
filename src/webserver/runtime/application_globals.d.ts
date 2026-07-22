@@ -199,6 +199,7 @@ declare global {
   var actionCardStateEntity: any;
   var actionCardStatePrecision: any;
   var actionCardStateUnit: any;
+  var clearActionModeOptions: any;
   var actionScriptConfirmationDefaultMessage: any;
   var actionScriptConfirmationEnabled: any;
   var actionScriptConfirmationMessage: any;
@@ -1205,5 +1206,30 @@ declare global {
   var webserverNow: any;
   var webserverUseMockNowForTest: any;
   var withWebserverMockNow: any;
+  var CARD_BACKGROUND_IMAGE_LIMIT: any;
+  var CARD_BACKGROUND_IMAGE_OPTION: any;
+  var _cardImageLibrary: any;
+  var backupRestoreArchivedImages: any;
+  var cardBackgroundImage: any;
+  var cardBackgroundImageCountWithCandidate: any;
+  var cardBackgroundImageLimit: any;
+  var cardBackgroundImageLimitMessage: any;
+  var cardBackgroundSupported: any;
+  var setCardBackgroundImage: any;
+  var cardImageLibraryInfo: any;
+  var cardImageBackupAssetProvider: any;
+  var cardImagesFeature: any;
+  var cardImageUrl: any;
+  var clearCardImageReferences: any;
+  var copyCardBackgroundOptions: any;
+  var countCardImageUsage: any;
+  var deleteCardImage: any;
+  var deleteCardImageSafely: any;
+  var listCardImages: any;
+  var normalizeCardBackgroundImageId: any;
+  var renameCardImage: any;
+  var renderCardBackgroundControl: any;
+  var showCardBackgroundImageLimitBanner: any;
+  var uploadCardImage: any;
   var __ESPCONTROL_TEST_HOOKS__: any;
 }

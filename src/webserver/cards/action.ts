@@ -31,6 +31,12 @@ export function registerActionCardTypes(): GlobalDescriptors {
             return b === ACTION_CARD_LOCAL_ACTION;
         return !!(b && (b.type === "action" || b.type === "local") && b.sensor === ACTION_CARD_LOCAL_ACTION);
     }
+    function clearActionModeOptions(this: any, b?: any) {
+        if (!b)
+            return "";
+        b.options = copyCardBackgroundOptions("", b.options, b);
+        return b.options;
+    }
     function normalizeSavedConfigActionFields(this: any, b?: any) {
         if (!b)
             return;
@@ -45,14 +51,14 @@ export function registerActionCardTypes(): GlobalDescriptors {
             b.icon_on = "Auto";
         if (actionCardIsOptionSelect(b)) {
             b.unit = "";
-            b.options = "";
+            clearActionModeOptions(b);
             if (!b.icon || b.icon === "Auto" || b.icon === "Chevron Down")
                 b.icon = "Flash";
         }
         else if (actionCardIsLocal(b)) {
             b.unit = "";
             b.precision = "";
-            b.options = "";
+            clearActionModeOptions(b);
             b.icon_on = "Auto";
             if (!b.icon || b.icon === "Auto" || b.icon === "Flash")
                 b.icon = "Gesture Tap";
@@ -227,12 +233,12 @@ export function registerActionCardTypes(): GlobalDescriptors {
                             helpers.saveField("unit", "");
                         }
                         if (actionCardIsOptionSelect(b)) {
-                            b.options = "";
-                            helpers.saveField("options", "");
+                            clearActionModeOptions(b);
+                            helpers.saveField("options", b.options);
                         }
                         else if (actionCardIsLocal(b)) {
-                            b.options = "";
-                            helpers.saveField("options", "");
+                            clearActionModeOptions(b);
+                            helpers.saveField("options", b.options);
                             if (!b.icon || b.icon === "Auto" || b.icon === "Flash") {
                                 b.icon = "Gesture Tap";
                                 helpers.saveField("icon", b.icon);
@@ -593,6 +599,7 @@ export function registerActionCardTypes(): GlobalDescriptors {
         "actionCardInfo": staticGlobal(actionCardInfo),
         "actionCardIsOptionSelect": staticGlobal(actionCardIsOptionSelect),
         "actionCardIsLocal": staticGlobal(actionCardIsLocal),
+        "clearActionModeOptions": staticGlobal(clearActionModeOptions),
         "normalizeSavedConfigActionFields": staticGlobal(normalizeSavedConfigActionFields),
         "normalizeActionCardConfig": staticGlobal(normalizeActionCardConfig),
         "ACTION_CARD_STATE_ENTITY_OPTION": liveGlobal(() => ACTION_CARD_STATE_ENTITY_OPTION, (value?: any) => { ACTION_CARD_STATE_ENTITY_OPTION = value; }),

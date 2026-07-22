@@ -77,6 +77,20 @@ script:
           cfg.image_card_images = image_card_downloaders;
           cfg.image_card_modal_image = id(image_card_modal_download_1);
           cfg.image_card_image_count = 6;
+          static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {
+            id(card_background_download_1),
+            id(card_background_download_2),
+            id(card_background_download_3),
+            id(card_background_download_4),
+            id(card_background_download_5),
+            id(card_background_download_6),
+          };
+          static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) <= MAX_GRID_SLOTS,
+                        "Card background resident frame budget exceeds this device grid");
+          static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) == CARD_BACKGROUND_RESIDENT_FRAMES,
+                        "Generated card background pool differs from the device capability");
+          cfg.card_background_images = card_background_downloaders;
+          cfg.card_background_image_count = 6;
           cfg.home_assistant_base_url = []() {
             std::string base = id(cover_art_home_assistant_base_url);
             while (!base.empty() && base.back() == '/') base.pop_back();
@@ -223,6 +237,20 @@ esphome:
             cfg.image_card_images = image_card_downloaders;
             cfg.image_card_modal_image = id(image_card_modal_download_1);
             cfg.image_card_image_count = 6;
+            static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {
+              id(card_background_download_1),
+              id(card_background_download_2),
+              id(card_background_download_3),
+              id(card_background_download_4),
+              id(card_background_download_5),
+              id(card_background_download_6),
+            };
+            static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) <= MAX_GRID_SLOTS,
+                          "Card background resident frame budget exceeds this device grid");
+            static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) == CARD_BACKGROUND_RESIDENT_FRAMES,
+                          "Generated card background pool differs from the device capability");
+            cfg.card_background_images = card_background_downloaders;
+            cfg.card_background_image_count = 6;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
               while (!base.empty() && base.back() == '/') base.pop_back();
@@ -275,6 +303,11 @@ esphome:
               BTN_SLOT(5),
               BTN_SLOT(6),
             };
+            #define MAIN_CFG(n) button_##n##_config
+            esphome::text::Text *main_cfgs[] = {
+              MAIN_CFG(1), MAIN_CFG(2), MAIN_CFG(3), MAIN_CFG(4),
+              MAIN_CFG(5), MAIN_CFG(6),
+            };
             esphome::text::Text *sp_cfgs[] = {
               SP_CFG(1), SP_CFG(2), SP_CFG(3), SP_CFG(4),
               SP_CFG(5), SP_CFG(6),
@@ -307,7 +340,14 @@ esphome:
               SP_EXT7(1), SP_EXT7(2), SP_EXT7(3), SP_EXT7(4),
               SP_EXT7(5), SP_EXT7(6),
             };
+            static espcontrol::LegacyCardConfigAdapter card_config_adapter;
+            card_config_adapter.configure(
+              main_cfgs, sizeof(main_cfgs) / sizeof(main_cfgs[0]),
+              {sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7}, sizeof(sp_cfgs) / sizeof(sp_cfgs[0]));
+            if (auto *assets = espcontrol::card_asset_service())
+              assets->set_reference_adapter(&card_config_adapter);
             #undef BTN_SLOT
+            #undef MAIN_CFG
             #undef SP_CFG
             #undef SP_EXT
             #undef SP_EXT2
@@ -361,6 +401,20 @@ esphome:
             cfg.image_card_images = image_card_downloaders;
             cfg.image_card_modal_image = id(image_card_modal_download_1);
             cfg.image_card_image_count = 6;
+            static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {
+              id(card_background_download_1),
+              id(card_background_download_2),
+              id(card_background_download_3),
+              id(card_background_download_4),
+              id(card_background_download_5),
+              id(card_background_download_6),
+            };
+            static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) <= MAX_GRID_SLOTS,
+                          "Card background resident frame budget exceeds this device grid");
+            static_assert(sizeof(card_background_downloaders) / sizeof(card_background_downloaders[0]) == CARD_BACKGROUND_RESIDENT_FRAMES,
+                          "Generated card background pool differs from the device capability");
+            cfg.card_background_images = card_background_downloaders;
+            cfg.card_background_image_count = 6;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
               while (!base.empty() && base.back() == '/') base.pop_back();

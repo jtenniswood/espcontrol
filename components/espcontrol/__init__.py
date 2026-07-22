@@ -12,6 +12,7 @@ from esphome.const import CONF_ID
 import os
 
 CODEOWNERS = ["@jtenniswood"]
+AUTO_LOAD = ["card_image_store"]
 
 CONF_ACTION_RESPONSES = "action_responses"
 

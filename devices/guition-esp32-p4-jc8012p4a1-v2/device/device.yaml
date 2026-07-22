@@ -17,6 +17,7 @@ substitutions:
 esp32:
   variant: esp32p4
   flash_size: 16MB
+  partitions: ${partition_table_file}
   cpu_frequency: 360MHZ
   engineering_sample: true
   framework:
@@ -65,7 +66,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image, gsl3680]
+    components: [espcontrol, web_server_idf, artwork_image, card_image_store, gsl3680]
     refresh: 1s
 
 espcontrol:
@@ -76,6 +77,35 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-Wno-deprecated-declarations"
+      - "-DESPCONTROL_DISABLE_TODO=1"
+      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
+      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+      # Separate marker for the JC8012P4A1 boot-loop fix so ESPHome cannot
+      # silently reuse the earlier build that still crashes.
+      - "-DESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1"
+      # Rebuild marker for the JC8012P4A1 watchdog increase.
+      - "-DESPCONTROL_JC8012P4A1_WDT_20260526=1"
+      # Rebuild marker for USB-C serial logging over the panel UART bridge.
+      - "-DESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1"
+      # Rebuild marker for the faster native OTA flash preparation path.
+      - "-DESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1"
+      # Rebuild marker for the image-card LVGL transition boot-loop fix.
+      - "-DESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1"
+      # Rebuild marker for bad restore crash recovery.
+      - "-DESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1"
+      # Keep LVGL active while the backlight is off so the GSL3680 touch
+      # controller can still deliver the wake tap from display-off screensaver.
+      - "-DESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1"
+      # Rebuild marker for noisy/multi-contact wake taps on the GSL3680 panel.
+      - "-DESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1"
+      # Rebuild marker for restoring native display-space GSL3680 touch scaling.
+      - "-DESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1"
+    build_src_flags:
+      - "-Wno-literal-suffix"
   build_flags:
     - "-Wno-deprecated-declarations"
     - "-DESPCONTROL_DISABLE_TODO=1"

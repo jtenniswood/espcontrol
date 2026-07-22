@@ -21,6 +21,11 @@
       "slug": "guition-esp32-p4-jc1060p470",
       "slots": 15,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 15,
+          "partitionBytes": 2097152,
+          "residentFrames": 15
+        },
         "imageSlots": 6
       },
       "public": {
@@ -103,7 +108,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -218,6 +224,11 @@
       "slug": "guition-esp32-p4-jc4880p443",
       "slots": 6,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 6,
+          "partitionBytes": 2097152,
+          "residentFrames": 6
+        },
         "imageSlots": 6
       },
       "public": {
@@ -299,7 +310,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -410,7 +422,12 @@
       "slug": "guition-esp32-p4-jc8012p4a1",
       "slots": 20,
       "capabilities": {
-        "imageSlots": 6
+        "imageSlots": 6,
+        "cardBackgrounds": {
+          "maxActive": 20,
+          "partitionBytes": 2097152,
+          "residentFrames": 20
+        }
       },
       "public": {
         "name": "Guition JC8012P4A1",
@@ -491,7 +508,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -604,7 +622,12 @@
       "slug": "guition-esp32-p4-jc8012p4a1-v2",
       "slots": 20,
       "capabilities": {
-        "imageSlots": 6
+        "imageSlots": 6,
+        "cardBackgrounds": {
+          "maxActive": 20,
+          "partitionBytes": 2097152,
+          "residentFrames": 20
+        }
       },
       "public": {
         "name": "Guition JC8012P4A1 new panel (2624+)",
@@ -685,7 +708,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -795,6 +819,11 @@
       "slug": "esp32-p4-86",
       "slots": 9,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 9,
+          "partitionBytes": 2097152,
+          "residentFrames": 9
+        },
         "imageSlots": 6
       },
       "public": {
@@ -876,7 +905,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-P4"
+          "chip": "ESP32-P4",
+          "flashBytes": 33554432
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -1001,6 +1031,11 @@
       "slug": "guition-esp32-s3-4848s040",
       "slots": 9,
       "capabilities": {
+        "cardBackgrounds": {
+          "maxActive": 9,
+          "partitionBytes": 2097152,
+          "residentFrames": 9
+        },
         "imageSlots": 1
       },
       "public": {
@@ -1092,7 +1127,8 @@
       },
       "firmware": {
         "build": {
-          "chip": "ESP32-S3"
+          "chip": "ESP32-S3",
+          "flashBytes": 16777216
         },
         "fonts": {
           "icon": "font_icon_main",
@@ -1808,8 +1844,24 @@
     "optionNames": [
       "state_low_label",
       "state_high_label",
+      "bg_image",
       "media_cover_art"
     ],
+    "appearance": {
+      "backgroundImage": {
+        "option": "bg_image",
+        "supportedCardTypes": [
+          "",
+          "action",
+          "push",
+          "media",
+          "light_switch",
+          "internal",
+          "subpage",
+          "garage"
+        ]
+      }
+    },
     "cards": {
       "": {
         "label": "Switch",

@@ -14,6 +14,7 @@ compatibility copy for existing tools.
 - web preview sizing and drag behavior
 - supported rotation values
 - firmware chip family
+- flash size and card-image partition capacity
 - firmware font roles
 - display-specific options
 - package substitutions and release metadata
@@ -33,6 +34,7 @@ devices/<slug>/
   packages.yaml
   device/
     device.yaml
+    card_asset_capabilities.yaml  # generated
     fonts.yaml
     lvgl.yaml
     sensors.yaml
@@ -92,6 +94,8 @@ Device-profile changes can regenerate:
 - `docs/generated/screens/*.md`
 - generated blocks in `devices/*/packages.yaml`
 - generated blocks in `devices/*/device/sensors.yaml`
+- generated `devices/*/device/card_asset_capabilities.yaml`
+- generated card-image partition tables and decoder pools under `common/device/`
 - `docs/public/webserver/*/www.js` when web profile data changes
 
 Run:

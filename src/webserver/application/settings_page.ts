@@ -2,6 +2,180 @@ import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installSettingsPageModule(): GlobalDescriptors {
     // ── Settings Page ──────────────────────────────────────────────────────
+    function formatCardImageSize(this: any, size?: any) {
+        size = parseInt(size, 10);
+        if (!isFinite(size) || size <= 0)
+            return "";
+        if (size >= 1024 * 1024)
+            return (size / (1024 * 1024)).toFixed(1) + " MB";
+        return size >= 1024 ? Math.round(size / 1024) + " KB" : size + " B";
+    }
+    function buildCardImageManagerCard(this: any) {
+        var body: any = document.createElement("div");
+        body.className = "sp-card-image-manager";
+        var actions: any = document.createElement("div");
+        actions.className = "sp-card-image-manager-actions";
+        var file: any = document.createElement("input");
+        file.type = "file";
+        file.accept = "image/*";
+        file.className = "sp-card-image-manager-file";
+        var upload: any = createActionButton("sp-action-btn", "Upload Image", "upload");
+        var refresh: any = createActionButton("sp-action-btn", "Refresh", "refresh");
+        actions.appendChild(file);
+        actions.appendChild(upload);
+        actions.appendChild(refresh);
+        body.appendChild(actions);
+        var note: any = infoPanel(
+            "sp-card-image-optimization-note",
+            "Images are resized and compressed in your browser to 200×200 JPEGs before upload, keeping the device fast."
+        );
+        body.appendChild(note);
+        var storage: any = document.createElement("div");
+        storage.className = "sp-card-image-storage";
+        body.appendChild(storage);
+        var list: any = document.createElement("div");
+        list.className = "sp-card-image-manager-list";
+        body.appendChild(list);
+        function setBusy(this: any, busy?: any) {
+            upload.disabled = !!busy || !cardImageLibraryInfo().available;
+            refresh.disabled = !!busy;
+        }
+        function renderItems(this: any, items?: any) {
+            list.innerHTML = "";
+            var info: any = cardImageLibraryInfo();
+            var used: any = formatCardImageSize(info.usedBytes);
+            var total: any = formatCardImageSize(info.storageBytes);
+            var free: any = formatCardImageSize(info.freeBytes);
+            var max: any = formatCardImageSize(info.maxBytes);
+            upload.disabled = !info.available;
+            storage.textContent = info.requiresUsbFlash
+                ? "Image storage is not installed. Reflash this display over USB once, then background images will become available."
+                : total
+                    ? (items || []).length + " image" + ((items || []).length === 1 ? "" : "s") +
+                        " • " + (used || "0 B") + " used of " + total +
+                        (free ? " • " + free + " free" : "") +
+                        (max ? " • " + max + " max per image" : "")
+                    : "";
+            if (!items || !items.length) {
+                var empty: any = document.createElement("div");
+                empty.className = "sp-card-image-manager-empty";
+                empty.textContent = "No uploaded images yet.";
+                list.appendChild(empty);
+                return;
+            }
+            items.forEach(function (this: any, item?: any) {
+                var id: any = normalizeCardBackgroundImageId(item && item.id);
+                if (!id)
+                    return;
+                var card: any = document.createElement("div");
+                card.className = "sp-card-image-item";
+                var thumb: any = document.createElement("div");
+                thumb.className = "sp-card-image-thumb";
+                thumb.style.backgroundImage = "url('" + cardImageUrl(id) + "')";
+                card.appendChild(thumb);
+                var meta: any = document.createElement("div");
+                meta.className = "sp-card-image-meta";
+                var name: any = document.createElement("div");
+                name.className = "sp-card-image-name";
+                name.title = item.name || id;
+                name.textContent = item.name || id;
+                meta.appendChild(name);
+                var usage: any = countCardImageUsage(id);
+                var detail: any = document.createElement("div");
+                detail.className = "sp-card-image-detail";
+                var size: any = formatCardImageSize(item.size);
+                detail.textContent = (size ? size + " • " : "") +
+                    (usage ? "Used by " + usage + " card" + (usage === 1 ? "" : "s") : "Not used");
+                meta.appendChild(detail);
+                card.appendChild(meta);
+                var rename: any = document.createElement("div");
+                rename.className = "sp-card-image-rename";
+                var renameInput: any = textInput("", item.name || id, "Image name");
+                renameInput.setAttribute("aria-label", "Image name");
+                var renameBtn: any = createActionButton("sp-action-btn", "Rename", "pencil");
+                function saveRename(this: any) {
+                    var value: any = renameInput.value.trim();
+                    setBusy(true);
+                    renameCardImage(id, value)
+                        .then(function () { return listCardImages(true); })
+                        .then(function (this: any, fresh?: any) {
+                            showBanner("Image renamed.", "success");
+                            renderItems(fresh);
+                            renderButtonSettings();
+                        })
+                        .catch(function (this: any, err?: any) {
+                            showBanner(err && err.message || "Could not rename image.", "error");
+                        })
+                        .then(function () { setBusy(false); });
+                }
+                renameBtn.addEventListener("click", saveRename);
+                renameInput.addEventListener("keydown", function (this: any, event?: any) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        saveRename();
+                    }
+                });
+                rename.appendChild(renameInput);
+                rename.appendChild(renameBtn);
+                card.appendChild(rename);
+                var del: any = createActionButton("sp-action-btn sp-card-image-delete", "Delete", "trash-can-outline");
+                del.addEventListener("click", function () {
+                    var usedByCards: any = countCardImageUsage(id);
+                    if (usedByCards && !window.confirm("This image is used by " + usedByCards + " card" +
+                        (usedByCards === 1 ? "" : "s") + ". Delete it anyway?"))
+                        return;
+                    setBusy(true);
+                    deleteCardImageSafely(id)
+                        .then(function () { return listCardImages(true); })
+                        .then(function (this: any, fresh?: any) {
+                            showBanner("Image deleted.", "success");
+                            renderItems(fresh);
+                            renderPreview();
+                            renderButtonSettings();
+                        })
+                        .catch(function (this: any, err?: any) {
+                            showBanner(err && err.message || "Could not delete image.", "error");
+                        })
+                        .then(function () { setBusy(false); });
+                });
+                card.appendChild(del);
+                list.appendChild(card);
+            });
+        }
+        function refreshList(this: any, force?: any) {
+            setBusy(true);
+            return listCardImages(force)
+                .then(renderItems)
+                .catch(function (this: any, err?: any) {
+                    showBanner(err && err.message || "Could not load images.", "error");
+                })
+                .then(function () { setBusy(false); });
+        }
+        upload.addEventListener("click", function () { file.click(); });
+        file.addEventListener("change", function () {
+            var selected: any = file.files && file.files[0];
+            if (!selected)
+                return;
+            setBusy(true);
+            uploadCardImage(selected)
+                .then(function () { return listCardImages(true); })
+                .then(function (this: any, fresh?: any) {
+                    showBanner("Image uploaded.", "success");
+                    renderItems(fresh);
+                    renderButtonSettings();
+                })
+                .catch(function (this: any, err?: any) {
+                    showBanner(err && err.message || "Could not upload image.", "error");
+                })
+                .then(function () {
+                    file.value = "";
+                    setBusy(false);
+                });
+        });
+        refresh.addEventListener("click", function () { refreshList(true); });
+        refreshList(false);
+        return makeCollapsibleCard("Card Images", body, true);
+    }
     function buildSettingsPage(this: any, parent?: any) {
         var page: any = document.createElement("div");
         page.id = "sp-settings";
@@ -392,6 +566,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.setIdleBadge = idleBadge;
         syncIdleUi();
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
+        var cardImagesCard: any = buildCardImageManagerCard();
         var systemSettingsCards: any = buildSystemSettingsCards();
         appendSettingsSection(config, "Display", [
             appearanceCard,
@@ -414,6 +589,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             languageCard,
             timeSettingsCard,
             temperatureCard,
+            cardImagesCard,
         ]);
         appendSettingsSection(config, "System", [
             systemSettingsCards.backupCard,
@@ -426,6 +602,8 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.settingsPage = page;
     }
     return {
+        "formatCardImageSize": staticGlobal(formatCardImageSize),
+        "buildCardImageManagerCard": staticGlobal(buildCardImageManagerCard),
         "buildSettingsPage": staticGlobal(buildSettingsPage),
     };
 }

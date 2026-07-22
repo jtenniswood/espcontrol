@@ -276,6 +276,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
     function normalizeButtonConfig(this: any, b?: any) {
         if (b)
             b.options = b.options || "";
+        var originalOptions: any = b ? b.options : "";
         if (b)
             migrateSavedConfigActionLegacy(b);
         var wasLegacyTextSensor: any = !!(b && b.type === "text_sensor");
@@ -326,6 +327,8 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
+        if (b)
+            b.options = copyCardBackgroundOptions(b.options, originalOptions, b);
         return b;
     }
     function isBrightnessSliderType(this: any, type?: any) {
@@ -585,6 +588,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
             unit = "";
             precision = "";
         }
+        options = copyCardBackgroundOptions(options, b && b.options, b || { type: type });
         return trimConfigFields([
             (type === "door_window" || type === "presence" || type === "screen_lock") ? "" : (b && b.entity || ""),
             label,
