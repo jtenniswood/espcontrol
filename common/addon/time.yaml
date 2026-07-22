@@ -266,6 +266,7 @@ select:
       - "pt"
       - "pt-br"
       - "ro"
+      - "ru"
       - "sk"
       - "sl"
       - "sv"
