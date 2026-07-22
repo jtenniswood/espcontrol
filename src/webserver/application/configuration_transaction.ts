@@ -225,6 +225,11 @@ export function postConfigurationValue(
   value: string,
   fallback: FallbackPost,
 ): Promise<unknown> {
+  // Once an older device has reported that the transaction transport is not
+  // available, start its legacy POST immediately. This preserves the shared
+  // device queue's current throttle instead of deferring enqueueing until a
+  // microtask after callers have restored the normal throttle.
+  if (supported === false) return Promise.resolve(fallback());
   return initializeConfigurationTransaction().then((available) => {
     if (!available) return fallback();
     const record = findRecord(domain, name, objectIds);

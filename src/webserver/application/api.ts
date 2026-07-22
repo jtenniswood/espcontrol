@@ -86,6 +86,11 @@ export function installApiModule(): GlobalDescriptors {
             return postWithObjectIds("text", name, objectIds, "set?value=" + encodeURIComponent(value), errorMessage);
         });
     }
+    function postOptionalTextWithObjectIds(this: any, name?: any, objectIds?: any, value?: any) {
+        return postConfiguration("text", name, objectIds, value, function (this: any) {
+            return postOptional(entityPostUrls("text", name, objectIds, "set?value=" + encodeURIComponent(value)));
+        });
+    }
     function postSelect(this: any, name?: any, option?: any) {
         return postConfiguration("select", name, [], option, function (this: any) {
             return post(entityPostUrls("select", name, [], "set?option=" + encodeURIComponent(option)));
@@ -218,6 +223,7 @@ export function installApiModule(): GlobalDescriptors {
         "postFirstAvailable": staticGlobal(postFirstAvailable),
         "postText": staticGlobal(postText),
         "postTextWithObjectIds": staticGlobal(postTextWithObjectIds),
+        "postOptionalTextWithObjectIds": staticGlobal(postOptionalTextWithObjectIds),
         "postSelect": staticGlobal(postSelect),
         "postButtonPress": staticGlobal(postButtonPress),
         "postSwitch": staticGlobal(postSwitch),

@@ -4045,6 +4045,12 @@ async function assertTransactionalConfiguration(browser) {
     revision: 1,
     document: configurationDocument([
       { domain: 1, objectId: "button_on_color", value: "0073FF" },
+      { domain: 4, objectId: "screen_saver__hide_cover_art_on_external_input", value: "1" },
+      { domain: 3, objectId: "screen_saver__cover_art_delay", value: "10" },
+      { domain: 3, objectId: "screen_saver__track_overlay_duration", value: "5" },
+      { domain: 3, objectId: "home_assistant_artwork_port", value: "8123" },
+      { domain: 1, objectId: "clock_bar__temperature_entities", value: "" },
+      { domain: 4, objectId: "voice_services", value: "0" },
     ]),
     transaction: null,
     expectedSize: 0,
@@ -4076,6 +4082,12 @@ async function assertTransactionalConfiguration(browser) {
       window.postText("Button On Color", "111111"),
       window.postText("Button On Color", "222222"),
       window.postText("Button On Color", "A1B2C3"),
+      window.postCoverArtHideExternalInput(false),
+      window.postCoverArtDelay(0),
+      window.postCoverArtTrackOverlayDuration(15),
+      window.postHomeAssistantArtworkPort(8124),
+      window.postClockBarTemperatureEntities("sensor.office,sensor.outside"),
+      window.postVoiceServices(true),
     ]));
 
     assert.strictEqual(transport.commits, 1, "rapid configuration writes should be coalesced into one revision");
@@ -4085,6 +4097,16 @@ async function assertTransactionalConfiguration(browser) {
       configurationDocumentValue(transport.document, "button_on_color"),
       "A1B2C3",
       "the committed revision should contain the newest value",
+    );
+    assert.strictEqual(configurationDocumentValue(transport.document, "screen_saver__hide_cover_art_on_external_input"), "0");
+    assert.strictEqual(configurationDocumentValue(transport.document, "screen_saver__cover_art_delay"), "3");
+    assert.strictEqual(configurationDocumentValue(transport.document, "screen_saver__track_overlay_duration"), "15");
+    assert.strictEqual(configurationDocumentValue(transport.document, "home_assistant_artwork_port"), "8124");
+    assert.strictEqual(configurationDocumentValue(transport.document, "clock_bar__temperature_entities"), "sensor.office,sensor.outside");
+    assert.strictEqual(configurationDocumentValue(transport.document, "voice_services"), "1");
+    assert(
+      !postedPaths.some((pathName) => /^\/(text|number|switch)\//.test(pathName)),
+      "configuration setters should not bypass the revisioned document",
     );
     assert(
       !postedPaths.some((pathName) => /apply_configuration|apply configuration/i.test(pathName)),

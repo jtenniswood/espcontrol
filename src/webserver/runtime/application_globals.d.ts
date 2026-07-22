@@ -864,6 +864,7 @@ declare global {
   var postNumberWithObjectId: any;
   var postNumberWithObjectIds: any;
   var postOptional: any;
+  var postOptionalTextWithObjectIds: any;
   var postPresenceSensorEntity: any;
   var postQueueHadError: any;
   var postQueueIdle: any;

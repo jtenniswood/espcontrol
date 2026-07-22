@@ -17,7 +17,7 @@ export function installClockBarPostApiModule(): GlobalDescriptors {
     function postClockBarTemperatureEntities(this: any, value?: any) {
         var name: any = entityName("clock_bar_temperature_entities");
         var objectIds: any = entityObjectIds("clock_bar_temperature_entities");
-        return postOptional(entityPostUrls("text", name, objectIds, "set?value=" + encodeURIComponent(value)));
+        return postOptionalTextWithObjectIds(name, objectIds, value);
     }
     var CLOCK_BAR_TIME_UNAVAILABLE: any = "Clock bar time setting is not available on this firmware. Update the device firmware, then reload this page.";
     function postClockBarTime(this: any, on?: any) {
@@ -36,7 +36,7 @@ export function installClockBarPostApiModule(): GlobalDescriptors {
         return entityPostUrls("switch", entityName("voice_services"), entityObjectIds("voice_services"), on ? "turn_on" : "turn_off");
     }
     function postVoiceServices(this: any, on?: any) {
-        post(voiceServicesPostUrls(on), null, VOICE_SERVICES_UNAVAILABLE);
+        return postSwitchWithObjectIds(entityName("voice_services"), entityObjectIds("voice_services"), on, VOICE_SERVICES_UNAVAILABLE);
     }
     function postAlarmDelayAudio(this: any, on?: any) {
         postSwitchWithObjectIds(entityName("alarm_delay_audio"), entityObjectIds("alarm_delay_audio"), on);
