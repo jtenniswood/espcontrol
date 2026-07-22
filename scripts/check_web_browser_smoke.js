@@ -209,6 +209,11 @@ async function installRoutes(context, slug, configurationTransport = null) {
     ) {
       if (configurationTransport) {
         configurationTransport.snapshots += 1;
+        if (configurationTransport.snapshot404sRemaining > 0) {
+          configurationTransport.snapshot404sRemaining -= 1;
+          await route.fulfill({ status: 404, contentType: "text/plain", body: "Not ready" });
+          return;
+        }
         await route.fulfill({
           status: 200,
           contentType: "application/octet-stream",
@@ -4056,6 +4061,7 @@ async function assertTransactionalConfiguration(browser) {
     expectedSize: 0,
     staged: Buffer.alloc(0),
     snapshots: 0,
+    snapshot404sRemaining: 1,
     begins: 0,
     chunks: 0,
     commits: 0,
@@ -4075,9 +4081,16 @@ async function assertTransactionalConfiguration(browser) {
   });
   await installFakeEventSource(page);
   try {
+    const initialSnapshotProbe = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+      return response.request().method() === "GET"
+        && responseUrl.pathname === "/espcontrol/configuration";
+    });
     await page.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await initialSnapshotProbe;
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => typeof window.postText === "function");
+    await page.waitForTimeout(1600);
     await page.evaluate(() => Promise.all([
       window.postText("Button On Color", "111111"),
       window.postText("Button On Color", "222222"),
@@ -4091,6 +4104,7 @@ async function assertTransactionalConfiguration(browser) {
     ]));
 
     assert.strictEqual(transport.commits, 1, "rapid configuration writes should be coalesced into one revision");
+    assert(transport.snapshots >= 2, "an early configuration 404 should be probed again after boot");
     assert.strictEqual(transport.begins, 1, "one revision should start one bounded upload");
     assert(transport.chunks >= 1, "the configuration revision should use the chunk endpoint");
     assert.strictEqual(
@@ -4133,7 +4147,8 @@ async function assertTransactionalConfiguration(browser) {
       snapshotsBeforeEvent + 1,
       "a committed-revision event should refresh the complete configuration snapshot",
     );
-    assert.deepStrictEqual(errors, [], "transactional configuration should not report browser errors");
+    const unexpectedErrors = errors.filter((error) => !/Failed to load resource:.*404 \(Not Found\)/.test(error));
+    assert.deepStrictEqual(unexpectedErrors, [], "transactional configuration should not report browser errors");
   } finally {
     await context.close();
   }

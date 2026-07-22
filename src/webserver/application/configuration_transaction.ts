@@ -32,6 +32,7 @@ let records: ConfigurationRecord[] = [];
 let recordByKey = new Map<string, ConfigurationRecord>();
 const pendingValues = new Map<string, string>();
 let initialization: Promise<boolean> | null = null;
+let probeRetryAt = 0;
 let saveTimer: number | null = null;
 let saveActive = false;
 let waiters: Array<{ resolve: (value: unknown) => void; reject: (reason: unknown) => void }> = [];
@@ -49,11 +50,18 @@ function rebuildRecordIndex(document: ConfigurationDocument): void {
 
 async function loadSnapshot(): Promise<boolean> {
   const response = await fetch(SNAPSHOT_PATH, { cache: "no-store", credentials: "same-origin" });
-  if (response.status === 404 || response.status === 204) {
+  if (response.status === 204) {
     supported = false;
+    probeRetryAt = Number.POSITIVE_INFINITY;
+    return false;
+  }
+  if (response.status === 404) {
+    supported = false;
+    probeRetryAt = Date.now() + RETRY_DELAY_MS;
     return false;
   }
   supported = true;
+  probeRetryAt = 0;
   if (!response.ok) throw new Error(`Configuration snapshot unavailable (${response.status})`);
   const nextRevision = validUnsignedHeader(response.headers.get("X-EspControl-Revision"), 0xffffffff);
   const nextVersion = validUnsignedHeader(response.headers.get("X-EspControl-Document-Version"), 0xffff);
@@ -69,20 +77,41 @@ async function loadSnapshot(): Promise<boolean> {
   return true;
 }
 
+function deferConfigurationProbe(): void {
+  supported = false;
+  probeRetryAt = Date.now() + RETRY_DELAY_MS;
+}
+
+function configurationProbeDeferred(): boolean {
+  return supported === false && Date.now() < probeRetryAt;
+}
+
+function startSnapshotLoad(): Promise<boolean> {
+  const attempt = loadSnapshot().catch((error: unknown) => {
+    if (supported === true) throw error;
+    deferConfigurationProbe();
+    return false;
+  });
+  initialization = attempt;
+  void attempt.then(
+    () => {
+      if (initialization === attempt && supported === false && Number.isFinite(probeRetryAt)) initialization = null;
+    },
+    () => {
+      if (initialization === attempt) initialization = null;
+    },
+  );
+  return attempt;
+}
+
 export function initializeConfigurationTransaction(): Promise<boolean> {
-  if (!initialization) {
-    initialization = loadSnapshot().catch((error: unknown) => {
-      if (supported === true) throw error;
-      supported = false;
-      return false;
-    });
-  }
-  return initialization;
+  if (configurationProbeDeferred()) return Promise.resolve(false);
+  return initialization || startSnapshotLoad();
 }
 
 export function refreshConfigurationSnapshot(): void {
   if (saveActive || pendingValues.size > 0) return;
-  initialization = loadSnapshot().catch((error: unknown) => {
+  void startSnapshotLoad().catch((error: unknown) => {
     console.warn("Unable to refresh configuration revision", error);
     return supported === true;
   });
@@ -229,7 +258,7 @@ export function postConfigurationValue(
   // available, start its legacy POST immediately. This preserves the shared
   // device queue's current throttle instead of deferring enqueueing until a
   // microtask after callers have restored the normal throttle.
-  if (supported === false) return Promise.resolve(fallback());
+  if (configurationProbeDeferred()) return Promise.resolve(fallback());
   return initializeConfigurationTransaction().then((available) => {
     if (!available) return fallback();
     const record = findRecord(domain, name, objectIds);
