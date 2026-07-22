@@ -274,6 +274,12 @@ script:
       - lvgl.widget.hide: notification_scrim
       - lvgl.widget.show: image_notif_root
       - lambda: 'lv_obj_move_foreground(id(image_notif_root));'
+      # Hold an interactive display takeover so the idle/screensaver timer
+      # cannot dim, clock, or turn off the display while the image is showing.
+      # The takeover is released in image_notif_teardown.
+      - script.execute:
+          id: display_takeover_begin
+          takeover_kind: 0
       - if:
           condition:
             lambda: 'return id(image_notif_timeout) > 0;'
@@ -304,6 +310,11 @@ script:
     then:
       - lvgl.widget.hide: image_notif_root
       - artwork_image.release: image_notification_image
+      # Release the interactive takeover so the idle/screensaver timer can
+      # resume normal display-mode decisions after the notification is gone.
+      - script.execute:
+          id: display_takeover_end
+          takeover_kind: 0
 
   # Download/decode failed: free the buffer and hand off to the text popup with
   # the same title/message/timeout/message_id (localized "Image unavailable" if
