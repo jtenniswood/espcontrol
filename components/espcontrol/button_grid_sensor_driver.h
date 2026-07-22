@@ -178,7 +178,7 @@ inline void sensor_driver_register_local_value(
 
 inline bool sensor_driver_bind_data(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
-    const CardPalette &palette) {
+    const CardPalette &palette, int col_span = 1) {
   if (!sensor_driver_matches(context)) return false;
 
   if (sensor_driver_is_local(config, context)) {
@@ -205,7 +205,8 @@ inline bool sensor_driver_bind_data(
       time->unit_lbl = slot.unit_lbl;
       subscribe_time_sensor_value(
         time, config.sensor,
-        cfg_option_value(config.options, SENSOR_TIME_UNIT_OPTION));
+        cfg_option_value(config.options, SENSOR_TIME_UNIT_OPTION),
+        col_span > 1 ? 2 : 1);
     } else {
       subscribe_sensor_value(
         slot.sensor_lbl, config.sensor, parse_precision(config.precision),

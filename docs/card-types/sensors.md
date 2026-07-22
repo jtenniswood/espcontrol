@@ -44,10 +44,10 @@ For **Numeric** mode:
 For **Time** mode:
 
 1. Set a **Label** if you want custom text under the duration. If left blank, the entity name from Home Assistant is used.
-2. Leave **Input Unit** set to **Auto** when the entity has a supported Home Assistant unit of measurement. Auto recognises days (`d`), hours (`h`), minutes (`min`), seconds (`s`), milliseconds (`ms`), and microseconds (`µs`).
+2. Leave **Incoming Value Unit** set to **Auto** when the entity has a supported Home Assistant unit of measurement. Auto recognises days (`d`), hours (`h`), minutes (`min`), seconds (`s`), milliseconds (`ms`), and microseconds (`µs`).
 3. If the entity has no unit, or its unit is not supported, choose **Seconds**, **Minutes**, **Hours**, or **Days** manually. A manual choice overrides the Home Assistant unit.
 
-Time values are rounded down to whole seconds so a remaining-runtime reading is never overstated. The card shows no more than the two largest non-zero parts: `90` seconds becomes `1m 30s`, `28` hours becomes `1d 4h`, and zero becomes `0s`. Unavailable, unknown, malformed, infinite, and negative values leave the duration blank.
+Time values are rounded down to whole seconds so a remaining-runtime reading is never overstated. Single-column cards show the largest non-zero part so the value fits without changing the font: `90` seconds becomes `1m` and `28` hours becomes `1d`. Cards that are at least two columns wide show up to two parts, such as `1m 30s` or `1d 4h`. Zero becomes `0s`. Unavailable, unknown, malformed, infinite, and negative values leave the duration blank.
 
 ::: info Time mode limitations
 Time is available only for the **Home Assistant** source. It does not currently support **Large Sensor Numbers**, and its fixed `d`, `h`, `m`, and `s` abbreviations are not translated.
@@ -66,7 +66,7 @@ For **Numeric**, **Text**, or **Icon** mode, turn on **Lit When Active** if you 
 - Icon mode treats active Home Assistant states such as `on`, `true`, `home`, `playing`, `open`, or `unlocked` as active and uses the on icon when configured.
 - When **Lit When Active** is enabled, Text and Icon cards use the active/on background colour for those active states. Numeric cards treat any positive value as active. All three return to the Sensor card colour when the state is inactive, zero, unknown, or unavailable.
 - Numeric mode displays the current value in large text, with the unit beside it and the label underneath.
-- Time mode listens for both the value and its Home Assistant unit when **Input Unit** is Auto. A change to either one updates the card. Missing or unsupported unit metadata leaves the value blank rather than guessing.
+- Time mode listens for both the value and its Home Assistant unit when **Incoming Value Unit** is Auto. A change to either one updates the card. Missing or unsupported unit metadata leaves the value blank rather than guessing.
 - Numeric mode normally uses the fixed **tertiary** background colour, so it remains visually distinct from Switch and Trigger cards.
 - Text mode normally uses the same tertiary colour as Numeric mode, while keeping the normal Switch-style icon and label layout.
 - Text mode capitalises each word in the Home Assistant text and preserves line breaks. Advanced status translation is applied before the text is shown. Very long values are limited to roughly 256 characters so the panel stays responsive.

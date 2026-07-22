@@ -3144,7 +3144,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       {
         "name": "time_unit",
-        "label": "Input Unit",
+        "label": "Incoming Value Unit",
         "kind": "choice",
         "values": [
           "",

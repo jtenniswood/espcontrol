@@ -20,6 +20,7 @@ struct TimeSensorCtx {
   std::string auto_unit;
   bool has_state = false;
   bool has_auto_unit = false;
+  int max_components = 2;
   std::string warned_unit;
   bool warned_unit_set = false;
 };
@@ -142,7 +143,7 @@ inline void apply_time_sensor_value(TimeSensorCtx *ctx) {
   if (!format_duration_sensor_state(output, sizeof(output),
                                     ctx->state, ctx->has_state,
                                     ctx->auto_unit, ctx->has_auto_unit,
-                                    ctx->manual_unit)) {
+                                    ctx->manual_unit, ctx->max_components)) {
     lv_label_set_text(ctx->sensor_lbl, "");
     return;
   }
@@ -150,10 +151,12 @@ inline void apply_time_sensor_value(TimeSensorCtx *ctx) {
 }
 
 inline void subscribe_time_sensor_value(TimeSensorCtx *ctx, const std::string &sensor_id,
-                                        const std::string &manual_unit) {
+                                        const std::string &manual_unit,
+                                        int max_components = 2) {
   if (!ctx) return;
   ctx->entity_id = sensor_id;
   ctx->manual_unit = manual_unit;
+  ctx->max_components = max_components;
   if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
   ha_subscribe_state(
     sensor_id,

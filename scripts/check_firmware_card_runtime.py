@@ -203,7 +203,7 @@ def check_root(root: Path) -> list[str]:
             or "date_time_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "date_time_driver_bind_data(s, p, context)" not in compact_grid
             or "sensor_driver_setup_visual( s, p, context, palette)" not in compact_grid
-            or "sensor_driver_bind_data( s, p, context, palette)" not in compact_grid
+            or "sensor_driver_bind_data( s, p, context, palette, col_span)" not in compact_grid
             or "weather_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
             or "weather_driver_bind_data(s, p, context)" not in compact_grid
             or "basic_action_driver_setup_visual(s, p, context)" not in compact_grid
@@ -245,8 +245,8 @@ def check_root(root: Path) -> list[str]:
             or "alarm_driver_setup_visual(s, p, context)" not in compact_grid
             or "alarm_driver_bind_main( s, p, context, alarm_environment)" not in compact_grid
             or "alarm_driver_bind_subpage( sub_slot, sb_cfg, context, alarm_environment)" not in compact_grid
-            or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
-            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
+            or "bind_basic_sensor_card(s, p, context, palette, col_span)" not in compact_grid
+            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)" not in compact_grid
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage migrated cards through shared drivers"

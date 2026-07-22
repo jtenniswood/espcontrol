@@ -375,9 +375,13 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
-                        if (b.sensor === "speaker_group" && mediaLabelIsGenerated(b.label)) {
-                            b.label = mediaActionLabel(b.sensor);
-                            helpers.saveField("label", b.label);
+                        if (b.sensor === "speaker_group") {
+                            if (mediaLabelIsGenerated(b.label)) {
+                                b.label = mediaActionLabel(b.sensor);
+                                helpers.saveField("label", b.label);
+                            }
+                            b.icon = "Auto";
+                            helpers.saveField("icon", b.icon);
                         }
                         if (b.sensor === "cover_art" && mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
