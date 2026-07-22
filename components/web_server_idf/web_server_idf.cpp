@@ -1,5 +1,6 @@
 #ifdef USE_ESP32
 
+#include <algorithm>
 #include <array>
 #include <cstdarg>
 #include <memory>
@@ -18,9 +19,11 @@
 #endif
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_heap_caps.h>
 
 #include "utils.h"
 #include "web_server_idf.h"
+#include "event_stream_policy.h"
 
 #ifdef USE_WEBSERVER_OTA
 #include <multipart_parser.h>
@@ -902,6 +905,8 @@ void AsyncResponseStream::printf(const char *fmt, ...) {
 
 #ifdef USE_WEBSERVER
 AsyncEventSource::~AsyncEventSource() {
+  if (global_async_event_source() == this)
+    global_async_event_source() = nullptr;
   for (auto *ses : this->sessions_) {
     delete ses;  // NOLINT(cppcoreguidelines-owning-memory)
   }
@@ -990,7 +995,10 @@ AsyncEventSourceResponse::AsyncEventSourceResponse(const AsyncWebServerRequest *
   // Configure reconnect timeout and send config
   // this should always go through since the tcp send buffer is empty on connect
   auto message = ws->get_config_json();
-  this->try_send_nodefer(message.c_str(), message.size(), "ping", millis(), 30000);
+  if (!this->try_send_nodefer(message.c_str(), message.size(), "ping", millis(), 30000)) {
+    this->abort_low_memory_stream_("initial configuration event");
+    return;
+  }
 
 #ifdef USE_WEBSERVER_SORTING
   for (auto &group : ws->sorting_groups_) {
@@ -1004,7 +1012,10 @@ AsyncEventSourceResponse::AsyncEventSourceResponse(const AsyncWebServerRequest *
 
     // a (very) large number of these should be able to be queued initially without defer
     // since the only thing in the send buffer at this point is the initial ping/config
-    this->try_send_nodefer(message.c_str(), message.size(), "sorting_group");
+    if (!this->try_send_nodefer(message.c_str(), message.size(), "sorting_group")) {
+      this->abort_low_memory_stream_("initial sorting group event");
+      return;
+    }
   }
 #endif
 
@@ -1028,16 +1039,53 @@ void AsyncEventSourceResponse::destroy(void *ptr) {
 }
 
 // helper for allowing only unique entries in the queue
-void AsyncEventSourceResponse::deq_push_back_with_dedup_(void *source, message_generator_t *message_generator) {
+bool AsyncEventSourceResponse::deq_push_back_with_dedup_(void *source, message_generator_t *message_generator) {
   DeferredEvent item(source, message_generator);
 
   // Use range-based for loop instead of std::find_if to reduce template instantiation overhead and binary size
   for (auto &event : this->deferred_queue_) {
     if (event == item) {
-      return;  // Already in queue, no need to update since items are equal
+      return true;  // Already in queue, no need to update since items are equal
+    }
+  }
+  if (this->deferred_queue_.size() == this->deferred_queue_.capacity()) {
+    size_t next_capacity = this->deferred_queue_.capacity() == 0 ? 1 : this->deferred_queue_.capacity() * 2;
+    if (!this->can_grow_event_storage_(next_capacity * sizeof(DeferredEvent), "deferred event queue")) {
+      return false;
     }
   }
   this->deferred_queue_.push_back(item);
+  return true;
+}
+
+bool AsyncEventSourceResponse::can_grow_event_storage_(size_t allocation_bytes, const char *stage) {
+  const uint32_t caps = MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL;
+  const size_t free_bytes = heap_caps_get_free_size(caps);
+  const size_t largest_block = heap_caps_get_largest_free_block(caps);
+  const bool available = event_stream_allocation_available(
+      free_bytes, largest_block, allocation_bytes);
+  if (!available) {
+    const uint32_t now = millis();
+    if (now - this->last_low_heap_warning_ >= 5000) {
+      this->last_low_heap_warning_ = now;
+      ESP_LOGW(TAG, "Closing event stream while allocating %s: need=%u free=%u largest=%u",
+               stage, static_cast<unsigned>(allocation_bytes),
+               static_cast<unsigned>(free_bytes), static_cast<unsigned>(largest_block));
+    }
+    this->abort_low_memory_stream_(stage);
+  }
+  return available;
+}
+
+void AsyncEventSourceResponse::abort_low_memory_stream_(const char *stage) {
+  int fd = this->fd_.exchange(0);
+  if (fd == 0) return;
+  ESP_LOGW(TAG, "Restarting browser event stream after %s could not be sent",
+           stage ? stage : "an event");
+  std::vector<DeferredEvent>().swap(this->deferred_queue_);
+  std::string().swap(this->event_buffer_);
+  this->event_bytes_sent_ = 0;
+  httpd_sess_trigger_close(this->hd_, fd);
 }
 
 void AsyncEventSourceResponse::process_deferred_queue_() {
@@ -1109,9 +1157,10 @@ void AsyncEventSourceResponse::process_buffer_() {
 }
 
 void AsyncEventSourceResponse::loop() {
+  if (this->fd_.load() == 0) return;
   process_buffer_();
   process_deferred_queue_();
-  if (!this->entities_iterator_.completed())
+  if (this->fd_.load() != 0 && !this->entities_iterator_.completed())
     this->entities_iterator_.advance();
 }
 
@@ -1130,6 +1179,33 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   // 8 spaces are standing in for the hexidecimal chunk length to print later
   const char chunk_len_header[] = "        " CRLF_STR;
   const int chunk_len_header_len = sizeof(chunk_len_header) - 1;
+
+  // Reserve once before appending. On memory-constrained displays, growing a
+  // std::string after the browser connects can otherwise call abort() when the
+  // internal heap is fragmented. A conservative newline allowance keeps every
+  // append below the reserved capacity; if the allocation is not currently
+  // safe, the caller defers or drops this state update instead of rebooting.
+  size_t line_breaks = 0;
+  if (message != nullptr) {
+    for (size_t index = 0; index < message_len; index++) {
+      if (message[index] == '\n' || message[index] == '\r') line_breaks++;
+    }
+  }
+  size_t required_capacity = static_cast<size_t>(chunk_len_header_len) + CRLF_LEN;
+  if (reconnect) required_capacity += 32;
+  if (id) required_capacity += 32;
+  if (event && *event) required_capacity += sizeof("event: ") - 1 + strlen(event) + CRLF_LEN;
+  if (message != nullptr) {
+    required_capacity += message_len + (line_breaks + 1) * (sizeof("data: ") - 1 + CRLF_LEN) + CRLF_LEN;
+  }
+  if (required_capacity > event_buffer_.capacity()) {
+    size_t allocation_bytes = required_capacity + 1;
+    if (event_buffer_.capacity() <= (SIZE_MAX - 1) / 2) {
+      allocation_bytes = std::max(allocation_bytes, event_buffer_.capacity() * 2 + 1);
+    }
+    if (!this->can_grow_event_storage_(allocation_bytes, "event stream buffer")) return false;
+    event_buffer_.reserve(required_capacity);
+  }
 
   event_buffer_.append(chunk_len_header);
 
@@ -1277,11 +1353,15 @@ void AsyncEventSourceResponse::deferrable_send_state(void *source, const char *e
   if (!event_buffer_.empty() || !deferred_queue_.empty()) {
     // outgoing event buffer or deferred queue still not empty which means downstream tcp send buffer full, no point
     // trying to send first
-    deq_push_back_with_dedup_(source, message_generator);
+    if (!deq_push_back_with_dedup_(source, message_generator) && this->fd_.load() != 0) {
+      this->abort_low_memory_stream_("deferred state event");
+    }
   } else {
     auto message = message_generator(web_server_, source);
     if (!this->try_send_nodefer(message.c_str(), message.size(), "state")) {
-      deq_push_back_with_dedup_(source, message_generator);
+      if (!deq_push_back_with_dedup_(source, message_generator) && this->fd_.load() != 0) {
+        this->abort_low_memory_stream_("state event");
+      }
     }
   }
 }

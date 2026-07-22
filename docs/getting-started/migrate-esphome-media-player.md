@@ -52,7 +52,7 @@ This layout is best on the 4-inch square **4848S040** and **ESP32-P4 86 Panel**,
 6. Set **Press Action** to **All Controls**. Tapping the artwork will then open playback and volume controls.
 7. Right-click the card, choose **Size**, then choose **Extra Large (3x3)**.
 8. Open **Settings > Display > Clock Bar** and turn off **Show Clock Bar** so the artwork can use the full display height.
-9. Select **Apply Configuration**.
+9. Wait a few seconds for the automatic update and cover art to settle.
 
 On rectangular panels, use the largest square Cover Art card that suits the grid. It will not fill the entire rectangular screen, so automatic cover art is usually the better choice when you want a true full-screen now-playing view.
 

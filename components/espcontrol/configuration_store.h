@@ -61,6 +61,9 @@ class ConfigurationStore {
  public:
   explicit ConfigurationStore(StorageBackend &backend) : backend_(backend) {}
 
+  // Inspect the newest valid slot without copying its payload. This is used by
+  // revision-aware writers before committing a replacement document.
+  LoadResult inspect();
   LoadResult load(uint8_t *output, size_t output_capacity);
   CommitResult commit(const uint8_t *payload, size_t payload_size);
 

@@ -232,7 +232,7 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
         "grid_refresh_layout(slots, cfg,\n"
         "            id(button_order).state,\n"
         "            id(main_page)->obj);\n"
-        "      - script.execute: clock_bar_apply"
+        "          id(clock_bar_apply).execute();"
     ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
     assert (
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
@@ -258,6 +258,7 @@ def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
         "grid_refresh_layout(slots, cfg,\n"
         "            id(button_order).state,\n"
         "            id(main_page)->obj);\n"
+        "          id(clock_bar_apply).execute();\n"
         "          navigation_return_home(id(main_page)->obj);"
     ) in sensors, (
         "4.3-inch P4 rotation refresh must refresh the home grid before rebuilding subpages"

@@ -421,7 +421,6 @@ export function installSettingsPageModule(): GlobalDescriptors {
             systemSettingsCards.homeAssistantSettingsCard,
         ]);
         page.appendChild(config);
-        page.appendChild(buildApplyBar());
         parent.appendChild(page);
         els.settingsPage = page;
     }

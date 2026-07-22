@@ -2,6 +2,8 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+#include <new>
+
 #ifdef ESP_PLATFORM
 #include "esp_heap_caps.h"
 #endif
@@ -353,6 +355,15 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   MediaNowPlayingCtx *media_ctx =
     static_cast<MediaNowPlayingCtx *>(lv_obj_get_user_data(s.sensor_container));
   if (!media_ctx || !media_ctx->btn) return;
+  // Phase 2 also runs when a different card changes. Keep a healthy artwork
+  // widget in place instead of releasing its image buffer and downloading the
+  // same cover again. A genuinely changed cover-art card is cleaned up before
+  // this function runs, so it arrives here without an existing context.
+  if (media_ctx->cover_art && media_ctx->cover_art->widget &&
+      media_cover_art_enabled(p) && !p.entity.empty()) {
+    media_cover_art_refresh_geometry(media_ctx);
+    return;
+  }
   clear_media_cover_art(media_ctx);
   if (!media_cover_art_enabled(p) || p.entity.empty()) return;
   ImageCardCtx *art = acquire_image_card_context(cfg, p.entity);
@@ -1099,8 +1110,62 @@ struct GridRuntimeAllocation {
   void (*deleter)(void *) = nullptr;
 };
 
-inline std::vector<GridRuntimeAllocation> &grid_runtime_allocations() {
-  static std::vector<GridRuntimeAllocation> allocations;
+constexpr size_t GRID_RUNTIME_ALLOCATION_CAPACITY =
+  static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) * 8;
+
+class GridRuntimeAllocationRegistry {
+ public:
+  GridRuntimeAllocation *begin() { return entries_; }
+  GridRuntimeAllocation *end() {
+    return entries_ == nullptr ? nullptr : entries_ + size_;
+  }
+  const GridRuntimeAllocation *begin() const { return entries_; }
+  const GridRuntimeAllocation *end() const {
+    return entries_ == nullptr ? nullptr : entries_ + size_;
+  }
+
+  bool push_back(const GridRuntimeAllocation &allocation) {
+    if (!ensure_storage() || size_ >= GRID_RUNTIME_ALLOCATION_CAPACITY) {
+      if (!capacity_warning_logged_) {
+        ESP_LOGE("card_runtime",
+                 "Runtime ownership pool exhausted at %u entries",
+                 static_cast<unsigned>(size_));
+        capacity_warning_logged_ = true;
+      }
+      return false;
+    }
+    entries_[size_++] = allocation;
+    return true;
+  }
+
+  GridRuntimeAllocation &operator[](size_t index) { return entries_[index]; }
+  size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
+  void resize(size_t size) {
+    if (size <= size_) size_ = size;
+  }
+
+ private:
+  bool ensure_storage() {
+    if (entries_ != nullptr) return true;
+#ifdef ESP_PLATFORM
+    entries_ = static_cast<GridRuntimeAllocation *>(heap_caps_calloc(
+      GRID_RUNTIME_ALLOCATION_CAPACITY, sizeof(GridRuntimeAllocation),
+      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+#else
+    entries_ = new (std::nothrow)
+      GridRuntimeAllocation[GRID_RUNTIME_ALLOCATION_CAPACITY]();
+#endif
+    return entries_ != nullptr;
+  }
+
+  GridRuntimeAllocation *entries_ = nullptr;
+  size_t size_ = 0;
+  bool capacity_warning_logged_ = false;
+};
+
+inline GridRuntimeAllocationRegistry &grid_runtime_allocations() {
+  static GridRuntimeAllocationRegistry allocations;
   return allocations;
 }
 
@@ -1229,6 +1294,10 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
         static_cast<MediaPlaylistCtx *>(allocation.ptr));
     } else if (allocation.deleter == grid_delete_media_now_playing_runtime_ptr) {
       MediaNowPlayingCtx *ctx = static_cast<MediaNowPlayingCtx *>(allocation.ptr);
+      // Cover-art routing captures its associated control context. Clear the
+      // callback before that control is released so no cleanup side effect can
+      // invoke a callback that still points at the old control.
+      ctx->refresh_entity_route = nullptr;
       clear_media_cover_art(ctx);
       media_playback_detach_now_playing(ctx);
       ctx->title_lbl = nullptr;
@@ -1253,9 +1322,9 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
 
 inline void grid_release_runtime_allocations(
     lv_obj_t *owner, void *preserve_primary = nullptr,
-    void *preserve_secondary = nullptr) {
+    void *preserve_secondary = nullptr, void *preserve_tertiary = nullptr) {
   if (owner == nullptr) return;
-  std::vector<GridRuntimeAllocation> &allocations = grid_runtime_allocations();
+  GridRuntimeAllocationRegistry &allocations = grid_runtime_allocations();
   size_t write_index = 0;
   for (size_t read_index = 0; read_index < allocations.size(); read_index++) {
     GridRuntimeAllocation &allocation = allocations[read_index];
@@ -1265,7 +1334,8 @@ inline void grid_release_runtime_allocations(
       // persistent Phase 1 widgets; deleting them here leaves LVGL user_data
       // pointing at freed memory before the media driver rebinds subscriptions.
       if (allocation.ptr == preserve_primary ||
-          allocation.ptr == preserve_secondary) {
+          allocation.ptr == preserve_secondary ||
+          allocation.ptr == preserve_tertiary) {
         if (write_index != read_index) allocations[write_index] = allocation;
         write_index++;
         continue;
@@ -1279,7 +1349,6 @@ inline void grid_release_runtime_allocations(
     write_index++;
   }
   allocations.resize(write_index);
-  if (allocations.empty()) std::vector<GridRuntimeAllocation>().swap(allocations);
 }
 
 template<typename T>
@@ -1309,6 +1378,12 @@ inline AlarmActionCtx *grid_track_alarm_action_runtime(lv_obj_t *owner,
 inline MediaControlCtx *grid_track_media_control_runtime(lv_obj_t *owner,
                                                          MediaControlCtx *ctx) {
   if (owner != nullptr && ctx != nullptr) {
+    for (const GridRuntimeAllocation &allocation : grid_runtime_allocations()) {
+      if (allocation.owner == owner && allocation.ptr == ctx &&
+          allocation.deleter == grid_delete_media_control_runtime_ptr) {
+        return ctx;
+      }
+    }
     grid_runtime_allocations().push_back({
       owner,
       ctx,
@@ -1518,11 +1593,23 @@ inline TransientStatusLabel *grid_track_transient_status_label_runtime(
   return ctx;
 }
 
-inline void grid_release_main_runtime_allocations(BtnSlot *slots, int slot_count) {
+inline void grid_release_main_runtime_allocations(
+    BtnSlot *slots, int slot_count,
+    const bool *release_visual_contexts = nullptr) {
   if (slots == nullptr) return;
   for (int i = 0; i < slot_count; i++) {
+    if (release_visual_contexts != nullptr && release_visual_contexts[i]) {
+      // The saved config already contains the replacement (or is empty after
+      // deleting a card), so it cannot identify runtime objects owned by the
+      // previous visual. Detach those objects before freeing every allocation
+      // for this persistent slot; setup_card_visual() will rebuild user_data.
+      grid_prepare_media_runtime_for_visual_reset(slots[i].btn);
+      grid_release_runtime_allocations(slots[i].btn);
+      continue;
+    }
     void *visual_context = nullptr;
     void *slider_context = nullptr;
+    void *control_context = nullptr;
     ParsedCfg config = parse_cfg(slots[i].config->state);
     const auto context = card_runtime_context(config);
     if (espcontrol::cards::media_driver_matches(context) &&
@@ -1535,6 +1622,12 @@ inline void grid_release_main_runtime_allocations(BtnSlot *slots, int slot_count
         if (now_playing != nullptr && now_playing->progress_slider != nullptr) {
           slider_context = lv_obj_get_user_data(now_playing->progress_slider);
         }
+        if (mode == "cover_art" &&
+            media_cover_art_press_action(config) == "control_modal") {
+          control_context = grid_media_control_runtime_for_owner(slots[i].btn);
+        }
+      } else if (mode == "control_modal") {
+        control_context = grid_media_control_runtime_for_owner(slots[i].btn);
       } else if (mode != "playlist" && !media_playback_button_mode(mode) &&
                  mode != "control_modal" && mode != "volume") {
         lv_obj_t *slider = static_cast<lv_obj_t *>(
@@ -1543,7 +1636,7 @@ inline void grid_release_main_runtime_allocations(BtnSlot *slots, int slot_count
       }
     }
     grid_release_runtime_allocations(
-      slots[i].btn, visual_context, slider_context);
+      slots[i].btn, visual_context, slider_context, control_context);
   }
 }
 
@@ -1568,7 +1661,8 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext7_configs,
     const std::string &order_str,
     const std::string &on_hex,
-    lv_obj_t *main_page_obj) {
+    lv_obj_t *main_page_obj,
+    bool reconstruct_main_cards = false) {
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   grid_log_memory("start");
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
@@ -1585,11 +1679,62 @@ inline void grid_phase2(
   }
   int ROWS = (NS + COLS - 1) / COLS;
 
+  OrderResult parsed, order;
+  parse_order_string(order_str, NS, parsed);
+  clear_spanned_cells(parsed, NS, COLS, order);
+
   static bool has_sensor[MAX_GRID_SLOTS] = {};
   static bool sensor_text_mode[MAX_GRID_SLOTS] = {};
   static bool has_icon_on[MAX_GRID_SLOTS] = {};
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
+  static espcontrol::cards::CardNode main_card_snapshots[MAX_GRID_SLOTS];
+  static bool main_card_active[MAX_GRID_SLOTS] = {};
+  static bool main_config_snapshots_initialized = false;
+  espcontrol::cards::CardNode current_card_nodes[MAX_GRID_SLOTS] = {};
+  bool current_card_active[MAX_GRID_SLOTS] = {};
+  bool reconstruct_slot[MAX_GRID_SLOTS] = {};
+  bool release_runtime_slot[MAX_GRID_SLOTS] = {};
+  for (int pos = 0; pos < NS; ++pos) {
+    const int slot = order.positions[pos];
+    if (slot >= 1 && slot <= NS) current_card_active[slot - 1] = true;
+  }
+  for (int i = 0; i < NS; ++i) {
+    const ParsedCfg config = parse_cfg(slots[i].config->state);
+    const uint64_t layout_signature =
+      espcontrol::cards::combine_card_signatures(
+        static_cast<uint64_t>(order.row_span[i]),
+        static_cast<uint64_t>(order.col_span[i]));
+    current_card_nodes[i] = espcontrol::cards::node_for(
+      config,
+      {espcontrol::cards::CardSurface::MAIN_GRID, 0,
+       static_cast<uint16_t>(i + 1)},
+      layout_signature);
+    if (!reconstruct_main_cards) continue;
+
+    if (!main_config_snapshots_initialized ||
+        main_card_active[i] != current_card_active[i]) {
+      reconstruct_slot[i] = true;
+      release_runtime_slot[i] = true;
+      continue;
+    }
+    if (!current_card_active[i]) continue;
+    const uint8_t domains = espcontrol::cards::changed_domains(
+      main_card_snapshots[i], current_card_nodes[i]);
+    const auto mutation = espcontrol::cards::mutation_for(domains);
+    const auto context = card_runtime_context(config);
+    reconstruct_slot[i] = espcontrol::cards::requires_visual_reconstruction(
+      domains, mutation, espcontrol::cards::media_driver_matches(context));
+    release_runtime_slot[i] =
+      mutation == espcontrol::cards::CardMutation::REPLACE ||
+      mutation == espcontrol::cards::CardMutation::REBIND;
+    if (domains != espcontrol::cards::CHANGE_NONE) {
+      ESP_LOGD("card_runtime",
+               "Card %d mutation=%u domains=0x%02x visual=%d release=%d",
+               i + 1, static_cast<unsigned>(mutation), domains,
+               reconstruct_slot[i], release_runtime_slot[i]);
+    }
+  }
 
   static std::string sp_entity_ids[MAX_SUBPAGE_ITEMS];
   static int sp_entity_alloc_idx = 0;
@@ -1605,7 +1750,8 @@ inline void grid_phase2(
   weather_forecast_cancel_pending_requests();
   reset_climate_control_refs();
   clear_internal_relay_watchers();
-  grid_release_main_runtime_allocations(slots, NS);
+  grid_release_main_runtime_allocations(
+    slots, NS, reconstruct_main_cards ? release_runtime_slot : nullptr);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
@@ -1628,9 +1774,6 @@ inline void grid_phase2(
   palette.sensor_val = sensor_val;
   set_current_button_primary_color(palette.on_val);
 
-  OrderResult parsed, order;
-  parse_order_string(order_str, NS, parsed);
-  clear_spanned_cells(parsed, NS, COLS, order);
   lv_obj_t *first_card = nullptr;
   if (order.positions[0] >= 1 && order.positions[0] <= NS) {
     first_card = slots[order.positions[0] - 1].btn;
@@ -1638,6 +1781,28 @@ inline void grid_phase2(
     first_card = slots[0].btn;
   }
   set_media_home_grid_metrics(main_page_obj, COLS, ROWS, first_card);
+
+  if (reconstruct_main_cards) {
+    // Deleted cards are absent from button_order, but their persistent LVGL
+    // slots can still own children and user_data from the previous card. Clear
+    // those visuals too, then keep the unused slot hidden.
+    for (int slot_index = 0; slot_index < NS; slot_index++) {
+      bool active = false;
+      for (int pos = 0; pos < NS; pos++) {
+        if (order.positions[pos] == slot_index + 1) {
+          active = true;
+          break;
+        }
+      }
+      if (active || !reconstruct_slot[slot_index]) continue;
+      auto &unused_slot = slots[slot_index];
+      ParsedCfg unused_config = parse_cfg(unused_slot.config->state);
+      const auto unused_context = card_runtime_context(unused_config);
+      setup_card_visual(
+        unused_slot, unused_config, unused_context, cfg, palette, 1, 1);
+      lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
 
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];
@@ -1649,6 +1814,15 @@ inline void grid_phase2(
     const auto context = card_runtime_context(p);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
+    // Live "Apply Configuration": rebuild the tile's widgets so a changed card
+    // type/entity takes effect without a reboot. The phase-2 prologue above
+    // already freed the previous config's runtime contexts/subscriptions, so
+    // this reconstructs against a clean slot; the loop below then wires up the
+    // new config. Only requested on an explicit apply (not layout refreshes).
+    if (reconstruct_main_cards && reconstruct_slot[idx - 1]) {
+      setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
+      refresh_card_layout(s, p, cfg, row_span, col_span);
+    }
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (espcontrol::cards::image_driver_bind_main(
@@ -1972,12 +2146,18 @@ inline void grid_phase2(
     }
 
   }
+  ha_commit_subscription_generation();
   screen_lock_apply();
   // Phase 2 can finish after the API connection callbacks have already run
   // during boot. Refresh newly bound artwork contexts here so the current
   // track image loads without waiting for the next media metadata change.
   if (ha_api_state_connected()) refresh_image_cards();
   refresh_weather_forecast_cards();
+  for (int i = 0; i < NS; i++) {
+    main_card_snapshots[i] = current_card_nodes[i];
+    main_card_active[i] = current_card_active[i];
+  }
+  main_config_snapshots_initialized = true;
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }
@@ -1990,10 +2170,11 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext3_configs,
     const std::string &order_str,
     const std::string &on_hex,
-    lv_obj_t *main_page_obj) {
+    lv_obj_t *main_page_obj,
+    bool reconstruct_main_cards = false) {
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, sp_ext2_configs, sp_ext3_configs,
     nullptr, nullptr, nullptr, nullptr,
-    order_str, on_hex, main_page_obj);
+    order_str, on_hex, main_page_obj, reconstruct_main_cards);
 }
 
 inline void grid_phase2(
@@ -2002,9 +2183,10 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext_configs,
     const std::string &order_str,
     const std::string &on_hex,
-    lv_obj_t *main_page_obj) {
+    lv_obj_t *main_page_obj,
+    bool reconstruct_main_cards = false) {
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, nullptr, nullptr,
-    order_str, on_hex, main_page_obj);
+    order_str, on_hex, main_page_obj, reconstruct_main_cards);
 }
 
 // ── Phase 3: Temperature + presence/media subscriptions ───────────────

@@ -44,6 +44,7 @@ enum class ServiceStatus : uint8_t {
   BUFFER_TOO_SMALL,
   UNSUPPORTED_VERSION,
   INVALID_DOCUMENT,
+  REVISION_CONFLICT,
   STORE_FAILED,
   LEGACY_READ_FAILED,
   LEGACY_MIRROR_FAILED,
@@ -88,10 +89,31 @@ class ConfigurationService {
   ConfigurationService(ConfigurationStore &store,
                        LegacyConfigurationAdapter &legacy)
       : store_(store), legacy_(legacy) {}
+  ConfigurationService(ConfigurationStore &store,
+                       LegacyConfigurationAdapter &legacy, uint8_t *scratch,
+                       size_t scratch_capacity)
+      : store_(store),
+        legacy_(legacy),
+        scratch_(scratch),
+        scratch_capacity_(scratch_capacity) {}
 
   ServiceLoadResult load(uint8_t *output, size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
                          size_t document_size);
+  // Commits only when expected_revision still matches the durable snapshot.
+  // Revision zero represents an empty store. On conflict, generation contains
+  // the current durable revision so the caller can fetch a fresh snapshot.
+  ServiceSaveResult save_if_revision(uint32_t expected_revision,
+                                     uint16_t document_version,
+                                     const uint8_t *document,
+                                     size_t document_size);
+  ServiceSaveResult save_current_if_revision(uint32_t expected_revision,
+                                             const uint8_t *document,
+                                             size_t document_size) {
+    return save_if_revision(expected_revision,
+                            CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
+                            document_size);
+  }
   ServiceSaveResult save_current(const uint8_t *document,
                                  size_t document_size) {
     return save(CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
@@ -100,13 +122,24 @@ class ConfigurationService {
 
   size_t maximum_document_size() const;
 
+  // Installs the fixed transaction workspace before the service is first
+  // used. Firmware supplies this from PSRAM; host tools may keep the vector
+  // fallback by leaving it unset.
+  void use_scratch(uint8_t *scratch, size_t scratch_capacity) {
+    scratch_ = scratch;
+    scratch_capacity_ = scratch_capacity;
+  }
+
  private:
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
                                size_t document_size);
+  ServiceLoadResult ensure_snapshot_exists();
 
   ConfigurationStore &store_;
   LegacyConfigurationAdapter &legacy_;
+  uint8_t *scratch_{nullptr};
+  size_t scratch_capacity_{0};
 };
 
 }  // namespace espcontrol::configuration

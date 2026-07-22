@@ -17,6 +17,18 @@ target_include_directories(button_grid_foundations_test PRIVATE
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
 
+add_executable(card_reconciler_test card_reconciler_test.cpp)
+target_compile_features(card_reconciler_test PRIVATE cxx_std_17)
+target_compile_options(card_reconciler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(card_reconciler_test PRIVATE ../../components/espcontrol)
+add_test(NAME card_reconciler_test COMMAND card_reconciler_test)
+
+add_executable(card_instance_test card_instance_test.cpp)
+target_compile_features(card_instance_test PRIVATE cxx_std_17)
+target_compile_options(card_instance_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(card_instance_test PRIVATE ../../components/espcontrol)
+add_test(NAME card_instance_test COMMAND card_instance_test)
+
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
 target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)
@@ -60,6 +72,33 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_executable(configuration_document_api_test
+  configuration_document_api_test.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+)
+target_compile_features(configuration_document_api_test PRIVATE cxx_std_17)
+target_compile_options(configuration_document_api_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(configuration_document_api_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_document_api_test COMMAND configuration_document_api_test)
+
+add_executable(configuration_entity_document_test
+  configuration_entity_document_test.cpp
+  ../../components/espcontrol/configuration_entity_document.cpp
+)
+target_compile_features(configuration_entity_document_test PRIVATE cxx_std_17)
+target_compile_options(configuration_entity_document_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(configuration_entity_document_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_entity_document_test COMMAND configuration_entity_document_test)
+
+add_executable(configuration_upload_session_test
+  configuration_upload_session_test.cpp
+)
+target_compile_features(configuration_upload_session_test PRIVATE cxx_std_17)
+target_compile_options(configuration_upload_session_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(configuration_upload_session_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_upload_session_test COMMAND configuration_upload_session_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
@@ -69,11 +108,17 @@ target_compile_options(espcontrol_app_core_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(espcontrol_app_core_test PRIVATE ../../components/espcontrol)
 add_test(NAME espcontrol_app_core_test COMMAND espcontrol_app_core_test)
 
-add_executable(ha_read_coordinator_test ha_read_coordinator_test.cpp)
-target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
-target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
-add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
+add_executable(ha_state_broker_test ha_state_broker_test.cpp)
+target_compile_features(ha_state_broker_test PRIVATE cxx_std_17)
+target_compile_options(ha_state_broker_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(ha_state_broker_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_state_broker_test COMMAND ha_state_broker_test)
+
+add_executable(web_event_stream_policy_test web_event_stream_policy_test.cpp)
+target_compile_features(web_event_stream_policy_test PRIVATE cxx_std_17)
+target_compile_options(web_event_stream_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(web_event_stream_policy_test PRIVATE ../../components/web_server_idf)
+add_test(NAME web_event_stream_policy_test COMMAND web_event_stream_policy_test)
 
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)

@@ -269,6 +269,11 @@ class AsyncWebHandler {
 class AsyncEventSource;
 class AsyncEventSourceResponse;
 
+inline AsyncEventSource *&global_async_event_source() {
+  static AsyncEventSource *ptr = nullptr;
+  return ptr;
+}
+
 using message_generator_t = json::SerializationBuffer<>(esphome::web_server::WebServer *, void *);
 
 /*
@@ -309,9 +314,11 @@ class AsyncEventSourceResponse {
   AsyncEventSourceResponse(const AsyncWebServerRequest *request, esphome::web_server_idf::AsyncEventSource *server,
                            esphome::web_server::WebServer *ws);
 
-  void deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
+  bool deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
   void process_deferred_queue_();
   void process_buffer_();
+  bool can_grow_event_storage_(size_t allocation_bytes, const char *stage);
+  void abort_low_memory_stream_(const char *stage);
 
   static void destroy(void *p);
   AsyncEventSource *server_;
@@ -323,6 +330,7 @@ class AsyncEventSourceResponse {
   std::string event_buffer_{""};
   size_t event_bytes_sent_;
   uint16_t consecutive_send_failures_{0};
+  uint32_t last_low_heap_warning_{0};
   static constexpr uint16_t MAX_CONSECUTIVE_SEND_FAILURES = 2500;  // ~20 seconds at 125Hz loop rate
 };
 
@@ -333,7 +341,10 @@ class AsyncEventSource : public AsyncWebHandler {
   using connect_handler_t = std::function<void(AsyncEventSourceClient *)>;
 
  public:
-  AsyncEventSource(std::string url, esphome::web_server::WebServer *ws) : url_(std::move(url)), web_server_(ws) {}
+  AsyncEventSource(std::string url, esphome::web_server::WebServer *ws) : url_(std::move(url)), web_server_(ws) {
+    if (this->url_ == "/events")
+      global_async_event_source() = this;
+  }
   ~AsyncEventSource() override;
 
   // NOLINTNEXTLINE(readability-identifier-naming)

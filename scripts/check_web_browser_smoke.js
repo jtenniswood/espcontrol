@@ -128,7 +128,51 @@ function publicFirmwareVersions(slug) {
   };
 }
 
-async function installRoutes(context, slug) {
+function configurationDocument(records) {
+  const encoded = records.map((record) => ({
+    domain: record.domain,
+    objectId: Buffer.from(record.objectId, "utf8"),
+    value: Buffer.from(record.value, "utf8"),
+  }));
+  const size = encoded.reduce(
+    (total, record) => total + 4 + record.objectId.length + record.value.length,
+    8,
+  );
+  const document = Buffer.alloc(size);
+  document.writeUInt32LE(0x31464345, 0);
+  document.writeUInt16LE(1, 4);
+  document.writeUInt16LE(encoded.length, 6);
+  let offset = 8;
+  for (const record of encoded) {
+    document.writeUInt8(record.domain, offset);
+    document.writeUInt8(record.objectId.length, offset + 1);
+    document.writeUInt16LE(record.value.length, offset + 2);
+    offset += 4;
+    record.objectId.copy(document, offset);
+    offset += record.objectId.length;
+    record.value.copy(document, offset);
+    offset += record.value.length;
+  }
+  return document;
+}
+
+function configurationDocumentValue(document, objectId) {
+  const recordCount = document.readUInt16LE(6);
+  let offset = 8;
+  for (let index = 0; index < recordCount; index += 1) {
+    const objectIdSize = document.readUInt8(offset + 1);
+    const valueSize = document.readUInt16LE(offset + 2);
+    offset += 4;
+    const currentObjectId = document.subarray(offset, offset + objectIdSize).toString("utf8");
+    offset += objectIdSize;
+    const value = document.subarray(offset, offset + valueSize).toString("utf8");
+    offset += valueSize;
+    if (currentObjectId === objectId) return value;
+  }
+  return null;
+}
+
+async function installRoutes(context, slug, configurationTransport = null) {
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   assert(
     fs.existsSync(scriptPath),
@@ -156,6 +200,75 @@ async function installRoutes(context, slug) {
         status: 200,
         contentType: "application/javascript",
         body: fs.readFileSync(scriptPath, "utf8"),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/espcontrol/configuration"
+    ) {
+      if (configurationTransport) {
+        configurationTransport.snapshots += 1;
+        if (configurationTransport.snapshot404sRemaining > 0) {
+          configurationTransport.snapshot404sRemaining -= 1;
+          await route.fulfill({ status: 404, contentType: "text/plain", body: "Not ready" });
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "application/octet-stream",
+          headers: {
+            "X-EspControl-Revision": String(configurationTransport.revision),
+            "X-EspControl-Document-Version": "1",
+          },
+          body: configurationTransport.document,
+        });
+        return;
+      }
+      // The general layout suite exercises compatibility with firmware that
+      // predates revisioned configuration documents. A dedicated scenario
+      // below covers the transactional transport.
+      await route.fulfill({
+        status: 204,
+        contentType: "application/json",
+        body: "",
+      });
+      return;
+    }
+    if (
+      configurationTransport &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname.startsWith("/espcontrol/configuration/")
+    ) {
+      const values = new URLSearchParams(route.request().postData() || "");
+      if (requestUrl.pathname.endsWith("/begin")) {
+        configurationTransport.transaction = values.get("transaction");
+        configurationTransport.expectedSize = Number(values.get("size"));
+        configurationTransport.staged = Buffer.alloc(0);
+        configurationTransport.begins += 1;
+        await route.fulfill({ status: 200, contentType: "application/json", body: '{"status":"ready"}' });
+        return;
+      }
+      if (requestUrl.pathname.endsWith("/chunk")) {
+        assert.strictEqual(values.get("transaction"), configurationTransport.transaction);
+        assert.strictEqual(Number(values.get("offset")), configurationTransport.staged.length);
+        configurationTransport.staged = Buffer.concat([
+          configurationTransport.staged,
+          Buffer.from(values.get("data") || "", "hex"),
+        ]);
+        configurationTransport.chunks += 1;
+        await route.fulfill({ status: 204, contentType: "text/plain", body: "" });
+        return;
+      }
+      assert.strictEqual(values.get("transaction"), configurationTransport.transaction);
+      assert.strictEqual(configurationTransport.staged.length, configurationTransport.expectedSize);
+      configurationTransport.document = configurationTransport.staged;
+      configurationTransport.revision += 1;
+      configurationTransport.commits += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok", revision: configurationTransport.revision }),
       });
       return;
     }
@@ -342,7 +455,6 @@ function assertNoLayoutBreaks(result, label, options = {}) {
   assert(result.appVisible, `${label}: #sp-app should be visible`);
   assert(result.screenVisible, `${label}: .sp-screen should be visible`);
   assert(result.mainVisible, `${label}: .sp-main should be visible`);
-  assert(result.applyVisible, `${label}: apply controls should be visible`);
   assert(result.gridChildren > 0, `${label}: grid should render cells`);
   assert(
     result.visibleGridChildren > 0,
@@ -394,7 +506,6 @@ async function measureCoreLayout(page) {
     var app = document.querySelector("#sp-app");
     var screen = document.querySelector(".sp-screen");
     var main = document.querySelector(".sp-main");
-    var apply = document.querySelector(".sp-apply-btn");
     var mainRect = rectFor(main);
     var children = Array.from(document.querySelectorAll(".sp-main > *")).map(
       function (el, index) {
@@ -432,7 +543,6 @@ async function measureCoreLayout(page) {
       appVisible: visible(rectFor(app)),
       screenVisible: visible(rectFor(screen)),
       mainVisible: visible(mainRect),
-      applyVisible: visible(rectFor(apply)),
       gridChildren: children.length,
       visibleGridChildren: visibleChildren.length,
       visibleCards: document.querySelectorAll(".sp-main > .sp-btn").length,
@@ -2807,6 +2917,11 @@ async function assertEditSmoke(page, posts, errors) {
   const before = posts.length;
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
+  assert.strictEqual(
+    await page.locator(".sp-apply-bar, .sp-apply-btn").count(),
+    0,
+    "automatic configuration should not render an Apply control",
+  );
 
   await page.locator('.sp-main [data-slot="1"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -2874,26 +2989,17 @@ async function assertEditSmoke(page, posts, errors) {
     before,
   );
 
-  assert.deepStrictEqual(
-    errors,
-    [],
-    "browser errors were reported during edit interactions",
+  assert.strictEqual(
+    posts.slice(before).filter((post) => post.name === "Apply Configuration").length,
+    0,
+    "saving cards should not post the legacy Apply Configuration button",
   );
-}
+  assert.strictEqual(
+    await page.locator("#sp-app.sp-config-locked").count(),
+    0,
+    "automatic card saves should leave the editor unlocked",
+  );
 
-async function assertApplySmoke(page, posts, errors) {
-  const before = posts.length;
-  await page.getByRole("button", { name: "Apply Configuration" }).click();
-  await waitForPost(
-    posts,
-    {
-      domain: "button",
-      name: "Apply Configuration",
-      action: "press",
-    },
-    "apply configuration",
-    before,
-  );
   assert.deepStrictEqual(
     errors,
     [],
@@ -3918,7 +4024,6 @@ async function runCase(browser, testCase) {
       await assertBackupImportSmoke(page, posts, testCase);
       await assertEditSmoke(page, posts, errors);
       await assertCardTransferSmoke(page, posts, testCase.name);
-      await assertApplySmoke(page, posts, errors);
     } else if (testCase.exerciseDeviceMocks) {
       await assertBackupImportSmoke(page, posts, testCase);
     }
@@ -3939,6 +4044,116 @@ async function runCase(browser, testCase) {
   }
 }
 
+async function assertTransactionalConfiguration(browser) {
+  const slug = "guition-esp32-s3-4848s040";
+  const transport = {
+    revision: 1,
+    document: configurationDocument([
+      { domain: 1, objectId: "button_on_color", value: "0073FF" },
+      { domain: 4, objectId: "screen_saver__hide_cover_art_on_external_input", value: "1" },
+      { domain: 3, objectId: "screen_saver__cover_art_delay", value: "10" },
+      { domain: 3, objectId: "screen_saver__track_overlay_duration", value: "5" },
+      { domain: 3, objectId: "home_assistant_artwork_port", value: "8123" },
+      { domain: 1, objectId: "clock_bar__temperature_entities", value: "" },
+      { domain: 4, objectId: "voice_services", value: "0" },
+    ]),
+    transaction: null,
+    expectedSize: 0,
+    staged: Buffer.alloc(0),
+    snapshots: 0,
+    snapshot404sRemaining: 1,
+    begins: 0,
+    chunks: 0,
+    commits: 0,
+  };
+  const context = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+  await installRoutes(context, slug, transport);
+  const page = await context.newPage();
+  const errors = [];
+  const postedPaths = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" || message.type() === "warning")
+      errors.push(`[${message.type()}] ${message.text()}`);
+  });
+  page.on("request", (request) => {
+    if (request.method() === "POST") postedPaths.push(new URL(request.url()).pathname);
+  });
+  await installFakeEventSource(page);
+  try {
+    const initialSnapshotProbe = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+      return response.request().method() === "GET"
+        && responseUrl.pathname === "/espcontrol/configuration";
+    });
+    await page.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await initialSnapshotProbe;
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => typeof window.postText === "function");
+    await page.waitForTimeout(1600);
+    await page.evaluate(() => Promise.all([
+      window.postText("Button On Color", "111111"),
+      window.postText("Button On Color", "222222"),
+      window.postText("Button On Color", "A1B2C3"),
+      window.postCoverArtHideExternalInput(false),
+      window.postCoverArtDelay(0),
+      window.postCoverArtTrackOverlayDuration(15),
+      window.postHomeAssistantArtworkPort(8124),
+      window.postClockBarTemperatureEntities("sensor.office,sensor.outside"),
+      window.postVoiceServices(true),
+    ]));
+
+    assert.strictEqual(transport.commits, 1, "rapid configuration writes should be coalesced into one revision");
+    assert(transport.snapshots >= 2, "an early configuration 404 should be probed again after boot");
+    assert.strictEqual(transport.begins, 1, "one revision should start one bounded upload");
+    assert(transport.chunks >= 1, "the configuration revision should use the chunk endpoint");
+    assert.strictEqual(
+      configurationDocumentValue(transport.document, "button_on_color"),
+      "A1B2C3",
+      "the committed revision should contain the newest value",
+    );
+    assert.strictEqual(configurationDocumentValue(transport.document, "screen_saver__hide_cover_art_on_external_input"), "0");
+    assert.strictEqual(configurationDocumentValue(transport.document, "screen_saver__cover_art_delay"), "3");
+    assert.strictEqual(configurationDocumentValue(transport.document, "screen_saver__track_overlay_duration"), "15");
+    assert.strictEqual(configurationDocumentValue(transport.document, "home_assistant_artwork_port"), "8124");
+    assert.strictEqual(configurationDocumentValue(transport.document, "clock_bar__temperature_entities"), "sensor.office,sensor.outside");
+    assert.strictEqual(configurationDocumentValue(transport.document, "voice_services"), "1");
+    assert(
+      !postedPaths.some((pathName) => /^\/(text|number|switch)\//.test(pathName)),
+      "configuration setters should not bypass the revisioned document",
+    );
+    assert(
+      !postedPaths.some((pathName) => /apply_configuration|apply configuration/i.test(pathName)),
+      "automatic saves should not press a legacy Apply button",
+    );
+    const snapshotsBeforeEvent = transport.snapshots;
+    transport.revision += 1;
+    transport.document = configurationDocument([
+      { domain: 1, objectId: "button_on_color", value: "D4E5F6" },
+    ]);
+    const snapshotRefresh = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+      return response.request().method() === "GET"
+        && responseUrl.pathname === "/espcontrol/configuration";
+    });
+    await page.evaluate(() => {
+      window.__eventSources[0].dispatch("espcontrol_configuration", {
+        data: JSON.stringify({ revision: 3 }),
+      });
+    });
+    await snapshotRefresh;
+    assert.strictEqual(
+      transport.snapshots,
+      snapshotsBeforeEvent + 1,
+      "a committed-revision event should refresh the complete configuration snapshot",
+    );
+    const unexpectedErrors = errors.filter((error) => !/Failed to load resource:.*404 \(Not Found\)/.test(error));
+    assert.deepStrictEqual(unexpectedErrors, [], "transactional configuration should not report browser errors");
+  } finally {
+    await context.close();
+  }
+}
+
 (async function main() {
   const browser = await chromium.launch();
   try {
@@ -3948,6 +4163,7 @@ async function runCase(browser, testCase) {
       await runCase(browser, testCase);
       await assertMobileDeviceViewport(browser, testCase);
     }
+    await assertTransactionalConfiguration(browser);
   } finally {
     await browser.close();
   }

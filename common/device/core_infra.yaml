@@ -89,6 +89,11 @@ api:
         todo_cancel_pending_request("api disconnected");
 
 interval:
+  - interval: 250ms
+    then:
+      - lambda: |-
+          ha_poll_subscription_refresh();
+
   - interval: 5s
     then:
       - lambda: |-
@@ -147,11 +152,14 @@ button:
     entity_category: config
     on_press:
       then:
-        # Flush web UI settings before rebooting; ESPHome normally batches
-        # preference writes, so an immediate restart can otherwise lose them.
+        # Apply configuration live: flush settings, then rebuild the button grid
+        # in place (config_apply_reconstruct makes the refresh reconstruct each
+        # tile's widgets) instead of rebooting. Reboots are reserved for changes
+        # that genuinely need them (display init, network mode).
         - lambda: |-
             global_preferences->sync();
-            App.safe_reboot();
+            id(config_apply_reconstruct) = true;
+        - script.execute: refresh_button_grid
 
 select:
   - platform: template

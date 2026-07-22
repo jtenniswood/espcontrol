@@ -4,10 +4,17 @@
 #include "button_grid_limits.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_string.h"
+#include "ha_state_capacity.h"
 
 int main() {
   static_assert(MAX_GRID_SLOTS == ESPCONTROL_MAX_GRID_SLOTS);
   static_assert(MAX_SUBPAGE_ITEMS == MAX_GRID_SLOTS * MAX_GRID_SLOTS);
+  static_assert(
+      HA_CONFIGURED_CARD_CAPACITY == MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  static_assert(HA_STATE_CHANNEL_CAPACITY >=
+                HA_CONFIGURED_CARD_CAPACITY * 8 + 32);
+  static_assert(HA_SCOPED_LEASE_CAPACITY >=
+                HA_CONFIGURED_CARD_CAPACITY * 12 + 64);
 
   if (string_ref_limited(esphome::StringRef("calendar"), 4) != "cale") return EXIT_FAILURE;
   if (string_ref_limited(esphome::StringRef("clock"), 32) != "clock") return EXIT_FAILURE;
@@ -20,6 +27,41 @@ int main() {
       card_runtime_context("light_brightness").family != Family::SLIDER ||
       card_runtime_context("fan_speed").family != Family::FAN ||
       card_runtime_context("not_a_card").family != Family::UNKNOWN) {
+    return EXIT_FAILURE;
+  }
+  struct FullTestConfig {
+    std::string entity;
+    std::string label;
+    std::string icon;
+    std::string icon_on;
+    std::string sensor;
+    std::string unit;
+    std::string type;
+    std::string precision;
+    std::string options;
+  };
+  FullTestConfig base{"media_player.room", "Music", "Auto", "Auto",
+                      "cover_art", "", "media", "", ""};
+  const auto address = espcontrol::cards::CardAddress{
+    espcontrol::cards::CardSurface::MAIN_GRID, 0, 1};
+  const auto base_node = espcontrol::cards::node_for(base, address, 1);
+  FullTestConfig relabelled = base;
+  relabelled.label = "Now playing";
+  const auto relabelled_node = espcontrol::cards::node_for(relabelled, address, 1);
+  const uint8_t relabelled_domains =
+    espcontrol::cards::changed_domains(base_node, relabelled_node);
+  if (espcontrol::cards::mutation_for(relabelled_domains) !=
+        espcontrol::cards::CardMutation::UPDATE_VISUAL ||
+      (relabelled_domains & espcontrol::cards::CHANGE_BINDINGS) != 0) {
+    return EXIT_FAILURE;
+  }
+  FullTestConfig rebound = base;
+  rebound.entity = "media_player.kitchen";
+  const uint8_t rebound_domains = espcontrol::cards::changed_domains(
+    base_node, espcontrol::cards::node_for(rebound, address, 1));
+  if (espcontrol::cards::mutation_for(rebound_domains) !=
+        espcontrol::cards::CardMutation::REBIND ||
+      (rebound_domains & espcontrol::cards::CHANGE_VISUAL) != 0) {
     return EXIT_FAILURE;
   }
   const auto door = card_runtime_context("door_window");

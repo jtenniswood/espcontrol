@@ -4,6 +4,10 @@
 
 #include "espcontrol_app_core.h"
 
+namespace espcontrol::configuration {
+class ConfigurationDocumentApi;
+}
+
 namespace espcontrol {
 
 // The single ESPHome component boundary for EspControl-owned firmware state.
@@ -18,9 +22,16 @@ class EspControlApp : public esphome::Component {
   DisplayModeController &display() { return core_.display(); }
   const DisplayModeController &display() const { return core_.display(); }
   AppLifecycleState lifecycle_state() const { return core_.lifecycle_state(); }
+  configuration::ConfigurationDocumentApi &configuration_document();
 
  private:
+  struct ConfigurationRuntime;
+
+  void bootstrap_configuration();
+  void register_configuration_transport();
+
   EspControlAppCore core_{};
+  ConfigurationRuntime *configuration_{nullptr};
 };
 
 }  // namespace espcontrol

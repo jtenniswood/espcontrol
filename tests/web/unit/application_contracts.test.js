@@ -8,6 +8,7 @@ describe("browserless application contracts", () => {
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
+  const { runTransactionIdTests } = loadTypescriptTest("tests/web/transaction_id.test.ts");
 
   test("plans clipboard transfers", () => {
     runClipboardFeatureTests();
@@ -19,6 +20,10 @@ describe("browserless application contracts", () => {
 
   test("preserves state and event aliases", () => {
     runStateContractTests();
+  });
+
+  test("creates collision-resistant configuration transaction IDs", () => {
+    runTransactionIdTests();
   });
 
   test("preserves request fallback and ordering", async () => {

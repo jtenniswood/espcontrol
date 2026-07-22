@@ -185,7 +185,9 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     coordinator_path = firmware_dir / "ha_read_coordinator.h"
     coordinator_text = coordinator_path.read_text(encoding="utf-8") if coordinator_path.exists() else ""
-    read_boundary_text = text + "\n" + coordinator_text
+    broker_path = firmware_dir / "ha_state_broker.h"
+    broker_text = broker_path.read_text(encoding="utf-8") if broker_path.exists() else ""
+    read_boundary_text = text + "\n" + coordinator_text + "\n" + broker_text
     errors: list[str] = []
 
     state_helper = STATE_HELPER_PATTERN.search(text)
@@ -224,24 +226,50 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: send Home Assistant actions only after state subscription is ready")
     elif "HA_ACTION_INTERNAL_FREE_MIN_BYTES" not in action_send_match.group("body"):
         errors.append(f"{rel}: defer Home Assistant actions when S3 internal heap is critically low")
-    if (
-        "ha_read_coordinator().get(" not in text
-        or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
-        or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
-    ):
-        errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
-    if "callback_depth_ != 0 || !state_connected()" not in coordinator_text:
-        errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
-    if (
-        "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
-        or "request.entity_id == entity_id" not in read_boundary_text
-        or "for (const auto &callback : *callback_refs)" not in read_boundary_text
-    ):
-        errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-    if "subscriptions_.push_back({callback_ref, scope})" not in coordinator_text:
-        errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
-    if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
-        errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
+    uses_broker = "ha_state_broker().get(" in text
+    if uses_broker:
+        if (
+            "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
+            or 'ha_internal_heap_available("Home Assistant state request"' not in text
+        ):
+            errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
+        if "deliver_cached_once()" not in broker_text or "dispatch_depth_ == 0" not in broker_text:
+            errors.append(f"{rel}: queue nested cached Home Assistant reads until the current callback returns")
+        if (
+            "ensure_channel(entity_id, attribute)" not in broker_text
+            or "channels_[channel].has_value" not in broker_text
+            or "channel.entity_id == entity_id" not in broker_text
+        ):
+            errors.append(f"{rel}: fan out duplicate Home Assistant reads through one cached channel")
+        if "ScopedStateSubscriptions" not in broker_text or "Bank pending_" not in broker_text:
+            errors.append(f"{rel}: track Home Assistant subscription leases for atomic generation cleanup")
+        if "release_matching(active_, replace_scopes_)" not in broker_text or "broker_.prune()" not in broker_text:
+            errors.append(f"{rel}: release retired Home Assistant subscription leases after generation commit")
+        if "std::array<Channel, MaxChannels>" not in broker_text or "std::array<Subscriber, MaxSubscribers>" not in broker_text:
+            errors.append(f"{rel}: keep Home Assistant broker storage fixed-capacity")
+    else:
+        if (
+            "ha_read_coordinator().get(" not in text
+            or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
+            or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
+        ):
+            errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
+        if (
+            "if (callback_depth_ != 0)" not in coordinator_text
+            or "return queue(entity_id, attribute" not in coordinator_text
+            or "return attach_get(entity_id" not in coordinator_text
+        ):
+            errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
+        if (
+            "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
+            or "request.entity_id == entity_id" not in read_boundary_text
+            or "for (auto &callback : request.callbacks)" not in read_boundary_text
+        ):
+            errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
+        if "subscriptions_.push_back({callback_ref, scope, false})" not in coordinator_text:
+            errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
+        if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
+            errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
 
     return errors
 

@@ -661,16 +661,28 @@ def phase2_block(device: dict) -> str:
 
 def script_block(device: dict) -> str:
     after_refresh = ["      - script.execute: clock_bar_apply"]
+    package = device.get("package") or {}
+    subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+    phase2_call = [
+        "            grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,"
+        if subpage_chunks >= 8
+        else "            grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,",
+        "              id(button_order).state,",
+        "              id(button_on_color).state,",
+        "              id(main_page)->obj, true);",
+        "            id(config_apply_reconstruct) = false;",
+    ]
     if device.get("refresh_rebuilds_subpages"):
-        package = device.get("package") or {}
-        subpage_chunks = int(package.get("subpageConfigChunks") or 8)
         phase2_call = [
             "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,"
             if subpage_chunks >= 8
             else "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,",
             "            id(button_order).state,",
             "            id(button_on_color).state,",
-            "            id(main_page)->obj);",
+            # config_apply_reconstruct rebuilds each tile's widgets so a live
+            # "Apply Configuration" applies card changes without a reboot.
+            "            id(main_page)->obj, id(config_apply_reconstruct));",
+            "          id(config_apply_reconstruct) = false;",
         ]
         return "\n".join(
             [
@@ -678,13 +690,14 @@ def script_block(device: dict) -> str:
                 "  - id: refresh_button_grid",
                 "    mode: restart",
                 "    then:",
-                "      - delay: 3s",
+                "      - delay: 1s",
                 "      - lambda: |-",
                 refresh_block(device),
                 *refresh_subpage_arrays(device),
                 "          grid_refresh_layout(slots, cfg,",
                 "            id(button_order).state,",
                 "            id(main_page)->obj);",
+                "          id(clock_bar_apply).execute();",
                 "          navigation_return_home(id(main_page)->obj);",
                 *phase2_call,
                 *after_refresh,
@@ -697,12 +710,17 @@ def script_block(device: dict) -> str:
             "  - id: refresh_button_grid",
             "    mode: restart",
             "    then:",
-            "      - delay: 3s",
+            "      - delay: 1s",
             "      - lambda: |-",
             refresh_block(device),
+            *refresh_subpage_arrays(device),
             "          grid_refresh_layout(slots, cfg,",
             "            id(button_order).state,",
             "            id(main_page)->obj);",
+            "          id(clock_bar_apply).execute();",
+            "          if (id(config_apply_reconstruct)) {",
+            *phase2_call,
+            "          }",
             *after_refresh,
             "",
         ]
