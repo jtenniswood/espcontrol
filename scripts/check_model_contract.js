@@ -97,6 +97,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
+  speakerGroupEntity: "",
   playlist: {
     contentId: "media-source://music/morning,mix=50%",
     contentType: "playlist",
@@ -132,6 +133,7 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,
+  speakerGroupEntity: "",
   playlist: { contentId: "", contentType: "playlist", playerSource: "" },
   largeNumbers: false,
 }, "Media decoder canonicalises legacy and out-of-range values without changing storage");

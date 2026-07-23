@@ -13,6 +13,7 @@ inline bool media_driver_matches(const Context &context) {
   switch (context.runtime.driver) {
     case Driver::MEDIA:
     case Driver::MEDIA_CONTROL:
+    case Driver::MEDIA_GROUP:
     case Driver::MEDIA_PLAY_PAUSE:
     case Driver::MEDIA_TRANSPORT:
     case Driver::MEDIA_VOLUME:
@@ -302,7 +303,7 @@ inline bool media_driver_bind_data(
         media_play_pause_show_state(config) ? slot.text_lbl : nullptr,
         config.entity);
     }
-  } else if (mode == "control_modal") {
+  } else if (media_control_modal_mode(mode)) {
     MediaControlCtx *control = media_driver_create_control(
       slot, config, context, environment);
     subscribe_media_control_state(control);
@@ -392,7 +393,7 @@ inline bool media_driver_handle_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button) {
   if (!media_driver_matches(context)) return false;
   const std::string mode = media_card_mode(config.sensor);
-  if (mode == "control_modal") {
+  if (media_control_modal_mode(mode)) {
     MediaControlCtx *control = button
       ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
     if (!control) control = grid_media_control_runtime_for_owner(button);
@@ -432,7 +433,7 @@ inline bool media_driver_handle_main_click(
 inline bool media_driver_subpage_clickable(
     const ParsedCfg &config) {
   const std::string mode = media_card_mode(config.sensor);
-  return mode == "control_modal" || mode == "volume" ||
+  return media_control_modal_mode(mode) || mode == "volume" ||
          mode == "playlist" || mode == "cover_art" ||
          media_playback_button_mode(mode) ||
          (mode == "now_playing" && config.precision == "play_pause");

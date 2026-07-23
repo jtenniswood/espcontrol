@@ -59,7 +59,14 @@ export function runBackupFeatureTests(): void {
     sizes: { "2": 2 },
     buttons: [
       { entity: "light.kitchen", label: "Kitchen" },
-      { entity: "scene.movie", label: "Movie", type: "action" },
+      {
+        entity: "media_player.living_room",
+        label: "Speaker Group",
+        icon: "Auto",
+        sensor: "speaker_group",
+        type: "media",
+        options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+      },
     ],
     subpages: {
       "1": {
@@ -75,6 +82,12 @@ export function runBackupFeatureTests(): void {
   const plan = feature.planBackupImport(backup, { device: "panel-b", slots: 3 });
   equal(plan.warnings.length, 2, "cross-device and slot-count warnings are retained");
   equal(plan.buttons.length, 3, "backup expands to the target slot count");
+  equal(plan.buttons[1]?.sensor, "speaker_group", "backup preserves standalone speaker group mode");
+  equal(
+    plan.buttons[1]?.options,
+    "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+    "backup preserves speaker group helper and volume limit",
+  );
   deepEqual(Object.keys(plan.subpages), ["1"], "subpages follow mapped home slots");
   equal(plan.subpages["1"]?.grid?.[0], 1, "imported subpage layout is rebuilt");
 

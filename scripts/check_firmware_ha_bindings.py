@@ -1407,6 +1407,94 @@ def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Pa
     return errors
 
 
+def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    required = (
+        (
+            "media_group_parse_entity_list(value.c_str(), value.size())",
+            "parse complete Home Assistant speaker lists without a fixed-size copy",
+        ),
+        (
+            "if (!row->pending) row->selected =",
+            "preserve pending speaker selections until Home Assistant responds",
+        ),
+        (
+            "row->volume_pct < media_control_volume_max_pct(ctx)",
+            "apply the configured maximum only to speaker volume increases",
+        ),
+        (
+            "MEDIA_GROUP_REFRESH_INTERVAL_MS",
+            "refresh speaker state only while the modal is open",
+        ),
+        (
+            "media_control_refresh_speaker_state(ctx, row)",
+            "poll visible speaker rows without lifetime subscriptions",
+        ),
+        (
+            "media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);",
+            "register speaker discovery during normal startup subscriptions",
+        ),
+        (
+            "media_group_parse_discovery_items(raw)",
+            "hydrate speaker names and volumes from the discovery helper",
+        ),
+        (
+            "std::vector<MediaSpeakerDiscoveryState>().swap(state->speaker_discoveries);",
+            "restore speaker discovery when the grid rebuilds its startup subscriptions",
+        ),
+        (
+            "media_control_sync_speaker_candidates",
+            "synchronize speaker rows when the helper inventory changes",
+        ),
+        (
+            "lv_obj_del(row->row)",
+            "delete speaker rows removed from the helper inventory",
+        ),
+        (
+            "MEDIA_GROUP_ACTION_TIMEOUT_MS",
+            "bound pending speaker actions so a lost response does not disable a row indefinitely",
+        ),
+        (
+            'ha_cancel_action_response_callback(call_id, "grouping timeout")',
+            "cancel stale grouping callbacks when a speaker action times out",
+        ),
+        (
+            "lv_timer_del(ui.speaker_action_timer)",
+            "release the modal-scoped speaker action timer",
+        ),
+    )
+    for token, message in required:
+        if token not in text:
+            errors.append(f"{rel}: {message}")
+    if (
+        text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 1
+        or "media_group_parse_discovery_items(raw)" not in text
+    ):
+        errors.append(f"{rel}: parse both current members and discovery candidates without truncation")
+    if "inline void media_control_refresh_speaker_state" in text:
+        subscribe_body = text.split("inline void media_control_refresh_speaker_state", 1)[1]
+        subscribe_body = subscribe_body.split("\n}\n\ninline void media_control_add_speaker_candidate", 1)[0]
+        for token in (
+            "ha_get_state(entity_id, state_callback)",
+            'ha_get_attribute(entity_id, std::string("friendly_name"), name_callback)',
+            'ha_get_attribute(entity_id, std::string("volume_level"), volume_callback)',
+        ):
+            if token not in subscribe_body:
+                errors.append(f"{rel}: rehydrate a speaker row recreated during a live helper edit")
+                break
+        if (
+            "if (!parse_float_ref(value, level) || !std::isfinite(level))" not in subscribe_body
+            or "row->volume_known = false" not in subscribe_body
+        ):
+            errors.append(f"{rel}: disable group volume when a speaker reports an invalid volume")
+    return errors
+
+
 def firmware_cover_art_low_heap_progress_errors(
     firmware_dir: Path, cover_art_path: Path, root: Path
 ) -> list[str]:
@@ -2985,6 +3073,7 @@ def run_scan() -> int:
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_group_lifecycle_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))

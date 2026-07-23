@@ -80,6 +80,7 @@ enum class CardDriverId : uint8_t {
   LIGHT_CONTROL,
   MEDIA,
   MEDIA_CONTROL,
+  MEDIA_GROUP,
   MEDIA_PLAY_PAUSE,
   MEDIA_TRANSPORT,
   MEDIA_VOLUME,
@@ -223,6 +224,7 @@ inline CardDriverId resolve_card_driver(CardTypeId type, const std::string &mode
       return CardDriverId::COVER_MODAL;
     case CardTypeId::MEDIA:
       if (mode == "control_modal") return CardDriverId::MEDIA_CONTROL;
+      if (mode == "speaker_group") return CardDriverId::MEDIA_GROUP;
       if (mode == "play_pause") return CardDriverId::MEDIA_PLAY_PAUSE;
       if (mode == "previous") return CardDriverId::MEDIA_TRANSPORT;
       if (mode == "next") return CardDriverId::MEDIA_TRANSPORT;
@@ -265,7 +267,7 @@ inline const char *const CARD_CONTRACT_GATE_MODES[] = {"", "open", "close", "sto
 inline const char *const CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES[] = {"label", "status"};
 inline const char *const CARD_CONTRACT_INTERNAL_MODES[] = {"switch", "push"};
 inline const char *const CARD_CONTRACT_LOCK_MODES[] = {"", "lock", "unlock"};
-inline const char *const CARD_CONTRACT_MEDIA_MODES[] = {"control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"};
+inline const char *const CARD_CONTRACT_MEDIA_MODES[] = {"control_modal", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"};
 inline const char *const CARD_CONTRACT_MEDIA_DISPLAY_MODES[] = {"", "state"};
 inline const char *const CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS[] = {"", "progress", "play_pause"};
 inline const char *const CARD_CONTRACT_MEDIA_LEGACY_MODES[] = {"controls"};
@@ -324,6 +326,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_ID = "playlist_
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE = "playlist_content_type";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE = "playlist_player_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SCRIPT_FIELDS = "script_fields";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_SPEAKER_GROUP_ENTITY = "speaker_group_entity";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_ENTITY = "state_entity";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_HIGH_LABEL = "state_high_label";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_INPUT = "state_input";

@@ -112,6 +112,8 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             setMediaCoverArtDetailsEnabled: setMediaCoverArtDetailsEnabled,
             mediaVolumeMax: mediaVolumeMax,
             setMediaVolumeMax: setMediaVolumeMax,
+            mediaSpeakerGroupEntity: mediaSpeakerGroupEntity,
+            setMediaSpeakerGroupEntity: setMediaSpeakerGroupEntity,
             mediaLabelDisplayMode: mediaLabelDisplayMode,
             setMediaLabelDisplayMode: setMediaLabelDisplayMode,
             mediaNumberDisplayMode: mediaNumberDisplayMode,

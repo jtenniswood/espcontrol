@@ -324,11 +324,12 @@ assert.strictEqual(hooks.internalRelayDefaultIcon("push"), "Gesture Tap", "inter
 assert.strictEqual(hooks.internalRelayDefaultOnIcon(), "Lightbulb", "internal relay on icon is spec-backed");
 assert.deepStrictEqual(
   Array.from(hooks.mediaModeOptionValues()),
-  ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
+  ["control_modal", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
   "media mode options are spec-backed"
 );
 assert.strictEqual(hooks.mediaEditorMode("controls"), "play_pause", "legacy media controls mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("cover_art"), "cover_art", "cover art media mode maps through spec");
+assert.strictEqual(hooks.mediaEditorMode("speaker_group"), "speaker_group", "speaker group media mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mode falls back through spec");
 assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_art" }), true, "cover art cards require square sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
@@ -407,6 +408,15 @@ hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
 assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art omits its default action without dropping track details");
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
 assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
+const speakerGroupButton = { type: "media", sensor: "speaker_group", options: "" };
+hooks.setMediaSpeakerGroupEntity(speakerGroupButton, " media_player.compatible_speakers ");
+hooks.setMediaVolumeMax(speakerGroupButton, "80");
+assert.strictEqual(
+  speakerGroupButton.options,
+  "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+  "speaker group stores its helper and maximum volume in canonical order"
+);
+assert.strictEqual(hooks.mediaSpeakerGroupEntity(speakerGroupButton), "media_player.compatible_speakers", "speaker group helper is normalized");
 assert.deepStrictEqual(
   Array.from(hooks.mediaNowPlayingControlValues()),
   ["", "progress", "play_pause"],
@@ -1894,6 +1904,30 @@ assertButtonRoundTrip(hooks, "media control modal card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "media control modal card with speaker helper", {
+  entity: "media_player.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+}, false);
+
+assertButtonRoundTrip(hooks, "standalone speaker group card", {
+  entity: "media_player.living_room",
+  label: "Speaker Group",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "speaker_group",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+}, false);
+
 assertButtonRoundTrip(hooks, "media control modal card label display", {
   entity: "media_player.living_room",
   label: "Living Room",
@@ -3112,7 +3146,7 @@ assertSubpageRoundTrip(hooks, "alarm action subpage", {
 }, true);
 
 assertSubpageRoundTrip(hooks, "media subpage", {
-  order: ["1", "B", "2", "3", "4", "5", "6", "7", "8"],
+  order: ["1", "B", "2", "3", "4", "5", "6", "7", "8", "9"],
   buttons: [
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
@@ -3122,6 +3156,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Cover Art", icon: "Auto", sensor: "cover_art", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Morning Mix", icon: "Music", sensor: "playlist", type: "media", options: "playlist_content_id=spotify%3Aplaylist%3A12345" }),
+    buttonShape({ entity: "media_player.living_room", label: "Speaker Group", icon: "Auto", sensor: "speaker_group", type: "media", options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80" }),
   ],
 }, true);
 

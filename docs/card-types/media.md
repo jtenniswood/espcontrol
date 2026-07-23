@@ -15,6 +15,7 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
 1. Select a card and change its type to **Media**.
 2. Choose the media **Type**:
    - **All Controls**
+   - **Speaker Group**
    - **Play/Pause Button**
    - **Previous Button**
    - **Next Button**
@@ -86,6 +87,63 @@ Cover Art uses one of the display's shared image download slots. If all slots ar
 ## All Controls
 
 All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
+
+When the main player reports Home Assistant's grouping capability and speaker discovery returns at least one valid player, All Controls includes a fourth **Speakers** tab. By default, EspControl reads the compatible-speaker inventory from `sensor.speaker_group`. If that sensor is missing or empty, the tab stays hidden instead of showing an unusable list.
+
+## Speaker Groups
+
+Speaker Group opens the same speaker panel directly, without the playback, progress, and single-player volume tabs. It lets you join and unjoin compatible speakers and control the volume of speakers that are currently grouped.
+
+### Create the Speaker Discovery Sensor
+
+For Sonos, add this versioned JSON template to Home Assistant's `configuration.yaml`:
+
+```yaml
+template:
+  - sensor:
+      - name: "Speaker Group"
+        unique_id: speaker_group
+        state: >
+          {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
+          {{ s | count }}
+        attributes:
+          data: >
+            {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
+            {%- set ns = namespace(items=[]) -%}
+            {%- for entity_id in s -%}
+              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level")]] -%}
+            {%- endfor -%}
+            v2|{{ ns.items | to_json }}
+```
+
+Restart Home Assistant after adding the template. Replace `sonos` with the integration name when using another compatible speaker platform.
+
+The earlier comma-separated ESPHome Media Player format remains supported for existing installations. The versioned JSON format is recommended because speaker names can safely contain commas and future versions can evolve without changing existing helpers.
+
+The optional **Speaker Discovery Entity** card setting remains available as an override. A Home Assistant media-player Group helper can be entered there for a manually maintained list; otherwise leave it blank to use `sensor.speaker_group` automatically.
+
+Home Assistant does not expose enough integration-registry information directly through EspControl's device connection to prove that two players are compatible, so the template performs discovery inside Home Assistant. Speakers already in the live group are also shown even when they are missing from the discovery sensor, so they can still be controlled or removed.
+
+The main speaker is always selected. Selecting another speaker sends `media_player.join` with the complete selected group; clearing one sends `media_player.unjoin` to that speaker. A row shows a pending state while Home Assistant handles the request. If an integration rejects an incompatible request, the selection is restored and the panel shows an error.
+
+### Group and Individual Volume
+
+Individual volume controls appear only for speakers in a multi-speaker group. While grouped, the main Volume tab shows **Group** and its arc represents the arithmetic mean of the available members' current levels. Moving it applies the same difference to each speaker instead of making every speaker equally loud. The display previews the level while dragging and sends one final update per member when the arc is released, avoiding a burst of Home Assistant actions.
+
+For example, `10%`, `25%`, and `40%` has a group level of `25%`. Moving Group Volume to `35%` sends `20%`, `35%`, and `50%`. Each result is limited to `0%` and the card's **Maximum Volume** setting. Group Volume remains disabled until every available member has reported a volume, which avoids losing the existing balance.
+
+### Permissions and Device Testing
+
+The panel must be allowed to run `media_player.join`, `media_player.unjoin`, and `media_player.volume_set`; see [Enable Actions](/getting-started/home-assistant-actions). Confirm grouping works in Home Assistant first because integration support varies.
+
+Before relying on the card, test with at least three compatible speakers:
+
+- Join and unjoin from both the All Controls tab and a standalone Speaker Group card.
+- Change membership and volume in Home Assistant and confirm the panel updates.
+- Confirm individual controls disappear after a speaker leaves the group.
+- Check relative group volume near both volume limits.
+- Try an unavailable speaker and, if practical, an intentionally incompatible join to confirm the error state recovers.
+- Reconnect or restart a speaker and confirm its state returns without reopening the card.
 
 ## Media Content
 

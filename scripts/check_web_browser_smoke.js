@@ -2278,6 +2278,44 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
   });
 }
 
+async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.locator("#sp-inp-media-mode").selectOption("next");
+  await page.locator("#sp-inp-icon").fill("Home");
+  const before = posts.length;
+  await page.locator("#sp-inp-media-mode").selectOption("speaker_group");
+  const helper = page.locator("#sp-inp-speaker-group-entity");
+  await helper.waitFor({ state: "visible" });
+  assert(await page.getByText("Speaker Discovery Entity (optional)", { exact: true }).isVisible(), `${label}: speaker discovery field should render`);
+  await page.waitForSelector('.sp-main [data-slot="4"].sp-media-group-active');
+  assert(await page.locator('.sp-main [data-slot="4"].sp-media-group-active').count(), `${label}: speaker group preview should use active styling`);
+  assert.strictEqual(await page.locator('.sp-main [data-slot="4"] .sp-media-group-count').textContent(), "3", `${label}: speaker group preview should show a member count`);
+  await helper.fill("");
+  await page.getByRole("button", { name: "Save" }).click();
+  await waitForPost(
+    posts,
+    { domain: "text", name: "button_4_config", action: "set" },
+    `${label}: speaker group save`,
+    before,
+  );
+  const saved = posts.slice(before).find((post) =>
+    postMatches(post, { domain: "text", name: "button_4_config", action: "set" })
+  );
+  assert.strictEqual(
+    String(saved && saved.value || "").split(";")[2],
+    "Auto",
+    `${label}: changing to speaker group should clear a stale media icon`,
+  );
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
 function postRecord(requestUrl) {
   const url = new URL(requestUrl);
   const parts = url.pathname
@@ -3909,6 +3947,7 @@ async function runCase(browser, testCase) {
     await assertMediaCoverArtSettingsPanels(page, testCase.name);
     await assertAlarmSettingsPanels(page, testCase.name);
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
+    await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
     }
