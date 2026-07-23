@@ -45,22 +45,37 @@ def test_release_matrix_shape() -> None:
     assert isinstance(include, list) and include
 
     for entry in include:
-        assert set(entry) == {"device", "slug", "chip"}
+        assert set(entry) == {"device", "slug", "chip", "recovery"}
         assert entry["device"] == entry["slug"]
         assert entry["chip"] in device_matrix.VALID_CHIP_FAMILIES
+        assert entry["recovery"] is (entry["chip"] == device_matrix.RECOVERY_CHIP_FAMILY)
 
 
 def test_nightly_matrix_includes_every_manifest_slug() -> None:
     matrix = run_ok(["nightly"])
     assert matrix == {
-        "include": [{"slug": slug} for slug in manifest_data()["devices"].keys()]
+        "include": [
+            {
+                "slug": slug,
+                "recovery": device["firmware"]["build"]["chip"]
+                == device_matrix.RECOVERY_CHIP_FAMILY,
+            }
+            for slug, device in manifest_data()["devices"].items()
+        ]
     }
 
 
 def test_pr_matrix_includes_every_manifest_slug() -> None:
     matrix = run_ok(["pr"])
     assert matrix == {
-        "include": [{"slug": slug} for slug in manifest_data()["devices"].keys()]
+        "include": [
+            {
+                "slug": slug,
+                "recovery": device["firmware"]["build"]["chip"]
+                == device_matrix.RECOVERY_CHIP_FAMILY,
+            }
+            for slug, device in manifest_data()["devices"].items()
+        ]
     }
 
 
@@ -107,6 +122,25 @@ def test_matrix_build_files_accept_standard_outputs() -> None:
         device_matrix.validate_matrix_build_files({"demo-device": {}}, manifest)
 
 
+def test_p4_matrix_requires_recovery_build() -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        manifest = root / "devices" / "manifest.json"
+        manifest.parent.mkdir()
+        builds = root / "builds"
+        builds.mkdir()
+        for name in ("demo-p4.yaml", "demo-p4.factory.yaml"):
+            (builds / name).write_text("esphome:\n", encoding="utf-8")
+        profiles = {
+            "demo-p4": {
+                "firmware": {"build": {"chip": device_matrix.RECOVERY_CHIP_FAMILY}}
+            }
+        }
+        expect_build_file_validation_fails(profiles, manifest)
+        (builds / "demo-p4.recovery.yaml").write_text("esphome:\n", encoding="utf-8")
+        device_matrix.validate_matrix_build_files(profiles, manifest)
+
+
 def main() -> int:
     tests = [
         test_release_matrix_shape,
@@ -116,6 +150,7 @@ def main() -> int:
         test_missing_chip_metadata_fails,
         test_matrix_build_files_are_required,
         test_matrix_build_files_accept_standard_outputs,
+        test_p4_matrix_requires_recovery_build,
     ]
     for test in tests:
         test()

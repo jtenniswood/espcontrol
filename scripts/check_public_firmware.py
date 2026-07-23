@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = ROOT / "devices" / "manifest.json"
 STABLE_VERSION_RE = re.compile(r"^v[0-9]+(\.[0-9]+){2}$")
 MD5_RE = re.compile(r"^[0-9a-f]{32}$", re.IGNORECASE)
+RECOVERY_REQUIRED_FROM = (2, 6, 4)
 
 
 class PublicFirmwareError(RuntimeError):
@@ -138,7 +139,7 @@ def verify_versions_index(base_url: str, slug: str, latest_version: str) -> None
         assert_url_non_empty(urljoin(url, ota_path))
 
 
-def verify_public_slug(base_url: str, slug: str, beta: bool = False) -> None:
+def verify_public_slug(base_url: str, slug: str, beta: bool = False) -> str:
     url = manifest_url(base_url, slug, beta=beta)
     manifest = fetch_json(url)
     version = str(manifest.get("version", "")).strip()
@@ -155,7 +156,7 @@ def verify_public_slug(base_url: str, slug: str, beta: bool = False) -> None:
 
     parts = build.get("parts")
     if beta and (not parts):
-        return
+        return version
     if not isinstance(parts, list) or not parts or not isinstance(parts[0], dict):
         raise PublicFirmwareError(f"{url} has no factory firmware part")
     if parts[0].get("path") != f"{slug}.factory.bin":
@@ -164,6 +165,41 @@ def verify_public_slug(base_url: str, slug: str, beta: bool = False) -> None:
 
     if not beta:
         verify_versions_index(base_url, slug, version)
+    return version
+
+
+def stable_version_tuple(version: str) -> tuple[int, int, int]:
+    if not STABLE_VERSION_RE.fullmatch(version):
+        raise PublicFirmwareError(f"invalid stable firmware version {version!r}")
+    major, minor, patch = version.removeprefix("v").split(".")
+    return int(major), int(minor), int(patch)
+
+
+def verify_recovery_slug(base_url: str, slug: str, expected_version: str) -> None:
+    url = base_url.rstrip("/") + f"/firmware/{slug}/recovery/manifest.json"
+    manifest = fetch_json(url)
+    if manifest.get("name") != "Espcontrol":
+        raise PublicFirmwareError(f"{url} must retain the normal firmware identity")
+    if str(manifest.get("version", "")).strip() != expected_version:
+        raise PublicFirmwareError(f"{url} must match stable version {expected_version}")
+    if manifest.get("home_assistant_domain") != "esphome":
+        raise PublicFirmwareError(f"{url} home_assistant_domain must be esphome")
+    if manifest.get("new_install_prompt_erase") is not True:
+        raise PublicFirmwareError(f"{url} must offer the erase choice")
+    build = require_build(manifest, url)
+    if build.get("chipFamily") != "ESP32-P4" or "ota" in build:
+        raise PublicFirmwareError(f"{url} must contain a USB-only ESP32-P4 build")
+    parts = build.get("parts")
+    expected_path = f"{slug}.recovery.bin"
+    if (
+        not isinstance(parts, list)
+        or len(parts) != 1
+        or not isinstance(parts[0], dict)
+        or parts[0].get("path") != expected_path
+        or parts[0].get("offset") != 0
+    ):
+        raise PublicFirmwareError(f"{url} must reference {expected_path} at offset 0")
+    assert_url_non_empty(urljoin(url, expected_path))
 
 
 def load_slugs(path: Path) -> list[str]:
@@ -174,9 +210,20 @@ def load_slugs(path: Path) -> list[str]:
     return sorted(devices)
 
 
+def load_recovery_slugs(path: Path) -> set[str]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    devices = data.get("devices", {})
+    return {
+        slug
+        for slug, device in devices.items()
+        if device.get("firmware", {}).get("build", {}).get("chip") == "ESP32-P4"
+    }
+
+
 def verify_public_firmware(
     base_url: str,
     slugs: list[str],
+    recovery_slugs: set[str],
     optional_stable_slugs: set[str],
     retries: int,
     delay: float,
@@ -186,12 +233,18 @@ def verify_public_firmware(
         try:
             for slug in slugs:
                 try:
-                    verify_public_slug(base_url, slug, beta=False)
+                    stable_version = verify_public_slug(base_url, slug, beta=False)
                 except urllib.error.HTTPError as exc:
                     if exc.code == 404 and slug in optional_stable_slugs:
                         print(f"::warning::No stable firmware manifest found for optional slug {slug}")
+                        continue
                     else:
                         raise
+                if (
+                    slug in recovery_slugs
+                    and stable_version_tuple(stable_version) >= RECOVERY_REQUIRED_FROM
+                ):
+                    verify_recovery_slug(base_url, slug, stable_version)
                 try:
                     verify_public_slug(base_url, slug, beta=True)
                 except urllib.error.HTTPError as exc:
@@ -259,12 +312,30 @@ def write_versions_index(directory: Path, slug: str) -> None:
     }), encoding="utf-8")
 
 
+def write_recovery_manifest(directory: Path, slug: str) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{slug}.recovery.bin").write_bytes(b"recovery")
+    (directory / "manifest.json").write_text(json.dumps({
+        "name": "Espcontrol",
+        "version": "v1.2.3",
+        "home_assistant_domain": "esphome",
+        "new_install_prompt_erase": True,
+        "builds": [{
+            "chipFamily": "ESP32-P4",
+            "parts": [{"path": f"{slug}.recovery.bin", "offset": 0}],
+        }],
+    }), encoding="utf-8")
+
+
 def self_test() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         write_manifest(base / "firmware" / "required-panel", "required-panel")
         write_versions_index(base / "firmware" / "required-panel", "required-panel")
         write_manifest(base / "firmware" / "required-panel" / "beta", "required-panel", include_factory=False)
+        write_recovery_manifest(
+            base / "firmware" / "required-panel" / "recovery", "required-panel"
+        )
         handler = partial(QuietHandler, directory=str(base))
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         thread = Thread(target=server.serve_forever, daemon=True)
@@ -273,11 +344,19 @@ def self_test() -> None:
         try:
             warning_output = io.StringIO()
             with redirect_stdout(warning_output):
-                verify_public_firmware(url, ["required-panel", "optional-panel"], {"optional-panel"}, 1, 0)
+                verify_public_firmware(
+                    url,
+                    ["required-panel", "optional-panel"],
+                    set(),
+                    {"optional-panel"},
+                    1,
+                    0,
+                )
             if "optional slug optional-panel" not in warning_output.getvalue():
                 raise PublicFirmwareError("self-test expected missing optional firmware to warn")
+            verify_recovery_slug(url, "required-panel", "v1.2.3")
             try:
-                verify_public_firmware(url, ["missing-panel"], set(), 1, 0)
+                verify_public_firmware(url, ["missing-panel"], set(), set(), 1, 0)
             except PublicFirmwareError:
                 pass
             else:
@@ -287,7 +366,7 @@ def self_test() -> None:
             versions_data["device"] = "wrong-panel"
             versions_index.write_text(json.dumps(versions_data), encoding="utf-8")
             try:
-                verify_public_firmware(url, ["required-panel"], set(), 1, 0)
+                verify_public_firmware(url, ["required-panel"], set(), set(), 1, 0)
             except PublicFirmwareError:
                 pass
             else:
@@ -318,9 +397,11 @@ def main(argv: list[str] | None = None) -> int:
             if not args.base_url:
                 raise PublicFirmwareError("--base-url is required unless --self-test is used")
             slugs = args.slugs or load_slugs(Path(args.manifest))
+            recovery_slugs = load_recovery_slugs(Path(args.manifest))
             verify_public_firmware(
                 args.base_url,
                 slugs,
+                recovery_slugs,
                 set(args.optional_stable_slugs),
                 args.retries,
                 args.delay,

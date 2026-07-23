@@ -29,6 +29,15 @@ description:
 - Make sure the display and Home Assistant are on the **same WiFi network** (not a guest network or a different VLAN).
 - In Home Assistant, go to **Settings > Devices & Services > Add Integration** and search for **ESPHome**. Enter the device's IP address manually.
 
+## A P4 Panel Has Unreliable WiFi
+
+- P4 panels use a separate ESP32-C6 WiFi processor. Mismatched or outdated C6
+  firmware can cause repeated disconnects, failed initial setup, or a panel that
+  disappears from Home Assistant after restarting.
+- Use the [C6 WiFi recovery installer](/getting-started/c6-recovery) to reinstall
+  EspControl and repair the C6 over USB without depending on WiFi.
+- This recovery is for P4 panels only, not the ESP32-S3 4848S040.
+
 ## The Web Page Looks Broken or Unstyled
 
 - The device's web page loads some resources from the internet. Make sure the display has a working internet connection (not just local network access).

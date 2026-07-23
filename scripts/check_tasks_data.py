@@ -197,7 +197,7 @@ TASKS = (
          ("python3", "scripts/check_firmware_card_runtime.py", "--self-test"), dependencies=("generated",), profiles=PRODUCT,
          domains=("firmware", "product"), inputs=("components/**", "common/config/card_contract.json", "scripts/check_firmware_card_runtime.py"), parallel_safe=True),
     task("firmware-release", ("python3", "scripts/check_firmware_release.py"), profiles=FAST + RELEASE,
-         domains=("firmware", "workflow"), inputs=("builds/**", "devices/**", ".github/esphome.env", ".github/workflows/release.yml", ".agents/skills/release/SKILL.md", "scripts/firmware_release.py", "scripts/check_firmware_release.py"), cache="never"),
+         domains=("firmware", "workflow"), inputs=("builds/**", "common/device/esp32_c6_recovery.yaml", "components/c6_recovery/**", "devices/**", "docs/getting-started/**", "docs/screens/**", ".github/esphome.env", ".github/workflows/firmware-compile.yml", ".github/workflows/nightly-firmware.yml", ".github/workflows/pages.yml", ".github/workflows/release.yml", ".agents/skills/release/SKILL.md", "scripts/firmware_release.py", "scripts/prepare_c6_firmware.py", "scripts/check_firmware_release.py"), cache="never"),
     task("device-matrix", ("python3", "scripts/check_device_matrix.py"), profiles=FAST,
          domains=("firmware", "product"), inputs=("common/assets/**", "builds/**", "devices/**", "scripts/check_device_matrix.py"), parallel_safe=True),
     task("device-profiles", ("python3", "scripts/check_device_profiles.py"), dependencies=("generated", "device-slots"), profiles=PRODUCT,
