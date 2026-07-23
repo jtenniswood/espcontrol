@@ -1,0 +1,485 @@
+# =============================================================================
+# DEVICE - Tuya T3E Smart Panel hardware definition
+# =============================================================================
+# Customized pin assignments, peripherals, and platform config for the T3E.
+# Includes the ESP32-S3 SoC, ST7701S RGB parallel display, GT911
+# capacitive touchscreen, anti-flutter relay boot config, and backlight PWM.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+
+# ---------------------------------------------------------------------------
+# ESP32-S3 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, web_server_idf, artwork_image]
+    refresh: 1s
+
+espcontrol:
+
+# ---------------------------------------------------------------------------
+# ESPHome core & Boot-Logic
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-DESPCONTROL_DISABLE_TODO=1"
+      - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+  on_boot:
+    - priority: 800
+      then:
+        - lambda: |-
+            auto reason = esp_reset_reason();
+            if (reason == ESP_RST_SW) {
+              esp_ota_img_states_t ota_state;
+              const esp_partition_t *running = esp_ota_get_running_partition();
+              if (running != nullptr &&
+                  esp_ota_get_state_partition(running, &ota_state) == ESP_OK &&
+                  ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+                ESP_LOGI("s3_reset", "Marking OTA image valid before hardware-reset workaround");
+                id(s3_t3e_safe_mode).mark_successful();
+                global_preferences->sync();
+                esp_sleep_enable_timer_wakeup(100000);
+                esp_deep_sleep_start();
+                return;
+              }
+            }
+            if (reason == ESP_RST_USB || reason == ESP_RST_SW) {
+              esp_sleep_enable_timer_wakeup(100000);
+              esp_deep_sleep_start();
+            }
+    - priority: 700
+      then:
+        - lambda: |-
+            register_internal_relay(
+              "relay_1", "Relay 1",
+              [=](bool on) {
+                if (on) id(relay_1).turn_on();
+                else id(relay_1).turn_off();
+              },
+              [=]() { id(relay_1_push).execute(); },
+              [=]() -> bool { return id(relay_1).state; });
+            register_internal_relay(
+              "relay_2", "Relay 2",
+              [=](bool on) {
+                if (on) id(relay_2).turn_on();
+                else id(relay_2).turn_off();
+              },
+              [=]() { id(relay_2_push).execute(); },
+              [=]() -> bool { return id(relay_2).state; });
+            register_internal_relay(
+              "relay_3", "Relay 3",
+              [=](bool on) {
+                if (on) id(relay_3).turn_on();
+                else id(relay_3).turn_off();
+              },
+              [=]() { id(relay_3_push).execute(); },
+              [=]() -> bool { return id(relay_3).state; });
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+        - script.execute: clock_bar_apply
+
+# ---------------------------------------------------------------------------
+# PSRAM
+# ---------------------------------------------------------------------------
+psram:
+  mode: octal
+  speed: 80MHz
+
+# ---------------------------------------------------------------------------
+# OTA Updates
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: s3_t3e_safe_mode
+  boot_is_good_after: 10s
+
+# ---------------------------------------------------------------------------
+# Infrastruktur
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+api:
+  listen_backlog: 4
+  max_connections: 3
+  max_send_queue: 12
+
+logger:
+  hardware_uart: UART0
+
+wifi:
+  use_psram: true
+
+# ---------------------------------------------------------------------------
+# Backlight
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO42
+    id: gpio_backlight_pwm
+    frequency: 1000Hz
+    zero_means_zero: true
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(screen_schedule_asleep) &&
+                        !id(schedule_mode_clock)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(display_asleep) &&
+                       !id(screen_schedule_asleep) &&
+                       !id(screensaver_display_off_active) &&
+                       !id(screensaver_dimmed_active);
+            then:
+              - script.execute: screen_schedule_manual_sleep
+
+# ---------------------------------------------------------------------------
+# Relais
+# ---------------------------------------------------------------------------
+switch:
+  - platform: gpio
+    name: Relay 1
+    id: relay_1
+    icon: mdi:electric-switch
+    pin:
+      number: GPIO45
+      inverted: false
+      ignore_strapping_warning: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      then:
+        - lambda: 'notify_internal_relay_changed("relay_1", true);'
+    on_turn_off:
+      then:
+        - lambda: 'notify_internal_relay_changed("relay_1", false);'
+
+  - platform: gpio
+    name: Relay 2
+    id: relay_2
+    icon: mdi:electric-switch
+    pin:
+      number: GPIO46
+      inverted: false
+      ignore_strapping_warning: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      then:
+        - lambda: 'notify_internal_relay_changed("relay_2", true);'
+    on_turn_off:
+      then:
+        - lambda: 'notify_internal_relay_changed("relay_2", false);'
+
+  - platform: gpio
+    name: Relay 3
+    id: relay_3
+    icon: mdi:electric-switch
+    pin:
+      number: GPIO2
+      inverted: false
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      then:
+        - lambda: 'notify_internal_relay_changed("relay_3", true);'
+    on_turn_off:
+      then:
+        - lambda: 'notify_internal_relay_changed("relay_3", false);'
+
+button:
+  - platform: template
+    name: Relay 1 Push
+    icon: mdi:gesture-tap-button
+    on_press:
+      then:
+        - script.execute: relay_1_push
+
+  - platform: template
+    name: Relay 2 Push
+    icon: mdi:gesture-tap-button
+    on_press:
+      then:
+        - script.execute: relay_2_push
+
+  - platform: template
+    name: Relay 3 Push
+    icon: mdi:gesture-tap-button
+    on_press:
+      then:
+        - script.execute: relay_3_push
+
+  - platform: template
+    name: Backlight Sweep Test
+    internal: true
+    disabled_by_default: true
+    entity_category: diagnostic
+    icon: mdi:brightness-percent
+    web_server:
+      sorting_group_id: sg_brightness
+    on_press:
+      then:
+        - script.execute: s3_backlight_sweep_test
+
+# ---------------------------------------------------------------------------
+# SPI bus
+# ---------------------------------------------------------------------------
+spi:
+  - id: lcd_spi
+    clk_pin:
+      number: GPIO15
+      allow_other_uses: true
+    mosi_pin:
+      number: GPIO48
+      allow_other_uses: true
+
+# ---------------------------------------------------------------------------
+# I2C bus & Touchscreen
+# ---------------------------------------------------------------------------
+i2c:
+  id: touchscreen_bus
+  sda: GPIO7
+  scl: GPIO6
+
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    update_interval: 16ms
+    transform:
+      mirror_x: false
+      mirror_y: false
+    on_touch:
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
+display:
+  - platform: st7701s
+    id: my_display
+    setup_priority: 240
+    dimensions:
+      width: 480
+      height: 480
+    update_interval: never
+    auto_clear_enabled: False
+    spi_mode: MODE3
+    data_rate: 2MHz
+    color_order: RGB
+    invert_colors: true
+    cs_pin:
+      number: GPIO4
+      allow_other_uses: true
+    data_pins:
+      red:   [GPIO8, GPIO18, GPIO17, GPIO16, GPIO0]
+      green: [GPIO13, GPIO12, GPIO11, GPIO10, GPIO9, GPIO3]
+      blue:
+        - number: GPIO15
+          allow_other_uses: true
+        - number: GPIO48
+          allow_other_uses: true
+        - GPIO47
+        - GPIO21
+        - GPIO14
+    de_pin: GPIO40
+    vsync_pin: GPIO39
+    hsync_pin: GPIO38
+    pclk_pin: GPIO41
+    pclk_inverted: false
+    hsync_pulse_width: 8
+    hsync_front_porch: 10
+    hsync_back_porch: 50
+    vsync_pulse_width: 8
+    vsync_front_porch: 10
+    vsync_back_porch: 20
+    pclk_frequency: 12MHz
+    reset_pin:
+      number: GPIO4
+      allow_other_uses: true
+    transform:
+      mirror_x: false
+      mirror_y: false
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+script:
+  - id: relay_1_push
+    mode: restart
+    then:
+      - switch.turn_on: relay_1
+      - delay: 200ms
+      - switch.turn_off: relay_1
+
+  - id: relay_2_push
+    mode: restart
+    then:
+      - switch.turn_on: relay_2
+      - delay: 200ms
+      - switch.turn_off: relay_2
+
+  - id: relay_3_push
+    mode: restart
+    then:
+      - switch.turn_on: relay_3
+      - delay: 200ms
+      - switch.turn_off: relay_3
+
+  - id: s3_backlight_sweep_test
+    mode: restart
+    then:
+      - script.execute: screensaver_wake
+      - script.wait: screensaver_wake
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 60%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 30%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
+
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 270
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 0
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 90
+                      else:
+                        - lvgl.display.set_rotation: 180
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "180"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: clock_bar_apply

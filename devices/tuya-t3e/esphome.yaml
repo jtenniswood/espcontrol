@@ -1,0 +1,41 @@
+# =============================================================================
+# ESPHOME ENTRY POINT - Tuya T3E Smart Panel
+# =============================================================================
+# User-facing config file. Set your device name and WiFi credentials here.
+# The remote package reference pulls in your custom device configuration from
+# YOUR GitHub fork so the device stays up-to-date automatically.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Device identity
+# ---------------------------------------------------------------------------
+substitutions:
+  name: "tuya-t3e-panel"
+  friendly_name: "Tuya T3E Panel"
+
+# ---------------------------------------------------------------------------
+# esphome configuration
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  platformio_options:
+    build_flags:
+      - -mlongcalls
+      - -mtext-section-literals
+
+# ---------------------------------------------------------------------------
+# WiFi credentials (stored in secrets.yaml)
+# ---------------------------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# ---------------------------------------------------------------------------
+# Remote package (pulls full config from GitHub)
+# ---------------------------------------------------------------------------
+packages:
+  setup:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: devices/tuya-t3e/packages.yaml
+    ref: main
+    refresh: 1s
