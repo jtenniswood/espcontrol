@@ -75,8 +75,11 @@ jobs:
               print("Invalid nightly device matrix", file=sys.stderr)
               sys.exit(1)
 
-          for slug in slugs:
-              print(slug)
+          for entry in matrix["include"]:
+              slug = entry["slug"]
+              print(f"{slug}.factory.yaml")
+              if entry.get("recovery"):
+                  print(f"{slug}.recovery.yaml")
           PY
           echo "Nightly compile order:"
           sed 's/^/- /' nightly-slugs.txt
@@ -116,11 +119,16 @@ jobs:
         working-directory: espcontrol-nightly
         run: |
           SOURCE_DIR="${PWD}"
+          python3 scripts/prepare_c6_firmware.py
+          shared_cache_root="${RUNNER_TEMP}/espcontrol-esphome/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/nightly"
+          shared_platformio_cache="${shared_cache_root}/platformio-${ESPHOME_VERSION}"
+          rm -rf "${shared_cache_root}"
+          mkdir -p "${shared_platformio_cache}"
           set +e
 
           compile_one() {
-            slug="$1"
-            build_file="builds/${slug}.factory.yaml"
+            target="$1"
+            build_file="builds/${target}"
             if [ ! -f "${build_file}" ]; then
               echo "::error::Expected firmware build file is missing: ${build_file}"
               echo "Available build files:"
@@ -128,12 +136,12 @@ jobs:
               return 1
             fi
 
-            run_cache_root="${RUNNER_TEMP}/espcontrol-esphome/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/${slug}"
-            platformio_cache="${run_cache_root}/platformio-${ESPHOME_VERSION}"
-            build_cache="${run_cache_root}/build"
+            cache_name=$(printf '%s' "${target}" | tr '.' '-')
+            target_cache_root="${shared_cache_root}/targets/${cache_name}"
+            build_cache="${target_cache_root}/build"
             build_input_dir=".firmware-builds"
-            rm -rf "${run_cache_root}" .esphome "${build_input_dir}" || return 1
-            mkdir -p "${platformio_cache}" "${build_cache}" "${build_input_dir}" || return 1
+            rm -rf "${target_cache_root}" .esphome "${build_input_dir}" || return 1
+            mkdir -p "${build_cache}" "${build_input_dir}" || return 1
             cp builds/*.yaml "${build_input_dir}/" || return 1
 
             container=$(${DOCKER} create \
@@ -141,18 +149,18 @@ jobs:
               -e HOME=/config \
               -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
               -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
-              -v "${platformio_cache}:/config/.esphome" \
+              -v "${shared_platformio_cache}:/config/.esphome" \
               -v "${build_cache}:/config/${build_input_dir}/.esphome" \
               "${ESPHOME_IMAGE}" \
-              compile "/config/${build_input_dir}/${slug}.factory.yaml")
+              compile "/config/${build_input_dir}/${target}")
             create_status=$?
             if [ "${create_status}" -ne 0 ]; then
-              rm -rf "${run_cache_root}"
+              rm -rf "${target_cache_root}"
               return "${create_status}"
             fi
             cleanup_container() {
               ${DOCKER} rm -f "${container}" >/dev/null 2>&1 || true
-              rm -rf "${run_cache_root}" .esphome "${build_input_dir}" || true
+              rm -rf "${target_cache_root}" .esphome "${build_input_dir}" || true
             }
             trap cleanup_container EXIT
 
@@ -173,14 +181,14 @@ jobs:
           }
 
           failures=""
-          while IFS= read -r slug; do
-            [ -n "${slug}" ] || continue
-            echo "::group::Compile firmware (${slug})"
-            if compile_one "${slug}"; then
-              echo "Firmware compile passed for ${slug}"
+          while IFS= read -r target; do
+            [ -n "${target}" ] || continue
+            echo "::group::Compile firmware (${target})"
+            if compile_one "${target}"; then
+              echo "Firmware compile passed for ${target}"
             else
-              echo "::error::Firmware compile failed for ${slug}"
-              failures="${failures} ${slug}"
+              echo "::error::Firmware compile failed for ${target}"
+              failures="${failures} ${target}"
             fi
             echo "::endgroup::"
           done < nightly-slugs.txt
@@ -189,6 +197,7 @@ jobs:
             echo "::error::Firmware compile failures:${failures}"
             exit 1
           fi
+          rm -rf "${shared_cache_root}"
 
       - name: Clean firmware caches
         if: always()

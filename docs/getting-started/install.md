@@ -18,6 +18,15 @@ Connect the display to your computer with the USB-C cable, choose your panel, th
 
 <EspInstallSelector />
 
+## Having Unreliable Wi‑Fi on a P4 Panel?
+
+P4 panels use a separate ESP32-C6 Wi‑Fi processor. If a P4 panel repeatedly
+disconnects, disappears from Home Assistant, cannot finish initial setup, or reports
+C6 update timeouts, use the [C6 Wi‑Fi recovery installer](/getting-started/c6-recovery).
+It repairs the C6 over USB without requiring a working network connection.
+
+This recovery does not apply to the ESP32-S3 4848S040 panel.
+
 ::: tip Which cable?
 If the install button doesn't detect your device, try a different USB-C cable. Charge-only cables (often thinner and cheaper) won't work — you need one that supports data transfer.
 :::

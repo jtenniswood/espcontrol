@@ -394,6 +394,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/' },
           { text: 'Install', link: '/getting-started/install' },
+          { text: 'C6 WiFi Recovery', link: '/getting-started/c6-recovery' },
           { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
           { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
