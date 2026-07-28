@@ -478,6 +478,7 @@ export default defineConfig({
       {
         text: 'Reference',
         items: [
+          { text: 'Config API', link: '/reference/config-api' },
           { text: 'Contributing', link: '/reference/contributing' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Icon Reference', link: '/reference/icons' },

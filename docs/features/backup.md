@@ -20,3 +20,7 @@ EspControl keeps old saved card strings readable during upgrades. That means car
 New backup exports continue to use `version: 2` with `format: "espcontrol.backup"`. If you import an older backup, EspControl updates the internal card details as needed, but it does not require you to manually rebuild the setup.
 
 When importing a backup from a different-sized panel, EspControl keeps the saved card order where it can and rearranges cards that no longer fit the target screen. Subpages are moved with their parent card when the parent card is kept.
+
+## Without the Browser
+
+The panel also serves the same backup envelope over HTTP, so you can export it, change values, and restore it from a script or a Home Assistant automation. See the [Config API](/reference/config-api).

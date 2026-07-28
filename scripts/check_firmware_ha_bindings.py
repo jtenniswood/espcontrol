@@ -22,6 +22,9 @@ BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
+CONFIG_API_PATH = ROOT / "components" / "espcontrol" / "config_api.h"
+BACKUP_MODEL_PATH = ROOT / "src" / "webserver" / "model" / "backup.ts"
+WEB_SERVER_IDF_PATH = ROOT / "components" / "web_server_idf" / "web_server_idf.cpp"
 S3_DEVICE_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
 S3_PACKAGES_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "packages.yaml"
 DEVICE_DEVICE_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/device.yaml")))
@@ -2956,6 +2959,197 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+POST_HANDLER_PATTERN = re.compile(
+    r"esp_err_t\s+AsyncWebServer::request_post_handler\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+    re.DOTALL,
+)
+
+
+def config_api_body_read_errors(idf_path: Path, root: Path) -> list[str]:
+    """Guard the fork behaviour that lets config_api.h read JSON request bodies.
+
+    POST is registered on a wildcard URI, so every POST enters
+    request_post_handler. For a content type it does not understand it logs a
+    warning and returns AsyncWebServer::request_handler(r) *before* its 1 KB size
+    check and before its only httpd_req_recv() call - so the body is still unread
+    in the socket when our handler runs and can read it itself.
+
+    This is the one real risk in the config API: a fork sync that reorders those
+    statements would not fail to compile, it would make POST /api/config/import
+    see an empty body (or 400 on anything over 1 KB). Cheap insurance.
+    """
+    if not idf_path.exists():
+        return []
+    rel = idf_path.relative_to(root)
+    match = POST_HANDLER_PATTERN.search(idf_path.read_text(encoding="utf-8"))
+    if match is None:
+        return [f"{rel}: missing AsyncWebServer::request_post_handler"]
+    body = match.group("body")
+
+    log_at = body.find("Unsupported content type for POST")
+    fallthrough_at = body.find("return AsyncWebServer::request_handler(r);")
+    if log_at < 0 or fallthrough_at < 0:
+        return [
+            f"{rel}: keep the unsupported-content-type fallthrough to "
+            "AsyncWebServer::request_handler so JSON POST bodies reach custom "
+            "handlers unread (components/espcontrol/config_api.h reads them)"
+        ]
+
+    errors: list[str] = []
+    for needle, description in (
+        ("CONFIG_HTTPD_MAX_REQ_HDR_LEN", "form-data size check"),
+        ("httpd_req_recv", "form-data body read"),
+    ):
+        at = body.find(needle)
+        if 0 <= at < fallthrough_at:
+            errors.append(
+                f"{rel}: the {description} now runs before the unsupported-content-type "
+                "fallthrough, so JSON bodies would be rejected or consumed before "
+                "config_api.h can read them"
+            )
+    return errors
+
+
+def config_api_registration_errors(
+    core_infra_path: Path,
+    config_api_path: Path,
+    root: Path,
+) -> list[str]:
+    """The config API must be reachable with no Home Assistant connected.
+
+    add_handler() queues into WebServerBase::handlers_ and init() replays it after
+    the server starts, so registration belongs in esphome.on_boot. Registering it
+    from an api: trigger instead (where the local_sensors/local_actions endpoints
+    live) would make the API nonexistent until HA connects, defeating the point of
+    a headless config path.
+    """
+    errors: list[str] = []
+
+    if core_infra_path.exists():
+        rel = core_infra_path.relative_to(root)
+        text = core_infra_path.read_text(encoding="utf-8")
+        call_at = text.find("espcontrol_register_config_api(")
+        if call_at < 0:
+            errors.append(f"{rel}: register the HTTP config API from an esphome.on_boot lambda")
+        else:
+            api_match = re.search(r"(?m)^api:\s*$", text)
+            if api_match is not None and call_at > api_match.start():
+                errors.append(
+                    f"{rel}: register the HTTP config API from esphome.on_boot, not from an "
+                    "api: trigger - it must work with no Home Assistant connected"
+                )
+            priorities = re.findall(r"-\s*priority:\s*(\d+)", text[:call_at])
+            if not priorities or priorities[-1] != "600":
+                errors.append(
+                    f"{rel}: register the HTTP config API at on_boot priority 600, before "
+                    "networking brings the web server up"
+                )
+
+    if config_api_path.exists():
+        rel = config_api_path.relative_to(root)
+        text = config_api_path.read_text(encoding="utf-8")
+        if "global_web_server_base" not in text or "base->add_handler(" not in text:
+            errors.append(
+                f"{rel}: register the config API through global_web_server_base->add_handler() "
+                "so it inherits any configured web_server auth"
+            )
+        if "static bool registered" not in text:
+            errors.append(f"{rel}: keep config API registration idempotent")
+
+        # Responses must never be materialised into one buffer. After an import's
+        # validation pass, internal RAM is fragmented to a ~10 KB largest free block;
+        # a growing multi-kilobyte string asks for one contiguous piece bigger than
+        # that, malloc returns null, and since operator new cannot throw in this
+        # build the panel panics. A rejected import did exactly that.
+        if "void stream(JsonStream" not in text:
+            errors.append(
+                f"{rel}: stream the write report through JsonStream - materialising it in one "
+                "buffer aborts the firmware on a fragmented heap"
+            )
+        if "std::string body()" in text:
+            errors.append(
+                f"{rel}: do not rebuild WriteReport::body() - the report is streamed, "
+                "not materialised"
+            )
+        for symbol, message in (
+            ("OPTIONS_DETAIL_BUDGET", "budget the select option list quoted into a write detail"),
+            ("MAX_DETAIL_BYTES", "cap the length of a single write detail"),
+            ("MAX_REPORT_ENTRIES", "bound the number of per-key results retained"),
+        ):
+            if symbol not in text:
+                errors.append(f"{rel}: {message} - unbounded response strings abort the firmware")
+
+    return errors
+
+
+VALIDATE_ENVELOPE_PATTERN = re.compile(
+    r"inline\s+bool\s+validate_envelope\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+    re.DOTALL,
+)
+MESSAGE_ASSIGN_PATTERN = re.compile(r"\*message\s*=\s*((?:\"(?:[^\"\\]|\\.)*\"\s*)+);", re.DOTALL)
+STRING_LITERAL_PATTERN = re.compile(r"\"((?:[^\"\\]|\\.)*)\"")
+# The firmware refuses version 1 envelopes outright; the browser remaps their button
+# layout instead, so this one message has no counterpart to match.
+FIRMWARE_ONLY_BACKUP_MESSAGES = ("Version 1 backups",)
+
+
+def config_api_envelope_message_errors(
+    config_api_path: Path,
+    backup_model_path: Path,
+    root: Path,
+) -> list[str]:
+    """Keep the firmware's envelope rejections worded exactly like the browser's.
+
+    Import validation is duplicated by necessity - the firmware cannot run
+    validateBackupEnvelope - so the messages are copied verbatim from
+    model/backup.ts and one contract fixture can assert both agree. If someone
+    rewords the browser's message, this catches the copy going stale rather than
+    leaving two implementations that disagree about the same file.
+    """
+    if not config_api_path.exists() or not backup_model_path.exists():
+        return []
+    rel = config_api_path.relative_to(root)
+    match = VALIDATE_ENVELOPE_PATTERN.search(config_api_path.read_text(encoding="utf-8"))
+    if match is None:
+        return [f"{rel}: missing validate_envelope"]
+
+    model_text = backup_model_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    for assignment in MESSAGE_ASSIGN_PATTERN.findall(match.group("body")):
+        message = "".join(STRING_LITERAL_PATTERN.findall(assignment))
+        if message.startswith(FIRMWARE_ONLY_BACKUP_MESSAGES):
+            continue
+        if message not in model_text:
+            errors.append(
+                f"{rel}: envelope rejection {message!r} does not appear in "
+                f"{backup_model_path.relative_to(root)} - keep the firmware and browser "
+                "messages identical, or add it to FIRMWARE_ONLY_BACKUP_MESSAGES"
+            )
+    return errors
+
+
+# addHandler() is AsyncWebServer's raw registration and add_handler_without_auth()
+# is WebServerBase's documented escape hatch; both skip AuthMiddlewareHandler, so a
+# custom endpoint registered through either stays open even when the user has
+# enabled web_server auth.
+HANDLER_AUTH_BYPASS_PATTERN = re.compile(r"->\s*addHandler\s*\(|\badd_handler_without_auth\s*\(")
+
+
+def firmware_custom_endpoint_auth_errors(firmware_dir: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    for path in sorted(firmware_dir.glob("*.h")):
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            code = line.split("//", 1)[0]
+            if HANDLER_AUTH_BYPASS_PATTERN.search(code):
+                rel = path.relative_to(root)
+                errors.append(
+                    f"{rel}:{line_no}: register HTTP handlers with "
+                    "global_web_server_base->add_handler() - addHandler() and "
+                    "add_handler_without_auth() bypass web_server auth"
+                )
+    return errors
+
+
 def run_scan() -> int:
     errors = firmware_ha_binding_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_display_controller_ownership_errors(DISPLAY_LIFECYCLE_ROOTS, ROOT))
@@ -3023,6 +3217,10 @@ def run_scan() -> int:
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(firmware_ha_connection_screen_errors(CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_c6_update_status_errors(C6_FIRMWARE_UPDATE_PATH, ROOT))
+    errors.extend(config_api_body_read_errors(WEB_SERVER_IDF_PATH, ROOT))
+    errors.extend(config_api_registration_errors(CORE_INFRA_PATH, CONFIG_API_PATH, ROOT))
+    errors.extend(firmware_custom_endpoint_auth_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(config_api_envelope_message_errors(CONFIG_API_PATH, BACKUP_MODEL_PATH, ROOT))
     if errors:
         print("Firmware Home Assistant binding check failed:")
         for error in errors:
@@ -3030,6 +3228,154 @@ def run_scan() -> int:
         return 1
     print("Firmware Home Assistant binding checks passed.")
     return 0
+
+
+# Condensed shape of the real request_post_handler: the fallthrough for unknown
+# content types, then the form-data size check and body read that must stay after it.
+POST_HANDLER_FIXTURE = """
+esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
+  auto content_type = request_get_header(r, "Content-Type");
+  if (content_type.has_value()) {
+    if (strcasestr_n(content_type_char, len, "application/x-www-form-urlencoded") != nullptr) {
+    } else {
+      ESP_LOGW(TAG, "Unsupported content type for POST: %s", content_type_char);
+      return AsyncWebServer::request_handler(r);
+    }
+  }
+  if (r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN) {
+    return ESP_FAIL;
+  }
+  const int ret = httpd_req_recv(r, &post_query[0], r->content_len + 1);
+  return ESP_OK;
+}
+"""
+
+CORE_INFRA_CONFIG_API_FIXTURE = """esphome:
+  on_boot:
+    - priority: 600
+      then:
+        - lambda: 'espcontrol_register_config_api("${device_slug}");'
+
+api:
+  reboot_timeout: 0s
+"""
+
+CONFIG_API_FIXTURE = """static constexpr size_t OPTIONS_DETAIL_BUDGET = 160;
+static constexpr size_t MAX_DETAIL_BYTES = 200;
+static constexpr size_t MAX_REPORT_ENTRIES = 256;
+
+void stream(JsonStream &json) const {}
+
+inline void espcontrol_register_config_api() {
+  static bool registered = false;
+  auto *base = esphome::web_server_base::global_web_server_base;
+  base->add_handler(new espcontrol_config_api::ConfigApiHandler());
+}
+"""
+
+
+VALIDATE_ENVELOPE_FIXTURE = """
+inline bool validate_envelope(JsonObject root, std::string *message) {
+  if (version < 1) {
+    *message = "Invalid config file - missing required fields";
+    return false;
+  }
+  if (version > 2) {
+    *message = "Backup was created by a newer version of EspControl";
+    return false;
+  }
+  if (format != BACKUP_FORMAT) {
+    *message = "Invalid config file - unsupported backup format";
+    return false;
+  }
+  if (version == 1) {
+    *message = "Version 1 backups must be restored from the web configurator, which "
+               "remaps the button layout";
+    return false;
+  }
+  return true;
+}
+"""
+
+BACKUP_MODEL_FIXTURE = """
+export function validateBackupEnvelope(raw) {
+  throw backupConfigError("Invalid config file - missing required fields");
+  throw backupConfigError("Backup was created by a newer version of EspControl");
+  throw backupConfigError("Invalid config file - unsupported backup format");
+}
+"""
+
+
+def expect_config_api_envelope_message_errors(
+    name: str,
+    config_api_text: str,
+    backup_model_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config_api_path = root / "components" / "espcontrol" / "config_api.h"
+        backup_model_path = root / "src" / "webserver" / "model" / "backup.ts"
+        config_api_path.parent.mkdir(parents=True)
+        backup_model_path.parent.mkdir(parents=True)
+        config_api_path.write_text(config_api_text, encoding="utf-8")
+        backup_model_path.write_text(backup_model_text, encoding="utf-8")
+
+        errors = config_api_envelope_message_errors(config_api_path, backup_model_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_config_api_body_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "web_server_idf" / "web_server_idf.cpp"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = config_api_body_read_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_config_api_registration_errors(
+    name: str,
+    core_text: str,
+    config_api_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        core_path = root / "common" / "device" / "core_infra.yaml"
+        config_api_path = root / "components" / "espcontrol" / "config_api.h"
+        core_path.parent.mkdir(parents=True)
+        config_api_path.parent.mkdir(parents=True)
+        core_path.write_text(core_text, encoding="utf-8")
+        config_api_path.write_text(config_api_text, encoding="utf-8")
+
+        errors = config_api_registration_errors(core_path, config_api_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_custom_endpoint_auth_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_config.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_custom_endpoint_auth_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
 def expect_errors(name: str, files: dict[str, str], expected: tuple[str, ...]) -> None:
@@ -6849,6 +7195,122 @@ def run_self_test() -> int:
         "      - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Connecting to\\nHome Assistant\"));'\n"
         "      - lvgl.page.show: ha_setup_page\n",
         ("keep the current display visible",),
+    )
+    expect_config_api_body_errors(
+        "fork keeps the unread-body fallthrough",
+        POST_HANDLER_FIXTURE,
+        (),
+    )
+    expect_config_api_body_errors(
+        "fallthrough replaced with a 415",
+        POST_HANDLER_FIXTURE.replace(
+            "      return AsyncWebServer::request_handler(r);",
+            "      httpd_resp_send_err(r, HTTPD_415_UNSUPPORTED_MEDIA_TYPE, nullptr);\n      return ESP_OK;",
+        ),
+        ("keep the unsupported-content-type fallthrough",),
+    )
+    expect_config_api_body_errors(
+        "size check hoisted above the fallthrough",
+        POST_HANDLER_FIXTURE.replace(
+            "  auto content_type = request_get_header(r, \"Content-Type\");",
+            "  if (r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN) {\n    return ESP_FAIL;\n  }",
+        ),
+        ("form-data size check now runs before",),
+    )
+    expect_config_api_body_errors(
+        "body consumed before the fallthrough",
+        POST_HANDLER_FIXTURE.replace(
+            "  auto content_type = request_get_header(r, \"Content-Type\");",
+            "  httpd_req_recv(r, buf, r->content_len);",
+        ),
+        ("form-data body read now runs before",),
+    )
+    expect_config_api_registration_errors(
+        "registered from on_boot at priority 600",
+        CORE_INFRA_CONFIG_API_FIXTURE,
+        CONFIG_API_FIXTURE,
+        (),
+    )
+    expect_config_api_registration_errors(
+        "registration moved onto the HA API trigger",
+        "esphome:\n  name: ${name}\n"
+        "api:\n"
+        "  on_client_connected:\n"
+        "    - lambda: 'espcontrol_register_config_api(\"${device_slug}\");'\n",
+        CONFIG_API_FIXTURE,
+        ("not from an api: trigger",),
+    )
+    expect_config_api_registration_errors(
+        "registration demoted to a late boot priority",
+        CORE_INFRA_CONFIG_API_FIXTURE.replace("priority: 600", "priority: 200"),
+        CONFIG_API_FIXTURE,
+        ("at on_boot priority 600",),
+    )
+    expect_config_api_registration_errors(
+        "handler registered on the raw server",
+        CORE_INFRA_CONFIG_API_FIXTURE,
+        "inline void espcontrol_register_config_api() {\n"
+        "  static bool registered = false;\n"
+        "  global_async_web_server()->addHandler(new ConfigApiHandler());\n"
+        "  OPTIONS_DETAIL_BUDGET MAX_DETAIL_BYTES MAX_REPORT_ENTRIES\n"
+        "  void stream(JsonStream &json) const {}\n"
+        "}\n",
+        ("global_web_server_base->add_handler()",),
+    )
+    expect_config_api_registration_errors(
+        "select option list quoted back without a budget",
+        CORE_INFRA_CONFIG_API_FIXTURE,
+        CONFIG_API_FIXTURE.replace("OPTIONS_DETAIL_BUDGET", "kOptionsAll"),
+        ("budget the select option list",),
+    )
+    expect_config_api_registration_errors(
+        "per-key results list left unbounded",
+        CORE_INFRA_CONFIG_API_FIXTURE,
+        CONFIG_API_FIXTURE.replace("MAX_REPORT_ENTRIES", "kNoLimit"),
+        ("bound the number of per-key results retained",),
+    )
+    expect_config_api_registration_errors(
+        "report materialised into one buffer again",
+        CORE_INFRA_CONFIG_API_FIXTURE,
+        CONFIG_API_FIXTURE.replace("void stream(JsonStream &json) const {}",
+                                   "std::string body() const { return {}; }"),
+        ("stream the write report through JsonStream", "do not rebuild WriteReport::body()"),
+    )
+    expect_custom_endpoint_auth_errors(
+        "handlers registered through the auth-applying helper",
+        "  base->add_handler(new LocalSensorHandler());\n",
+        (),
+    )
+    expect_custom_endpoint_auth_errors(
+        "raw addHandler bypasses auth",
+        "  global_async_web_server()->addHandler(new LocalSensorHandler());\n",
+        ("bypass web_server auth",),
+    )
+    expect_custom_endpoint_auth_errors(
+        "explicit auth bypass helper",
+        "  base->add_handler_without_auth(new LocalSensorHandler());\n",
+        ("bypass web_server auth",),
+    )
+    expect_config_api_envelope_message_errors(
+        "firmware messages match the browser's",
+        VALIDATE_ENVELOPE_FIXTURE,
+        BACKUP_MODEL_FIXTURE,
+        (),
+    )
+    expect_config_api_envelope_message_errors(
+        "firmware message reworded away from the browser's",
+        VALIDATE_ENVELOPE_FIXTURE.replace(
+            "Invalid config file - unsupported backup format",
+            "Unsupported backup format",
+        ),
+        BACKUP_MODEL_FIXTURE,
+        ("'Unsupported backup format' does not appear",),
+    )
+    expect_custom_endpoint_auth_errors(
+        "commented reference to addHandler is not a call",
+        "  // Uses add_handler(), not global_async_web_server()->addHandler().\n"
+        "  base->add_handler(new LocalSensorHandler());\n",
+        (),
     )
     print("Firmware Home Assistant binding self-tests passed.")
     return 0

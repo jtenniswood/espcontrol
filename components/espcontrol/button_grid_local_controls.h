@@ -114,13 +114,23 @@ inline std::string local_endpoint_json_escape(const std::string &s) {
   return out;
 }
 
+// Exact path match, tolerating a query string. Dispatch is first-canHandle-wins
+// (web_server_idf.cpp:298-314), so a bare strncmp() prefix test would both accept
+// junk like "/local_sensorsXYZ" and risk shadowing a later handler.
+inline bool local_endpoint_path_is(const esphome::StringRef &url, const char *path) {
+  const size_t len = strlen(path);
+  if (strncmp(url.c_str(), path, len) != 0) return false;
+  const char next = url.c_str()[len];
+  return next == '\0' || next == '?';
+}
+
 class LocalActionHandler : public esphome::web_server_idf::AsyncWebHandler {
  public:
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
     if (request->method() != HTTP_GET) return false;
     char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     esphome::StringRef url = request->url_to(url_buf);
-    return strncmp(url.c_str(), "/local_actions", 14) == 0;
+    return local_endpoint_path_is(url, "/local_actions");
   }
 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
@@ -146,12 +156,15 @@ class LocalActionHandler : public esphome::web_server_idf::AsyncWebHandler {
 inline void register_local_action_endpoint() {
   static bool registered = false;
   if (registered) return;
-  auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
-    ESP_LOGW("espcontrol", "register_local_action_endpoint: server not ready");
+  // add_handler() (not the raw AsyncWebServer::addHandler) so the endpoint is
+  // wrapped in AuthMiddlewareHandler when `web_server: auth:` is configured.
+  // Registering on the raw server bypassed auth entirely.
+  auto *base = esphome::web_server_base::global_web_server_base;
+  if (base == nullptr) {
+    ESP_LOGW("espcontrol", "register_local_action_endpoint: web server base not ready");
     return;
   }
-  server->addHandler(new LocalActionHandler());
+  base->add_handler(new LocalActionHandler());
   registered = true;
   ESP_LOGI("espcontrol", "Local action endpoint registered");
 }
@@ -196,7 +209,7 @@ class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
     if (request->method() != HTTP_GET) return false;
     char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     esphome::StringRef url = request->url_to(url_buf);
-    return strncmp(url.c_str(), "/local_sensors", 14) == 0;
+    return local_endpoint_path_is(url, "/local_sensors");
   }
 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
@@ -212,12 +225,13 @@ class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
 inline void register_local_sensor_endpoint() {
   static bool registered = false;
   if (registered) return;
-  auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
-    ESP_LOGW("sensors", "register_local_sensor_endpoint: server not ready");
+  // See register_local_action_endpoint(): add_handler() applies web_server auth.
+  auto *base = esphome::web_server_base::global_web_server_base;
+  if (base == nullptr) {
+    ESP_LOGW("sensors", "register_local_sensor_endpoint: web server base not ready");
     return;
   }
-  server->addHandler(new LocalSensorHandler());
+  base->add_handler(new LocalSensorHandler());
   registered = true;
   ESP_LOGI("sensors", "Local sensor endpoint registered");
 }

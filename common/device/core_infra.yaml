@@ -6,6 +6,15 @@
 # =============================================================================
 
 esphome:
+  on_boot:
+    # Register the HTTP config API early. add_handler() queues into the web
+    # server base's handler list and WebServerBase::init() replays it after the
+    # server starts, so this deliberately does NOT wait for the web server to be
+    # up or for a Home Assistant client to connect - unlike the local_sensors /
+    # local_actions endpoints registered from api.on_client_connected below.
+    - priority: 600
+      then:
+        - lambda: 'espcontrol_register_config_api("${device_slug}");'
   # Enable LVGL's bidirectional text algorithm so right-to-left scripts
   # (Hebrew, Arabic) render in visual order.
   build_flags:

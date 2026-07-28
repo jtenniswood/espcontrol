@@ -19,6 +19,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS = 1u << 3;
 #endif
 #ifdef USE_WEBSERVER
 #include <esp_http_server.h>
+#include "esphome/components/web_server_base/web_server_base.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #endif
 #include "display_color.h"
