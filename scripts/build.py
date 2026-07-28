@@ -43,6 +43,8 @@ ENTITY_NAMES_JSON = ROOT / "common" / "config" / "entity_names.json"
 ENTITY_NAMES_YAML = ROOT / "common" / "config" / "entity_names.yaml"
 ENTITY_NAMES_TS = ROOT / "src" / "webserver" / "generated" / "entity_catalog.ts"
 WEB_ICONS_TS = ROOT / "src" / "webserver" / "generated" / "icons.ts"
+ENTITY_BACKUP_MAP_H = ROOT / "components" / "espcontrol" / "entity_backup_map_generated.h"
+APP_BACKUP_TS = ROOT / "src" / "webserver" / "application" / "app_backup.ts"
 STRINGS_DIR = ROOT / "common" / "config"
 I18N_GENERATED_H = ROOT / "components" / "espcontrol" / "i18n_generated.h"
 CARD_CONTRACT_JSON = ROOT / "common" / "config" / "card_contract.json"
@@ -328,6 +330,189 @@ def validate_entity_names(data):
         for name, entry_keys in names.items():
             if len(entry_keys) > 1:
                 errors.append(f"duplicate entity name for {domain} {name!r}: {', '.join(entry_keys)}")
+
+    return errors
+
+
+BACKUP_SECTIONS = ("root", "settings", "screen")
+# Domains that cannot be written, so they must never carry a backup mapping.
+BACKUP_READ_ONLY_DOMAINS = ("sensor", "text_sensor", "update", "button")
+
+
+# Keys the browser's export literal writes at the top level of the envelope that
+# are not settings the firmware owns. `grid` and `sizes` are the configurator's own
+# layout representation - the firmware reads the same information out of
+# button_order, which is why a firmware round-trip is byte-exact without them.
+EXPORT_STRUCTURAL_KEYS = frozenset(
+    {"device", "slots", "exported_at", "grid", "sizes", "buttons", "subpages", "settings", "screen"}
+)
+
+
+def _js_object_body(text, marker):
+    """Return the text inside the object literal that `marker` ends by opening."""
+    open_at = text.index(marker) + len(marker) - 1
+    depth = 0
+    for index in range(open_at, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_at + 1 : index]
+    raise BuildError(f"unbalanced braces after {marker!r} in {APP_BACKUP_TS.name}")
+
+
+def _js_object_keys(body):
+    """Top-level keys of an object literal body, skipping nested objects."""
+    found = []
+    depth = 0
+    for line in body.splitlines():
+        if depth == 0:
+            match = re.match(r"(\w+):", line.strip())
+            if match:
+                found.append(match.group(1))
+        depth += line.count("{") - line.count("}")
+    return found
+
+
+def validate_export_literal_coverage(fields):
+    """Every field the web configurator exports must have a firmware mapping.
+
+    validate_entity_backup_map() gates the entity -> envelope direction. This is the
+    other one: if app_backup.ts starts exporting a new field and nobody adds a
+    `backup` mapping for it, the HTTP config API would silently ignore that field on
+    import - a backup that looks like it restored but did not. Fail the build instead.
+    """
+    if not APP_BACKUP_TS.exists():
+        return []
+    text = APP_BACKUP_TS.read_text(encoding="utf-8")
+    if "createBackupConfig({" not in text:
+        return [f"{APP_BACKUP_TS.name}: could not find the createBackupConfig export literal"]
+
+    errors = []
+    envelope = _js_object_body(text, "createBackupConfig({")
+    for section in ("settings", "screen"):
+        for field in _js_object_keys(_js_object_body(envelope, f"{section}: {{")):
+            if (section, field) not in fields:
+                errors.append(
+                    f"{APP_BACKUP_TS.name} exports {section}.{field} but no entity declares "
+                    f"backup {{section: {section!r}, field: {field!r}}} and no backupAliases "
+                    "entry covers it"
+                )
+    for field in _js_object_keys(envelope):
+        if field in EXPORT_STRUCTURAL_KEYS or ("root", field) in fields:
+            continue
+        errors.append(
+            f"{APP_BACKUP_TS.name} exports the root field {field!r} but no entity declares "
+            f"backup {{section: 'root', field: {field!r}}}; add a mapping or list it in "
+            "EXPORT_STRUCTURAL_KEYS with a reason"
+        )
+    return errors
+
+
+def validate_entity_backup_map(data, keys):
+    """Validate the envelope<->entity mapping added for the HTTP config API.
+
+    The important rule is the coverage gate at the end: every entity must either
+    declare a `backup` mapping or be listed in backupUnmapped with a reason, so
+    adding a new setting and forgetting the config API fails the build instead of
+    silently leaving a hole.
+    """
+    errors = []
+    fields = {}  # (section, field) -> key, for collision detection
+    mapped_keys = set()
+
+    for entry in entity_name_entries(data):
+        key = entry.get("key")
+        backup = entry.get("backup")
+        if backup is None:
+            continue
+        if not isinstance(backup, dict):
+            errors.append(f"{key}: backup must be an object")
+            continue
+        mapped_keys.add(key)
+
+        section = backup.get("section")
+        field = backup.get("field")
+        if section not in BACKUP_SECTIONS:
+            errors.append(f"{key}: backup.section must be one of {', '.join(BACKUP_SECTIONS)}")
+        if not isinstance(field, str) or not field:
+            errors.append(f"{key}: backup.field must be a non-empty string")
+        if "derived" in backup and not isinstance(backup["derived"], bool):
+            errors.append(f"{key}: backup.derived must be a boolean")
+        unknown = set(backup) - {"section", "field", "derived"}
+        if unknown:
+            errors.append(f"{key}: unknown backup fields: {', '.join(sorted(unknown))}")
+
+        # A backup mapping resolves an entity by name, so slot templates cannot
+        # carry one; their envelope home is buttons[] / subpages{}.
+        if "template" in entry:
+            errors.append(f"{key}: slot-templated entities must not declare backup")
+        if entry.get("domain") in BACKUP_READ_ONLY_DOMAINS:
+            errors.append(f"{key}: domain {entry.get('domain')!r} is read-only and cannot declare backup")
+
+        if isinstance(field, str) and field:
+            slot = (section, field)
+            if slot in fields:
+                errors.append(f"duplicate backup field {section}.{field}: {fields[slot]}, {key}")
+            else:
+                fields[slot] = key
+
+    aliases = data.get("backupAliases", [])
+    if not isinstance(aliases, list):
+        errors.append("backupAliases must be a list")
+        aliases = []
+    for alias in aliases:
+        section = alias.get("section")
+        field = alias.get("field")
+        target = alias.get("target")
+        label = f"backupAliases {section}.{field}"
+        if section not in BACKUP_SECTIONS:
+            errors.append(f"{label}: section must be one of {', '.join(BACKUP_SECTIONS)}")
+        if not isinstance(field, str) or not field:
+            errors.append(f"{label}: field must be a non-empty string")
+        elif (section, field) in fields:
+            errors.append(f"{label}: collides with the mapping on {fields[(section, field)]}")
+        if not isinstance(target, str) or not target:
+            errors.append(f"{label}: target must be a non-empty string")
+        elif (section, target) not in fields:
+            errors.append(f"{label}: target {target!r} is not a backup field in section {section!r}")
+        if "exported" in alias and not isinstance(alias["exported"], bool):
+            errors.append(f"{label}: exported must be a boolean")
+        unknown = set(alias) - {"section", "field", "target", "exported", "reason"}
+        if unknown:
+            errors.append(f"{label}: unknown alias fields: {', '.join(sorted(unknown))}")
+
+    unmapped = data.get("backupUnmapped", [])
+    if not isinstance(unmapped, list):
+        errors.append("backupUnmapped must be a list")
+        unmapped = []
+    unmapped_keys = set()
+    for item in unmapped:
+        key = item.get("key")
+        if key not in keys:
+            errors.append(f"backupUnmapped references unknown entity key {key!r}")
+            continue
+        if key in mapped_keys:
+            errors.append(f"{key}: listed in backupUnmapped but also declares backup")
+        if not item.get("reason"):
+            errors.append(f"backupUnmapped {key}: reason is required")
+        unmapped_keys.add(key)
+
+    # The coverage gate.
+    uncovered = sorted(keys - mapped_keys - unmapped_keys)
+    if uncovered:
+        errors.append(
+            "entities with neither a backup mapping nor a backupUnmapped reason: "
+            + ", ".join(uncovered)
+        )
+
+    # The gate in the other direction: envelope field -> firmware mapping. Aliases
+    # count as coverage, since they resolve to a mapped target.
+    covered_fields = set(fields)
+    for alias in aliases:
+        covered_fields.add((alias.get("section"), alias.get("field")))
+    errors.extend(validate_export_literal_coverage(covered_fields))
     return errors
 
 
@@ -336,6 +521,18 @@ def assert_entity_names_valid(data):
         assert_product_entity_names_valid(data)
     except ProductSchemaError as exc:
         raise BuildError(str(exc)) from exc
+
+    # The envelope<->entity map lives here rather than in product_schema.py because
+    # one half of it reads app_backup.ts, which is a build input, not schema data.
+    # It has to run from this function: product_schema owns the rest of the entity
+    # rules, so this is the only place left that every entities build passes through.
+    keys = {entry.get("key") for entry in entity_name_entries(data)}
+    errors = validate_entity_backup_map(data, keys)
+    if errors:
+        raise BuildError(
+            f"{ENTITY_NAMES_JSON.relative_to(ROOT)} backup map is invalid:\n  "
+            + "\n  ".join(errors)
+        )
 
 
 def yaml_quote(value):
@@ -397,12 +594,123 @@ def gen_entity_names_js(data):
     )
 
 
+def c_string(value):
+    return json.dumps(value, ensure_ascii=False)
+
+
+def gen_entity_backup_map_h(data):
+    """Emit the envelope-field <-> entity map consumed by config_api.h.
+
+    constexpr arrays of string literals, so this lands in .rodata with no heap
+    use and no static initialisers.
+    """
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED ENTITY BACKUP MAP - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/entity_names.json.\n",
+        "// =============================================================================\n",
+        "// Maps espcontrol.backup v2 envelope fields onto ESPHome entities. Entities are\n",
+        "// identified by NAME, not object_id: web_server matches names first and logs\n",
+        "// object_id URLs as deprecated (removal in 2026.7.0).\n",
+        "//\n",
+        "// `derived` marks a field whose value is not a plain 1:1 entity read/write - it\n",
+        "// has a hand-written rule in config_api.h. The build.py validator requires the\n",
+        "// two to stay in step.\n",
+        "// =============================================================================\n",
+        "#ifndef ESPCONTROL_ENTITY_BACKUP_MAP_GENERATED_H\n",
+        "#define ESPCONTROL_ENTITY_BACKUP_MAP_GENERATED_H\n",
+        "\n",
+        "#include <cstddef>\n",
+        "\n",
+        "struct EntityBackupField {\n",
+        "  const char *key;           // entity_names.json key\n",
+        "  const char *entity_name;   // exact ESPHome entity name\n",
+        "  const char *domain;        // text | select | number | switch\n",
+        "  const char *section;       // root | settings | screen\n",
+        "  const char *field;         // envelope field name\n",
+        "  bool derived;              // needs a hand-written rule, not a plain write\n",
+        "};\n",
+        "\n",
+        "inline constexpr EntityBackupField ENTITY_BACKUP_FIELDS[] = {\n",
+    ]
+    mapped = [e for e in entity_name_entries(data) if e.get("backup")]
+    for entry in mapped:
+        backup = entry["backup"]
+        lines.append(
+            "    {"
+            f"{c_string(entry['key'])}, {c_string(entry['name'])}, "
+            f"{c_string(entry['domain'])}, {c_string(backup['section'])}, "
+            f"{c_string(backup['field'])}, {'true' if backup.get('derived') else 'false'}"
+            "},\n"
+        )
+    lines += [
+        "};\n",
+        "inline constexpr size_t ENTITY_BACKUP_FIELD_COUNT =\n",
+        "    sizeof(ENTITY_BACKUP_FIELDS) / sizeof(ENTITY_BACKUP_FIELDS[0]);\n",
+        "\n",
+        "// Envelope fields with no entity of their own; resolved to `target` on import.\n",
+        "//\n",
+        "// `exported` marks an alias the browser's export literal also writes, so GET has\n",
+        "// to emit it as well as its target to stay envelope-compatible. An alias without\n",
+        "// it is inbound-only: accepted on write, never emitted on read.\n",
+        "struct EntityBackupAlias {\n",
+        "  const char *section;\n",
+        "  const char *field;\n",
+        "  const char *target;\n",
+        "  bool exported;\n",
+        "};\n",
+        "\n",
+        "inline constexpr EntityBackupAlias ENTITY_BACKUP_ALIASES[] = {\n",
+    ]
+    for alias in data.get("backupAliases", []):
+        lines.append(
+            "    {"
+            f"{c_string(alias['section'])}, {c_string(alias['field'])}, "
+            f"{c_string(alias['target'])}, {'true' if alias.get('exported') else 'false'}"
+            "},\n"
+        )
+    lines += [
+        "};\n",
+        "inline constexpr size_t ENTITY_BACKUP_ALIAS_COUNT =\n",
+        "    sizeof(ENTITY_BACKUP_ALIASES) / sizeof(ENTITY_BACKUP_ALIASES[0]);\n",
+        "\n",
+        "// Slot-templated config entities. Firmware discovers the device's slot and\n",
+        "// subpage-chunk counts by probing these names, so no per-device constant is\n",
+        "// needed for the 4-chunk vs 8-chunk profiles.\n",
+        "struct EntitySlotTemplate {\n",
+        "  const char *key;\n",
+        "  const char *name_prefix;\n",
+        "  const char *name_suffix;\n",
+        "};\n",
+        "\n",
+        "inline constexpr EntitySlotTemplate ENTITY_SLOT_TEMPLATES[] = {\n",
+    ]
+    for entry in entity_name_entries(data):
+        if "template" not in entry:
+            continue
+        before, after = split_slot_template(entry["template"])
+        lines.append(
+            "    {"
+            f"{c_string(entry['key'])}, {c_string(before)}, {c_string(after)}"
+            "},\n"
+        )
+    lines += [
+        "};\n",
+        "inline constexpr size_t ENTITY_SLOT_TEMPLATE_COUNT =\n",
+        "    sizeof(ENTITY_SLOT_TEMPLATES) / sizeof(ENTITY_SLOT_TEMPLATES[0]);\n",
+        "\n",
+        "#endif  // ESPCONTROL_ENTITY_BACKUP_MAP_GENERATED_H\n",
+    ]
+    return "".join(lines)
+
+
 def sync_entity_names(check_only=False):
     data = load_entity_names_data()
     assert_entity_names_valid(data)
     outputs = [
         (ENTITY_NAMES_YAML, gen_entity_names_yaml(data)),
         (ENTITY_NAMES_TS, gen_entity_names_js(data)),
+        (ENTITY_BACKUP_MAP_H, gen_entity_backup_map_h(data)),
     ]
     dirty = []
     for path, content in outputs:

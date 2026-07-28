@@ -62,7 +62,11 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "common/config/entity_names.json",
-        ("common/config/entity_names.yaml", "src/webserver/generated/entity_catalog.ts"),
+        (
+            "common/config/entity_names.yaml",
+            "src/webserver/generated/entity_catalog.ts",
+            "components/espcontrol/entity_backup_map_generated.h",
+        ),
         "python3 scripts/build.py entities",
         "`python3 scripts/build.py entities --check` and `npm run check:product`",
     ),
