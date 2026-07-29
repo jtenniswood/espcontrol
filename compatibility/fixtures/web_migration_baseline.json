@@ -39,7 +39,8 @@
     },
     "panelNormalized": {
       "indoorTempEnable": false, "outdoorTempEnable": false, "indoorTempEntity": "", "outdoorTempEntity": "",
-      "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "networkStatusIcon": true,
+      "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true,
+      "clockBarNightMode": false, "networkStatusIcon": true,
       "voiceServices": false, "alarmDelayAudio": false, "alarmDelayTts": true,
       "alarmDelayEntryAnnouncement": "Please disarm the alarm",
       "alarmDelayExitAnnouncement": "Alarm arming, please leave the house",
@@ -105,5 +106,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 639400, "gzip": 152133 }
+  "bundleSize": { "minified": 640974, "gzip": 152360 }
 }

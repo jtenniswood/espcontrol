@@ -40,6 +40,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
                 clock_bar: state.clockBarOn,
                 clock_bar_time: state.clockBarTimeOn,
+                clock_bar_night_mode: state.clockBarNightModeOn,
                 network_status_icon: state.networkStatusOn,
                 voice_services: state.voiceServicesOn,
                 alarm_delay_audio: state.alarmDelayAudioOn,
@@ -204,6 +205,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postText(entityName("indoor_temp_entity"), importedSettings.indoorTempEntity);
                     postClockBar(importedSettings.clockBar);
                     postClockBarTime(importedSettings.clockBarTime);
+                    postClockBarNightMode(importedSettings.clockBarNightMode);
                     postNetworkStatusIcon(importedSettings.networkStatusIcon);
                     if (CFG.features && CFG.features.voiceServices)
                         postVoiceServices(importedSettings.voiceServices);
@@ -284,6 +286,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.temperatureUnit = importedTemperatureUnit;
                     state.clockBarOn = importedSettings.clockBar;
                     state.clockBarTimeOn = importedSettings.clockBarTime;
+                    state.clockBarNightModeOn = importedSettings.clockBarNightMode;
                     state.networkStatusOn = importedSettings.networkStatusIcon;
                     state.voiceServicesOn = importedSettings.voiceServices;
                     state.alarmDelayAudioOn = importedSettings.alarmDelayAudio;
