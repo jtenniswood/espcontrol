@@ -102,6 +102,15 @@ export const ENTITY_CATALOG = {
         "network_status_enabled"
       ]
     },
+    "screen_clock_bar_night_mode": {
+      "domain": "switch",
+      "name": "Screen: Clock Bar Night Mode Icon",
+      "objectIds": [
+        "screen__clock_bar_night_mode_icon",
+        "screen_clock_bar_night_mode_icon",
+        "clock_bar_night_mode_enabled"
+      ]
+    },
     "screen_battery_status": {
       "domain": "switch",
       "name": "Screen: Battery Status Icon",
@@ -681,6 +690,7 @@ export const ENTITY_CATALOG = {
       "screen_clock_bar_time",
       "clock_bar_temperature_entities",
       "screen_network_status_icon",
+      "screen_clock_bar_night_mode",
       "screen_temperature_degree_symbol",
       "screen_subpage_chevron",
       "screen_temperature_unit",

@@ -32,6 +32,7 @@ substitutions:
   entity_screen_clock_bar_time: "Screen: Clock Bar Time"
   entity_clock_bar_temperature_entities: "Clock Bar: Temperature Entities"
   entity_screen_network_status_icon: "Screen: Network Status Icon"
+  entity_screen_clock_bar_night_mode: "Screen: Clock Bar Night Mode Icon"
   entity_screen_battery_status: "Screen: Battery Status Icon"
   entity_battery_percent: "Battery"
   entity_voice_services: "Voice Services"
