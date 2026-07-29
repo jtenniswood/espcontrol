@@ -116,6 +116,16 @@ script:
             return;
           }
 
+          // Optional status icons pack leftwards from the network icon.
+          int clock_bar_network_box = lv_obj_get_width(id(network_status_button));
+          ClockBarRightIcons clock_bar_right_icons =
+              clock_bar_right_icons_after_network(
+                  clock_bar_right_x,
+                  clock_bar_network_box,
+                  clock_bar_glyph_width(id(network_status_icon_label),
+                                        clock_bar_network_box),
+                  8);
+
           apply_clock_bar_fixed_layout(
               id(temperatures),
               id(display_time),

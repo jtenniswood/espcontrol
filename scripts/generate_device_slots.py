@@ -65,10 +65,17 @@ def package_substitution_lines(device: dict) -> list[str]:
     return lines
 
 
-def clock_bar_icon_offset_expr() -> str:
-    """C++ expression for the x-offset of a one-slot clock-bar icon, placed
-    immediately left of the network status icon (itself at -clock_bar_right_x)."""
-    return "-(clock_bar_right_x + clock_bar_item_width / 2)"
+def clock_bar_icon_offset_lines(name: str, button: str, label: str) -> list[str]:
+    """C++ lines declaring `name` as the x-offset of an optional clock-bar icon.
+    Icons pack leftwards from the network status icon by glyph edges, so battery,
+    voice, and night mode never overlap and never leave an empty slot behind."""
+    box = f"{name}_box"
+    return [
+        f"      const int {box} = lv_obj_get_width(id({button}));",
+        f"      const int {name} = clock_bar_right_icons_next_x(",
+        f"          clock_bar_right_icons, {box},",
+        f"          clock_bar_glyph_width(id({label}), {box}));",
+    ]
 
 
 def battery_substitution_lines(device: dict) -> list[str]:
@@ -80,8 +87,10 @@ def battery_substitution_lines(device: dict) -> list[str]:
     return [
         "  battery_status_apply_code: |-",
         "    if (id(battery_status_enabled).state) {",
+        *clock_bar_icon_offset_lines("battery_status_icon_x", "battery_status_button",
+                                     "battery_status_icon_label"),
         "      lv_obj_align(id(battery_status_button), LV_ALIGN_TOP_RIGHT,",
-        f"                   {clock_bar_icon_offset_expr()}, clock_bar_icon_y);",
+        "                   battery_status_icon_x, clock_bar_icon_y);",
         "      lv_obj_clear_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
         "    } else {",
         "      lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
@@ -105,8 +114,10 @@ def voice_substitution_lines(device: dict) -> list[str]:
         "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
         "  voice_clock_bar_apply_code: |-",
         "    if (id(voice_services_enabled).state) {",
+        *clock_bar_icon_offset_lines("voice_clock_bar_icon_x", "voice_clock_bar_mute_button",
+                                     "voice_clock_bar_mute_icon_label"),
         "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
-        f"                   {clock_bar_icon_offset_expr()}, clock_bar_icon_y);",
+        "                   voice_clock_bar_icon_x, clock_bar_icon_y);",
         "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
         "      const bool microphone_muted = id(master_mute_switch).state;",
         "      const bool output_muted = id(voice_media_player).is_muted();",

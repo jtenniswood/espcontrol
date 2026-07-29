@@ -283,6 +283,24 @@ int main() {
   assert(lv_obj_has_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN));
   set_clock_bar_temperature_value_count(0);
 
+  // Optional right-side icons pack leftwards from the network icon by glyph
+  // edges, so each visible icon sits one gap from its neighbour regardless of
+  // how wide the surrounding tap targets are.
+  auto right_icons = clock_bar_right_icons_after_network(4, 48, 26, 8);
+  assert(right_icons.cursor == 41);
+  // Box right edge sits 11px inside the glyph it centres, so -38 puts the glyph
+  // exactly 8px left of the network glyph.
+  assert(clock_bar_right_icons_next_x(right_icons, 48, 26) == -38);
+  assert(right_icons.cursor == 75);
+  // A second icon packs against the first rather than skipping a slot.
+  assert(clock_bar_right_icons_next_x(right_icons, 48, 26) == -72);
+  // A glyph as wide as its box needs no lead.
+  auto flush_icons = clock_bar_right_icons_after_network(8, 40, 40, 6);
+  assert(flush_icons.cursor == 48);
+  assert(clock_bar_right_icons_next_x(flush_icons, 40, 40) == -54);
+  // A missing label falls back to the tap-target width rather than crowding.
+  assert(clock_bar_glyph_width(nullptr, 38) == 38);
+
   assert(cfg_field("light.kitchen;Kitchen;Auto;Lightbulb", 0) == "light.kitchen");
   assert(cfg_field("light.kitchen;Kitchen;Auto;Lightbulb", 3) == "Lightbulb");
   assert(cfg_field("light.kitchen;Kitchen", 4) == "");
