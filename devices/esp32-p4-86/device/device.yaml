@@ -36,7 +36,7 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_SIZE: "y"
+      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -44,13 +44,27 @@ esp32:
       # Keep the ESP32 task watchdog long enough for display startup while
       # remaining compatible with ESPHome 2026.4 and newer.
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
-      # ESPHome 2026.5 / ESP-IDF 5.5.2 can make ESP-Hosted preallocate a
-      # large internal DMA buffer pool before ESPHome starts. On P4 display
-      # builds this can fail with "HS_MP: mempool create failed: no mem" and
-      # trigger OTA rollback, so use dynamic buffers and keep hosted task
-      # stacks in PSRAM.
-      CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
+      # Keep hosted task stacks in PSRAM so the display and audio paths retain
+      # enough internal memory for DMA-capable allocations.
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+      # The ESP32-C6 hosted WiFi link shares scarce internal/DMA memory with
+      # the full-duplex TDM audio path. Keep network bursts small while testing
+      # dual-mic SE/AEC stability.
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM: "16"
+      CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM: "16"
+      CONFIG_WIFI_RMT_AMPDU_RX_ENABLED: "n"
+      CONFIG_WIFI_RMT_AMPDU_TX_ENABLED: "n"
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM: "16"
+      CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM: "16"
+      CONFIG_ESP_WIFI_AMPDU_RX_ENABLED: "n"
+      CONFIG_ESP_WIFI_AMPDU_TX_ENABLED: "n"
+      CONFIG_LWIP_TCP_SND_BUF_DEFAULT: "16384"
+      CONFIG_LWIP_TCP_WND_DEFAULT: "16384"
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "16"
+      CONFIG_LWIP_TCPIP_RECVMBOX_SIZE: "16"
       CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
       CONFIG_LOG_DEFAULT_LEVEL: "2"
 
@@ -67,6 +81,9 @@ external_components:
     refresh: 1s
 
 espcontrol:
+  id: espcontrol_app
+network:
+  enable_high_performance: false
 
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
@@ -74,16 +91,16 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags:
-      - "-Wno-deprecated-declarations"
-      - "-DESPCONTROL_DISABLE_TODO=1"
-      - "-DESPCONTROL_MAX_GRID_SLOTS=9"
-      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
-      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
-      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
-    build_src_flags:
-      - "-Wno-literal-suffix"
+  build_flags:
+    - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_DISABLE_TODO=1"
+    - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    # Force cached ESPHome objects to rebuild after the 2026.5
+    # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+    - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+    # Keep the ESP-IDF header warning suppressed without warning on C sources.
+    - "-Wno-literal-suffix"
+    - "-Wno-complain-wrong-lang"
   on_boot:
     - priority: 700
       then:
@@ -195,8 +212,10 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(screen_schedule_asleep) &&
-                        !id(schedule_mode_clock)) ||
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -206,20 +225,14 @@ light:
             else:
               - if:
                   condition:
-                    lambda: 'return id(screensaver_display_off_active);'
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
-        - if:
-            condition:
-              lambda: |-
-                return !id(display_asleep) &&
-                       !id(screen_schedule_asleep) &&
-                       !id(screensaver_display_off_active) &&
-                       !id(screensaver_dimmed_active);
-            then:
-              - script.execute: screen_schedule_manual_sleep
+        - script.execute: display_backlight_handle_off
 
 # ---------------------------------------------------------------------------
 # Built-in relays (ESP32-P4-86-Panel-ETH-2RO bottom board)

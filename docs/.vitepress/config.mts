@@ -96,7 +96,15 @@ const screenProducts: Record<string, Record<string, string>> = {
   'screens/jc8012p4a1.md': {
     name: 'Guition JC8012P4A1',
     brand: 'Guition',
-    model: 'JC8012P4A1',
+    model: 'JC8012P4A1 / new panel revision',
+    size: '10.1 inches',
+    resolution: '1280 x 800',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc8012p4a1-v2.md': {
+    name: 'Guition JC8012P4A1 V2',
+    brand: 'Guition',
+    model: 'JC8012P4A1 V2',
     size: '10.1 inches',
     resolution: '1280 x 800',
     processor: 'ESP32-P4',
@@ -155,7 +163,7 @@ const faqItems = [
   {
     question: 'How Many Cards Can I Have?',
     answer:
-      'The home screen supports 20 cards on JC8012P4A1, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
+      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
   },
   {
     question: 'What Is a Subpage?',
@@ -170,7 +178,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
+      'EspControl supports both Guition JC8012P4A1 rear-case revisions, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
@@ -301,7 +309,8 @@ export default defineConfig({
     ) {
       const isHowTo =
         pageData.relativePath === 'getting-started/install.md' ||
-        pageData.relativePath === 'getting-started/manual-esphome-setup.md'
+        pageData.relativePath === 'getting-started/manual-esphome-setup.md' ||
+        pageData.relativePath === 'getting-started/migrate-esphome-media-player.md'
       const articleSchema: Record<string, unknown> = {
         '@context': 'https://schema.org',
         '@type': isHowTo ? 'HowTo' : 'TechArticle',
@@ -312,20 +321,30 @@ export default defineConfig({
         author: { '@type': 'Person', name: 'jtenniswood', url: 'https://github.com/jtenniswood' },
       }
       if (isHowTo) {
-        articleSchema.step =
-          pageData.relativePath === 'getting-started/manual-esphome-setup.md'
-            ? [
-                { '@type': 'HowToStep', name: 'Choose the correct ESPHome package file' },
-                { '@type': 'HowToStep', name: 'Create the device in ESPHome Device Builder' },
-                { '@type': 'HowToStep', name: 'Install by USB or OTA' },
-                { '@type': 'HowToStep', name: 'Add the display to Home Assistant' },
-              ]
-            : [
-                { '@type': 'HowToStep', name: 'Flash firmware from your browser' },
-                { '@type': 'HowToStep', name: 'Connect to WiFi' },
-                { '@type': 'HowToStep', name: 'Add to Home Assistant' },
-                { '@type': 'HowToStep', name: 'Configure buttons from the web page' },
-              ]
+        if (pageData.relativePath === 'getting-started/manual-esphome-setup.md') {
+          articleSchema.step = [
+            { '@type': 'HowToStep', name: 'Choose the correct ESPHome package file' },
+            { '@type': 'HowToStep', name: 'Create the device in ESPHome Device Builder' },
+            { '@type': 'HowToStep', name: 'Install by USB or OTA' },
+            { '@type': 'HowToStep', name: 'Add the display to Home Assistant' },
+          ]
+        } else if (
+          pageData.relativePath === 'getting-started/migrate-esphome-media-player.md'
+        ) {
+          articleSchema.step = [
+            { '@type': 'HowToStep', name: 'Install and connect EspControl' },
+            { '@type': 'HowToStep', name: 'Choose an automatic or card-based cover-art layout' },
+            { '@type': 'HowToStep', name: 'Configure media playback controls' },
+            { '@type': 'HowToStep', name: 'Configure the idle clock or display-off behaviour' },
+          ]
+        } else {
+          articleSchema.step = [
+            { '@type': 'HowToStep', name: 'Flash firmware from your browser' },
+            { '@type': 'HowToStep', name: 'Connect to WiFi' },
+            { '@type': 'HowToStep', name: 'Add to Home Assistant' },
+            { '@type': 'HowToStep', name: 'Configure buttons from the web page' },
+          ]
+        }
       }
       if (pageData.relativePath === 'reference/faq.md') {
         articleSchema['@type'] = 'FAQPage'
@@ -411,6 +430,7 @@ export default defineConfig({
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
           { text: 'Fans', link: '/card-types/fans' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
+          { text: 'Gate', link: '/card-types/gates' },
           { text: 'Internal', link: '/card-types/internal-relays' },
           { text: 'Lawn Mower', link: '/card-types/lawn-mower' },
           { text: 'Lights', link: '/card-types/lights' },
@@ -438,6 +458,7 @@ export default defineConfig({
           { text: 'Appearance', link: '/features/appearance' },
           { text: 'Backlight', link: '/features/backlight' },
           { text: 'Clock Bar', link: '/features/clock-bar' },
+          { text: 'Battery', link: '/features/battery' },
           { text: 'Rotation', link: '/features/rotation' },
           { text: '<span class="sidebar-static-header">Sleep & Schedule</span>' },
           { text: 'Idle', link: '/features/idle' },

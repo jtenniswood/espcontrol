@@ -40,11 +40,18 @@ script:
           cfg.subpage_chevron_x = 3;
           cfg.subpage_chevron_y = -2;
           cfg.subpage_chevron_text_width_percent = 96;
+          cfg.modal_profile.layout_family = DisplayModalLayoutFamily::COMPACT_PORTRAIT;
+          cfg.modal_profile.density = DisplayModalDensity::COMPACT;
+          cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+          cfg.modal_profile.base_touch_target = 46;
           cfg.icon_font = id(font_icon_main)->get_lv_font();
           cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
           cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
           cfg.large_sensor_unit_offset_percent = -10;
           cfg.media_title_font = id(font_text_title)->get_lv_font();
+          cfg.media_control_title_font = id(font_cover_art_title)->get_lv_font();
+          cfg.media_cover_art_title_font = id(font_cover_art_title)->get_lv_font();
+          cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
           cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
           cfg.volume_label_font = id(font_text_body)->get_lv_font();
           cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
@@ -53,36 +60,11 @@ script:
           cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
           cfg.temperature_unit = id(temperature_unit_select).current_option();
           cfg.timezone = id(timezone_select).current_option();
-          cfg.suspend_display_takeover = []() {
-            id(display_takeover_suspended) = true;
-            id(screensaver_idle_check).stop();
-            id(screensaver_sleep_timer).stop();
-            id(screensaver_sleep_sensor).stop();
-            id(screensaver_sleep_display_off).stop();
-            id(backlight_sleep_display_off).stop();
-            id(backlight_fade_current_ui_to_black).stop();
-            id(backlight_schedule_display_off).stop();
-            id(show_cover_art_view).stop();
-            id(cover_art_delay_timer).stop();
-            id(cover_art_show_track_overlay).stop();
-            id(show_clock_view).stop();
-            id(show_dimmed_view).stop();
-            id(clock_screensaver_refresh_brightness).stop();
-            id(screensaver_dimmed_refresh_brightness).stop();
-            id(display_asleep) = false;
-            id(cover_art_screensaver_active) = false;
-            id(screensaver_display_off_active) = false;
-            id(screensaver_dimmed_active) = false;
-            lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
-            id(backlight_apply_brightness).execute();
+          cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+            id(display_takeover_begin).execute(static_cast<int>(kind));
           };
-          cfg.resume_display_takeover = []() {
-            id(display_takeover_suspended) = false;
-            id(display_takeover_resume_restore).execute();
+          cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+            id(display_takeover_end).execute(static_cast<int>(kind));
           };
           static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
             id(image_card_download_1),
@@ -92,16 +74,8 @@ script:
             id(image_card_download_5),
             id(image_card_download_6),
           };
-          static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {
-            id(image_card_modal_download_1),
-            id(image_card_modal_download_2),
-            id(image_card_modal_download_3),
-            id(image_card_modal_download_4),
-            id(image_card_modal_download_5),
-            id(image_card_modal_download_6),
-          };
           cfg.image_card_images = image_card_downloaders;
-          cfg.image_card_modal_images = image_card_modal_downloaders;
+          cfg.image_card_modal_image = id(image_card_modal_download_1);
           cfg.image_card_image_count = 6;
           cfg.home_assistant_base_url = []() {
             std::string base = id(cover_art_home_assistant_base_url);
@@ -212,11 +186,18 @@ esphome:
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;
             cfg.subpage_chevron_text_width_percent = 96;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::COMPACT_PORTRAIT;
+            cfg.modal_profile.density = DisplayModalDensity::COMPACT;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+            cfg.modal_profile.base_touch_target = 46;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;
             cfg.media_title_font = id(font_text_title)->get_lv_font();
+            cfg.media_control_title_font = id(font_cover_art_title)->get_lv_font();
+            cfg.media_cover_art_title_font = id(font_cover_art_title)->get_lv_font();
+            cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
             cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
             cfg.volume_label_font = id(font_text_body)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
@@ -225,36 +206,11 @@ esphome:
             cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
-            cfg.suspend_display_takeover = []() {
-              id(display_takeover_suspended) = true;
-              id(screensaver_idle_check).stop();
-              id(screensaver_sleep_timer).stop();
-              id(screensaver_sleep_sensor).stop();
-              id(screensaver_sleep_display_off).stop();
-              id(backlight_sleep_display_off).stop();
-              id(backlight_fade_current_ui_to_black).stop();
-              id(backlight_schedule_display_off).stop();
-              id(show_cover_art_view).stop();
-              id(cover_art_delay_timer).stop();
-              id(cover_art_show_track_overlay).stop();
-              id(show_clock_view).stop();
-              id(show_dimmed_view).stop();
-              id(clock_screensaver_refresh_brightness).stop();
-              id(screensaver_dimmed_refresh_brightness).stop();
-              id(display_asleep) = false;
-              id(cover_art_screensaver_active) = false;
-              id(screensaver_display_off_active) = false;
-              id(screensaver_dimmed_active) = false;
-              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
-              id(backlight_apply_brightness).execute();
+            cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_begin).execute(static_cast<int>(kind));
             };
-            cfg.resume_display_takeover = []() {
-              id(display_takeover_suspended) = false;
-              id(display_takeover_resume_restore).execute();
+            cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_end).execute(static_cast<int>(kind));
             };
             static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
               id(image_card_download_1),
@@ -264,16 +220,8 @@ esphome:
               id(image_card_download_5),
               id(image_card_download_6),
             };
-            static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {
-              id(image_card_modal_download_1),
-              id(image_card_modal_download_2),
-              id(image_card_modal_download_3),
-              id(image_card_modal_download_4),
-              id(image_card_modal_download_5),
-              id(image_card_modal_download_6),
-            };
             cfg.image_card_images = image_card_downloaders;
-            cfg.image_card_modal_images = image_card_modal_downloaders;
+            cfg.image_card_modal_image = id(image_card_modal_download_1);
             cfg.image_card_image_count = 6;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
@@ -376,11 +324,18 @@ esphome:
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;
             cfg.subpage_chevron_text_width_percent = 96;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::COMPACT_PORTRAIT;
+            cfg.modal_profile.density = DisplayModalDensity::COMPACT;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+            cfg.modal_profile.base_touch_target = 46;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;
             cfg.media_title_font = id(font_text_title)->get_lv_font();
+            cfg.media_control_title_font = id(font_cover_art_title)->get_lv_font();
+            cfg.media_cover_art_title_font = id(font_cover_art_title)->get_lv_font();
+            cfg.media_cover_art_artist_font = id(font_cover_art_artist)->get_lv_font();
             cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
             cfg.volume_label_font = id(font_text_body)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
@@ -389,36 +344,11 @@ esphome:
             cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
-            cfg.suspend_display_takeover = []() {
-              id(display_takeover_suspended) = true;
-              id(screensaver_idle_check).stop();
-              id(screensaver_sleep_timer).stop();
-              id(screensaver_sleep_sensor).stop();
-              id(screensaver_sleep_display_off).stop();
-              id(backlight_sleep_display_off).stop();
-              id(backlight_fade_current_ui_to_black).stop();
-              id(backlight_schedule_display_off).stop();
-              id(show_cover_art_view).stop();
-              id(cover_art_delay_timer).stop();
-              id(cover_art_show_track_overlay).stop();
-              id(show_clock_view).stop();
-              id(show_dimmed_view).stop();
-              id(clock_screensaver_refresh_brightness).stop();
-              id(screensaver_dimmed_refresh_brightness).stop();
-              id(display_asleep) = false;
-              id(cover_art_screensaver_active) = false;
-              id(screensaver_display_off_active) = false;
-              id(screensaver_dimmed_active) = false;
-              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
-              id(backlight_apply_brightness).execute();
+            cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_begin).execute(static_cast<int>(kind));
             };
-            cfg.resume_display_takeover = []() {
-              id(display_takeover_suspended) = false;
-              id(display_takeover_resume_restore).execute();
+            cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_end).execute(static_cast<int>(kind));
             };
             static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
               id(image_card_download_1),
@@ -428,16 +358,8 @@ esphome:
               id(image_card_download_5),
               id(image_card_download_6),
             };
-            static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {
-              id(image_card_modal_download_1),
-              id(image_card_modal_download_2),
-              id(image_card_modal_download_3),
-              id(image_card_modal_download_4),
-              id(image_card_modal_download_5),
-              id(image_card_modal_download_6),
-            };
             cfg.image_card_images = image_card_downloaders;
-            cfg.image_card_modal_images = image_card_modal_downloaders;
+            cfg.image_card_modal_image = id(image_card_modal_download_1);
             cfg.image_card_image_count = 6;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
@@ -494,12 +416,8 @@ esphome:
                 return clock_bar_should_show(
                     id(clock_bar_enabled).state,
                     id(main_page)->obj,
-                    id(display_asleep),
-                    id(screen_schedule_asleep),
-                    id(is_clock_showing),
-                    id(cover_art_screensaver_active),
-                    id(screensaver_display_off_active),
-                    id(screensaver_dimmed_active));
+                    id(espcontrol_app).display().current_mode(),
+                    id(espcontrol_app).display().target_schedule_inactive());
               },
               []() {
                 id(screensaver_presence_wake).execute();

@@ -11,6 +11,7 @@ from typing import Any
 
 from device_profiles import (
     DEVICE_MANIFEST,
+    ROOT,
     VALID_CHIP_FAMILIES,
     DeviceProfileError,
     load_device_profiles,
@@ -22,12 +23,37 @@ class DeviceMatrixError(RuntimeError):
     pass
 
 
+BUILD_FILE_SUFFIXES = ("yaml", "factory.yaml")
+
+
 def load_manifest(path: Path = DEVICE_MANIFEST) -> dict[str, Any]:
     data = load_manifest_data(path)
     errors = validate_manifest_data(data)
     if errors:
         raise DeviceMatrixError("\n".join(errors))
     return data
+
+
+def root_for_manifest(path: Path) -> Path:
+    resolved = path.resolve()
+    if resolved.name == "manifest.json" and resolved.parent.name == "devices":
+        return resolved.parent.parent
+    return ROOT
+
+
+def validate_matrix_build_files(
+    profiles: dict[str, dict[str, Any]],
+    manifest_path: Path = DEVICE_MANIFEST,
+) -> None:
+    root = root_for_manifest(manifest_path)
+    missing: list[str] = []
+    for slug in profiles:
+        for suffix in BUILD_FILE_SUFFIXES:
+            path = root / "builds" / f"{slug}.{suffix}"
+            if not path.is_file():
+                missing.append(str(path.relative_to(root)))
+    if missing:
+        raise DeviceMatrixError("missing firmware build input(s):\n" + "\n".join(missing))
 
 
 def release_matrix(profiles: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, str]]]:
@@ -82,7 +108,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        write_json(args.matrix(load_device_profiles(args.manifest)))
+        profiles = load_device_profiles(args.manifest)
+        validate_matrix_build_files(profiles, args.manifest)
+        write_json(args.matrix(profiles))
     except (DeviceMatrixError, DeviceProfileError) as exc:
         print(f"::error::{exc}", file=sys.stderr)
         return 1

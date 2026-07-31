@@ -1,13 +1,11 @@
 name: Build Release
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing release tag to build and upload assets for
-        required: false
+        description: Existing draft release tag to build, verify, and publish
+        required: true
         type: string
 
 permissions:
@@ -15,43 +13,44 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ESPCONTROL_NPM_CACHE_MAX_MB: 512
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
+concurrency:
+  group: release-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
 jobs:
-  release-notes:
-    name: Update Release Notes
-    if: github.event_name == 'release' || inputs.release_tag != ''
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7.0.0
-        with:
-          fetch-depth: 0
-          ref: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
-
-      - name: Generate what changed notes
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
-        run: python3 scripts/release_changelog.py "${RELEASE_TAG}" --output release-notes.md
-
-      - name: Update GitHub release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
-        run: gh release edit "${RELEASE_TAG}" --notes-file release-notes.md
-
   preflight:
     name: Product Preflight
     runs-on: self-hosted
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.release_tag }}
       - run: git sparse-checkout disable || true
 
-      - uses: actions/setup-node@v6
+      - name: Pin release source revision
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Require private draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: >-
+          python3 scripts/firmware_release.py verify-draft
+          --version "${RELEASE_TAG}"
+          --repo "${GITHUB_REPOSITORY}"
+
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
@@ -60,7 +59,7 @@ jobs:
           NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
           mkdir -p "${NPM_CACHE}"
           npm ci --prefer-offline --cache "${NPM_CACHE}"
-          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" 512 --strategy reset
+          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
       - name: Run release preflight
         run: npm run check:release-preflight
@@ -77,7 +76,9 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
 
       - name: Generate device matrix
         id: matrix
@@ -87,7 +88,7 @@ jobs:
 
   build-firmware:
     name: Build ${{ matrix.slug }}
-    needs: device-matrix
+    needs: [preflight, device-matrix]
     runs-on: self-hosted
     strategy:
       fail-fast: false
@@ -99,9 +100,10 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           path: espcontrol-${{ matrix.slug }}
+          ref: ${{ needs.preflight.outputs.source_sha }}
       - name: Normalize checkout
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
@@ -188,7 +190,7 @@ jobs:
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
         env:
-          VERSION: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+          VERSION: ${{ inputs.release_tag }}
         run: |
           SOURCE_DIR="${PWD}"
           CONTAINER=$(${DOCKER} create \
@@ -213,7 +215,7 @@ jobs:
         id: firmware
         run: |
           FIRMWARE_FACTORY=$(find "${BUILD_CACHE}/build" -name firmware.factory.bin -print -quit 2>/dev/null || true)
-          mkdir -p output
+          mkdir -p dist/firmware
 
           if [ -z "${FIRMWARE_FACTORY}" ] || [ ! -f "${FIRMWARE_FACTORY}" ]; then
             echo "::error::Firmware compilation failed — factory binary not found"
@@ -221,29 +223,29 @@ jobs:
           fi
 
           BUILD_DIR=$(dirname "${FIRMWARE_FACTORY}")
-          cp "${BUILD_DIR}/firmware.factory.bin" output/${{ matrix.slug }}.factory.bin
-          cp "${BUILD_DIR}/firmware.bin" output/${{ matrix.slug }}.ota.bin
+          cp "${BUILD_DIR}/firmware.factory.bin" dist/firmware/${{ matrix.slug }}.factory.bin
+          cp "${BUILD_DIR}/firmware.ota.bin" dist/firmware/${{ matrix.slug }}.ota.bin
 
-          VERSION="${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}"
+          VERSION="${{ inputs.release_tag }}"
           python3 espcontrol-${{ matrix.slug }}/scripts/firmware_release.py manifest \
             --slug "${{ matrix.slug }}" \
             --chip "${{ matrix.chip }}" \
             --version "${VERSION}" \
-            --factory "output/${{ matrix.slug }}.factory.bin" \
-            --ota "output/${{ matrix.slug }}.ota.bin" \
-            --out "output/${{ matrix.slug }}.manifest.json"
+            --factory "dist/firmware/${{ matrix.slug }}.factory.bin" \
+            --ota "dist/firmware/${{ matrix.slug }}.ota.bin" \
+            --out "dist/firmware/${{ matrix.slug }}.manifest.json"
           python3 espcontrol-${{ matrix.slug }}/scripts/firmware_release.py verify-files \
             --slug "${{ matrix.slug }}" \
             --version "${VERSION}" \
-            --manifest "output/${{ matrix.slug }}.manifest.json" \
-            --factory "output/${{ matrix.slug }}.factory.bin" \
-            --ota "output/${{ matrix.slug }}.ota.bin"
+            --manifest "dist/firmware/${{ matrix.slug }}.manifest.json" \
+            --factory "dist/firmware/${{ matrix.slug }}.factory.bin" \
+            --ota "dist/firmware/${{ matrix.slug }}.ota.bin"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.slug }}
-          path: output/
+          path: dist/firmware/
 
       - name: Clean firmware caches
         if: always()
@@ -256,59 +258,78 @@ jobs:
           rm -rf "${RUN_CACHE_ROOT}"
           bash scripts/reclaim_actions_disk.sh
 
-  publish:
-    name: Publish to Release
-    if: github.event_name == 'release' || inputs.release_tag != ''
-    needs: build-firmware
+  assemble-release:
+    name: Assemble Verified Distribution
+    needs: [preflight, build-firmware]
     runs-on: self-hosted
     steps:
+      - name: Prepare self-hosted workspace
+        run: |
+          rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
+            sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.preflight.outputs.source_sha }}
+
       - name: Download all firmware artifacts
         uses: actions/download-artifact@v8
         with:
           pattern: firmware-*
           merge-multiple: true
-          path: firmware
+          path: dist/firmware
 
-      - name: Upload firmware to release
+      - name: Generate release notes
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python3 scripts/release_changelog.py "${RELEASE_TAG}" --output dist/release-notes.md
+
+      - name: Verify complete distribution
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          mapfile -t DEVICE_SLUGS < <(python3 scripts/device_matrix.py release | jq -r '.include[].slug')
+          python3 scripts/firmware_release.py verify-bundle \
+            --version "${RELEASE_TAG}" \
+            --dir dist/firmware \
+            --slugs "${DEVICE_SLUGS[@]}"
+
+      - name: Upload verified release distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-dist
+          path: dist/
+
+  publish:
+    name: Publish Verified Draft
+    needs: [preflight, assemble-release]
+    runs-on: self-hosted
+    steps:
+      - name: Prepare self-hosted workspace
+        run: |
+          rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
+            sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+
+      - name: Download verified release distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: release-dist
+          path: dist
+
+      - name: Upload, verify, and publish draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_ID: ${{ github.event.release.id }}
-          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          if [ -z "${RELEASE_ID}" ]; then
-            RELEASE_JSON=$(curl -fsSL \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")
-            RELEASE_ID=$(printf '%s' "${RELEASE_JSON}" | jq -r '.id')
-          fi
-
-          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"
-          UPLOAD_URL="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets"
-          ASSET_API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets"
-          ASSETS_JSON=$(curl -fsSL \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "${API_URL}/assets")
-
-          for FILE in firmware/*; do
-            NAME=$(basename "${FILE}")
-            EXISTING_ID=$(printf '%s' "${ASSETS_JSON}" | jq -r --arg name "${NAME}" \
-              '.[] | select(.name == $name) | .id' | head -n 1)
-            if [ -n "${EXISTING_ID}" ]; then
-              curl -fsSL \
-                -X DELETE \
-                -H "Authorization: Bearer ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                "${ASSET_API_URL}/${EXISTING_ID}"
-            fi
-
-            curl -fsSL \
-              -X POST \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary @"${FILE}" \
-              "${UPLOAD_URL}?name=${NAME}" \
-              -o /dev/null
-          done
+          mapfile -t DEVICE_SLUGS < <(python3 scripts/device_matrix.py release | jq -r '.include[].slug')
+          python3 scripts/firmware_release.py publish-draft \
+            --version "${RELEASE_TAG}" \
+            --dir dist/firmware \
+            --slugs "${DEVICE_SLUGS[@]}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --notes dist/release-notes.md

@@ -1,0 +1,10 @@
+diff --git a/src/webserver/model/config_primitives.ts b/src/webserver/model/config_primitives.ts
+--- a/src/webserver/model/config_primitives.ts
++++ b/src/webserver/model/config_primitives.ts
+@@ -6,5 +6,5 @@ export function encodeConfigField(value: string | number | boolean | null | undefined): string {
+ export function encodeConfigField(value: string | number | boolean | null | undefined): string {
+-  return String(value || "").replace(/[%,;|:]/g, (ch) => {
++  return String(value || "").replace(/[%;|:]/g, (ch) => {
+     const hex = ch.charCodeAt(0).toString(16).toUpperCase();
+     return "%" + (hex.length < 2 ? "0" : "") + hex;
+   });

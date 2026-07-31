@@ -12,6 +12,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 DEVICE_MANIFEST = ROOT / "devices" / "manifest.json"
+DEVICE_CATALOG = ROOT / "devices" / "catalog.json"
 COMMON_ASSETS = ROOT / "common" / "assets"
 DEVICES_DIR = ROOT / "devices"
 
@@ -19,6 +20,16 @@ VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
 VALID_DISPLAY_MODES = {"color"}
+VALID_MODAL_LAYOUT_FAMILIES = {
+    "compact-square",
+    "large-square",
+    "compact-portrait",
+    "wide-landscape",
+    "large-landscape",
+}
+VALID_MODAL_DENSITIES = {"compact", "comfortable", "spacious"}
+VALID_MODAL_MEMORY_TIERS = {"standard", "constrained"}
+IMAGE_CARD_PICKER_TYPES = ("image", "media_cover_art")
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",
@@ -27,11 +38,89 @@ REQUIRED_FONT_ROLES = (
     "volumeNumber",
     "volumeLabel",
 )
+COVER_ART_SUBSTITUTION_KEYS = (
+    "cover_art_size",
+    "cover_art_decode_size",
+    "cover_art_x",
+    "cover_art_y",
+    "cover_art_accent_x",
+    "cover_art_accent_y",
+    "cover_art_accent_width",
+    "cover_art_accent_height",
+    "cover_art_accent_bg_opa",
+    "cover_art_accent_opa",
+    "cover_art_panel_x",
+    "cover_art_panel_y",
+    "cover_art_panel_width",
+    "cover_art_panel_height",
+    "cover_art_panel_pad_top",
+    "cover_art_panel_pad_bottom",
+    "cover_art_panel_pad_left",
+    "cover_art_panel_pad_right",
+    "cover_art_panel_pad_row",
+    "cover_art_title_font",
+    "cover_art_title_max_height",
+    "cover_art_title_line_space",
+    "cover_art_artist_font",
+    "cover_art_artist_pad_top",
+    "cover_art_artist_long_mode",
+    "cover_art_time_font",
+    "cover_art_time_pad_top",
+    "cover_art_progress_width",
+    "cover_art_progress_height",
+    "cover_art_text_color",
+    "cover_art_square_overlay",
+    "cover_art_live_image_updates",
+)
+COVER_ART_FONT_KEYS = (
+    "cover_art_title_font",
+    "cover_art_artist_font",
+    "cover_art_time_font",
+)
 FONT_ID_RE = re.compile(r"^\s+id:\s+([A-Za-z0-9_]+)\s*$", re.MULTILINE)
 
 
 class DeviceProfileError(RuntimeError):
     pass
+
+
+PROFILE_CATEGORIES = (
+    "platform",
+    "display",
+    "modal",
+    "fonts",
+    "network",
+    "artwork",
+    "audio",
+    "input",
+)
+CANONICAL_DEVICE_KEYS = (
+    "slots",
+    "capabilities",
+    "public",
+    "layout",
+    "rotation",
+    "internalRelays",
+    "web",
+    "firmware",
+)
+CANONICAL_PUBLIC_KEYS = ("name", "docsPath", "screenSize", "resolution", "orientation")
+CANONICAL_FIRMWARE_KEYS = ("build", "fonts", "display", "package")
+CANONICAL_PACKAGE_KEYS = (
+    "firmwareVersion",
+    "subpageConfigChunks",
+    "substitutions",
+    "deviceFontPackageKey",
+    "touchscreenPackage",
+    "localVoiceServices",
+    "alarmDelayAudio",
+    "networkCoprocessor",
+    "esp32C6FirmwareUpdate",
+    "ethernetSelectable",
+    "extraPackages",
+    "backlightPwmFrequency",
+    "apiNavigateAction",
+)
 
 
 def rel(path: Path) -> str:
@@ -56,6 +145,177 @@ def load_manifest_data(path: Path = DEVICE_MANIFEST) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise DeviceProfileError(f"{rel(path)} must contain a JSON object")
     return data
+
+
+def _catalog_error(slug: str, path: str, message: str) -> DeviceProfileError:
+    field = path or "<root>"
+    return DeviceProfileError(f"{slug}: {field}: {message}")
+
+
+def _reject_nulls(value: Any, slug: str, path: str, contributor: str) -> None:
+    if value is None:
+        raise _catalog_error(slug, path, f"null values are not allowed (from {contributor})")
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}" if path else key
+            _reject_nulls(child, slug, child_path, contributor)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_nulls(child, slug, f"{path}[{index}]", contributor)
+
+
+def _merge_profile(
+    target: dict[str, Any],
+    incoming: dict[str, Any],
+    slug: str,
+    contributor: str,
+    owners: dict[str, str],
+    path: str = "",
+) -> None:
+    for key, value in incoming.items():
+        field = f"{path}.{key}" if path else key
+        if key not in target:
+            target[key] = copy.deepcopy(value)
+            if isinstance(value, dict):
+                _record_leaf_owners(value, field, contributor, owners)
+            else:
+                owners[field] = contributor
+            continue
+        current = target[key]
+        if isinstance(current, dict) and isinstance(value, dict):
+            _merge_profile(current, value, slug, contributor, owners, field)
+            continue
+        if current == value:
+            continue
+        previous = owners.get(field, "an earlier profile")
+        raise _catalog_error(
+            slug,
+            field,
+            f"conflicting profile values from {previous} and {contributor}",
+        )
+
+
+def _record_leaf_owners(value: dict[str, Any], path: str, contributor: str, owners: dict[str, str]) -> None:
+    for key, child in value.items():
+        field = f"{path}.{key}"
+        if isinstance(child, dict):
+            _record_leaf_owners(child, field, contributor, owners)
+        else:
+            owners[field] = contributor
+
+
+def _merge_config(target: dict[str, Any], config: dict[str, Any], slug: str, path: str = "") -> None:
+    for key, value in config.items():
+        field = f"{path}.{key}" if path else key
+        if key in target:
+            if isinstance(target[key], dict) and isinstance(value, dict):
+                _merge_config(target[key], value, slug, field)
+                continue
+            raise _catalog_error(slug, field, "config collides with an inherited profile field")
+        target[key] = copy.deepcopy(value)
+
+
+def _apply_overrides(target: dict[str, Any], overrides: dict[str, Any], slug: str, path: str = "") -> None:
+    for key, value in overrides.items():
+        field = f"{path}.{key}" if path else key
+        if key not in target:
+            raise _catalog_error(slug, field, "override must replace an existing inherited field")
+        current = target[key]
+        if isinstance(value, dict):
+            if not isinstance(current, dict):
+                raise _catalog_error(slug, field, "object override does not match the inherited field")
+            _apply_overrides(current, value, slug, field)
+        else:
+            target[key] = copy.deepcopy(value)
+
+
+def _ordered_object(value: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
+    ordered = {key: value[key] for key in keys if key in value}
+    ordered.update((key, child) for key, child in value.items() if key not in ordered)
+    return ordered
+
+
+def canonicalize_device(device: dict[str, Any]) -> dict[str, Any]:
+    device = _ordered_object(device, CANONICAL_DEVICE_KEYS)
+    public = device.get("public")
+    if isinstance(public, dict):
+        device["public"] = _ordered_object(public, CANONICAL_PUBLIC_KEYS)
+    firmware = device.get("firmware")
+    if isinstance(firmware, dict):
+        firmware = _ordered_object(firmware, CANONICAL_FIRMWARE_KEYS)
+        package = firmware.get("package")
+        if isinstance(package, dict):
+            firmware["package"] = _ordered_object(package, CANONICAL_PACKAGE_KEYS)
+        device["firmware"] = firmware
+    return device
+
+
+def compose_catalog_data(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise DeviceProfileError("devices/catalog.json must contain a JSON object")
+    _reject_nulls(data, "catalog", "", "catalog")
+    unknown_top = set(data) - {"settings", "profiles", "devices"}
+    if unknown_top:
+        raise DeviceProfileError(f"devices/catalog.json has unknown fields: {', '.join(sorted(unknown_top))}")
+    settings = data.get("settings", {})
+    profiles = data.get("profiles", {})
+    devices = data.get("devices")
+    if not isinstance(settings, dict):
+        raise DeviceProfileError("devices/catalog.json: settings must be an object")
+    if not isinstance(profiles, dict):
+        raise DeviceProfileError("devices/catalog.json: profiles must be an object")
+    unknown_categories = set(profiles) - set(PROFILE_CATEGORIES)
+    if unknown_categories:
+        raise DeviceProfileError(
+            "devices/catalog.json: unknown profile categories: " + ", ".join(sorted(unknown_categories))
+        )
+    for category in PROFILE_CATEGORIES:
+        if not isinstance(profiles.get(category, {}), dict):
+            raise DeviceProfileError(f"devices/catalog.json: profiles.{category} must be an object")
+    if not isinstance(devices, dict) or not devices:
+        raise DeviceProfileError("devices/catalog.json: devices must be a non-empty object")
+
+    expanded: dict[str, Any] = {"settings": copy.deepcopy(settings), "devices": {}}
+    for slug, entry in devices.items():
+        if not isinstance(entry, dict):
+            raise _catalog_error(slug, "<root>", "device entry must be an object")
+        unknown_fields = set(entry) - {"profiles", "config", "overrides"}
+        if unknown_fields:
+            raise _catalog_error(slug, "<root>", f"unknown fields: {', '.join(sorted(unknown_fields))}")
+        selections = entry.get("profiles", {})
+        config = entry.get("config", {})
+        overrides = entry.get("overrides", {})
+        if not isinstance(selections, dict):
+            raise _catalog_error(slug, "profiles", "must be an object")
+        if not isinstance(config, dict):
+            raise _catalog_error(slug, "config", "must be an object")
+        if not isinstance(overrides, dict):
+            raise _catalog_error(slug, "overrides", "must be an object")
+        unknown = set(selections) - set(PROFILE_CATEGORIES)
+        if unknown:
+            raise _catalog_error(slug, "profiles", f"unknown categories: {', '.join(sorted(unknown))}")
+
+        composed: dict[str, Any] = {}
+        owners: dict[str, str] = {}
+        for category in PROFILE_CATEGORIES:
+            selected = selections.get(category, [])
+            names = [selected] if isinstance(selected, str) else selected
+            if not isinstance(names, list) or not all(isinstance(name, str) and name for name in names):
+                raise _catalog_error(slug, f"profiles.{category}", "must be a profile name or list of names")
+            for name in names:
+                profile = profiles.get(category, {}).get(name)
+                contributor = f"profiles.{category}.{name}"
+                if not isinstance(profile, dict):
+                    raise _catalog_error(slug, f"profiles.{category}", f"missing profile reference {name!r}")
+                _merge_profile(composed, profile, slug, contributor, owners)
+        _apply_overrides(composed, overrides, slug)
+        _merge_config(composed, config, slug)
+        expanded["devices"][slug] = canonicalize_device(composed)
+    return expanded
+
+
+def load_catalog_data(path: Path = DEVICE_CATALOG) -> dict[str, Any]:
+    return compose_catalog_data(load_json(path))
 
 
 def font_ids_from(path: Path) -> set[str]:
@@ -121,6 +381,18 @@ def validate_layout(slug: str, device: dict[str, Any], errors: list[str]) -> Non
             )
 
 
+def validate_capabilities(slug: str, device: dict[str, Any], errors: list[str]) -> None:
+    capabilities = require_object(slug, errors, device.get("capabilities"), "capabilities")
+    if capabilities is None:
+        return
+    unknown = sorted(set(capabilities) - {"imageSlots"})
+    if unknown:
+        errors.append(device_error(slug, "capabilities has unknown keys: " + ", ".join(unknown)))
+    image_slots = capabilities.get("imageSlots")
+    if not isinstance(image_slots, int) or isinstance(image_slots, bool) or not 0 <= image_slots <= 6:
+        errors.append(device_error(slug, "capabilities.imageSlots must be an integer from 0 to 6"))
+
+
 def validate_public(slug: str, device: dict[str, Any], errors: list[str]) -> None:
     public = require_object(slug, errors, device.get("public"), "public")
     if public is None:
@@ -131,6 +403,29 @@ def validate_public(slug: str, device: dict[str, Any], errors: list[str]) -> Non
     docs_path = public.get("docsPath")
     if isinstance(docs_path, str) and not docs_path.startswith("/screens/"):
         errors.append(device_error(slug, "public.docsPath must start with /screens/"))
+
+
+def public_docs_stem(docs_path: str) -> str:
+    return docs_path.rstrip("/").split("/")[-1]
+
+
+def validate_public_docs_paths(devices: dict[str, Any], errors: list[str]) -> None:
+    seen: dict[str, str] = {}
+    for slug, device in sorted(devices.items()):
+        if not isinstance(slug, str) or not isinstance(device, dict):
+            continue
+        public = device.get("public")
+        if not isinstance(public, dict):
+            continue
+        docs_path = public.get("docsPath")
+        if not isinstance(docs_path, str) or not docs_path:
+            continue
+        stem = public_docs_stem(docs_path)
+        previous = seen.get(stem)
+        if previous is not None:
+            errors.append(device_error(slug, f"public.docsPath stem duplicates {previous}: {stem}"))
+            continue
+        seen[stem] = slug
 
 
 def validate_build(slug: str, firmware: dict[str, Any] | None, errors: list[str]) -> None:
@@ -175,6 +470,14 @@ def validate_fonts(
         elif font_id not in available_ids:
             errors.append(device_error(slug, f"firmware.fonts.{role} references unknown font id {font_id!r}"))
 
+    display = firmware.get("display", {})
+    cover_art = display.get("coverArt") if isinstance(display, dict) else None
+    if isinstance(cover_art, dict):
+        for key in COVER_ART_FONT_KEYS:
+            font_id = cover_art.get(key)
+            if isinstance(font_id, str) and font_id and font_id not in available_ids:
+                errors.append(device_error(slug, f"firmware.display.coverArt.{key} references unknown font id {font_id!r}"))
+
 
 def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> None:
     firmware = device.get("firmware")
@@ -188,22 +491,75 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
         errors.append(device_error(slug, "firmware.display.wrapTallLabels must be true or false"))
     if "infoOnly" in display and not isinstance(display["infoOnly"], bool):
         errors.append(device_error(slug, "firmware.display.infoOnly must be true or false when set"))
+    if "imageCardDownloaders" in display:
+        errors.append(device_error(
+            slug,
+            "firmware.display.imageCardDownloaders has moved to capabilities.imageSlots",
+        ))
 
     if "mode" in display and display["mode"] not in VALID_DISPLAY_MODES:
         valid = ", ".join(sorted(VALID_DISPLAY_MODES))
         errors.append(device_error(slug, f"firmware.display.mode must be one of {valid} when set"))
 
-    for key in ("widthCompensationPercent", "volumeWidthCompensationPercent"):
+    modal = require_object(slug, errors, display.get("modal"), "firmware.display.modal")
+    if modal is not None:
+        unknown_modal = sorted(
+            set(modal) - {"layoutFamily", "density", "memoryTier", "baseTouchTarget"}
+        )
+        if unknown_modal:
+            errors.append(device_error(
+                slug,
+                "firmware.display.modal has unknown keys: " + ", ".join(unknown_modal),
+            ))
+        if modal.get("layoutFamily") not in VALID_MODAL_LAYOUT_FAMILIES:
+            valid = ", ".join(sorted(VALID_MODAL_LAYOUT_FAMILIES))
+            errors.append(device_error(
+                slug,
+                f"firmware.display.modal.layoutFamily must be one of {valid}",
+            ))
+        if modal.get("density") not in VALID_MODAL_DENSITIES:
+            valid = ", ".join(sorted(VALID_MODAL_DENSITIES))
+            errors.append(device_error(
+                slug,
+                f"firmware.display.modal.density must be one of {valid}",
+            ))
+        if modal.get("memoryTier") not in VALID_MODAL_MEMORY_TIERS:
+            valid = ", ".join(sorted(VALID_MODAL_MEMORY_TIERS))
+            errors.append(device_error(
+                slug,
+                f"firmware.display.modal.memoryTier must be one of {valid}",
+            ))
+        base_touch_target = modal.get("baseTouchTarget")
+        if not is_positive_int(base_touch_target):
+            errors.append(device_error(
+                slug,
+                "firmware.display.modal.baseTouchTarget must be a positive integer",
+            ))
+
+    for key in (
+        "widthCompensationPercent",
+        "volumeWidthCompensationPercent",
+        "mediaArtworkWidthCompensationPercent",
+    ):
         if key in display and not is_number(display[key]):
             errors.append(device_error(slug, f"firmware.display.{key} must be a number when set"))
-    if "imageCardDownloaders" in display:
-        value = display["imageCardDownloaders"]
-        if not isinstance(value, int) or isinstance(value, bool) or value < 0 or value > 6:
-            errors.append(device_error(slug, "firmware.display.imageCardDownloaders must be an integer from 0 to 6 when set"))
     if "imageCardDiagnostics" in display and not isinstance(display["imageCardDiagnostics"], bool):
         errors.append(device_error(slug, "firmware.display.imageCardDiagnostics must be true or false when set"))
     if "refreshRebuildsSubpages" in display and not isinstance(display["refreshRebuildsSubpages"], bool):
         errors.append(device_error(slug, "firmware.display.refreshRebuildsSubpages must be true or false when set"))
+
+    cover_art = require_object(slug, errors, display.get("coverArt"), "firmware.display.coverArt")
+    if cover_art is not None:
+        missing = sorted(set(COVER_ART_SUBSTITUTION_KEYS) - set(cover_art))
+        extra = sorted(set(cover_art) - set(COVER_ART_SUBSTITUTION_KEYS))
+        if missing:
+            errors.append(device_error(slug, "firmware.display.coverArt is missing: " + ", ".join(missing)))
+        if extra:
+            errors.append(device_error(slug, "firmware.display.coverArt has unknown keys: " + ", ".join(extra)))
+        for key in COVER_ART_SUBSTITUTION_KEYS:
+            value = cover_art.get(key)
+            if not isinstance(value, str) or not value:
+                errors.append(device_error(slug, f"firmware.display.coverArt.{key} must be a non-empty string"))
 
     correction = display.get("colorCorrection")
     if correction is not None:
@@ -301,6 +657,8 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
         "ethernetSelectable",
         "improvSerial",
         "touchscreenPackage",
+        "localVoiceServices",
+        "alarmDelayAudio",
         "apiNavigateAction",
         "esp32C6FirmwareUpdate",
     ):
@@ -355,6 +713,9 @@ def validate_screen_box(slug: str, errors: list[str], value: Any, name: str) -> 
     for key in ("width", "aspect"):
         if not isinstance(screen.get(key), str) or not screen.get(key):
             errors.append(device_error(slug, f"{name}.{key} must be a non-empty string"))
+    width = screen.get("width")
+    if isinstance(width, str) and not re.fullmatch(r"(?:[1-9]\d*(?:\.\d+)?|0\.\d+)%", width):
+        errors.append(device_error(slug, f"{name}.width must be a percentage, for example '100%'"))
     aspect = screen.get("aspect")
     if isinstance(aspect, str) and not re.fullmatch(r"[1-9]\d*/[1-9]\d*", aspect):
         errors.append(device_error(slug, f"{name}.aspect must look like '1024/600'"))
@@ -418,7 +779,10 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
 
     btn = require_object(slug, errors, web.get("btn"), "web.btn")
     if btn is not None:
-        for key in ("radius", "padding", "iconSize", "labelSize"):
+        for key in (
+            "radius", "padding", "iconSize", "labelSize",
+            "coverArtTitleSize", "coverArtArtistSize",
+        ):
             if not is_number(btn.get(key)):
                 errors.append(device_error(slug, f"web.btn.{key} must be a number"))
         if "borderWidth" in btn and not is_number(btn.get("borderWidth")):
@@ -443,6 +807,7 @@ def validate_manifest_data(data: Any, shared_font_ids: set[str] | None = None) -
     if not isinstance(devices, dict) or not devices:
         return [f"{rel(DEVICE_MANIFEST)} must contain a non-empty devices object"]
 
+    validate_public_docs_paths(devices, errors)
     shared_font_ids = common_font_ids() if shared_font_ids is None else shared_font_ids
     for slug, device in sorted(devices.items()):
         if not isinstance(slug, str) or not slug:
@@ -453,6 +818,7 @@ def validate_manifest_data(data: Any, shared_font_ids: set[str] | None = None) -
             continue
         validate_public(slug, device, errors)
         validate_layout(slug, device, errors)
+        validate_capabilities(slug, device, errors)
         validate_fonts(slug, device, shared_font_ids, errors)
         validate_display(slug, device, errors)
         validate_rotation(slug, device, errors)
@@ -468,6 +834,7 @@ def normalized_device_profile(slug: str, device: dict[str, Any], settings: dict[
     return {
         "slug": slug,
         "slots": device["slots"],
+        "capabilities": copy.deepcopy(device["capabilities"]),
         "public": copy.deepcopy(device["public"]),
         "layout": copy.deepcopy(device["layout"]),
         "rotation": copy.deepcopy(device.get("rotation") or {}),
@@ -484,7 +851,7 @@ def normalized_device_profile(slug: str, device: dict[str, Any], settings: dict[
 
 
 def load_device_profiles(path: Path = DEVICE_MANIFEST) -> dict[str, dict[str, Any]]:
-    data = load_manifest_data(path)
+    data = load_catalog_data() if path.resolve() == DEVICE_MANIFEST.resolve() else load_manifest_data(path)
     errors = validate_manifest_data(data)
     if errors:
         raise DeviceProfileError("\n".join(errors))
@@ -511,8 +878,12 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
             features["screenRotationDisplayOffset"] = rotation["displayOffset"]
     if profile.get("internalRelays"):
         features["internalRelays"] = copy.deepcopy(profile["internalRelays"])
-    if "voice_assistant" in (package.get("extraPackages") or {}):
+    if package.get("localVoiceServices"):
         features["voiceServices"] = True
+    if "battery" in (package.get("extraPackages") or {}):
+        features["battery"] = True
+    if package.get("alarmDelayAudio"):
+        features["alarmDelayAudio"] = True
     if package.get("subpageConfigChunks"):
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
     return features
@@ -521,24 +892,24 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
 def web_config(profile: dict[str, Any]) -> dict[str, Any]:
     layout = profile["layout"]
     features = web_features(profile)
-    display = profile["firmware"].get("display") or {}
-    image_card_limit = display.get("imageCardDownloaders", 4)
+    image_slot_capacity = profile["capabilities"]["imageSlots"]
     cfg: dict[str, Any] = {
         "slots": profile["slots"],
         "cols": layout["cols"],
         "rows": layout["rows"],
         "screenSize": profile["public"]["screenSize"],
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
-        "imageCardLimit": image_card_limit,
+        "imageSlotCapacity": image_slot_capacity,
     }
     for key, value in profile["web"].items():
         cfg[key] = copy.deepcopy(value)
         if key == "dragAnimation" and features:
             cfg["features"] = copy.deepcopy(features)
-    if image_card_limit == 0:
+    if image_slot_capacity == 0:
         disabled = list(cfg.get("disabledCardTypes") or [])
-        if "image" not in disabled:
-            disabled.append("image")
+        for card_type in IMAGE_CARD_PICKER_TYPES:
+            if card_type not in disabled:
+                disabled.append(card_type)
         cfg["disabledCardTypes"] = disabled
     if features and "features" not in cfg:
         cfg["features"] = copy.deepcopy(features)
@@ -561,8 +932,12 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "large_sensor_font": fonts["largeSensor"],
         "large_sensor_unit_offset_percent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "media_title_font": fonts["mediaTitle"],
+        "media_control_title_font": fonts.get("mediaControlTitle"),
+        "media_cover_art_title_font": fonts.get("mediaCoverArtTitle"),
+        "media_cover_art_artist_font": fonts.get("mediaCoverArtArtist"),
         "volume_number_font": fonts["volumeNumber"],
         "volume_label_font": fonts["volumeLabel"],
+        "cover_art": copy.deepcopy(display["coverArt"]),
         "climate_card_icon_font": fonts.get("climateCardIcon"),
         "subpage_chevron_font": fonts.get("subpageChevron"),
         "climate_option_title_font": fonts.get("climateOptionTitle"),
@@ -570,6 +945,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "wrap_tall_labels": display["wrapTallLabels"],
         "info_only": bool(display.get("infoOnly")),
         "display_mode": display.get("mode", "color"),
+        "modal": copy.deepcopy(display["modal"]),
         "package": firmware.get("package"),
     }
     if "portraitCols" in layout:
@@ -578,6 +954,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         slot["width_compensation_percent"] = display["widthCompensationPercent"]
     if display.get("volumeWidthCompensationPercent", 100) != 100:
         slot["volume_width_compensation_percent"] = display["volumeWidthCompensationPercent"]
+    if display.get("mediaArtworkWidthCompensationPercent", 100) != 100:
+        slot["media_artwork_width_compensation_percent"] = display["mediaArtworkWidthCompensationPercent"]
     if display.get("subpageChevronX", 0) != 0:
         slot["subpage_chevron_x"] = display["subpageChevronX"]
     if display.get("subpageChevronY", 2) != 2:
@@ -591,8 +969,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
             "green": correction.get("greenPercent", 100),
             "blue": correction.get("bluePercent", 100),
         }
-    if display.get("imageCardDownloaders", 4) != 4:
-        slot["image_card_downloaders"] = display["imageCardDownloaders"]
+    slot["image_slot_capacity"] = profile["capabilities"]["imageSlots"]
     if display.get("imageCardDiagnostics"):
         slot["image_card_diagnostics"] = True
     if display.get("refreshRebuildsSubpages"):
@@ -608,6 +985,12 @@ def slot_devices(path: Path = DEVICE_MANIFEST) -> list[dict[str, Any]]:
 
 def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
     package = profile["firmware"]["package"]
+    disabled_card_types = set(profile["web"].get("disabledCardTypes", []))
+    image_card_types = [
+        card_type
+        for card_type in IMAGE_CARD_PICKER_TYPES
+        if profile["capabilities"]["imageSlots"] > 0 and card_type not in disabled_card_types
+    ]
     capability = {
         "slug": profile["slug"],
         "installSlug": profile["slug"],
@@ -617,6 +1000,8 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "resolution": profile["public"]["resolution"],
         "orientation": profile["public"]["orientation"],
         "slots": profile["slots"],
+        "imageSlots": profile["capabilities"]["imageSlots"],
+        "imageCardTypes": image_card_types,
         "grid": {
             "rows": profile["layout"]["rows"],
             "cols": profile["layout"]["cols"],
@@ -627,7 +1012,6 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "ethernetManualInstall": bool(package.get("ethernetSelectable")),
         "subpages": "subpage" not in profile["web"].get("disabledCardTypes", []),
     }
-    display = profile["firmware"].get("display") or {}
     return capability
 
 

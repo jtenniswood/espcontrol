@@ -1,0 +1,68 @@
+[
+  {
+    "id": "foundation-invalid-slot",
+    "patch": "foundation-invalid-slot.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware && ctest --test-dir build/tests/firmware --output-on-failure"
+    ]
+  },
+  {
+    "id": "configuration-store-checksum",
+    "patch": "configuration-store-checksum.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware --target configuration_store_test && ctest --test-dir build/tests/firmware -R configuration_store_test --output-on-failure"
+    ]
+  },
+  {
+    "id": "configuration-service-durable-first",
+    "patch": "configuration-service-durable-first.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware --target configuration_service_test && ctest --test-dir build/tests/firmware -R configuration_service_test --output-on-failure"
+    ]
+  },
+  {
+    "id": "ha-duplicate-read-fanout",
+    "patch": "ha-duplicate-read-fanout.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware && ctest --test-dir build/tests/firmware --output-on-failure"
+    ],
+    "legacy_command": [
+      "python3",
+      "scripts/check_firmware_ha_bindings.py"
+    ]
+  },
+  {
+    "id": "saved-config-compact-marker",
+    "patch": "saved-config-compact-marker.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware && ctest --test-dir build/tests/firmware --output-on-failure"
+    ],
+    "legacy_command": [
+      "python3",
+      "scripts/check_firmware_parser.py"
+    ]
+  },
+  {
+    "id": "web-config-comma-encoding",
+    "patch": "web-config-comma-encoding.patch",
+    "command": [
+      "node",
+      "--test",
+      "tests/web/unit/encoding.test.js"
+    ],
+    "legacy_command": [
+      "node",
+      "scripts/check_config_formats.js"
+    ]
+  }
+]

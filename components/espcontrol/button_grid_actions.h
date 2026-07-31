@@ -1,5 +1,7 @@
 #pragma once
 
+#include "media_volume_capability.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // ── Home Assistant actions ────────────────────────────────────────────
@@ -669,6 +671,19 @@ inline void send_media_volume_action(const std::string &entity_id, int value) {
   send_media_player_action(entity_id, "media_player.volume_set", "volume_level", buf);
 }
 
+inline void send_media_volume_command(
+    const std::string &entity_id,
+    const espcontrol::media::VolumeCommand &command) {
+  using espcontrol::media::VolumeCommandKind;
+  if (command.kind == VolumeCommandKind::SET_ABSOLUTE) {
+    send_media_volume_action(entity_id, command.value);
+  } else if (command.kind == VolumeCommandKind::STEP_DOWN) {
+    send_media_player_action(entity_id, "media_player.volume_down");
+  } else if (command.kind == VolumeCommandKind::STEP_UP) {
+    send_media_player_action(entity_id, "media_player.volume_up");
+  }
+}
+
 inline void send_media_seek_action(const std::string &entity_id, int value, float duration) {
   if (duration <= 0.0f) return;
   if (value < 0) value = 0;
@@ -679,24 +694,82 @@ inline void send_media_seek_action(const std::string &entity_id, int value, floa
   send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
 }
 
+inline void send_media_source_action(const std::string &entity_id,
+                                     const std::string &source) {
+  if (entity_id.empty() || source.empty()) return;
+  send_media_player_action(entity_id, "media_player.select_source", "source", source.c_str());
+}
+
 inline void send_media_playback_action(const std::string &entity_id,
                                        const std::string &mode) {
   if (entity_id.empty()) return;
   send_media_player_action(entity_id, media_service_for_mode(mode));
 }
 
+inline uint32_t next_media_playlist_call_id() {
+  static uint32_t call_id = 400000;
+  return call_id++;
+}
+
 inline void send_media_playlist_action(const ParsedCfg &p) {
   if (p.entity.empty()) return;
-  std::string content_id = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
-  if (content_id.empty()) return;
-  std::string content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
-  if (content_type.empty()) content_type = "playlist";
+  const auto config = espcontrol::media::decode_config_v1(p);
+  const std::string &content_id = config.playlist_content_id;
+  if (content_id.empty()) {
+    ESP_LOGW("media", "Playlist button for %s has no media content ID", p.entity.c_str());
+    return;
+  }
+  const std::string &content_type = config.playlist_content_type;
+  const std::string &player_source = config.playlist_player_source;
+  ESP_LOGI("media", "Playlist button: entity=%s content_type=%s content_id=%s playback_device=%s",
+           p.entity.c_str(), content_type.c_str(), content_id.c_str(),
+           player_source.empty() ? "(none)" : player_source.c_str());
+  if (!player_source.empty()) {
+    esphome::api::HomeassistantActionRequest source_req;
+    uint32_t source_call_id = next_media_playlist_call_id();
+    if (ha_action_begin(source_req, "media_player.select_source", false, 2, source_call_id)) {
+      ha_action_add_entity(source_req, p.entity);
+      ha_action_add_data(source_req, "source", player_source.c_str());
+      std::string entity_id = p.entity;
+      std::string source = player_source;
+      ha_register_action_response_callback(
+        source_req.call_id,
+        [entity_id, source](const esphome::api::ActionResponse &response) {
+          if (response.is_success()) {
+            ESP_LOGI("media", "media_player.select_source accepted for %s source=%s",
+                     entity_id.c_str(), source.c_str());
+            return;
+          }
+          ESP_LOGW("media", "media_player.select_source failed for %s source=%s: %s",
+                   entity_id.c_str(), source.c_str(), response.get_error_message().c_str());
+        });
+      if (!ha_action_send(source_req)) {
+        ha_cancel_action_response_callback(source_req.call_id, "send failed");
+      }
+    }
+  }
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, "media_player.play_media", false, 3)) return;
+  uint32_t play_call_id = next_media_playlist_call_id();
+  if (!ha_action_begin(req, "media_player.play_media", false, 3, play_call_id)) return;
   ha_action_add_entity(req, p.entity);
   ha_action_add_data(req, "media_content_id", content_id.c_str());
   ha_action_add_data(req, "media_content_type", content_type.c_str());
-  ha_action_send(req);
+  std::string entity_id = p.entity;
+  ha_register_action_response_callback(
+    req.call_id,
+    [entity_id, content_type, content_id](const esphome::api::ActionResponse &response) {
+      if (response.is_success()) {
+        ESP_LOGI("media", "media_player.play_media accepted for %s type=%s id=%s",
+                 entity_id.c_str(), content_type.c_str(), content_id.c_str());
+        return;
+      }
+      ESP_LOGW("media", "media_player.play_media failed for %s type=%s id=%s: %s",
+               entity_id.c_str(), content_type.c_str(), content_id.c_str(),
+               response.get_error_message().c_str());
+    });
+  if (!ha_action_send(req)) {
+    ha_cancel_action_response_callback(req.call_id, "send failed");
+  }
 }
 
 inline bool media_fast_press_mode(const std::string &mode) {
@@ -718,8 +791,8 @@ inline bool media_fast_press_consume(int slot_num) {
 
 inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type != "media") return;
   std::string mode = media_card_mode(p.sensor);
@@ -732,6 +805,9 @@ inline void handle_button_press(const std::string &cfg, int slot_num,
 
 struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
+struct MediaControlCtx;
+inline void media_control_open_modal(MediaControlCtx *ctx);
+inline MediaControlCtx *grid_media_control_runtime_for_owner(lv_obj_t *owner);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 struct ImageCardCtx;
@@ -757,152 +833,73 @@ inline void cover_control_open_modal(CoverControlCtx *ctx);
 struct LightControlCtx;
 inline void light_control_open_modal(LightControlCtx *ctx);
 
+namespace espcontrol::cards {
+inline bool basic_action_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config,
+    int slot_number, lv_obj_t *button);
+inline bool numeric_selectable_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool cleaning_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool access_cover_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool cover_modal_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool navigation_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool image_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool light_control_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool fan_control_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool climate_control_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool alarm_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool media_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool legacy_compatibility_driver_handle_main_click(
+    const Context &context, lv_obj_t *button);
+}
+
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (media_fast_press_consume(slot_num)) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
-  if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
-      p.type == "door_window" ||
-      p.type == "presence" ||
-      p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
-      p.type == "weather_forecast") return;
-  if (p.type == "screen_lock") {
-    screen_lock_toggle();
-  } else if (p.type == "push") {
-    std::string label = p.label;
-    if (label.empty()) {
-      char buf[16];
-      snprintf(buf, sizeof(buf), "Push %d", slot_num);
-      label = buf;
-    }
-    esphome::api::HomeassistantActionRequest req;
-    if (!ha_action_begin(req, "esphome.push_button_pressed", true, 2)) return;
-    ha_action_add_data(req, "label", label.c_str());
-    char slot_buf[8];
-    snprintf(slot_buf, sizeof(slot_buf), "%d", slot_num);
-    ha_action_add_data(req, "slot", slot_buf);
-    ha_action_send(req);
-  } else if (p.type == "subpage") {
-    lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
-    if (sub_scr)
-      lv_scr_load_anim(sub_scr, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
-  } else if (p.type == "alarm") {
-    AlarmCardCtx *ctx = (AlarmCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (alarm_card_context_valid(ctx)) alarm_card_open_page(ctx);
-  } else if (p.type == "alarm_action") {
-    AlarmActionCtx *ctx = (AlarmActionCtx *)lv_obj_get_user_data(btn_obj);
-    if (alarm_action_context_valid(ctx)) alarm_action_activate(ctx);
-  } else if (fan_non_speed_card_type(p.type)) {
-    FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) fan_card_handle_click(ctx);
-  } else if (p.type == "fan_control") {
-    FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) fan_control_open_modal(ctx);
-  } else if (p.type == "cover" && cover_modal_mode(p.sensor)) {
-    CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) cover_control_open_modal(ctx);
-  } else if (p.type == "light_control") {
-    LightControlCtx *ctx = (LightControlCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) light_control_open_modal(ctx);
-  } else if (p.type == "garage") {
-    if (garage_command_mode(p.sensor)) {
-      send_cover_command_action(p);
-    } else if (garage_card_show_status(p)) {
-      return;
-    } else if (!p.entity.empty()) {
-      set_card_checked_state(btn_obj, true);
-      send_toggle_action(p.entity);
-    }
-  } else if (p.type == "lock") {
-    if (lock_command_mode(p.sensor)) {
-      send_lock_command_action(p);
-    } else {
-      LockCardCtx *ctx = (LockCardCtx *)lv_obj_get_user_data(btn_obj);
-      if (ctx) send_lock_action(ctx);
-      else send_lock_action(p.entity, "");
-    }
-  } else if (p.type == "cover" && cover_command_mode(p.sensor)) {
-    CoverCommandCtx *ctx = (CoverCommandCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) send_cover_command_action(*ctx);
-    else send_cover_command_action(p);
-  } else if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
-    if (!p.entity.empty()) {
-      set_card_checked_state(btn_obj, true);
-      send_toggle_action(p.entity);
-    }
-  } else if (p.type == "internal") {
-    if (!p.entity.empty()) send_internal_relay_action(p);
-  } else if (p.type == "local" || action_card_local_action(p)) {
-    if (!p.entity.empty()) send_local_action(p.entity);
-  } else if (p.type == "action") {
-    if (action_card_option_select(p)) {
-      OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
-      if (ctx) option_select_open_modal(ctx);
-    } else if (action_script_confirmation_enabled(p) && btn_obj) {
-      switch_confirmation_open_modal(p, btn_obj, false);
-    } else {
-      send_action_card_action(p);
-    }
-  } else if (p.type == "vacuum") {
-    VacuumCardCtx *ctx = (VacuumCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) {
-      send_vacuum_card_action(ctx);
-    } else if (!vacuum_card_read_only(p)) {
-      VacuumCardCtx fallback;
-      fallback.entity_id = p.entity;
-      fallback.mode = vacuum_card_mode(p.sensor);
-      fallback.area_id = p.unit;
-      send_vacuum_card_action(&fallback);
-    }
-  } else if (p.type == "lawn_mower") {
-    LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) {
-      send_lawn_mower_card_action(ctx);
-    } else if (!lawn_mower_card_read_only(p)) {
-      LawnMowerCardCtx fallback;
-      fallback.entity_id = p.entity;
-      fallback.mode = lawn_mower_card_mode(p.sensor);
-      send_lawn_mower_card_action(&fallback);
-    }
-  } else if (p.type == "webhook") {
-    send_webhook_action(p);
-  } else if (p.type == "todo") {
-    TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
-  } else if (p.type == "media") {
-    std::string mode = media_card_mode(p.sensor);
-    if (mode == "volume") {
-      MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
-      if (ctx) media_volume_open_modal(ctx);
-    } else if (mode == "playlist") {
-      send_media_playlist_action(p);
-    } else if (mode == "now_playing" && p.precision == "play_pause") {
-      send_media_playback_action(p.entity, "play_pause");
-    } else if (media_playback_button_mode(mode)) {
-      send_media_playback_action(p.entity, mode);
-    }
-  } else if (p.type == "climate") {
-    ClimateControlCtx *ctx = (ClimateControlCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) climate_control_open_modal(ctx);
-  } else if (p.type == "image") {
-    ImageCardCtx *ctx = (ImageCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) image_card_open_modal(ctx);
-  } else if (p.type == "light_temperature") {
-    // Tap does nothing; only dragging the slider sends commands.
-  } else if (brightness_slider_type(p.type) || p.type == "cover") {
-    if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
-  } else {
-    if (!p.entity.empty()) {
-      bool currently_on = btn_obj && lv_obj_has_state(btn_obj, LV_STATE_CHECKED);
-      if (switch_confirmation_required(p, currently_on) && btn_obj &&
-          !is_button_entity(p.entity)) {
-        switch_confirmation_open_modal(p, btn_obj, !currently_on);
-      } else {
-        send_toggle_action(p.entity);
-      }
-    }
-  }
+  const auto context = card_runtime_context(p);
+  ESP_LOGI("button", "Main button %d clicked: type=%s entity=%s mode=%s label=%s",
+           slot_num, p.type.c_str(), p.entity.c_str(), p.sensor.c_str(), p.label.c_str());
+  if (card_runtime_passive(context)) return;
+  if (espcontrol::cards::basic_action_driver_handle_main_click(
+        context, p, slot_num, btn_obj)) return;
+  if (espcontrol::cards::numeric_selectable_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::cleaning_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::access_cover_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::cover_modal_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::navigation_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::image_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::light_control_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::fan_control_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::climate_control_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::alarm_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::media_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::legacy_compatibility_driver_handle_main_click(
+        context, btn_obj)) return;
+  ESP_LOGE("card_runtime", "Card has no main-grid action driver: type=%s",
+           p.type.c_str());
 }

@@ -7,6 +7,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-jc1060p470"
   friendly_name: "EspControl 7inch"
   espcontrol_component_url: "file:///config"
@@ -27,4 +28,4 @@ captive_portal:
 
 web_server:
   js_url: ""
-  js_include: "../docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"
+  js_include: "../docs/public/webserver/www.js"

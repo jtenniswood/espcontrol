@@ -5,17 +5,18 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { loadBundledWebSource } = require("./web_source");
+const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
+const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
 
-function loadHooks() {
+function loadHooks(search = "") {
+  const params = new URLSearchParams(search);
   const sandbox = {
     __ESPCONTROL_TEST_HOOKS__: {},
     console: { log() {}, warn() {}, error() {} },
-    location: { search: "" },
+    location: { search },
     URLSearchParams,
     setTimeout,
     clearTimeout,
@@ -26,9 +27,11 @@ function loadHooks() {
       addEventListener() {},
     },
   };
+  const device = params.get("device");
+  if (device) sandbox.__ESPCONTROL_DEVICE_PROFILE__ = device;
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  vm.runInContext(loadBundledWebSource(), sandbox, { filename: SOURCE });
+  vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
 
@@ -58,6 +61,7 @@ function throwsBackupMessage(fn, expected) {
 }
 
 const hooks = loadHooks();
+const s3Hooks = loadHooks("?device=guition-esp32-s3-4848s040");
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -84,7 +88,10 @@ const v2 = hooks.createBackupConfig({
     timezone: "Europe/London (GMT+0)",
     clock_bar: true,
     cover_art_hide_external_input: true,
+    home_assistant_artwork_protocol: "https",
     home_assistant_artwork_port: 80,
+    firmware_auto_update: false,
+    firmware_update_frequency: "Weekly",
   },
   screen: { brightness_day: 80, schedule_mode: "clock" },
 });
@@ -113,7 +120,60 @@ assert.deepStrictEqual(plain(v2.subpage_objects["1"]), {
 assert.strictEqual(v2.buttons[1].type, "weather", "exports canonical card types");
 assert.strictEqual(v2.buttons[1].precision, "tomorrow", "exports migrated card details");
 assert.strictEqual(v2.settings.cover_art_hide_external_input, true, "exports cover art external-input setting");
+assert.strictEqual(v2.settings.home_assistant_artwork_protocol, "https", "exports Home Assistant artwork protocol setting");
 assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home Assistant artwork port setting");
+assert.strictEqual(v2.settings.firmware_auto_update, false, "exports firmware auto-update setting");
+assert.strictEqual(v2.settings.firmware_update_frequency, "Weekly", "exports firmware update frequency setting");
+
+const playlistButton = {
+  entity: "media_player.kitchen",
+  label: "Morning Mix",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "playlist",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+};
+hooks.setMediaPlaylistContentId(playlistButton, "media-source://music/morning,mix=50%");
+hooks.setMediaPlaylistContentType(playlistButton, "music");
+hooks.setMediaPlaylistPlayerSource(playlistButton, "Kitchen, Main=Zone 50%");
+const playlistBackup = hooks.createBackupConfig({
+  device: "panel-a",
+  slots: 1,
+  exported_at: "2026-05-24T12:00:00.000Z",
+  grid: [1],
+  buttons: [playlistButton],
+});
+assert.strictEqual(
+  playlistBackup.buttons[0].options,
+  "playlist_content_id=media-source%3A//music/morning%2Cmix=50%25,playlist_content_type=music,playlist_player_source=Kitchen%2C Main=Zone 50%25",
+  "backup exports encoded media playlist option values"
+);
+const normalizedPlaylistBackup = hooks.normalizeBackupConfig(playlistBackup);
+assert.strictEqual(
+  hooks.mediaPlaylistContentId(normalizedPlaylistBackup.buttons[0]),
+  "media-source://music/morning,mix=50%",
+  "backup normalization keeps media playlist content ID punctuation"
+);
+assert.strictEqual(
+  hooks.mediaPlaylistPlayerSource(normalizedPlaylistBackup.buttons[0]),
+  "Kitchen, Main=Zone 50%",
+  "backup normalization keeps media playlist player source punctuation"
+);
+const playlistImportPlan = hooks.planBackupImport(playlistBackup, { device: "panel-a", slots: 1 });
+assert.deepStrictEqual(plain(playlistImportPlan.warnings), [], "playlist backup same-device import has no warnings");
+assert.strictEqual(
+  hooks.mediaPlaylistContentId(playlistImportPlan.buttons[0]),
+  "media-source://music/morning,mix=50%",
+  "backup import keeps media playlist content ID punctuation"
+);
+assert.strictEqual(
+  hooks.mediaPlaylistPlayerSource(playlistImportPlan.buttons[0]),
+  "Kitchen, Main=Zone 50%",
+  "backup import keeps media playlist player source punctuation"
+);
 
 const normalizedV1 = hooks.normalizeBackupConfig({
   version: 1,
@@ -130,6 +190,7 @@ const normalizedV1 = hooks.normalizeBackupConfig({
 
 assert.strictEqual(normalizedV1.version, 2, "v1 imports normalize to v2");
 assert.strictEqual(normalizedV1.format, hooks.BACKUP_FORMAT, "v1 imports gain the v2 marker");
+assert.deepStrictEqual(plain(normalizedV1.source), { device: "panel-a", slots: 2 }, "v1 imports preserve source metadata");
 assert.deepStrictEqual(buttonShape(normalizedV1.buttons[0]), buttonShape({
   entity: "weather.home",
   label: "",
@@ -226,6 +287,41 @@ assert.strictEqual(
   structuredCrossDevicePlan.subpages["1"].buttons[0].label,
   "Relax",
   "structured subpage cross-device import keeps readable object content"
+);
+
+const unsupportedImageBackup = {
+  version: 2,
+  format: hooks.BACKUP_FORMAT,
+  device: "panel-a",
+  button_order: "1",
+  buttons: [{ type: "image", entity: "camera.front_door", label: "Front Door" }],
+};
+throwsBackupMessage(
+  () => s3Hooks.planBackupImport(unsupportedImageBackup, {
+    device: "guition-esp32-s3-4848s040",
+    slots: 9,
+  }),
+  "This controller does not support the image card type in this backup."
+);
+throwsBackupMessage(
+  () => s3Hooks.planBackupImport({
+    version: 2,
+    format: hooks.BACKUP_FORMAT,
+    device: "panel-a",
+    button_order: "1",
+    buttons: [{ type: "subpage", label: "Cameras" }],
+    subpage_objects: {
+      1: {
+        order: ["1", "B"],
+        back_label: "Back",
+        buttons: [{ type: "image", entity: "camera.front_door", label: "Front Door" }],
+      },
+    },
+  }, {
+    device: "guition-esp32-s3-4848s040",
+    slots: 9,
+  }),
+  "This controller does not support the image card type in this backup."
 );
 
 throwsBackupMessage(

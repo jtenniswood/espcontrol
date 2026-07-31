@@ -27,7 +27,7 @@ Use a Lawn Mower card when you want to show the mower state, start mowing, send 
 | **Dock** | Sends `lawn_mower.dock`. |
 | **Pause / Resume** | Sends `lawn_mower.pause` while the mower is mowing, and `lawn_mower.start_mowing` otherwise. |
 
-Control cards are disabled when the mower entity is unavailable or unknown.
+When the mower entity is unavailable or unknown, status cards show that state and control cards keep their normal appearance. Any command still depends on Home Assistant accepting the action.
 
 ::: info Requires Home Assistant actions
 Lawn Mower control cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).

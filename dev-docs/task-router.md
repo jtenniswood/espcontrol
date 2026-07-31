@@ -12,7 +12,7 @@ rendering, Home Assistant actions, or subpage card behavior.
 1. Read [Card Type Map](card-type-map.md) for the saved type and related files.
 2. Edit first:
    - `common/config/card_contract.json`
-   - `src/webserver/types/<type>.js`
+   - `src/webserver/cards/<type>.ts`
    - `components/espcontrol/button_grid_<type>.h`
 3. Regenerate with `python3 scripts/build.py` when the contract or web bundle
    changes.
@@ -33,7 +33,7 @@ or export behavior, model fields, aliases, or compatibility fixtures.
 
 1. Read [Compatibility Contract](compatibility-contract.md).
 2. Edit first:
-   - `src/webserver/modules/config_codec.js`
+   - `src/webserver/application/config_codec.ts`
    - `components/espcontrol/button_grid_config.h`
    - `compatibility/fixtures/product_compatibility.json`
 3. Regenerate only if contract, model, or web generated inputs also changed.

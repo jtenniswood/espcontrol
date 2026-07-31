@@ -27,9 +27,8 @@ Example:
 
 ```text
 settings_language=Language
-settings_theme=Theme
 ```
 
-For another language, `settings_language` and `settings_theme` stay unchanged. Only `Language` and `Theme` are translated.
+For another language, `settings_language` stays unchanged. Only `Language` is translated.
 
 The strings file is for words shown on the panel screen. It does not include text that comes from the Home Assistant API, such as entity names, custom labels, option values, or media titles. It also does not include text shown only by the built-in webserver setup page.

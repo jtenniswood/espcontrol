@@ -11,7 +11,8 @@ header-only C++ under `components/espcontrol/`.
 | `components/espcontrol/button_grid_grid.h` | Main grid creation, card setup, runtime wiring, and subpage wiring. |
 | `components/espcontrol/button_grid_config.h` | Compact saved config parser and normalized `ParsedCfg`. |
 | `components/espcontrol/button_grid_<type>.h` | Card-specific rendering and runtime behavior. |
-| `components/espcontrol/button_grid_modal.h` | Shared modal shell behavior. |
+| `components/espcontrol/button_grid_modal.h` | Shared modal registry, lifecycle, LVGL shell, and layout adapters. |
+| `components/espcontrol/button_grid_modal_layout.h` | Pure device-aware frame, tab, and content layout recipes. |
 | `components/espcontrol/button_grid_subpages.h` | Subpage support. |
 | `components/espcontrol/icons.h` | Icon lookup. |
 | `components/espcontrol/i18n_generated.h` | Generated translation strings. |
@@ -49,19 +50,33 @@ Use an existing card with similar behavior as the template:
 
 ## Modal Pattern
 
-Cards that open a full-screen detail view should use the shared modal shell:
+Cards that open a full-screen detail view use the shared modal system. See
+[Modal Layout System](modal-layout-system.md) for the full ownership model.
 
 1. Add a value to `ControlModalKind` in `button_grid_modal.h`.
-2. Store the card's runtime state in a small context struct.
-3. Save the context on the button with `lv_obj_set_user_data`.
-4. Attach a click handler in the runtime pass.
-5. Open the modal with `control_modal_open_shell(...)`.
+2. Add its presentation, chrome, and dismissal policy to
+   `control_modal_definition(...)`.
+3. Store the card's runtime state in a small context struct.
+4. Save the context on the button with `lv_obj_set_user_data`.
+5. Attach a click handler in the runtime pass.
+6. Open the modal with `control_modal_open_shell(...)`.
+7. Use the shared tab row and content layout recipes instead of repeating modal
+   frame geometry inside the card header.
 
 For a simple static card, the context usually needs the button pointer, display
 font pointers, width compensation, and any text or state the modal should render.
 For cards that subscribe to Home Assistant state, keep the context updated from
 the subscription callback and guard async work as described in the LVGL gotchas
 below.
+
+Modal layout changes must preserve the geometry fixtures for every display
+profile or deliberately update the fixtures and generated visual reference.
+Run:
+
+```bash
+npm run check:firmware-modal-layouts
+npm run check:firmware-modals
+```
 
 ## Fonts and Glyphs
 

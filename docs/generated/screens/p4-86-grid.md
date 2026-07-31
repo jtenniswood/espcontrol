@@ -12,6 +12,7 @@ Flexible card sizes are supported: Single, Tall, Wide, and Large.
 | Screen | 4 inches, 720 x 720, Square |
 | Processor | ESP32-P4 |
 | Built-in relays | 2 built-in relays |
+| Image-based cards | Up to 6 simultaneous Image or Media Cover Art cards |
 | Rotation support | Yes |
 | Browser install slug | `esp32-p4-86` |
 | Ethernet option | Yes, manual ESPHome install only |

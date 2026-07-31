@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Verify every icon in icons.json has an explicit group in IconGallery.vue.
+"""Verify icon gallery groups match icons.json.
 
 Usage:
-    python scripts/check_icon_groups.py       # exit 1 if any icon is ungrouped
+    python scripts/check_icon_groups.py       # exit 1 if any icon grouping is stale
 """
 import json
 import re
@@ -41,11 +41,13 @@ def main():
 
     stale = sorted(grouped_names - icon_names)
     if stale:
-        print(f"WARNING: {len(stale)} name(s) in ICON_GROUPS no longer exist in icons.json:")
+        print(f"ERROR: {len(stale)} name(s) in ICON_GROUPS no longer exist in icons.json:")
         for name in stale:
             print(f"  {name}")
+        print("\nRemove stale group assignments from docs/.vitepress/theme/components/IconGallery.vue")
+        return 1
 
-    print(f"All {len(icon_names)} icons have group assignments.")
+    print(f"All {len(icon_names)} icons have current group assignments.")
     return 0
 
 

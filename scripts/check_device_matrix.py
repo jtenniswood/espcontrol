@@ -27,6 +27,14 @@ def run_fails(args: list[str]) -> None:
     assert code != 0, f"{args} unexpectedly passed"
 
 
+def expect_build_file_validation_fails(profiles: dict[str, dict], manifest: Path) -> None:
+    try:
+        device_matrix.validate_matrix_build_files(profiles, manifest)
+    except device_matrix.DeviceMatrixError:
+        return
+    raise AssertionError("missing build files unexpectedly passed")
+
+
 def manifest_data() -> dict:
     return device_matrix.load_manifest()
 
@@ -72,6 +80,33 @@ def test_missing_chip_metadata_fails() -> None:
         run_fails(["--manifest", str(manifest), "release"])
 
 
+def test_matrix_build_files_are_required() -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        manifest = root / "devices" / "manifest.json"
+        manifest.parent.mkdir()
+        profiles = {"demo-device": {}}
+        expect_build_file_validation_fails(profiles, manifest)
+
+        builds = root / "builds"
+        builds.mkdir()
+        (builds / "demo-device.yaml").write_text("esphome:\n", encoding="utf-8")
+        expect_build_file_validation_fails(profiles, manifest)
+
+
+def test_matrix_build_files_accept_standard_outputs() -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        manifest = root / "devices" / "manifest.json"
+        manifest.parent.mkdir()
+        builds = root / "builds"
+        builds.mkdir()
+        for name in ("demo-device.yaml", "demo-device.factory.yaml"):
+            (builds / name).write_text("esphome:\n", encoding="utf-8")
+
+        device_matrix.validate_matrix_build_files({"demo-device": {}}, manifest)
+
+
 def main() -> int:
     tests = [
         test_release_matrix_shape,
@@ -79,6 +114,8 @@ def main() -> int:
         test_pr_matrix_includes_every_manifest_slug,
         test_release_matrix_includes_every_manifest_slug,
         test_missing_chip_metadata_fails,
+        test_matrix_build_files_are_required,
+        test_matrix_build_files_accept_standard_outputs,
     ]
     for test in tests:
         test()

@@ -55,13 +55,16 @@ inline void switch_confirmation_hide_modal() {
 
 inline void switch_confirmation_confirm() {
   SwitchConfirmationModalUi &ui = switch_confirmation_modal_ui();
+  bool is_garage_command = ui.cfg.type == "garage" && garage_command_mode(ui.cfg.sensor);
   if (action_script_confirmation_enabled(ui.cfg)) {
     send_action_card_action(ui.cfg);
+  } else if (is_garage_command) {
+    send_cover_command_action(ui.cfg);
   } else if (!ui.cfg.entity.empty()) {
     if (ui.turn_on) send_turn_on_action(ui.cfg.entity);
     else send_turn_off_action(ui.cfg.entity);
   }
-  if (ui.btn_obj && !action_script_confirmation_enabled(ui.cfg)) {
+  if (ui.btn_obj && !action_script_confirmation_enabled(ui.cfg) && !is_garage_command) {
     if (ui.turn_on) lv_obj_add_state(ui.btn_obj, LV_STATE_CHECKED);
     else lv_obj_clear_state(ui.btn_obj, LV_STATE_CHECKED);
   }
@@ -78,7 +81,7 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::SWITCH_CONFIRMATION, btn_obj, 100, icon_font,
-    "\U000F0156", true, switch_confirmation_hide_modal);
+    switch_confirmation_hide_modal);
   SwitchConfirmationModalUi &ui = switch_confirmation_modal_ui();
   ui.cfg = p;
   ui.btn_obj = btn_obj;

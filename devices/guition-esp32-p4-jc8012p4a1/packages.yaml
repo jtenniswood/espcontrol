@@ -7,6 +7,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/common/assets/cover_art_placeholder.svg"
   device_slug: "guition-esp32-p4-jc8012p4a1"
   firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1"
   firmware_version: "dev"
@@ -78,6 +79,16 @@ substitutions:
   cover_art_text_color: "0xFFF5E0"
   cover_art_square_overlay: "false"
   cover_art_live_image_updates: "false"
+  battery_status_apply_code: |-
+    if (id(battery_status_enabled).state) {
+      lv_obj_align(id(battery_status_button), LV_ALIGN_TOP_RIGHT,
+                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);
+      lv_obj_clear_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
+    }
+  battery_status_hide_code: |-
+    lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
 
 packages:
   # ---------------------------------------------------------------------------
@@ -130,6 +141,7 @@ packages:
   network:         !include ../../common/addon/network.yaml
   memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update.yaml
+  battery:         !include device/battery.yaml
 
   # ---------------------------------------------------------------------------
   # Screens (loading must be first page for LVGL startup)

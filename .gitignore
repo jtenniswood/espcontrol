@@ -2,9 +2,12 @@
 .cache/
 .worktrees/
 node_modules/
+/build/
+/dist/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 .esphome/
+.venv/
 .platformio/
 .platformio-run/
 .pio-core/

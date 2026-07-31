@@ -22,6 +22,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Akce alarmu selhala";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm se nezměnil";
   if (std::strcmp(text, "All done") == 0) return "Hotovo";
+  if (std::strcmp(text, "All Controls") == 0) return "Všechny ovládací prvky";
   if (std::strcmp(text, "Always On") == 0) return "Vždy zapnuto";
   if (std::strcmp(text, "Arm Away") == 0) return "Zajistit pryč";
   if (std::strcmp(text, "Arm Home") == 0) return "Zajistit doma";
@@ -67,7 +68,11 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Výjimečné";
   if (std::strcmp(text, "Fan") == 0) return "Ventilátor";
   if (std::strcmp(text, "Fog") == 0) return "Mlha";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Zavřít garážová vrata?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garážová vrata";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Otevřít garážová vrata?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Otevřít nebo zavřít garážová vrata?";
+  if (std::strcmp(text, "Gate") == 0) return "Brána";
   if (std::strcmp(text, "Hail") == 0) return "Kroupy";
   if (std::strcmp(text, "Hazy") == 0) return "Opar";
   if (std::strcmp(text, "Heat") == 0) return "Topení";
@@ -90,6 +95,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Nízké";
   if (std::strcmp(text, "Low target") == 0) return "Nízký cíl";
   if (std::strcmp(text, "Media") == 0) return "Média";
+  if (std::strcmp(text, "Media Control") == 0) return "Ovládání médií";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
   if (std::strcmp(text, "Monthly") == 0) return "Měsíčně";
   if (std::strcmp(text, "more") == 0) return "další";
@@ -112,6 +118,8 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Žádné";
   if (std::strcmp(text, "No options") == 0) return "Žádné možnosti";
   if (std::strcmp(text, "No presets") == 0) return "Žádné předvolby";
+  if (std::strcmp(text, "No sources") == 0) return "Žádné zdroje";
+  if (std::strcmp(text, "Source") == 0) return "Zdroj";
   if (std::strcmp(text, "Not available") == 0) return "Není dostupné";
   if (std::strcmp(text, "Off") == 0) return "Vypnuto";
   if (std::strcmp(text, "On") == 0) return "Zapnuto";
@@ -153,6 +161,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Spustit";
   if (std::strcmp(text, "Still") == 0) return "Stojí";
   if (std::strcmp(text, "Subpage") == 0) return "Podstránka";
+  if (std::strcmp(text, "Stop") == 0) return "Zastavit";
   if (std::strcmp(text, "Sunny") == 0) return "Slunečno";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Sluneční varování";
   if (std::strcmp(text, "Sunset") == 0) return "Západ slunce";
@@ -178,6 +187,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Verze neznámá";
   if (std::strcmp(text, "Volume") == 0) return "Hlasitost";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Čekání na Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Připojování k \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Počasí";
   if (std::strcmp(text, "Weekly") == 0) return "Týdně";
   if (std::strcmp(text, "Window") == 0) return "Okno";
@@ -230,6 +240,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmhandling mislykkedes";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarmen blev ikke ændret";
   if (std::strcmp(text, "All done") == 0) return "Færdig";
+  if (std::strcmp(text, "All Controls") == 0) return "Alle kontroller";
   if (std::strcmp(text, "Always On") == 0) return "Altid tændt";
   if (std::strcmp(text, "Arm Away") == 0) return "Aktiver ude";
   if (std::strcmp(text, "Arm Home") == 0) return "Aktiver hjemme";
@@ -274,7 +285,11 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Ekstraordinær";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Tåge";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Lukke garageporten?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garageport";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Åbne garageporten?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Åbne eller lukke garageporten?";
+  if (std::strcmp(text, "Gate") == 0) return "Port";
   if (std::strcmp(text, "Hail") == 0) return "Hagl";
   if (std::strcmp(text, "Hazy") == 0) return "Diset";
   if (std::strcmp(text, "Heat") == 0) return "Varme";
@@ -297,6 +312,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Lav";
   if (std::strcmp(text, "Low target") == 0) return "Lavt mål";
   if (std::strcmp(text, "Media") == 0) return "Medie";
+  if (std::strcmp(text, "Media Control") == 0) return "Mediestyring";
   if (std::strcmp(text, "Playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(text, "Mode") == 0) return "Tilstand";
   if (std::strcmp(text, "Monthly") == 0) return "Månedligt";
@@ -320,6 +336,8 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Ingen muligheder";
   if (std::strcmp(text, "No presets") == 0) return "Ingen forvalg";
+  if (std::strcmp(text, "No sources") == 0) return "Ingen kilder";
+  if (std::strcmp(text, "Source") == 0) return "Kilde";
   if (std::strcmp(text, "Not available") == 0) return "Ikke tilgængelig";
   if (std::strcmp(text, "Off") == 0) return "Slukket";
   if (std::strcmp(text, "On") == 0) return "Tændt";
@@ -381,6 +399,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Version ukendt";
   if (std::strcmp(text, "Volume") == 0) return "Lydstyrke";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Venter på Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Opretter forbindelse til \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Vejr";
   if (std::strcmp(text, "Weekly") == 0) return "Ugentligt";
   if (std::strcmp(text, "Window") == 0) return "Vindue";
@@ -433,6 +452,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmaktion fehlgeschlagen";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm wurde nicht geändert";
   if (std::strcmp(text, "All done") == 0) return "Alles erledigt";
+  if (std::strcmp(text, "All Controls") == 0) return "Alle Steuerungen";
   if (std::strcmp(text, "Always On") == 0) return "Immer an";
   if (std::strcmp(text, "Arm Away") == 0) return "Abwesend scharfschalten";
   if (std::strcmp(text, "Arm Home") == 0) return "Zuhause scharfschalten";
@@ -479,7 +499,11 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Außergewöhnlich";
   if (std::strcmp(text, "Fan") == 0) return "Lüfter";
   if (std::strcmp(text, "Fog") == 0) return "Nebel";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Garagentor schließen?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garagentor";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Garagentor öffnen?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Garagentor öffnen oder schließen?";
+  if (std::strcmp(text, "Gate") == 0) return "Tor";
   if (std::strcmp(text, "Hail") == 0) return "Hagel";
   if (std::strcmp(text, "Hazy") == 0) return "Dunstig";
   if (std::strcmp(text, "Heat") == 0) return "Heizen";
@@ -502,6 +526,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Niedrig";
   if (std::strcmp(text, "Low target") == 0) return "Niedriger Zielwert";
   if (std::strcmp(text, "Media") == 0) return "Medien";
+  if (std::strcmp(text, "Media Control") == 0) return "Mediensteuerung";
   if (std::strcmp(text, "Playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
   if (std::strcmp(text, "Monthly") == 0) return "Monatlich";
@@ -521,6 +546,8 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Keine";
   if (std::strcmp(text, "No options") == 0) return "Keine Optionen";
   if (std::strcmp(text, "No presets") == 0) return "Keine Voreinstellungen";
+  if (std::strcmp(text, "No sources") == 0) return "Keine Quellen";
+  if (std::strcmp(text, "Source") == 0) return "Quelle";
   if (std::strcmp(text, "Not available") == 0) return "Nicht verfügbar";
   if (std::strcmp(text, "Off") == 0) return "Aus";
   if (std::strcmp(text, "On") == 0) return "Ein";
@@ -557,6 +584,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Schnee und Regen";
   if (std::strcmp(text, "Spot Clean") == 0) return "Punktreinigung";
   if (std::strcmp(text, "Subpage") == 0) return "Unterseite";
+  if (std::strcmp(text, "Stop") == 0) return "Stopp";
   if (std::strcmp(text, "Sunny") == 0) return "Sonnig";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Sonnenwarnung";
   if (std::strcmp(text, "Sunset") == 0) return "Sonnenuntergang";
@@ -581,6 +609,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Version unbekannt";
   if (std::strcmp(text, "Volume") == 0) return "Lautstärke";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Warten auf Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Verbindung mit \nHome Assistant wird hergestellt";
   if (std::strcmp(text, "Weather") == 0) return "Wetter";
   if (std::strcmp(text, "Weekly") == 0) return "Wöchentlich";
   if (std::strcmp(text, "Window") == 0) return "Fenster";
@@ -634,6 +663,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Acción de alarma fallida";
   if (std::strcmp(text, "Alarm did not change") == 0) return "La alarma no cambió";
   if (std::strcmp(text, "All done") == 0) return "Todo listo";
+  if (std::strcmp(text, "All Controls") == 0) return "Todos los controles";
   if (std::strcmp(text, "Always On") == 0) return "Siempre encendido";
   if (std::strcmp(text, "Arm Away") == 0) return "Armar fuera";
   if (std::strcmp(text, "Arm Home") == 0) return "Armar en casa";
@@ -678,7 +708,11 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Excepcional";
   if (std::strcmp(text, "Fan") == 0) return "Ventilador";
   if (std::strcmp(text, "Fog") == 0) return "Niebla";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "¿Cerrar la puerta del garaje?";
   if (std::strcmp(text, "Garage Door") == 0) return "Puerta de garaje";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "¿Abrir la puerta del garaje?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "¿Abrir o cerrar la puerta del garaje?";
+  if (std::strcmp(text, "Gate") == 0) return "Puerta";
   if (std::strcmp(text, "Hail") == 0) return "Granizo";
   if (std::strcmp(text, "Hazy") == 0) return "Brumoso";
   if (std::strcmp(text, "Heat") == 0) return "Calor";
@@ -701,6 +735,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Bajo";
   if (std::strcmp(text, "Low target") == 0) return "Objetivo bajo";
   if (std::strcmp(text, "Media") == 0) return "Multimedia";
+  if (std::strcmp(text, "Media Control") == 0) return "Control multimedia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensual";
@@ -723,6 +758,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ninguno";
   if (std::strcmp(text, "No options") == 0) return "Sin opciones";
   if (std::strcmp(text, "No presets") == 0) return "Sin preajustes";
+  if (std::strcmp(text, "No sources") == 0) return "Sin fuentes";
+  if (std::strcmp(text, "Source") == 0) return "Fuente";
   if (std::strcmp(text, "Not available") == 0) return "No disponible";
   if (std::strcmp(text, "Off") == 0) return "Apagado";
   if (std::strcmp(text, "On") == 0) return "Encendido";
@@ -764,6 +801,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Iniciar";
   if (std::strcmp(text, "Still") == 0) return "Quieto";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
+  if (std::strcmp(text, "Stop") == 0) return "Detener";
   if (std::strcmp(text, "Sunny") == 0) return "Soleado";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerta de sol";
   if (std::strcmp(text, "Sunset") == 0) return "Puesta de sol";
@@ -788,6 +826,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Versión desconocida";
   if (std::strcmp(text, "Volume") == 0) return "Volumen";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Esperando a Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Conectando a \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Tiempo";
   if (std::strcmp(text, "Weekly") == 0) return "Semanal";
   if (std::strcmp(text, "Window") == 0) return "Ventana";
@@ -841,6 +880,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Hälytystoiminto epäonnistui";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Hälytys ei muuttunut";
   if (std::strcmp(text, "All done") == 0) return "Kaikki valmista";
+  if (std::strcmp(text, "All Controls") == 0) return "Kaikki säätimet";
   if (std::strcmp(text, "Always On") == 0) return "Aina päällä";
   if (std::strcmp(text, "Arm Away") == 0) return "Viritä poissa";
   if (std::strcmp(text, "Arm Home") == 0) return "Viritä kotona";
@@ -888,7 +928,11 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Poikkeuksellinen";
   if (std::strcmp(text, "Fan") == 0) return "Tuuletin";
   if (std::strcmp(text, "Fog") == 0) return "Sumu";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Suljetaanko autotallin ovi?";
   if (std::strcmp(text, "Garage Door") == 0) return "Autotallin ovi";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Avataanko autotallin ovi?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Avataanko vai suljetaanko autotallin ovi?";
+  if (std::strcmp(text, "Gate") == 0) return "Portti";
   if (std::strcmp(text, "Hail") == 0) return "Raekuuro";
   if (std::strcmp(text, "Hazy") == 0) return "Utuista";
   if (std::strcmp(text, "Heat") == 0) return "Lämmitys";
@@ -911,6 +955,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Ruohonleikkuri";
   if (std::strcmp(text, "Low") == 0) return "Matala";
   if (std::strcmp(text, "Low target") == 0) return "Alaraja";
+  if (std::strcmp(text, "Media Control") == 0) return "Median ohjaus";
   if (std::strcmp(text, "Playlist") == 0) return "Soittolista";
   if (std::strcmp(text, "Medium") == 0) return "Keskitaso";
   if (std::strcmp(text, "Mode") == 0) return "Tila";
@@ -936,6 +981,8 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ei mitään";
   if (std::strcmp(text, "No options") == 0) return "Ei vaihtoehtoja";
   if (std::strcmp(text, "No presets") == 0) return "Ei esiasetuksia";
+  if (std::strcmp(text, "No sources") == 0) return "Ei lähteitä";
+  if (std::strcmp(text, "Source") == 0) return "Lähde";
   if (std::strcmp(text, "Not available") == 0) return "Ei saatavilla";
   if (std::strcmp(text, "Off") == 0) return "Pois";
   if (std::strcmp(text, "On") == 0) return "Päällä";
@@ -979,6 +1026,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Käynnistä";
   if (std::strcmp(text, "Still") == 0) return "Paikallaan";
   if (std::strcmp(text, "Subpage") == 0) return "Alisivu";
+  if (std::strcmp(text, "Stop") == 0) return "Pysäytä";
   if (std::strcmp(text, "Sunny") == 0) return "Aurinkoista";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Aurinkohälytys";
   if (std::strcmp(text, "Sunset") == 0) return "Auringonlasku";
@@ -1005,6 +1053,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Versio tuntematon";
   if (std::strcmp(text, "Volume") == 0) return "Äänenvoimakkuus";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Odotetaan Home Assistantia";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Yhdistetään \nHome Assistantiin";
   if (std::strcmp(text, "Weather") == 0) return "Sää";
   if (std::strcmp(text, "Weekly") == 0) return "Viikoittain";
   if (std::strcmp(text, "Window") == 0) return "Ikkuna";
@@ -1057,6 +1106,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Action d'alarme échouée";
   if (std::strcmp(text, "Alarm did not change") == 0) return "L'alarme n'a pas changé";
   if (std::strcmp(text, "All done") == 0) return "Terminé";
+  if (std::strcmp(text, "All Controls") == 0) return "Toutes les commandes";
   if (std::strcmp(text, "Always On") == 0) return "Toujours activé";
   if (std::strcmp(text, "Arm Away") == 0) return "Armer absent";
   if (std::strcmp(text, "Arm Home") == 0) return "Armer maison";
@@ -1100,7 +1150,11 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(text, "Fan") == 0) return "Ventilateur";
   if (std::strcmp(text, "Fog") == 0) return "Brouillard";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Fermer la porte de garage ?";
   if (std::strcmp(text, "Garage Door") == 0) return "Porte de garage";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Ouvrir la porte de garage ?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Ouvrir ou fermer la porte de garage ?";
+  if (std::strcmp(text, "Gate") == 0) return "Portail";
   if (std::strcmp(text, "Hail") == 0) return "Grêle";
   if (std::strcmp(text, "Hazy") == 0) return "Brumeux";
   if (std::strcmp(text, "Heat") == 0) return "Chaud";
@@ -1123,6 +1177,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Bas";
   if (std::strcmp(text, "Low target") == 0) return "Cible basse";
   if (std::strcmp(text, "Media") == 0) return "Média";
+  if (std::strcmp(text, "Media Control") == 0) return "Contrôle multimédia";
   if (std::strcmp(text, "Playlist") == 0) return "Liste de lecture";
   if (std::strcmp(text, "Monthly") == 0) return "Mensuel";
   if (std::strcmp(text, "more") == 0) return "de plus";
@@ -1145,6 +1200,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Aucun";
   if (std::strcmp(text, "No options") == 0) return "Aucune option";
   if (std::strcmp(text, "No presets") == 0) return "Aucun préréglage";
+  if (std::strcmp(text, "No sources") == 0) return "Aucune source";
   if (std::strcmp(text, "Not available") == 0) return "Non disponible";
   if (std::strcmp(text, "Off") == 0) return "Éteint";
   if (std::strcmp(text, "On") == 0) return "Allumé";
@@ -1182,6 +1238,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Démarrer";
   if (std::strcmp(text, "Still") == 0) return "Fixe";
   if (std::strcmp(text, "Subpage") == 0) return "Sous-page";
+  if (std::strcmp(text, "Stop") == 0) return "Arrêter";
   if (std::strcmp(text, "Sunny") == 0) return "Ensoleillé";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerte soleil";
   if (std::strcmp(text, "Sunset") == 0) return "Coucher du soleil";
@@ -1206,6 +1263,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Vacuum") == 0) return "Aspirateur";
   if (std::strcmp(text, "Version unknown") == 0) return "Version inconnue";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "En attente de Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Connexion à \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Météo";
   if (std::strcmp(text, "Weekly") == 0) return "Hebdomadaire";
   if (std::strcmp(text, "Window") == 0) return "Fenêtre";
@@ -1259,6 +1317,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "A riasztási művelet sikertelen";
   if (std::strcmp(text, "Alarm did not change") == 0) return "A riasztó nem változott";
   if (std::strcmp(text, "All done") == 0) return "Minden kész";
+  if (std::strcmp(text, "All Controls") == 0) return "Minden vezérlő";
   if (std::strcmp(text, "Always On") == 0) return "Mindig bekapcsolva";
   if (std::strcmp(text, "Arm Away") == 0) return "Élesítés távollétre";
   if (std::strcmp(text, "Arm Home") == 0) return "Élesítés otthonra";
@@ -1306,7 +1365,11 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Rendkívüli";
   if (std::strcmp(text, "Fan") == 0) return "Ventilátor";
   if (std::strcmp(text, "Fog") == 0) return "Köd";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Becsukja a garázsajtót?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garázsajtó";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Kinyitja a garázsajtót?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Kinyitja vagy becsukja a garázsajtót?";
+  if (std::strcmp(text, "Gate") == 0) return "Kapu";
   if (std::strcmp(text, "Hail") == 0) return "Jégeső";
   if (std::strcmp(text, "Hazy") == 0) return "Párás";
   if (std::strcmp(text, "Heat") == 0) return "Fűtés";
@@ -1330,6 +1393,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Alacsony";
   if (std::strcmp(text, "Low target") == 0) return "Alacsony célérték";
   if (std::strcmp(text, "Media") == 0) return "Média";
+  if (std::strcmp(text, "Media Control") == 0) return "Médiavezérlés";
   if (std::strcmp(text, "Playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(text, "Medium") == 0) return "Közepes";
   if (std::strcmp(text, "Mode") == 0) return "Mód";
@@ -1353,6 +1417,8 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nincs";
   if (std::strcmp(text, "No options") == 0) return "Nincsenek opciók";
   if (std::strcmp(text, "No presets") == 0) return "Nincsenek előbeállítások";
+  if (std::strcmp(text, "No sources") == 0) return "Nincsenek források";
+  if (std::strcmp(text, "Source") == 0) return "Forrás";
   if (std::strcmp(text, "Not available") == 0) return "Nem érhető el";
   if (std::strcmp(text, "Off") == 0) return "Ki";
   if (std::strcmp(text, "On") == 0) return "Be";
@@ -1396,6 +1462,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Indítás";
   if (std::strcmp(text, "Still") == 0) return "Álló";
   if (std::strcmp(text, "Subpage") == 0) return "Aloldal";
+  if (std::strcmp(text, "Stop") == 0) return "Leállítás";
   if (std::strcmp(text, "Sunny") == 0) return "Napos";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Napsütés riasztás";
   if (std::strcmp(text, "Sunset") == 0) return "Naplemente";
@@ -1423,6 +1490,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Ismeretlen verzió";
   if (std::strcmp(text, "Volume") == 0) return "Hangerő";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Várakozás a Home Assistantra";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Csatlakozás a \nHome Assistanthez";
   if (std::strcmp(text, "Weather") == 0) return "Időjárás";
   if (std::strcmp(text, "Weekly") == 0) return "Hetente";
   if (std::strcmp(text, "Window") == 0) return "Ablak";
@@ -1476,6 +1544,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Azione allarme non riuscita";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Allarme invariato";
   if (std::strcmp(text, "All done") == 0) return "Completato";
+  if (std::strcmp(text, "All Controls") == 0) return "Tutti i controlli";
   if (std::strcmp(text, "Always On") == 0) return "Sempre acceso";
   if (std::strcmp(text, "Arm Away") == 0) return "Inserisci fuori casa";
   if (std::strcmp(text, "Arm Home") == 0) return "Inserisci in casa";
@@ -1520,7 +1589,11 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Eccezionale";
   if (std::strcmp(text, "Fan") == 0) return "Ventola";
   if (std::strcmp(text, "Fog") == 0) return "Nebbia";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Chiudere la porta del garage?";
   if (std::strcmp(text, "Garage Door") == 0) return "Porta garage";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Aprire la porta del garage?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Aprire o chiudere la porta del garage?";
+  if (std::strcmp(text, "Gate") == 0) return "Cancello";
   if (std::strcmp(text, "Hail") == 0) return "Grandine";
   if (std::strcmp(text, "Hazy") == 0) return "Foschia";
   if (std::strcmp(text, "Heat") == 0) return "Caldo";
@@ -1543,6 +1616,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Tagliaerba";
   if (std::strcmp(text, "Low") == 0) return "Basso";
   if (std::strcmp(text, "Low target") == 0) return "Target basso";
+  if (std::strcmp(text, "Media Control") == 0) return "Controllo multimediale";
   if (std::strcmp(text, "Medium") == 0) return "Medio";
   if (std::strcmp(text, "Mode") == 0) return "Modalità";
   if (std::strcmp(text, "Monthly") == 0) return "Mensile";
@@ -1566,6 +1640,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nessuno";
   if (std::strcmp(text, "No options") == 0) return "Nessuna opzione";
   if (std::strcmp(text, "No presets") == 0) return "Nessun preset";
+  if (std::strcmp(text, "No sources") == 0) return "Nessuna sorgente";
+  if (std::strcmp(text, "Source") == 0) return "Fonte";
   if (std::strcmp(text, "Not available") == 0) return "Non disponibile";
   if (std::strcmp(text, "Off") == 0) return "Spento";
   if (std::strcmp(text, "On") == 0) return "Acceso";
@@ -1608,6 +1684,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Avvia";
   if (std::strcmp(text, "Still") == 0) return "Fermo";
   if (std::strcmp(text, "Subpage") == 0) return "Sottopagina";
+  if (std::strcmp(text, "Stop") == 0) return "Arresta";
   if (std::strcmp(text, "Sunny") == 0) return "Soleggiato";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Allerta sole";
   if (std::strcmp(text, "Sunset") == 0) return "Tramonto";
@@ -1632,6 +1709,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Vacuum") == 0) return "Aspirapolvere";
   if (std::strcmp(text, "Version unknown") == 0) return "Versione sconosciuta";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "In attesa di Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Connessione a \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Meteo";
   if (std::strcmp(text, "Weekly") == 0) return "Settimanale";
   if (std::strcmp(text, "Window") == 0) return "Finestra";
@@ -1684,6 +1762,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmhandling mislyktes";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarmen ble ikke endret";
   if (std::strcmp(text, "All done") == 0) return "Ferdig";
+  if (std::strcmp(text, "All Controls") == 0) return "Alle kontroller";
   if (std::strcmp(text, "Always On") == 0) return "Alltid på";
   if (std::strcmp(text, "Arm Away") == 0) return "Aktiver borte";
   if (std::strcmp(text, "Arm Home") == 0) return "Aktiver hjemme";
@@ -1729,7 +1808,11 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Eksepsjonelt";
   if (std::strcmp(text, "Fan") == 0) return "Vifte";
   if (std::strcmp(text, "Fog") == 0) return "Tåke";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Lukke garasjeporten?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garasjeport";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Åpne garasjeporten?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Åpne eller lukke garasjeporten?";
+  if (std::strcmp(text, "Gate") == 0) return "Port";
   if (std::strcmp(text, "Hail") == 0) return "Hagl";
   if (std::strcmp(text, "Hazy") == 0) return "Disig";
   if (std::strcmp(text, "Heat") == 0) return "Varme";
@@ -1751,6 +1834,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Gressklipper";
   if (std::strcmp(text, "Low") == 0) return "Lav";
   if (std::strcmp(text, "Low target") == 0) return "Lavt mål";
+  if (std::strcmp(text, "Media Control") == 0) return "Mediekontroll";
   if (std::strcmp(text, "Playlist") == 0) return "Spilleliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
   if (std::strcmp(text, "Monthly") == 0) return "Månedlig";
@@ -1774,6 +1858,8 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Ingen alternativer";
   if (std::strcmp(text, "No presets") == 0) return "Ingen forhåndsvalg";
+  if (std::strcmp(text, "No sources") == 0) return "Ingen kilder";
+  if (std::strcmp(text, "Source") == 0) return "Kilde";
   if (std::strcmp(text, "Not available") == 0) return "Ikke tilgjengelig";
   if (std::strcmp(text, "Off") == 0) return "Av";
   if (std::strcmp(text, "On") == 0) return "På";
@@ -1813,6 +1899,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Spot Clean") == 0) return "Punktrengjøring";
   if (std::strcmp(text, "Still") == 0) return "Stille";
   if (std::strcmp(text, "Subpage") == 0) return "Underside";
+  if (std::strcmp(text, "Stop") == 0) return "Stopp";
   if (std::strcmp(text, "Sunny") == 0) return "Sol";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Solvarsel";
   if (std::strcmp(text, "Sunset") == 0) return "Solnedgang";
@@ -1837,6 +1924,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Ukjent versjon";
   if (std::strcmp(text, "Volume") == 0) return "Volum";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Venter på Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Kobler til \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Vær";
   if (std::strcmp(text, "Weekly") == 0) return "Ukentlig";
   if (std::strcmp(text, "Window") == 0) return "Vindu";
@@ -1889,6 +1977,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmactie mislukt";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm is niet gewijzigd";
   if (std::strcmp(text, "All done") == 0) return "Alles gereed";
+  if (std::strcmp(text, "All Controls") == 0) return "Alle bedieningselementen";
   if (std::strcmp(text, "Always On") == 0) return "Altijd aan";
   if (std::strcmp(text, "Arm Away") == 0) return "Inschakelen afwezig";
   if (std::strcmp(text, "Arm Home") == 0) return "Inschakelen thuis";
@@ -1936,7 +2025,11 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Uitzonderlijk";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Mist";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Garagedeur sluiten?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garagedeur";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Garagedeur openen?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Garagedeur openen of sluiten?";
+  if (std::strcmp(text, "Gate") == 0) return "Poort";
   if (std::strcmp(text, "Hail") == 0) return "Hagel";
   if (std::strcmp(text, "Hazy") == 0) return "Nevelig";
   if (std::strcmp(text, "Heat") == 0) return "Verwarmen";
@@ -1958,6 +2051,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Grasmaaier";
   if (std::strcmp(text, "Low") == 0) return "Laag";
   if (std::strcmp(text, "Low target") == 0) return "Laag doel";
+  if (std::strcmp(text, "Media Control") == 0) return "Mediabediening";
   if (std::strcmp(text, "Playlist") == 0) return "Afspeellijst";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
   if (std::strcmp(text, "Monthly") == 0) return "Maandelijks";
@@ -1981,6 +2075,8 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Geen";
   if (std::strcmp(text, "No options") == 0) return "Geen opties";
   if (std::strcmp(text, "No presets") == 0) return "Geen voorinstellingen";
+  if (std::strcmp(text, "No sources") == 0) return "Geen bronnen";
+  if (std::strcmp(text, "Source") == 0) return "Bron";
   if (std::strcmp(text, "Not available") == 0) return "Niet beschikbaar";
   if (std::strcmp(text, "Off") == 0) return "Uit";
   if (std::strcmp(text, "On") == 0) return "Aan";
@@ -2021,6 +2117,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Spot Clean") == 0) return "Plaatselijk reinigen";
   if (std::strcmp(text, "Still") == 0) return "Vast";
   if (std::strcmp(text, "Subpage") == 0) return "Subpagina";
+  if (std::strcmp(text, "Stop") == 0) return "Stoppen";
   if (std::strcmp(text, "Sunny") == 0) return "Zonnig";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Zonwaarschuwing";
   if (std::strcmp(text, "Sunset") == 0) return "Zonsondergang";
@@ -2044,6 +2141,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Vacuum") == 0) return "Stofzuiger";
   if (std::strcmp(text, "Version unknown") == 0) return "Versie onbekend";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Wachten op Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Verbinden met \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Weer";
   if (std::strcmp(text, "Weekly") == 0) return "Wekelijks";
   if (std::strcmp(text, "Window") == 0) return "Raam";
@@ -2095,6 +2193,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Akcja alarmu nie powiodła się";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm się nie zmienił";
   if (std::strcmp(text, "All done") == 0) return "Gotowe";
+  if (std::strcmp(text, "All Controls") == 0) return "Wszystkie elementy sterujące";
   if (std::strcmp(text, "Always On") == 0) return "Zawsze włączone";
   if (std::strcmp(text, "Arm Away") == 0) return "Uzbrój poza domem";
   if (std::strcmp(text, "Arm Home") == 0) return "Uzbrój w domu";
@@ -2140,7 +2239,11 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Wyjątkowe";
   if (std::strcmp(text, "Fan") == 0) return "Wentylator";
   if (std::strcmp(text, "Fog") == 0) return "Mgła";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Zamknąć bramę garażową?";
   if (std::strcmp(text, "Garage Door") == 0) return "Brama garażowa";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Otworzyć bramę garażową?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Otworzyć czy zamknąć bramę garażową?";
+  if (std::strcmp(text, "Gate") == 0) return "Brama";
   if (std::strcmp(text, "Hail") == 0) return "Grad";
   if (std::strcmp(text, "Hazy") == 0) return "Zamglenie";
   if (std::strcmp(text, "Heat") == 0) return "Grzanie";
@@ -2162,6 +2265,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Kosiarka";
   if (std::strcmp(text, "Low") == 0) return "Niski";
   if (std::strcmp(text, "Low target") == 0) return "Niski cel";
+  if (std::strcmp(text, "Media Control") == 0) return "Sterowanie multimediami";
   if (std::strcmp(text, "Playlist") == 0) return "Playlista";
   if (std::strcmp(text, "Mode") == 0) return "Tryb";
   if (std::strcmp(text, "Monthly") == 0) return "Co miesiąc";
@@ -2185,6 +2289,8 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Brak";
   if (std::strcmp(text, "No options") == 0) return "Brak opcji";
   if (std::strcmp(text, "No presets") == 0) return "Brak presetów";
+  if (std::strcmp(text, "No sources") == 0) return "Brak źródeł";
+  if (std::strcmp(text, "Source") == 0) return "Źródło";
   if (std::strcmp(text, "Not available") == 0) return "Niedostępne";
   if (std::strcmp(text, "Off") == 0) return "Wyłączone";
   if (std::strcmp(text, "On") == 0) return "Włączone";
@@ -2224,6 +2330,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Spot Clean") == 0) return "Czyszczenie punktowe";
   if (std::strcmp(text, "Still") == 0) return "Stabilny";
   if (std::strcmp(text, "Subpage") == 0) return "Podstrona";
+  if (std::strcmp(text, "Stop") == 0) return "Zatrzymaj";
   if (std::strcmp(text, "Sunny") == 0) return "Słonecznie";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Ostrzeżenie słoneczne";
   if (std::strcmp(text, "Sunset") == 0) return "Zachód słońca";
@@ -2248,6 +2355,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Wersja nieznana";
   if (std::strcmp(text, "Volume") == 0) return "Głośność";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Oczekiwanie na Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Łączenie z \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Pogoda";
   if (std::strcmp(text, "Weekly") == 0) return "Co tydzień";
   if (std::strcmp(text, "Window") == 0) return "Okno";
@@ -2301,6 +2409,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(text, "Alarm did not change") == 0) return "O alarme não mudou";
   if (std::strcmp(text, "All done") == 0) return "Tudo pronto";
+  if (std::strcmp(text, "All Controls") == 0) return "Todos os controles";
   if (std::strcmp(text, "Always On") == 0) return "Sempre ligado";
   if (std::strcmp(text, "Arm Away") == 0) return "Armar ausente";
   if (std::strcmp(text, "Arm Home") == 0) return "Armar em casa";
@@ -2345,7 +2454,11 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Excepcional";
   if (std::strcmp(text, "Fan") == 0) return "Ventilador";
   if (std::strcmp(text, "Fog") == 0) return "Névoa";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Fechar a porta da garagem?";
   if (std::strcmp(text, "Garage Door") == 0) return "Porta da garagem";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Abrir a porta da garagem?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Abrir ou fechar a porta da garagem?";
+  if (std::strcmp(text, "Gate") == 0) return "Portão";
   if (std::strcmp(text, "Hail") == 0) return "Granizo";
   if (std::strcmp(text, "Hazy") == 0) return "Neblina";
   if (std::strcmp(text, "Heat") == 0) return "Calor";
@@ -2368,6 +2481,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Baixo";
   if (std::strcmp(text, "Low target") == 0) return "Alvo baixo";
   if (std::strcmp(text, "Media") == 0) return "Mídia";
+  if (std::strcmp(text, "Media Control") == 0) return "Controle de mídia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
@@ -2391,6 +2505,8 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nenhum";
   if (std::strcmp(text, "No options") == 0) return "Sem opções";
   if (std::strcmp(text, "No presets") == 0) return "Sem predefinições";
+  if (std::strcmp(text, "No sources") == 0) return "Sem fontes";
+  if (std::strcmp(text, "Source") == 0) return "Fonte";
   if (std::strcmp(text, "Not available") == 0) return "Não disponível";
   if (std::strcmp(text, "Off") == 0) return "Desligado";
   if (std::strcmp(text, "On") == 0) return "Ligado";
@@ -2432,6 +2548,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Iniciar";
   if (std::strcmp(text, "Still") == 0) return "Parado";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
+  if (std::strcmp(text, "Stop") == 0) return "Parar";
   if (std::strcmp(text, "Sunny") == 0) return "Ensolarado";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerta de sol";
   if (std::strcmp(text, "Sunset") == 0) return "Pôr do sol";
@@ -2455,6 +2572,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Vacuum") == 0) return "Aspirador";
   if (std::strcmp(text, "Version unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Aguardando o Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Conectando ao \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Tempo";
   if (std::strcmp(text, "Weekly") == 0) return "Semanal";
   if (std::strcmp(text, "Window") == 0) return "Janela";
@@ -2508,6 +2626,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(text, "Alarm did not change") == 0) return "O alarme não mudou";
   if (std::strcmp(text, "All done") == 0) return "Tudo concluído";
+  if (std::strcmp(text, "All Controls") == 0) return "Todos os controlos";
   if (std::strcmp(text, "Always On") == 0) return "Sempre ligado";
   if (std::strcmp(text, "Arm Away") == 0) return "Armar ausente";
   if (std::strcmp(text, "Arm Home") == 0) return "Armar em casa";
@@ -2553,7 +2672,11 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Excecional";
   if (std::strcmp(text, "Fan") == 0) return "Ventoinha";
   if (std::strcmp(text, "Fog") == 0) return "Nevoeiro";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Fechar a porta da garagem?";
   if (std::strcmp(text, "Garage Door") == 0) return "Porta da garagem";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Abrir a porta da garagem?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Abrir ou fechar a porta da garagem?";
+  if (std::strcmp(text, "Gate") == 0) return "Portão";
   if (std::strcmp(text, "Hail") == 0) return "Granizo";
   if (std::strcmp(text, "Hazy") == 0) return "Neblina";
   if (std::strcmp(text, "Heat") == 0) return "Calor";
@@ -2576,6 +2699,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Baixo";
   if (std::strcmp(text, "Low target") == 0) return "Alvo baixo";
   if (std::strcmp(text, "Media") == 0) return "Multimédia";
+  if (std::strcmp(text, "Media Control") == 0) return "Controlo multimédia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
@@ -2599,6 +2723,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nenhum";
   if (std::strcmp(text, "No options") == 0) return "Sem opções";
   if (std::strcmp(text, "No presets") == 0) return "Sem predefinições";
+  if (std::strcmp(text, "No sources") == 0) return "Sem fontes";
+  if (std::strcmp(text, "Source") == 0) return "Fonte";
   if (std::strcmp(text, "Not available") == 0) return "Não disponível";
   if (std::strcmp(text, "Off") == 0) return "Desligado";
   if (std::strcmp(text, "On") == 0) return "Ligado";
@@ -2640,6 +2766,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Iniciar";
   if (std::strcmp(text, "Still") == 0) return "Parado";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
+  if (std::strcmp(text, "Stop") == 0) return "Parar";
   if (std::strcmp(text, "Sunny") == 0) return "Solarengo";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerta de sol";
   if (std::strcmp(text, "Sunset") == 0) return "Pôr do sol";
@@ -2663,6 +2790,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Vacuum") == 0) return "Aspirador";
   if (std::strcmp(text, "Version unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "À espera do Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "A ligar ao \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Meteorologia";
   if (std::strcmp(text, "Weekly") == 0) return "Semanal";
   if (std::strcmp(text, "Window") == 0) return "Janela";
@@ -2716,6 +2844,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Acțiunea alarmei a eșuat";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarma nu s-a schimbat";
   if (std::strcmp(text, "All done") == 0) return "Totul este gata";
+  if (std::strcmp(text, "All Controls") == 0) return "Toate comenzile";
   if (std::strcmp(text, "Always On") == 0) return "Mereu pornit";
   if (std::strcmp(text, "Arm Away") == 0) return "Armează plecat";
   if (std::strcmp(text, "Arm Home") == 0) return "Armează acasă";
@@ -2763,7 +2892,11 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Excepțional";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Ceață";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Închizi ușa garajului?";
   if (std::strcmp(text, "Garage Door") == 0) return "Ușă garaj";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Deschizi ușa garajului?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Deschizi sau închizi ușa garajului?";
+  if (std::strcmp(text, "Gate") == 0) return "Poartă";
   if (std::strcmp(text, "Hail") == 0) return "Grindină";
   if (std::strcmp(text, "Hazy") == 0) return "Ceață ușoară";
   if (std::strcmp(text, "Heat") == 0) return "Încălzire";
@@ -2786,6 +2919,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Mașină de tuns iarba";
   if (std::strcmp(text, "Low") == 0) return "Scăzut";
   if (std::strcmp(text, "Low target") == 0) return "Țintă scăzută";
+  if (std::strcmp(text, "Media Control") == 0) return "Control media";
   if (std::strcmp(text, "Playlist") == 0) return "Listă de redare";
   if (std::strcmp(text, "Medium") == 0) return "Mediu";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
@@ -2810,6 +2944,8 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Niciunul";
   if (std::strcmp(text, "No options") == 0) return "Fără opțiuni";
   if (std::strcmp(text, "No presets") == 0) return "Fără presetări";
+  if (std::strcmp(text, "No sources") == 0) return "Fără surse";
+  if (std::strcmp(text, "Source") == 0) return "Sursă";
   if (std::strcmp(text, "Not available") == 0) return "Indisponibil";
   if (std::strcmp(text, "Off") == 0) return "Oprit";
   if (std::strcmp(text, "On") == 0) return "Pornit";
@@ -2853,6 +2989,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Pornire";
   if (std::strcmp(text, "Still") == 0) return "Nemișcat";
   if (std::strcmp(text, "Subpage") == 0) return "Subpagină";
+  if (std::strcmp(text, "Stop") == 0) return "Oprire";
   if (std::strcmp(text, "Sunny") == 0) return "Însorit";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alertă soare";
   if (std::strcmp(text, "Sunset") == 0) return "Apus";
@@ -2880,6 +3017,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Versiune necunoscută";
   if (std::strcmp(text, "Volume") == 0) return "Volum";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Se așteaptă Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Se conectează la \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Vreme";
   if (std::strcmp(text, "Weekly") == 0) return "Săptămânal";
   if (std::strcmp(text, "Window") == 0) return "Fereastră";
@@ -2932,6 +3070,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Akcia alarmu zlyhala";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm sa nezmenil";
   if (std::strcmp(text, "All done") == 0) return "Hotovo";
+  if (std::strcmp(text, "All Controls") == 0) return "Všetky ovládacie prvky";
   if (std::strcmp(text, "Always On") == 0) return "Vždy zapnuté";
   if (std::strcmp(text, "Arm Away") == 0) return "Zabezpečiť preč";
   if (std::strcmp(text, "Arm Home") == 0) return "Zabezpečiť doma";
@@ -2977,7 +3116,11 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Výnimočné";
   if (std::strcmp(text, "Fan") == 0) return "Ventilátor";
   if (std::strcmp(text, "Fog") == 0) return "Hmla";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Zavrieť garážovú bránu?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garážová brána";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Otvoriť garážovú bránu?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Otvoriť alebo zavrieť garážovú bránu?";
+  if (std::strcmp(text, "Gate") == 0) return "Brána";
   if (std::strcmp(text, "Hail") == 0) return "Krúpy";
   if (std::strcmp(text, "Hazy") == 0) return "Opar";
   if (std::strcmp(text, "Heat") == 0) return "Kúriť";
@@ -3000,6 +3143,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Nízke";
   if (std::strcmp(text, "Low target") == 0) return "Nízky cieľ";
   if (std::strcmp(text, "Media") == 0) return "Médiá";
+  if (std::strcmp(text, "Media Control") == 0) return "Ovládanie médií";
   if (std::strcmp(text, "Playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
   if (std::strcmp(text, "Monthly") == 0) return "Mesačne";
@@ -3023,6 +3167,8 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Žiadne";
   if (std::strcmp(text, "No options") == 0) return "Žiadne možnosti";
   if (std::strcmp(text, "No presets") == 0) return "Žiadne predvoľby";
+  if (std::strcmp(text, "No sources") == 0) return "Žiadne zdroje";
+  if (std::strcmp(text, "Source") == 0) return "Zdroj";
   if (std::strcmp(text, "Not available") == 0) return "Nie je dostupné";
   if (std::strcmp(text, "Off") == 0) return "Vypnuté";
   if (std::strcmp(text, "On") == 0) return "Zapnuté";
@@ -3064,6 +3210,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Spustiť";
   if (std::strcmp(text, "Still") == 0) return "Stojí";
   if (std::strcmp(text, "Subpage") == 0) return "Podstránka";
+  if (std::strcmp(text, "Stop") == 0) return "Zastaviť";
   if (std::strcmp(text, "Sunny") == 0) return "Slnečno";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Slnečné varovanie";
   if (std::strcmp(text, "Sunset") == 0) return "Západ slnka";
@@ -3089,6 +3236,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Verzia neznáma";
   if (std::strcmp(text, "Volume") == 0) return "Hlasitosť";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Čakanie na Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Pripája sa k \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Počasie";
   if (std::strcmp(text, "Weekly") == 0) return "Týždenne";
   if (std::strcmp(text, "Window") == 0) return "Okno";
@@ -3141,6 +3289,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Dejanje alarma ni uspelo";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm se ni spremenil";
   if (std::strcmp(text, "All done") == 0) return "Vse opravljeno";
+  if (std::strcmp(text, "All Controls") == 0) return "Vsi kontrolniki";
   if (std::strcmp(text, "Always On") == 0) return "Vedno vklopljeno";
   if (std::strcmp(text, "Arm Away") == 0) return "Vklopi odsotnost";
   if (std::strcmp(text, "Arm Home") == 0) return "Vklopi doma";
@@ -3188,7 +3337,11 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Izjemno";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Megla";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Zaprem garažna vrata?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garažna vrata";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Odprem garažna vrata?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Odprem ali zaprem garažna vrata?";
+  if (std::strcmp(text, "Gate") == 0) return "Vrata";
   if (std::strcmp(text, "Hail") == 0) return "Toča";
   if (std::strcmp(text, "Hazy") == 0) return "Motno";
   if (std::strcmp(text, "Heat") == 0) return "Gretje";
@@ -3212,6 +3365,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Nizko";
   if (std::strcmp(text, "Low target") == 0) return "Nizka ciljna vrednost";
   if (std::strcmp(text, "Media") == 0) return "Predstavnost";
+  if (std::strcmp(text, "Media Control") == 0) return "Nadzor predstavnosti";
   if (std::strcmp(text, "Playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(text, "Medium") == 0) return "Srednje";
   if (std::strcmp(text, "Mode") == 0) return "Način";
@@ -3233,6 +3387,8 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Brez";
   if (std::strcmp(text, "No options") == 0) return "Ni možnosti";
   if (std::strcmp(text, "No presets") == 0) return "Ni prednastavitev";
+  if (std::strcmp(text, "No sources") == 0) return "Ni virov";
+  if (std::strcmp(text, "Source") == 0) return "Vir";
   if (std::strcmp(text, "Not available") == 0) return "Ni na voljo";
   if (std::strcmp(text, "Off") == 0) return "Izklop";
   if (std::strcmp(text, "On") == 0) return "Vklop";
@@ -3276,6 +3432,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Začni";
   if (std::strcmp(text, "Still") == 0) return "Mirovanje";
   if (std::strcmp(text, "Subpage") == 0) return "Podstran";
+  if (std::strcmp(text, "Stop") == 0) return "Ustavi";
   if (std::strcmp(text, "Sunny") == 0) return "Sončno";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Opozorilo za sonce";
   if (std::strcmp(text, "Sunset") == 0) return "Sončni zahod";
@@ -3302,6 +3459,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Različica neznana";
   if (std::strcmp(text, "Volume") == 0) return "Glasnost";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Čakanje na Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Povezovanje s \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Vreme";
   if (std::strcmp(text, "Weekly") == 0) return "Tedensko";
   if (std::strcmp(text, "Window") == 0) return "Okno";
@@ -3355,6 +3513,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Larmåtgärd misslyckades";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Larmet ändrades inte";
   if (std::strcmp(text, "All done") == 0) return "Klart";
+  if (std::strcmp(text, "All Controls") == 0) return "Alla kontroller";
   if (std::strcmp(text, "Always On") == 0) return "Alltid på";
   if (std::strcmp(text, "Arm Away") == 0) return "Larma borta";
   if (std::strcmp(text, "Arm Home") == 0) return "Larma hemma";
@@ -3400,7 +3559,11 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Exceptionellt";
   if (std::strcmp(text, "Fan") == 0) return "Fläkt";
   if (std::strcmp(text, "Fog") == 0) return "Dimma";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Stänga garagedörren?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garagedörr";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Öppna garagedörren?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Öppna eller stänga garagedörren?";
+  if (std::strcmp(text, "Gate") == 0) return "Grind";
   if (std::strcmp(text, "Hail") == 0) return "Hagel";
   if (std::strcmp(text, "Hazy") == 0) return "Disigt";
   if (std::strcmp(text, "Heat") == 0) return "Värme";
@@ -3422,6 +3585,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Gräsklippare";
   if (std::strcmp(text, "Low") == 0) return "Låg";
   if (std::strcmp(text, "Low target") == 0) return "Lågt mål";
+  if (std::strcmp(text, "Media Control") == 0) return "Mediekontroll";
   if (std::strcmp(text, "Playlist") == 0) return "Spellista";
   if (std::strcmp(text, "Mode") == 0) return "Läge";
   if (std::strcmp(text, "Monthly") == 0) return "Månadsvis";
@@ -3445,6 +3609,8 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Inga alternativ";
   if (std::strcmp(text, "No presets") == 0) return "Inga förval";
+  if (std::strcmp(text, "No sources") == 0) return "Inga källor";
+  if (std::strcmp(text, "Source") == 0) return "Källa";
   if (std::strcmp(text, "Not available") == 0) return "Inte tillgänglig";
   if (std::strcmp(text, "Off") == 0) return "Av";
   if (std::strcmp(text, "On") == 0) return "På";
@@ -3483,6 +3649,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Spot Clean") == 0) return "Punktstädning";
   if (std::strcmp(text, "Start") == 0) return "Starta";
   if (std::strcmp(text, "Subpage") == 0) return "Undersida";
+  if (std::strcmp(text, "Stop") == 0) return "Stoppa";
   if (std::strcmp(text, "Sunny") == 0) return "Soligt";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Solvarning";
   if (std::strcmp(text, "Sunset") == 0) return "Solnedgång";
@@ -3507,6 +3674,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Version okänd";
   if (std::strcmp(text, "Volume") == 0) return "Volym";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Väntar på Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Ansluter till \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Väder";
   if (std::strcmp(text, "Weekly") == 0) return "Veckovis";
   if (std::strcmp(text, "Window") == 0) return "Fönster";
@@ -3559,6 +3727,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarm eylemi başarısız oldu";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm değişmedi";
   if (std::strcmp(text, "All done") == 0) return "Her şey tamam";
+  if (std::strcmp(text, "All Controls") == 0) return "Tüm kontroller";
   if (std::strcmp(text, "Always On") == 0) return "Her zaman açık";
   if (std::strcmp(text, "Arm Away") == 0) return "Uzakta kur";
   if (std::strcmp(text, "Arm Home") == 0) return "Evde kur";
@@ -3605,7 +3774,11 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Error") == 0) return "Hata";
   if (std::strcmp(text, "Exceptional") == 0) return "Olağanüstü";
   if (std::strcmp(text, "Fog") == 0) return "Sis";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Garaj kapısı kapatılsın mı?";
   if (std::strcmp(text, "Garage Door") == 0) return "Garaj kapısı";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Garaj kapısı açılsın mı?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Garaj kapısı açılsın mı, kapatılsın mı?";
+  if (std::strcmp(text, "Gate") == 0) return "Kapı";
   if (std::strcmp(text, "Hail") == 0) return "Dolu";
   if (std::strcmp(text, "Hazy") == 0) return "Puslu";
   if (std::strcmp(text, "Heat") == 0) return "Isıt";
@@ -3629,6 +3802,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Düşük";
   if (std::strcmp(text, "Low target") == 0) return "Düşük hedef";
   if (std::strcmp(text, "Media") == 0) return "Medya";
+  if (std::strcmp(text, "Media Control") == 0) return "Medya kontrolü";
   if (std::strcmp(text, "Playlist") == 0) return "Çalma listesi";
   if (std::strcmp(text, "Medium") == 0) return "Orta";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
@@ -3654,6 +3828,8 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Yok";
   if (std::strcmp(text, "No options") == 0) return "Seçenek yok";
   if (std::strcmp(text, "No presets") == 0) return "Ön ayar yok";
+  if (std::strcmp(text, "No sources") == 0) return "Kaynak yok";
+  if (std::strcmp(text, "Source") == 0) return "Kaynak";
   if (std::strcmp(text, "Not available") == 0) return "Mevcut değil";
   if (std::strcmp(text, "Off") == 0) return "Kapalı";
   if (std::strcmp(text, "On") == 0) return "Açık";
@@ -3697,6 +3873,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Başlat";
   if (std::strcmp(text, "Still") == 0) return "Durgun";
   if (std::strcmp(text, "Subpage") == 0) return "Alt sayfa";
+  if (std::strcmp(text, "Stop") == 0) return "Durdur";
   if (std::strcmp(text, "Sunny") == 0) return "Güneşli";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Güneş uyarısı";
   if (std::strcmp(text, "Sunset") == 0) return "Gün batımı";
@@ -3724,6 +3901,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Sürüm bilinmiyor";
   if (std::strcmp(text, "Volume") == 0) return "Ses";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Home Assistant bekleniyor";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "\nHome Assistant'a bağlanılıyor";
   if (std::strcmp(text, "Weather") == 0) return "Hava durumu";
   if (std::strcmp(text, "Weekly") == 0) return "Haftalık";
   if (std::strcmp(text, "Window") == 0) return "Pencere";
@@ -3777,6 +3955,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Alarm action failed") == 0) return "Дію сигналізації не виконано";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Сигналізація не змінилася";
   if (std::strcmp(text, "All done") == 0) return "Усе готово";
+  if (std::strcmp(text, "All Controls") == 0) return "Усі елементи керування";
   if (std::strcmp(text, "Always On") == 0) return "Завжди увімкнено";
   if (std::strcmp(text, "Arm Away") == 0) return "Увімкнути охорону поза домом";
   if (std::strcmp(text, "Arm Home") == 0) return "Увімкнути охорону вдома";
@@ -3824,7 +4003,11 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Винятково";
   if (std::strcmp(text, "Fan") == 0) return "Вентилятор";
   if (std::strcmp(text, "Fog") == 0) return "Туман";
+  if (std::strcmp(text, "Close the garage door?") == 0) return "Закрити гаражні двері?";
   if (std::strcmp(text, "Garage Door") == 0) return "Гаражні двері";
+  if (std::strcmp(text, "Open the garage door?") == 0) return "Відкрити гаражні двері?";
+  if (std::strcmp(text, "Open or close the garage door?") == 0) return "Відкрити чи закрити гаражні двері?";
+  if (std::strcmp(text, "Gate") == 0) return "Ворота";
   if (std::strcmp(text, "Hail") == 0) return "Град";
   if (std::strcmp(text, "Hazy") == 0) return "Імла";
   if (std::strcmp(text, "Heat") == 0) return "Опалення";
@@ -3848,6 +4031,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Низько";
   if (std::strcmp(text, "Low target") == 0) return "Низька ціль";
   if (std::strcmp(text, "Media") == 0) return "Медіа";
+  if (std::strcmp(text, "Media Control") == 0) return "Керування медіа";
   if (std::strcmp(text, "Playlist") == 0) return "Список відтворення";
   if (std::strcmp(text, "Medium") == 0) return "Середньо";
   if (std::strcmp(text, "Mode") == 0) return "Режим";
@@ -3873,6 +4057,8 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Немає";
   if (std::strcmp(text, "No options") == 0) return "Немає параметрів";
   if (std::strcmp(text, "No presets") == 0) return "Немає пресетів";
+  if (std::strcmp(text, "No sources") == 0) return "Немає джерел";
+  if (std::strcmp(text, "Source") == 0) return "Джерело";
   if (std::strcmp(text, "Not available") == 0) return "Недоступно";
   if (std::strcmp(text, "Off") == 0) return "Вимкнено";
   if (std::strcmp(text, "On") == 0) return "Увімкнено";
@@ -3916,6 +4102,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Старт";
   if (std::strcmp(text, "Still") == 0) return "Нерухомо";
   if (std::strcmp(text, "Subpage") == 0) return "Підсторінка";
+  if (std::strcmp(text, "Stop") == 0) return "Зупинити";
   if (std::strcmp(text, "Sunny") == 0) return "Сонячно";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Попередження про сонце";
   if (std::strcmp(text, "Sunset") == 0) return "Захід сонця";
@@ -3943,6 +4130,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Version unknown") == 0) return "Версія невідома";
   if (std::strcmp(text, "Volume") == 0) return "Гучність";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Очікування Home Assistant";
+  if (std::strcmp(text, "Connecting to \nHome Assistant") == 0) return "Підключення до \nHome Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Погода";
   if (std::strcmp(text, "Weekly") == 0) return "Щотижня";
   if (std::strcmp(text, "Window") == 0) return "Вікно";
@@ -3996,6 +4184,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarm action failed";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm did not change";
   if (std::strcmp(key, "all_done") == 0) return "All done";
+  if (std::strcmp(key, "all_controls") == 0) return "All Controls";
   if (std::strcmp(key, "always_on") == 0) return "Always On";
   if (std::strcmp(key, "arm_away") == 0) return "Arm Away";
   if (std::strcmp(key, "arm_home") == 0) return "Arm Home";
@@ -4046,7 +4235,11 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptional";
   if (std::strcmp(key, "fan") == 0) return "Fan";
   if (std::strcmp(key, "fog") == 0) return "Fog";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Close the garage door?";
   if (std::strcmp(key, "garage_door") == 0) return "Garage Door";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Open the garage door?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Open or close the garage door?";
+  if (std::strcmp(key, "gate") == 0) return "Gate";
   if (std::strcmp(key, "hail") == 0) return "Hail";
   if (std::strcmp(key, "hazy") == 0) return "Hazy";
   if (std::strcmp(key, "heat") == 0) return "Heat";
@@ -4070,6 +4263,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Low";
   if (std::strcmp(key, "low_target") == 0) return "Low target";
   if (std::strcmp(key, "media") == 0) return "Media";
+  if (std::strcmp(key, "media_control") == 0) return "Media Control";
   if (std::strcmp(key, "playlist") == 0) return "Playlist";
   if (std::strcmp(key, "medium") == 0) return "Medium";
   if (std::strcmp(key, "mode") == 0) return "Mode";
@@ -4096,6 +4290,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "none") == 0) return "None";
   if (std::strcmp(key, "no_options") == 0) return "No options";
   if (std::strcmp(key, "no_presets") == 0) return "No presets";
+  if (std::strcmp(key, "no_sources") == 0) return "No sources";
+  if (std::strcmp(key, "source") == 0) return "Source";
   if (std::strcmp(key, "not_available") == 0) return "Not available";
   if (std::strcmp(key, "off") == 0) return "Off";
   if (std::strcmp(key, "on") == 0) return "On";
@@ -4140,6 +4336,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Start";
   if (std::strcmp(key, "still") == 0) return "Still";
   if (std::strcmp(key, "subpage") == 0) return "Subpage";
+  if (std::strcmp(key, "stop") == 0) return "Stop";
   if (std::strcmp(key, "sunny") == 0) return "Sunny";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sunny Alert";
   if (std::strcmp(key, "sunset") == 0) return "Sunset";
@@ -4168,6 +4365,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Version unknown";
   if (std::strcmp(key, "volume") == 0) return "Volume";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Waiting for Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Connecting to \nHome Assistant";
+  if (std::strcmp(key, "check_the_status_of_your_home_assistant_server") == 0) return "If this persists, check your server for issues";
   if (std::strcmp(key, "weather") == 0) return "Weather";
   if (std::strcmp(key, "weekly") == 0) return "Weekly";
   if (std::strcmp(key, "window") == 0) return "Window";
@@ -4221,6 +4420,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Akce alarmu selhala";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm se nezměnil";
   if (std::strcmp(key, "all_done") == 0) return "Hotovo";
+  if (std::strcmp(key, "all_controls") == 0) return "Všechny ovládací prvky";
   if (std::strcmp(key, "always_on") == 0) return "Vždy zapnuto";
   if (std::strcmp(key, "arm_away") == 0) return "Zajistit pryč";
   if (std::strcmp(key, "arm_home") == 0) return "Zajistit doma";
@@ -4266,7 +4466,11 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Výjimečné";
   if (std::strcmp(key, "fan") == 0) return "Ventilátor";
   if (std::strcmp(key, "fog") == 0) return "Mlha";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Zavřít garážová vrata?";
   if (std::strcmp(key, "garage_door") == 0) return "Garážová vrata";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Otevřít garážová vrata?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Otevřít nebo zavřít garážová vrata?";
+  if (std::strcmp(key, "gate") == 0) return "Brána";
   if (std::strcmp(key, "hail") == 0) return "Kroupy";
   if (std::strcmp(key, "hazy") == 0) return "Opar";
   if (std::strcmp(key, "heat") == 0) return "Topení";
@@ -4289,6 +4493,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Nízké";
   if (std::strcmp(key, "low_target") == 0) return "Nízký cíl";
   if (std::strcmp(key, "media") == 0) return "Média";
+  if (std::strcmp(key, "media_control") == 0) return "Ovládání médií";
   if (std::strcmp(key, "mode") == 0) return "Režim";
   if (std::strcmp(key, "monthly") == 0) return "Měsíčně";
   if (std::strcmp(key, "more") == 0) return "další";
@@ -4311,6 +4516,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Žádné";
   if (std::strcmp(key, "no_options") == 0) return "Žádné možnosti";
   if (std::strcmp(key, "no_presets") == 0) return "Žádné předvolby";
+  if (std::strcmp(key, "no_sources") == 0) return "Žádné zdroje";
+  if (std::strcmp(key, "source") == 0) return "Zdroj";
   if (std::strcmp(key, "not_available") == 0) return "Není dostupné";
   if (std::strcmp(key, "off") == 0) return "Vypnuto";
   if (std::strcmp(key, "on") == 0) return "Zapnuto";
@@ -4353,6 +4560,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Spustit";
   if (std::strcmp(key, "still") == 0) return "Stojí";
   if (std::strcmp(key, "subpage") == 0) return "Podstránka";
+  if (std::strcmp(key, "stop") == 0) return "Zastavit";
   if (std::strcmp(key, "sunny") == 0) return "Slunečno";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sluneční varování";
   if (std::strcmp(key, "sunset") == 0) return "Západ slunce";
@@ -4378,6 +4586,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Verze neznámá";
   if (std::strcmp(key, "volume") == 0) return "Hlasitost";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Čekání na Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Připojování k \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Počasí";
   if (std::strcmp(key, "weekly") == 0) return "Týdně";
   if (std::strcmp(key, "window") == 0) return "Okno";
@@ -4430,6 +4639,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmhandling mislykkedes";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarmen blev ikke ændret";
   if (std::strcmp(key, "all_done") == 0) return "Færdig";
+  if (std::strcmp(key, "all_controls") == 0) return "Alle kontroller";
   if (std::strcmp(key, "always_on") == 0) return "Altid tændt";
   if (std::strcmp(key, "arm_away") == 0) return "Aktiver ude";
   if (std::strcmp(key, "arm_home") == 0) return "Aktiver hjemme";
@@ -4474,7 +4684,11 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Ekstraordinær";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Tåge";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Lukke garageporten?";
   if (std::strcmp(key, "garage_door") == 0) return "Garageport";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Åbne garageporten?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Åbne eller lukke garageporten?";
+  if (std::strcmp(key, "gate") == 0) return "Port";
   if (std::strcmp(key, "hail") == 0) return "Hagl";
   if (std::strcmp(key, "hazy") == 0) return "Diset";
   if (std::strcmp(key, "heat") == 0) return "Varme";
@@ -4497,6 +4711,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Lav";
   if (std::strcmp(key, "low_target") == 0) return "Lavt mål";
   if (std::strcmp(key, "media") == 0) return "Medie";
+  if (std::strcmp(key, "media_control") == 0) return "Mediestyring";
   if (std::strcmp(key, "playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(key, "mode") == 0) return "Tilstand";
   if (std::strcmp(key, "monthly") == 0) return "Månedligt";
@@ -4520,6 +4735,8 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ingen";
   if (std::strcmp(key, "no_options") == 0) return "Ingen muligheder";
   if (std::strcmp(key, "no_presets") == 0) return "Ingen forvalg";
+  if (std::strcmp(key, "no_sources") == 0) return "Ingen kilder";
+  if (std::strcmp(key, "source") == 0) return "Kilde";
   if (std::strcmp(key, "not_available") == 0) return "Ikke tilgængelig";
   if (std::strcmp(key, "off") == 0) return "Slukket";
   if (std::strcmp(key, "on") == 0) return "Tændt";
@@ -4582,6 +4799,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Version ukendt";
   if (std::strcmp(key, "volume") == 0) return "Lydstyrke";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Venter på Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Opretter forbindelse til \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Vejr";
   if (std::strcmp(key, "weekly") == 0) return "Ugentligt";
   if (std::strcmp(key, "window") == 0) return "Vindue";
@@ -4634,6 +4852,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmaktion fehlgeschlagen";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm wurde nicht geändert";
   if (std::strcmp(key, "all_done") == 0) return "Alles erledigt";
+  if (std::strcmp(key, "all_controls") == 0) return "Alle Steuerungen";
   if (std::strcmp(key, "always_on") == 0) return "Immer an";
   if (std::strcmp(key, "arm_away") == 0) return "Abwesend scharfschalten";
   if (std::strcmp(key, "arm_home") == 0) return "Zuhause scharfschalten";
@@ -4680,7 +4899,11 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Außergewöhnlich";
   if (std::strcmp(key, "fan") == 0) return "Lüfter";
   if (std::strcmp(key, "fog") == 0) return "Nebel";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Garagentor schließen?";
   if (std::strcmp(key, "garage_door") == 0) return "Garagentor";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Garagentor öffnen?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Garagentor öffnen oder schließen?";
+  if (std::strcmp(key, "gate") == 0) return "Tor";
   if (std::strcmp(key, "hail") == 0) return "Hagel";
   if (std::strcmp(key, "hazy") == 0) return "Dunstig";
   if (std::strcmp(key, "heat") == 0) return "Heizen";
@@ -4703,6 +4926,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Niedrig";
   if (std::strcmp(key, "low_target") == 0) return "Niedriger Zielwert";
   if (std::strcmp(key, "media") == 0) return "Medien";
+  if (std::strcmp(key, "media_control") == 0) return "Mediensteuerung";
   if (std::strcmp(key, "playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
   if (std::strcmp(key, "monthly") == 0) return "Monatlich";
@@ -4722,6 +4946,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Keine";
   if (std::strcmp(key, "no_options") == 0) return "Keine Optionen";
   if (std::strcmp(key, "no_presets") == 0) return "Keine Voreinstellungen";
+  if (std::strcmp(key, "no_sources") == 0) return "Keine Quellen";
+  if (std::strcmp(key, "source") == 0) return "Quelle";
   if (std::strcmp(key, "not_available") == 0) return "Nicht verfügbar";
   if (std::strcmp(key, "off") == 0) return "Aus";
   if (std::strcmp(key, "on") == 0) return "Ein";
@@ -4759,6 +4985,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Schnee und Regen";
   if (std::strcmp(key, "spot_clean") == 0) return "Punktreinigung";
   if (std::strcmp(key, "subpage") == 0) return "Unterseite";
+  if (std::strcmp(key, "stop") == 0) return "Stopp";
   if (std::strcmp(key, "sunny") == 0) return "Sonnig";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sonnenwarnung";
   if (std::strcmp(key, "sunset") == 0) return "Sonnenuntergang";
@@ -4783,6 +5010,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Version unbekannt";
   if (std::strcmp(key, "volume") == 0) return "Lautstärke";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Warten auf Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Verbindung mit \nHome Assistant wird hergestellt";
   if (std::strcmp(key, "weather") == 0) return "Wetter";
   if (std::strcmp(key, "weekly") == 0) return "Wöchentlich";
   if (std::strcmp(key, "window") == 0) return "Fenster";
@@ -4836,6 +5064,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Acción de alarma fallida";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "La alarma no cambió";
   if (std::strcmp(key, "all_done") == 0) return "Todo listo";
+  if (std::strcmp(key, "all_controls") == 0) return "Todos los controles";
   if (std::strcmp(key, "always_on") == 0) return "Siempre encendido";
   if (std::strcmp(key, "arm_away") == 0) return "Armar fuera";
   if (std::strcmp(key, "arm_home") == 0) return "Armar en casa";
@@ -4880,7 +5109,11 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Excepcional";
   if (std::strcmp(key, "fan") == 0) return "Ventilador";
   if (std::strcmp(key, "fog") == 0) return "Niebla";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "¿Cerrar la puerta del garaje?";
   if (std::strcmp(key, "garage_door") == 0) return "Puerta de garaje";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "¿Abrir la puerta del garaje?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "¿Abrir o cerrar la puerta del garaje?";
+  if (std::strcmp(key, "gate") == 0) return "Puerta";
   if (std::strcmp(key, "hail") == 0) return "Granizo";
   if (std::strcmp(key, "hazy") == 0) return "Brumoso";
   if (std::strcmp(key, "heat") == 0) return "Calor";
@@ -4903,6 +5136,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Bajo";
   if (std::strcmp(key, "low_target") == 0) return "Objetivo bajo";
   if (std::strcmp(key, "media") == 0) return "Multimedia";
+  if (std::strcmp(key, "media_control") == 0) return "Control multimedia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(key, "mode") == 0) return "Modo";
   if (std::strcmp(key, "monthly") == 0) return "Mensual";
@@ -4925,6 +5159,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ninguno";
   if (std::strcmp(key, "no_options") == 0) return "Sin opciones";
   if (std::strcmp(key, "no_presets") == 0) return "Sin preajustes";
+  if (std::strcmp(key, "no_sources") == 0) return "Sin fuentes";
+  if (std::strcmp(key, "source") == 0) return "Fuente";
   if (std::strcmp(key, "not_available") == 0) return "No disponible";
   if (std::strcmp(key, "off") == 0) return "Apagado";
   if (std::strcmp(key, "on") == 0) return "Encendido";
@@ -4967,6 +5203,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Iniciar";
   if (std::strcmp(key, "still") == 0) return "Quieto";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
+  if (std::strcmp(key, "stop") == 0) return "Detener";
   if (std::strcmp(key, "sunny") == 0) return "Soleado";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerta de sol";
   if (std::strcmp(key, "sunset") == 0) return "Puesta de sol";
@@ -4991,6 +5228,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Versión desconocida";
   if (std::strcmp(key, "volume") == 0) return "Volumen";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Esperando a Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Conectando a \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Tiempo";
   if (std::strcmp(key, "weekly") == 0) return "Semanal";
   if (std::strcmp(key, "window") == 0) return "Ventana";
@@ -5044,6 +5282,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Hälytystoiminto epäonnistui";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Hälytys ei muuttunut";
   if (std::strcmp(key, "all_done") == 0) return "Kaikki valmista";
+  if (std::strcmp(key, "all_controls") == 0) return "Kaikki säätimet";
   if (std::strcmp(key, "always_on") == 0) return "Aina päällä";
   if (std::strcmp(key, "arm_away") == 0) return "Viritä poissa";
   if (std::strcmp(key, "arm_home") == 0) return "Viritä kotona";
@@ -5091,7 +5330,11 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Poikkeuksellinen";
   if (std::strcmp(key, "fan") == 0) return "Tuuletin";
   if (std::strcmp(key, "fog") == 0) return "Sumu";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Suljetaanko autotallin ovi?";
   if (std::strcmp(key, "garage_door") == 0) return "Autotallin ovi";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Avataanko autotallin ovi?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Avataanko vai suljetaanko autotallin ovi?";
+  if (std::strcmp(key, "gate") == 0) return "Portti";
   if (std::strcmp(key, "hail") == 0) return "Raekuuro";
   if (std::strcmp(key, "hazy") == 0) return "Utuista";
   if (std::strcmp(key, "heat") == 0) return "Lämmitys";
@@ -5114,6 +5357,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Ruohonleikkuri";
   if (std::strcmp(key, "low") == 0) return "Matala";
   if (std::strcmp(key, "low_target") == 0) return "Alaraja";
+  if (std::strcmp(key, "media_control") == 0) return "Median ohjaus";
   if (std::strcmp(key, "playlist") == 0) return "Soittolista";
   if (std::strcmp(key, "medium") == 0) return "Keskitaso";
   if (std::strcmp(key, "mode") == 0) return "Tila";
@@ -5139,6 +5383,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ei mitään";
   if (std::strcmp(key, "no_options") == 0) return "Ei vaihtoehtoja";
   if (std::strcmp(key, "no_presets") == 0) return "Ei esiasetuksia";
+  if (std::strcmp(key, "no_sources") == 0) return "Ei lähteitä";
+  if (std::strcmp(key, "source") == 0) return "Lähde";
   if (std::strcmp(key, "not_available") == 0) return "Ei saatavilla";
   if (std::strcmp(key, "off") == 0) return "Pois";
   if (std::strcmp(key, "on") == 0) return "Päällä";
@@ -5183,6 +5429,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Käynnistä";
   if (std::strcmp(key, "still") == 0) return "Paikallaan";
   if (std::strcmp(key, "subpage") == 0) return "Alisivu";
+  if (std::strcmp(key, "stop") == 0) return "Pysäytä";
   if (std::strcmp(key, "sunny") == 0) return "Aurinkoista";
   if (std::strcmp(key, "sunny_alert") == 0) return "Aurinkohälytys";
   if (std::strcmp(key, "sunset") == 0) return "Auringonlasku";
@@ -5209,6 +5456,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Versio tuntematon";
   if (std::strcmp(key, "volume") == 0) return "Äänenvoimakkuus";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Odotetaan Home Assistantia";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Yhdistetään \nHome Assistantiin";
   if (std::strcmp(key, "weather") == 0) return "Sää";
   if (std::strcmp(key, "weekly") == 0) return "Viikoittain";
   if (std::strcmp(key, "window") == 0) return "Ikkuna";
@@ -5261,6 +5509,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Action d'alarme échouée";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "L'alarme n'a pas changé";
   if (std::strcmp(key, "all_done") == 0) return "Terminé";
+  if (std::strcmp(key, "all_controls") == 0) return "Toutes les commandes";
   if (std::strcmp(key, "always_on") == 0) return "Toujours activé";
   if (std::strcmp(key, "arm_away") == 0) return "Armer absent";
   if (std::strcmp(key, "arm_home") == 0) return "Armer maison";
@@ -5304,7 +5553,11 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(key, "fan") == 0) return "Ventilateur";
   if (std::strcmp(key, "fog") == 0) return "Brouillard";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Fermer la porte de garage ?";
   if (std::strcmp(key, "garage_door") == 0) return "Porte de garage";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Ouvrir la porte de garage ?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Ouvrir ou fermer la porte de garage ?";
+  if (std::strcmp(key, "gate") == 0) return "Portail";
   if (std::strcmp(key, "hail") == 0) return "Grêle";
   if (std::strcmp(key, "hazy") == 0) return "Brumeux";
   if (std::strcmp(key, "heat") == 0) return "Chaud";
@@ -5327,6 +5580,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Bas";
   if (std::strcmp(key, "low_target") == 0) return "Cible basse";
   if (std::strcmp(key, "media") == 0) return "Média";
+  if (std::strcmp(key, "media_control") == 0) return "Contrôle multimédia";
   if (std::strcmp(key, "playlist") == 0) return "Liste de lecture";
   if (std::strcmp(key, "monthly") == 0) return "Mensuel";
   if (std::strcmp(key, "more") == 0) return "de plus";
@@ -5349,6 +5603,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Aucun";
   if (std::strcmp(key, "no_options") == 0) return "Aucune option";
   if (std::strcmp(key, "no_presets") == 0) return "Aucun préréglage";
+  if (std::strcmp(key, "no_sources") == 0) return "Aucune source";
   if (std::strcmp(key, "not_available") == 0) return "Non disponible";
   if (std::strcmp(key, "off") == 0) return "Éteint";
   if (std::strcmp(key, "on") == 0) return "Allumé";
@@ -5387,6 +5642,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Démarrer";
   if (std::strcmp(key, "still") == 0) return "Fixe";
   if (std::strcmp(key, "subpage") == 0) return "Sous-page";
+  if (std::strcmp(key, "stop") == 0) return "Arrêter";
   if (std::strcmp(key, "sunny") == 0) return "Ensoleillé";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerte soleil";
   if (std::strcmp(key, "sunset") == 0) return "Coucher du soleil";
@@ -5411,6 +5667,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "vacuum") == 0) return "Aspirateur";
   if (std::strcmp(key, "version_unknown") == 0) return "Version inconnue";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "En attente de Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Connexion à \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Météo";
   if (std::strcmp(key, "weekly") == 0) return "Hebdomadaire";
   if (std::strcmp(key, "window") == 0) return "Fenêtre";
@@ -5464,6 +5721,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "A riasztási művelet sikertelen";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "A riasztó nem változott";
   if (std::strcmp(key, "all_done") == 0) return "Minden kész";
+  if (std::strcmp(key, "all_controls") == 0) return "Minden vezérlő";
   if (std::strcmp(key, "always_on") == 0) return "Mindig bekapcsolva";
   if (std::strcmp(key, "arm_away") == 0) return "Élesítés távollétre";
   if (std::strcmp(key, "arm_home") == 0) return "Élesítés otthonra";
@@ -5511,7 +5769,11 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Rendkívüli";
   if (std::strcmp(key, "fan") == 0) return "Ventilátor";
   if (std::strcmp(key, "fog") == 0) return "Köd";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Becsukja a garázsajtót?";
   if (std::strcmp(key, "garage_door") == 0) return "Garázsajtó";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Kinyitja a garázsajtót?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Kinyitja vagy becsukja a garázsajtót?";
+  if (std::strcmp(key, "gate") == 0) return "Kapu";
   if (std::strcmp(key, "hail") == 0) return "Jégeső";
   if (std::strcmp(key, "hazy") == 0) return "Párás";
   if (std::strcmp(key, "heat") == 0) return "Fűtés";
@@ -5535,6 +5797,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Alacsony";
   if (std::strcmp(key, "low_target") == 0) return "Alacsony célérték";
   if (std::strcmp(key, "media") == 0) return "Média";
+  if (std::strcmp(key, "media_control") == 0) return "Médiavezérlés";
   if (std::strcmp(key, "playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(key, "medium") == 0) return "Közepes";
   if (std::strcmp(key, "mode") == 0) return "Mód";
@@ -5558,6 +5821,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nincs";
   if (std::strcmp(key, "no_options") == 0) return "Nincsenek opciók";
   if (std::strcmp(key, "no_presets") == 0) return "Nincsenek előbeállítások";
+  if (std::strcmp(key, "no_sources") == 0) return "Nincsenek források";
+  if (std::strcmp(key, "source") == 0) return "Forrás";
   if (std::strcmp(key, "not_available") == 0) return "Nem érhető el";
   if (std::strcmp(key, "off") == 0) return "Ki";
   if (std::strcmp(key, "on") == 0) return "Be";
@@ -5602,6 +5867,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Indítás";
   if (std::strcmp(key, "still") == 0) return "Álló";
   if (std::strcmp(key, "subpage") == 0) return "Aloldal";
+  if (std::strcmp(key, "stop") == 0) return "Leállítás";
   if (std::strcmp(key, "sunny") == 0) return "Napos";
   if (std::strcmp(key, "sunny_alert") == 0) return "Napsütés riasztás";
   if (std::strcmp(key, "sunset") == 0) return "Naplemente";
@@ -5629,6 +5895,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Ismeretlen verzió";
   if (std::strcmp(key, "volume") == 0) return "Hangerő";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Várakozás a Home Assistantra";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Csatlakozás a \nHome Assistanthez";
   if (std::strcmp(key, "weather") == 0) return "Időjárás";
   if (std::strcmp(key, "weekly") == 0) return "Hetente";
   if (std::strcmp(key, "window") == 0) return "Ablak";
@@ -5682,6 +5949,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Azione allarme non riuscita";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Allarme invariato";
   if (std::strcmp(key, "all_done") == 0) return "Completato";
+  if (std::strcmp(key, "all_controls") == 0) return "Tutti i controlli";
   if (std::strcmp(key, "always_on") == 0) return "Sempre acceso";
   if (std::strcmp(key, "arm_away") == 0) return "Inserisci fuori casa";
   if (std::strcmp(key, "arm_home") == 0) return "Inserisci in casa";
@@ -5726,7 +5994,11 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Eccezionale";
   if (std::strcmp(key, "fan") == 0) return "Ventola";
   if (std::strcmp(key, "fog") == 0) return "Nebbia";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Chiudere la porta del garage?";
   if (std::strcmp(key, "garage_door") == 0) return "Porta garage";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Aprire la porta del garage?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Aprire o chiudere la porta del garage?";
+  if (std::strcmp(key, "gate") == 0) return "Cancello";
   if (std::strcmp(key, "hail") == 0) return "Grandine";
   if (std::strcmp(key, "hazy") == 0) return "Foschia";
   if (std::strcmp(key, "heat") == 0) return "Caldo";
@@ -5749,6 +6021,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Tagliaerba";
   if (std::strcmp(key, "low") == 0) return "Basso";
   if (std::strcmp(key, "low_target") == 0) return "Target basso";
+  if (std::strcmp(key, "media_control") == 0) return "Controllo multimediale";
   if (std::strcmp(key, "medium") == 0) return "Medio";
   if (std::strcmp(key, "mode") == 0) return "Modalità";
   if (std::strcmp(key, "monthly") == 0) return "Mensile";
@@ -5772,6 +6045,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nessuno";
   if (std::strcmp(key, "no_options") == 0) return "Nessuna opzione";
   if (std::strcmp(key, "no_presets") == 0) return "Nessun preset";
+  if (std::strcmp(key, "no_sources") == 0) return "Nessuna sorgente";
+  if (std::strcmp(key, "source") == 0) return "Fonte";
   if (std::strcmp(key, "not_available") == 0) return "Non disponibile";
   if (std::strcmp(key, "off") == 0) return "Spento";
   if (std::strcmp(key, "on") == 0) return "Acceso";
@@ -5815,6 +6090,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Avvia";
   if (std::strcmp(key, "still") == 0) return "Fermo";
   if (std::strcmp(key, "subpage") == 0) return "Sottopagina";
+  if (std::strcmp(key, "stop") == 0) return "Arresta";
   if (std::strcmp(key, "sunny") == 0) return "Soleggiato";
   if (std::strcmp(key, "sunny_alert") == 0) return "Allerta sole";
   if (std::strcmp(key, "sunset") == 0) return "Tramonto";
@@ -5839,6 +6115,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "vacuum") == 0) return "Aspirapolvere";
   if (std::strcmp(key, "version_unknown") == 0) return "Versione sconosciuta";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "In attesa di Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Connessione a \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Meteo";
   if (std::strcmp(key, "weekly") == 0) return "Settimanale";
   if (std::strcmp(key, "window") == 0) return "Finestra";
@@ -5891,6 +6168,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmhandling mislyktes";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarmen ble ikke endret";
   if (std::strcmp(key, "all_done") == 0) return "Ferdig";
+  if (std::strcmp(key, "all_controls") == 0) return "Alle kontroller";
   if (std::strcmp(key, "always_on") == 0) return "Alltid på";
   if (std::strcmp(key, "arm_away") == 0) return "Aktiver borte";
   if (std::strcmp(key, "arm_home") == 0) return "Aktiver hjemme";
@@ -5936,7 +6214,11 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Eksepsjonelt";
   if (std::strcmp(key, "fan") == 0) return "Vifte";
   if (std::strcmp(key, "fog") == 0) return "Tåke";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Lukke garasjeporten?";
   if (std::strcmp(key, "garage_door") == 0) return "Garasjeport";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Åpne garasjeporten?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Åpne eller lukke garasjeporten?";
+  if (std::strcmp(key, "gate") == 0) return "Port";
   if (std::strcmp(key, "hail") == 0) return "Hagl";
   if (std::strcmp(key, "hazy") == 0) return "Disig";
   if (std::strcmp(key, "heat") == 0) return "Varme";
@@ -5958,6 +6240,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Gressklipper";
   if (std::strcmp(key, "low") == 0) return "Lav";
   if (std::strcmp(key, "low_target") == 0) return "Lavt mål";
+  if (std::strcmp(key, "media_control") == 0) return "Mediekontroll";
   if (std::strcmp(key, "playlist") == 0) return "Spilleliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
   if (std::strcmp(key, "monthly") == 0) return "Månedlig";
@@ -5981,6 +6264,8 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ingen";
   if (std::strcmp(key, "no_options") == 0) return "Ingen alternativer";
   if (std::strcmp(key, "no_presets") == 0) return "Ingen forhåndsvalg";
+  if (std::strcmp(key, "no_sources") == 0) return "Ingen kilder";
+  if (std::strcmp(key, "source") == 0) return "Kilde";
   if (std::strcmp(key, "not_available") == 0) return "Ikke tilgjengelig";
   if (std::strcmp(key, "off") == 0) return "Av";
   if (std::strcmp(key, "on") == 0) return "På";
@@ -6021,6 +6306,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "spot_clean") == 0) return "Punktrengjøring";
   if (std::strcmp(key, "still") == 0) return "Stille";
   if (std::strcmp(key, "subpage") == 0) return "Underside";
+  if (std::strcmp(key, "stop") == 0) return "Stopp";
   if (std::strcmp(key, "sunny") == 0) return "Sol";
   if (std::strcmp(key, "sunny_alert") == 0) return "Solvarsel";
   if (std::strcmp(key, "sunset") == 0) return "Solnedgang";
@@ -6045,6 +6331,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Ukjent versjon";
   if (std::strcmp(key, "volume") == 0) return "Volum";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Venter på Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Kobler til \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Vær";
   if (std::strcmp(key, "weekly") == 0) return "Ukentlig";
   if (std::strcmp(key, "window") == 0) return "Vindu";
@@ -6097,6 +6384,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmactie mislukt";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm is niet gewijzigd";
   if (std::strcmp(key, "all_done") == 0) return "Alles gereed";
+  if (std::strcmp(key, "all_controls") == 0) return "Alle bedieningselementen";
   if (std::strcmp(key, "always_on") == 0) return "Altijd aan";
   if (std::strcmp(key, "arm_away") == 0) return "Inschakelen afwezig";
   if (std::strcmp(key, "arm_home") == 0) return "Inschakelen thuis";
@@ -6144,7 +6432,11 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Uitzonderlijk";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Mist";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Garagedeur sluiten?";
   if (std::strcmp(key, "garage_door") == 0) return "Garagedeur";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Garagedeur openen?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Garagedeur openen of sluiten?";
+  if (std::strcmp(key, "gate") == 0) return "Poort";
   if (std::strcmp(key, "hail") == 0) return "Hagel";
   if (std::strcmp(key, "hazy") == 0) return "Nevelig";
   if (std::strcmp(key, "heat") == 0) return "Verwarmen";
@@ -6166,6 +6458,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Grasmaaier";
   if (std::strcmp(key, "low") == 0) return "Laag";
   if (std::strcmp(key, "low_target") == 0) return "Laag doel";
+  if (std::strcmp(key, "media_control") == 0) return "Mediabediening";
   if (std::strcmp(key, "playlist") == 0) return "Afspeellijst";
   if (std::strcmp(key, "mode") == 0) return "Modus";
   if (std::strcmp(key, "monthly") == 0) return "Maandelijks";
@@ -6189,6 +6482,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Geen";
   if (std::strcmp(key, "no_options") == 0) return "Geen opties";
   if (std::strcmp(key, "no_presets") == 0) return "Geen voorinstellingen";
+  if (std::strcmp(key, "no_sources") == 0) return "Geen bronnen";
+  if (std::strcmp(key, "source") == 0) return "Bron";
   if (std::strcmp(key, "not_available") == 0) return "Niet beschikbaar";
   if (std::strcmp(key, "off") == 0) return "Uit";
   if (std::strcmp(key, "on") == 0) return "Aan";
@@ -6229,6 +6524,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "spot_clean") == 0) return "Plaatselijk reinigen";
   if (std::strcmp(key, "still") == 0) return "Vast";
   if (std::strcmp(key, "subpage") == 0) return "Subpagina";
+  if (std::strcmp(key, "stop") == 0) return "Stoppen";
   if (std::strcmp(key, "sunny") == 0) return "Zonnig";
   if (std::strcmp(key, "sunny_alert") == 0) return "Zonwaarschuwing";
   if (std::strcmp(key, "sunset") == 0) return "Zonsondergang";
@@ -6252,6 +6548,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "vacuum") == 0) return "Stofzuiger";
   if (std::strcmp(key, "version_unknown") == 0) return "Versie onbekend";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Wachten op Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Verbinden met \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Weer";
   if (std::strcmp(key, "weekly") == 0) return "Wekelijks";
   if (std::strcmp(key, "window") == 0) return "Raam";
@@ -6303,6 +6600,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Akcja alarmu nie powiodła się";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm się nie zmienił";
   if (std::strcmp(key, "all_done") == 0) return "Gotowe";
+  if (std::strcmp(key, "all_controls") == 0) return "Wszystkie elementy sterujące";
   if (std::strcmp(key, "always_on") == 0) return "Zawsze włączone";
   if (std::strcmp(key, "arm_away") == 0) return "Uzbrój poza domem";
   if (std::strcmp(key, "arm_home") == 0) return "Uzbrój w domu";
@@ -6348,7 +6646,11 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Wyjątkowe";
   if (std::strcmp(key, "fan") == 0) return "Wentylator";
   if (std::strcmp(key, "fog") == 0) return "Mgła";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Zamknąć bramę garażową?";
   if (std::strcmp(key, "garage_door") == 0) return "Brama garażowa";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Otworzyć bramę garażową?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Otworzyć czy zamknąć bramę garażową?";
+  if (std::strcmp(key, "gate") == 0) return "Brama";
   if (std::strcmp(key, "hail") == 0) return "Grad";
   if (std::strcmp(key, "hazy") == 0) return "Zamglenie";
   if (std::strcmp(key, "heat") == 0) return "Grzanie";
@@ -6370,6 +6672,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Kosiarka";
   if (std::strcmp(key, "low") == 0) return "Niski";
   if (std::strcmp(key, "low_target") == 0) return "Niski cel";
+  if (std::strcmp(key, "media_control") == 0) return "Sterowanie multimediami";
   if (std::strcmp(key, "playlist") == 0) return "Playlista";
   if (std::strcmp(key, "mode") == 0) return "Tryb";
   if (std::strcmp(key, "monthly") == 0) return "Co miesiąc";
@@ -6393,6 +6696,8 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Brak";
   if (std::strcmp(key, "no_options") == 0) return "Brak opcji";
   if (std::strcmp(key, "no_presets") == 0) return "Brak presetów";
+  if (std::strcmp(key, "no_sources") == 0) return "Brak źródeł";
+  if (std::strcmp(key, "source") == 0) return "Źródło";
   if (std::strcmp(key, "not_available") == 0) return "Niedostępne";
   if (std::strcmp(key, "off") == 0) return "Wyłączone";
   if (std::strcmp(key, "on") == 0) return "Włączone";
@@ -6433,6 +6738,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "spot_clean") == 0) return "Czyszczenie punktowe";
   if (std::strcmp(key, "still") == 0) return "Stabilny";
   if (std::strcmp(key, "subpage") == 0) return "Podstrona";
+  if (std::strcmp(key, "stop") == 0) return "Zatrzymaj";
   if (std::strcmp(key, "sunny") == 0) return "Słonecznie";
   if (std::strcmp(key, "sunny_alert") == 0) return "Ostrzeżenie słoneczne";
   if (std::strcmp(key, "sunset") == 0) return "Zachód słońca";
@@ -6457,6 +6763,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Wersja nieznana";
   if (std::strcmp(key, "volume") == 0) return "Głośność";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Oczekiwanie na Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Łączenie z \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Pogoda";
   if (std::strcmp(key, "weekly") == 0) return "Co tydzień";
   if (std::strcmp(key, "window") == 0) return "Okno";
@@ -6510,6 +6817,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "O alarme não mudou";
   if (std::strcmp(key, "all_done") == 0) return "Tudo pronto";
+  if (std::strcmp(key, "all_controls") == 0) return "Todos os controles";
   if (std::strcmp(key, "always_on") == 0) return "Sempre ligado";
   if (std::strcmp(key, "arm_away") == 0) return "Armar ausente";
   if (std::strcmp(key, "arm_home") == 0) return "Armar em casa";
@@ -6554,7 +6862,11 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Excepcional";
   if (std::strcmp(key, "fan") == 0) return "Ventilador";
   if (std::strcmp(key, "fog") == 0) return "Névoa";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Fechar a porta da garagem?";
   if (std::strcmp(key, "garage_door") == 0) return "Porta da garagem";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Abrir a porta da garagem?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Abrir ou fechar a porta da garagem?";
+  if (std::strcmp(key, "gate") == 0) return "Portão";
   if (std::strcmp(key, "hail") == 0) return "Granizo";
   if (std::strcmp(key, "hazy") == 0) return "Neblina";
   if (std::strcmp(key, "heat") == 0) return "Calor";
@@ -6577,6 +6889,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Baixo";
   if (std::strcmp(key, "low_target") == 0) return "Alvo baixo";
   if (std::strcmp(key, "media") == 0) return "Mídia";
+  if (std::strcmp(key, "media_control") == 0) return "Controle de mídia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
@@ -6600,6 +6913,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nenhum";
   if (std::strcmp(key, "no_options") == 0) return "Sem opções";
   if (std::strcmp(key, "no_presets") == 0) return "Sem predefinições";
+  if (std::strcmp(key, "no_sources") == 0) return "Sem fontes";
+  if (std::strcmp(key, "source") == 0) return "Fonte";
   if (std::strcmp(key, "not_available") == 0) return "Não disponível";
   if (std::strcmp(key, "off") == 0) return "Desligado";
   if (std::strcmp(key, "on") == 0) return "Ligado";
@@ -6642,6 +6957,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Iniciar";
   if (std::strcmp(key, "still") == 0) return "Parado";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
+  if (std::strcmp(key, "stop") == 0) return "Parar";
   if (std::strcmp(key, "sunny") == 0) return "Ensolarado";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerta de sol";
   if (std::strcmp(key, "sunset") == 0) return "Pôr do sol";
@@ -6665,6 +6981,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "vacuum") == 0) return "Aspirador";
   if (std::strcmp(key, "version_unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Aguardando o Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Conectando ao \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Tempo";
   if (std::strcmp(key, "weekly") == 0) return "Semanal";
   if (std::strcmp(key, "window") == 0) return "Janela";
@@ -6718,6 +7035,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "O alarme não mudou";
   if (std::strcmp(key, "all_done") == 0) return "Tudo concluído";
+  if (std::strcmp(key, "all_controls") == 0) return "Todos os controlos";
   if (std::strcmp(key, "always_on") == 0) return "Sempre ligado";
   if (std::strcmp(key, "arm_away") == 0) return "Armar ausente";
   if (std::strcmp(key, "arm_home") == 0) return "Armar em casa";
@@ -6763,7 +7081,11 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Excecional";
   if (std::strcmp(key, "fan") == 0) return "Ventoinha";
   if (std::strcmp(key, "fog") == 0) return "Nevoeiro";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Fechar a porta da garagem?";
   if (std::strcmp(key, "garage_door") == 0) return "Porta da garagem";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Abrir a porta da garagem?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Abrir ou fechar a porta da garagem?";
+  if (std::strcmp(key, "gate") == 0) return "Portão";
   if (std::strcmp(key, "hail") == 0) return "Granizo";
   if (std::strcmp(key, "hazy") == 0) return "Neblina";
   if (std::strcmp(key, "heat") == 0) return "Calor";
@@ -6786,6 +7108,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Baixo";
   if (std::strcmp(key, "low_target") == 0) return "Alvo baixo";
   if (std::strcmp(key, "media") == 0) return "Multimédia";
+  if (std::strcmp(key, "media_control") == 0) return "Controlo multimédia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
@@ -6809,6 +7132,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nenhum";
   if (std::strcmp(key, "no_options") == 0) return "Sem opções";
   if (std::strcmp(key, "no_presets") == 0) return "Sem predefinições";
+  if (std::strcmp(key, "no_sources") == 0) return "Sem fontes";
+  if (std::strcmp(key, "source") == 0) return "Fonte";
   if (std::strcmp(key, "not_available") == 0) return "Não disponível";
   if (std::strcmp(key, "off") == 0) return "Desligado";
   if (std::strcmp(key, "on") == 0) return "Ligado";
@@ -6851,6 +7176,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Iniciar";
   if (std::strcmp(key, "still") == 0) return "Parado";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
+  if (std::strcmp(key, "stop") == 0) return "Parar";
   if (std::strcmp(key, "sunny") == 0) return "Solarengo";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerta de sol";
   if (std::strcmp(key, "sunset") == 0) return "Pôr do sol";
@@ -6874,6 +7200,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "vacuum") == 0) return "Aspirador";
   if (std::strcmp(key, "version_unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "À espera do Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "A ligar ao \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Meteorologia";
   if (std::strcmp(key, "weekly") == 0) return "Semanal";
   if (std::strcmp(key, "window") == 0) return "Janela";
@@ -6927,6 +7254,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Acțiunea alarmei a eșuat";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarma nu s-a schimbat";
   if (std::strcmp(key, "all_done") == 0) return "Totul este gata";
+  if (std::strcmp(key, "all_controls") == 0) return "Toate comenzile";
   if (std::strcmp(key, "always_on") == 0) return "Mereu pornit";
   if (std::strcmp(key, "arm_away") == 0) return "Armează plecat";
   if (std::strcmp(key, "arm_home") == 0) return "Armează acasă";
@@ -6974,7 +7302,11 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Excepțional";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Ceață";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Închizi ușa garajului?";
   if (std::strcmp(key, "garage_door") == 0) return "Ușă garaj";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Deschizi ușa garajului?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Deschizi sau închizi ușa garajului?";
+  if (std::strcmp(key, "gate") == 0) return "Poartă";
   if (std::strcmp(key, "hail") == 0) return "Grindină";
   if (std::strcmp(key, "hazy") == 0) return "Ceață ușoară";
   if (std::strcmp(key, "heat") == 0) return "Încălzire";
@@ -6997,6 +7329,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Mașină de tuns iarba";
   if (std::strcmp(key, "low") == 0) return "Scăzut";
   if (std::strcmp(key, "low_target") == 0) return "Țintă scăzută";
+  if (std::strcmp(key, "media_control") == 0) return "Control media";
   if (std::strcmp(key, "playlist") == 0) return "Listă de redare";
   if (std::strcmp(key, "medium") == 0) return "Mediu";
   if (std::strcmp(key, "mode") == 0) return "Mod";
@@ -7021,6 +7354,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Niciunul";
   if (std::strcmp(key, "no_options") == 0) return "Fără opțiuni";
   if (std::strcmp(key, "no_presets") == 0) return "Fără presetări";
+  if (std::strcmp(key, "no_sources") == 0) return "Fără surse";
+  if (std::strcmp(key, "source") == 0) return "Sursă";
   if (std::strcmp(key, "not_available") == 0) return "Indisponibil";
   if (std::strcmp(key, "off") == 0) return "Oprit";
   if (std::strcmp(key, "on") == 0) return "Pornit";
@@ -7065,6 +7400,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Pornire";
   if (std::strcmp(key, "still") == 0) return "Nemișcat";
   if (std::strcmp(key, "subpage") == 0) return "Subpagină";
+  if (std::strcmp(key, "stop") == 0) return "Oprire";
   if (std::strcmp(key, "sunny") == 0) return "Însorit";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alertă soare";
   if (std::strcmp(key, "sunset") == 0) return "Apus";
@@ -7092,6 +7428,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Versiune necunoscută";
   if (std::strcmp(key, "volume") == 0) return "Volum";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Se așteaptă Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Se conectează la \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Vreme";
   if (std::strcmp(key, "weekly") == 0) return "Săptămânal";
   if (std::strcmp(key, "window") == 0) return "Fereastră";
@@ -7144,6 +7481,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Akcia alarmu zlyhala";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm sa nezmenil";
   if (std::strcmp(key, "all_done") == 0) return "Hotovo";
+  if (std::strcmp(key, "all_controls") == 0) return "Všetky ovládacie prvky";
   if (std::strcmp(key, "always_on") == 0) return "Vždy zapnuté";
   if (std::strcmp(key, "arm_away") == 0) return "Zabezpečiť preč";
   if (std::strcmp(key, "arm_home") == 0) return "Zabezpečiť doma";
@@ -7189,7 +7527,11 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Výnimočné";
   if (std::strcmp(key, "fan") == 0) return "Ventilátor";
   if (std::strcmp(key, "fog") == 0) return "Hmla";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Zavrieť garážovú bránu?";
   if (std::strcmp(key, "garage_door") == 0) return "Garážová brána";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Otvoriť garážovú bránu?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Otvoriť alebo zavrieť garážovú bránu?";
+  if (std::strcmp(key, "gate") == 0) return "Brána";
   if (std::strcmp(key, "hail") == 0) return "Krúpy";
   if (std::strcmp(key, "hazy") == 0) return "Opar";
   if (std::strcmp(key, "heat") == 0) return "Kúriť";
@@ -7212,6 +7554,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Nízke";
   if (std::strcmp(key, "low_target") == 0) return "Nízky cieľ";
   if (std::strcmp(key, "media") == 0) return "Médiá";
+  if (std::strcmp(key, "media_control") == 0) return "Ovládanie médií";
   if (std::strcmp(key, "playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(key, "mode") == 0) return "Režim";
   if (std::strcmp(key, "monthly") == 0) return "Mesačne";
@@ -7235,6 +7578,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Žiadne";
   if (std::strcmp(key, "no_options") == 0) return "Žiadne možnosti";
   if (std::strcmp(key, "no_presets") == 0) return "Žiadne predvoľby";
+  if (std::strcmp(key, "no_sources") == 0) return "Žiadne zdroje";
+  if (std::strcmp(key, "source") == 0) return "Zdroj";
   if (std::strcmp(key, "not_available") == 0) return "Nie je dostupné";
   if (std::strcmp(key, "off") == 0) return "Vypnuté";
   if (std::strcmp(key, "on") == 0) return "Zapnuté";
@@ -7277,6 +7622,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Spustiť";
   if (std::strcmp(key, "still") == 0) return "Stojí";
   if (std::strcmp(key, "subpage") == 0) return "Podstránka";
+  if (std::strcmp(key, "stop") == 0) return "Zastaviť";
   if (std::strcmp(key, "sunny") == 0) return "Slnečno";
   if (std::strcmp(key, "sunny_alert") == 0) return "Slnečné varovanie";
   if (std::strcmp(key, "sunset") == 0) return "Západ slnka";
@@ -7302,6 +7648,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Verzia neznáma";
   if (std::strcmp(key, "volume") == 0) return "Hlasitosť";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Čakanie na Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Pripája sa k \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Počasie";
   if (std::strcmp(key, "weekly") == 0) return "Týždenne";
   if (std::strcmp(key, "window") == 0) return "Okno";
@@ -7354,6 +7701,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Dejanje alarma ni uspelo";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm se ni spremenil";
   if (std::strcmp(key, "all_done") == 0) return "Vse opravljeno";
+  if (std::strcmp(key, "all_controls") == 0) return "Vsi kontrolniki";
   if (std::strcmp(key, "always_on") == 0) return "Vedno vklopljeno";
   if (std::strcmp(key, "arm_away") == 0) return "Vklopi odsotnost";
   if (std::strcmp(key, "arm_home") == 0) return "Vklopi doma";
@@ -7401,7 +7749,11 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Izjemno";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Megla";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Zaprem garažna vrata?";
   if (std::strcmp(key, "garage_door") == 0) return "Garažna vrata";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Odprem garažna vrata?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Odprem ali zaprem garažna vrata?";
+  if (std::strcmp(key, "gate") == 0) return "Vrata";
   if (std::strcmp(key, "hail") == 0) return "Toča";
   if (std::strcmp(key, "hazy") == 0) return "Motno";
   if (std::strcmp(key, "heat") == 0) return "Gretje";
@@ -7425,6 +7777,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Nizko";
   if (std::strcmp(key, "low_target") == 0) return "Nizka ciljna vrednost";
   if (std::strcmp(key, "media") == 0) return "Predstavnost";
+  if (std::strcmp(key, "media_control") == 0) return "Nadzor predstavnosti";
   if (std::strcmp(key, "playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(key, "medium") == 0) return "Srednje";
   if (std::strcmp(key, "mode") == 0) return "Način";
@@ -7446,6 +7799,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Brez";
   if (std::strcmp(key, "no_options") == 0) return "Ni možnosti";
   if (std::strcmp(key, "no_presets") == 0) return "Ni prednastavitev";
+  if (std::strcmp(key, "no_sources") == 0) return "Ni virov";
+  if (std::strcmp(key, "source") == 0) return "Vir";
   if (std::strcmp(key, "not_available") == 0) return "Ni na voljo";
   if (std::strcmp(key, "off") == 0) return "Izklop";
   if (std::strcmp(key, "on") == 0) return "Vklop";
@@ -7490,6 +7845,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Začni";
   if (std::strcmp(key, "still") == 0) return "Mirovanje";
   if (std::strcmp(key, "subpage") == 0) return "Podstran";
+  if (std::strcmp(key, "stop") == 0) return "Ustavi";
   if (std::strcmp(key, "sunny") == 0) return "Sončno";
   if (std::strcmp(key, "sunny_alert") == 0) return "Opozorilo za sonce";
   if (std::strcmp(key, "sunset") == 0) return "Sončni zahod";
@@ -7516,6 +7872,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Različica neznana";
   if (std::strcmp(key, "volume") == 0) return "Glasnost";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Čakanje na Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Povezovanje s \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Vreme";
   if (std::strcmp(key, "weekly") == 0) return "Tedensko";
   if (std::strcmp(key, "window") == 0) return "Okno";
@@ -7569,6 +7926,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Larmåtgärd misslyckades";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Larmet ändrades inte";
   if (std::strcmp(key, "all_done") == 0) return "Klart";
+  if (std::strcmp(key, "all_controls") == 0) return "Alla kontroller";
   if (std::strcmp(key, "always_on") == 0) return "Alltid på";
   if (std::strcmp(key, "arm_away") == 0) return "Larma borta";
   if (std::strcmp(key, "arm_home") == 0) return "Larma hemma";
@@ -7614,7 +7972,11 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptionellt";
   if (std::strcmp(key, "fan") == 0) return "Fläkt";
   if (std::strcmp(key, "fog") == 0) return "Dimma";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Stänga garagedörren?";
   if (std::strcmp(key, "garage_door") == 0) return "Garagedörr";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Öppna garagedörren?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Öppna eller stänga garagedörren?";
+  if (std::strcmp(key, "gate") == 0) return "Grind";
   if (std::strcmp(key, "hail") == 0) return "Hagel";
   if (std::strcmp(key, "hazy") == 0) return "Disigt";
   if (std::strcmp(key, "heat") == 0) return "Värme";
@@ -7636,6 +7998,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Gräsklippare";
   if (std::strcmp(key, "low") == 0) return "Låg";
   if (std::strcmp(key, "low_target") == 0) return "Lågt mål";
+  if (std::strcmp(key, "media_control") == 0) return "Mediekontroll";
   if (std::strcmp(key, "playlist") == 0) return "Spellista";
   if (std::strcmp(key, "mode") == 0) return "Läge";
   if (std::strcmp(key, "monthly") == 0) return "Månadsvis";
@@ -7659,6 +8022,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ingen";
   if (std::strcmp(key, "no_options") == 0) return "Inga alternativ";
   if (std::strcmp(key, "no_presets") == 0) return "Inga förval";
+  if (std::strcmp(key, "no_sources") == 0) return "Inga källor";
+  if (std::strcmp(key, "source") == 0) return "Källa";
   if (std::strcmp(key, "not_available") == 0) return "Inte tillgänglig";
   if (std::strcmp(key, "off") == 0) return "Av";
   if (std::strcmp(key, "on") == 0) return "På";
@@ -7698,6 +8063,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "spot_clean") == 0) return "Punktstädning";
   if (std::strcmp(key, "start") == 0) return "Starta";
   if (std::strcmp(key, "subpage") == 0) return "Undersida";
+  if (std::strcmp(key, "stop") == 0) return "Stoppa";
   if (std::strcmp(key, "sunny") == 0) return "Soligt";
   if (std::strcmp(key, "sunny_alert") == 0) return "Solvarning";
   if (std::strcmp(key, "sunset") == 0) return "Solnedgång";
@@ -7722,6 +8088,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Version okänd";
   if (std::strcmp(key, "volume") == 0) return "Volym";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Väntar på Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Ansluter till \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Väder";
   if (std::strcmp(key, "weekly") == 0) return "Veckovis";
   if (std::strcmp(key, "window") == 0) return "Fönster";
@@ -7774,6 +8141,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarm eylemi başarısız oldu";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm değişmedi";
   if (std::strcmp(key, "all_done") == 0) return "Her şey tamam";
+  if (std::strcmp(key, "all_controls") == 0) return "Tüm kontroller";
   if (std::strcmp(key, "always_on") == 0) return "Her zaman açık";
   if (std::strcmp(key, "arm_away") == 0) return "Uzakta kur";
   if (std::strcmp(key, "arm_home") == 0) return "Evde kur";
@@ -7820,7 +8188,11 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "error") == 0) return "Hata";
   if (std::strcmp(key, "exceptional") == 0) return "Olağanüstü";
   if (std::strcmp(key, "fog") == 0) return "Sis";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Garaj kapısı kapatılsın mı?";
   if (std::strcmp(key, "garage_door") == 0) return "Garaj kapısı";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Garaj kapısı açılsın mı?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Garaj kapısı açılsın mı, kapatılsın mı?";
+  if (std::strcmp(key, "gate") == 0) return "Kapı";
   if (std::strcmp(key, "hail") == 0) return "Dolu";
   if (std::strcmp(key, "hazy") == 0) return "Puslu";
   if (std::strcmp(key, "heat") == 0) return "Isıt";
@@ -7844,6 +8216,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Düşük";
   if (std::strcmp(key, "low_target") == 0) return "Düşük hedef";
   if (std::strcmp(key, "media") == 0) return "Medya";
+  if (std::strcmp(key, "media_control") == 0) return "Medya kontrolü";
   if (std::strcmp(key, "playlist") == 0) return "Çalma listesi";
   if (std::strcmp(key, "medium") == 0) return "Orta";
   if (std::strcmp(key, "mode") == 0) return "Mod";
@@ -7869,6 +8242,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Yok";
   if (std::strcmp(key, "no_options") == 0) return "Seçenek yok";
   if (std::strcmp(key, "no_presets") == 0) return "Ön ayar yok";
+  if (std::strcmp(key, "no_sources") == 0) return "Kaynak yok";
+  if (std::strcmp(key, "source") == 0) return "Kaynak";
   if (std::strcmp(key, "not_available") == 0) return "Mevcut değil";
   if (std::strcmp(key, "off") == 0) return "Kapalı";
   if (std::strcmp(key, "on") == 0) return "Açık";
@@ -7913,6 +8288,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Başlat";
   if (std::strcmp(key, "still") == 0) return "Durgun";
   if (std::strcmp(key, "subpage") == 0) return "Alt sayfa";
+  if (std::strcmp(key, "stop") == 0) return "Durdur";
   if (std::strcmp(key, "sunny") == 0) return "Güneşli";
   if (std::strcmp(key, "sunny_alert") == 0) return "Güneş uyarısı";
   if (std::strcmp(key, "sunset") == 0) return "Gün batımı";
@@ -7940,6 +8316,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Sürüm bilinmiyor";
   if (std::strcmp(key, "volume") == 0) return "Ses";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Home Assistant bekleniyor";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "\nHome Assistant'a bağlanılıyor";
   if (std::strcmp(key, "weather") == 0) return "Hava durumu";
   if (std::strcmp(key, "weekly") == 0) return "Haftalık";
   if (std::strcmp(key, "window") == 0) return "Pencere";
@@ -7993,6 +8370,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Дію сигналізації не виконано";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Сигналізація не змінилася";
   if (std::strcmp(key, "all_done") == 0) return "Усе готово";
+  if (std::strcmp(key, "all_controls") == 0) return "Усі елементи керування";
   if (std::strcmp(key, "always_on") == 0) return "Завжди увімкнено";
   if (std::strcmp(key, "arm_away") == 0) return "Увімкнути охорону поза домом";
   if (std::strcmp(key, "arm_home") == 0) return "Увімкнути охорону вдома";
@@ -8040,7 +8418,11 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Винятково";
   if (std::strcmp(key, "fan") == 0) return "Вентилятор";
   if (std::strcmp(key, "fog") == 0) return "Туман";
+  if (std::strcmp(key, "garage_close_confirm") == 0) return "Закрити гаражні двері?";
   if (std::strcmp(key, "garage_door") == 0) return "Гаражні двері";
+  if (std::strcmp(key, "garage_open_confirm") == 0) return "Відкрити гаражні двері?";
+  if (std::strcmp(key, "garage_toggle_confirm") == 0) return "Відкрити чи закрити гаражні двері?";
+  if (std::strcmp(key, "gate") == 0) return "Ворота";
   if (std::strcmp(key, "hail") == 0) return "Град";
   if (std::strcmp(key, "hazy") == 0) return "Імла";
   if (std::strcmp(key, "heat") == 0) return "Опалення";
@@ -8064,6 +8446,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Низько";
   if (std::strcmp(key, "low_target") == 0) return "Низька ціль";
   if (std::strcmp(key, "media") == 0) return "Медіа";
+  if (std::strcmp(key, "media_control") == 0) return "Керування медіа";
   if (std::strcmp(key, "playlist") == 0) return "Список відтворення";
   if (std::strcmp(key, "medium") == 0) return "Середньо";
   if (std::strcmp(key, "mode") == 0) return "Режим";
@@ -8089,6 +8472,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Немає";
   if (std::strcmp(key, "no_options") == 0) return "Немає параметрів";
   if (std::strcmp(key, "no_presets") == 0) return "Немає пресетів";
+  if (std::strcmp(key, "no_sources") == 0) return "Немає джерел";
+  if (std::strcmp(key, "source") == 0) return "Джерело";
   if (std::strcmp(key, "not_available") == 0) return "Недоступно";
   if (std::strcmp(key, "off") == 0) return "Вимкнено";
   if (std::strcmp(key, "on") == 0) return "Увімкнено";
@@ -8133,6 +8518,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Старт";
   if (std::strcmp(key, "still") == 0) return "Нерухомо";
   if (std::strcmp(key, "subpage") == 0) return "Підсторінка";
+  if (std::strcmp(key, "stop") == 0) return "Зупинити";
   if (std::strcmp(key, "sunny") == 0) return "Сонячно";
   if (std::strcmp(key, "sunny_alert") == 0) return "Попередження про сонце";
   if (std::strcmp(key, "sunset") == 0) return "Захід сонця";
@@ -8160,6 +8546,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Версія невідома";
   if (std::strcmp(key, "volume") == 0) return "Гучність";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Очікування Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Підключення до \nHome Assistant";
   if (std::strcmp(key, "weather") == 0) return "Погода";
   if (std::strcmp(key, "weekly") == 0) return "Щотижня";
   if (std::strcmp(key, "window") == 0) return "Вікно";

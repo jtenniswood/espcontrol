@@ -7,12 +7,15 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-p4-86"
   friendly_name: "EspControl P4 86 Panel"
   espcontrol_component_url: "file:///config"
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
   voice_stt_failure_chime_file: "../devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
+  alarm_delay_entry_beep_file: "../devices/esp32-p4-86/device/alarm_delay_entry_beep.flac"
+  alarm_delay_exit_beep_file: "../devices/esp32-p4-86/device/alarm_delay_exit_beep.flac"
 
 esphome:
   name_add_mac_suffix: true
@@ -28,4 +31,4 @@ captive_portal:
 
 web_server:
   js_url: ""
-  js_include: "../docs/public/webserver/esp32-p4-86/www.js"
+  js_include: "../docs/public/webserver/www.js"

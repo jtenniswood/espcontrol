@@ -15,12 +15,15 @@ outputs. For the hard edit/rebuild/check contract, use
 
 | Area | Path | Purpose |
 |---|---|---|
-| Product profiles | `devices/manifest.json` | Supported displays, slot counts, layout, firmware substitutions, font roles, and public device facts. |
+| Product profiles | `devices/catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
 | Card metadata | `common/config/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
 | Entity names | `common/config/entity_names.json` | Shared Home Assistant entity names used by firmware and the setup page. |
 | Icons | `common/assets/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
 | Firmware UI | `components/espcontrol/*.h` | LVGL card grid, card renderers, modals, config parsing, Home Assistant bindings. |
+| Configuration service | `components/espcontrol/configuration_service.*` and `configuration_store.*` | Versioned documents, one-time legacy import, compatibility dual-write, and atomic two-slot storage; not yet the production persistence path. |
 | Web setup page | `src/webserver/` | Browser UI for configuring cards, settings, backup/restore, and previews. |
+| Typed web state | `src/webserver/state/` | Device configuration and application state types, isolated state creation, direct module-owned state access, event aliases, and event parsing. Application state must not be published as a browser global. |
+| Typed device API | `src/webserver/api/` | Injectable HTTP transport and ordered request queue; UI modules retain user-facing reactions. |
 | Device config | `devices/<slug>/` | ESPHome entry points and per-device display/font/pin config. |
 | Build scripts | `scripts/` | Generators, validators, smoke checks, and release helpers. |
 
@@ -31,8 +34,8 @@ full source-to-output ownership table lives in
 [`source-of-truth.md`](source-of-truth.md).
 
 - `common/config/entity_names.yaml`
-- `src/webserver/modules/entity_catalog.js`
-- `src/webserver/modules/card_contract_generated.js`
+- `src/webserver/generated/entity_catalog.ts`
+- `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `components/espcontrol/i18n_generated.h`
 - `docs/generated/cards/capabilities.md`
@@ -49,6 +52,11 @@ python3 scripts/build.py
 ```
 
 Use `python3 scripts/build.py --check` to confirm generated files are current.
+
+Generated source files remain tracked because firmware and web compilation
+consume them. Publishable binaries are different: release jobs assemble those
+only under the ignored `dist/` directory. Nothing under `dist/` is an authored
+source or a committed generated input.
 
 ## Runtime Flow
 
@@ -70,13 +78,13 @@ Use `python3 scripts/build.py --check` to confirm generated files are current.
 
 ```text
 common/config/card_contract.json
-  -> src/webserver/modules/card_contract_generated.js
+  -> src/webserver/generated/card_contract.ts
   -> components/espcontrol/button_grid_contract_generated.h
   -> docs/generated/cards/capabilities.md
 
 common/config/entity_names.json
   -> common/config/entity_names.yaml
-  -> src/webserver/modules/entity_catalog.js
+  -> src/webserver/generated/entity_catalog.ts
 
 devices/manifest.json
   -> docs/public/device-profiles.json

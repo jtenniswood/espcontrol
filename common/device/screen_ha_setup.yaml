@@ -23,7 +23,7 @@ lvgl:
             clickable: true
             on_press:
               then:
-                - script.stop: setup_screen_dim
+                - script.execute: setup_screen_dim_cancel
                 - light.turn_on:
                     id: display_backlight
                     brightness: 90%

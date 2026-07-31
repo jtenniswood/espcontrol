@@ -10,6 +10,11 @@
       "resolution": "1024 x 600",
       "orientation": "Landscape",
       "slots": 15,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
       "grid": {
         "rows": 3,
         "cols": 5
@@ -29,6 +34,11 @@
       "resolution": "480 x 800",
       "orientation": "Portrait",
       "slots": 6,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
       "grid": {
         "rows": 3,
         "cols": 2
@@ -48,6 +58,35 @@
       "resolution": "1280 x 800",
       "orientation": "Landscape",
       "slots": 20,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 4,
+        "cols": 5
+      },
+      "chipFamily": "ESP32-P4",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
+    },
+    {
+      "slug": "guition-esp32-p4-jc8012p4a1-v2",
+      "installSlug": "guition-esp32-p4-jc8012p4a1-v2",
+      "name": "Guition JC8012P4A1 new panel (2624+)",
+      "docsPath": "/screens/jc8012p4a1-v2",
+      "screenSize": "10.1 inches",
+      "resolution": "1280 x 800",
+      "orientation": "Landscape",
+      "slots": 20,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
       "grid": {
         "rows": 4,
         "cols": 5
@@ -67,6 +106,11 @@
       "resolution": "720 x 720",
       "orientation": "Square",
       "slots": 9,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
       "grid": {
         "rows": 3,
         "cols": 3
@@ -86,6 +130,10 @@
       "resolution": "480 x 480",
       "orientation": "Square",
       "slots": 9,
+      "imageSlots": 1,
+      "imageCardTypes": [
+        "media_cover_art"
+      ],
       "grid": {
         "rows": 3,
         "cols": 3

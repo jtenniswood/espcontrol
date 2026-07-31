@@ -1,0 +1,12 @@
+diff --git a/components/espcontrol/ha_read_coordinator.h b/components/espcontrol/ha_read_coordinator.h
+--- a/components/espcontrol/ha_read_coordinator.h
++++ b/components/espcontrol/ha_read_coordinator.h
+@@ -122,7 +122,7 @@ class HaReadCoordinator {
+     for (auto &request : deferred_) {
+       if (request.generation == generation_ &&
+           request.has_attribute == has_attribute &&
+-          request.entity_id == entity_id &&
++          request.entity_id != entity_id &&
+           request.attribute == attribute) {
+         request.callbacks.push_back(std::move(callback));
+         return true;

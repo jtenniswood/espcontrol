@@ -7,6 +7,76 @@ and when to raise confidence beyond the minimum route.
 Use the smallest check that covers the change while developing, then run the
 broader checks before merging or publishing.
 
+The public npm check commands are now compatibility entry points for the
+dependency-aware task graph. Focused commands include their declared prerequisites
+automatically, while the product, fast, CI, all, and release commands run complete
+assurance profiles. Temporary `:legacy` aliases preserve the previous command
+chains for one release cycle while the migration is observed.
+
+Use `python3 scripts/check_tasks.py list` to see registered tasks or
+`python3 scripts/check_tasks.py plan fast --explain` to preview a profile without
+running it. The registry in `scripts/check_tasks_data.py` is the maintained source
+for task commands, dependencies, profiles, domains, input paths, and parallel
+safety.
+
+All existing check aliases and CI use one worker by default. For an opt-in local
+fast run with no more than four workers, use:
+
+```bash
+npm run check:parallel
+```
+
+Only dependency-independent tasks explicitly marked parallel-safe may overlap.
+Their output is captured and replayed as complete task blocks. Browser, release,
+Git-state, and shared-output checks always run alone; release profiles use one
+worker even if a larger `--jobs` value is requested. After the first failure, no
+new tasks start, already-running tasks finish, and dependent tasks are reported
+as blocked.
+
+The initial Darwin arm64 benchmark on 2026-07-12 ran the complete non-browser
+fast profile 20 times sequentially and 20 times with four workers. Every run
+passed with the same task statuses and left the tracked diff fingerprint
+unchanged. Median duration improved from 11.850 seconds to 9.635 seconds, an
+18.7% reduction. Because that is below the planned 20% threshold, parallel mode
+remains explicit-only through `check:parallel`; normal npm aliases and CI retain
+their one-worker default.
+
+Successful deterministic local checks are cached by content. Entries live under
+the repository's shared Git directory, so linked worktrees can reuse them without
+copying or restoring generated files. A cache key includes the task and command,
+dependency keys, every declared authored and generated input, the runner and
+registry, lockfiles, operating system and architecture, tool versions, and each
+environment variable declared by the task. Any change to those values causes a
+fresh check.
+
+Use `--no-cache` on a profile run when fresh local execution is required. Inspect
+or remove the shared entries with:
+
+```bash
+python3 scripts/check_tasks.py cache status
+python3 scripts/check_tasks.py cache clear
+```
+
+Only successful status is stored, and corrupt entries are treated as misses.
+Local-artifact, PR-process, Git-history, release-confidence, changelog,
+firmware-release, external-state, and shared-output checks are never cached.
+Browser smoke is eligible only when Playwright, Node, the resolved browser
+executable, generated layouts, and all web inputs are fingerprinted. `CI=true`
+disables result caching entirely, so CI always validates from scratch.
+
+For an advisory local route based on everything changed from `main`, including
+committed, staged, unstaged, renamed, deleted, and untracked files, run:
+
+```bash
+python3 scripts/check_tasks.py changed --explain
+```
+
+This command never reduces CI coverage. Unknown paths and changes to shared
+script helpers, generators, validators, the task runner, registry, package lock,
+or workflow definitions select the complete fast profile. Profiles can also be
+narrowed explicitly by domain, for example
+`python3 scripts/check_tasks.py run ci --domain web`.
+
 ## Common Checks
 
 | Command | Use when |
@@ -68,6 +138,26 @@ Run `python3 scripts/build.py` after changing:
 Run `python3 scripts/generate_device_slots.py` after changing device font roles
 or slot/profile data that affects generated `sensors.yaml`.
 
+## Camera Performance Test Endpoint
+
+Use the controllable local camera endpoint when comparing P4 image changes or
+reproducing slow and broken responses:
+
+```bash
+python3 scripts/camera_test_endpoint.py --image path/to/camera-snapshot.jpg
+```
+
+The endpoint is available at `http://<computer-ip>:8765/camera.jpg`. Query
+parameters can add delayed headers, delayed chunks, chunk counts, HTTP errors,
+or malformed image data. For example,
+`?header_delay_ms=500&chunk_delay_ms=100&chunks=8` simulates a slow camera while
+`?status=503` and `?malformed=1` exercise failure handling. Run
+`python3 scripts/camera_test_endpoint.py --self-test` to verify the harness.
+
+When measuring on a panel, capture the firmware's response, first-byte,
+transfer, decode, and total timing log entries. Compare the same image, panel,
+network transport, and Home Assistant path before and after a change.
+
 ## Release-Sensitive Files
 
 Treat these as release-facing:
@@ -107,11 +197,29 @@ The ESPHome Docker image version used by firmware compile, nightly firmware, and
 release firmware workflows is set in `.github/esphome.env`. Update that one file
 when moving to a new ESPHome release.
 
-The `Firmware Compile` GitHub workflow starts on every pull request, then checks
-the changed files itself. It only runs the expensive firmware compile when a PR
-touches firmware-visible paths such as `common/`, `components/`, `devices/`,
-`builds/`, generated web bundles, or the device build scripts. It can still be
-started manually with `workflow_dispatch` when a full firmware compile is needed.
+## Atomic Firmware Releases
+
+Firmware releases begin as GitHub drafts. The `Build Release` workflow is
+manually dispatched with that draft tag and checks out the same immutable tag
+in every job. Each device build writes only publishable files into
+`dist/firmware/`; generated source files and build caches are not release
+assets.
+
+After all device jobs finish, the workflow assembles one distribution and
+checks every manifest, embedded version, checksum, expected filename, and byte
+size. Assets are uploaded while the GitHub release is still private. The
+release becomes public only after the remote asset inventory exactly matches
+the verified local distribution. Any build, upload, or verification failure
+leaves the release as a draft.
+
+The repository release skill documents the operator flow. Do not publish a
+draft manually to work around a failed workflow; fix or rerun the failed build
+so the verification barrier remains intact.
+
+The `Firmware Compile` GitHub workflow is manual-only. Start it with
+`workflow_dispatch` when a PR needs a full firmware compile, especially for
+firmware-visible paths such as `common/`, `components/`, `devices/`, `builds/`,
+generated web bundles, or the device build scripts.
 
 If generated inputs changed, make sure the regenerated outputs are committed too.
 `python3 scripts/build.py --check` is the command that catches stale or missing

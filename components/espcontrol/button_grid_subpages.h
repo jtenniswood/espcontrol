@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -71,7 +71,9 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.sensor = "play_pause";
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
-               b.sensor != "position" && b.sensor != "now_playing") {
+               b.sensor != "position" && b.sensor != "now_playing" &&
+               b.sensor != "cover_art" &&
+               b.sensor != "control_modal" && b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
@@ -80,16 +82,23 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       if (b.label.empty() || b.label == "Media") b.label = "Volume";
       b.icon = "Auto";
     }
+    if (b.sensor == "playlist") {
+      if (b.label.empty() || b.label == "Media") b.label = "Playlist";
+      if (b.icon.empty() || b.icon == "Auto") b.icon = "Music";
+    }
     if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = "Position";
     if (b.sensor == "now_playing") {
       b.precision = (b.precision == "progress" || b.precision == "play_pause") ? b.precision : "";
+    } else if (b.sensor == "cover_art") {
+      b.precision.clear();
     } else if ((b.sensor == "play_pause" || b.sensor == "position") && b.precision == "state") {
       b.precision = "state";
     } else {
       b.precision.clear();
     }
+    b.options = media_card_options_normalized(b.options, b.sensor);
   }
-  if (b.type == "climate") {
+  if (climate_card_type(b.type)) {
     b.sensor.clear();
     b.unit.clear();
     b.options = climate_card_options_normalized(b.options);
@@ -100,6 +109,13 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     if (!b.sensor.empty()) b.icon_on.clear();
     b.options = garage_card_options_normalized(b.options, b.sensor);
+  }
+  if (b.type == "gate") {
+    if (b.sensor != "open" && b.sensor != "close" && b.sensor != "stop") b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    if (!b.sensor.empty()) b.icon_on.clear();
+    b.options = gate_card_options_normalized(b.options, b.sensor);
   }
   if (b.type == "cover") {
     if (!card_runtime_cover_mode_valid(b.sensor)) b.sensor.clear();
@@ -200,11 +216,11 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   p.precision = b.precision;
   if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
       b.type != "alarm_action" &&
-      b.type != "climate" && b.type != "cover" && b.type != "garage" &&
+      !climate_card_type(b.type) && b.type != "cover" && b.type != "garage" && b.type != "gate" &&
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
-      b.type != "subpage" && b.type != "light_control" &&
+      b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
@@ -227,6 +243,51 @@ inline ParsedCfg parsed_cfg_from_subpage_btn(const SubpageBtn &b) {
   p.options = b.options;
   return normalize_parsed_cfg(p);
 }
+
+// Parse "order|entity:label:icon:...|entity:label:..." into subpage buttons.
+inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
+  std::vector<SubpageBtn> btns;
+  if (sp_cfg.empty()) return btns;
+
+  bool compact = sp_cfg[0] == '~';
+  std::vector<std::string> pipes = split_subpage_fields(compact ? sp_cfg.substr(1) : sp_cfg, '|');
+  if (pipes.size() < 2) return btns;
+
+  for (size_t pi = 1; pi < pipes.size(); pi++) {
+    if (compact) {
+      std::vector<std::string> flds = split_subpage_fields(pipes[pi], ',');
+      std::string tp = flds.size() > 0 ? compact_subpage_type(flds[0]) : "";
+      std::string e = flds.size() > 1 ? decode_compact_subpage_field(flds[1]) : "";
+      std::string l = flds.size() > 2 ? decode_compact_subpage_field(flds[2]) : "";
+      std::string ic = flds.size() > 3 ? decode_compact_subpage_field(flds[3]) : "Auto";
+      if (ic.empty()) ic = "Auto";
+      std::string io = flds.size() > 4 ? decode_compact_subpage_field(flds[4]) : "Auto";
+      if (io.empty()) io = "Auto";
+      std::string sn = flds.size() > 5 ? decode_compact_subpage_field(flds[5]) : "";
+      std::string un = flds.size() > 6 ? decode_compact_subpage_field(flds[6]) : "";
+      std::string pr = flds.size() > 7 ? decode_compact_subpage_field(flds[7]) : "";
+      std::string op = flds.size() > 8 ? decode_compact_subpage_field(flds[8]) : "";
+      btns.push_back(normalize_subpage_btn({e, l, ic, io, sn, un, tp, pr, op}));
+      continue;
+    }
+    std::vector<std::string> flds = split_subpage_fields(pipes[pi], ':');
+    std::string e = flds.size() > 0 ? flds[0] : "";
+    std::string l = flds.size() > 1 ? flds[1] : "";
+    std::string ic = flds.size() > 2 ? flds[2] : "Auto";
+    if (ic.empty()) ic = "Auto";
+    std::string io = flds.size() > 3 ? flds[3] : "Auto";
+    if (io.empty()) io = "Auto";
+    std::string sn = flds.size() > 4 ? flds[4] : "";
+    std::string un = flds.size() > 5 ? flds[5] : "";
+    std::string tp = flds.size() > 6 ? flds[6] : "";
+    std::string pr = flds.size() > 7 ? flds[7] : "";
+    std::string op = flds.size() > 8 ? flds[8] : "";
+    btns.push_back(normalize_subpage_btn({e, l, ic, io, sn, un, tp, pr, op}));
+  }
+  return btns;
+}
+
+#ifndef ESPCONTROL_SUBPAGE_PARSER_ONLY
 
 inline lv_obj_t *create_grid_card_button(lv_obj_t *parent, lv_coord_t radius,
                                          lv_coord_t pad,
@@ -311,49 +372,6 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   lv_obj_align(slot.subpage_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 2);
   lv_obj_add_flag(slot.subpage_lbl, LV_OBJ_FLAG_HIDDEN);
   return slot;
-}
-
-// Parse "order|entity:label:icon:...|entity:label:..." into a vector of SubpageBtns
-inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
-  std::vector<SubpageBtn> btns;
-  if (sp_cfg.empty()) return btns;
-
-  bool compact = sp_cfg[0] == '~';
-  std::vector<std::string> pipes = split_subpage_fields(compact ? sp_cfg.substr(1) : sp_cfg, '|');
-  if (pipes.size() < 2) return btns;
-
-  for (size_t pi = 1; pi < pipes.size(); pi++) {
-    if (compact) {
-      std::vector<std::string> flds = split_subpage_fields(pipes[pi], ',');
-      std::string tp = flds.size() > 0 ? compact_subpage_type(flds[0]) : "";
-      std::string e = flds.size() > 1 ? decode_compact_subpage_field(flds[1]) : "";
-      std::string l = flds.size() > 2 ? decode_compact_subpage_field(flds[2]) : "";
-      std::string ic = flds.size() > 3 ? decode_compact_subpage_field(flds[3]) : "Auto";
-      if (ic.empty()) ic = "Auto";
-      std::string io = flds.size() > 4 ? decode_compact_subpage_field(flds[4]) : "Auto";
-      if (io.empty()) io = "Auto";
-      std::string sn = flds.size() > 5 ? decode_compact_subpage_field(flds[5]) : "";
-      std::string un = flds.size() > 6 ? decode_compact_subpage_field(flds[6]) : "";
-      std::string pr = flds.size() > 7 ? decode_compact_subpage_field(flds[7]) : "";
-      std::string op = flds.size() > 8 ? decode_compact_subpage_field(flds[8]) : "";
-      btns.push_back(normalize_subpage_btn({e, l, ic, io, sn, un, tp, pr, op}));
-      continue;
-    }
-    std::vector<std::string> flds = split_subpage_fields(pipes[pi], ':');
-    std::string e = flds.size() > 0 ? flds[0] : "";
-    std::string l = flds.size() > 1 ? flds[1] : "";
-    std::string ic = flds.size() > 2 ? flds[2] : "Auto";
-    if (ic.empty()) ic = "Auto";
-    std::string io = flds.size() > 3 ? flds[3] : "Auto";
-    if (io.empty()) io = "Auto";
-    std::string sn = flds.size() > 4 ? flds[4] : "";
-    std::string un = flds.size() > 5 ? flds[5] : "";
-    std::string tp = flds.size() > 6 ? flds[6] : "";
-    std::string pr = flds.size() > 7 ? flds[7] : "";
-    std::string op = flds.size() > 8 ? flds[8] : "";
-    btns.push_back(normalize_subpage_btn({e, l, ic, io, sn, un, tp, pr, op}));
-  }
-  return btns;
 }
 
 // Extract the order string (everything before the first pipe) from subpage config
@@ -539,3 +557,5 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
     st2 = cm + 1;
   }
 }
+
+#endif  // ESPCONTROL_SUBPAGE_PARSER_ONLY

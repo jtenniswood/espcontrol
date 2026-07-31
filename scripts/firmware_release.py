@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -24,6 +26,12 @@ FIRMWARE_VERSION_PLACEHOLDER = '  firmware_version: "0.0.0"'
 PLACEHOLDER_STRINGS = {"dev", "0.0.0"}
 RELEASE_URL_BASE = "https://github.com/jtenniswood/espcontrol/releases/tag/"
 PROJECT_NAME = "jtenniswood.espcontrol"
+DEVICE_CHIP_PATTERNS = (
+    (re.compile(r"^\s+variant:\s*esp32p4\s*$", re.M), "ESP32-P4"),
+    (re.compile(r"^\s+variant:\s*esp32s3\s*$", re.M), "ESP32-S3"),
+    (re.compile(r"^\s+board:\s*esp32-s3(?:-|\b)", re.M), "ESP32-S3"),
+)
+RELEASE_ASSET_SUFFIXES = (".factory.bin", ".manifest.json", ".ota.bin")
 
 
 class FirmwareReleaseError(RuntimeError):
@@ -111,6 +119,16 @@ def first_build(manifest: dict, manifest_path: Path) -> dict:
     return builds[0]
 
 
+def expected_chip_family_for_slug(slug: str) -> str:
+    device_yaml = ROOT / "devices" / slug / "device" / "device.yaml"
+    require_file(device_yaml, "device hardware YAML")
+    text = device_yaml.read_text(encoding="utf-8")
+    for pattern, chip_family in DEVICE_CHIP_PATTERNS:
+        if pattern.search(text):
+            return chip_family
+    raise FirmwareReleaseError(f"{device_yaml} does not declare a known ESP32 chip family")
+
+
 def verify_manifest(
     manifest_path: Path,
     slug: str,
@@ -128,6 +146,13 @@ def verify_manifest(
         raise FirmwareReleaseError(f"{manifest_path} home_assistant_domain must be esphome")
 
     build = first_build(manifest, manifest_path)
+    chip_family = build.get("chipFamily")
+    if not isinstance(chip_family, str) or not chip_family.strip():
+        raise FirmwareReleaseError(f"{manifest_path} build chipFamily must be a non-empty string")
+    expected_chip = expected_chip_family_for_slug(slug)
+    if expected_chip and chip_family != expected_chip:
+        raise FirmwareReleaseError(f"{manifest_path} build chipFamily {chip_family!r} does not match {expected_chip!r}")
+
     ota = build.get("ota")
     if not isinstance(ota, dict):
         raise FirmwareReleaseError(f"{manifest_path} build has no ota object")
@@ -157,7 +182,13 @@ def verify_manifest(
     return build
 
 
-def verify_files(slug: str, version: str, manifest: Path, factory: Path | None, ota: Path) -> None:
+def verify_files(
+    slug: str,
+    version: str,
+    manifest: Path,
+    factory: Path | None,
+    ota: Path,
+) -> None:
     require_file(manifest, "firmware manifest")
     require_file(ota, "OTA firmware")
     require_factory = factory is not None
@@ -239,6 +270,116 @@ def verify_directory(base_dir: Path, slugs: list[str], version: str) -> None:
         if beta is not None:
             beta_manifest, beta_factory, beta_ota = beta
             verify_files(slug, manifest_version(beta_manifest), beta_manifest, beta_factory, beta_ota)
+
+
+def expected_release_asset_names(slugs: list[str]) -> set[str]:
+    return {f"{slug}{suffix}" for slug in slugs for suffix in RELEASE_ASSET_SUFFIXES}
+
+
+def verify_release_inventory(base_dir: Path, slugs: list[str]) -> list[Path]:
+    expected = expected_release_asset_names(slugs)
+    files = sorted(path for path in base_dir.iterdir() if path.is_file()) if base_dir.is_dir() else []
+    actual = {path.name for path in files}
+    missing = sorted(expected - actual)
+    unexpected = sorted(actual - expected)
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append("missing: " + ", ".join(missing))
+        if unexpected:
+            details.append("unexpected: " + ", ".join(unexpected))
+        raise FirmwareReleaseError(f"Release asset inventory is incomplete ({'; '.join(details)})")
+    return files
+
+
+def run_gh(arguments: list[str]) -> str:
+    try:
+        result = subprocess.run(
+            ["gh", *arguments],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise FirmwareReleaseError(f"Could not run GitHub CLI: {exc}") from exc
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or str(exc)).strip()
+        raise FirmwareReleaseError(f"GitHub release command failed: {detail}") from exc
+    return result.stdout
+
+
+def load_release_from_github(repo: str, tag: str, gh_runner=run_gh) -> dict:
+    try:
+        release = json.loads(
+            gh_runner([
+                "release", "view", tag,
+                "--repo", repo,
+                "--json", "tagName,isDraft,assets",
+            ])
+        )
+    except json.JSONDecodeError as exc:
+        raise FirmwareReleaseError(f"Could not load draft release {tag}: {exc}") from exc
+    return {
+        "tag_name": release.get("tagName"),
+        "draft": release.get("isDraft"),
+        "assets": release.get("assets", []),
+    }
+
+
+def assert_draft_release(release: dict, tag: str) -> None:
+    if release.get("tag_name") != tag:
+        raise FirmwareReleaseError(f"Release tag {release.get('tag_name')!r} does not match {tag!r}")
+    if release.get("draft") is not True:
+        raise FirmwareReleaseError(f"Release {tag} must remain a draft until all firmware assets are verified")
+
+
+def assert_remote_assets(release: dict, local_files: list[Path]) -> None:
+    expected = {path.name: path.stat().st_size for path in local_files}
+    remote = {
+        str(asset.get("name")): asset.get("size")
+        for asset in release.get("assets", [])
+        if isinstance(asset, dict)
+    }
+    if remote != expected:
+        raise FirmwareReleaseError(
+            f"Uploaded release assets do not match verified local files: expected {expected}, received {remote}"
+        )
+
+
+def publish_draft_release(
+    base_dir: Path,
+    slugs: list[str],
+    version: str,
+    repo: str,
+    notes_file: Path,
+    gh_runner=run_gh,
+) -> None:
+    require_file(notes_file, "release notes")
+    verify_directory(base_dir, slugs, version)
+    files = verify_release_inventory(base_dir, slugs)
+
+    release = load_release_from_github(repo, version, gh_runner)
+    assert_draft_release(release, version)
+
+    gh_runner([
+        "release", "upload", version,
+        *(str(path) for path in files),
+        "--clobber", "--repo", repo,
+    ])
+
+    uploaded = load_release_from_github(repo, version, gh_runner)
+    assert_draft_release(uploaded, version)
+    assert_remote_assets(uploaded, files)
+
+    gh_runner([
+        "release", "edit", version,
+        "--notes-file", str(notes_file),
+        "--draft=false", "--repo", repo,
+    ])
+    published = load_release_from_github(repo, version, gh_runner)
+    if published.get("draft") is not False:
+        raise FirmwareReleaseError(f"Release {version} was not published after asset verification")
+    assert_remote_assets(published, files)
 
 
 def fetch_url(url: str, timeout: int = 30) -> bytes:
@@ -351,6 +492,23 @@ def cmd_verify_directory(args: argparse.Namespace) -> None:
     verify_directory(Path(args.dir), args.slugs, args.version)
 
 
+def cmd_verify_bundle(args: argparse.Namespace) -> None:
+    base_dir = Path(args.dir)
+    verify_directory(base_dir, args.slugs, args.version)
+    verify_release_inventory(base_dir, args.slugs)
+
+
+def cmd_verify_draft(args: argparse.Namespace) -> None:
+    release = load_release_from_github(args.repo, args.version)
+    assert_draft_release(release, args.version)
+
+
+def cmd_publish_draft(args: argparse.Namespace) -> None:
+    publish_draft_release(
+        Path(args.dir), args.slugs, args.version, args.repo, Path(args.notes)
+    )
+
+
 def cmd_verify_pages(args: argparse.Namespace) -> None:
     verify_pages(args.base_url, args.slugs, args.version, args.retries, args.delay)
 
@@ -386,6 +544,31 @@ def build_parser() -> argparse.ArgumentParser:
     verify_directory_cmd.add_argument("--dir", required=True)
     verify_directory_cmd.add_argument("--slugs", nargs="+", required=True)
     verify_directory_cmd.set_defaults(func=cmd_verify_directory)
+
+    verify_bundle_cmd = sub.add_parser(
+        "verify-bundle", help="Verify firmware contents and the exact publishable asset inventory"
+    )
+    verify_bundle_cmd.add_argument("--version", required=True)
+    verify_bundle_cmd.add_argument("--dir", required=True)
+    verify_bundle_cmd.add_argument("--slugs", nargs="+", required=True)
+    verify_bundle_cmd.set_defaults(func=cmd_verify_bundle)
+
+    verify_draft_cmd = sub.add_parser(
+        "verify-draft", help="Require an existing private GitHub release for the version"
+    )
+    verify_draft_cmd.add_argument("--version", required=True)
+    verify_draft_cmd.add_argument("--repo", required=True)
+    verify_draft_cmd.set_defaults(func=cmd_verify_draft)
+
+    publish_draft_cmd = sub.add_parser(
+        "publish-draft", help="Verify a complete distribution and atomically publish its draft release"
+    )
+    publish_draft_cmd.add_argument("--version", required=True)
+    publish_draft_cmd.add_argument("--dir", required=True)
+    publish_draft_cmd.add_argument("--slugs", nargs="+", required=True)
+    publish_draft_cmd.add_argument("--repo", required=True)
+    publish_draft_cmd.add_argument("--notes", required=True)
+    publish_draft_cmd.set_defaults(func=cmd_publish_draft)
 
     verify_pages_cmd = sub.add_parser("verify-pages", help="Verify public GitHub Pages firmware")
     verify_pages_cmd.add_argument("--version", required=True)

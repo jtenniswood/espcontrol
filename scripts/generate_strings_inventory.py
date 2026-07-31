@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import re
 import unicodedata
 from pathlib import Path
@@ -259,7 +260,58 @@ def build_lines(strings: dict[str, set[str]]) -> list[str]:
     return lines
 
 
+def run_self_test() -> None:
+    assert candidate_line('lv_label_set_text(label, "WiFi Setup");')
+    assert candidate_line('return "Heat/Cool";')
+    assert not candidate_line('const auto icon = find_icon("Home");')
+
+    display_line = 'lv_label_set_text(label, "WiFi Setup");'
+    icon_line = 'icon = "Home";'
+    service_line = 'service == "light.turn_on"'
+    type_line = 'type: "media"'
+    assert display_context_allowed(display_line, display_line.index('"WiFi Setup"'))
+    assert not display_context_allowed(icon_line, icon_line.index('"Home"'))
+    assert not display_context_allowed(service_line, service_line.index('"light.turn_on"'))
+    assert not display_context_allowed(type_line, type_line.index('"media"'))
+
+    accepted = ["WiFi Setup", "Heat/Cool", "Play/Pause", "On"]
+    rejected = ["mdi-home", "light.kitchen", "label", "#ffffff", "bad_slug", "eco", "x"]
+    for value in accepted:
+        assert is_display_string(value), f"{value!r} should be accepted"
+    for value in rejected:
+        assert not is_display_string(value), f"{value!r} should be rejected"
+
+    strings: dict[str, set[str]] = {}
+    add_string(strings, "WiFi\\nSetup", "demo.h:1")
+    add_string(strings, "Auto", "demo.h:2")
+    add_string(strings, "mdi-home", "demo.h:3")
+    assert "WiFi\nSetup" in strings
+    assert "Auto" in strings
+    assert "mdi-home" not in strings
+
+    lines = build_lines(
+        {
+            "10 Minute Timer": {"demo.h:4"},
+            "Mode=Auto": {"demo.h:5"},
+            "Mode Auto": {"demo.h:6"},
+        }
+    )
+    assert "n_10_minute_timer=10 Minute Timer" in lines
+    assert "mode_auto=Mode Auto" in lines
+    assert "mode_auto_2=Mode\\=Auto" in lines
+
+    print("String inventory self-tests passed.")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--self-test", action="store_true", help="run generator guardrail self-tests")
+    args = parser.parse_args()
+
+    if args.self_test:
+        run_self_test()
+        return
+
     strings = extract_strings()
     OUTPUT.write_text("\n".join(build_lines(strings)) + "\n")
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")

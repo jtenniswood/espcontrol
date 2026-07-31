@@ -12,6 +12,7 @@ Flexible card sizes are supported: Single, Tall, Wide, and Large.
 | Screen | 10.1 inches, 1280 x 800, Landscape |
 | Processor | ESP32-P4 |
 | Built-in relays | No built-in relays |
+| Image-based cards | Up to 6 simultaneous Image or Media Cover Art cards |
 | Rotation support | Yes |
 | Browser install slug | `guition-esp32-p4-jc8012p4a1` |
 | Ethernet option | No |

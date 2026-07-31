@@ -19,6 +19,7 @@ After the initial install, everything is configured through the built-in web pag
 - **Indoor and outdoor temperature** in the top bar
 - **Live clock** synced from NTP, with Home Assistant as a fallback
 - **Screensaver** with adjustable idle timeout and optional presence sensor to wake
+- **Battery status icon (experimental)** - for units with the community-reported IP5306 battery variant; off by default, enable in Settings
 - **Day/night brightness** - adjusts automatically based on sunrise and sunset
 - **Over-the-air updates** - automatic or manual
 - **WiFi setup** - on-screen guide if the network is unavailable

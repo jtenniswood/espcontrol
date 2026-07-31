@@ -11,5 +11,6 @@ substitutions:
 
 web_server:
   auth:
+    type: digest
     username: ${espcontrol_web_username}
     password: ${espcontrol_web_password}

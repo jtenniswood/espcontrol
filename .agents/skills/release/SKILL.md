@@ -1,8 +1,8 @@
 ---
 name: release
 description: >-
-  Create and publish a new GitHub release for this repository, then verify that
-  the related GitHub Actions firmware release build starts. Use when the user
+  Create and safely publish a new GitHub release for this repository through a
+  verified draft build, then confirm the related GitHub Actions run. Use when the user
   says "/release", "make a release", "create a GitHub release", "publish a
   release", "tag a release", "major release", "feature release", "minor
   release", "patch release", "start the release action", or wants firmware
@@ -11,10 +11,10 @@ description: >-
 
 # GitHub Release
 
-Create a GitHub release from `main` and confirm the `Build Release` action
-starts. In this repo, publishing a release is the normal way to start the
-firmware build because `.github/workflows/release.yml` uploads firmware assets
-only for the `release` event.
+Create a draft GitHub release from `main`, dispatch the `Build Release` action,
+and watch it build and verify the complete firmware distribution. The workflow
+uploads assets while the release is private and publishes it only after every
+asset has been checked.
 
 ## Release Flow
 
@@ -69,55 +69,75 @@ patch            v1.2.3 -> v1.2.4
 If there is no existing stable release, treat the first stable release as
 `v1.0.0` unless the user asks for a different full tag.
 
-### 3. Create the Release
+### 3. Create the Tag and Draft Release
 
-Use a published release, not a draft, so GitHub emits the `release.published`
-event and starts the firmware build.
-
-The `Build Release` workflow automatically replaces the release body with a
-detailed changelog after the release is published.
+Choose the exact tag before creating it.
 
 Stable release:
 
 ```bash
 TAG="vX.Y.Z"
-gh release create "$TAG" \
-  --target main \
-  --notes "Detailed changelog will be added automatically by the Build Release workflow." \
-  --fail-on-no-commits
 ```
 
 Pre-release:
 
 ```bash
 TAG="vX.Y.Z-beta.N"
+```
+
+Push that exact release tag so every workflow job can check out one immutable
+source revision. Then create a draft release for the existing tag. Do not
+publish the draft manually: the workflow owns that final transition.
+
+```bash
+git tag -a "$TAG" -m "Release $TAG" origin/main
+git push origin "$TAG"
+```
+
+Stable release:
+
+```bash
 gh release create "$TAG" \
-  --target main \
-  --notes "Detailed changelog will be added automatically by the Build Release workflow." \
+  --verify-tag \
+  --draft \
+  --notes "Firmware is being built and verified. This draft will publish automatically when complete." \
+  --fail-on-no-commits
+```
+
+Pre-release:
+
+```bash
+gh release create "$TAG" \
+  --verify-tag \
+  --draft \
+  --notes "Firmware is being built and verified. This draft will publish automatically when complete." \
   --fail-on-no-commits \
   --prerelease \
   --latest=false
 ```
 
-If a draft release already exists for the tag and the user wants to publish it,
-publish the draft instead of creating a duplicate:
+If a draft already exists, reuse it only after confirming it is still a draft
+and its tag exists on the remote:
 
 ```bash
-gh release edit "$TAG" --draft=false
+git ls-remote --exit-code --tags origin "refs/tags/$TAG"
+gh release view "$TAG" --json isDraft,tagName,url
 ```
 
 Do not close GitHub issues as part of this workflow unless the user explicitly
 asks; they prefer to test before issues are closed.
 
-### 4. Verify the Release Action Started
+### 4. Start and Watch the Release Action
 
-The related action is `Build Release` in `.github/workflows/release.yml`.
-Publishing the release should start it automatically.
+Dispatch `Build Release` with the draft tag. Manual dispatch is the only
+supported release path because a draft release must remain private during the
+build.
 
 ```bash
+gh workflow run release.yml --ref "$TAG" -f release_tag="$TAG"
 gh run list \
   --workflow release.yml \
-  --event release \
+  --event workflow_dispatch \
   --limit 10 \
   --json databaseId,status,conclusion,createdAt,headBranch,displayTitle,url
 ```
@@ -128,27 +148,18 @@ Find the newest run for the release tag, then watch it:
 gh run watch <run-id> --exit-status
 ```
 
-If no `release` event run appears after a short wait, do not silently switch to
-manual dispatch. Report that the release was created but the automatic action
-was not found.
-
-Manual dispatch is only a test-build fallback:
-
-```bash
-gh workflow run release.yml --ref "$TAG"
-```
-
-Warn the user before using this fallback because workflow-dispatched runs
-produce an artifact but do not upload firmware files to the GitHub release.
+If the workflow fails, the release should remain a draft. Report the failed job
+and do not publish it manually.
 
 ### 5. Verify Outputs
 
-After `Build Release` succeeds, confirm the release has the expected assets:
+After `Build Release` succeeds, confirm the release is public and has the
+expected assets:
 
 ```bash
 gh release view "$TAG" \
-  --json tagName,url,isPrerelease,assets \
-  --jq '{tagName, url, isPrerelease, assets: [.assets[].name]}'
+  --json tagName,url,isDraft,isPrerelease,assets \
+  --jq '{tagName, url, isDraft, isPrerelease, assets: [.assets[].name]}'
 ```
 
 Expected release assets:
@@ -166,6 +177,9 @@ guition-esp32-p4-jc4880p443.ota.bin
 guition-esp32-p4-jc8012p4a1.factory.bin
 guition-esp32-p4-jc8012p4a1.manifest.json
 guition-esp32-p4-jc8012p4a1.ota.bin
+guition-esp32-p4-jc8012p4a1-v2.factory.bin
+guition-esp32-p4-jc8012p4a1-v2.manifest.json
+guition-esp32-p4-jc8012p4a1-v2.ota.bin
 guition-esp32-s3-4848s040.factory.bin
 guition-esp32-s3-4848s040.manifest.json
 guition-esp32-s3-4848s040.ota.bin
@@ -185,7 +199,7 @@ Summarize in plain language:
 
 - Release tag and GitHub release URL
 - `Build Release` run URL and current result
-- Whether the automatic release notes update job ran
+- Whether the verified draft was published and release notes were installed
 - Whether the expected firmware assets are attached
 - Any docs deployment run URL if checked
 - Any action needed from the user, especially if a run failed

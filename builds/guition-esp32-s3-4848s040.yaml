@@ -7,6 +7,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-4848s040"
   friendly_name: "Guition ESP32-S3-4848S040"
   espcontrol_component_url: "file:///config"
@@ -31,4 +32,4 @@ captive_portal:
 
 web_server:
   js_url: ""
-  js_include: "../docs/public/webserver/guition-esp32-s3-4848s040/www.js"
+  js_include: "../docs/public/webserver/www.js"

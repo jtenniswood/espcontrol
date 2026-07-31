@@ -1,0 +1,1 @@
+(()=>{const c=document.currentScript,u=new URL("../www.js",c.src),s=document.createElement("script");u.search=c.src.includes("?")?c.src.slice(c.src.indexOf("?")):"";u.searchParams.set("device","guition-esp32-p4-jc8012p4a1-v2");s.src=u.href;document.head.appendChild(s)})();

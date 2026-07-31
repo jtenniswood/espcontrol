@@ -10,12 +10,31 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  - id: media_player_sleep_prevention_default_on_migrated
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
 
 esphome:
   on_boot:
     # Apply restored clock-bar visibility before subpages copy main-page padding.
     - priority: -150
       then:
+        - lambda: |-
+            bool preferences_changed = false;
+            if (!id(media_player_sleep_prevention_default_on_migrated)) {
+              id(media_player_sleep_prevention_enabled).turn_on();
+              id(media_player_sleep_prevention_default_on_migrated) = true;
+              preferences_changed = true;
+            }
+            float cover_art_delay_seconds = id(cover_art_delay).state;
+            if (std::isnan(cover_art_delay_seconds) || cover_art_delay_seconds < 3.0f) {
+              auto call = id(cover_art_delay).make_call();
+              call.set_value(3.0f);
+              call.perform();
+              preferences_changed = true;
+            }
+            if (preferences_changed) global_preferences->sync();
         - lambda: |-
             std::vector<std::string> restored_clock_bar_temperature_entities =
                 parse_clock_bar_temperature_entities(id(clock_bar_temperature_entities).state);
@@ -50,6 +69,7 @@ script:
                                            id(display_time),
                                            id(network_status_button));
           ${voice_clock_bar_hide_code}
+          ${battery_status_hide_code}
           network_status_hide_modal();
 
   - id: clock_bar_apply
@@ -59,12 +79,8 @@ script:
           ClockBarVisibility visibility = clock_bar_resolve_visibility(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active));
+              id(espcontrol_app).display().target_mode(),
+              id(espcontrol_app).display().target_schedule_inactive());
           bool reserve_clock_bar_space = visibility.reserve_space;
           bool visible = visibility.visible;
           bool show_time = visible && id(clock_bar_time_enabled).state;
@@ -95,6 +111,7 @@ script:
                                              id(display_time),
                                              id(network_status_button));
             ${voice_clock_bar_hide_code}
+            ${battery_status_hide_code}
             network_status_hide_modal();
             return;
           }
@@ -125,12 +142,13 @@ script:
             network_status_hide_modal();
           }
           ${voice_clock_bar_apply_code}
+          ${battery_status_apply_code}
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
                                     visible &&
-                                      !id(display_asleep) &&
-                                      !id(screen_schedule_asleep),
+                                      id(espcontrol_app).display().target_mode_is(
+                                          espcontrol::DisplayMode::ACTIVE),
                                     id(indoor_temp_enable).state,
                                     id(outdoor_temp_enable).state,
                                     id(indoor_temp), id(outdoor_temp));
@@ -203,12 +221,8 @@ switch:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active)),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -220,12 +234,8 @@ switch:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active)),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -248,12 +258,8 @@ switch:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active)),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -265,12 +271,8 @@ switch:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active)),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -293,12 +295,8 @@ switch:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active)),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -310,12 +308,8 @@ switch:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_asleep),
-              id(screen_schedule_asleep),
-              id(is_clock_showing),
-              id(cover_art_screensaver_active),
-              id(screensaver_display_off_active),
-              id(screensaver_dimmed_active)),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -355,7 +349,7 @@ switch:
                 option: "Clock"
       - if:
           condition:
-            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
           then:
             - script.execute: screensaver_idle_check
     on_turn_off:
@@ -368,7 +362,7 @@ switch:
                 option: "Display Off"
       - if:
           condition:
-            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
           then:
             - script.execute: screensaver_idle_check
 
@@ -377,7 +371,7 @@ switch:
     internal: true
     id: media_player_sleep_prevention_enabled
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_DEFAULT_ON
     icon: "mdi:speaker-play"
     entity_category: config
     web_server:
@@ -385,13 +379,13 @@ switch:
     on_turn_on:
       - if:
           condition:
-            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
           then:
             - script.execute: screensaver_idle_check
     on_turn_off:
       - if:
           condition:
-            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
           then:
             - script.execute: screensaver_idle_check
 
@@ -462,7 +456,7 @@ select:
               - switch.turn_off: clock_screensaver_enabled
         - if:
             condition:
-              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
 
@@ -493,12 +487,8 @@ select:
               clock_bar_should_show(
                 id(clock_bar_enabled).state,
                 id(main_page)->obj,
-                id(display_asleep),
-                id(screen_schedule_asleep),
-                id(is_clock_showing),
-                id(cover_art_screensaver_active),
-                id(screensaver_display_off_active),
-                id(screensaver_dimmed_active)),
+                id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
               id(indoor_temp_enable).state,
               id(outdoor_temp_enable).state,
               id(indoor_temp), id(outdoor_temp));
@@ -534,12 +524,8 @@ text:
                 return clock_bar_should_show(
                     id(clock_bar_enabled).state,
                     id(main_page)->obj,
-                    id(display_asleep),
-                    id(screen_schedule_asleep),
-                    id(is_clock_showing),
-                    id(cover_art_screensaver_active),
-                    id(screensaver_display_off_active),
-                    id(screensaver_dimmed_active));
+                    id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive());
               },
               []() {
                 return id(outdoor_temp_enable).state;
@@ -597,7 +583,7 @@ text:
       then:
         - if:
             condition:
-              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
 
@@ -638,7 +624,7 @@ text:
       then:
         - if:
             condition:
-              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
 
@@ -654,6 +640,29 @@ text:
     mode: text
     entity_category: config
     icon: "mdi:speaker-play"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - globals.set:
+            id: cover_art_subscribed_entity
+            value: '""'
+        - script.execute: cover_art_playback_stopped
+        - script.execute: cover_art_resubscribe
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art_secondary_entity}"
+    internal: true
+    id: cover_art_secondary_media_player_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:video-input-hdmi"
     update_interval: never
     web_server:
       sorting_group_id: sg_screensaver
@@ -709,7 +718,7 @@ number:
         - lambda: 'global_preferences->sync();'
         - if:
             condition:
-              lambda: 'return id(is_clock_showing);'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::CLOCK);'
             then:
               - script.execute: clock_screensaver_refresh_brightness
 
@@ -733,7 +742,7 @@ number:
         - lambda: 'global_preferences->sync();'
         - if:
             condition:
-              lambda: 'return id(is_clock_showing);'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::CLOCK);'
             then:
               - script.execute: clock_screensaver_refresh_brightness
 
@@ -756,7 +765,7 @@ number:
       then:
         - if:
             condition:
-              lambda: 'return id(screensaver_dimmed_active);'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::DIMMED);'
             then:
               - script.execute: screensaver_dimmed_refresh_brightness
 
@@ -764,7 +773,7 @@ number:
     name: "${entity_screen_saver_cover_art_delay}"
     internal: true
     id: cover_art_delay
-    min_value: 0
+    min_value: 3
     max_value: 300
     step: 1
     initial_value: 10
@@ -778,33 +787,6 @@ number:
     on_value:
       then:
         - script.execute: cover_art_playback_refresh
-
-  - platform: template
-    name: "${entity_screen_saver_cover_art_touch_pause}"
-    internal: true
-    id: cover_art_touch_pause
-    min_value: 0
-    max_value: 300
-    step: 10
-    initial_value: 120
-    restore_value: true
-    optimistic: true
-    unit_of_measurement: "s"
-    entity_category: config
-    icon: "mdi:gesture-tap"
-    web_server:
-      sorting_group_id: sg_screensaver
-    on_value:
-      then:
-        - if:
-            condition:
-              lambda: |-
-                return !id(cover_art_screensaver_active) &&
-                       id(cover_art_media_playing) &&
-                       id(cover_art_manual_pause_until_ms) != 0 &&
-                       (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
-            then:
-              - script.execute: cover_art_delay_timer
 
   - platform: template
     name: "${entity_screen_saver_track_overlay_duration}"
@@ -825,7 +807,7 @@ number:
       then:
         - if:
             condition:
-              lambda: 'return id(cover_art_screensaver_active);'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::COVER_ART);'
             then:
               - script.execute: cover_art_show_track_overlay
 
@@ -893,7 +875,7 @@ number:
       then:
         - if:
             condition:
-              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
 

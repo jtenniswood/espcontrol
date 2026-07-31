@@ -19,4 +19,6 @@ touchscreen:
     display: my_display
     i2c_id: bus_a
     on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
       - script.execute: screensaver_wake

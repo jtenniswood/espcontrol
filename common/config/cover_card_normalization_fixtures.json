@@ -1,7 +1,7 @@
 [
   {
     "name": "default cover tabs are omitted for modal covers",
-    "input": "cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt",
+    "input": "cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt%7Cpresets",
     "expected": {
       "entity": "cover.office",
       "label": "Office Blind",

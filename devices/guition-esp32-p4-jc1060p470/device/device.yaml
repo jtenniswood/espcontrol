@@ -34,7 +34,7 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_SIZE: "y"
+      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -66,27 +66,27 @@ external_components:
     refresh: 1s
 
 espcontrol:
-
+  id: espcontrol_app
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags:
-      - "-Wno-deprecated-declarations"
-      - "-DESPCONTROL_DISABLE_TODO=1"
-      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
-      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
-      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
-      # Separate marker for the JC1060P470 boot-loop fix so ESPHome cannot
-      # silently reuse the earlier 10:42 build that still crashes.
-      - "-DESPCONTROL_JC1060P470_BOOTFIX_20260522=1"
-      # Rebuild marker for the JC1060P470 OTA flash erase watchdog increase.
-      - "-DESPCONTROL_JC1060P470_OTA_WDT_20260526=1"
-    build_src_flags:
-      - "-Wno-literal-suffix"
+  build_flags:
+    - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_DISABLE_TODO=1"
+    # Force cached ESPHome objects to rebuild after the 2026.5
+    # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+    - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+    # Separate marker for the JC1060P470 boot-loop fix so ESPHome cannot
+    # silently reuse the earlier 10:42 build that still crashes.
+    - "-DESPCONTROL_JC1060P470_BOOTFIX_20260522=1"
+    # Rebuild marker for the JC1060P470 OTA flash erase watchdog increase.
+    - "-DESPCONTROL_JC1060P470_OTA_WDT_20260526=1"
+    # Keep the ESP-IDF header warning suppressed without warning on C sources.
+    - "-Wno-literal-suffix"
+    - "-Wno-complain-wrong-lang"
   on_boot:
     - priority: 260
       then:
@@ -204,8 +204,10 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(screen_schedule_asleep) &&
-                        !id(schedule_mode_clock)) ||
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -215,20 +217,14 @@ light:
             else:
               - if:
                   condition:
-                    lambda: 'return id(screensaver_display_off_active);'
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
-        - if:
-            condition:
-              lambda: |-
-                return !id(display_asleep) &&
-                       !id(screen_schedule_asleep) &&
-                       !id(screensaver_display_off_active) &&
-                       !id(screensaver_dimmed_active);
-            then:
-              - script.execute: screen_schedule_manual_sleep
+        - script.execute: display_backlight_handle_off
 
 # ---------------------------------------------------------------------------
 # I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
@@ -259,6 +255,8 @@ touchscreen:
     reset_pin: GPIO22
     interrupt_pin: GPIO21
     on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
       - script.execute: screensaver_wake
 
 # ---------------------------------------------------------------------------

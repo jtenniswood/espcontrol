@@ -12,11 +12,12 @@ Your panel can update its firmware over the air — no USB cable or computer nee
 
 These are configured from the **Settings** tab in the [Setup](/features/setup) under the **Firmware** section. They also appear as controls in Home Assistant.
 
-- **Version** — the firmware version currently running on your panel (read-only).
-- **Auto Update** — turn this on to let the panel install new versions automatically. When off, you'll need to trigger updates manually.
-- **Update Frequency** — how often the panel checks for updates: **Hourly**, **Daily**, **Weekly**, or **Monthly**.
-- **Install Version** — choose the latest stable firmware or one of up to four previous stable versions when more than one version is available.
+- **Current version** and **Available version** — compare the firmware running on your panel with the latest stable release.
+- **Auto updates** — open this panel to turn **Auto Update** on or off and choose the **Update Frequency**: **Hourly**, **Daily**, **Weekly**, or **Monthly**.
+- **Previous firmware** — open this panel to choose and install one of the available previous stable versions.
 - **Check for Update** — press this button to check for a new version right now, regardless of the automatic schedule.
+
+When either a panel firmware update or WiFi co-processor update is available, the collapsed **Firmware** section shows an **Update available** badge so you do not need to open each update panel to check.
 
 Manual Ethernet builds can be different. If you used the advanced Ethernet setup with `disable_updates: "true"`, these built-in GitHub update controls are removed from the panel firmware. Use ESPHome OTA or USB from your ESPHome setup to update that display instead.
 
@@ -31,7 +32,7 @@ The update usually takes a minute or two. The display may show an update or load
 
 ## Installing an Older Version
 
-When older stable firmware is available, the **Install Version** selector lets you choose the version to install. This is intended for rolling back to one of the four most recent previous stable versions if you need to test or recover from a problem.
+When older stable firmware is available, open **Previous firmware**, choose a **Version**, and press **Install**. This is intended for rolling back to one of the four most recent previous stable versions if you need to test or recover from a problem.
 
 ## Compatibility Notes
 
@@ -57,11 +58,16 @@ Some ESP32-P4 displays use a separate ESP32-C6 chip for WiFi. EspControl exposes
 
 - **7-inch JC1060P470**
 - **10.1-inch JC8012P4A1**
+- **10.1-inch JC8012P4A1 new panel**
 - **4.3-inch JC4880P443**
 - **4-inch ESP32-P4-86**
 
 These entities are separate from the main EspControl display firmware controls. The normal **Firmware: Check for Update** and **Firmware: Install Update** controls update the panel firmware. The ESP32-C6 controls check and install compatible WiFi co-processor firmware from ESPHome's hosted firmware manifest.
 
-In Home Assistant, look for ESP32-C6 diagnostic entities showing the current version, latest version, and whether an update is available. When an update is available, use the ESP32-C6 check/install buttons for the co-processor, and continue using the regular EspControl firmware controls for normal panel updates.
+Supported displays check for compatible WiFi firmware once a day and install new versions automatically. Automatic WiFi firmware updates are on by default, helping displays receive connectivity fixes without requiring a separate manual update. The setting is remembered after restarts.
+
+On the panel's setup page, open the **WiFi firmware** panel under **Firmware** to turn **Auto Update** off or back on. You can still use **Check for Update** and **Update WiFi Firmware** manually while automatic updates are off.
+
+In Home Assistant, the **WiFi Firmware: Auto Update** switch provides the same opt-out. ESP32-C6 diagnostic entities show the current version, latest version, and whether an update is available. Continue using the regular EspControl firmware controls for normal panel updates.
 
 Advanced Ethernet-only builds keep the ESP32-C6 WiFi co-processor off, so they do not expose these ESP32-C6 update controls.

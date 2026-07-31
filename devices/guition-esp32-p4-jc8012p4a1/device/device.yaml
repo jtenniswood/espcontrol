@@ -34,7 +34,7 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_SIZE: "y"
+      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -69,42 +69,42 @@ external_components:
     refresh: 1s
 
 espcontrol:
-
+  id: espcontrol_app
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags:
-      - "-Wno-deprecated-declarations"
-      - "-DESPCONTROL_DISABLE_TODO=1"
-      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
-      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
-      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
-      # Separate marker for the JC8012P4A1 boot-loop fix so ESPHome cannot
-      # silently reuse the earlier build that still crashes.
-      - "-DESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1"
-      # Rebuild marker for the JC8012P4A1 watchdog increase.
-      - "-DESPCONTROL_JC8012P4A1_WDT_20260526=1"
-      # Rebuild marker for USB-C serial logging over the panel UART bridge.
-      - "-DESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1"
-      # Rebuild marker for the faster native OTA flash preparation path.
-      - "-DESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1"
-      # Rebuild marker for the image-card LVGL transition boot-loop fix.
-      - "-DESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1"
-      # Rebuild marker for bad restore crash recovery.
-      - "-DESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1"
-      # Keep LVGL active while the backlight is off so the GSL3680 touch
-      # controller can still deliver the wake tap from display-off screensaver.
-      - "-DESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1"
-      # Rebuild marker for noisy/multi-contact wake taps on the GSL3680 panel.
-      - "-DESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1"
-      # Rebuild marker for restoring native display-space GSL3680 touch scaling.
-      - "-DESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1"
-    build_src_flags:
-      - "-Wno-literal-suffix"
+  build_flags:
+    - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_DISABLE_TODO=1"
+    # Force cached ESPHome objects to rebuild after the 2026.5
+    # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+    - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+    # Separate marker for the JC8012P4A1 boot-loop fix so ESPHome cannot
+    # silently reuse the earlier build that still crashes.
+    - "-DESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1"
+    # Rebuild marker for the JC8012P4A1 watchdog increase.
+    - "-DESPCONTROL_JC8012P4A1_WDT_20260526=1"
+    # Rebuild marker for USB-C serial logging over the panel UART bridge.
+    - "-DESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1"
+    # Rebuild marker for the faster native OTA flash preparation path.
+    - "-DESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1"
+    # Rebuild marker for the image-card LVGL transition boot-loop fix.
+    - "-DESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1"
+    # Rebuild marker for bad restore crash recovery.
+    - "-DESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1"
+    # Keep LVGL active while the backlight is off so the GSL3680 touch
+    # controller can still deliver the wake tap from display-off screensaver.
+    - "-DESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1"
+    # Rebuild marker for noisy/multi-contact wake taps on the GSL3680 panel.
+    - "-DESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1"
+    # Rebuild marker for restoring native display-space GSL3680 touch scaling.
+    - "-DESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1"
+    # Keep the ESP-IDF header warning suppressed without warning on C sources.
+    - "-Wno-literal-suffix"
+    - "-Wno-complain-wrong-lang"
   on_boot:
     - priority: 260
       then:
@@ -149,7 +149,8 @@ esp32_hosted:
   d2_pin: GPIO16
   d3_pin: GPIO17
   active_high: true
-  sdio_frequency: 20MHz
+  # Camera snapshots benefit from the ESP-Hosted default high-speed link.
+  sdio_frequency: 40MHz
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)
@@ -238,8 +239,10 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(screen_schedule_asleep) &&
-                        !id(schedule_mode_clock)) ||
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -249,28 +252,26 @@ light:
             else:
               - if:
                   condition:
-                    lambda: 'return id(screensaver_display_off_active);'
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
         - if:
             condition:
-              lambda: 'return id(display_takeover_suspended);'
+              lambda: |-
+                return id(espcontrol_app).display().takeover_active(
+                           espcontrol::DisplayTakeoverKind::INTERACTIVE) ||
+                       id(espcontrol_app).display().takeover_active(
+                           espcontrol::DisplayTakeoverKind::CRITICAL);
             then:
-              - lambda: 'ESP_LOGD("backlight", "Restoring backlight after OFF event while image modal is active");'
+              - lambda: 'ESP_LOGD("backlight", "Restoring backlight after OFF event during display takeover");'
               - delay: 10ms
               - script.execute: backlight_apply_brightness
             else:
-              - if:
-                  condition:
-                    lambda: |-
-                      return !id(display_asleep) &&
-                             !id(screen_schedule_asleep) &&
-                             !id(screensaver_display_off_active) &&
-                             !id(screensaver_dimmed_active);
-                  then:
-                    - script.execute: screen_schedule_manual_sleep
+              - script.execute: display_backlight_handle_off
 
 # ---------------------------------------------------------------------------
 # I2C bus and touchscreen (GSL3680 capacitive, wakes screensaver on touch)
@@ -293,6 +294,8 @@ touchscreen:
       mirror_x: true
       mirror_y: false
     on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
       - script.execute: screensaver_wake
 
 # ---------------------------------------------------------------------------

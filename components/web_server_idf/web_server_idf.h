@@ -129,7 +129,7 @@ class AsyncWebServerRequest {
 #ifdef USE_WEBSERVER_AUTH
   bool authenticate(const char *username, const char *password) const;
   // NOLINTNEXTLINE(readability-identifier-naming)
-  void requestAuthentication(const char *realm = nullptr) const;
+  void requestAuthentication() const;
 #endif
 
   void redirect(const std::string &url);
@@ -200,6 +200,9 @@ class AsyncWebServerRequest {
   optional<std::string> find_query_value_(const char *name) const;
   std::vector<AsyncWebParameter *> params_;
   std::string post_query_;
+#ifdef USE_WEBSERVER_AUTH_DIGEST
+  mutable bool digest_nonce_stale_{false};
+#endif
   AsyncWebServerRequest(httpd_req_t *req) : req_(req) {}
   AsyncWebServerRequest(httpd_req_t *req, std::string post_query) : req_(req), post_query_(std::move(post_query)) {}
   void init_response_(AsyncWebServerResponse *rsp, int code, const char *content_type);
@@ -297,7 +300,8 @@ class AsyncEventSourceResponse {
   friend class AsyncEventSource;
 
  public:
-  bool try_send_nodefer(const char *message, const char *event = nullptr, uint32_t id = 0, uint32_t reconnect = 0);
+  bool try_send_nodefer(const char *message, size_t message_len, const char *event = nullptr, uint32_t id = 0,
+                        uint32_t reconnect = 0);
   void deferrable_send_state(void *source, const char *event_type, message_generator_t *message_generator);
   void loop();
 
@@ -344,7 +348,8 @@ class AsyncEventSource : public AsyncWebHandler {
   // NOLINTNEXTLINE(readability-identifier-naming)
   void onConnect(connect_handler_t &&cb) { this->on_connect_ = std::move(cb); }
 
-  void try_send_nodefer(const char *message, const char *event = nullptr, uint32_t id = 0, uint32_t reconnect = 0);
+  void try_send_nodefer(const char *message, size_t message_len, const char *event = nullptr, uint32_t id = 0,
+                        uint32_t reconnect = 0);
   void deferrable_send_state(void *source, const char *event_type, message_generator_t *message_generator);
   /// Returns true if there are sessions remaining (including pending cleanup).
   bool loop();

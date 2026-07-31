@@ -1,0 +1,14 @@
+diff --git a/components/espcontrol/configuration_service.cpp b/components/espcontrol/configuration_service.cpp
+--- a/components/espcontrol/configuration_service.cpp
++++ b/components/espcontrol/configuration_service.cpp
+@@ -166,9 +166,6 @@ ServiceSaveResult ConfigurationService::save(uint16_t document_version,
+ 
+   const CommitResult committed =
+       commit_document(document_version, document, document_size);
+-  if (!committed.ok()) {
+-    return {ServiceStatus::STORE_FAILED, committed.status, document_version,
+-            committed.generation, document_size};
+-  }
++  (void) committed;
+   if (!legacy_.mirror(document_version, document, document_size)) {
+     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,

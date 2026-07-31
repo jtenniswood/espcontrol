@@ -36,7 +36,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Option Select](/card-types/option-select)** | Opens a live `select` or `input_select` option list through the Action card. | Yes, as a select entity |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
-| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
+| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, readable duration, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
@@ -78,14 +78,22 @@ When the entity is not active, the card goes back to its off icon and normal lab
 
 Drag and drop any card to reposition it. If you drop it onto an occupied space, the existing card shifts to the next available slot.
 
+To copy cards to another controller without replacing its other settings, use **Copy Code** and **Paste Code**. See [Copying Cards Between Controllers](/features/subpages#copying-cards-between-controllers) for the steps and compatibility notes.
+
 ### Card Sizes
 
 Right-click a card and open **Size** to choose:
 
 - **Single** - normal one-slot card.
 - **Tall** - spans two rows.
+- **Extra Tall** - spans three rows.
 - **Wide** - spans two columns.
+- **Extra Wide** - spans three columns.
 - **Large** - spans a 2 x 2 area.
+- **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
+- **Max wide** - spans a 3 x 2 area and is available for Camera cards.
+- **Max tall** - spans a 2 x 3 area and is available for Camera cards.
+- **Portrait** - spans a 3 x 4 area and is available for Camera and Media cover-art cards on both 10.1-inch panels.
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 
@@ -100,3 +108,30 @@ Open **Settings > System > Home Assistant Settings** to change **Home Assistant 
 ## Apply Configuration
 
 After making changes, tap **Apply Configuration** at the bottom of the page. The panel restarts and loads your new settings — you'll see a message while it reconnects.
+
+## Restart From Home Assistant
+
+Each EspControl device has an enabled **Restart** button in Home Assistant. Open **Settings > Devices & services > ESPHome**, choose your EspControl device, and look under its configuration controls. Pressing **Restart** safely restarts the display without changing its cards, brightness, schedules, or other saved settings.
+
+You can also press the button from a Home Assistant automation. Replace `button.your_panel_restart` with the Restart entity shown for your display:
+
+```yaml
+actions:
+  - action: button.press
+    target:
+      entity_id: button.your_panel_restart
+```
+
+If the automation runs when Home Assistant starts, wait until the Restart entity is available before pressing it:
+
+```yaml
+actions:
+  - wait_template: >
+      {{ states.button.your_panel_restart is not none
+         and not is_state('button.your_panel_restart', 'unavailable') }}
+  - action: button.press
+    target:
+      entity_id: button.your_panel_restart
+```
+
+The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.

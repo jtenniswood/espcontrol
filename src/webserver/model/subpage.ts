@@ -1,5 +1,6 @@
 import type { CardConfig } from "../contracts/types";
-import { cloneCardConfig, decodeConfigField, encodeConfigField } from "./card";
+import { cloneCardConfig } from "./card";
+import { decodeConfigField, encodeConfigField } from "./config_primitives";
 import { applySpans, sizeFromToken, sizeToken, type SlotSizeMap } from "./grid";
 
 export interface BackOrderToken {

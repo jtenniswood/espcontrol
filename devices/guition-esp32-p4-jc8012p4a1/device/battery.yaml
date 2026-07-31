@@ -1,0 +1,78 @@
+# =============================================================================
+# BATTERY - Experimental IP5306 battery status (community/BSP-sourced)
+# =============================================================================
+# Some guition-esp32-p4-jc8012p4a1 units ship with an IP5306-based battery
+# add-on board (see https://github.com/profi-max/JC8012P4A1_BSP_ESP32P4).
+# Battery+ is read via a passive divider (68k/100k) into GPIO52. This has
+# NOT been confirmed by the firmware maintainer and won't apply to stock
+# units, so the feature defaults OFF (battery_status_enabled below).
+# Adjust the substitutions if your unit's readings differ.
+# =============================================================================
+
+substitutions:
+  battery_adc_pin: GPIO52
+  battery_adc_update_interval: "30s"
+  battery_voltage_divider_multiplier: "1.68"
+  battery_empty_voltage: "3.30"
+  battery_full_voltage: "4.20"
+
+sensor:
+  - platform: adc
+    pin: ${battery_adc_pin}
+    name: "Battery Voltage Raw"
+    id: battery_voltage_raw
+    attenuation: 12dB
+    update_interval: ${battery_adc_update_interval}
+    entity_category: diagnostic
+    internal: true
+
+  - platform: copy
+    source_id: battery_voltage_raw
+    name: "Battery Voltage"
+    id: battery_voltage
+    filters:
+      - multiply: ${battery_voltage_divider_multiplier}
+    unit_of_measurement: "V"
+    device_class: voltage
+    entity_category: diagnostic
+    internal: true
+
+  - platform: copy
+    source_id: battery_voltage
+    name: "${entity_battery_percent}"
+    id: battery_percent
+    filters:
+      - lambda: |-
+          return min(max((x - ${battery_empty_voltage}f) /
+                          (${battery_full_voltage}f - ${battery_empty_voltage}f) * 100.0f,
+                          0.0f), 100.0f);
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+    device_class: battery
+    on_value:
+      then:
+        - script.execute: battery_status_refresh
+
+script:
+  - id: battery_status_refresh
+    mode: restart
+    then:
+      - lambda: |-
+          battery_status_set_icon(id(battery_status_icon_label), id(battery_percent).state);
+
+switch:
+  - platform: template
+    name: "${entity_screen_battery_status}"
+    internal: true
+    id: battery_status_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:battery-alert"
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - script.execute: clock_bar_apply
+      - script.execute: battery_status_refresh
+    on_turn_off:
+      - script.execute: clock_bar_apply

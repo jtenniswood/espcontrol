@@ -35,6 +35,12 @@ esp32:
       # and LVGL buffers are initialized.
       CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      # The RGB driver already restarts after a genuine DMA underflow. Restarting
+      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
+      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
+      CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
 
 # ---------------------------------------------------------------------------
 # External component
@@ -49,7 +55,7 @@ external_components:
     refresh: 1s
 
 espcontrol:
-
+  id: espcontrol_app
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -63,14 +69,15 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags:
-      - "-DESPCONTROL_DISABLE_TODO=1"
-      - "-DESPCONTROL_MAX_GRID_SLOTS=9"
-    build_src_flags:
-      # Keep C++ literals close to their functions on the S3 firmware image;
-      # the modal code is large enough to otherwise trip Xtensa l32r range limits.
-      - "-mtext-section-literals"
+  build_flags:
+    - "-DESPCONTROL_DISABLE_TODO=1"
+    - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
+    - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
+    - "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1"
+    # Keep C++ literals close to their functions on the S3 firmware image;
+    # the modal code is large enough to otherwise trip Xtensa l32r range limits.
+    - "-mtext-section-literals"
   on_boot:
     - priority: 800
       then:
@@ -233,8 +240,10 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(screen_schedule_asleep) &&
-                        !id(schedule_mode_clock)) ||
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -244,20 +253,14 @@ light:
             else:
               - if:
                   condition:
-                    lambda: 'return id(screensaver_display_off_active);'
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
-        - if:
-            condition:
-              lambda: |-
-                return !id(display_asleep) &&
-                       !id(screen_schedule_asleep) &&
-                       !id(screensaver_display_off_active) &&
-                       !id(screensaver_dimmed_active);
-            then:
-              - script.execute: screen_schedule_manual_sleep
+        - script.execute: display_backlight_handle_off
 
 # ---------------------------------------------------------------------------
 # Built-in relays (4848S040C relay variant)
@@ -366,6 +369,8 @@ touchscreen:
       mirror_x: false
       mirror_y: false
     on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
       - script.execute: screensaver_wake
 
 # ---------------------------------------------------------------------------

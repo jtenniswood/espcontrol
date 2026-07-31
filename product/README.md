@@ -25,11 +25,12 @@ Edit these files when changing product behavior or supported hardware:
 ## Generated Outputs
 
 Do not hand-edit generated sections or files. Rebuild them with
-`python3 scripts/build.py` or `python3 scripts/generate_device_slots.py`.
+`python3 scripts/build.py`, `python3 scripts/generate_device_slots.py`, or
+`python3 scripts/check_product_snapshot.py --update`.
 
 - `common/config/entity_names.yaml`
-- `src/webserver/modules/entity_catalog.js`
-- `src/webserver/modules/card_contract_generated.js`
+- `src/webserver/generated/entity_catalog.ts`
+- `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `docs/generated/cards/capabilities.md`
 - `docs/generated/screens/*.md`
@@ -37,8 +38,10 @@ Do not hand-edit generated sections or files. Rebuild them with
 - `docs/public/webserver/*/www.js`
 - generated blocks inside `devices/*/packages.yaml`
 - generated blocks inside `devices/*/device/sensors.yaml`
+- `product/product_snapshot.json`
 
 ## Checks
 
 Run `npm run check:product` after changing authored product sources. Run
+`npm run check:product-snapshot` when the combined product snapshot changes. Run
 `npm run check:fast` before committing broader changes.

@@ -115,6 +115,7 @@ const ICON_GROUPS = {
   'Thermostat Auto': 'Climate & Air',
   'Thermostat Box': 'Climate & Air',
   'Home-Thermostat': 'Climate & Air',
+  'Arrow Up Down': 'Climate & Air',
   'Swap Horizontal': 'Climate & Air',
 
   'Blinds': 'Covers & Shading',
@@ -123,6 +124,8 @@ const ICON_GROUPS = {
   'Blinds Open': 'Covers & Shading',
   'Arrow Down': 'Covers & Shading',
   'Arrow Up': 'Covers & Shading',
+  'Chevron Left': 'Covers & Shading',
+  'Chevron Right': 'Covers & Shading',
   'Chevron Down': 'Covers & Shading',
   'Chevron Up': 'Covers & Shading',
   'Curtains': 'Covers & Shading',

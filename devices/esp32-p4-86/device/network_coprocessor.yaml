@@ -7,6 +7,9 @@
 
 esp32_hosted:
   variant: esp32c6
+  # Keep the preallocated transport receive buffers for reliable inbound
+  # connections, but place them in PSRAM to protect scarce internal memory.
+  use_psram: true
   reset_pin: GPIO54
   cmd_pin: GPIO19
   clk_pin: GPIO18

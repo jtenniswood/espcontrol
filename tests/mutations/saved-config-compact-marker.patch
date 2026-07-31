@@ -1,0 +1,9 @@
+diff --git a/components/espcontrol/button_grid_config_parser.h b/components/espcontrol/button_grid_config_parser.h
+--- a/components/espcontrol/button_grid_config_parser.h
++++ b/components/espcontrol/button_grid_config_parser.h
+@@ -1209,4 +1209,4 @@
+ inline ParsedCfg parse_cfg(const std::string &cfg) {
+   ParsedCfg p;
+-  if (!cfg.empty() && cfg[0] == '~') {
++  if (!cfg.empty() && cfg[0] == '!') {
+     std::vector<std::string> f = split_config_fields(cfg.substr(1), ',');

@@ -21,6 +21,6 @@ The clock bar layout is not customizable. Hidden items stay greyed in the web pr
 
 Tap the network status icon on the panel to see device details, including the device name, IP address, WiFi strength, uptime, and firmware version.
 
-On devices with local voice controls, turn on **Voice Services** to enable wake-word listening and show the microphone shortcut in the clock bar. Voice Services is off by default. When it is off, wake-word listening is stopped and the microphone/speaker shortcut is hidden. Tap the shortcut to adjust the device volume and access the microphone mute control. A microphone-off icon means voice listening is muted; a speaker-off icon means speaker output is muted. See [Voice Control](/features/voice-control) for the ESP32-P4 86 voice setup and usage guide.
+On firmware builds with local voice controls, turn on **Voice Services** to enable wake-word listening and show the microphone shortcut in the clock bar. Voice Services is off by default. When it is off, wake-word listening is stopped and the microphone/speaker shortcut is hidden. Tap the shortcut to adjust the device volume and access the microphone mute control. A microphone-off icon means voice listening is muted; a speaker-off icon means speaker output is muted. See [Voice Control](/features/voice-control) for the ESP32-P4 86 voice setup.
 
 The time format and timezone are configured separately in [Time Settings](/features/clock). The temperature unit is configured in [Temperature Settings](/features/temperature).

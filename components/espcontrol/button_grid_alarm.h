@@ -25,8 +25,9 @@ struct AlarmCardCtx {
   lv_obj_t *page = nullptr;
   TransientStatusLabel *status_label = nullptr;
   lv_timer_t *pending_action_timer = nullptr;
-  std::function<void()> suspend_display_takeover;
-  std::function<void()> resume_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
+  AlarmDelayAudioHooks audio_hooks;
   uint32_t arm_delay_started_ms = 0;
   int arm_delay_seconds = -1;
   int arm_delay_total_seconds = -1;
@@ -36,15 +37,15 @@ struct AlarmCardCtx {
   const lv_font_t *icon_font = nullptr;
   const lv_font_t *arming_title_font = nullptr;
   uint32_t on_color = DEFAULT_SLIDER_COLOR;
-  uint32_t off_color = DEFAULT_OFF_COLOR;
-  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
+  uint32_t off_color = SECONDARY_GREY;
+  uint32_t tertiary_color = TERTIARY_GREY;
   int width_compensation_percent = 100;
   int grid_cols = 3;
   bool available = false;
   bool show_status_icon = false;
   bool show_status_label = false;
   bool pending_action_had_code = false;
-  bool display_takeover_suspended = false;
+  bool critical_takeover_active = false;
   bool arming_modal_auto_opened = false;
 };
 
@@ -98,6 +99,14 @@ struct AlarmDeferredAction {
   bool submit_pin = false;
 };
 
+inline bool alarm_card_show_status_icon(const ParsedCfg &p) {
+  return normalize_alarm_icon_display(cfg_option_value(p.options, "icon_display")) == "status";
+}
+
+inline bool alarm_card_show_status_label(const ParsedCfg &p) {
+  return normalize_alarm_label_display(cfg_option_value(p.options, "label_display")) == "status";
+}
+
 inline AlarmControlModalUi &alarm_control_modal_ui() {
   static AlarmControlModalUi ui;
   return ui;
@@ -116,6 +125,205 @@ inline AlarmToastUi &alarm_toast_ui() {
 inline AlarmDeferredAction &alarm_deferred_action() {
   static AlarmDeferredAction action;
   return action;
+}
+
+inline int alarm_remaining_delay_seconds(AlarmCardCtx *ctx);
+inline bool alarm_card_context_valid(AlarmCardCtx *ctx);
+
+struct AlarmDelayAudioCoordinator {
+  AlarmCardCtx *source = nullptr;
+  std::string entity_id;
+  AlarmDelayAudioMode mode = AlarmDelayAudioMode::NONE;
+  int remaining_seconds = -1;
+  uint32_t remaining_updated_ms = 0;
+  uint32_t period_ms = 1000U;
+  bool awaiting_announcement = false;
+  lv_timer_t *timer = nullptr;
+  AlarmDelayAudioHooks hooks;
+};
+
+inline AlarmDelayAudioCoordinator &alarm_delay_audio_coordinator() {
+  static AlarmDelayAudioCoordinator coordinator;
+  return coordinator;
+}
+
+inline std::vector<AlarmCardCtx *> &alarm_delay_audio_contexts() {
+  static std::vector<AlarmCardCtx *> contexts;
+  return contexts;
+}
+
+inline void alarm_delay_audio_update(AlarmCardCtx *ctx,
+                                     bool announce_start = true);
+inline bool alarm_delay_audio_resume_context(AlarmCardCtx *excluded,
+                                             bool exclude_same_entity);
+
+inline void alarm_delay_audio_register_context(AlarmCardCtx *ctx) {
+  if (!ctx) return;
+  std::vector<AlarmCardCtx *> &contexts = alarm_delay_audio_contexts();
+  if (std::find(contexts.begin(), contexts.end(), ctx) == contexts.end()) {
+    contexts.push_back(ctx);
+  }
+}
+
+inline void alarm_delay_audio_unregister_context(AlarmCardCtx *ctx) {
+  std::vector<AlarmCardCtx *> &contexts = alarm_delay_audio_contexts();
+  contexts.erase(std::remove(contexts.begin(), contexts.end(), ctx), contexts.end());
+  if (contexts.empty()) std::vector<AlarmCardCtx *>().swap(contexts);
+}
+
+inline int alarm_delay_audio_remaining_seconds(
+    const AlarmDelayAudioCoordinator &coordinator) {
+  if (coordinator.remaining_seconds < 0) return -1;
+  if (coordinator.remaining_seconds == 0) return 0;
+  uint32_t elapsed_ms = lv_tick_get() - coordinator.remaining_updated_ms;
+  int elapsed_seconds = static_cast<int>(elapsed_ms / 1000U);
+  int remaining = coordinator.remaining_seconds - elapsed_seconds;
+  return remaining > 0 ? remaining : 0;
+}
+
+inline void alarm_delay_audio_stop() {
+  AlarmDelayAudioCoordinator &coordinator = alarm_delay_audio_coordinator();
+  if (coordinator.timer) lv_timer_pause(coordinator.timer);
+  if (coordinator.mode != AlarmDelayAudioMode::NONE && coordinator.hooks.stop) {
+    coordinator.hooks.stop();
+  }
+  coordinator.source = nullptr;
+  coordinator.entity_id.clear();
+  coordinator.mode = AlarmDelayAudioMode::NONE;
+  coordinator.remaining_seconds = -1;
+  coordinator.remaining_updated_ms = 0;
+  coordinator.awaiting_announcement = false;
+  coordinator.hooks = AlarmDelayAudioHooks();
+}
+
+inline int alarm_delay_audio_final_countdown_seconds(
+    const AlarmDelayAudioCoordinator &coordinator) {
+  int seconds = coordinator.hooks.final_countdown_seconds
+    ? coordinator.hooks.final_countdown_seconds() : 10;
+  if (seconds < 0) return 0;
+  if (seconds > 300) return 300;
+  return seconds;
+}
+
+inline void alarm_delay_audio_timer_cb(lv_timer_t *timer) {
+  AlarmDelayAudioCoordinator &coordinator = alarm_delay_audio_coordinator();
+  if (coordinator.timer != timer || coordinator.mode == AlarmDelayAudioMode::NONE) {
+    lv_timer_pause(timer);
+    return;
+  }
+  bool enabled = coordinator.hooks.enabled && coordinator.hooks.enabled();
+  int remaining = alarm_delay_audio_remaining_seconds(coordinator);
+  if (!enabled || remaining == 0) {
+    AlarmCardCtx *completed_source = coordinator.source;
+    alarm_delay_audio_stop();
+    if (enabled && remaining == 0) {
+      alarm_delay_audio_resume_context(
+        completed_source, /* exclude_same_entity= */ true);
+    }
+    return;
+  }
+  bool ready = !coordinator.hooks.ready || coordinator.hooks.ready();
+  if (alarm_delay_audio_waiting_for_announcement(
+        coordinator.awaiting_announcement, ready)) {
+    coordinator.period_ms = 100U;
+    lv_timer_set_period(timer, coordinator.period_ms);
+    return;
+  }
+  coordinator.awaiting_announcement = false;
+  if (coordinator.hooks.play_beep) {
+    coordinator.hooks.play_beep(coordinator.mode);
+  }
+  coordinator.period_ms = alarm_delay_audio_beep_period_ms(
+    remaining, alarm_delay_audio_final_countdown_seconds(coordinator));
+  lv_timer_set_period(timer, coordinator.period_ms);
+}
+
+inline void alarm_delay_audio_update(AlarmCardCtx *ctx, bool announce_start) {
+  if (!ctx) return;
+  AlarmDelayAudioMode mode = alarm_delay_audio_mode_for_state(ctx->state);
+  bool enabled = ctx->audio_hooks.enabled && ctx->audio_hooks.enabled();
+  int remaining = alarm_remaining_delay_seconds(ctx);
+  bool should_run = alarm_delay_audio_should_run(
+    ctx->state, remaining, ctx->available, enabled);
+  AlarmDelayAudioCoordinator &coordinator = alarm_delay_audio_coordinator();
+  bool owns_active_audio = coordinator.source == ctx;
+  bool matches_active_entity = coordinator.entity_id == ctx->entity_id;
+  if (!should_run) {
+    if (owns_active_audio) {
+      alarm_delay_audio_stop();
+      alarm_delay_audio_resume_context(ctx, /* exclude_same_entity= */ true);
+    }
+    return;
+  }
+
+  bool starting = !matches_active_entity || coordinator.mode != mode;
+  if (starting && coordinator.mode != AlarmDelayAudioMode::NONE) {
+    alarm_delay_audio_stop();
+  }
+  if (starting || coordinator.source == nullptr) coordinator.source = ctx;
+  coordinator.entity_id = ctx->entity_id;
+  coordinator.mode = mode;
+  coordinator.remaining_seconds = remaining;
+  coordinator.remaining_updated_ms = lv_tick_get();
+  coordinator.hooks = ctx->audio_hooks;
+
+  if (starting) {
+    bool announced = false;
+    if (announce_start && coordinator.hooks.tts_enabled &&
+        coordinator.hooks.tts_enabled() &&
+        coordinator.hooks.announce) {
+      coordinator.hooks.announce(mode);
+      announced = true;
+    }
+    coordinator.awaiting_announcement = announced;
+    if (!announced && coordinator.hooks.play_beep) {
+      coordinator.hooks.play_beep(mode);
+    }
+  }
+  uint32_t period = alarm_delay_audio_beep_period_ms(
+    remaining, alarm_delay_audio_final_countdown_seconds(coordinator));
+  if (!coordinator.timer) {
+    coordinator.period_ms = period;
+    coordinator.timer = lv_timer_create(alarm_delay_audio_timer_cb, period, nullptr);
+  } else {
+    bool reset_timer = alarm_delay_audio_should_reset_timer(
+      starting, coordinator.period_ms, period);
+    coordinator.period_ms = period;
+    if (reset_timer) {
+      lv_timer_set_period(coordinator.timer, period);
+      lv_timer_reset(coordinator.timer);
+    }
+    lv_timer_resume(coordinator.timer);
+  }
+}
+
+inline bool alarm_delay_audio_resume_context(AlarmCardCtx *excluded,
+                                             bool exclude_same_entity) {
+  const std::string excluded_entity =
+    exclude_same_entity && excluded ? excluded->entity_id : "";
+  for (AlarmCardCtx *ctx : alarm_delay_audio_contexts()) {
+    if (ctx == excluded || !alarm_card_context_valid(ctx) ||
+        (!excluded_entity.empty() && ctx->entity_id == excluded_entity)) {
+      continue;
+    }
+    AlarmDelayAudioMode mode = alarm_delay_audio_mode_for_state(ctx->state);
+    bool enabled = ctx->audio_hooks.enabled && ctx->audio_hooks.enabled();
+    int remaining = alarm_remaining_delay_seconds(ctx);
+    if (!alarm_delay_audio_should_run(
+          ctx->state, remaining, ctx->available, enabled)) {
+      continue;
+    }
+    alarm_delay_audio_update(ctx, false);
+    return alarm_delay_audio_coordinator().source == ctx &&
+           alarm_delay_audio_coordinator().mode == mode;
+  }
+  return false;
+}
+
+inline void alarm_delay_audio_refresh_contexts() {
+  for (AlarmCardCtx *ctx : alarm_delay_audio_contexts()) {
+    if (alarm_card_context_valid(ctx)) alarm_delay_audio_update(ctx);
+  }
 }
 
 inline bool alarm_card_context_valid(AlarmCardCtx *ctx) {
@@ -475,9 +683,11 @@ inline bool alarm_display_takeover_active() {
 inline void alarm_release_arming_takeover(AlarmCardCtx *ctx) {
   if (!ctx) return;
   if (alarm_arming_takeover_ctx() == ctx) alarm_arming_takeover_ctx() = nullptr;
-  if (ctx->display_takeover_suspended) {
-    ctx->display_takeover_suspended = false;
-    if (ctx->resume_display_takeover) ctx->resume_display_takeover();
+  if (ctx->critical_takeover_active) {
+    ctx->critical_takeover_active = false;
+    if (ctx->end_display_takeover) {
+      ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);
+    }
   }
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   if (ctx->arming_modal_auto_opened && ui.active == ctx) {
@@ -506,9 +716,11 @@ inline void alarm_refresh_arming_takeover(AlarmCardCtx *ctx) {
     lv_obj_move_foreground(ui.overlay);
   }
 
-  if (!ctx->display_takeover_suspended) {
-    ctx->display_takeover_suspended = true;
-    if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();
+  if (!ctx->critical_takeover_active) {
+    ctx->critical_takeover_active = true;
+    if (ctx->begin_display_takeover) {
+      ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);
+    }
   }
 }
 
@@ -555,7 +767,6 @@ inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) 
   if (!alarm_state_is_delay(ctx->state)) ctx->arm_delay_total_seconds = -1;
   bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
   ctx->available = !unavailable;
-  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
 
   bool triggered = state == "triggered";
   bool active = alarm_state_is_active(state) || triggered;
@@ -572,6 +783,7 @@ inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) 
   alarm_clear_pending_action_if_progressed(ctx);
   alarm_control_update_modal(ctx);
   alarm_arm_delay_refresh_timer(ctx);
+  alarm_delay_audio_update(ctx);
   alarm_refresh_arming_takeover(ctx);
 }
 
@@ -595,12 +807,12 @@ inline void alarm_apply_home_arm_delay(AlarmCardCtx *ctx, const std::string &del
   ctx->arm_delay_started_ms = lv_tick_get();
   alarm_control_update_modal(ctx);
   alarm_arm_delay_refresh_timer(ctx);
+  alarm_delay_audio_update(ctx);
   alarm_refresh_arming_takeover(ctx);
 }
 
 inline void subscribe_alarm_state(AlarmCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -625,7 +837,6 @@ inline void alarm_apply_action_availability(AlarmCardCtx *ctx, const std::string
   if (!ctx || !ctx->btn) return;
   bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
   ctx->available = !unavailable;
-  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
 }
 
 inline void alarm_apply_action_state(AlarmCardCtx *ctx, const std::string &mode,
@@ -639,6 +850,7 @@ inline void alarm_apply_action_state(AlarmCardCtx *ctx, const std::string &mode,
   alarm_clear_pending_action_if_progressed(ctx);
   alarm_control_update_modal(ctx);
   alarm_arm_delay_refresh_timer(ctx);
+  alarm_delay_audio_update(ctx);
   alarm_refresh_arming_takeover(ctx);
 }
 
@@ -656,7 +868,6 @@ inline void alarm_apply_action_arm_mode(AlarmCardCtx *ctx, const std::string &mo
 
 inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ctx->available = true;
   ha_subscribe_state(
     ctx->entity_id,
@@ -668,7 +879,6 @@ inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
 
 inline void subscribe_alarm_action_state(AlarmCardCtx *ctx, const std::string &mode) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ctx->available = true;
   ha_subscribe_state(
     ctx->entity_id,
@@ -802,7 +1012,7 @@ inline uint32_t alarm_control_active_color(AlarmCardCtx *ctx, const std::string 
 }
 
 inline uint32_t alarm_control_inactive_color(AlarmCardCtx *ctx) {
-  return ctx ? ctx->off_color : DEFAULT_OFF_COLOR;
+  return ctx ? ctx->off_color : SECONDARY_GREY;
 }
 
 inline lv_coord_t alarm_control_mode_button_radius(const ControlModalLayout &layout,
@@ -986,7 +1196,7 @@ inline lv_obj_t *alarm_create_key_button(lv_obj_t *parent, lv_coord_t width,
                                          uint16_t label_zoom = 256) {
   lv_coord_t radius = width < height ? width / 2 : height / 2;
   lv_obj_t *btn = control_modal_create_round_button(
-    parent, width, text, font, DARK_BORDER, DARK_BACKGROUND_TERTIARY,
+    parent, width, text, font, DARK_BORDER, SECONDARY_GREY,
     width_compensation_percent);
   lv_obj_set_size(btn, width, height);
   lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);
@@ -1073,7 +1283,7 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::ALARM_PIN, action->card->btn,
     action->card->width_compensation_percent, icon_font,
-    "\U000F0141", false, alarm_pin_hide_modal);
+    alarm_pin_hide_modal);
 
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   ui.active_action = *action;
@@ -1236,11 +1446,11 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
 
   uint32_t primary_color = alarm_control_active_color(ctx, "");
   uint32_t primary_text_color = readable_text_color_for_bg(primary_color);
-  bool jc4880p443_layout = control_modal_uses_compact_portrait_tuning(layout);
+  bool compact_portrait_layout = control_modal_uses_compact_portrait_tuning(layout);
   lv_coord_t status_center_y = -control_modal_scaled_px(64, layout.short_side);
   lv_coord_t countdown_gap = control_modal_scaled_px(28, layout.short_side);
   lv_coord_t disarm_extra_padding = 0;
-  if (jc4880p443_layout) {
+  if (compact_portrait_layout) {
     status_center_y = -control_modal_scaled_px(56, layout.short_side);
     countdown_gap = control_modal_scaled_px(34, layout.short_side);
     disarm_extra_padding = control_modal_scaled_px(24, layout.short_side);
@@ -1278,8 +1488,8 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   if (progress_w < progress_h * 4) progress_w = progress_h * 4;
   lv_coord_t progress_gap = control_modal_scaled_px(20, layout.short_side);
   if (progress_gap < 14) progress_gap = 14;
-  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(24, layout.short_side);
-  if (jc4880p443_layout && progress_gap < 16) progress_gap = 16;
+  if (compact_portrait_layout) progress_gap = control_modal_scaled_px(24, layout.short_side);
+  if (compact_portrait_layout && progress_gap < 16) progress_gap = 16;
   lv_coord_t progress_center_y = countdown_y + countdown_h / 2 + progress_gap + progress_h / 2;
 
   ui.arming_progress = lv_obj_create(ui.arming_view);
@@ -1351,7 +1561,7 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::ALARM_CONTROL, ctx->btn, ctx->width_compensation_percent,
-    icon_font, "\U000F0141", false, alarm_control_hide_modal);
+    icon_font, alarm_control_hide_modal);
 
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   ui.active = ctx;
@@ -1455,8 +1665,8 @@ inline AlarmCardCtx *create_alarm_card_context(
     lv_color_t text_color,
     int width_compensation_percent,
     bool build_default_page = false,
-    std::function<void()> suspend_display_takeover = nullptr,
-    std::function<void()> resume_display_takeover = nullptr) {
+    std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover = nullptr,
+    std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover = nullptr) {
   AlarmCardCtx *ctx = new AlarmCardCtx();
   ctx->entity_id = p.entity;
   ctx->label = p.label.empty() ? espcontrol_i18n(std::string("Alarm")) : p.label;
@@ -1475,8 +1685,8 @@ inline AlarmCardCtx *create_alarm_card_context(
   ctx->tertiary_color = tertiary_color;
   ctx->width_compensation_percent = width_compensation_percent;
   ctx->grid_cols = cols > 0 ? cols : 1;
-  ctx->suspend_display_takeover = suspend_display_takeover;
-  ctx->resume_display_takeover = resume_display_takeover;
+  ctx->begin_display_takeover = begin_display_takeover;
+  ctx->end_display_takeover = end_display_takeover;
   ctx->status_label = create_transient_status_label(
     slot.text_lbl, ctx->show_status_label ? "--" : ctx->label);
   alarm_set_card_state_colors(ctx, ctx->on_color);

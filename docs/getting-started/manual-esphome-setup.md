@@ -11,7 +11,7 @@ The normal [browser install](/getting-started/install) is the easiest route. Use
 ## What You Need
 
 - A supported ESP32 panel.
-- ESPHome Device Builder in Home Assistant, or the ESPHome command line on your computer.
+- ESPHome 2026.7.0 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
 - A USB-C data cable for the first install.
 - Your WiFi name and password, unless you are using an advanced wired Ethernet option.
 
@@ -25,7 +25,8 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 
 | Panel | Package file |
 | --- | --- |
-| 10.1-inch JC8012P4A1 | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
+| 10.1-inch JC8012P4A1 original panel, rear case `2622` or lower | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
+| 10.1-inch JC8012P4A1 new panel, rear case `2624` or higher | `devices/guition-esp32-p4-jc8012p4a1-v2/packages.yaml` |
 | 7-inch JC1060P470 | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
 | 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
@@ -93,7 +94,7 @@ packages:
     refresh: 1sec
 ```
 
-After saving, validate the device and install the firmware again. The next time you open the display address in a browser, it will ask for the username and password.
+After saving, validate the device and install the firmware again. The next time you open the display address in a browser, it will ask for the username and password. EspControl uses Digest authentication so the password is not sent directly across your network.
 
 If the username or password substitution is missing, ESPHome validation will fail instead of building firmware with placeholder credentials.
 

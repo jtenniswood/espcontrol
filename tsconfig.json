@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowJs": false,
     "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
@@ -12,7 +13,7 @@
     "target": "ES2022"
   },
   "include": [
-    "src/webserver/contracts/**/*.ts",
-    "src/webserver/model/**/*.ts"
+    "src/webserver/**/*.ts",
+    "tests/web/**/*.ts"
   ]
 }

@@ -11,14 +11,31 @@
 # =============================================================================
 
 external_components:
-  - source: github://n-IA-hane/esphome-intercom@v2026.6.2
-    components: [audio_processor, esp_aec, esp_audio_stack, speaker]
+  - source: github://n-IA-hane/esphome-audio-stack@3c30b96ad2540f676eadd30bdbb93104b105dee0
+    components: [esp_audio_stack, esp_afe]
 
-esp_aec:
-  id: voice_aec_processor
-  sample_rate: 16000
-  filter_length: 4
-  mode: sr_low_cost
+esp_afe:
+  id: voice_afe_processor
+  type: sr
+  mode: high_perf
+  mic_num: 2
+  input_format: MMNR
+  se_enabled: true
+  aec_enabled: true
+  aec_filter_length: 4
+  aec_nlp_level: normal
+  ns_enabled: false
+  # AFE VAD is intentionally disabled; Micro Wake Word uses its own VAD below.
+  vad_enabled: false
+  # Dual-mic SE/BSS is the active enhancement path, so AFE AGC remains disabled.
+  agc_enabled: false
+  task_priority: 5
+  memory_alloc_mode: more_psram
+  # Keep frame buffers internal to reduce latency, but leave the feed ring in PSRAM.
+  # Moving the feed ring internal as well caused a memory-pressure segfault.
+  feed_buf_in_psram: false
+  feed_ring_in_psram: true
+  fetch_ring_in_psram: false
 
 esp_audio_stack:
   id: voice_audio_stack
@@ -32,10 +49,10 @@ esp_audio_stack:
   bits_per_sample: 16
   slot_bit_width: 16
   correct_dc_offset: true
-  processor_id: voice_aec_processor
+  processor_id: voice_afe_processor
   use_tdm_reference: true
   tdm_total_slots: 4
-  tdm_mic_slots: [0]
+  tdm_mic_slots: [0, 2]
   tdm_ref_slot: 1
   buffers_in_psram: true
   audio_task_stack_in_psram: true
@@ -45,7 +62,7 @@ esp_audio_stack:
       type: es7210
       address: 0x40
       mic_selected: 0x0F
-      gain_db: 30.0
+      gain_db: 36.0
       ref_channel: 1
       ref_gain_db: 0.0
     output:
@@ -106,7 +123,7 @@ media_player:
     id: voice_media_player
     name: Voice Media Player
     icon: mdi:speaker
-    buffer_size: 4000000
+    buffer_size: 1000000
     task_stack_in_psram: true
     files:
       - id: voice_wake_chime
@@ -122,17 +139,25 @@ media_player:
     announcement_pipeline:
       speaker: voice_announcement_resampling_speaker
       format: FLAC
-      sample_rate: 48000
+      sample_rate: 16000
+      num_channels: 1
     media_pipeline:
       speaker: voice_media_resampling_speaker
       format: NONE
       sample_rate: 48000
     on_announcement:
+      - lambda: |-
+          id(alarm_delay_tts_announcement_active) =
+            id(alarm_delay_tts_pending);
       - mixer_speaker.apply_ducking:
           id: voice_media_mixing_input
           decibel_reduction: 20
           duration: 0s
-      - micro_wake_word.enable_model: wake_word_stop
+      - if:
+          condition:
+            lambda: return !id(alarm_delay_audio_session_active);
+          then:
+            - micro_wake_word.enable_model: wake_word_stop
       - switch.turn_on: speaker_amplifier_enable
       - delay: 100ms
     on_play:
@@ -155,6 +180,7 @@ media_player:
       - if:
           condition:
             and:
+              - lambda: return !id(alarm_delay_audio_session_active);
               - not:
                   voice_assistant.is_running:
               - not:
@@ -166,21 +192,40 @@ media_player:
                 duration: 1s
     on_idle:
       - delay: 100ms
-      - script.stop: release_voice_after_response
-      - switch.turn_off: speaker_amplifier_enable
       - if:
           condition:
-            not:
-              voice_assistant.is_running:
+            lambda: return !id(alarm_delay_audio_session_active);
           then:
-            - script.execute: apply_restored_voice_wake_word
+            - script.stop: release_voice_after_response
+            - switch.turn_off: speaker_amplifier_enable
+            - if:
+                condition:
+                  not:
+                    voice_assistant.is_running:
+                then:
+                  - script.execute: apply_restored_voice_wake_word
     on_mute:
       - script.execute: refresh_voice_clock_bar_mute_icon
     on_unmute:
       - script.execute: refresh_voice_clock_bar_mute_icon
-    pause_releases_pipeline: false
 
 sensor:
+  # Pre/post-AFE diagnostics for evidence-based gain and clipping checks.
+  - platform: esp_afe
+    esp_afe_id: voice_afe_processor
+    input_volume:
+      id: voice_afe_input_volume
+      name: Voice AFE Input Volume
+      entity_category: diagnostic
+      internal: true
+      update_interval: 500ms
+    output_rms:
+      id: voice_afe_output_rms
+      name: Voice AFE Output RMS
+      entity_category: diagnostic
+      internal: true
+      update_interval: 500ms
+
   - platform: sound_level
     id: voice_mic_sound_level
     microphone:
@@ -249,6 +294,36 @@ globals:
     initial_value: "false"
 
   - id: voice_interaction_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_saved_volume
+    type: float
+    restore_value: false
+    initial_value: "0.6"
+
+  - id: alarm_delay_volume_overridden
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_audio_session_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_tts_announcement_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: alarm_delay_tts_pending
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: voice_tts_uri_sent
     type: bool
     restore_value: false
     initial_value: "false"
@@ -354,6 +429,184 @@ micro_wake_word:
               format: "Ignoring wake word while muted"
 
 script:
+  - id: play_alarm_delay_beep
+    mode: restart
+    parameters:
+      entry_delay: bool
+    then:
+      - if:
+          condition:
+            not:
+              media_player.is_announcing:
+                id: voice_media_player
+          then:
+            - lambda: id(alarm_delay_audio_session_active) = true;
+            - if:
+                condition:
+                  lambda: return !id(alarm_delay_volume_overridden);
+                then:
+                  - lambda: |-
+                      id(alarm_delay_saved_volume) = id(voice_media_player).volume;
+                      id(alarm_delay_volume_overridden) = true;
+                  - media_player.volume_set:
+                      id: voice_media_player
+                      volume: !lambda return id(alarm_delay_beep_volume).state;
+            - mixer_speaker.apply_ducking:
+                id: voice_media_mixing_input
+                decibel_reduction: 20
+                duration: 0s
+            - switch.turn_on: speaker_amplifier_enable
+            - lambda: |-
+                constexpr uint32_t sample_rate = 48000U;
+                constexpr size_t chunk_samples = 256U;
+                const AlarmDelayAudioMode mode = entry_delay
+                    ? AlarmDelayAudioMode::ENTRY
+                    : AlarmDelayAudioMode::EXIT;
+                const size_t total_samples =
+                    static_cast<size_t>(alarm_delay_audio_tone_duration_ms(mode)) *
+                    sample_rate / 1000U;
+                int16_t samples[chunk_samples];
+                size_t sample_offset = 0;
+                while (sample_offset < total_samples) {
+                  const size_t count = std::min(
+                      chunk_samples, total_samples - sample_offset);
+                  alarm_delay_audio_fill_tone(
+                      mode, samples, sample_offset, count, sample_rate,
+                      static_cast<float>(id(alarm_delay_beep_volume).state));
+                  const uint8_t *bytes =
+                      reinterpret_cast<const uint8_t *>(samples);
+                  const size_t byte_count = count * sizeof(int16_t);
+                  const size_t written =
+                      id(voice_announcement_mixing_input).play(bytes, byte_count);
+                  if (written != byte_count) {
+                    ESP_LOGW("alarm_audio",
+                             "Alarm tone buffer accepted %u of %u bytes",
+                             static_cast<unsigned>(written),
+                             static_cast<unsigned>(byte_count));
+                    break;
+                  }
+                  sample_offset += count;
+                }
+
+  - id: announce_alarm_delay
+    mode: parallel
+    max_runs: 2
+    parameters:
+      entry_delay: bool
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: voice_services_enabled
+              - switch.is_on: alarm_delay_tts_enabled
+          then:
+            - lambda: |-
+                id(alarm_delay_audio_session_active) = true;
+                id(alarm_delay_tts_pending) = true;
+                id(alarm_delay_tts_announcement_active) = false;
+            - logger.log:
+                level: INFO
+                tag: alarm_audio
+                format: "Requesting %s delay announcement from Home Assistant"
+                args: ['entry_delay ? "entry" : "exit"']
+            - homeassistant.action:
+                action: assist_satellite.announce
+                data_template:
+                  # Render in Home Assistant so this remains a native boolean.
+                  preannounce: "{{ false }}"
+                  entity_id: >-
+                    {% set wanted_mac = device_mac | lower
+                        | replace(':', '') | replace('-', '') %}
+                    {% set match = namespace(entity_id='') %}
+                    {% for satellite in states.assist_satellite %}
+                      {% for connection in
+                          device_attr(satellite.entity_id, 'connections') or [] %}
+                        {% set connection_mac = connection[1] | lower
+                            | replace(':', '') | replace('-', '') %}
+                        {% if connection[0] == 'mac' and
+                              connection_mac == wanted_mac %}
+                          {% set match.entity_id = satellite.entity_id %}
+                        {% endif %}
+                      {% endfor %}
+                    {% endfor %}
+                    {{ match.entity_id }}
+                  message: "{{ announcement_message }}"
+                variables:
+                  device_mac: !lambda return get_mac_address();
+                  announcement_message: !lambda |-
+                    return entry_delay
+                      ? id(alarm_delay_entry_announcement).state
+                      : id(alarm_delay_exit_announcement).state;
+            - wait_until:
+                condition:
+                  media_player.is_announcing:
+                    id: voice_media_player
+                timeout: 5s
+            - if:
+                condition:
+                  media_player.is_announcing:
+                    id: voice_media_player
+                then:
+                  - wait_until:
+                      condition:
+                        not:
+                          media_player.is_announcing:
+                            id: voice_media_player
+                      timeout: 30s
+            - lambda: |-
+                id(alarm_delay_tts_announcement_active) = false;
+                id(alarm_delay_tts_pending) = false;
+
+  - id: stop_alarm_delay_audio
+    mode: restart
+    then:
+      - script.stop: play_alarm_delay_beep
+      - script.stop: announce_alarm_delay
+      - lambda: id(alarm_delay_tts_pending) = false;
+      - if:
+          condition:
+            lambda: return id(alarm_delay_audio_session_active);
+          then:
+            - if:
+                condition:
+                  and:
+                    - lambda: return id(alarm_delay_tts_announcement_active);
+                    - media_player.is_announcing:
+                        id: voice_media_player
+                then:
+                  - media_player.stop:
+                      id: voice_media_player
+                      announcement: true
+            - if:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                      id: voice_media_player
+                then:
+                  - speaker.stop: voice_announcement_mixing_input
+            - if:
+                condition:
+                  lambda: return id(alarm_delay_volume_overridden);
+                then:
+                  - media_player.volume_set:
+                      id: voice_media_player
+                      volume: !lambda return id(alarm_delay_saved_volume);
+            - if:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                      id: voice_media_player
+                then:
+                  - mixer_speaker.apply_ducking:
+                      id: voice_media_mixing_input
+                      decibel_reduction: 0
+                      duration: 250ms
+            - lambda: |-
+                id(alarm_delay_volume_overridden) = false;
+                id(alarm_delay_audio_session_active) = false;
+                id(alarm_delay_tts_announcement_active) = false;
+                id(alarm_delay_tts_pending) = false;
+
   - id: open_device_volume_control
     mode: restart
     then:
@@ -611,8 +864,6 @@ script:
       - script.wait: hide_cover_art_view
       - lambda: |-
           navigation_return_home(id(main_page)->obj);
-          id(display_asleep) = false;
-          id(cover_art_screensaver_active) = false;
       - delay: 50ms
       - script.execute: clock_bar_apply
 
@@ -839,7 +1090,9 @@ voice_assistant:
   auto_gain: 31dBFS
   volume_multiplier: 1.0
   on_start:
-    - lambda: id(voice_interaction_active) = true;
+    - lambda: |-
+        id(voice_interaction_active) = true;
+        id(voice_tts_uri_sent) = false;
     - script.stop: release_voice_after_response
     - micro_wake_word.disable_model: wake_word_stop
     - script.execute: restore_voice_home_ui
@@ -940,6 +1193,17 @@ voice_assistant:
         level: INFO
         tag: voice
         format: "Intent handling started"
+  on_intent_progress:
+    - if:
+        condition:
+          lambda: return !x.empty() && !id(voice_tts_uri_sent);
+        then:
+          - lambda: id(voice_tts_uri_sent) = true;
+          - homeassistant.event:
+              event: esphome.tts_uri
+              data:
+                node: !lambda return App.get_name();
+                uri: !lambda return x;
   on_intent_end:
     - text_sensor.template.publish:
         id: voice_assistant_stage
@@ -963,6 +1227,16 @@ voice_assistant:
         args: [x.c_str()]
     - script.execute: activate_stop_word_once
   on_tts_end:
+    - if:
+        condition:
+          lambda: return !x.empty() && !id(voice_tts_uri_sent);
+        then:
+          - lambda: id(voice_tts_uri_sent) = true;
+          - homeassistant.event:
+              event: esphome.tts_uri
+              data:
+                node: !lambda return App.get_name();
+                uri: !lambda return x;
     - script.execute: restore_voice_home_ui
     - text_sensor.template.publish:
         id: voice_assistant_stage
@@ -1097,6 +1371,30 @@ voice_assistant:
 
 switch:
   - platform: template
+    id: alarm_delay_audio_enabled
+    name: "${entity_alarm_delay_audio}"
+    icon: mdi:alarm-bell
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - lambda: alarm_delay_audio_refresh_contexts();
+    on_turn_off:
+      - lambda: alarm_delay_audio_stop();
+
+  - platform: template
+    id: alarm_delay_tts_enabled
+    name: "${entity_alarm_delay_tts}"
+    icon: mdi:account-voice
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
     id: voice_services_enabled
     name: "${entity_voice_services}"
     icon: mdi:account-voice
@@ -1203,3 +1501,62 @@ switch:
     pin: GPIO53
     restore_mode: ALWAYS_OFF
     entity_category: config
+
+text:
+  - platform: template
+    id: alarm_delay_entry_announcement
+    name: "${entity_alarm_delay_entry_announcement}"
+    icon: mdi:message-alert
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: "Please disarm the alarm"
+    max_length: 120
+    mode: text
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    id: alarm_delay_exit_announcement
+    name: "${entity_alarm_delay_exit_announcement}"
+    icon: mdi:message-alert
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: "Alarm arming, please leave the house"
+    max_length: 120
+    mode: text
+    web_server:
+      sorting_group_id: sg_display
+
+number:
+  - platform: template
+    id: alarm_delay_beep_volume
+    name: "${entity_alarm_delay_beep_volume}"
+    icon: mdi:volume-medium
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 0.45
+    min_value: 0.05
+    max_value: 1.0
+    step: 0.05
+    mode: slider
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    id: alarm_delay_final_countdown_seconds
+    name: "${entity_alarm_delay_final_countdown}"
+    icon: mdi:timer-alert
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 10
+    min_value: 0
+    max_value: 60
+    step: 1
+    mode: box
+    unit_of_measurement: s
+    web_server:
+      sorting_group_id: sg_display

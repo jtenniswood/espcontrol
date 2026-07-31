@@ -41,6 +41,51 @@
       "unit": "",
       "type": "sensor",
       "precision": "icon",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "time sensor auto unit omits time unit and incompatible settings",
+    "input": "sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,state_labels,state_input=on,state_output=Running",
+    "expected": {
+      "entity": "sensor.ups_runtime",
+      "label": "UPS Runtime",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.ups_runtime",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
+      "options": ""
+    }
+  },
+  {
+    "name": "time sensor preserves valid manual unit",
+    "input": "sensor.ups_runtime;UPS Runtime;Auto;Auto;sensor.ups_runtime;;sensor;time;time_unit=hours,large_numbers",
+    "expected": {
+      "entity": "sensor.ups_runtime",
+      "label": "UPS Runtime",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.ups_runtime",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
+      "options": "time_unit=hours"
+    }
+  },
+  {
+    "name": "time sensor invalid manual unit normalizes to auto",
+    "input": "sensor.ups_runtime;UPS Runtime;Auto;Auto;sensor.ups_runtime;;sensor;time;time_unit=weeks",
+    "expected": {
+      "entity": "sensor.ups_runtime",
+      "label": "UPS Runtime",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.ups_runtime",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
       "options": ""
     }
   },
@@ -56,7 +101,7 @@
       "unit": "",
       "type": "sensor",
       "precision": "text",
-      "options": "state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
+      "options": "active_color,state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
     }
   },
   {
@@ -102,6 +147,36 @@
       "type": "sensor",
       "precision": "text",
       "options": ""
+    }
+  },
+  {
+    "name": "text sensor preserves malformed UTF-8 percent runs",
+    "input": "sensor.x;State;Auto;Auto;sensor.x;;sensor;text;state_labels,state_input=%C3%28,state_output=Invalid",
+    "expected": {
+      "entity": "sensor.x",
+      "label": "State",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.x",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=%25C3%2528,state_output=Invalid"
+    }
+  },
+  {
+    "name": "text sensor preserves explicit output during legacy input fallback",
+    "input": "sensor.x;State;Auto;Auto;sensor.x;;sensor;text;state_labels,state_output=Running,state_high_label=Please%20empty",
+    "expected": {
+      "entity": "sensor.x",
+      "label": "State",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.x",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=high,state_output=Running"
     }
   }
 ]

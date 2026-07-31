@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "esphome/components/lvgl/lvgl_esphome.h"
+#include "display_mode_controller.h"
 #include "temperature_unit.h"
 
 inline void format_clock_time_without_suffix(char *buf, size_t size,
@@ -248,41 +249,17 @@ inline bool clock_bar_active_on_button_grid_page(lv_obj_t *main_page_obj = nullp
   return std::find(pages.begin(), pages.end(), active) != pages.end();
 }
 
-inline bool clock_bar_blocked_by_overlay(bool display_asleep,
-                                         bool screen_schedule_asleep,
-                                         bool clock_screensaver_active,
-                                         bool cover_art_screensaver_active,
-                                         bool display_off_screensaver_active,
-                                         bool dimmed_screensaver_active) {
-  return display_asleep ||
-         screen_schedule_asleep ||
-         clock_screensaver_active ||
-         cover_art_screensaver_active ||
-         display_off_screensaver_active ||
-         dimmed_screensaver_active;
-}
-
 inline ClockBarVisibility clock_bar_resolve_visibility(
     bool enabled,
     lv_obj_t *main_page_obj,
-    bool display_asleep,
-    bool screen_schedule_asleep,
-    bool clock_screensaver_active,
-    bool cover_art_screensaver_active,
-    bool display_off_screensaver_active,
-    bool dimmed_screensaver_active) {
+    espcontrol::DisplayMode display_mode,
+    bool schedule_inactive) {
   ClockBarVisibility result;
   // Full-screen screensavers hide the clock bar, but the grid should keep the
   // same top padding so waking does not briefly resize the cards.
-  result.reserve_space = enabled && !screen_schedule_asleep;
+  result.reserve_space = enabled && !schedule_inactive;
   result.visible = result.reserve_space &&
-      !clock_bar_blocked_by_overlay(
-          display_asleep,
-          screen_schedule_asleep,
-          clock_screensaver_active,
-          cover_art_screensaver_active,
-          display_off_screensaver_active,
-          dimmed_screensaver_active) &&
+      display_mode == espcontrol::DisplayMode::ACTIVE &&
       clock_bar_active_on_button_grid_page(main_page_obj);
   return result;
 }
@@ -290,41 +267,25 @@ inline ClockBarVisibility clock_bar_resolve_visibility(
 inline bool clock_bar_should_reserve_space(
     bool enabled,
     lv_obj_t *main_page_obj,
-    bool display_asleep,
-    bool screen_schedule_asleep,
-    bool clock_screensaver_active,
-    bool cover_art_screensaver_active,
-    bool display_off_screensaver_active,
-    bool dimmed_screensaver_active) {
+    espcontrol::DisplayMode display_mode,
+    bool schedule_inactive) {
   return clock_bar_resolve_visibility(
       enabled,
       main_page_obj,
-      display_asleep,
-      screen_schedule_asleep,
-      clock_screensaver_active,
-      cover_art_screensaver_active,
-      display_off_screensaver_active,
-      dimmed_screensaver_active).reserve_space;
+      display_mode,
+      schedule_inactive).reserve_space;
 }
 
 inline bool clock_bar_should_show(
     bool enabled,
     lv_obj_t *main_page_obj,
-    bool display_asleep,
-    bool screen_schedule_asleep,
-    bool clock_screensaver_active,
-    bool cover_art_screensaver_active,
-    bool display_off_screensaver_active,
-    bool dimmed_screensaver_active) {
+    espcontrol::DisplayMode display_mode,
+    bool schedule_inactive) {
   return clock_bar_resolve_visibility(
       enabled,
       main_page_obj,
-      display_asleep,
-      screen_schedule_asleep,
-      clock_screensaver_active,
-      cover_art_screensaver_active,
-      display_off_screensaver_active,
-      dimmed_screensaver_active).visible;
+      display_mode,
+      schedule_inactive).visible;
 }
 
 // ── Temperature labels ─────────────────────────────────────────────────────

@@ -1,0 +1,183 @@
+import { state } from "../state/app_instance";
+import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
+    // ── Settings Cover Art Section ─────────────────────────────────────
+    function buildCoverArtSettingsCard(this: any) {
+        var coverArtBody: any = document.createElement("div");
+        var coverArtToggle: any = toggleRow("Show Cover Art", "sp-set-ss-cover-art-enable", state.coverArtScreensaverOn);
+        coverArtBody.appendChild(coverArtToggle.row);
+        coverArtToggle.input.addEventListener("change", function (this: any) {
+            state.coverArtScreensaverOn = this.checked;
+            syncCoverArtScreensaverUi();
+            postCoverArtScreensaver(state.coverArtScreensaverOn);
+        });
+        els.setCoverArtToggle = coverArtToggle.input;
+        var coverArtOptions: any = condField();
+        var coverArtOnlyOptions: any = condField();
+        var coverArtAdvancedBody: any = document.createElement("div");
+        var coverArtScreensaverSettingsBody: any = document.createElement("div");
+        var sleepPreventionToggle: any = toggleRow("Keep Screen Awake During Playback", "sp-set-ss-media-sleep-prevention", state.mediaPlayerSleepPreventionOn);
+        coverArtScreensaverSettingsBody.appendChild(sleepPreventionToggle.row);
+        sleepPreventionToggle.input.addEventListener("change", function (this: any) {
+            state.mediaPlayerSleepPreventionOn = this.checked;
+            syncMediaPlayerSleepPreventionUi();
+            syncCoverArtScreensaverUi();
+            postMediaPlayerSleepPrevention(state.mediaPlayerSleepPreventionOn);
+        });
+        els.setMediaPlayerSleepPreventionToggle = sleepPreventionToggle.input;
+        var coverArtEntityField: any = document.createElement("div");
+        coverArtEntityField.className = "sp-field";
+        coverArtEntityField.appendChild(fieldLabel("Media Player Entity", "sp-set-ss-cover-art-player"));
+        var coverArtEntityInp: any = entityInput("sp-set-ss-cover-art-player", state.coverArtMediaPlayerEntity, "e.g. media_player.living_room", ["media_player"]);
+        coverArtEntityField.appendChild(coverArtEntityInp);
+        coverArtOnlyOptions.appendChild(coverArtEntityField);
+        bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
+            onBlur: function (this: any, value?: any) {
+                state.coverArtMediaPlayerEntity = value;
+                state.mediaPlayerSleepPreventionEntity = value;
+            },
+            post: function (this: any, value?: any) {
+                postCoverArtMediaPlayerEntity(value);
+                postMediaPlayerSleepPreventionEntity(value);
+            },
+        });
+        els.setCoverArtMediaPlayer = coverArtEntityInp;
+        var coverArtDelayField: any = document.createElement("div");
+        coverArtDelayField.className = "sp-field";
+        coverArtDelayField.appendChild(fieldLabel("Show After", "sp-set-ss-cover-art-delay"));
+        var coverArtDelaySelect: any = document.createElement("select");
+        coverArtDelaySelect.className = "sp-select";
+        coverArtDelaySelect.id = "sp-set-ss-cover-art-delay";
+        [
+            { label: "3 seconds", value: 3 },
+            { label: "5 seconds", value: 5 },
+            { label: "10 seconds", value: 10 },
+            { label: "30 seconds", value: 30 },
+            { label: "1 minute", value: 60 },
+            { label: "5 minutes", value: 300 },
+        ].forEach(function (this: any, opt?: any) {
+            var o: any = document.createElement("option");
+            o.value = opt.value;
+            o.textContent = opt.label;
+            coverArtDelaySelect.appendChild(o);
+        });
+        coverArtDelaySelect.addEventListener("change", function (this: any) {
+            state.coverArtDelay = normalizeCoverArtDelay(this.value);
+            postCoverArtDelay(state.coverArtDelay);
+        });
+        coverArtDelayField.appendChild(coverArtDelaySelect);
+        coverArtScreensaverSettingsBody.appendChild(coverArtDelayField);
+        els.setCoverArtDelay = coverArtDelaySelect;
+        if (coverArtTrackOverlayDurationSupported()) {
+            var trackOverlayField: any = document.createElement("div");
+            trackOverlayField.className = "sp-field";
+            trackOverlayField.appendChild(fieldLabel("Show Track Details For", "sp-set-ss-track-overlay"));
+            var trackOverlaySelect: any = document.createElement("select");
+            trackOverlaySelect.className = "sp-select";
+            trackOverlaySelect.id = "sp-set-ss-track-overlay";
+            [
+                { label: "Never", value: 0 },
+                { label: "3 seconds", value: 3 },
+                { label: "5 seconds", value: 5 },
+                { label: "10 seconds", value: 10 },
+                { label: "15 seconds", value: 15 },
+                { label: "20 seconds", value: 20 },
+                { label: "30 seconds", value: 30 },
+                { label: "60 seconds", value: 60 },
+                { label: "Always", value: -1 },
+            ].forEach(function (this: any, opt?: any) {
+                var o: any = document.createElement("option");
+                o.value = opt.value;
+                o.textContent = opt.label;
+                trackOverlaySelect.appendChild(o);
+            });
+            trackOverlaySelect.addEventListener("change", function (this: any) {
+                state.coverArtTrackOverlayDuration = parseFloat(this.value) || 0;
+                postCoverArtTrackOverlayDuration(state.coverArtTrackOverlayDuration);
+            });
+            trackOverlayField.appendChild(trackOverlaySelect);
+            coverArtScreensaverSettingsBody.appendChild(trackOverlayField);
+            els.setCoverArtTrackOverlayDuration = trackOverlaySelect;
+        }
+        coverArtOnlyOptions.appendChild(inlineDisclosure("Screensaver Settings", coverArtScreensaverSettingsBody, false));
+        var secondaryCoverArtSettingsBody: any = document.createElement("div");
+        secondaryCoverArtSettingsBody.appendChild(infoPanel(
+            "sp-set-ss-cover-art-secondary-player-info",
+            "Enable if you use an external media player connected to your speakers Line In, TV, or HDMI source. If you add a second media player, cover art, track details, and progress be displayed when the external source is used."));
+        var coverArtShowExternalInputToggle: any = toggleRow("Show external sources", "sp-set-ss-cover-art-show-external-input", !state.coverArtHideExternalInputOn);
+        secondaryCoverArtSettingsBody.appendChild(coverArtShowExternalInputToggle.row);
+        coverArtShowExternalInputToggle.input.addEventListener("change", function (this: any) {
+            state.coverArtHideExternalInputOn = !this.checked;
+            syncCoverArtScreensaverUi();
+            postCoverArtHideExternalInput(state.coverArtHideExternalInputOn);
+        });
+        els.setCoverArtHideExternalInputToggle = coverArtShowExternalInputToggle.input;
+        var secondaryCoverArtEntityOptions: any = condField();
+        var secondaryCoverArtEntityField: any = document.createElement("div");
+        secondaryCoverArtEntityField.className = "sp-field";
+        secondaryCoverArtEntityField.appendChild(fieldLabel("External Source Media Entity", "sp-set-ss-cover-art-secondary-player"));
+        var secondaryCoverArtEntityInp: any = entityInput("sp-set-ss-cover-art-secondary-player", state.coverArtSecondaryMediaPlayerEntity, "e.g. media_player.apple_tv", ["media_player"]);
+        secondaryCoverArtEntityField.appendChild(secondaryCoverArtEntityInp);
+        secondaryCoverArtEntityOptions.appendChild(secondaryCoverArtEntityField);
+        secondaryCoverArtSettingsBody.appendChild(secondaryCoverArtEntityOptions);
+        bindTextPost(secondaryCoverArtEntityInp, entityName("screen_saver_cover_art_secondary_entity"), {
+            onBlur: function (this: any, value?: any) {
+                state.coverArtSecondaryMediaPlayerEntity = value;
+            },
+            post: postCoverArtSecondaryMediaPlayerEntity,
+        });
+        els.setCoverArtSecondaryMediaPlayer = secondaryCoverArtEntityInp;
+        els.setCoverArtSecondaryMediaPlayerOptions = secondaryCoverArtEntityOptions;
+        coverArtOnlyOptions.appendChild(inlineDisclosure("External sources", secondaryCoverArtSettingsBody, !state.coverArtHideExternalInputOn));
+        state.coverArtFilteringEnabled = !!state.coverArtAttributeConditions;
+        var coverArtFilterToggle: any = toggleRow("Advanced Filtering", "sp-set-ss-cover-art-filtering", state.coverArtFilteringEnabled);
+        coverArtAdvancedBody.appendChild(coverArtFilterToggle.row);
+        coverArtFilterToggle.input.addEventListener("change", function (this: any) {
+            state.coverArtFilteringEnabled = this.checked;
+            if (!state.coverArtFilteringEnabled) {
+                state.coverArtAttributeConditions = "";
+                syncInput(els.setCoverArtConditions, "");
+                postCoverArtConditions("");
+            }
+            syncCoverArtScreensaverUi();
+        });
+        els.setCoverArtFilterToggle = coverArtFilterToggle.input;
+        var coverArtFilterOptions: any = condField();
+        var coverArtConditionsField: any = document.createElement("div");
+        coverArtConditionsField.className = "sp-field";
+        coverArtConditionsField.appendChild(fieldLabel("Only Show When", "sp-set-ss-cover-art-conditions"));
+        var coverArtConditionsInp: any = document.createElement("input");
+        coverArtConditionsInp.className = "sp-input";
+        coverArtConditionsInp.id = "sp-set-ss-cover-art-conditions";
+        coverArtConditionsInp.type = "text";
+        coverArtConditionsInp.maxLength = 240;
+        coverArtConditionsInp.placeholder = "app_id=com.apple.TVMusic; media_content_type=music";
+        coverArtConditionsInp.value = state.coverArtAttributeConditions || "";
+        coverArtConditionsField.appendChild(coverArtConditionsInp);
+        coverArtFilterOptions.appendChild(coverArtConditionsField);
+        coverArtAdvancedBody.appendChild(coverArtFilterOptions);
+        bindTextPost(coverArtConditionsInp, entityName("screen_saver_cover_art_conditions"), {
+            onBlur: function (this: any, value?: any) {
+                state.coverArtAttributeConditions = value;
+                state.coverArtFilteringEnabled = !!value || state.coverArtFilteringEnabled;
+                syncCoverArtScreensaverUi();
+            },
+            post: postCoverArtConditions,
+        });
+        els.setCoverArtConditions = coverArtConditionsInp;
+        els.setCoverArtFilterOptions = coverArtFilterOptions;
+        coverArtOnlyOptions.appendChild(inlineDisclosure("Advanced Options", coverArtAdvancedBody, !!state.coverArtAttributeConditions));
+        els.setCoverArtOnlyOptions = coverArtOnlyOptions;
+        coverArtOptions.appendChild(coverArtOnlyOptions);
+        els.setCoverArtOptions = coverArtOptions;
+        coverArtBody.appendChild(coverArtOptions);
+        var coverArtBadge: any = statusBadge("Media cover art on");
+        els.setCoverArtBadge = coverArtBadge;
+        syncCoverArtScreensaverUi();
+        var coverArtCard: any = makeCollapsibleCard("Cover Art Screen Saver", coverArtBody, true, coverArtBadge);
+        return coverArtCard;
+    }
+    return {
+        "buildCoverArtSettingsCard": staticGlobal(buildCoverArtSettingsCard),
+    };
+}

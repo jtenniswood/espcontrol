@@ -1,5 +1,7 @@
 #pragma once
 
+#include "button_grid_modal_layout.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // Shared display-profile helpers for firmware card rendering. Device YAML still
@@ -10,6 +12,10 @@ struct DisplayFontRoles {
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
   const lv_font_t *media_title = nullptr;
+  const lv_font_t *media_control_title = nullptr;
+  const lv_font_t *media_control_artist = nullptr;
+  const lv_font_t *media_cover_art_title = nullptr;
+  const lv_font_t *media_cover_art_artist = nullptr;
   const lv_font_t *option_select_value = nullptr;
   const lv_font_t *volume_number = nullptr;
   const lv_font_t *volume_label = nullptr;
@@ -36,13 +42,6 @@ struct DisplayColorCorrectionTokens {
   int blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
 };
 
-struct DisplayProfile {
-  DisplayFontRoles fonts;
-  DisplayWidthTokens width;
-  DisplayLargeNumberTokens large_numbers;
-  DisplayColorCorrectionTokens color;
-};
-
 constexpr lv_coord_t DISPLAY_MODAL_REFERENCE_SIDE_PX = 480;
 constexpr lv_coord_t DISPLAY_MODAL_ARC_STROKE_REF_PX = 17;
 constexpr lv_coord_t DISPLAY_MODAL_BACK_BUTTON_REF_PX = 46;
@@ -52,12 +51,48 @@ constexpr lv_coord_t DISPLAY_MODAL_CONTROLS_GAP_REF_PX = 24;
 constexpr lv_coord_t DISPLAY_MODAL_CONTROLS_DOWN_REF_PX = 22;
 constexpr lv_coord_t DISPLAY_MODAL_TITLE_GAP_REF_PX = 10;
 
+using DisplayModalLayoutFamily = espcontrol::modal::LayoutFamily;
+using DisplayModalDensity = espcontrol::modal::Density;
+using DisplayModalMemoryTier = espcontrol::modal::MemoryTier;
+using DisplayModalProfile = espcontrol::modal::DeviceProfile;
+
+struct DisplayProfile {
+  DisplayFontRoles fonts;
+  DisplayWidthTokens width;
+  DisplayLargeNumberTokens large_numbers;
+  DisplayColorCorrectionTokens color;
+  DisplayModalProfile modal;
+};
+
 inline int display_width_percent(int percent) {
   return normalize_width_compensation_percent(percent);
 }
 
 inline void display_set_width_axis(const DisplayProfile &profile) {
   set_width_compensation_vertical_axis(profile.width.vertical_axis);
+}
+
+inline DisplayModalProfile &display_active_modal_profile() {
+  static DisplayModalProfile profile;
+  return profile;
+}
+
+inline void display_activate_profile(const DisplayProfile &profile) {
+  display_set_width_axis(profile);
+  display_active_modal_profile() = profile.modal;
+}
+
+inline bool display_modal_uses_family(const DisplayModalProfile &profile,
+                                      DisplayModalLayoutFamily family) {
+  return espcontrol::modal::uses_family(profile, family);
+}
+
+inline bool display_modal_is_square_family(const DisplayModalProfile &profile) {
+  return espcontrol::modal::is_square_family(profile);
+}
+
+inline bool display_modal_is_constrained(const DisplayModalProfile &profile) {
+  return espcontrol::modal::is_constrained(profile);
 }
 
 inline int display_main_width_percent(const DisplayProfile &profile) {
@@ -100,6 +135,32 @@ inline int display_large_sensor_unit_offset_percent(const DisplayProfile &profil
 
 inline const lv_font_t *display_media_title_font(const DisplayProfile &profile) {
   return profile.fonts.media_title ? profile.fonts.media_title : profile.fonts.sensor;
+}
+
+inline const lv_font_t *display_media_control_title_font(const DisplayProfile &profile) {
+  return profile.fonts.media_control_title
+    ? profile.fonts.media_control_title
+    : display_media_title_font(profile);
+}
+
+inline const lv_font_t *display_media_control_artist_font(
+    const DisplayProfile &profile, const lv_font_t *fallback = nullptr) {
+  if (profile.fonts.media_control_artist) return profile.fonts.media_control_artist;
+  return profile.fonts.volume_label ? profile.fonts.volume_label : fallback;
+}
+
+inline const lv_font_t *display_media_cover_art_title_font(
+    const DisplayProfile &profile) {
+  return profile.fonts.media_cover_art_title
+    ? profile.fonts.media_cover_art_title
+    : display_media_title_font(profile);
+}
+
+inline const lv_font_t *display_media_cover_art_artist_font(
+    const DisplayProfile &profile, const lv_font_t *fallback = nullptr) {
+  return profile.fonts.media_cover_art_artist
+    ? profile.fonts.media_cover_art_artist
+    : fallback;
 }
 
 inline const lv_font_t *display_optional_media_title_font(const DisplayProfile &profile) {
@@ -146,28 +207,4 @@ inline const lv_font_t *display_climate_option_value_font(
 
 inline lv_coord_t display_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) {
   return px * short_side / DISPLAY_MODAL_REFERENCE_SIDE_PX;
-}
-
-inline bool display_modal_is_jc4880p443_size(lv_coord_t width, lv_coord_t height) {
-  return (width == 480 && height == 800) || (width == 800 && height == 480);
-}
-
-inline bool display_modal_is_square_size(lv_coord_t width, lv_coord_t height) {
-  return (width == 480 && height == 480) || (width == 720 && height == 720);
-}
-
-inline bool display_modal_is_4848_size(lv_coord_t width, lv_coord_t height) {
-  return width == 480 && height == 480;
-}
-
-inline bool display_modal_is_p4_86_size(lv_coord_t width, lv_coord_t height) {
-  return width == 720 && height == 720;
-}
-
-inline bool display_modal_is_large_landscape_size(lv_coord_t width, lv_coord_t height) {
-  return (width == 1280 && height == 800) || (width == 800 && height == 1280);
-}
-
-inline bool display_modal_is_jc1060p470_size(lv_coord_t width, lv_coord_t height) {
-  return (width == 1024 && height == 600) || (width == 600 && height == 1024);
 }

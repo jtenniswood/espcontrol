@@ -10,6 +10,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from check_tasks_data import PROFILES, TASKS
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +43,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     SourceTruthRow(
         "common/config/card_contract.json",
         (
-            "src/webserver/modules/card_contract_generated.js",
+            "src/webserver/generated/card_contract.ts",
             "components/espcontrol/button_grid_contract_generated.h",
             "docs/generated/cards/capabilities.md",
         ),
@@ -49,10 +51,26 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`npm run check:card-contract-outputs` and `npm run check:product`",
     ),
     SourceTruthRow(
+        "common/config/card_runtime_inventory.json",
+        (
+            "common/config/card_runtime_baseline_card_normalization_fixtures.json",
+            "compatibility/fixtures/card_runtime_surface_baseline.json",
+            "docs/generated/cards/runtime-coverage.md",
+        ),
+        "node scripts/generate_card_runtime_coverage.js",
+        "`npm run check:card-runtime-coverage` and `npm run check:saved-config-parity`",
+    ),
+    SourceTruthRow(
         "common/config/entity_names.json",
-        ("common/config/entity_names.yaml", "src/webserver/modules/entity_catalog.js"),
+        ("common/config/entity_names.yaml", "src/webserver/generated/entity_catalog.ts"),
         "python3 scripts/build.py entities",
         "`python3 scripts/build.py entities --check` and `npm run check:product`",
+    ),
+    SourceTruthRow(
+        "devices/catalog.json",
+        ("devices/manifest.json",),
+        "python3 scripts/generate_device_manifest.py",
+        "`python3 scripts/generate_device_manifest.py --check` and `npm run check:product`",
     ),
     SourceTruthRow(
         "devices/manifest.json",
@@ -71,7 +89,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         (
             "generated sections inside `common/assets/icon_glyphs.yaml`",
             "generated sections inside `components/espcontrol/icons.h`",
-            "generated sections inside `src/webserver/entry.js`",
+            "`src/webserver/generated/icons.ts`",
         ),
         "python3 scripts/build.py icons",
         "`python3 scripts/build.py icons --check` and `npm run check:product`",
@@ -90,13 +108,13 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "src/webserver/model/index.ts",
-        ("src/webserver/modules/model_generated.js",),
-        "python3 scripts/build.py model",
+        ("no intermediate output; imported directly into each web bundle",),
+        "python3 scripts/build.py www",
         "`npm run check:model-contract`",
     ),
     SourceTruthRow(
         "src/webserver/",
-        ("docs/public/webserver/*/www.js",),
+        ("docs/public/webserver/www.js",),
         "python3 scripts/build.py www",
         "`npm run check:web-smoke` and `npm run check:product`",
     ),
@@ -105,6 +123,12 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         ("no generated output; protects saved config, backup, layout, and migration behavior",),
         "none",
         "`npm run check:backup-contract` and `npm run check:product`",
+    ),
+    SourceTruthRow(
+        "`devices/catalog.json`, `common/config/card_contract.json`, `common/config/entity_names.json`, `common/assets/icons.json`, `compatibility/fixtures/product_compatibility.json`",
+        ("product/product_snapshot.json",),
+        "python3 scripts/check_product_snapshot.py --update",
+        "`npm run check:product-snapshot` and `npm run check:product`",
     ),
 )
 
@@ -117,6 +141,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "calendar": "docs/card-types/calendar.md",
     "clock": "docs/card-types/calendar.md",
     "climate": "docs/card-types/climate.md",
+    "climate_control": "docs/card-types/climate.md",
     "cover": "docs/card-types/covers.md",
     "door_window": "docs/card-types/doors-windows.md",
     "presence": "docs/card-types/presence.md",
@@ -127,6 +152,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "fan_speed": "docs/card-types/fans.md",
     "fan_switch": "docs/card-types/fans.md",
     "garage": "docs/card-types/garage-doors.md",
+    "gate": "docs/card-types/gates.md",
     "internal": "docs/card-types/internal-relays.md",
     "light_brightness": "docs/card-types/lights.md",
     "light_control": "docs/card-types/lights.md",
@@ -159,7 +185,13 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when firmware, web, backup, or release-facing generated output changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/`, `scripts/web_modules.json`",
+        "`common/config/card_runtime_inventory.json`, card registrations, or the firmware family registry",
+        "Card runtime coverage, legacy classification, picker/preview baseline, and lifecycle responsibilities",
+        "`npm run check:card-runtime-coverage`",
+        "`npm run check:product` when the reviewed baseline or a runtime registration changes",
+    ),
+    CheckMatrixRow(
+        "`src/webserver/`",
         "Web configurator behavior, settings panels, preview rendering, backup UI, served `www.js` bundles",
         "`npm run check:web-smoke`",
         "`npm run check:web-browser-smoke` for browser behavior; `npm run check:product` before release-facing commits",
@@ -171,7 +203,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:fast` or compile affected firmware when display layout or device behavior changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/modules/config_codec.js`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
+        "`src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
         "Saved card strings, backup/import/export shape, migration compatibility",
         "`npm run check:backup-contract` and `npm run check:firmware-parser`",
         "`npm run check:product` when compact config, backup, or migration behavior changes",
@@ -195,6 +227,12 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when generated entity files or web behavior changes",
     ),
     CheckMatrixRow(
+        "`product/product_snapshot.json`",
+        "Generated combined product model snapshot",
+        "`npm run check:product-snapshot`",
+        "`npm run check:product` when authored product sources also changed",
+    ),
+    CheckMatrixRow(
         "`common/config/strings.*.txt`",
         "Firmware translations and generated i18n header",
         "`python3 scripts/build.py i18n --check`",
@@ -204,7 +242,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`src/webserver/model/*.ts`, `src/webserver/contracts/*.ts`",
         "Typed model shape and generated browser model constants",
         "`npm run check:model-contract` and `npm run check:types`",
-        "`npm run check:product` when backup, web, or generated model behavior changes",
+        "`npm run check:product` when backup, web, or model behavior changes",
     ),
     CheckMatrixRow(
         "`docs/`, `dev-docs/`, `DEVELOPERS.md`, `README.md`",
@@ -247,6 +285,21 @@ def markdown_table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> str
     return "\n".join(lines)
 
 
+def validate_check_guidance(value: str) -> str:
+    """Keep generated command guidance tied to registered tasks and profiles."""
+    task_ids = {item.id for item in TASKS}
+    aliases = {f"check:{item.id}" for item in TASKS}
+    aliases.update(f"check:{profile}" for profile in PROFILES if profile != "release")
+    aliases.add("check:release-preflight")
+    for alias in re.findall(r"npm run (check:[\w:-]+)", value):
+        if alias not in aliases:
+            raise ValueError(f"developer guidance references an unregistered check alias: {alias}")
+        task_id = alias[len("check:"):]
+        if task_id not in task_ids and task_id not in PROFILES and alias != "check:release-preflight":
+            raise ValueError(f"developer guidance references an unknown task: {task_id}")
+    return value
+
+
 def source_truth_table() -> str:
     def code_if_path(value: str) -> str:
         if value.startswith(("generated ", "no generated ", "compile ")):
@@ -259,7 +312,7 @@ def source_truth_table() -> str:
     for row in SOURCE_TRUTH_ROWS:
         source = code_if_path(row.source)
         outputs = "<br>".join(code_if_path(output) for output in row.outputs)
-        rows.append((source, outputs, f"`{row.generator}`" if row.generator != "none" else "none", row.checks))
+        rows.append((source, outputs, f"`{row.generator}`" if row.generator != "none" else "none", validate_check_guidance(row.checks)))
     return markdown_table(("Authored source", "Generated outputs", "Generator", "Required check"), rows)
 
 
@@ -274,15 +327,25 @@ def package_scripts() -> set[str]:
 
 def web_registration_map() -> dict[str, str]:
     out: dict[str, str] = {}
-    for path in sorted((ROOT / "src/webserver/types").glob("*.js")):
+    for path in sorted((ROOT / "src/webserver/cards").glob("*.ts")):
         text = path.read_text()
         for match in re.finditer(r"registerButtonType\(\s*([\"'])(.*?)\1", text):
+            out[match.group(2)] = rel(path)
+        for match in re.finditer(
+            r"registerCoverLikeCardType\(\s*\{.*?\btype\s*:\s*([\"'])(.*?)\1",
+            text,
+            flags=re.DOTALL,
+        ):
             out[match.group(2)] = rel(path)
     return out
 
 
 def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
     out = {card_type: [] for card_type in card_types}
+    runtime_boundary = "components/espcontrol/button_grid_card_runtime.h"
+    extra_by_type = {
+        "weather": ["components/espcontrol/button_grid_weather_forecast.h"],
+    }
     headers = [
         path for path in sorted((ROOT / "components/espcontrol").glob("button_grid*.h"))
         if not path.name.endswith("_generated.h")
@@ -294,8 +357,17 @@ def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
             needles = (f'"{card_type}"',)
         for path in headers:
             text = path.read_text(errors="ignore")
+            for include in re.findall(r'#include\s+"(button_grid_saved_config_[^"/]*_generated\.h)"', text):
+                generated = path.parent / include
+                if generated.exists():
+                    text += "\n" + generated.read_text(errors="ignore")
             if any(needle in text for needle in needles):
                 out[card_type].append(rel(path))
+        if runtime_boundary not in out[card_type]:
+            out[card_type].append(runtime_boundary)
+        for extra in extra_by_type.get(card_type, []):
+            if extra not in out[card_type]:
+                out[card_type].append(extra)
     return out
 
 
@@ -305,13 +377,15 @@ def option_summary(card: dict) -> str:
         return "None"
     labels = []
     for option in options:
+        if option.get("docsHidden"):
+            continue
         values = option.get("values") or []
         label = option.get("label") or option.get("name") or ""
         if values:
             labels.append(f"{label}: {', '.join('default' if v == '' else str(v) for v in values)}")
         else:
             labels.append(str(label))
-    return "; ".join(labels)
+    return "; ".join(labels) if labels else "None"
 
 
 def docs_link(path: str) -> str:
@@ -344,7 +418,7 @@ def generated_card_map() -> str:
         checks = ["Contract", "Codec", "Parser"]
         if card.get("domains") or card_type in {"action", "push", "webhook", "weather", "image"}:
             checks.append("HA")
-        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "media", "option_select", "image"}:
+        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "climate_control", "media", "option_select", "image"}:
             checks.append("Modals")
         if card.get("options"):
             checks.append("Backup")
@@ -367,7 +441,7 @@ def generated_card_map() -> str:
         + markdown_table(("Public card page", "Covered saved type"), public_rows),
         "## Generated Matrix\n\n"
         "This table is generated from the card contract, `registerButtonType(...)` calls in "
-        "`src/webserver/types/`, and matching firmware header references under "
+        "`src/webserver/cards/`, and matching firmware header references under "
         "`components/espcontrol/`.\n\n"
         + markdown_table((
             "Type",
@@ -385,10 +459,53 @@ def generated_card_map() -> str:
 
 def generated_check_matrix() -> str:
     rows = [
-        (row.changed_paths, row.task, row.run_first, row.broaden_when)
+        (
+            row.changed_paths,
+            row.task,
+            validate_check_guidance(row.run_first),
+            validate_check_guidance(row.broaden_when),
+        )
         for row in CHECK_MATRIX_ROWS
     ]
-    return markdown_table(("Changed paths", "Likely task", "Run first", "Broaden when"), rows)
+    registered_rows = []
+    package = read_json("package.json")["scripts"]  # type: ignore[index]
+    for item in TASKS:
+        alias = f"check:{item.id}"
+        command = f"`npm run {alias}`" if alias in package else f"`python3 scripts/check_tasks.py run-task {item.id}`"
+        inputs = "<br>".join(f"`{path}`" for path in item.inputs)
+        cache_inputs = "<br>".join(f"`{path}`" for path in item.cache_inputs) or "—"
+        cache_env = "<br>".join(f"`{name}`" for name in item.cache_env) or "—"
+        cache_tools = "<br>".join(f"`{name}`" for name in item.cache_tools) or "—"
+        registered_rows.append((
+            f"`{item.id}`",
+            ", ".join(item.domains),
+            "Yes" if item.parallel_safe else "No",
+            item.cache,
+            cache_env,
+            cache_tools,
+            inputs,
+            cache_inputs,
+            command,
+        ))
+    return "\n\n".join((
+        markdown_table(("Changed paths", "Likely task", "Run first", "Broaden when"), rows),
+        "### Registered Check Tasks\n\n"
+        "This detailed routing table is generated directly from `scripts/check_tasks_data.py`.\n\n"
+        + markdown_table(
+            (
+                "Task",
+                "Domains",
+                "Parallel-safe",
+                "Cache",
+                "Cache environment",
+                "Cache tools",
+                "Declared inputs",
+                "Cache-only inputs",
+                "Focused command",
+            ),
+            registered_rows,
+        ),
+    ))
 
 
 def update_generated_files() -> None:
@@ -434,6 +551,40 @@ def check_generated_files(errors: list[str]) -> None:
             errors.append(f"{path} generated section is stale; run python3 scripts/check_dev_docs.py --update")
 
 
+def source_truth_path_targets(value: str) -> list[str]:
+    prefixes = ("common/", "components/", "compatibility/", "devices/", "docs/", "scripts/", "src/")
+    targets: list[str] = []
+    quoted = re.findall(r"`([^`]+)`", value)
+    if value.startswith(("generated ", "no generated ", "compile ")):
+        return [target for target in quoted if target.startswith(prefixes)]
+    targets.extend(target for target in quoted if target.startswith(prefixes))
+    for prefix in prefixes:
+        if value.startswith(prefix):
+            targets.append(value.split(",", 1)[0].split(" ", 1)[0])
+            break
+    return list(dict.fromkeys(targets))
+
+
+def check_source_truth_path(value: str, label: str, errors: list[str]) -> None:
+    for target in source_truth_path_targets(value):
+        if any(marker in target for marker in ("<", ">", "...")):
+            continue
+        matches = sorted(ROOT.glob(target)) if "*" in target else []
+        if "*" in target:
+            if not matches:
+                errors.append(f"source-of-truth {label} pattern has no matches: {target}")
+            continue
+        if not (ROOT / target).exists():
+            errors.append(f"source-of-truth {label} path is missing: {target}")
+
+
+def check_source_truth_paths(errors: list[str]) -> None:
+    for row in SOURCE_TRUTH_ROWS:
+        check_source_truth_path(row.source, "source", errors)
+        for output in row.outputs:
+            check_source_truth_path(output, "output", errors)
+
+
 def check_public_docs(errors: list[str]) -> None:
     card_types = set(contract_cards())
     mapped = set(PUBLIC_DOCS_BY_TYPE)
@@ -455,6 +606,13 @@ def markdown_files() -> list[Path]:
     return [path for path in files if path.exists()]
 
 
+def workflow_files() -> list[Path]:
+    workflow_dir = ROOT / ".github" / "workflows"
+    files = sorted(workflow_dir.glob("*.yml"))
+    files.extend(sorted(workflow_dir.glob("*.yaml")))
+    return files
+
+
 def check_markdown_links(errors: list[str]) -> None:
     link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     for path in markdown_files():
@@ -474,7 +632,7 @@ def check_referenced_commands(errors: list[str]) -> None:
     scripts = package_scripts()
     npm_re = re.compile(r"\bnpm run ([A-Za-z0-9:_-]+)")
     py_re = re.compile(r"\bpython3 (scripts/[A-Za-z0-9_./-]+)")
-    for path in markdown_files():
+    for path in [*markdown_files(), *workflow_files()]:
         text = path.read_text()
         for cmd in npm_re.findall(text):
             if cmd not in scripts:
@@ -532,6 +690,7 @@ def run_checks() -> list[str]:
     check_package_script(errors)
     check_public_docs(errors)
     check_generated_files(errors)
+    check_source_truth_paths(errors)
     check_markdown_links(errors)
     check_referenced_commands(errors)
     check_referenced_paths(errors)

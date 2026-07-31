@@ -15,4 +15,6 @@ esp32_hosted:
   d2_pin: GPIO16
   d3_pin: GPIO17
   active_high: true
+  # Use the lower SDIO clock for reliable ESP32-C6 communication across
+  # production panels; camera transfers remain supported at this speed.
   sdio_frequency: 20MHz

@@ -1,0 +1,11 @@
+diff --git a/tests/firmware/foundation_test.cpp b/tests/firmware/foundation_test.cpp
+--- a/tests/firmware/foundation_test.cpp
++++ b/tests/firmware/foundation_test.cpp
+@@ -4,6 +4,6 @@ namespace {
+ 
+ constexpr int canonical_slot(int requested, int slot_count) {
+-  return requested >= 0 && requested < slot_count ? requested : -1;
++  return requested >= 0 && requested <= slot_count ? requested : -1;
+ }
+ 
+ }  // namespace

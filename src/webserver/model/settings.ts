@@ -47,6 +47,38 @@ export function normalizeScheduleWakeTimeout(value: unknown): number {
   return Math.round(n);
 }
 
+export function normalizeCoverArtDelay(value: unknown): number {
+  const n = parseFloat(String(value));
+  if (!Number.isFinite(n)) return 10;
+  if (n < 3) return 3;
+  if (n > 300) return 300;
+  return Math.round(n);
+}
+
+export const DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT = "Please disarm the alarm";
+export const DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT = "Alarm arming, please leave the house";
+
+export function normalizeAlarmDelayAnnouncement(value: unknown, fallback: string): string {
+  const text = String(value == null ? "" : value).trim();
+  return (text || fallback).slice(0, 120);
+}
+
+export function normalizeAlarmDelayBeepVolume(value: unknown): number {
+  const n = parseFloat(String(value));
+  if (!Number.isFinite(n)) return 0.45;
+  if (n < 0.05) return 0.05;
+  if (n > 1) return 1;
+  return Math.round(n * 100) / 100;
+}
+
+export function normalizeAlarmDelayFinalCountdown(value: unknown): number {
+  const n = parseFloat(String(value));
+  if (!Number.isFinite(n)) return 10;
+  if (n < 0) return 0;
+  if (n > 60) return 60;
+  return Math.round(n);
+}
+
 export function normalizeScheduleWakeBrightness(value: unknown): number {
   const n = parseFloat(String(value));
   if (!Number.isFinite(n) || n <= 0) return 10;
@@ -91,6 +123,15 @@ export function normalizeScheduleTrigger(value: unknown, scheduleEnabled = false
   if (trigger === "time" || trigger === "timer") return "time";
   if (trigger === "disabled" || trigger === "off") return "disabled";
   return scheduleEnabled ? "time" : "disabled";
+}
+
+export function normalizeScheduleSensorActivation(value: unknown): string {
+  const activation = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
+  return activation === "on" || activation === "sensor_on" ? "on" : "off";
+}
+
+export function scheduleSensorActivationOption(value: unknown): string {
+  return normalizeScheduleSensorActivation(value) === "on" ? "Sensor On" : "Sensor Off";
 }
 
 export function normalizeScreensaverAction(value: unknown): string {
@@ -138,6 +179,10 @@ export function normalizeHomeAssistantArtworkPort(value: unknown): number {
   return port;
 }
 
+export function normalizeHomeAssistantArtworkProtocol(value: unknown): string {
+  return String(value || "").trim().toLowerCase() === "https" ? "https" : "http";
+}
+
 export function normalizeNtpServer(value: unknown, fallback: string): string {
   const server = String(value == null ? "" : value).trim();
   return server || fallback;
@@ -151,6 +196,7 @@ export interface BackupScreenSettingsState {
   brightnessDuskTime: string;
   scheduleTrigger: string;
   scheduleEnabled: boolean;
+  scheduleSensorActivation: string;
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;
@@ -186,6 +232,11 @@ export function normalizeBackupScreenSettings(
     brightnessDuskTime: normalizeTimeOfDay(screenSettings.brightness_dusk_time, "18:00"),
     scheduleTrigger,
     scheduleEnabled: scheduleTrigger !== "disabled",
+    scheduleSensorActivation: normalizeScheduleSensorActivation(
+      objectValue(screenSettings, "schedule_sensor_activation") != null
+        ? screenSettings.schedule_sensor_activation
+        : current.scheduleSensorActivation,
+    ),
     scheduleOnHour: normalizeHour(screenSettings.schedule_on_hour, 6),
     scheduleOffHour: normalizeHour(screenSettings.schedule_off_hour, 23),
     scheduleMode: normalizeScheduleMode(screenSettings.schedule_mode),
@@ -223,7 +274,11 @@ export interface BackupPanelSettingsCurrent {
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
+  coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  autoUpdate: boolean;
+  updateFrequency: string;
+  updateFrequencyOptions: readonly string[];
   screenRotationOptions: readonly string[];
 }
 
@@ -237,6 +292,12 @@ export interface BackupPanelSettingsState {
   clockBarTime: boolean;
   networkStatusIcon: boolean;
   voiceServices: boolean;
+  alarmDelayAudio: boolean;
+  alarmDelayTts: boolean;
+  alarmDelayEntryAnnouncement: string;
+  alarmDelayExitAnnouncement: string;
+  alarmDelayBeepVolume: number;
+  alarmDelayFinalCountdown: number;
   temperatureDegreeSymbol: boolean;
   subpageChevron: boolean;
   timezone: string;
@@ -255,12 +316,15 @@ export interface BackupPanelSettingsState {
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
   coverArtMediaPlayerEntity: string;
+  coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtDelay: unknown;
-  coverArtTouchPause: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
+  coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  autoUpdate: boolean;
+  updateFrequency: string;
   screensaverAction: string;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
@@ -279,6 +343,11 @@ function normalizeScreensaverMode(value: unknown): string {
 function normalizeScreenRotationValue(value: unknown, options: readonly string[]): string {
   const rotation = String(value == null ? "" : value);
   return options.indexOf(rotation) !== -1 ? rotation : "0";
+}
+
+function normalizeUpdateFrequency(value: unknown, options: readonly string[], fallback: string): string {
+  const frequency = String(value == null ? "" : value);
+  return options.indexOf(frequency) !== -1 ? frequency : fallback;
 }
 
 export function normalizeBackupPanelSettings(
@@ -327,6 +396,18 @@ export function normalizeBackupPanelSettings(
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
     networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
     voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
+    alarmDelayAudio: objectValue(settings, "alarm_delay_audio") != null ? !!settings.alarm_delay_audio : false,
+    alarmDelayTts: objectValue(settings, "alarm_delay_tts") != null ? !!settings.alarm_delay_tts : true,
+    alarmDelayEntryAnnouncement: normalizeAlarmDelayAnnouncement(
+      settings.alarm_delay_entry_announcement,
+      DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT,
+    ),
+    alarmDelayExitAnnouncement: normalizeAlarmDelayAnnouncement(
+      settings.alarm_delay_exit_announcement,
+      DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT,
+    ),
+    alarmDelayBeepVolume: normalizeAlarmDelayBeepVolume(settings.alarm_delay_beep_volume),
+    alarmDelayFinalCountdown: normalizeAlarmDelayFinalCountdown(settings.alarm_delay_final_countdown),
     temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null
       ? !!settings.temperature_degree_symbol
       : true,
@@ -351,20 +432,37 @@ export function normalizeBackupPanelSettings(
       : current.ntpServer3,
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
-    mediaPlayerSleepPrevention: !!settings.media_player_sleep_prevention,
-    mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || ""),
+    mediaPlayerSleepPrevention: objectValue(settings, "media_player_sleep_prevention") != null
+      ? !!settings.media_player_sleep_prevention
+      : true,
+    mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
+    coverArtSecondaryMediaPlayerEntity: String(settings.cover_art_secondary_media_player_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
-    coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
-    coverArtTouchPause: objectValue(settings, "cover_art_touch_pause") != null ? settings.cover_art_touch_pause : 120,
+    coverArtDelay: normalizeCoverArtDelay(
+      objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
+    ),
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
+    coverArtHomeAssistantProtocol: objectValue(settings, "home_assistant_artwork_protocol") != null
+      ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
+      : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol),
     coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
       ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
       : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
+    autoUpdate: objectValue(settings, "firmware_auto_update") != null
+      ? !!settings.firmware_auto_update
+      : current.autoUpdate,
+    updateFrequency: objectValue(settings, "firmware_update_frequency") != null
+      ? normalizeUpdateFrequency(
+        settings.firmware_update_frequency,
+        current.updateFrequencyOptions,
+        current.updateFrequency,
+      )
+      : current.updateFrequency,
     screensaverAction,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,

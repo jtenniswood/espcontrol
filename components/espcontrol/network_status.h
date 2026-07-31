@@ -166,7 +166,7 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *icon_font) {
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::NETWORK_STATUS, nullptr, 100, icon_font,
-    "\U000F0156", true, network_status_hide_modal);
+    network_status_hide_modal);
   NetworkStatusModalUi &ui = network_status_modal_ui();
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;

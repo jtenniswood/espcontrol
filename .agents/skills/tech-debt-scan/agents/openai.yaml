@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tech Debt Scan"
+  short_description: "Turn codebase debt into a cleanup backlog"
+  default_prompt: "Use $tech-debt-scan to review this repository and create a prioritized cleanup backlog."

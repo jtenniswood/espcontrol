@@ -1,11 +1,25 @@
 # Climate option chip icons used by font_icon_card.
 # User-selectable climate card icons use font_icon_main.
 - "\U000F0D43"  # mdi-air-filter
+- "\U000F0150"  # mdi-clock-outline
 - "\U000F0210"  # mdi-fan
+- "\U000F171D"  # mdi-fan-auto
+- "\U000F081D"  # mdi-fan-off
+- "\U000F1472"  # mdi-fan-speed-1
+- "\U000F1473"  # mdi-fan-speed-2
+- "\U000F1474"  # mdi-fan-speed-3
 - "\U000F0238"  # mdi-fire
+- "\U000F0874"  # mdi-gauge-full
+- "\U000F02DC"  # mdi-home
+- "\U000F0F54"  # mdi-home-thermometer
+- "\U000F032A"  # mdi-leaf
+- "\U000F0D91"  # mdi-motion-sensor
+- "\U000F1435"  # mdi-motion-sensor-off
 - "\U000F0425"  # mdi-power
+- "\U000F07D2"  # mdi-home-circle
 - "\U000F0717"  # mdi-snowflake
 - "\U000F04E1"  # mdi-swap-horizontal
+- "\U000F04E2"  # mdi-swap-vertical
 - "\U000F050F"  # mdi-thermometer
 - "\U000F0393"  # mdi-thermostat
 - "\U000F1B17"  # mdi-thermostat-auto

@@ -1,9 +1,12 @@
 #include "artwork_image.h"
+#include "image_pipeline_policy.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <new>
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
@@ -20,11 +23,17 @@
 #include "esp_http_client.h"
 #endif
 
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
+#endif
+
 static const char *const TAG = "artwork_image";
 static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
-static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 3000;
+static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 300;
 static constexpr size_t MAX_RETIRED_IMAGE_BUFFERS = 1;
-static constexpr size_t MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
+static constexpr size_t ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
 #include "image_decoder.h"
@@ -34,6 +43,9 @@ static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 #endif
 #ifdef USE_ARTWORK_IMAGE_PNG_SUPPORT
 #include "png_image.h"
+#endif
+#ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
+#include "bmp_image.h"
 #endif
 
 namespace esphome {
@@ -124,6 +136,406 @@ static esp_err_t insecure_local_http_event_handler(esp_http_client_event_t *evt)
 }
 #endif
 
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+struct P4PipelineJob {
+  ArtworkImage *owner{nullptr};
+  uint32_t generation{0};
+  uint8_t priority{0};
+  uint64_t sequence{0};
+  char *url{nullptr};
+  std::vector<http_request::Header> headers;
+  std::atomic<bool> cancelled{false};
+
+  ~P4PipelineJob() { heap_caps_free(this->url); }
+};
+
+struct P4PipelineResult {
+  ArtworkImage *owner{nullptr};
+  uint32_t generation{0};
+  int status{0};
+  esp_err_t error{ESP_OK};
+  uint8_t *data{nullptr};
+  size_t size{0};
+  uint32_t request_started_ms{0};
+  uint32_t response_ready_ms{0};
+  uint32_t first_byte_ms{0};
+  uint32_t transfer_complete_ms{0};
+
+  ~P4PipelineResult() { heap_caps_free(this->data); }
+
+  uint8_t *release_data() {
+    uint8_t *data = this->data;
+    this->data = nullptr;
+    return data;
+  }
+};
+
+struct P4PipelineTransfer {
+  P4PipelineJob *job{nullptr};
+  uint8_t *data{nullptr};
+  size_t size{0};
+  size_t capacity{0};
+  bool allocation_failed{false};
+  uint32_t request_started_ms{0};
+  uint32_t response_ready_ms{0};
+  uint32_t first_byte_ms{0};
+};
+
+struct P4PipelineAllocationFailure {
+  ArtworkImage *owner{nullptr};
+  uint32_t generation{0};
+};
+
+static constexpr size_t P4_PIPELINE_ALLOCATION_FAILURE_SLOTS = 16;
+static constexpr size_t P4_PIPELINE_PENDING_SLOTS = 16;
+static constexpr size_t P4_PIPELINE_COMPLETED_SLOTS = 16;
+
+class P4ImagePipeline {
+ public:
+  static P4ImagePipeline &instance() {
+    static P4ImagePipeline pipeline;
+    return pipeline;
+  }
+
+  bool submit(ArtworkImage *owner, uint32_t generation, uint8_t priority,
+              const std::string &url, std::vector<http_request::Header> &headers) {
+    if (!this->ready_ || !owner || url.empty()) return false;
+    auto *job = new (std::nothrow) P4PipelineJob();
+    if (!job) return false;
+    job->url = static_cast<char *>(heap_caps_malloc(
+        url.size() + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (!job->url) {
+      delete job;
+      return false;
+    }
+    memcpy(job->url, url.c_str(), url.size() + 1);
+    job->owner = owner;
+    job->generation = generation;
+    job->priority = priority;
+
+    this->lock_();
+    this->cancel_locked_(owner);
+    if (this->pending_count_ >= P4_PIPELINE_PENDING_SLOTS) {
+      this->unlock_();
+      delete job;
+      return false;
+    }
+    job->sequence = this->next_sequence_++;
+    job->headers = std::move(headers);
+    this->pending_[this->pending_count_++] = job;
+    this->unlock_();
+    xTaskNotifyGive(this->task_);
+    return true;
+  }
+
+  void cancel(ArtworkImage *owner) {
+    if (!this->ready_ || !owner) return;
+    this->lock_();
+    this->cancel_locked_(owner);
+    this->unlock_();
+  }
+
+  P4PipelineResult *take(ArtworkImage *owner, uint32_t generation,
+                         bool *allocation_failed) {
+    if (!this->ready_ || !owner) return nullptr;
+    if (allocation_failed) *allocation_failed = false;
+    P4PipelineResult *match = nullptr;
+    this->lock_();
+    for (auto &failure : this->allocation_failures_) {
+      if (failure.owner != owner) continue;
+      if (allocation_failed && failure.generation == generation) {
+        *allocation_failed = true;
+      }
+      failure = P4PipelineAllocationFailure{};
+    }
+    for (size_t i = 0; i < this->completed_count_;) {
+      P4PipelineResult *candidate = this->completed_[i];
+      if (candidate->owner != owner) {
+        i++;
+        continue;
+      }
+      this->remove_completed_at_locked_(i);
+      if (p4_pipeline_result_is_current(generation, candidate->generation, false) &&
+          match == nullptr) {
+        match = candidate;
+      } else {
+        delete candidate;
+      }
+    }
+    this->unlock_();
+    return match;
+  }
+
+ private:
+  P4ImagePipeline() {
+    this->mutex_ = xSemaphoreCreateMutex();
+    if (!this->mutex_) return;
+    BaseType_t created = xTaskCreate(task_entry_, "p4_image_pipeline", 8192, this, 2, &this->task_);
+    this->ready_ = created == pdPASS && this->task_ != nullptr;
+    if (!this->ready_) ESP_LOGE(TAG, "Could not start ESP32-P4 image pipeline task");
+  }
+
+  static void task_entry_(void *arg) {
+    static_cast<P4ImagePipeline *>(arg)->task_loop_();
+  }
+
+  void task_loop_() {
+    while (true) {
+      ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+      while (true) {
+        P4PipelineJob *job = this->next_job_();
+        if (!job) break;
+        P4PipelineResult *result = this->perform_(job);
+        this->lock_();
+        this->active_ = nullptr;
+        if (result) {
+          this->discard_completed_for_owner_locked_(result->owner);
+          if (this->completed_count_ < P4_PIPELINE_COMPLETED_SLOTS) {
+            this->completed_[this->completed_count_++] = result;
+          } else {
+            delete result;
+            result = nullptr;
+            this->record_allocation_failure_locked_(job);
+          }
+        } else if (!job->cancelled.load()) {
+          this->record_allocation_failure_locked_(job);
+        }
+        this->unlock_();
+        delete job;
+      }
+    }
+  }
+
+  P4PipelineJob *next_job_() {
+    this->lock_();
+    size_t best = P4_PIPELINE_PENDING_SLOTS;
+    for (size_t i = 0; i < this->pending_count_;) {
+      if (this->pending_[i]->cancelled.load()) {
+        delete this->pending_[i];
+        for (size_t next = i + 1; next < this->pending_count_; next++) {
+          this->pending_[next - 1] = this->pending_[next];
+        }
+        this->pending_[--this->pending_count_] = nullptr;
+        continue;
+      }
+      if (best == P4_PIPELINE_PENDING_SLOTS ||
+          p4_pipeline_candidate_precedes(this->pending_[i]->priority, this->pending_[i]->sequence,
+                                         this->pending_[best]->priority, this->pending_[best]->sequence)) {
+        best = i;
+      }
+      i++;
+    }
+    if (best == P4_PIPELINE_PENDING_SLOTS) {
+      this->unlock_();
+      return nullptr;
+    }
+    P4PipelineJob *job = this->pending_[best];
+    for (size_t next = best + 1; next < this->pending_count_; next++) {
+      this->pending_[next - 1] = this->pending_[next];
+    }
+    this->pending_[--this->pending_count_] = nullptr;
+    this->active_ = job;
+    this->unlock_();
+    return job;
+  }
+
+  P4PipelineResult *remove_completed_at_locked_(size_t index) {
+    if (index >= this->completed_count_) return nullptr;
+    P4PipelineResult *result = this->completed_[index];
+    for (size_t next = index + 1; next < this->completed_count_; next++) {
+      this->completed_[next - 1] = this->completed_[next];
+    }
+    this->completed_[--this->completed_count_] = nullptr;
+    return result;
+  }
+
+  void discard_completed_for_owner_locked_(ArtworkImage *owner) {
+    for (size_t i = 0; i < this->completed_count_;) {
+      if (this->completed_[i]->owner != owner) {
+        i++;
+        continue;
+      }
+      delete this->remove_completed_at_locked_(i);
+    }
+  }
+
+  static esp_err_t http_event_(esp_http_client_event_t *evt) {
+    auto *transfer = static_cast<P4PipelineTransfer *>(evt->user_data);
+    if (!transfer || !transfer->job) return ESP_OK;
+    if (transfer->job->cancelled.load()) return ESP_FAIL;
+    uint32_t now = millis();
+    if (evt->event_id == HTTP_EVENT_ON_HEADER && transfer->response_ready_ms == 0) {
+      transfer->response_ready_ms = now;
+    }
+    if (evt->event_id != HTTP_EVENT_ON_DATA || evt->data_len <= 0) return ESP_OK;
+    if (transfer->first_byte_ms == 0) transfer->first_byte_ms = now;
+    size_t incoming = static_cast<size_t>(evt->data_len);
+    if (incoming > ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE - transfer->size) {
+      transfer->allocation_failed = true;
+      return ESP_FAIL;
+    }
+    size_t required = transfer->size + incoming;
+    if (required > transfer->capacity) {
+      size_t reported_content_length = 0;
+      if (transfer->capacity == 0 && evt->client != nullptr) {
+        int64_t content_length = esp_http_client_get_content_length(evt->client);
+        if (content_length > 0) {
+          reported_content_length = static_cast<uint64_t>(content_length) >
+                                            ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE
+                                        ? ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE + 1
+                                        : static_cast<size_t>(content_length);
+        }
+      }
+      size_t next_capacity = p4_pipeline_transfer_capacity(
+          transfer->capacity, required, reported_content_length, 16384,
+          ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE);
+      if (next_capacity == 0) {
+        transfer->allocation_failed = true;
+        return ESP_FAIL;
+      }
+      uint8_t *resized = static_cast<uint8_t *>(heap_caps_realloc(
+          transfer->data, next_capacity, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+      if (!resized) {
+        transfer->allocation_failed = true;
+        return ESP_FAIL;
+      }
+      transfer->data = resized;
+      transfer->capacity = next_capacity;
+    }
+    memcpy(transfer->data + transfer->size, evt->data, incoming);
+    transfer->size += incoming;
+    return ESP_OK;
+  }
+
+  P4PipelineResult *perform_(P4PipelineJob *job) {
+    if (!job || job->cancelled.load()) return nullptr;
+    auto *result = new (std::nothrow) P4PipelineResult();
+    if (!result) return nullptr;
+    result->owner = job->owner;
+    result->generation = job->generation;
+
+    P4PipelineTransfer transfer;
+    transfer.job = job;
+    transfer.request_started_ms = millis();
+    result->request_started_ms = transfer.request_started_ms;
+
+    if (!this->client_) {
+      esp_http_client_config_t config{};
+      config.url = job->url;
+      config.method = HTTP_METHOD_GET;
+      config.timeout_ms = LOCAL_ARTWORK_HTTP_TIMEOUT_MS;
+      config.disable_auto_redirect = false;
+      config.max_redirection_count = 3;
+      config.auth_type = HTTP_AUTH_TYPE_NONE;
+      config.event_handler = http_event_;
+      config.user_data = &transfer;
+      config.keep_alive_enable = true;
+      config.buffer_size = 8192;
+      this->client_ = esp_http_client_init(&config);
+    } else {
+      esp_http_client_set_url(this->client_, job->url);
+      esp_http_client_set_user_data(this->client_, &transfer);
+      esp_http_client_set_method(this->client_, HTTP_METHOD_GET);
+    }
+    if (!this->client_) {
+      uint32_t completed_at = millis();
+      result->error = ESP_ERR_NO_MEM;
+      result->response_ready_ms = completed_at;
+      result->first_byte_ms = completed_at;
+      result->transfer_complete_ms = completed_at;
+      return result;
+    }
+
+    for (const auto &header : job->headers) {
+      esp_http_client_set_header(this->client_, header.name.c_str(), header.value.c_str());
+    }
+
+    if (job->cancelled.load()) {
+      delete result;
+      this->reset_client_();
+      return nullptr;
+    }
+
+    esp_err_t error = esp_http_client_perform(this->client_);
+    uint32_t completed_at = millis();
+    if (job->cancelled.load()) {
+      heap_caps_free(transfer.data);
+      delete result;
+      this->reset_client_();
+      return nullptr;
+    }
+    for (const auto &header : job->headers) {
+      esp_http_client_delete_header(this->client_, header.name.c_str());
+    }
+
+    result->status = esp_http_client_get_status_code(this->client_);
+    result->error = transfer.allocation_failed ? ESP_ERR_NO_MEM : error;
+    result->data = transfer.data;
+    result->size = transfer.size;
+    result->request_started_ms = transfer.request_started_ms;
+    result->response_ready_ms = transfer.response_ready_ms ? transfer.response_ready_ms : completed_at;
+    result->first_byte_ms = transfer.first_byte_ms ? transfer.first_byte_ms : result->response_ready_ms;
+    result->transfer_complete_ms = completed_at;
+    if (result->error != ESP_OK) this->reset_client_();
+    return result;
+  }
+
+  void cancel_locked_(ArtworkImage *owner) {
+    for (size_t i = 0; i < this->pending_count_;) {
+      if (this->pending_[i]->owner != owner) {
+        i++;
+        continue;
+      }
+      delete this->pending_[i];
+      for (size_t next = i + 1; next < this->pending_count_; next++) {
+        this->pending_[next - 1] = this->pending_[next];
+      }
+      this->pending_[--this->pending_count_] = nullptr;
+    }
+    if (this->active_ && this->active_->owner == owner) {
+      this->active_->cancelled.store(true);
+      if (this->client_) esp_http_client_cancel_request(this->client_);
+    }
+    this->discard_completed_for_owner_locked_(owner);
+    for (auto &failure : this->allocation_failures_) {
+      if (failure.owner == owner) failure = P4PipelineAllocationFailure{};
+    }
+  }
+
+  void record_allocation_failure_locked_(const P4PipelineJob *job) {
+    if (!job) return;
+    for (auto &failure : this->allocation_failures_) {
+      if (failure.owner && failure.owner != job->owner) continue;
+      failure.owner = job->owner;
+      failure.generation = job->generation;
+      return;
+    }
+    ESP_LOGE(TAG, "No slot available to report ESP32-P4 pipeline allocation failure");
+  }
+
+  void reset_client_() {
+    if (!this->client_) return;
+    esp_http_client_cleanup(this->client_);
+    this->client_ = nullptr;
+  }
+
+  void lock_() { xSemaphoreTake(this->mutex_, portMAX_DELAY); }
+  void unlock_() { xSemaphoreGive(this->mutex_); }
+
+  SemaphoreHandle_t mutex_{nullptr};
+  TaskHandle_t task_{nullptr};
+  bool ready_{false};
+  P4PipelineJob *pending_[P4_PIPELINE_PENDING_SLOTS]{};
+  size_t pending_count_{0};
+  P4PipelineJob *active_{nullptr};
+  P4PipelineResult *completed_[P4_PIPELINE_COMPLETED_SLOTS]{};
+  size_t completed_count_{0};
+  P4PipelineAllocationFailure allocation_failures_[P4_PIPELINE_ALLOCATION_FAILURE_SLOTS]{};
+  uint64_t next_sequence_{0};
+  esp_http_client_handle_t client_{nullptr};
+};
+#endif
+
 inline bool is_color_on(const Color &color) {
   // This produces the most accurate monochrome conversion, but is slightly slower.
   //  return (0.2125 * color.r + 0.7154 * color.g + 0.0721 * color.b) > 127;
@@ -138,8 +550,11 @@ ArtworkImage::ArtworkImage(const std::string &url, int width, int height, ImageF
                          uint32_t download_buffer_size, bool is_big_endian, bool allow_insecure_local_urls)
     : Image(nullptr, 0, 0, type, transparency),
       buffer_(nullptr),
-      download_buffer_(download_buffer_size),
+      download_buffer_(0),
       download_buffer_initial_size_(download_buffer_size),
+      // Compressed JPEG/PNG data can be larger than the resized RGB565 output.
+      // Keep the transfer limit independent from the decoded image dimensions.
+      max_download_buffer_size_(ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE),
       format_(format),
       resize_mode_(resize_mode),
       fixed_width_(width),
@@ -150,6 +565,11 @@ ArtworkImage::ArtworkImage(const std::string &url, int width, int height, ImageF
       buffer_height_(0),
       start_time_(0) {
   this->set_url(url);
+}
+
+ArtworkImage::~ArtworkImage() {
+  this->end_connection_();
+  this->cancel_service_request_();
 }
 
 void ArtworkImage::draw(int x, int y, display::Display *display, Color color_on, Color color_off) {
@@ -164,6 +584,7 @@ void ArtworkImage::release() {
   this->update_pending_ = false;
   this->pending_url_.clear();
   this->end_connection_();
+  this->cancel_service_request_();
   this->retire_active_buffer_();
   this->cleanup_retired_buffers_(true);
 }
@@ -181,7 +602,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
     content_width = width;
     content_height = height;
   } else if (width_in > 0 && height_in > 0) {
-    if (width_in != height_in) {
+    if (image_resize_aspect_differs(width_in, height_in, this->fixed_width_, this->fixed_height_)) {
       double width_scale = static_cast<double>(this->fixed_width_) / width_in;
       double height_scale = static_cast<double>(this->fixed_height_) / height_in;
       double scale = this->resize_mode_ == ImageResizeMode::COVER
@@ -254,8 +675,20 @@ std::string ArtworkImage::request_update_url(const std::string &url, int max_sou
   if (!this->validate_url_(effective_url)) {
     return "";
   }
+  if (this->service_pending_) {
+    this->url_ = effective_url;
+    this->service_generation_++;
+    ImageService::instance().request(this, this->service_generation_, this->request_priority_);
+    ESP_LOGD(TAG, "Updated queued artwork request before it started");
+    return effective_url;
+  }
   if (this->is_busy_()) {
     if (effective_url == this->url_) {
+      if (this->update_pending_) {
+        this->update_pending_ = false;
+        this->pending_url_.clear();
+        ESP_LOGI(TAG, "Cancelled superseded queued artwork update after source returned to active URL");
+      }
       ESP_LOGI(TAG, "Artwork update already in progress for URL; ignoring duplicate request");
       return effective_url;
     }
@@ -273,16 +706,43 @@ void ArtworkImage::cancel_update() {
   if (this->is_busy_()) {
     ESP_LOGW(TAG, "Cancelling in-flight artwork update");
     this->end_connection_();
+    this->cancel_service_request_();
   }
 }
 
 void ArtworkImage::update() {
-  if (this->is_busy_()) {
+  if (this->service_pending_) {
+    this->service_generation_++;
+    ImageService::instance().request(this, this->service_generation_, this->request_priority_);
+    return;
+  }
+  if (this->service_active_ || this->downloader_ != nullptr || this->decoder_ != nullptr) {
     this->queue_pending_update_(this->url_);
     return;
   }
+  this->service_generation_++;
+  this->service_pending_ = true;
+  ImageService::instance().request(this, this->service_generation_, this->request_priority_);
+}
+
+bool ArtworkImage::start_service_update_(uint32_t generation) {
+  if (!this->service_pending_ || generation != this->service_generation_) return false;
+  this->service_pending_ = false;
+  this->service_active_ = true;
+  this->start_update_();
+  return true;
+}
+
+void ArtworkImage::start_update_() {
   this->last_http_status_ = 0;
   this->last_error_was_ha_media_proxy_ = false;
+  this->peak_download_buffer_size_ = this->download_buffer_.size();
+  this->completed_transfer_bytes_ = 0;
+  this->request_started_ms_ = millis();
+  this->response_ready_ms_ = 0;
+  this->first_byte_ms_ = 0;
+  this->transfer_complete_ms_ = 0;
+  this->decode_started_ms_ = 0;
   ESP_LOGI(TAG, "Updating image %s", sanitize_artwork_url_for_log(this->url_).c_str());
   ESP_LOGD(TAG, "Artwork URL source: %s", classify_artwork_url_for_log(this->url_));
   this->log_state_("request-start");
@@ -294,7 +754,7 @@ void ArtworkImage::update() {
   std::string accept_mime_type;
   switch (this->format_) {
     case ImageFormat::AUTO:
-      accept_mime_type = "image/jpeg, image/png";
+      accept_mime_type = "image/jpeg, image/png, image/bmp";
       break;
 #ifdef USE_ARTWORK_IMAGE_JPEG_SUPPORT
     case ImageFormat::JPEG:
@@ -306,6 +766,11 @@ void ArtworkImage::update() {
       accept_mime_type = "image/png";
       break;
 #endif  // USE_ARTWORK_IMAGE_PNG_SUPPORT
+#ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
+    case ImageFormat::BMP:
+      accept_mime_type = "image/bmp";
+      break;
+#endif
     default:
       accept_mime_type = "image/*";
   }
@@ -316,6 +781,16 @@ void ArtworkImage::update() {
   for (auto &header : this->request_headers_) {
     headers.push_back(http_request::Header{header.first, header.second.value()});
   }
+
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  if (this->can_use_p4_pipeline(this->url_)) {
+    if (this->start_p4_pipeline_(headers)) {
+      ESP_LOGD(TAG, "Queued local artwork on ESP32-P4 image pipeline");
+      return;
+    }
+    ESP_LOGW(TAG, "ESP32-P4 image pipeline unavailable; using loop-based downloader");
+  }
+#endif
 
   if (this->should_use_local_idf_url_(this->url_)) {
     this->downloader_ = this->get_local_idf_(this->url_, headers);
@@ -330,6 +805,7 @@ void ArtworkImage::update() {
     this->fail_download_();
     return;
   }
+  this->response_ready_ms_ = millis();
 
   int http_code = this->downloader_->status_code;
   this->log_state_("response-ready");
@@ -338,11 +814,11 @@ void ArtworkImage::update() {
     ESP_LOGI(TAG, "Server returned HTTP 304 (Not Modified). Download skipped.");
     this->end_connection_();
     if (this->has_newer_pending_update_()) {
-      this->start_pending_update_();
+      this->complete_service_request_();
       return;
     }
     this->download_finished_callback_.call(true);
-    this->start_pending_update_();
+    this->complete_service_request_();
     return;
   }
   if (http_code != HTTP_CODE_OK) {
@@ -378,6 +854,16 @@ void ArtworkImage::update() {
   this->start_time_ = ::time(nullptr);
   this->last_data_millis_ = millis();
   this->enable_loop();
+}
+
+bool ArtworkImage::can_use_p4_pipeline(const std::string &url) const {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  return this->p4_pipeline_priority_ != P4_PIPELINE_DISABLED &&
+         this->should_use_local_idf_url_(url);
+#else
+  (void) url;
+  return false;
+#endif
 }
 
 bool ArtworkImage::should_use_local_idf_url_(const std::string &url) const {
@@ -505,8 +991,9 @@ size_t ArtworkImage::get_sane_content_length_() const {
     return 0;
   }
   size_t content_length = this->downloader_->content_length;
-  if (content_length > MAX_DOWNLOAD_BUFFER_SIZE) {
-    ESP_LOGW(TAG, "Ignoring invalid artwork content length: %zu", content_length);
+  if (content_length > this->max_download_buffer_size_) {
+    ESP_LOGW(TAG, "Ignoring artwork content length beyond transfer limit: %zu > %zu",
+             content_length, this->max_download_buffer_size_);
     return 0;
   }
   return content_length;
@@ -514,6 +1001,10 @@ size_t ArtworkImage::get_sane_content_length_() const {
 
 void ArtworkImage::loop() {
   this->cleanup_retired_buffers_(false);
+  if (this->p4_pipeline_pending_) {
+    this->consume_p4_pipeline_result_();
+    return;
+  }
   if (!this->decoder_ && !this->downloader_) {
     if (this->retired_buffers_.empty()) {
       this->disable_loop();
@@ -534,6 +1025,7 @@ void ArtworkImage::loop() {
     if (len > 0) {
       this->download_buffer_.write(len);
       this->last_data_millis_ = millis();
+      this->note_response_bytes_();
     } else if (len < 0) {
       ESP_LOGE(TAG, "Download failed while detecting image format: %d", len);
       this->fail_download_();
@@ -590,6 +1082,16 @@ void ArtworkImage::loop() {
     this->finish_download_();
     return;
   }
+  if (this->decoder_->is_decoding()) {
+    if (!this->decode_buffered_data_()) {
+      this->fail_download_();
+      return;
+    }
+    if (this->decoder_->is_finished()) {
+      this->finish_download_();
+    }
+    return;
+  }
   if (this->downloader_ == nullptr) {
     ESP_LOGE(TAG, "Downloader not instantiated; cannot download");
     return;
@@ -605,6 +1107,7 @@ void ArtworkImage::loop() {
   if (len > 0) {
     this->download_buffer_.write(len);
     this->last_data_millis_ = millis();
+    this->note_response_bytes_();
     if (!this->decode_buffered_data_()) {
       this->fail_download_();
       return;
@@ -622,6 +1125,7 @@ void ArtworkImage::loop() {
   }
 
   if (this->downloader_->is_read_complete()) {
+    if (this->transfer_complete_ms_ == 0) this->transfer_complete_ms_ = millis();
     if (this->decoder_->has_unknown_download_size()) {
       this->decoder_->set_download_size(this->downloader_->get_bytes_read());
       ESP_LOGD(TAG, "HTTP transfer complete; inferred image size: %zu bytes", this->downloader_->get_bytes_read());
@@ -632,6 +1136,9 @@ void ArtworkImage::loop() {
     }
     if (this->decoder_->is_finished()) {
       this->finish_download_();
+      return;
+    }
+    if (this->decoder_->is_decoding()) {
       return;
     }
     ESP_LOGE(TAG, "HTTP transfer finished before image decoder completed");
@@ -645,6 +1152,120 @@ void ArtworkImage::loop() {
     this->fail_download_();
     return;
   }
+}
+
+bool ArtworkImage::start_p4_pipeline_(std::vector<http_request::Header> &headers) {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  this->download_buffer_.reset();
+  this->p4_pipeline_generation_++;
+  if (!P4ImagePipeline::instance().submit(
+          this, this->p4_pipeline_generation_, static_cast<uint8_t>(this->p4_pipeline_priority_),
+          this->url_, headers)) {
+    return false;
+  }
+  this->p4_pipeline_pending_ = true;
+  this->start_time_ = ::time(nullptr);
+  this->last_data_millis_ = millis();
+  this->enable_loop();
+  return true;
+#else
+  (void) headers;
+  return false;
+#endif
+}
+
+bool ArtworkImage::consume_p4_pipeline_result_() {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  bool allocation_failed = false;
+  P4PipelineResult *result =
+      P4ImagePipeline::instance().take(this, this->p4_pipeline_generation_,
+                                       &allocation_failed);
+  if (allocation_failed) {
+    this->p4_pipeline_pending_ = false;
+    ESP_LOGE(TAG, "ESP32-P4 image pipeline could not allocate its result");
+    this->fail_download_();
+    return true;
+  }
+  if (!result) return false;
+
+  this->p4_pipeline_pending_ = false;
+  this->last_http_status_ = result->status;
+  this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
+  this->request_started_ms_ = result->request_started_ms;
+  this->response_ready_ms_ = result->response_ready_ms;
+  this->first_byte_ms_ = result->first_byte_ms;
+  this->transfer_complete_ms_ = result->transfer_complete_ms;
+  this->completed_transfer_bytes_ = result->size;
+
+  bool status_ok = p4_pipeline_http_status_is_success(
+      result->status, this->last_error_was_ha_media_proxy_);
+  if (result->error != ESP_OK || !status_ok) {
+    ESP_LOGE(TAG, "ESP32-P4 image pipeline request failed: error=%s status=%d bytes=%zu",
+             esp_err_to_name(result->error), result->status, result->size);
+    delete result;
+    this->fail_download_();
+    return true;
+  }
+  if (result->status <= 0 && this->last_error_was_ha_media_proxy_) {
+    ESP_LOGW(TAG, "Home Assistant media proxy returned an unknown HTTP status; trying artwork bytes anyway");
+    result->status = HTTP_CODE_OK;
+    this->last_http_status_ = HTTP_CODE_OK;
+  }
+  if (result->status == HTTP_CODE_NOT_MODIFIED) {
+    delete result;
+    this->log_timing_("not-modified", 0);
+    if (this->has_newer_pending_update_()) {
+      this->complete_service_request_();
+      return true;
+    }
+    this->download_finished_callback_.call(true);
+    this->complete_service_request_();
+    return true;
+  }
+  if (result->size < 12 || result->size > this->max_download_buffer_size_) {
+    ESP_LOGE(TAG, "ESP32-P4 image pipeline returned an invalid image size: %zu", result->size);
+    delete result;
+    this->fail_download_();
+    return true;
+  }
+
+  size_t result_size = result->size;
+  uint8_t *result_data = result->release_data();
+  if (!this->download_buffer_.adopt(result_data, result_size)) {
+    heap_caps_free(result_data);
+    ESP_LOGE(TAG, "ESP32-P4 image pipeline returned an invalid transfer buffer");
+    delete result;
+    this->fail_download_();
+    return true;
+  }
+  this->peak_download_buffer_size_ =
+      std::max(this->peak_download_buffer_size_, result_size);
+  delete result;
+
+  ImageFormat resolved = this->detect_format_();
+  if (resolved == ImageFormat::AUTO || !this->create_decoder_(resolved, this->completed_transfer_bytes_)) {
+    ESP_LOGE(TAG, "ESP32-P4 image pipeline could not create a decoder for the response");
+    this->fail_download_();
+    return true;
+  }
+  this->log_state_("p4-pipeline-decoder-ready");
+  if (!this->decode_buffered_data_()) {
+    this->fail_download_();
+    return true;
+  }
+  if (this->decoder_->is_finished()) this->finish_download_();
+  return true;
+#else
+  return false;
+#endif
+}
+
+void ArtworkImage::cancel_p4_pipeline_() {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  if (this->p4_pipeline_pending_) P4ImagePipeline::instance().cancel(this);
+#endif
+  this->p4_pipeline_pending_ = false;
+  this->p4_pipeline_generation_++;
 }
 
 void ArtworkImage::map_chroma_key(Color &color) {
@@ -751,6 +1372,10 @@ ImageFormat ArtworkImage::detect_format_() {
       ESP_LOGD(TAG, "Detected PNG from magic bytes");
       return ImageFormat::PNG;
     }
+    if (data[0] == 'B' && data[1] == 'M') {
+      ESP_LOGD(TAG, "Detected BMP from magic bytes");
+      return ImageFormat::BMP;
+    }
     if (this->detect_heic_()) {
       ESP_LOGW(TAG, "Detected HEIC/HEIF from file signature");
       return ImageFormat::HEIC;
@@ -767,6 +1392,10 @@ ImageFormat ArtworkImage::detect_format_() {
     if (ct.find("image/png") != std::string::npos) {
       ESP_LOGD(TAG, "Detected PNG from Content-Type: %s", ct.c_str());
       return ImageFormat::PNG;
+    }
+    if (ct.find("image/bmp") != std::string::npos || ct.find("image/x-ms-bmp") != std::string::npos) {
+      ESP_LOGD(TAG, "Detected BMP from Content-Type: %s", ct.c_str());
+      return ImageFormat::BMP;
     }
     if (ct.find("image/heic") != std::string::npos || ct.find("image/heif") != std::string::npos) {
       ESP_LOGW(TAG, "Detected HEIC/HEIF from Content-Type: %s", ct.c_str());
@@ -851,6 +1480,12 @@ bool ArtworkImage::create_decoder_(ImageFormat format, size_t total_size) {
   if (format == ImageFormat::PNG) {
     ESP_LOGD(TAG, "Allocating PNG decoder");
     this->decoder_ = make_unique<PngDecoder>(this);
+  }
+#endif
+#ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
+  if (format == ImageFormat::BMP) {
+    ESP_LOGD(TAG, "Allocating BMP decoder");
+    this->decoder_ = make_unique<BmpDecoder>(this);
   }
 #endif
   if (!this->decoder_) {
@@ -1001,16 +1636,19 @@ bool ArtworkImage::ensure_download_buffer_capacity_() {
 
   size_t current_size = this->download_buffer_.size();
   size_t target_size = current_size == 0 ? this->download_buffer_initial_size_ : current_size * 2;
-  if (target_size > MAX_DOWNLOAD_BUFFER_SIZE) {
-    target_size = MAX_DOWNLOAD_BUFFER_SIZE;
+  if (target_size > this->max_download_buffer_size_) {
+    target_size = this->max_download_buffer_size_;
   }
   if (target_size <= current_size) {
-    ESP_LOGE(TAG, "Artwork download exceeded %zu bytes", MAX_DOWNLOAD_BUFFER_SIZE);
+    ESP_LOGE(TAG, "Artwork download exceeded transfer limit of %zu bytes",
+             this->max_download_buffer_size_);
     return false;
   }
 
   ESP_LOGD(TAG, "Growing download buffer from %zu to %zu bytes", current_size, target_size);
-  return this->download_buffer_.resize(target_size) == target_size;
+  bool resized = this->download_buffer_.resize(target_size) == target_size;
+  if (resized) this->peak_download_buffer_size_ = std::max(this->peak_download_buffer_size_, target_size);
+  return resized;
 }
 
 bool ArtworkImage::decode_buffered_data_() {
@@ -1019,6 +1657,7 @@ bool ArtworkImage::decode_buffered_data_() {
   }
 
   size_t unread = this->download_buffer_.unread();
+  if (this->decode_started_ms_ == 0) this->decode_started_ms_ = millis();
   auto fed = this->decoder_->decode(this->download_buffer_.data(), unread);
   if (fed < 0) {
     ESP_LOGE(TAG, "Error when decoding image.");
@@ -1032,21 +1671,52 @@ bool ArtworkImage::decode_buffered_data_() {
   return true;
 }
 
+void ArtworkImage::note_response_bytes_() {
+  uint32_t now = millis();
+  if (this->first_byte_ms_ == 0) this->first_byte_ms_ = now;
+  if (this->downloader_ && this->downloader_->content_length > 0 &&
+      this->downloader_->get_bytes_read() >= this->downloader_->content_length) {
+    this->transfer_complete_ms_ = now;
+  }
+}
+
+void ArtworkImage::log_timing_(const char *result, size_t bytes_read) const {
+  if (this->request_started_ms_ == 0) return;
+  uint32_t now = millis();
+  uint32_t response_ready = this->response_ready_ms_ ? this->response_ready_ms_ : now;
+  uint32_t first_byte = this->first_byte_ms_ ? this->first_byte_ms_ : response_ready;
+  uint32_t transfer_complete = this->transfer_complete_ms_ ? this->transfer_complete_ms_ : now;
+  uint32_t decode_started = this->decode_started_ms_ ? this->decode_started_ms_ : transfer_complete;
+  ESP_LOGI(TAG,
+           "Timing result=%s response=%lu first_byte=%lu transfer=%lu decode=%lu total=%lu bytes=%zu target=%dx%d",
+           result ? result : "unknown",
+           static_cast<unsigned long>(response_ready - this->request_started_ms_),
+           static_cast<unsigned long>(first_byte - this->request_started_ms_),
+           static_cast<unsigned long>(transfer_complete - first_byte),
+           static_cast<unsigned long>(now - decode_started),
+           static_cast<unsigned long>(now - this->request_started_ms_), bytes_read,
+           this->fixed_width_, this->fixed_height_);
+}
+
 void ArtworkImage::finish_download_() {
   if (this->has_newer_pending_update_()) {
     ESP_LOGI(TAG, "Discarding completed artwork because a newer URL is queued");
     this->end_connection_();
-    this->start_pending_update_();
+    this->complete_service_request_();
     return;
   }
   if (!this->promote_decode_buffer_()) {
     this->fail_download_();
     return;
   }
-  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read()
+                                              : this->completed_transfer_bytes_;
+  if (this->transfer_complete_ms_ == 0) this->transfer_complete_ms_ = millis();
+  this->log_timing_("success", bytes_read);
   this->log_state_("download-complete");
-  ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d",
-           bytes_read, this->width_, this->height_);
+  ESP_LOGD(TAG, "Image fully downloaded: bytes=%zu image=%dx%d peak_download_buffer=%zu budget=%zu",
+           bytes_read, this->width_, this->height_, this->peak_download_buffer_size_,
+           this->max_download_buffer_size_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
   this->end_connection_();
   this->log_state_("download-resources-released");
@@ -1063,19 +1733,45 @@ void ArtworkImage::finish_download_() {
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
-  this->start_pending_update_();
+  this->complete_service_request_();
 }
 
 void ArtworkImage::fail_download_() {
   if (this->has_newer_pending_update_()) {
     ESP_LOGW(TAG, "Skipping stale artwork failure because a newer URL is queued");
     this->end_connection_();
-    this->start_pending_update_();
+    this->complete_service_request_();
     return;
   }
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
+  this->log_timing_("error", bytes_read);
   this->end_connection_();
   this->download_error_callback_.call();
-  this->start_pending_update_();
+  this->complete_service_request_();
+}
+
+void ArtworkImage::complete_service_request_() {
+  if (!this->service_active_) return;
+  if (this->update_pending_ && !this->pending_url_.empty()) {
+    this->url_ = this->pending_url_;
+    this->pending_url_.clear();
+    this->update_pending_ = false;
+    this->service_generation_++;
+    this->service_pending_ = true;
+    this->service_active_ = false;
+    ESP_LOGI(TAG, "Re-queued latest artwork update");
+    ImageService::instance().complete_and_request(this, this->service_generation_, this->request_priority_);
+    return;
+  }
+  this->service_active_ = false;
+  ImageService::instance().complete(this);
+}
+
+void ArtworkImage::cancel_service_request_() {
+  if (!this->service_pending_ && !this->service_active_) return;
+  this->service_pending_ = false;
+  this->service_active_ = false;
+  ImageService::instance().cancel(this);
 }
 
 void ArtworkImage::queue_pending_update_(const std::string &url) {
@@ -1088,18 +1784,6 @@ void ArtworkImage::queue_pending_update_(const std::string &url) {
   ESP_LOGW(TAG, "Artwork update %s while busy; latest URL will run after current work finishes",
            replaced ? "re-queued" : "queued");
   this->log_state_("update-queued");
-}
-
-void ArtworkImage::start_pending_update_() {
-  if (!this->update_pending_ || this->is_busy_()) {
-    return;
-  }
-  std::string url = this->pending_url_;
-  this->pending_url_.clear();
-  this->update_pending_ = false;
-  ESP_LOGI(TAG, "Starting queued artwork update");
-  this->url_ = url;
-  this->update();
 }
 
 void ArtworkImage::log_state_(const char *stage) {
@@ -1123,6 +1807,7 @@ void ArtworkImage::log_state_(const char *stage) {
 }
 
 void ArtworkImage::end_connection_() {
+  this->cancel_p4_pipeline_();
   if (this->downloader_) {
     this->downloader_->end();
     this->downloader_ = nullptr;
@@ -1130,7 +1815,9 @@ void ArtworkImage::end_connection_() {
   this->decoder_.reset();
   this->discard_decode_buffer_();
   this->download_buffer_.reset();
-  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);
+  // Staging memory belongs to the active service request only. Completed image
+  // surfaces stay resident, but compressed transfer bytes are returned to PSRAM.
+  this->download_buffer_.shrink_to(0);
 }
 
 bool ArtworkImage::validate_url_(const std::string &url) {
