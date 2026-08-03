@@ -84,16 +84,17 @@ assert.strictEqual(
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
 assert.deepStrictEqual(
-  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-2),
+  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-3),
   [
     { size: 8, label: "Max wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
+    { size: 11, label: "Landscape (4x3)" },
   ],
-  "camera card size menu exposes the two max shapes"
+  "camera card size menu exposes the three larger shapes"
 );
 assert(
-  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9),
-  "non-camera card size menus do not expose max shapes"
+  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9 || option.size === 11),
+  "non-camera card size menus do not expose camera-only shapes"
 );
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),

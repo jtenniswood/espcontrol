@@ -131,6 +131,7 @@ function assertNormalizationFixtures(hooks, groups) {
 
 const hooks = loadHooks();
 const tenInchHooks = loadHooks("?device=guition-esp32-p4-jc8012p4a1");
+const fourInchHooks = loadHooks("?device=esp32-p4-86");
 const s3Hooks = loadHooks("?device=guition-esp32-s3-4848s040");
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const cardNormalizationFixtures = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
@@ -338,14 +339,24 @@ assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "media", sens
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 6), 1, "cover art rejects non-square sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 8), 8, "camera cards keep max-wide size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 9), 9, "camera cards keep max-tall size");
+assert.strictEqual(hooks.cardSupportsLandscapeLargeSize({ type: "image" }), true, "7-inch camera cards support landscape-large size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 11), 11, "7-inch image cards keep 4x3 size");
+assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "image" }, 11), 11, "10-inch image cards keep 4x3 size");
+assert.strictEqual(fourInchHooks.normalizeCardSizeForConfig({ type: "image" }, 11), 1, "4-inch image cards reject 4x3 size");
 assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "image" }, 10), 10, "10-inch image cards keep 3x4 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 8), 1, "non-camera cards reject max-wide size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 9), 1, "non-camera cards reject max-tall size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 10), 1, "ordinary cards reject portrait-large size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 11), 1, "ordinary cards reject landscape-large size");
 assert.strictEqual(
   Array.from(tenInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 10 && option.label === "Portrait (3x4)"),
   true,
   "10-inch cover art size menu exposes Portrait (3x4)",
+);
+assert.strictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 11 && option.label === "Landscape (4x3)"),
+  true,
+  "7-inch camera size menu exposes Landscape (4x3)",
 );
 const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],
@@ -356,6 +367,10 @@ const transferredCoverArt = tenInchHooks.cardTransferEntriesFromEnvelopeForTest(
   cards: [{ type: "media", sensor: "cover_art", entity: "media_player.office", label: "Cover Art", size: 10 }],
 }, false);
 assert.strictEqual(transferredCoverArt.entries[0].size, 10, "card transfer keeps supported 3x4 cover art size");
+const transferredLandscapeCamera = hooks.cardTransferEntriesFromEnvelopeForTest({
+  cards: [{ type: "image", entity: "camera.office", label: "Office", size: 11 }],
+}, false);
+assert.strictEqual(transferredLandscapeCamera.entries[0].size, 11, "card transfer keeps supported 4x3 camera size");
 const transferredSubpage = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{
     type: "subpage",

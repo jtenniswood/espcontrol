@@ -103,6 +103,7 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             cardRequiresSquareSize: cardRequiresSquareSize,
             cardSupportsMaxSize: cardSupportsMaxSize,
             cardSupportsPortraitLargeSize: cardSupportsPortraitLargeSize,
+            cardSupportsLandscapeLargeSize: cardSupportsLandscapeLargeSize,
             cardSizeMenuOptions: cardSizeMenuOptions,
             normalizeCardSizeForConfig: normalizeCardSizeForConfig,
             normalizeMediaOptions: normalizeMediaOptions,

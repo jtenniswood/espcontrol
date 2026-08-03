@@ -48,8 +48,13 @@ export function installConfigCodecModule(): GlobalDescriptors {
             DEVICE_ID === "guition-esp32-p4-jc8012p4a1-v2";
         return tenInch && (cardRequiresSquareSize(b) || cardSupportsMaxSize(b));
     }
+    function cardSupportsLandscapeLargeSize(this: any, b?: any) {
+        return cardSupportsMaxSize(b) && GRID_COLS >= 4 && GRID_ROWS >= 3;
+    }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        if (size === CARD_SIZE_LANDSCAPE_LARGE)
+            return cardSupportsLandscapeLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_PORTRAIT_LARGE)
             return cardSupportsPortraitLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
@@ -868,6 +873,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         "cardRequiresSquareSize": staticGlobal(cardRequiresSquareSize),
         "cardSupportsMaxSize": staticGlobal(cardSupportsMaxSize),
         "cardSupportsPortraitLargeSize": staticGlobal(cardSupportsPortraitLargeSize),
+        "cardSupportsLandscapeLargeSize": staticGlobal(cardSupportsLandscapeLargeSize),
         "normalizeCardSizeForConfig": staticGlobal(normalizeCardSizeForConfig),
         "isBrightnessSliderType": staticGlobal(isBrightnessSliderType),
         "isFanCardType": staticGlobal(isFanCardType),

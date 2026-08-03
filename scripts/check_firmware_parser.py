@@ -205,6 +205,8 @@ int main() {
   assert(row_span == 1 && col_span == 3);
   grid_token_spans('p', row_span, col_span);
   assert(row_span == 4 && col_span == 3);
+  grid_token_spans('l', row_span, col_span);
+  assert(row_span == 3 && col_span == 4);
   grid_token_spans('q', row_span, col_span);
   assert(row_span == 3 && col_span == 3);
   grid_token_spans('h', row_span, col_span);
@@ -214,6 +216,8 @@ int main() {
   assert(grid_token_has_span_suffix('q'));
   assert(grid_token_has_span_suffix('h'));
   assert(grid_token_has_span_suffix('v'));
+  assert(grid_token_has_span_suffix('p'));
+  assert(grid_token_has_span_suffix('l'));
 
   assert(clock_bar_equal_fr_track_size(434, 3, 0) == 145);
   assert(clock_bar_equal_fr_track_size(434, 3, 1) == 145);
@@ -646,7 +650,7 @@ int main() {
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;
-  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,99", 9, parsed);
+  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,99", 10, parsed);
   assert(parsed.positions[0] == 1);
   assert(parsed.positions[1] == 2);
   assert(parsed.row_span[1] == 2 && parsed.col_span[1] == 1);
@@ -656,6 +660,7 @@ int main() {
   assert(parsed.row_span[5] == 1 && parsed.col_span[5] == 3);
   assert(parsed.row_span[6] == 2 && parsed.col_span[6] == 3);
   assert(parsed.row_span[7] == 3 && parsed.col_span[7] == 2);
+  assert(parsed.row_span[8] == 3 && parsed.col_span[8] == 4);
 
   OrderResult overlap;
   parse_order_string("1b,2,3,4,5,6", 9, overlap);

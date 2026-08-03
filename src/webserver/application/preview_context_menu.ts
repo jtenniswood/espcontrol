@@ -152,6 +152,8 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
             options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max wide (3x2)" });
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
         }
+        if (cardSupportsLandscapeLargeSize(b))
+            options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Landscape (4x3)" });
         if (cardSupportsPortraitLargeSize(b))
             options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Portrait (3x4)" });
         return options;
