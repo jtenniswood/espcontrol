@@ -212,8 +212,8 @@ inline void media_driver_bind_cover_art_route(
   if (!primary) return;
   media_playback_attach_now_playing(primary, now_playing);
   media_playback_subscribe_playback_state(primary);
-  media_playback_subscribe_metadata(primary);
   media_playback_subscribe_content(primary);
+  media_playback_subscribe_metadata(primary);
   media_playback_subscribe_progress(primary);
 
   MediaPlaybackState *secondary = nullptr;
@@ -222,8 +222,8 @@ inline void media_driver_bind_cover_art_route(
     if (secondary) {
       media_playback_attach_now_playing(secondary, now_playing);
       media_playback_subscribe_playback_state(secondary);
-      media_playback_subscribe_metadata(secondary);
       media_playback_subscribe_content(secondary);
+      media_playback_subscribe_metadata(secondary);
       media_playback_subscribe_progress(secondary);
     }
   }

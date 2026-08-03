@@ -240,6 +240,33 @@ if resubscribe_start < 0 or resubscribe_end < 0:
 resubscribe = cover_art[resubscribe_start:resubscribe_end]
 if "ha_get_" in resubscribe:
     raise SystemExit("Cover art must use live subscriptions instead of retained one-shot reads")
+cover_art_subscription_order = []
+for handler, attribute in (
+    ("handle_media_content_type", "media_content_type"),
+    ("handle_media_content_id", "media_content_id"),
+    ("handle_media_title", "media_title"),
+    ("handle_media_artist", "media_artist"),
+    ("handle_media_album", "media_album_name"),
+):
+    handler_start = resubscribe.find(handler)
+    subscription_start = resubscribe.find(
+        f'std::string("{attribute}")', handler_start
+    )
+    if handler_start < 0 or subscription_start < 0:
+        raise SystemExit(f"Cover art metadata policy subscription missing: {attribute}")
+    cover_art_subscription_order.append(subscription_start)
+if cover_art_subscription_order != sorted(cover_art_subscription_order):
+    raise SystemExit(
+        "Cover art must subscribe to content kind before title, artist, and album"
+    )
+for required in (
+    "media_metadata_clear_decision(",
+    "id(cover_art_content_id).clear();",
+    "id(cover_art_content_type).clear();",
+    "id(cover_art_content_kind) = static_cast<uint8_t>(",
+):
+    if required not in resubscribe:
+        raise SystemExit(f"Cover art metadata reset contract missing: {required}")
 proxy_404_start = cover_art.find("last_error_was_ha_media_proxy_not_found()")
 proxy_404_end = cover_art.find("- script.execute: cover_art_retry_download", proxy_404_start)
 if proxy_404_start < 0 or proxy_404_end < 0:
@@ -264,8 +291,62 @@ if metadata_start < 0 or metadata_end < 0:
 metadata = media[metadata_start:metadata_end]
 if 'state->entity_id, std::string("media_artist")' in metadata:
     raise SystemExit("Media track changes must not retain duplicate one-shot metadata reads")
-if "state->artist.clear()" in metadata:
+artist_subscription = metadata.find('std::string("media_artist")')
+if artist_subscription < 0:
+    raise SystemExit("Media artist subscription contract missing")
+if "state->artist.clear()" in metadata[:artist_subscription]:
     raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
+content_start = media.find(
+    "inline void media_playback_subscribe_content(MediaPlaybackState *state) {"
+)
+content_end = media.find(
+    "inline void media_playback_subscribe_friendly_name", content_start
+)
+if content_start < 0 or content_end < 0:
+    raise SystemExit("Media content subscription contract missing")
+content = media[content_start:content_end]
+content_type_subscription = content.find('std::string("media_content_type")')
+content_id_subscription = content.find('std::string("media_content_id")')
+if not 0 <= content_type_subscription < content_id_subscription:
+    raise SystemExit("Media content type must be subscribed before the content ID")
+for required in (
+    "media_metadata_clear_decision(",
+    "if (decision.clear_title) state->title.clear();",
+    "if (decision.clear_grouping) state->artist.clear();",
+):
+    if required not in content:
+        raise SystemExit(f"Media item-change policy contract missing: {required}")
+for subscription_helper in (
+    "subscribe_media_control_state",
+    "subscribe_media_now_playing_state",
+):
+    helper_start = media.find(f"inline void {subscription_helper}")
+    if helper_start < 0:
+        raise SystemExit(f"Media subscription helper missing: {subscription_helper}")
+    helper_end = media.find("\n}", helper_start)
+    helper = media[helper_start:helper_end]
+    content_call = helper.find("media_playback_subscribe_content(state)")
+    metadata_call = helper.find("media_playback_subscribe_metadata(state)")
+    if not 0 <= content_call < metadata_call:
+        raise SystemExit(
+            f"{subscription_helper} must subscribe to content before metadata"
+        )
+
+media_driver = (
+    ROOT / "components" / "espcontrol" / "button_grid_media_driver.h"
+).read_text(encoding="utf-8")
+route_start = media_driver.find("inline void media_driver_bind_cover_art_route(")
+route_end = media_driver.find("\ninline ", route_start + 1)
+if route_start < 0 or route_end < 0:
+    raise SystemExit("Media cover-art route subscription contract missing")
+route = media_driver[route_start:route_end]
+for state_name in ("primary", "secondary"):
+    content_call = route.find(f"media_playback_subscribe_content({state_name})")
+    metadata_call = route.find(f"media_playback_subscribe_metadata({state_name})")
+    if not 0 <= content_call < metadata_call:
+        raise SystemExit(
+            f"Media cover-art {state_name} content must be subscribed before metadata"
+        )
 for required in (
     "inline bool media_cover_art_uses_screensaver_fonts(int row_span, int col_span)",
     "return row_span >= 2 && col_span >= 2;",
