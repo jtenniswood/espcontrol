@@ -424,11 +424,20 @@ export const ENTITY_CATALOG = {
       "domain": "sensor",
       "name": "Wifi Strength"
     },
-    "screen_automatic_brightness": {
-      "domain": "switch",
-      "name": "Screen: Automatic Brightness",
+    "display_backlight": {
+      "domain": "light",
+      "name": "Display Backlight",
       "objectIds": [
-        "screen__automatic_brightness"
+        "display_backlight"
+      ]
+    },
+    "screen_brightness_mode": {
+      "domain": "select",
+      "name": "Screen: Brightness Mode",
+      "objectIds": [
+        "screen__brightness_mode",
+        "screen_brightness_mode",
+        "brightness_mode"
       ]
     },
     "screen_schedule_enabled": {
@@ -718,7 +727,8 @@ export const ENTITY_CATALOG = {
       "screen_sunset",
       "network_transport",
       "wifi_strength",
-      "screen_automatic_brightness",
+      "display_backlight",
+      "screen_brightness_mode",
       "screen_schedule_enabled",
       "screen_schedule_trigger",
       "screen_schedule_sensor_activation",

@@ -636,6 +636,18 @@ int main() {
   int rise_m = 0;
   int set_h = 0;
   int set_m = 0;
+  assert(normalize_brightness_mode("Manual") == "Manual");
+  assert(normalize_brightness_mode("fixed_times") == "Fixed times");
+  assert(normalize_brightness_mode("unexpected") == "Sunrise and sunset");
+  assert(brightness_mode_manual("Manual"));
+  assert(!brightness_mode_manual("Fixed times"));
+  assert(brightness_mode_uses_fixed_times("Fixed times"));
+  assert(brightness_mode_uses_sun("Sunrise and sunset"));
+  assert(brightness_schedule_times("Sunrise and sunset", true, 7, 15, 20, 45, "06:00", "18:00", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 7 && rise_m == 15 && set_h == 20 && set_m == 45);
+  assert(brightness_schedule_times("Fixed times", true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 6 && rise_m == 30 && set_h == 21 && set_m == 5);
+  assert(!brightness_schedule_times("Manual", true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
   assert(brightness_schedule_times(true, true, 7, 15, 20, 45, "06:00", "18:00", rise_h, rise_m, set_h, set_m));
   assert(rise_h == 7 && rise_m == 15 && set_h == 20 && set_m == 45);
   assert(brightness_schedule_times(false, true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));

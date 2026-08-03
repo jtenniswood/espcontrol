@@ -272,7 +272,8 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
         var el: any = els.sunInfo;
         if (!el)
             return;
-        if (!state.sunrise && !state.sunset) {
+        if (normalizeBrightnessMode(state.brightnessMode) !== "sunrise_sunset" ||
+            (!state.sunrise && !state.sunset)) {
             el.classList.remove("sp-visible");
             return;
         }

@@ -43,22 +43,36 @@ export function installSettingsPageModule(): GlobalDescriptors {
         var languageCard: any = makeCollapsibleCard("Language", languageBody, true);
         els.setLanguage = languageSelect;
         var blBody: any = document.createElement("div");
+        var brightnessModeSegment: any = segmentControl([
+            ["manual", "Manual"],
+            ["sunrise_sunset", "Automatic"],
+            ["fixed_times", "Timed"],
+        ], normalizeBrightnessMode(state.brightnessMode), function (this: any, mode?: any) {
+            state.brightnessMode = normalizeBrightnessMode(mode);
+            postBrightnessMode(state.brightnessMode);
+            syncScreenScheduleUi();
+        }, "sp-segment sp-segment-scroll sp-brightness-mode-segment");
+        blBody.appendChild(brightnessModeSegment.segment);
+        els.setBrightnessModeButtons = brightnessModeSegment.buttons;
+        var brightnessManualField: any = condField();
+        var manualSlider: any = createRangeSlider("Brightness", state.manualBrightnessVal, function (this: any, value?: any) {
+            state.manualBrightnessVal = parseFloat(value) || 100;
+            postDisplayBacklightBrightness(state.manualBrightnessVal);
+        });
+        brightnessManualField.appendChild(manualSlider.wrap);
+        blBody.appendChild(brightnessManualField);
+        els.setManualBrightnessField = brightnessManualField;
+        els.setManualBrightness = manualSlider.range;
+        els.setManualBrightnessVal = manualSlider.val;
+        var brightnessAutomaticFields: any = condField();
         var daySlider: any = createRangeSlider("Daytime Brightness", state.brightnessDayVal, entityName("screen_daytime_brightness"));
-        blBody.appendChild(daySlider.wrap);
+        brightnessAutomaticFields.appendChild(daySlider.wrap);
         els.setDayBrightness = daySlider.range;
         els.setDayBrightnessVal = daySlider.val;
         var nightSlider: any = createRangeSlider("Nighttime Brightness", state.brightnessNightVal, entityName("screen_nighttime_brightness"));
-        blBody.appendChild(nightSlider.wrap);
+        brightnessAutomaticFields.appendChild(nightSlider.wrap);
         els.setNightBrightness = nightSlider.range;
         els.setNightBrightnessVal = nightSlider.val;
-        var autoBrightnessToggle: any = toggleRow("Automatic Brightness", "sp-set-automatic-brightness", state.automaticBrightnessEnabled);
-        blBody.appendChild(autoBrightnessToggle.row);
-        els.setAutomaticBrightnessToggle = autoBrightnessToggle.input;
-        autoBrightnessToggle.input.addEventListener("change", function (this: any) {
-            state.automaticBrightnessEnabled = this.checked;
-            postAutomaticBrightnessEnabled(state.automaticBrightnessEnabled);
-            syncScreenScheduleUi();
-        });
         var brightnessManualTimes: any = condField();
         var dawnTime: any = createTimeInput("Dawn", "sp-set-brightness-dawn-time", state.brightnessDawnTime, "06:00", function (this: any, value?: any) {
             state.brightnessDawnTime = normalizeTimeOfDay(value, "06:00");
@@ -74,13 +88,15 @@ export function installSettingsPageModule(): GlobalDescriptors {
         });
         brightnessManualTimes.appendChild(duskTime.wrap);
         els.setBrightnessDuskTime = duskTime.input;
-        blBody.appendChild(brightnessManualTimes);
+        brightnessAutomaticFields.appendChild(brightnessManualTimes);
         els.setBrightnessManualTimes = brightnessManualTimes;
         var sunInfo: any = document.createElement("div");
         sunInfo.className = "sp-sun-info";
         sunInfo.id = "sp-sun-info";
-        blBody.appendChild(sunInfo);
+        brightnessAutomaticFields.appendChild(sunInfo);
         els.sunInfo = sunInfo;
+        blBody.appendChild(brightnessAutomaticFields);
+        els.setBrightnessAutomaticFields = brightnessAutomaticFields;
         updateSunInfo();
         var backlightCard: any = makeCollapsibleCard("Backlight", blBody, true);
         var scheduleCard: any = buildScreenScheduleSettingsCard();

@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 94,
+    "entityNames": 95,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -6381,11 +6381,24 @@
         ]
       },
       {
-        "key": "screen_automatic_brightness",
-        "domain": "switch",
-        "name": "Screen: Automatic Brightness",
+        "key": "display_backlight",
+        "domain": "light",
+        "name": "Display Backlight",
         "objectIds": [
-          "screen__automatic_brightness"
+          "display_backlight"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_brightness_mode",
+        "domain": "select",
+        "name": "Screen: Brightness Mode",
+        "objectIds": [
+          "screen__brightness_mode",
+          "screen_brightness_mode",
+          "brightness_mode"
         ],
         "groups": [
           "settings"

@@ -486,6 +486,10 @@ assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assi
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(0), 1, "Home Assistant artwork port clamps low values");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(70000), 65535, "Home Assistant artwork port clamps high values");
+assert.strictEqual(model.normalizeBrightnessMode("Manual"), "manual", "manual brightness mode normalizes");
+assert.strictEqual(model.normalizeBrightnessMode("Fixed times"), "fixed_times", "fixed-time brightness mode normalizes");
+assert.strictEqual(model.normalizeBrightnessMode("unexpected"), "sunrise_sunset", "brightness mode defaults to sunrise and sunset");
+assert.strictEqual(model.brightnessModeOption("fixed_times"), "Fixed times", "brightness mode maps to the firmware option");
 assert.deepStrictEqual(
   plain(model.normalizeBackupScreenSettings({
     brightness_day: "88",
@@ -504,11 +508,13 @@ assert.deepStrictEqual(
     scheduleDimmedBrightness: 12,
     scheduleClockBrightness: 40,
     scheduleClockTextColor: "ABCDEF",
+    manualBrightnessVal: 65,
   })),
   {
     brightnessDayVal: 88,
     brightnessNightVal: 55,
-    automaticBrightnessEnabled: false,
+    brightnessMode: "fixed_times",
+    manualBrightnessVal: 65,
     brightnessDawnTime: "05:30",
     brightnessDuskTime: "21:05",
     scheduleTrigger: "time",

@@ -68,6 +68,9 @@ script:
       - lvgl.resume:
       - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.9
       - light.turn_on:
           id: display_backlight
           brightness: 90%
@@ -101,6 +104,9 @@ script:
       - lvgl.resume:
       - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.9
       - light.turn_on:
           id: display_backlight
           brightness: 90%
@@ -127,6 +133,9 @@ script:
       - lvgl.resume:
       - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.9
       - light.turn_on:
           id: display_backlight
           brightness: 90%
