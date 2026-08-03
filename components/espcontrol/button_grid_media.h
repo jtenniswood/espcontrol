@@ -478,6 +478,7 @@ struct MediaPlaybackState {
   std::string source;
   std::string friendly_name;
   std::string current_content_id;
+  uint64_t current_content_fingerprint = 0;
   std::string current_content_type;
   espcontrol::media::MediaItemKind current_content_kind =
     espcontrol::media::MediaItemKind::UNKNOWN;
@@ -636,6 +637,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->source.clear();
   state->friendly_name.clear();
   state->current_content_id.clear();
+  state->current_content_fingerprint = 0;
   state->current_content_type.clear();
   state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
   state->has_state = false;
@@ -1434,18 +1436,23 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
         if (!media_playback_generation_valid(state, generation)) return;
         const std::string next_content_id = media_playback_metadata_value(
           value, HA_STATE_TEXT_MAX_LEN);
+        const uint64_t next_content_fingerprint = next_content_id.empty()
+          ? 0
+          : espcontrol::media::media_content_identity_fingerprint(
+              value.c_str(), value.size());
         const espcontrol::media::MediaItemKind next_kind =
           espcontrol::media::media_item_kind(
             next_content_id, state->current_content_type);
         const espcontrol::media::MediaMetadataClearDecision decision =
           espcontrol::media::media_metadata_clear_decision(
-            state->current_content_id, state->current_content_kind,
-            next_content_id, next_kind);
+            state->current_content_fingerprint, state->current_content_kind,
+            next_content_fingerprint, next_kind);
 
         state->has_current_content_id = !next_content_id.empty();
         if (espcontrol::media::should_replace_media_metadata_identity(
               next_content_id)) {
           state->current_content_id = next_content_id;
+          state->current_content_fingerprint = next_content_fingerprint;
           state->current_content_kind = next_kind;
         }
         if (decision.clear_title) state->title.clear();

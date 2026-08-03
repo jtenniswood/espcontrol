@@ -44,9 +44,9 @@ globals:
   - id: cover_art_album
     type: std::string
     initial_value: '""'
-  - id: cover_art_content_id
-    type: std::string
-    initial_value: '""'
+  - id: cover_art_content_fingerprint
+    type: uint64_t
+    initial_value: '0'
   - id: cover_art_content_type
     type: std::string
     initial_value: '""'
@@ -755,7 +755,7 @@ script:
           id(cover_art_title).clear();
           id(cover_art_artist).clear();
           id(cover_art_album).clear();
-          id(cover_art_content_id).clear();
+          id(cover_art_content_fingerprint) = 0;
           id(cover_art_content_type).clear();
           id(cover_art_content_kind) = static_cast<uint8_t>(
             espcontrol::media::MediaItemKind::UNKNOWN);
@@ -1832,7 +1832,7 @@ script:
             id(cover_art_last_playback_state).clear();
             id(cover_art_media_source).clear();
             id(cover_art_album).clear();
-            id(cover_art_content_id).clear();
+            id(cover_art_content_fingerprint) = 0;
             id(cover_art_content_type).clear();
             id(cover_art_content_kind) = static_cast<uint8_t>(
               espcontrol::media::MediaItemKind::UNKNOWN);
@@ -1994,14 +1994,19 @@ script:
               std::string next = string_ref_limited(
                 content_id, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
+              const uint64_t next_fingerprint = next.empty()
+                ? 0
+                : espcontrol::media::media_content_identity_fingerprint(
+                    content_id.c_str(), content_id.size());
               const auto previous_kind = static_cast<espcontrol::media::MediaItemKind>(
                 id(cover_art_content_kind));
               const auto next_kind = espcontrol::media::media_item_kind(
                 next, id(cover_art_content_type));
               const auto decision = espcontrol::media::media_metadata_clear_decision(
-                id(cover_art_content_id), previous_kind, next, next_kind);
+                id(cover_art_content_fingerprint), previous_kind,
+                next_fingerprint, next_kind);
               if (espcontrol::media::should_replace_media_metadata_identity(next)) {
-                id(cover_art_content_id) = next;
+                id(cover_art_content_fingerprint) = next_fingerprint;
                 id(cover_art_content_kind) = static_cast<uint8_t>(next_kind);
               }
               if (!decision.item_changed) return;

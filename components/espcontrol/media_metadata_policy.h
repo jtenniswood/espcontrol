@@ -58,15 +58,34 @@ inline MediaItemKind media_item_kind_from_token(std::string token) {
 }
 
 inline std::string media_item_kind_token_from_uri(const std::string &content_id) {
-  const size_t scheme_end = content_id.find("://");
+  const size_t scheme_end = content_id.find(':');
   if (scheme_end == std::string::npos) return {};
   const std::string scheme = normalize_media_kind_token(
     content_id.substr(0, scheme_end));
   if (scheme == "http" || scheme == "https") return {};
-  const size_t token_start = scheme_end + 3;
-  const size_t token_end = content_id.find_first_of("/?#", token_start);
+  size_t token_start = scheme_end + 1;
+  if (content_id.compare(token_start, 2, "//") == 0) token_start += 2;
+  const size_t token_end = content_id.find_first_of(":/?#", token_start);
   if (token_start >= content_id.size() || token_end == token_start) return {};
   return content_id.substr(token_start, token_end - token_start);
+}
+
+inline uint64_t media_content_identity_fingerprint(const char *data,
+                                                   size_t length) {
+  if (data == nullptr || length == 0) return 0;
+  uint64_t hash = UINT64_C(14695981039346656037);
+  for (size_t index = 0; index < length; index++) {
+    hash ^= static_cast<uint8_t>(data[index]);
+    hash *= UINT64_C(1099511628211);
+  }
+  // Zero is reserved for a missing identity.
+  return hash == 0 ? 1 : hash;
+}
+
+inline uint64_t media_content_identity_fingerprint(
+    const std::string &content_id) {
+  return media_content_identity_fingerprint(
+    content_id.data(), content_id.size());
 }
 
 inline MediaItemKind media_item_kind(const std::string &content_id,
@@ -83,11 +102,11 @@ inline MediaItemKind media_item_kind(const std::string &content_id,
 }
 
 inline MediaMetadataClearDecision media_metadata_clear_decision(
-    const std::string &previous_content_id, MediaItemKind previous_kind,
-    const std::string &next_content_id, MediaItemKind next_kind) {
+    uint64_t previous_fingerprint, MediaItemKind previous_kind,
+    uint64_t next_fingerprint, MediaItemKind next_kind) {
   const bool item_changed =
-    !previous_content_id.empty() && !next_content_id.empty() &&
-    previous_content_id != next_content_id;
+    previous_fingerprint != 0 && next_fingerprint != 0 &&
+    previous_fingerprint != next_fingerprint;
   return {
     item_changed,
     item_changed,
