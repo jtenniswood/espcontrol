@@ -471,16 +471,17 @@ inline lv_coord_t clock_bar_current_screen_height(lv_coord_t fallback) {
   return height > 0 ? height : fallback;
 }
 
-// Optional status icons (battery, voice mute, night mode) pack leftwards from
-// the network icon. Each one is a wide tap target around a narrow centred glyph,
-// so pack by glyph edges rather than by tap target: the spacing a user sees then
-// depends only on which icons are actually shown, and no fixed-width slot is
-// left empty when an icon is hidden.
+// Right-side status icons (network, battery, voice mute, night mode) pack
+// leftwards by glyph edge. Each one is a wide tap target around a narrow centred
+// glyph, so the spacing a user sees depends only on which icons are actually
+// shown and no fixed-width slot is left empty when an icon is hidden.
 struct ClockBarRightIcons {
   // Distance from the screen's right edge to the left edge of the last placed
   // glyph, and the glyph-to-glyph gap to keep between neighbours.
   int cursor = 0;
   int gap = 8;
+  int right_x = 0;
+  bool has_glyph = false;
 };
 
 // Width of an icon's glyph, falling back to the tap target when the label has
@@ -491,15 +492,23 @@ inline int clock_bar_glyph_width(lv_obj_t *label, int fallback) {
   return width > 0 ? width : fallback;
 }
 
-inline ClockBarRightIcons clock_bar_right_icons_after_network(int right_x,
-                                                             int box_width,
-                                                             int glyph_width,
-                                                             int gap) {
+// Begin an empty right-side icon row. If no fixed anchor is seeded, the first
+// visible optional icon occupies the normal rightmost icon position.
+inline ClockBarRightIcons clock_bar_right_icons_begin(int right_x, int gap) {
   ClockBarRightIcons icons;
+  icons.right_x = right_x > 0 ? right_x : 0;
   icons.gap = gap > 0 ? gap : 0;
-  if (box_width < glyph_width) box_width = glyph_width;
-  icons.cursor = right_x + (box_width + glyph_width) / 2;
   return icons;
+}
+
+// Seed a visible glyph that is already aligned at the row's right margin, such
+// as the network icon. Hidden anchors must not call this function.
+inline void clock_bar_right_icons_seed(ClockBarRightIcons &icons,
+                                       int box_width,
+                                       int glyph_width) {
+  if (box_width < glyph_width) box_width = glyph_width;
+  icons.cursor = icons.right_x + (box_width + glyph_width) / 2;
+  icons.has_glyph = true;
 }
 
 // LV_ALIGN_TOP_RIGHT x offset for the next icon, advancing the cursor past its
@@ -508,6 +517,10 @@ inline int clock_bar_right_icons_next_x(ClockBarRightIcons &icons,
                                         int box_width,
                                         int glyph_width) {
   if (box_width < glyph_width) box_width = glyph_width;
+  if (!icons.has_glyph) {
+    clock_bar_right_icons_seed(icons, box_width, glyph_width);
+    return -icons.right_x;
+  }
   const int lead = (box_width - glyph_width) / 2;
   int box_offset = icons.cursor + icons.gap - lead;
   if (box_offset < 0) box_offset = 0;
