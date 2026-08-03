@@ -45,8 +45,8 @@ export function installSettingsPageModule(): GlobalDescriptors {
         var blBody: any = document.createElement("div");
         var brightnessModeSegment: any = segmentControl([
             ["manual", "Manual"],
-            ["sunrise_sunset", "Sunrise & sunset"],
-            ["fixed_times", "Fixed times"],
+            ["sunrise_sunset", "Automatic"],
+            ["fixed_times", "Timed"],
         ], normalizeBrightnessMode(state.brightnessMode), function (this: any, mode?: any) {
             state.brightnessMode = normalizeBrightnessMode(mode);
             postBrightnessMode(state.brightnessMode);
