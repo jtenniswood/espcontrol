@@ -43,6 +43,22 @@ export function runPreviewGridTests(): void {
   deepEqual(rejectedResize.grid, crowded, "rejected landscape expansion leaves every card in place");
   deepEqual(rejectedResize.sizes, {}, "rejected landscape expansion leaves card sizes unchanged");
 
+  const gridWithWideCard = [1, 2, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const resizedAroundWideCard = resizeGridSlot(gridWithWideCard, { "2": 3 }, 1, 0, 11, 20, 5, true);
+  equal(resizedAroundWideCard.accepted, true, "landscape expansion relocates a displaced wide card");
+  deepEqual(
+    resizedAroundWideCard.grid,
+    [1, -1, -1, -1, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, 0, 2, -1, 0, 0, 0],
+    "a relocated wide card keeps its complete span",
+  );
+  deepEqual(resizedAroundWideCard.sizes, { "1": 11, "2": 3 }, "a relocated wide card keeps its size");
+
+  const noRoomForWideCard = gridWithWideCard.slice(0, 15);
+  const rejectedWideResize = resizeGridSlot(noRoomForWideCard, { "2": 3 }, 1, 0, 11, 15, 5, true);
+  equal(rejectedWideResize.accepted, false, "landscape expansion is rejected when a wide card cannot fit");
+  deepEqual(rejectedWideResize.grid, noRoomForWideCard, "rejected expansion preserves the wide card span");
+  deepEqual(rejectedWideResize.sizes, { "2": 3 }, "rejected expansion preserves the wide card size");
+
   const moved = moveSelectedGridEntries([1, 2, 3, 4, 0, 0], {}, [1, 2], 0, 3, 6, 3);
   equal(moved.accepted, true, "multi-selection move is accepted");
   deepEqual(moved.grid, [3, 4, 1, 2, 0, 0], "multi-selection keeps selection order after the target");

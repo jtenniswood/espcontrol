@@ -134,36 +134,39 @@ export function resizeGridSlot(
   const sizes = { ...sourceSizes };
   const currentSize = sizes[String(slot)] || 1;
 
-  for (const cell of coveredCells(pos, currentSize, maxSlots, gridCols, false)) {
-    if (grid[cell] === -1) grid[cell] = 0;
-  }
-  if (targetSize > 1 && !sizeFitsAt(pos, targetSize, maxSlots, gridCols)) {
+  if (!sizeFitsAt(pos, targetSize, maxSlots, gridCols)) {
     return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
   }
 
-  const requiredCells = coveredCells(pos, targetSize, maxSlots, gridCols, false);
-  for (const cell of requiredCells) {
-    const displaced = grid[cell] ?? 0;
-    if (!(displaced > 0 || displaced === -2)) continue;
-    if (displaced > 0 && !allowCardDisplacement) {
+  const targetCells = coveredCells(pos, targetSize, maxSlots, gridCols, true);
+  const targetCellSet = new Set(targetCells);
+  const displaced: Array<{ slot: number; pos: number; size: number; cells: number[] }> = [];
+  for (let anchor = 0; anchor < maxSlots; anchor += 1) {
+    const displacedSlot = sourceGrid[anchor] ?? 0;
+    if (!(displacedSlot > 0 || displacedSlot === -2) || displacedSlot === slot) continue;
+    const displacedSize = sizes[String(displacedSlot)] || 1;
+    const displacedCells = coveredCells(anchor, displacedSize, maxSlots, gridCols, true);
+    if (!displacedCells.some((cell) => targetCellSet.has(cell))) continue;
+    if (displacedSlot > 0 && !allowCardDisplacement) {
       return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
     }
-    grid[cell] = 0;
-    let destination = -1;
-    for (let offset = 1; offset <= maxSlots; offset += 1) {
-      const candidate = (cell + offset) % maxSlots;
-      if (grid[candidate] === 0 && requiredCells.indexOf(candidate) === -1) {
-        destination = candidate;
-        break;
-      }
-    }
+    displaced.push({ slot: displacedSlot, pos: anchor, size: displacedSize, cells: displacedCells });
+  }
+
+  for (const cell of coveredCells(pos, currentSize, maxSlots, gridCols, true)) grid[cell] = 0;
+  for (const item of displaced) {
+    for (const cell of item.cells) grid[cell] = 0;
+  }
+
+  placeSlotAt(grid, slot, pos, targetSize, gridCols);
+  for (const item of displaced) {
+    const destination = findPlacementCell(grid, item.pos + 1, item.size, maxSlots, gridCols);
     if (destination < 0) {
       return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
     }
-    grid[destination] = displaced;
+    placeSlotAt(grid, item.slot, destination, item.size, gridCols);
   }
 
-  for (const cell of requiredCells) grid[cell] = -1;
   if (targetSize === 1) delete sizes[String(slot)];
   else sizes[String(slot)] = targetSize;
   return { accepted: true, grid, sizes };
