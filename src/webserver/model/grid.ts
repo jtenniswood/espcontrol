@@ -139,32 +139,98 @@ export function applySpans(
   const entries = grid.slice(0, maxSlots);
   for (let i = 0; i < maxSlots; i += 1) grid[i] = 0;
 
-  const canPlace = (pos: number, size: number): boolean => {
-    if (grid[pos] !== 0 || !sizeFitsAt(pos, size, maxSlots, gridCols)) return false;
-    return coveredCells(pos, size, maxSlots, gridCols, false).every((cell) => grid[cell] === 0);
-  };
-  const findPlacement = (start: number, size: number): number => {
-    for (let offset = 0; offset < maxSlots; offset += 1) {
-      const candidate = (start + offset) % maxSlots;
-      if (canPlace(candidate, size)) return candidate;
-    }
-    return -1;
-  };
-
+  interface GridEntry {
+    readonly slot: number;
+    readonly originalPos: number;
+  }
+  const items: GridEntry[] = [];
+  const itemBySlot: Record<string, GridEntry> = {};
   for (let i = 0; i < maxSlots; i += 1) {
     const slot = entries[i] ?? 0;
     if (!(slot > 0 || slot === -2)) continue;
-    const slotKey = String(slot);
+    const item = { slot, originalPos: i };
+    items.push(item);
+    itemBySlot[String(slot)] = item;
+    grid[i] = slot;
+  }
+
+  const canPlaceIn = (targetGrid: readonly number[], pos: number, size: number): boolean => {
+    if (targetGrid[pos] !== 0 || !sizeFitsAt(pos, size, maxSlots, gridCols)) return false;
+    return coveredCells(pos, size, maxSlots, gridCols, false).every((cell) => targetGrid[cell] === 0);
+  };
+  const findPlacementIn = (targetGrid: readonly number[], start: number, size: number): number => {
+    for (let offset = 0; offset < maxSlots; offset += 1) {
+      const candidate = (start + offset) % maxSlots;
+      if (canPlaceIn(targetGrid, candidate, size)) return candidate;
+    }
+    return -1;
+  };
+  const processed: Record<string, boolean> = {};
+  const relocate = (item: GridEntry, start: number): void => {
+    const slotKey = String(item.slot);
     let size = sizes[slotKey] || 1;
-    let place = findPlacement(i, size);
+    let place = findPlacementIn(grid, start, size);
     if (place < 0 && size > 1) {
       size = 1;
       delete sizes[slotKey];
-      place = findPlacement(i, size);
+      place = findPlacementIn(grid, start, size);
     }
-    if (place < 0) continue;
-    grid[place] = slot;
+    if (place < 0) return;
+    grid[place] = item.slot;
     markSpannedCells(grid, place, size, maxSlots, gridCols);
+    processed[slotKey] = true;
+  };
+
+  for (const item of items) {
+    const slotKey = String(item.slot);
+    if (processed[slotKey]) continue;
+    const pos = grid.indexOf(item.slot);
+    if (pos < 0) continue;
+    const size = sizes[slotKey] || 1;
+    const spanCells = coveredCells(pos, size, maxSlots, gridCols, false);
+    if (!sizeFitsAt(pos, size, maxSlots, gridCols) || spanCells.some((cell) => grid[cell] === -1)) {
+      grid[pos] = 0;
+      relocate(item, pos);
+      continue;
+    }
+
+    const displaced: Array<{ item: GridEntry; pos: number }> = [];
+    for (const cell of spanCells) {
+      const displacedSlot = grid[cell] ?? 0;
+      if (!(displacedSlot > 0 || displacedSlot === -2)) continue;
+      const displacedItem = itemBySlot[String(displacedSlot)];
+      if (!displacedItem || displaced.some((entry) => entry.item.slot === displacedSlot)) continue;
+      displaced.push({ item: displacedItem, pos: cell });
+    }
+
+    const trialGrid = grid.slice();
+    for (const entry of displaced) {
+      trialGrid[entry.pos] = 0;
+    }
+    markSpannedCells(trialGrid, pos, size, maxSlots, gridCols);
+    const placements: GridEntry[] = [];
+    let allDisplacedFit = true;
+    for (const entry of displaced) {
+      const displacedSize = sizes[String(entry.item.slot)] || 1;
+      const destination = findPlacementIn(trialGrid, entry.pos + 1, displacedSize);
+      if (destination < 0) {
+        allDisplacedFit = false;
+        break;
+      }
+      trialGrid[destination] = entry.item.slot;
+      markSpannedCells(trialGrid, destination, displacedSize, maxSlots, gridCols);
+      placements.push(entry.item);
+    }
+    if (!allDisplacedFit) {
+      delete sizes[slotKey];
+      processed[slotKey] = true;
+      continue;
+    }
+    for (let cell = 0; cell < maxSlots; cell += 1) grid[cell] = trialGrid[cell] ?? 0;
+    processed[slotKey] = true;
+    for (const placement of placements) {
+      processed[String(placement.slot)] = true;
+    }
   }
 }
 
