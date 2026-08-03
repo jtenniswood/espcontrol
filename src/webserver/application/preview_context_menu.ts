@@ -80,44 +80,15 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         var curSz: any = c.sizes[slot] || 1;
         if (curSz === targetSz)
             return;
-        var oldCells: any = coveredCells(slotPos, curSz, c.maxSlots, false);
-        for (var oi: any = 0; oi < oldCells.length; oi++) {
-            if (c.grid[oldCells[oi]] === -1)
-                c.grid[oldCells[oi]] = 0;
-        }
-        if (targetSz > 1 && !sizeFitsAt(slotPos, targetSz, c.maxSlots)) {
-            delete c.sizes[slot];
+        var resized: any = PreviewGridFeature.resizeGridSlot(c.grid, c.sizes, slot, slotPos, targetSz, c.maxSlots, GRID_COLS, !c.isSub);
+        if (!resized.accepted)
             return;
-        }
-        var need: any = coveredCells(slotPos, targetSz, c.maxSlots, false);
-        for (var i: any = 0; i < need.length; i++) {
-            var p: any = need[i];
-            if (c.grid[p] > 0 || c.grid[p] === -2) {
-                if (c.isSub && c.grid[p] > 0)
-                    return;
-                var displaced: any = c.grid[p];
-                c.grid[p] = 0;
-                if (c.isSub) {
-                    for (var j: any = 0; j < c.maxSlots; j++) {
-                        if (c.grid[j] === 0 && need.indexOf(j) === -1) {
-                            c.grid[j] = displaced;
-                            break;
-                        }
-                    }
-                }
-                else {
-                    var fc: any = firstFreeCell(p + 1);
-                    if (fc >= 0)
-                        c.grid[fc] = displaced;
-                }
-            }
-        }
-        for (var i: any = 0; i < need.length; i++)
-            c.grid[need[i]] = -1;
-        if (targetSz === 1)
-            delete c.sizes[slot];
-        else
-            c.sizes[slot] = targetSz;
+        c.grid.splice(0, c.grid.length);
+        Array.prototype.push.apply(c.grid, resized.grid);
+        for (var sizeSlot in c.sizes)
+            delete c.sizes[sizeSlot];
+        for (var resizedSlot in resized.sizes)
+            c.sizes[resizedSlot] = resized.sizes[resizedSlot];
         if (c.isSub) {
             var sp: any = getSubpage(state.editingSubpage);
             sp.order = serializeSubpageGrid(sp);

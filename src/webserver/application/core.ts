@@ -131,10 +131,12 @@ export function installCore(): GlobalDescriptors {
                 var sp: any = state.subpages[homeSlot];
                 if (!sp || !sp.grid || !sp.grid.length)
                     continue;
-                normalizeGridSpansForLayout(sp.grid, sp.sizes, NUM_SLOTS, GRID_COLS, function (this: any) {
-                    sp.order = serializeSubpageGrid(sp);
+                var previousSubpageOrder: any = JSON.stringify(serializeSubpageGrid(sp));
+                normalizeGridSpansForLayout(sp.grid, sp.sizes, NUM_SLOTS, GRID_COLS);
+                sp.order = serializeSubpageGrid(sp);
+                if (JSON.stringify(sp.order) !== previousSubpageOrder) {
                     saveSubpageEntity(homeSlot);
-                });
+                }
             }
         }
     }

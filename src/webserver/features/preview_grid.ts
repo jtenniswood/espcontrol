@@ -16,6 +16,12 @@ export interface SelectedGridMove {
   readonly grid: number[];
 }
 
+export interface GridSlotResize {
+  readonly accepted: boolean;
+  readonly grid: number[];
+  readonly sizes: SlotSizeMap;
+}
+
 export function resolveSpanPosition(
   grid: readonly number[],
   sizes: SlotSizeMap,
@@ -111,6 +117,56 @@ export function placeOrderedGridEntries(
     placeSlotAt(grid, slot, place, targetSize, gridCols);
   }
   return grid;
+}
+
+export function resizeGridSlot(
+  sourceGrid: readonly number[],
+  sourceSizes: SlotSizeMap,
+  slot: number,
+  pos: number,
+  targetSize: number,
+  maxSlots: number,
+  gridCols: number,
+  allowCardDisplacement: boolean,
+): GridSlotResize {
+  const grid = sourceGrid.slice(0, maxSlots);
+  while (grid.length < maxSlots) grid.push(0);
+  const sizes = { ...sourceSizes };
+  const currentSize = sizes[String(slot)] || 1;
+
+  for (const cell of coveredCells(pos, currentSize, maxSlots, gridCols, false)) {
+    if (grid[cell] === -1) grid[cell] = 0;
+  }
+  if (targetSize > 1 && !sizeFitsAt(pos, targetSize, maxSlots, gridCols)) {
+    return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
+  }
+
+  const requiredCells = coveredCells(pos, targetSize, maxSlots, gridCols, false);
+  for (const cell of requiredCells) {
+    const displaced = grid[cell] ?? 0;
+    if (!(displaced > 0 || displaced === -2)) continue;
+    if (displaced > 0 && !allowCardDisplacement) {
+      return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
+    }
+    grid[cell] = 0;
+    let destination = -1;
+    for (let offset = 1; offset <= maxSlots; offset += 1) {
+      const candidate = (cell + offset) % maxSlots;
+      if (grid[candidate] === 0 && requiredCells.indexOf(candidate) === -1) {
+        destination = candidate;
+        break;
+      }
+    }
+    if (destination < 0) {
+      return { accepted: false, grid: sourceGrid.slice(), sizes: { ...sourceSizes } };
+    }
+    grid[destination] = displaced;
+  }
+
+  for (const cell of requiredCells) grid[cell] = -1;
+  if (targetSize === 1) delete sizes[String(slot)];
+  else sizes[String(slot)] = targetSize;
+  return { accepted: true, grid, sizes };
 }
 
 export function moveSelectedGridEntries(

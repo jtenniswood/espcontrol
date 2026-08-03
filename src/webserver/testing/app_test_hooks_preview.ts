@@ -85,6 +85,14 @@ export function installAppTestHooksPreview(): GlobalDescriptors {
                 });
                 return { order: normalizedOrder, persistedOrder: persistedOrder, sizes: parsed.sizes };
             },
+            normalizeSubpageOrderForLayoutChange: function (this: any, order?: any, maxSlots?: any, fromCols?: any, toCols?: any) {
+                var source: any = { order: order, buttons: [{}], sizes: {}, backLabel: "Back" };
+                var parsed: any = EspControlModel.buildSubpageGrid(source, maxSlots, fromCols);
+                var previousOrder: any = EspControlModel.serializeSubpageGrid(parsed.grid, parsed.sizes, source.backLabel);
+                normalizeGridSpansForLayout(parsed.grid, parsed.sizes, maxSlots, toCols);
+                var normalizedOrder: any = EspControlModel.serializeSubpageGrid(parsed.grid, parsed.sizes, source.backLabel);
+                return { changed: JSON.stringify(normalizedOrder) !== JSON.stringify(previousOrder), order: normalizedOrder };
+            },
         });
     }
     return {};

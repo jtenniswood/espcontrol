@@ -2,6 +2,7 @@ import {
   findDuplicatePlacement,
   moveSelectedGridEntries,
   placeOrderedGridEntries,
+  resizeGridSlot,
   resolveSpanPosition,
 } from "../../src/webserver/features/preview_grid";
 
@@ -35,6 +36,12 @@ export function runPreviewGridTests(): void {
   const placed = placeOrderedGridEntries([1, 2, 3], sizes, 10, 5);
   deepEqual(placed, [1, -1, 2, 3, 0, 0, 0, 0, 0, 0], "ordered placement reserves wide spans");
   equal(resolveSpanPosition(placed, sizes, 1, 10, 5), 0, "spanned cells resolve to their anchor");
+
+  const crowded = [1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const rejectedResize = resizeGridSlot(crowded, {}, 1, 0, 11, 15, 5, true);
+  equal(rejectedResize.accepted, false, "landscape expansion is rejected when displaced cards cannot all fit");
+  deepEqual(rejectedResize.grid, crowded, "rejected landscape expansion leaves every card in place");
+  deepEqual(rejectedResize.sizes, {}, "rejected landscape expansion leaves card sizes unchanged");
 
   const moved = moveSelectedGridEntries([1, 2, 3, 4, 0, 0], {}, [1, 2], 0, 3, 6, 3);
   equal(moved.accepted, true, "multi-selection move is accepted");
