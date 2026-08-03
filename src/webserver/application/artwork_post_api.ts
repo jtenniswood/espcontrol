@@ -26,25 +26,25 @@ export function installArtworkPostApiModule(): GlobalDescriptors {
         return entityPostUrls("switch", entityName("screen_saver_hide_cover_art_external_input"), entityObjectIds("screen_saver_hide_cover_art_external_input"), on ? "turn_on" : "turn_off");
     }
     function postCoverArtHideExternalInput(this: any, on?: any) {
-        return post(coverArtHideExternalInputPostUrls(on));
+        return postSwitchWithObjectIds(entityName("screen_saver_hide_cover_art_external_input"), entityObjectIds("screen_saver_hide_cover_art_external_input"), on);
     }
     function coverArtDelayPostUrls(this: any, value?: any) {
         return entityPostUrls("number", entityName("screen_saver_cover_art_delay"), entityObjectIds("screen_saver_cover_art_delay"), "set?value=" + encodeURIComponent(normalizeCoverArtDelay(value)));
     }
     function postCoverArtDelay(this: any, value?: any) {
-        return post(coverArtDelayPostUrls(value));
+        return postNumberWithObjectIds(entityName("screen_saver_cover_art_delay"), entityObjectIds("screen_saver_cover_art_delay"), normalizeCoverArtDelay(value));
     }
     function coverArtTrackOverlayDurationPostUrls(this: any, value?: any) {
         return entityPostUrls("number", entityName("screen_saver_track_overlay_duration"), entityObjectIds("screen_saver_track_overlay_duration"), "set?value=" + encodeURIComponent(value));
     }
     function postCoverArtTrackOverlayDuration(this: any, value?: any) {
-        return post(coverArtTrackOverlayDurationPostUrls(value));
+        return postNumberWithObjectIds(entityName("screen_saver_track_overlay_duration"), entityObjectIds("screen_saver_track_overlay_duration"), value);
     }
     function homeAssistantArtworkPortPostUrls(this: any, value?: any) {
         return entityPostUrls("number", entityName("home_assistant_artwork_port"), entityObjectIds("home_assistant_artwork_port"), "set?value=" + encodeURIComponent(value));
     }
     function postHomeAssistantArtworkPort(this: any, value?: any) {
-        return post(homeAssistantArtworkPortPostUrls(value));
+        return postNumberWithObjectIds(entityName("home_assistant_artwork_port"), entityObjectIds("home_assistant_artwork_port"), value);
     }
     function postHomeAssistantArtworkProtocol(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_protocol"), entityObjectIds("home_assistant_artwork_protocol"), normalizeHomeAssistantArtworkProtocol(value));

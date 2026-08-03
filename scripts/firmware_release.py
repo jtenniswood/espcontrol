@@ -32,6 +32,7 @@ DEVICE_CHIP_PATTERNS = (
     (re.compile(r"^\s+board:\s*esp32-s3(?:-|\b)", re.M), "ESP32-S3"),
 )
 RELEASE_ASSET_SUFFIXES = (".factory.bin", ".manifest.json", ".ota.bin")
+RECOVERY_ASSET_SUFFIXES = (".recovery.bin", ".recovery.manifest.json")
 
 
 class FirmwareReleaseError(RuntimeError):
@@ -201,6 +202,74 @@ def verify_files(
         assert_binary_version(factory, version)
 
 
+def verify_recovery_manifest(
+    manifest_path: Path,
+    slug: str,
+    version: str,
+) -> None:
+    manifest = load_manifest(manifest_path)
+    if manifest.get("name") != "Espcontrol":
+        raise FirmwareReleaseError(
+            f"{manifest_path} must retain the normal Espcontrol firmware identity"
+        )
+    if str(manifest.get("version", "")).strip() != version:
+        raise FirmwareReleaseError(f"{manifest_path} recovery version must be {version}")
+    if manifest.get("home_assistant_domain") != "esphome":
+        raise FirmwareReleaseError(f"{manifest_path} home_assistant_domain must be esphome")
+    if manifest.get("new_install_prompt_erase") is not True:
+        raise FirmwareReleaseError(
+            f"{manifest_path} must offer the erase choice for unrecognised firmware"
+        )
+    build = first_build(manifest, manifest_path)
+    if build.get("chipFamily") != "ESP32-P4":
+        raise FirmwareReleaseError(f"{manifest_path} recovery chipFamily must be ESP32-P4")
+    if expected_chip_family_for_slug(slug) != "ESP32-P4":
+        raise FirmwareReleaseError(f"{slug} does not support C6 recovery")
+    if "ota" in build:
+        raise FirmwareReleaseError(f"{manifest_path} recovery manifest must not expose OTA")
+    expected_path = f"{slug}.recovery.bin"
+    parts = build.get("parts")
+    if (
+        not isinstance(parts, list)
+        or len(parts) != 1
+        or not isinstance(parts[0], dict)
+        or parts[0].get("path") != expected_path
+        or parts[0].get("offset") != 0
+    ):
+        raise FirmwareReleaseError(
+            f"{manifest_path} must reference {expected_path} at offset 0"
+        )
+
+
+def verify_recovery_files(
+    slug: str,
+    version: str,
+    manifest: Path,
+    recovery: Path,
+    c6_firmware: Path | None = None,
+    normal_factory: Path | None = None,
+    normal_ota: Path | None = None,
+) -> None:
+    require_file(recovery, "C6 recovery firmware")
+    verify_recovery_manifest(manifest, slug, version)
+    assert_binary_version(recovery, version)
+    if c6_firmware is None:
+        return
+    require_file(c6_firmware, "ESP32-C6 firmware dependency")
+    payload = c6_firmware.read_bytes()
+    if payload not in recovery.read_bytes():
+        raise FirmwareReleaseError(
+            f"{recovery} does not contain the verified ESP32-C6 firmware payload"
+        )
+    for path in (normal_factory, normal_ota):
+        if path is not None:
+            require_file(path, "normal firmware")
+            if payload in path.read_bytes():
+                raise FirmwareReleaseError(
+                    f"{path} unexpectedly contains the recovery-only ESP32-C6 payload"
+                )
+
+
 def find_first(paths: list[Path]) -> Path | None:
     for path in paths:
         if path.is_file():
@@ -261,7 +330,12 @@ def manifest_version(path: Path) -> str:
     return version
 
 
-def verify_directory(base_dir: Path, slugs: list[str], version: str) -> None:
+def verify_directory(
+    base_dir: Path,
+    slugs: list[str],
+    version: str,
+    recovery_slugs: list[str] | None = None,
+) -> None:
     for slug in slugs:
         manifest, factory, ota = locate_release_files(base_dir, slug)
         verify_files(slug, version, manifest, factory, ota)
@@ -270,14 +344,31 @@ def verify_directory(base_dir: Path, slugs: list[str], version: str) -> None:
         if beta is not None:
             beta_manifest, beta_factory, beta_ota = beta
             verify_files(slug, manifest_version(beta_manifest), beta_manifest, beta_factory, beta_ota)
+    for slug in recovery_slugs or []:
+        verify_recovery_files(
+            slug,
+            version,
+            base_dir / f"{slug}.recovery.manifest.json",
+            base_dir / f"{slug}.recovery.bin",
+        )
 
 
-def expected_release_asset_names(slugs: list[str]) -> set[str]:
-    return {f"{slug}{suffix}" for slug in slugs for suffix in RELEASE_ASSET_SUFFIXES}
+def expected_release_asset_names(
+    slugs: list[str], recovery_slugs: list[str] | None = None
+) -> set[str]:
+    names = {f"{slug}{suffix}" for slug in slugs for suffix in RELEASE_ASSET_SUFFIXES}
+    names.update(
+        f"{slug}{suffix}"
+        for slug in recovery_slugs or []
+        for suffix in RECOVERY_ASSET_SUFFIXES
+    )
+    return names
 
 
-def verify_release_inventory(base_dir: Path, slugs: list[str]) -> list[Path]:
-    expected = expected_release_asset_names(slugs)
+def verify_release_inventory(
+    base_dir: Path, slugs: list[str], recovery_slugs: list[str] | None = None
+) -> list[Path]:
+    expected = expected_release_asset_names(slugs, recovery_slugs)
     files = sorted(path for path in base_dir.iterdir() if path.is_file()) if base_dir.is_dir() else []
     actual = {path.name for path in files}
     missing = sorted(expected - actual)
@@ -352,11 +443,12 @@ def publish_draft_release(
     version: str,
     repo: str,
     notes_file: Path,
+    recovery_slugs: list[str] | None = None,
     gh_runner=run_gh,
 ) -> None:
     require_file(notes_file, "release notes")
-    verify_directory(base_dir, slugs, version)
-    files = verify_release_inventory(base_dir, slugs)
+    verify_directory(base_dir, slugs, version, recovery_slugs)
+    files = verify_release_inventory(base_dir, slugs, recovery_slugs)
 
     release = load_release_from_github(repo, version, gh_runner)
     assert_draft_release(release, version)
@@ -484,18 +576,54 @@ def cmd_manifest(args: argparse.Namespace) -> None:
     out.write_text(json.dumps(data, indent=2) + "\n")
 
 
+def cmd_recovery_manifest(args: argparse.Namespace) -> None:
+    recovery = Path(args.recovery)
+    require_file(recovery, "C6 recovery firmware")
+    data = {
+        # Keep the normal product identity so ESP Web Tools treats an existing
+        # EspControl installation as an update rather than a different product.
+        "name": "Espcontrol",
+        "version": args.version,
+        "home_assistant_domain": "esphome",
+        "new_install_prompt_erase": True,
+        "builds": [
+            {
+                "chipFamily": "ESP32-P4",
+                "parts": [
+                    {"path": f"{args.slug}.recovery.bin", "offset": 0},
+                ],
+            },
+        ],
+    }
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, indent=2) + "\n")
+
+
 def cmd_verify_files(args: argparse.Namespace) -> None:
     verify_files(args.slug, args.version, Path(args.manifest), Path(args.factory), Path(args.ota))
 
 
+def cmd_verify_recovery(args: argparse.Namespace) -> None:
+    verify_recovery_files(
+        args.slug,
+        args.version,
+        Path(args.manifest),
+        Path(args.recovery),
+        Path(args.c6_firmware),
+        Path(args.normal_factory),
+        Path(args.normal_ota),
+    )
+
+
 def cmd_verify_directory(args: argparse.Namespace) -> None:
-    verify_directory(Path(args.dir), args.slugs, args.version)
+    verify_directory(Path(args.dir), args.slugs, args.version, args.recovery_slugs)
 
 
 def cmd_verify_bundle(args: argparse.Namespace) -> None:
     base_dir = Path(args.dir)
-    verify_directory(base_dir, args.slugs, args.version)
-    verify_release_inventory(base_dir, args.slugs)
+    verify_directory(base_dir, args.slugs, args.version, args.recovery_slugs)
+    verify_release_inventory(base_dir, args.slugs, args.recovery_slugs)
 
 
 def cmd_verify_draft(args: argparse.Namespace) -> None:
@@ -505,7 +633,12 @@ def cmd_verify_draft(args: argparse.Namespace) -> None:
 
 def cmd_publish_draft(args: argparse.Namespace) -> None:
     publish_draft_release(
-        Path(args.dir), args.slugs, args.version, args.repo, Path(args.notes)
+        Path(args.dir),
+        args.slugs,
+        args.version,
+        args.repo,
+        Path(args.notes),
+        args.recovery_slugs,
     )
 
 
@@ -531,6 +664,15 @@ def build_parser() -> argparse.ArgumentParser:
     manifest.add_argument("--out", required=True)
     manifest.set_defaults(func=cmd_manifest)
 
+    recovery_manifest = sub.add_parser(
+        "recovery-manifest", help="Generate a USB-only C6 recovery manifest"
+    )
+    recovery_manifest.add_argument("--slug", required=True)
+    recovery_manifest.add_argument("--version", required=True)
+    recovery_manifest.add_argument("--recovery", required=True)
+    recovery_manifest.add_argument("--out", required=True)
+    recovery_manifest.set_defaults(func=cmd_recovery_manifest)
+
     verify_files_cmd = sub.add_parser("verify-files", help="Verify one slug's firmware files")
     verify_files_cmd.add_argument("--slug", required=True)
     verify_files_cmd.add_argument("--version", required=True)
@@ -539,10 +681,23 @@ def build_parser() -> argparse.ArgumentParser:
     verify_files_cmd.add_argument("--ota", required=True)
     verify_files_cmd.set_defaults(func=cmd_verify_files)
 
+    verify_recovery_cmd = sub.add_parser(
+        "verify-recovery", help="Verify one P4 C6 recovery image and manifest"
+    )
+    verify_recovery_cmd.add_argument("--slug", required=True)
+    verify_recovery_cmd.add_argument("--version", required=True)
+    verify_recovery_cmd.add_argument("--manifest", required=True)
+    verify_recovery_cmd.add_argument("--recovery", required=True)
+    verify_recovery_cmd.add_argument("--c6-firmware", required=True)
+    verify_recovery_cmd.add_argument("--normal-factory", required=True)
+    verify_recovery_cmd.add_argument("--normal-ota", required=True)
+    verify_recovery_cmd.set_defaults(func=cmd_verify_recovery)
+
     verify_directory_cmd = sub.add_parser("verify-directory", help="Verify firmware files for multiple slugs")
     verify_directory_cmd.add_argument("--version", required=True)
     verify_directory_cmd.add_argument("--dir", required=True)
     verify_directory_cmd.add_argument("--slugs", nargs="+", required=True)
+    verify_directory_cmd.add_argument("--recovery-slugs", nargs="*", default=[])
     verify_directory_cmd.set_defaults(func=cmd_verify_directory)
 
     verify_bundle_cmd = sub.add_parser(
@@ -551,6 +706,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify_bundle_cmd.add_argument("--version", required=True)
     verify_bundle_cmd.add_argument("--dir", required=True)
     verify_bundle_cmd.add_argument("--slugs", nargs="+", required=True)
+    verify_bundle_cmd.add_argument("--recovery-slugs", nargs="*", default=[])
     verify_bundle_cmd.set_defaults(func=cmd_verify_bundle)
 
     verify_draft_cmd = sub.add_parser(
@@ -568,6 +724,7 @@ def build_parser() -> argparse.ArgumentParser:
     publish_draft_cmd.add_argument("--slugs", nargs="+", required=True)
     publish_draft_cmd.add_argument("--repo", required=True)
     publish_draft_cmd.add_argument("--notes", required=True)
+    publish_draft_cmd.add_argument("--recovery-slugs", nargs="*", default=[])
     publish_draft_cmd.set_defaults(func=cmd_publish_draft)
 
     verify_pages_cmd = sub.add_parser("verify-pages", help="Verify public GitHub Pages firmware")

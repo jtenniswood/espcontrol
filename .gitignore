@@ -11,6 +11,7 @@ docs/.vitepress/dist/
 .platformio/
 .platformio-run/
 .pio-core/
+.firmware-deps/
 .tmp-pr*/
 __pycache__/
 builds/.esphome/

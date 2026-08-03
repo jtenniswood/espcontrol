@@ -185,7 +185,9 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     coordinator_path = firmware_dir / "ha_read_coordinator.h"
     coordinator_text = coordinator_path.read_text(encoding="utf-8") if coordinator_path.exists() else ""
-    read_boundary_text = text + "\n" + coordinator_text
+    broker_path = firmware_dir / "ha_state_broker.h"
+    broker_text = broker_path.read_text(encoding="utf-8") if broker_path.exists() else ""
+    read_boundary_text = text + "\n" + coordinator_text + "\n" + broker_text
     errors: list[str] = []
 
     state_helper = STATE_HELPER_PATTERN.search(text)
@@ -224,24 +226,50 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: send Home Assistant actions only after state subscription is ready")
     elif "HA_ACTION_INTERNAL_FREE_MIN_BYTES" not in action_send_match.group("body"):
         errors.append(f"{rel}: defer Home Assistant actions when S3 internal heap is critically low")
-    if (
-        "ha_read_coordinator().get(" not in text
-        or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
-        or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
-    ):
-        errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
-    if "callback_depth_ != 0 || !state_connected()" not in coordinator_text:
-        errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
-    if (
-        "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
-        or "request.entity_id == entity_id" not in read_boundary_text
-        or "for (const auto &callback : *callback_refs)" not in read_boundary_text
-    ):
-        errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-    if "subscriptions_.push_back({callback_ref, scope})" not in coordinator_text:
-        errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
-    if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
-        errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
+    uses_broker = "ha_state_broker().get(" in text
+    if uses_broker:
+        if (
+            "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
+            or 'ha_internal_heap_available("Home Assistant state request"' not in text
+        ):
+            errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
+        if "deliver_cached_once()" not in broker_text or "dispatch_depth_ == 0" not in broker_text:
+            errors.append(f"{rel}: queue nested cached Home Assistant reads until the current callback returns")
+        if (
+            "ensure_channel(entity_id, attribute)" not in broker_text
+            or "channels_[channel].has_value" not in broker_text
+            or "channel.entity_id == entity_id" not in broker_text
+        ):
+            errors.append(f"{rel}: fan out duplicate Home Assistant reads through one cached channel")
+        if "ScopedStateSubscriptions" not in broker_text or "Bank pending_" not in broker_text:
+            errors.append(f"{rel}: track Home Assistant subscription leases for atomic generation cleanup")
+        if "release_matching(active_, replace_scopes_)" not in broker_text or "broker_.prune()" not in broker_text:
+            errors.append(f"{rel}: release retired Home Assistant subscription leases after generation commit")
+        if "std::array<Channel, MaxChannels>" not in broker_text or "std::array<Subscriber, MaxSubscribers>" not in broker_text:
+            errors.append(f"{rel}: keep Home Assistant broker storage fixed-capacity")
+    else:
+        if (
+            "ha_read_coordinator().get(" not in text
+            or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
+            or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
+        ):
+            errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
+        if (
+            "if (callback_depth_ != 0)" not in coordinator_text
+            or "return queue(entity_id, attribute" not in coordinator_text
+            or "return attach_get(entity_id" not in coordinator_text
+        ):
+            errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
+        if (
+            "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
+            or "request.entity_id == entity_id" not in read_boundary_text
+            or "for (auto &callback : request.callbacks)" not in read_boundary_text
+        ):
+            errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
+        if "subscriptions_.push_back({callback_ref, scope, false})" not in coordinator_text:
+            errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
+        if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
+            errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
 
     return errors
 
@@ -1347,6 +1375,35 @@ def firmware_media_sleep_prevention_subscription_errors(paths: tuple[Path, ...],
             text,
         ):
             errors.append(f"{rel}: do not drive media sleep prevention from the cover art media player")
+    return errors
+
+
+def firmware_phase3_live_rebind_errors(
+    firmware_dir: Path, core_infra_path: Path, root: Path
+) -> list[str]:
+    errors: list[str] = []
+    grid_path = firmware_dir / "button_grid_grid.h"
+    grid_text = grid_path.read_text(encoding="utf-8")
+    if "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_PHASE3);" not in grid_text:
+        errors.append(
+            f"{grid_path.relative_to(root)}: replace previous phase-3 Home Assistant leases before rebinding"
+        )
+
+    core_text = core_infra_path.read_text(encoding="utf-8")
+    apply_match = re.search(
+        r'(?ms)    name: "Apply Configuration".*?(?=\nselect:)', core_text
+    )
+    if not apply_match:
+        errors.append(f"{core_infra_path.relative_to(root)}: missing Apply Configuration action")
+        return errors
+    apply_body = apply_match.group(0)
+    refresh_index = apply_body.find("- script.execute: refresh_button_grid")
+    wait_index = apply_body.find("- script.wait: refresh_button_grid")
+    phase3_index = apply_body.find("grid_phase3(")
+    if not (0 <= refresh_index < wait_index < phase3_index):
+        errors.append(
+            f"{core_infra_path.relative_to(root)}: refresh phase-3 subscriptions after the live grid rebuild completes"
+        )
     return errors
 
 
@@ -2984,6 +3041,7 @@ def run_scan() -> int:
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
+    errors.extend(firmware_phase3_live_rebind_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))

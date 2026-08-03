@@ -28,4 +28,8 @@ text:
     on_value:
       then:
         - delay: 750ms
+        # Span changes alter the widget shape of media cards (for example,
+        # whether a now-playing card owns a progress slider). Request the same
+        # reconciled visual/runtime rebuild used by card configuration edits.
+        - lambda: 'id(config_apply_reconstruct) = true;'
         - script.execute: refresh_button_grid

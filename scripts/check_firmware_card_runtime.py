@@ -64,6 +64,7 @@ FAN_CONTROL_DRIVER_HEADER = "button_grid_fan_control_driver.h"
 CLIMATE_CONTROL_DRIVER_HEADER = "button_grid_climate_control_driver.h"
 ALARM_DRIVER_HEADER = "button_grid_alarm_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
+SLIDERS_HEADER = "button_grid_sliders.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -159,6 +160,66 @@ def check_root(root: Path) -> list[str]:
     if grid_header.exists():
         text = grid_header.read_text(encoding="utf-8")
         compact_grid = re.sub(r"\s+", " ", text)
+        bounded_ownership_guards = (
+            "class GridRuntimeAllocationRegistry",
+            "GRID_RUNTIME_ALLOCATION_CAPACITY",
+            "static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) * 8",
+            "heap_caps_calloc(",
+            "MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT",
+            "Runtime ownership pool exhausted",
+        )
+        for guard in bounded_ownership_guards:
+            if guard not in text:
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: card runtime ownership is missing bounded-pool guard {guard}"
+                )
+        if re.search(r"std::vector\s*<\s*GridRuntimeAllocation\s*>", text):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: card runtime ownership must not grow a vector during live edits"
+            )
+        if "reconstruct_main_cards" in text:
+            live_rebuild_guards = (
+                "reconstruct_main_cards ? release_runtime_slot : nullptr",
+                "grid_prepare_media_runtime_for_visual_reset(slots[i].btn);",
+                "control_context = grid_media_control_runtime_for_owner(slots[i].btn);",
+                "slots[i].btn, visual_context, slider_context, control_context",
+                "espcontrol::cards::changed_domains(",
+                "espcontrol::cards::requires_runtime_release(mutation)",
+                "main_card_snapshots[i] = current_card_nodes[i]",
+                "reconstruct_main_cards && reconstruct_slot[idx - 1]",
+                "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
+                "media_ctx->cover_art && media_ctx->cover_art->widget",
+                "media_cover_art_refresh_geometry(media_ctx);",
+            )
+            for guard in live_rebuild_guards:
+                if guard not in text:
+                    failures.append(
+                        f"components/espcontrol/{GRID_HEADER}: live card rebuild is missing deletion cleanup guard {guard}"
+                    )
+        media_driver_header = root / "components" / "espcontrol" / "button_grid_media_driver.h"
+        if media_driver_header.exists():
+            media_driver_text = media_driver_header.read_text(encoding="utf-8")
+            create_control = function_body(media_driver_text, "media_driver_create_control")
+            if create_control is None or (
+                "context.surface == Surface::MAIN_GRID" not in create_control
+                or "grid_media_control_runtime_for_owner(slot.btn)" not in create_control
+            ):
+                failures.append(
+                    "components/espcontrol/button_grid_media_driver.h: reuse unchanged main-grid media controls during live refresh"
+                )
+            bind_cover_art = function_body(media_driver_text, "media_driver_bind_cover_art_route")
+            if bind_cover_art is None or any(
+                guard not in bind_cover_art
+                for guard in (
+                    "const bool route_config_changed",
+                    "if (route_config_changed) now_playing->active_entity.clear();",
+                    "if (now_playing->progress_slider)",
+                    "if (control)",
+                )
+            ):
+                failures.append(
+                    "components/espcontrol/button_grid_media_driver.h: preserve and rebind unchanged cover-art routes during live refresh"
+                )
         visual_setup = function_body(text, "setup_card_visual")
         if visual_setup is not None:
             clickable_reset = "lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);"
@@ -335,6 +396,11 @@ def check_root(root: Path) -> list[str]:
             )
         image_reset_pos = text.find("image_driver_reset_pool(cfg);")
         subpage_clear_pos = text.find("navigation_clear_subpages();")
+        return_home_pos = text.find("navigation_return_home(main_page_obj);")
+        if return_home_pos < 0 or return_home_pos > subpage_clear_pos:
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: return home before deleting rebuilt subpages"
+            )
         if image_reset_pos < 0 or subpage_clear_pos < 0 or image_reset_pos > subpage_clear_pos:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: reset image-card contexts before deleting subpage screens"
@@ -393,6 +459,78 @@ def check_root(root: Path) -> list[str]:
                     failures.append(
                         f"components/espcontrol/{ACTION_HEADER}: broad legacy action fallback must remain retired ({retired_fallback})"
                     )
+    sliders_header = root / "components" / "espcontrol" / SLIDERS_HEADER
+    if sliders_header.exists():
+        text = sliders_header.read_text(encoding="utf-8")
+        pointer_body = function_body(text, "slider_apply_vertical_pointer_value") or ""
+        pointer_required = (
+            "lv_indev_active()",
+            "LV_INDEV_TYPE_POINTER",
+            "lv_indev_get_point",
+            "lv_obj_get_coords",
+            "vertical_pointer_percent",
+            "LV_EVENT_VALUE_CHANGED",
+        )
+        if any(needle not in pointer_body for needle in pointer_required):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: map direct vertical slider pointer input through the safe endpoint track"
+            )
+
+        setup_body = function_body(text, "setup_slider_visual") or ""
+        if (
+            "LV_EVENT_PRESSED" not in setup_body
+            or "LV_EVENT_PRESSING" not in setup_body
+            or setup_body.count("slider_apply_vertical_pointer_value") < 3
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: apply direct vertical slider endpoint mapping on press, drag, and release"
+            )
+        final_map = setup_body.rfind("slider_apply_vertical_pointer_value")
+        send_action = setup_body.rfind("send_slider_action")
+        if final_map < 0 or send_action < 0 or final_map > send_action:
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: map the final direct slider value before sending its Home Assistant action"
+            )
+
+        light_temp_body = function_body(text, "setup_light_temp_visual") or ""
+        if (
+            "LV_EVENT_PRESSED" not in light_temp_body
+            or "LV_EVENT_PRESSING" not in light_temp_body
+            or "LV_EVENT_RELEASED" not in light_temp_body
+            or light_temp_body.count("slider_apply_vertical_pointer_value") < 3
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: apply light-temperature endpoint mapping on press, drag, and release"
+            )
+        light_temp_release_event = light_temp_body.rfind("LV_EVENT_RELEASED")
+        light_temp_release_callback = light_temp_body.rfind(
+            "lv_obj_add_event_cb", 0, light_temp_release_event
+        )
+        light_temp_final_map = light_temp_body.rfind(
+            "slider_apply_vertical_pointer_value", 0, light_temp_release_event
+        )
+        light_temp_send_action = light_temp_body.rfind(
+            "send_light_temp_action", 0, light_temp_release_event
+        )
+        if (
+            light_temp_release_callback < 0
+            or light_temp_final_map < light_temp_release_callback
+            or light_temp_send_action < 0
+            or light_temp_final_map > light_temp_send_action
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: map the final light-temperature value before sending its Home Assistant action"
+            )
+
+        if (
+            "lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN)" not in text
+            or "lv_obj_set_style_pad_bottom(slider, 0, LV_PART_MAIN)" not in text
+            or "lv_obj_set_style_pad_top(slider, edge_inset" in text
+            or "lv_obj_set_style_pad_bottom(slider, edge_inset" in text
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: keep LVGL's direct slider range unpadded"
+            )
     image_header = root / "components" / "espcontrol" / IMAGE_HEADER
     if image_header.exists():
         text = image_header.read_text(encoding="utf-8")
@@ -928,7 +1066,87 @@ def check_root(root: Path) -> list[str]:
 
 
 def run_self_test() -> None:
+    valid_slider_runtime = """
+inline bool slider_apply_vertical_pointer_value() {
+  lv_indev_active();
+  LV_INDEV_TYPE_POINTER;
+  lv_indev_get_point();
+  lv_obj_get_coords();
+  vertical_pointer_percent();
+  LV_EVENT_VALUE_CHANGED;
+}
+inline void slider_fit_to_button() {
+  lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(slider, 0, LV_PART_MAIN);
+}
+inline void setup_slider_visual() {
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSED;
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSING;
+  slider_apply_vertical_pointer_value();
+  send_slider_action();
+}
+inline void setup_light_temp_visual() {
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSED;
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSING;
+  lv_obj_add_event_cb();
+  slider_apply_vertical_pointer_value();
+  send_light_temp_action();
+  LV_EVENT_RELEASED;
+}
+"""
     cases: tuple[tuple[dict[str, str], tuple[str, ...]], ...] = (
+        (
+            {"button_grid_sliders.h": valid_slider_runtime},
+            (),
+        ),
+        (
+            {"button_grid_sliders.h": valid_slider_runtime.replace("lv_indev_get_point();", "")},
+            ("map direct vertical slider pointer input",),
+        ),
+        (
+            {"button_grid_sliders.h": valid_slider_runtime.replace("LV_EVENT_PRESSING;", "")},
+            ("apply direct vertical slider endpoint mapping",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "inline void setup_light_temp_visual() {\n  slider_apply_vertical_pointer_value();\n  LV_EVENT_PRESSED;\n",
+                    "inline void setup_light_temp_visual() {\n  slider_apply_vertical_pointer_value();\n",
+                )
+            },
+            ("apply light-temperature endpoint mapping",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "  slider_apply_vertical_pointer_value();\n  send_light_temp_action();",
+                    "  send_light_temp_action();\n  slider_apply_vertical_pointer_value();",
+                )
+            },
+            ("map the final light-temperature value",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "  lv_obj_add_event_cb();\n  slider_apply_vertical_pointer_value();\n  send_light_temp_action();",
+                    "  slider_apply_vertical_pointer_value();\n  lv_obj_add_event_cb();\n  send_light_temp_action();",
+                )
+            },
+            ("map the final light-temperature value",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN);",
+                    "lv_obj_set_style_pad_top(slider, edge_inset, LV_PART_MAIN);",
+                )
+            },
+            ("keep LVGL's direct slider range unpadded",),
+        ),
         (
             {"button_grid_actions.h": "return card_contract_media_mode_valid(mode);\n"},
             ("access generated card contract through button_grid_card_runtime.h",),

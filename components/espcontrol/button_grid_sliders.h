@@ -1,5 +1,6 @@
 #pragma once
 
+#include "button_grid_slider_geometry.h"
 #include "media_volume_capability.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -1209,25 +1210,16 @@ inline ControlModalLayout media_volume_step_button_layout(const ControlModalLayo
   return controls_layout;
 }
 
-// Move vertical card-slider endpoints away from the screen bezel without
-// shrinking the slider's touch area or its separate full-card fill overlay.
-inline lv_coord_t slider_vertical_edge_inset(lv_coord_t height) {
-  if (height <= 0) return 0;
-
-  lv_coord_t inset = (lv_coord_t)(((int32_t)height * 8 + 50) / 100);
-  if (inset < 8) inset = 8;
-  if (inset > 24) inset = 24;
-
-  lv_coord_t small_slider_limit = height / 4;
-  if (inset > small_slider_limit) inset = small_slider_limit;
-  return inset;
-}
-
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
   if (!slider || !btn) return;
   lv_coord_t bw = lv_obj_get_width(btn);
   lv_coord_t bh = lv_obj_get_height(btn);
   if (bw <= 0 || bh <= 0) return;
+
+  // Keep LVGL's native range equal to the full object. Vertical endpoint
+  // reachability is handled by pointer mapping, not by shrinking the range.
+  lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(slider, 0, LV_PART_MAIN);
 
   if (horizontal) {
     lv_coord_t h = bh >= bw ? bw - 1 : bh;
@@ -1237,9 +1229,6 @@ inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizonta
     lv_coord_t w = bw >= bh ? bh - 1 : bw;
     if (w < 1) w = 1;
     lv_obj_set_size(slider, w, bh);
-    lv_coord_t edge_inset = slider_vertical_edge_inset(bh);
-    lv_obj_set_style_pad_top(slider, edge_inset, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(slider, edge_inset, LV_PART_MAIN);
   }
   lv_obj_align(slider, LV_ALIGN_CENTER, 0, 0);
 }
@@ -1363,6 +1352,30 @@ inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
     slider_refresh_geometry(sl);
   }, LV_EVENT_SIZE_CHANGED, slider);
   lv_timer_create(slider_deferred_geometry_refresh_cb, 1, slider);
+}
+
+inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
+  if (!slider) return false;
+  SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
+  if (!ctx || ctx->horizontal || !ctx->interactive) return false;
+
+  lv_indev_t *indev = lv_indev_active();
+  if (!indev || lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER) return false;
+
+  lv_point_t point;
+  lv_indev_get_point(indev, &point);
+  lv_area_t slider_area;
+  lv_obj_get_coords(slider, &slider_area);
+
+  int percent = 0;
+  if (!espcontrol::slider_geometry::vertical_pointer_percent(
+        point.y, slider_area.y1, slider_area.y2, percent)) {
+    return false;
+  }
+  if (lv_slider_get_value(slider) == percent) return true;
+  lv_slider_set_value(slider, percent, LV_ANIM_OFF);
+  lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, nullptr);
+  return true;
 }
 
 // Create an invisible LVGL slider with a colored fill overlay inside a button
@@ -2609,6 +2622,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->cover_tilt = p.type == "cover" && cover_tilt_mode(p.sensor);
   ctx->inverted = is_cover_entity(p.entity);
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
+  ctx->interactive = interactive;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
   if (!interactive) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
@@ -2626,10 +2640,21 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   if (interactive) {
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      slider_apply_vertical_pointer_value(sl);
+    }, LV_EVENT_PRESSED, nullptr);
+
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      slider_apply_vertical_pointer_value(sl);
+    }, LV_EVENT_PRESSING, nullptr);
+
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       if (!sl) return;
       SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
       if (c && !c->entity_id.empty()) {
         if (!c->available) return;
+        slider_apply_vertical_pointer_value(sl);
         int val = lv_slider_get_value(sl);
         send_slider_action(c->entity_id, val, c->cover_tilt);
       }
@@ -2911,6 +2936,16 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
 
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    slider_apply_vertical_pointer_value(sl);
+  }, LV_EVENT_PRESSED, nullptr);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    slider_apply_vertical_pointer_value(sl);
+  }, LV_EVENT_PRESSING, nullptr);
+
   if (kcolor && fill) {
     int mid_k = min_k + (max_k - min_k) / 2;
     lv_obj_set_style_bg_color(fill, kelvin_to_fill_color(mid_k, min_k, max_k), LV_PART_MAIN);
@@ -2918,6 +2953,7 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    if (!sl) return;
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
     if (!c) return;
     int val = lv_slider_get_value(sl);
@@ -2938,6 +2974,8 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    if (!sl) return;
+    slider_apply_vertical_pointer_value(sl);
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
     if (c) {
       c->light_temp_dragging = false;

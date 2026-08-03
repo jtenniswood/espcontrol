@@ -167,6 +167,14 @@ jobs:
               if [ "${HAVE_CURRENT}" = false ]; then
                 cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
                 download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
+                RECOVERY_MANIFEST="firmware/${SLUG}/recovery/manifest.json"
+                if download_asset "${RELEASE_JSON}" "${SLUG}.recovery.manifest.json" "${RECOVERY_MANIFEST}"; then
+                  if ! download_asset "${RELEASE_JSON}" "${SLUG}.recovery.bin" \
+                    "firmware/${SLUG}/recovery/${SLUG}.recovery.bin"; then
+                    echo "::error::${SLUG} recovery manifest exists but its recovery image is missing"
+                    exit 1
+                  fi
+                fi
                 HAVE_CURRENT=true
               fi
 

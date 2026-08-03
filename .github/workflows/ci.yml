@@ -165,6 +165,17 @@ jobs:
           echo "${CMAKE_VENV}/bin" >> "${GITHUB_PATH}"
           "${CMAKE_VENV}/bin/cmake" --version
 
+      - name: Check MIPI RGB models against pinned ESPHome
+        shell: bash
+        run: |
+          source .github/esphome.env
+          MODEL_CHECK_VENV="${RUNNER_TEMP}/espcontrol-esphome-model-check"
+          python3 -m venv "${MODEL_CHECK_VENV}"
+          "${MODEL_CHECK_VENV}/bin/python" -m pip install \
+            --disable-pip-version-check \
+            "esphome==${ESPHOME_VERSION}"
+          "${MODEL_CHECK_VENV}/bin/python" scripts/check_mipi_rgb_models.py
+
       - name: Install dependencies
         run: |
           NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"

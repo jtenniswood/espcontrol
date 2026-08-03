@@ -1,10 +1,8 @@
-from esphome.components.mipi import DriverChip
-from esphome.const import CONF_MIRROR_X, CONF_MIRROR_Y
+from . import RgbDriverChip
 
 # fmt: off
-sunton = DriverChip(
+sunton = RgbDriverChip(
     "ESP32-8048S070",
-    transforms={CONF_MIRROR_X, CONF_MIRROR_Y},
     initsequence=(),
     width=800,
     height=480,
@@ -28,7 +26,6 @@ sunton = DriverChip(
 
 sunton.extend(
     "ESP32-8048S050",
-    transforms={CONF_MIRROR_X, CONF_MIRROR_Y},
     initsequence=(),
     width=800,
     height=480,

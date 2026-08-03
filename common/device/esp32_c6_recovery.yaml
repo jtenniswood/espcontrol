@@ -1,0 +1,16 @@
+# Offline recovery is intentionally separate from normal factory and OTA builds.
+# The release workflow prepares and checksum-verifies this dependency.
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [c6_recovery]
+    refresh: 1s
+
+c6_recovery:
+  id: c6_offline_recovery
+  version: "2.12.9"
+  path: "../.firmware-deps/esp32-c6/2.12.9/network_adapter_esp32c6.bin"
+  sha256: "9d8cec9dcca632e9ded31de555a5b49c70316d30b87ae06bd933fd35a5a11513"

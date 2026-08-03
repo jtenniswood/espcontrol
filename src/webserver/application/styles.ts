@@ -469,14 +469,6 @@ export function installStylesModule(): GlobalDescriptors {
         "outline:none;box-sizing:border-box;transition:border-color .25s,box-shadow .25s}" +
         ".sp-number:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}" +
         ".sp-number-unit{font-size:.85rem;color:var(--text2)}" +
-        ".sp-apply-bar{padding:var(--gap);text-align:center}" +
-        ".sp-apply-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--action-r);" +
-        "padding:12px 28px;font-size:.875rem;font-weight:600;cursor:pointer;" +
-        "font-family:inherit;transition:background .25s,opacity .25s,box-shadow .25s}" +
-        ".sp-apply-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-2)}" +
-        ".sp-apply-btn:active{opacity:.85}" +
-        ".sp-apply-btn:disabled{opacity:.4;cursor:not-allowed}" +
-        ".sp-apply-note{font-size:.75rem;color:var(--text3);margin-top:8px}" +
         ".sp-empty{text-align:center;padding:24px;color:var(--text3);font-size:.85rem}" +
         ".sp-ctx-menu{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border);" +
         "border-radius:var(--radius);padding:4px 0;min-width:160px;box-shadow:var(--shadow-3);" +
@@ -563,7 +555,6 @@ export function installStylesModule(): GlobalDescriptors {
         ".card-body{padding-top:14px}" +
         ".sp-config{padding:var(--gap)}" +
         "#sp-settings .sp-config{padding-bottom:6px}" +
-        "#sp-settings .sp-apply-bar{padding-top:6px;padding-bottom:max(var(--gap),env(safe-area-inset-bottom))}" +
         "}" +
         "@media(max-width:480px){" +
         ":root{--gap:10px}" +

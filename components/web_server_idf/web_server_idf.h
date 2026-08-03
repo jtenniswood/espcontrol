@@ -6,6 +6,8 @@
 #include "esphome/core/string_ref.h"
 #include <esp_http_server.h>
 
+#include "event_stream_policy.h"
+
 #include <atomic>
 #include <functional>
 #include <list>
@@ -269,6 +271,11 @@ class AsyncWebHandler {
 class AsyncEventSource;
 class AsyncEventSourceResponse;
 
+inline AsyncEventSource *&global_async_event_source() {
+  static AsyncEventSource *ptr = nullptr;
+  return ptr;
+}
+
 using message_generator_t = json::SerializationBuffer<>(esphome::web_server::WebServer *, void *);
 
 /*
@@ -302,6 +309,9 @@ class AsyncEventSourceResponse {
  public:
   bool try_send_nodefer(const char *message, size_t message_len, const char *event = nullptr, uint32_t id = 0,
                         uint32_t reconnect = 0);
+  bool queue_latest_nodefer(const char *message, size_t message_len,
+                            const char *event = nullptr, uint32_t id = 0,
+                            uint32_t reconnect = 0);
   void deferrable_send_state(void *source, const char *event_type, message_generator_t *message_generator);
   void loop();
 
@@ -309,20 +319,26 @@ class AsyncEventSourceResponse {
   AsyncEventSourceResponse(const AsyncWebServerRequest *request, esphome::web_server_idf::AsyncEventSource *server,
                            esphome::web_server::WebServer *ws);
 
-  void deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
+  bool deq_push_back_with_dedup_(void *source, message_generator_t *message_generator);
   void process_deferred_queue_();
   void process_buffer_();
+  void process_latest_event_();
+  bool can_grow_event_storage_(size_t allocation_bytes, const char *stage);
+  void request_stream_close_(const char *reason);
 
   static void destroy(void *p);
   AsyncEventSource *server_;
   httpd_handle_t hd_{};
   std::atomic<int> fd_{};
+  std::atomic<bool> close_pending_{false};
   std::vector<DeferredEvent> deferred_queue_;
   esphome::web_server::WebServer *web_server_;
   esphome::web_server::ListEntitiesIterator entities_iterator_;
   std::string event_buffer_{""};
+  EventStreamLatestEvent<64, 48> latest_event_;
   size_t event_bytes_sent_;
   uint16_t consecutive_send_failures_{0};
+  uint32_t last_low_heap_warning_{0};
   static constexpr uint16_t MAX_CONSECUTIVE_SEND_FAILURES = 2500;  // ~20 seconds at 125Hz loop rate
 };
 
@@ -333,7 +349,10 @@ class AsyncEventSource : public AsyncWebHandler {
   using connect_handler_t = std::function<void(AsyncEventSourceClient *)>;
 
  public:
-  AsyncEventSource(std::string url, esphome::web_server::WebServer *ws) : url_(std::move(url)), web_server_(ws) {}
+  AsyncEventSource(std::string url, esphome::web_server::WebServer *ws) : url_(std::move(url)), web_server_(ws) {
+    if (this->url_ == "/events")
+      global_async_event_source() = this;
+  }
   ~AsyncEventSource() override;
 
   // NOLINTNEXTLINE(readability-identifier-naming)
@@ -350,6 +369,9 @@ class AsyncEventSource : public AsyncWebHandler {
 
   void try_send_nodefer(const char *message, size_t message_len, const char *event = nullptr, uint32_t id = 0,
                         uint32_t reconnect = 0);
+  bool queue_latest_nodefer(const char *message, size_t message_len,
+                            const char *event = nullptr, uint32_t id = 0,
+                            uint32_t reconnect = 0);
   void deferrable_send_state(void *source, const char *event_type, message_generator_t *message_generator);
   /// Returns true if there are sessions remaining (including pending cleanup).
   bool loop();

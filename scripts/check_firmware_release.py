@@ -5,24 +5,29 @@ from __future__ import annotations
 
 from contextlib import redirect_stderr
 from functools import partial
+import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
 from pathlib import Path
 import re
+import subprocess
 from tempfile import TemporaryDirectory
 from threading import Thread
 
 import firmware_release
+import prepare_c6_firmware
 
 
 SLUG = "guition-esp32-s3-4848s040"
+RECOVERY_SLUG = "guition-esp32-p4-jc4880p443"
 VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
 PROJECT_NAME = "jtenniswood.espcontrol"
 ESPHOME_ENV = Path(__file__).resolve().parents[1] / ".github" / "esphome.env"
 RELEASE_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "release.yml"
 PAGES_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "pages.yml"
+ROOT = Path(__file__).resolve().parents[1]
 RELEASE_SKILL = (
     Path(__file__).resolve().parents[1]
     / ".agents"
@@ -152,6 +157,8 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "scripts/firmware_release.py verify-draft" in workflow
     assert "scripts/firmware_release.py verify-bundle" in workflow
     assert "scripts/firmware_release.py publish-draft" in workflow
+    assert "scripts/firmware_release.py verify-recovery" in workflow
+    assert str(prepare_c6_firmware.C6_RELATIVE_PATH) in workflow
     assert "path: dist/firmware/" in workflow, "publishable firmware must use the dist boundary"
 
 
@@ -178,13 +185,174 @@ def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> 
     run_ok([
         "manifest",
         "--slug", slug,
-        "--chip", CHIP,
+        "--chip", "ESP32-P4" if slug == RECOVERY_SLUG else CHIP,
         "--version", version,
         "--factory", str(factory),
         "--ota", str(ota),
         "--out", str(manifest),
     ])
     return manifest, factory, ota
+
+
+def make_recovery_files(
+    base: Path, slug: str = RECOVERY_SLUG, version: str = VERSION
+) -> tuple[Path, Path, Path, Path, Path]:
+    normal_manifest, normal_factory, normal_ota = make_release_files(base, slug, version)
+    recovery = base / f"{slug}.recovery.bin"
+    recovery_manifest = base / f"{slug}.recovery.manifest.json"
+    c6_firmware = base / ".build-dependencies" / "network_adapter_esp32c6.bin"
+    c6_firmware.parent.mkdir()
+    c6_firmware.write_bytes(b"verified-c6-payload")
+    write_release_image(recovery, version)
+    with recovery.open("ab") as handle:
+        handle.write(c6_firmware.read_bytes())
+    run_ok([
+        "recovery-manifest",
+        "--slug", slug,
+        "--version", version,
+        "--recovery", str(recovery),
+        "--out", str(recovery_manifest),
+    ])
+    return recovery_manifest, recovery, c6_firmware, normal_factory, normal_ota
+
+
+def test_recovery_manifest_and_payload_verification() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        recovery_manifest, recovery, c6, normal_factory, normal_ota = make_recovery_files(base)
+        run_ok([
+            "verify-recovery",
+            "--slug", RECOVERY_SLUG,
+            "--version", VERSION,
+            "--manifest", str(recovery_manifest),
+            "--recovery", str(recovery),
+            "--c6-firmware", str(c6),
+            "--normal-factory", str(normal_factory),
+            "--normal-ota", str(normal_ota),
+        ])
+        run_ok([
+            "verify-bundle",
+            "--version", VERSION,
+            "--dir", str(base),
+            "--slugs", RECOVERY_SLUG,
+            "--recovery-slugs", RECOVERY_SLUG,
+        ])
+
+        with normal_factory.open("ab") as handle:
+            handle.write(c6.read_bytes())
+        run_fails([
+            "verify-recovery",
+            "--slug", RECOVERY_SLUG,
+            "--version", VERSION,
+            "--manifest", str(recovery_manifest),
+            "--recovery", str(recovery),
+            "--c6-firmware", str(c6),
+            "--normal-factory", str(normal_factory),
+            "--normal-ota", str(normal_ota),
+        ])
+
+
+def test_c6_dependency_preparation_is_verified_and_atomic() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        source = base / "source.bin"
+        output = base / "cache" / "firmware.bin"
+        payload = b"test-c6-firmware"
+        source.write_bytes(payload)
+        original_hash = prepare_c6_firmware.C6_SHA256
+        prepare_c6_firmware.C6_SHA256 = hashlib.sha256(payload).hexdigest()
+        try:
+            prepare_c6_firmware.prepare(output, source.as_uri())
+            assert output.read_bytes() == payload
+
+            source.write_bytes(b"different-source")
+            prepare_c6_firmware.prepare(output, source.as_uri())
+            assert output.read_bytes() == payload, "verified cache should be reused"
+
+            output.write_bytes(b"corrupt-cache")
+            try:
+                prepare_c6_firmware.prepare(output, source.as_uri())
+            except prepare_c6_firmware.C6FirmwareError:
+                pass
+            else:
+                raise AssertionError("checksum mismatch unexpectedly passed")
+            assert not output.exists(), "invalid dependency should not remain cached"
+            assert not list(output.parent.glob("*.tmp")), "temporary downloads were not cleaned"
+        finally:
+            prepare_c6_firmware.C6_SHA256 = original_hash
+
+
+def test_recovery_sources_and_documentation_stay_complete() -> None:
+    recovery_yaml = (ROOT / "common/device/esp32_c6_recovery.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert f'version: "{prepare_c6_firmware.C6_VERSION}"' in recovery_yaml
+    assert f'sha256: "{prepare_c6_firmware.C6_SHA256}"' in recovery_yaml
+    assert str(prepare_c6_firmware.C6_RELATIVE_PATH).replace(
+        ".firmware-deps/", "../.firmware-deps/"
+    ) in recovery_yaml
+    recovery_source = (ROOT / "components/c6_recovery/c6_recovery.cpp").read_text(
+        encoding="utf-8"
+    )
+    recovery_header = (ROOT / "components/c6_recovery/c6_recovery.h").read_text(
+        encoding="utf-8"
+    )
+    assert "esp_hosted_connect_to_slave()" in recovery_source
+    assert "setup_priority::WIFI + 1.0f" in recovery_header
+    assert "current_version > target_version" in recovery_source
+    assert "current_version < target_version" in recovery_source
+    online_updater = (
+        ROOT / "common/device/esp32_c6_firmware_update.yaml"
+    ).read_text(encoding="utf-8")
+    assert "platform: esp32_hosted" in online_updater
+    assert "type: http" in online_updater
+    selector = (
+        ROOT / "docs/.vitepress/theme/components/C6RecoverySelector.vue"
+    ).read_text(encoding="utf-8")
+    assert "devices.find((device) => device.slug === requested)" in selector
+    assert "/recovery/manifest.json" in selector
+    assert "Chrome or Edge" in selector
+    assert "exact panel model and revision" in selector
+    assert "Repair C6 and reinstall EspControl" in selector
+
+    p4_slugs = [
+        entry["slug"]
+        for entry in json.loads(
+            subprocess.run(
+                ["python3", "scripts/device_matrix.py", "release"],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+        )["include"]
+        if entry["recovery"]
+    ]
+    for slug in p4_slugs:
+        wrapper = ROOT / "builds" / f"{slug}.recovery.yaml"
+        assert wrapper.is_file(), f"{slug}: recovery build wrapper is missing"
+        assert "esp32_c6_recovery.yaml" in wrapper.read_text(encoding="utf-8")
+        normal_factory = ROOT / "builds" / f"{slug}.factory.yaml"
+        assert "esp32_c6_recovery" not in normal_factory.read_text(encoding="utf-8")
+
+    install = (ROOT / "docs/getting-started/install.md").read_text(encoding="utf-8")
+    assert "/getting-started/c6-recovery" in install
+    screen_docs = {
+        "guition-esp32-p4-jc1060p470": ROOT / "docs/screens/jc1060p470.md",
+        "guition-esp32-p4-jc4880p443": ROOT / "docs/screens/jc4880p443.md",
+        "guition-esp32-p4-jc8012p4a1": ROOT / "docs/screens/jc8012p4a1.md",
+        "guition-esp32-p4-jc8012p4a1-v2": ROOT / "docs/screens/jc8012p4a1-v2.md",
+        "esp32-p4-86": ROOT / "docs/screens/p4-86.md",
+    }
+    for slug, path in screen_docs.items():
+        text = path.read_text(encoding="utf-8")
+        assert "C6RecoveryCallout" in text and slug in text, (
+            f"{path}: C6 recovery link is missing"
+        )
+        assert slug in selector, f"{slug}: recovery selector option is missing"
+    s3_doc = (ROOT / "docs/screens/4848s040.md").read_text(encoding="utf-8")
+    assert "C6RecoveryCallout" not in s3_doc
+    assert "guition-esp32-s3-4848s040" not in selector
 
 
 def test_valid_files_and_directory() -> None:
@@ -452,6 +620,9 @@ def main() -> int:
     test_wrong_md5_fails()
     test_missing_asset_fails()
     test_release_inventory_rejects_extra_files()
+    test_recovery_manifest_and_payload_verification()
+    test_c6_dependency_preparation_is_verified_and_atomic()
+    test_recovery_sources_and_documentation_stay_complete()
     test_draft_release_publishes_only_after_remote_asset_verification()
     test_published_or_mismatched_asset_release_stays_unpublished()
     test_wrong_slug_path_fails()

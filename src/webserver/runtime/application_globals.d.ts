@@ -273,7 +273,6 @@ declare global {
   var beginNewCardDraft: any;
   var bindTextPost: any;
   var btnDisplayName: any;
-  var buildApplyBar: any;
   var buildClipboardEntry: any;
   var buildCoverArtSettingsCard: any;
   var buildHeader: any;
@@ -867,6 +866,7 @@ declare global {
   var postNumberWithObjectId: any;
   var postNumberWithObjectIds: any;
   var postOptional: any;
+  var postOptionalTextWithObjectIds: any;
   var postPresenceSensorEntity: any;
   var postQueueHadError: any;
   var postQueueIdle: any;

@@ -1,12 +1,11 @@
-from esphome.components.mipi import DriverChip, delay
-from esphome.const import CONF_MIRROR_X, CONF_MIRROR_Y
+from esphome.components.mipi import delay
 
+from . import RgbDriverChip
 from .st7701s import st7701s
 
 # fmt: off
-wave_4_3 = DriverChip(
+wave_4_3 = RgbDriverChip(
     "ESP32-S3-TOUCH-LCD-4.3",
-    transforms={CONF_MIRROR_X, CONF_MIRROR_Y},
     initsequence=(),
     width=800,
     height=480,

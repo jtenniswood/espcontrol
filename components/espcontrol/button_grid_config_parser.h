@@ -1814,6 +1814,9 @@ inline void bump_ha_subscription_generation() {
   ha_reset_subscription_callbacks(
       HA_SUBSCRIPTION_SCOPE_DEFAULT | HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
 }
+
+inline void ha_commit_subscription_generation() {}
+inline void ha_poll_subscription_refresh() {}
 #endif
 
 inline std::string sentence_cap_text(const std::string &state) {

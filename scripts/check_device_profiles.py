@@ -232,7 +232,7 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
         "grid_refresh_layout(slots, cfg,\n"
         "            id(button_order).state,\n"
         "            id(main_page)->obj);\n"
-        "      - script.execute: clock_bar_apply"
+        "          id(clock_bar_apply).execute();"
     ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
     assert (
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
@@ -251,6 +251,19 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     ) in device, "S3 rotation changes must reapply the fixed clock bar"
 
 
+def test_button_order_changes_request_card_reconstruction() -> None:
+    button_order = (ROOT / "common" / "config" / "button_order.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "- lambda: 'id(config_apply_reconstruct) = true;'\n"
+        "        - script.execute: refresh_button_grid"
+    ) in button_order, (
+        "button-order span changes must rebuild layout-dependent card visuals "
+        "and their runtime bindings"
+    )
+
+
 def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
     slug = "guition-esp32-p4-jc4880p443"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
@@ -258,6 +271,7 @@ def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
         "grid_refresh_layout(slots, cfg,\n"
         "            id(button_order).state,\n"
         "            id(main_page)->obj);\n"
+        "          id(clock_bar_apply).execute();\n"
         "          navigation_return_home(id(main_page)->obj);"
     ) in sensors, (
         "4.3-inch P4 rotation refresh must refresh the home grid before rebuilding subpages"
@@ -636,6 +650,7 @@ def main() -> int:
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
+    test_button_order_changes_request_card_reconstruction()
     test_p4_43_rotation_refresh_rebuilds_subpages()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()
