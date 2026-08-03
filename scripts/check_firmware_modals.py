@@ -687,6 +687,31 @@ def firmware_media_modal_progress_layout_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_media.h"
+    if not path.exists():
+        return ["components/espcontrol/button_grid_media.h: keep the conditional media Power tab"]
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "POWER = 3",
+        "media_control_power_supported",
+        "media_control_ensure_power_tab_button",
+        "media_control_create_power_tab_content",
+        "media_control_refresh_power",
+        "previous_power_supported != power_supported",
+        "ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)",
+        "ui.tab = MediaControlTab::CONTROLS",
+        "media_control_tab_count(",
+        "MediaControlTabLayout tabs[4]",
+    )
+    if any(needle not in text for needle in required):
+        return [
+            "components/espcontrol/button_grid_media.h: keep the conditional media Power tab, dynamic relayout, and safe Controls fallback"
+        ]
+    return []
+
+
 def firmware_network_status_version_errors(root: Path) -> list[str]:
     path = root / "components" / "espcontrol" / "network_status.h"
     errors: list[str] = []
@@ -1055,6 +1080,7 @@ def run_scan() -> int:
     errors.extend(firmware_climate_control_tab_errors(ROOT))
     errors.extend(firmware_modal_tab_layout_errors(ROOT))
     errors.extend(firmware_media_modal_progress_layout_errors(ROOT))
+    errors.extend(firmware_media_modal_power_tab_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:
@@ -1309,6 +1335,36 @@ def expect_media_modal_progress_layout_errors(name: str, text: str, expected: tu
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
             assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_modal_power_tab_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_media.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_media_modal_power_tab_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_modal_power_tab_text() -> str:
+    return (
+        "enum class MediaControlTab { POWER = 3 };\n"
+        "inline bool media_control_power_supported() {}\n"
+        "inline bool media_control_ensure_power_tab_button() {}\n"
+        "inline void media_control_create_power_tab_content() {}\n"
+        "inline void media_control_refresh_power() {}\n"
+        "bool changed = previous_power_supported != power_supported;\n"
+        "if (ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)) {\n"
+        "  ui.tab = MediaControlTab::CONTROLS;\n"
+        "}\n"
+        "int count = media_control_tab_count(progress_supported, power_supported);\n"
+        "MediaControlTabLayout tabs[4] = {};\n"
+    )
 
 
 def valid_media_modal_progress_layout_text() -> str:
@@ -2011,6 +2067,18 @@ def run_self_test() -> int:
             "",
         ),
         ("progress drawing gated",),
+    )
+    expect_media_modal_power_tab_errors(
+        "conditional media Power tab",
+        valid_media_modal_power_tab_text(),
+        (),
+    )
+    expect_media_modal_power_tab_errors(
+        "media Power tab loses safe fallback",
+        valid_media_modal_power_tab_text().replace(
+            "  ui.tab = MediaControlTab::CONTROLS;\n", ""
+        ),
+        ("safe Controls fallback",),
     )
     home_idle_gated = valid_sleep_takeover_files()
     home_idle_gated["common/addon/backlight.yaml"] = home_idle_gated[
