@@ -84,7 +84,8 @@ export function installAppBackupModule(): GlobalDescriptors {
             screen: {
                 brightness_day: Math.round(state.brightnessDayVal),
                 brightness_night: Math.round(state.brightnessNightVal),
-                automatic_brightness: !!state.automaticBrightnessEnabled,
+                brightness_mode: normalizeBrightnessMode(state.brightnessMode),
+                manual_brightness: Math.round(state.manualBrightnessVal),
                 brightness_dawn_time: normalizeTimeOfDay(state.brightnessDawnTime, "06:00"),
                 brightness_dusk_time: normalizeTimeOfDay(state.brightnessDuskTime, "18:00"),
                 schedule_trigger: normalizeScheduleTrigger(state.scheduleTrigger, state.scheduleEnabled),
@@ -366,10 +367,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                         scheduleClockBrightness: state.scheduleClockBrightness,
                         scheduleClockTextColor: state.scheduleClockTextColor,
                         scheduleSensorActivation: state.scheduleSensorActivation,
+                        manualBrightnessVal: state.manualBrightnessVal,
                     });
                     state.brightnessDayVal = importedScreenSettings.brightnessDayVal;
                     state.brightnessNightVal = importedScreenSettings.brightnessNightVal;
-                    state.automaticBrightnessEnabled = importedScreenSettings.automaticBrightnessEnabled;
+                    state.brightnessMode = importedScreenSettings.brightnessMode;
+                    state.manualBrightnessVal = importedScreenSettings.manualBrightnessVal;
                     state.brightnessDawnTime = importedScreenSettings.brightnessDawnTime;
                     state.brightnessDuskTime = importedScreenSettings.brightnessDuskTime;
                     state.scheduleTrigger = importedScreenSettings.scheduleTrigger;
@@ -385,7 +388,9 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.scheduleClockTextColor = importedScreenSettings.scheduleClockTextColor;
                     postNumber(entityName("screen_daytime_brightness"), state.brightnessDayVal);
                     postNumber(entityName("screen_nighttime_brightness"), state.brightnessNightVal);
-                    postAutomaticBrightnessEnabled(state.automaticBrightnessEnabled);
+                    postBrightnessMode(state.brightnessMode);
+                    if (state.brightnessMode === "manual")
+                        postDisplayBacklightBrightness(state.manualBrightnessVal);
                     postBrightnessDawnTime(state.brightnessDawnTime);
                     postBrightnessDuskTime(state.brightnessDuskTime);
                     postScreenScheduleTrigger(state.scheduleTrigger);

@@ -168,7 +168,8 @@ export interface AppState {
   homeScreenTimeout: number;
   brightnessDayVal: number;
   brightnessNightVal: number;
-  automaticBrightnessEnabled: boolean;
+  brightnessMode: string;
+  manualBrightnessVal: number;
   brightnessDawnTime: string;
   brightnessDuskTime: string;
   scheduleTrigger: string;

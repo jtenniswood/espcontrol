@@ -31,10 +31,22 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
         state.scheduleWakeBrightness = normalizeScheduleWakeBrightness(state.scheduleWakeBrightness);
         state.scheduleDimmedBrightness = normalizeScheduleDimmedBrightness(state.scheduleDimmedBrightness);
         state.scheduleClockBrightness = normalizeScheduleClockBrightness(state.scheduleClockBrightness);
+        state.brightnessMode = normalizeBrightnessMode(state.brightnessMode);
         state.brightnessDawnTime = normalizeTimeOfDay(state.brightnessDawnTime, "06:00");
         state.brightnessDuskTime = normalizeTimeOfDay(state.brightnessDuskTime, "18:00");
-        if (els.setAutomaticBrightnessToggle) {
-            els.setAutomaticBrightnessToggle.checked = !!state.automaticBrightnessEnabled;
+        if (els.setBrightnessModeButtons) {
+            for (var brightnessModeKey in els.setBrightnessModeButtons) {
+                els.setBrightnessModeButtons[brightnessModeKey].classList.toggle(
+                    "active", brightnessModeKey === state.brightnessMode);
+            }
+        }
+        if (els.setManualBrightnessField) {
+            els.setManualBrightnessField.className =
+                "sp-cond-field" + (state.brightnessMode === "manual" ? " sp-visible" : "");
+        }
+        if (els.setBrightnessAutomaticFields) {
+            els.setBrightnessAutomaticFields.className =
+                "sp-cond-field" + (state.brightnessMode !== "manual" ? " sp-visible" : "");
         }
         if (els.setBrightnessDawnTime)
             els.setBrightnessDawnTime.value = state.brightnessDawnTime;
@@ -42,8 +54,9 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             els.setBrightnessDuskTime.value = state.brightnessDuskTime;
         if (els.setBrightnessManualTimes) {
             els.setBrightnessManualTimes.className =
-                "sp-cond-field" + (!state.automaticBrightnessEnabled ? " sp-visible" : "");
+                "sp-cond-field" + (state.brightnessMode === "fixed_times" ? " sp-visible" : "");
         }
+        updateSunInfo();
         if (els.setScheduleToggle)
             els.setScheduleToggle.checked = !!state.scheduleEnabled;
         if (els.setScheduleModeButtons) {

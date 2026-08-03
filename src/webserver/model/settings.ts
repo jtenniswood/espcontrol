@@ -39,6 +39,20 @@ export function normalizeTimeOfDay(value: unknown, fallback: string): string {
   return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
 }
 
+export function normalizeBrightnessMode(value: unknown): string {
+  const mode = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (mode === "manual") return "manual";
+  if (mode === "fixed" || mode === "fixed_time" || mode === "fixed_times") return "fixed_times";
+  return "sunrise_sunset";
+}
+
+export function brightnessModeOption(value: unknown): string {
+  const mode = normalizeBrightnessMode(value);
+  if (mode === "manual") return "Manual";
+  if (mode === "fixed_times") return "Fixed times";
+  return "Sunrise and sunset";
+}
+
 export function normalizeScheduleWakeTimeout(value: unknown): number {
   const n = parseFloat(String(value));
   if (!Number.isFinite(n) || n <= 0) return 60;
@@ -191,7 +205,8 @@ export function normalizeNtpServer(value: unknown, fallback: string): string {
 export interface BackupScreenSettingsState {
   brightnessDayVal: number;
   brightnessNightVal: number;
-  automaticBrightnessEnabled: boolean;
+  brightnessMode: string;
+  manualBrightnessVal: number;
   brightnessDawnTime: string;
   brightnessDuskTime: string;
   scheduleTrigger: string;
@@ -222,12 +237,19 @@ export function normalizeBackupScreenSettings(
 ): BackupScreenSettingsState {
   const legacyScheduleEnabled = !!screenSettings.schedule_enabled;
   const scheduleTrigger = normalizeScheduleTrigger(screenSettings.schedule_trigger, legacyScheduleEnabled);
+  const brightnessMode = objectValue(screenSettings, "brightness_mode") != null
+    ? normalizeBrightnessMode(screenSettings.brightness_mode)
+    : objectValue(screenSettings, "automatic_brightness") != null && !screenSettings.automatic_brightness
+      ? "fixed_times"
+      : "sunrise_sunset";
   return {
     brightnessDayVal: numberOrFallback(screenSettings.brightness_day, 100),
     brightnessNightVal: numberOrFallback(screenSettings.brightness_night, 75),
-    automaticBrightnessEnabled: objectValue(screenSettings, "automatic_brightness") != null
-      ? !!screenSettings.automatic_brightness
-      : true,
+    brightnessMode,
+    manualBrightnessVal: numberOrFallback(
+      screenSettings.manual_brightness,
+      numberOrFallback(current.manualBrightnessVal, 100),
+    ),
     brightnessDawnTime: normalizeTimeOfDay(screenSettings.brightness_dawn_time, "06:00"),
     brightnessDuskTime: normalizeTimeOfDay(screenSettings.brightness_dusk_time, "18:00"),
     scheduleTrigger,
