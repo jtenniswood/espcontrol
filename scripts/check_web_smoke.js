@@ -96,6 +96,11 @@ assert(
   !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9 || option.size === 11),
   "non-camera card size menus do not expose camera-only shapes"
 );
+assert.deepStrictEqual(
+  plain(hooks.normalizeGridOrderForLayoutChange("1l", 15, 5, 3)),
+  { order: "1", persistedOrder: "1", sizes: {} },
+  "rotating a 7-inch 4x3 card to the three-column layout persists its safe single-card size"
+);
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"

@@ -745,6 +745,7 @@ declare global {
   var normalizeHexColor: any;
   var normalizeHomeAssistantArtworkPort: any;
   var normalizeHomeAssistantArtworkProtocol: any;
+  var normalizeGridSpansForLayout: any;
   var normalizeHour: any;
   var normalizeImageModalMode: any;
   var normalizeImageOptions: any;

@@ -77,6 +77,14 @@ export function installAppTestHooksPreview(): GlobalDescriptors {
                 state.grid = oldGrid;
                 return { grid: grid, sizes: sizes };
             },
+            normalizeGridOrderForLayoutChange: function (this: any, orderStr?: any, maxSlots?: any, fromCols?: any, toCols?: any) {
+                var parsed: any = EspControlModel.parseGridOrder(orderStr, maxSlots, fromCols);
+                var persistedOrder: any = null;
+                var normalizedOrder: any = normalizeGridSpansForLayout(parsed.grid, parsed.sizes, maxSlots, toCols, function (this: any, value?: any) {
+                    persistedOrder = value;
+                });
+                return { order: normalizedOrder, persistedOrder: persistedOrder, sizes: parsed.sizes };
+            },
         });
     }
     return {};
