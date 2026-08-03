@@ -786,9 +786,9 @@ export function installConfigCodecModule(): GlobalDescriptors {
             var migrateConfig: any = subpageConfigNeedsMigration(combined);
             var sp: any = parseSubpageConfig(combined);
             sp.sizes = sp.sizes || {};
-            buildSubpageGrid(sp);
+            var layoutNormalized: any = buildSubpageGridAndNormalizeOrder(sp);
             state.subpages[slot] = sp;
-            if (migrateConfig)
+            if (migrateConfig || layoutNormalized)
                 scheduleSliderSubpageMigration(slot);
         }
         else {
@@ -814,6 +814,12 @@ export function installConfigCodecModule(): GlobalDescriptors {
         sp.grid = result.grid;
         sp.sizes = result.sizes;
         return sp.grid;
+    }
+    function buildSubpageGridAndNormalizeOrder(this: any, sp?: any) {
+        var previousOrder: any = JSON.stringify((sp && sp.order) || []);
+        buildSubpageGrid(sp);
+        sp.order = serializeSubpageGrid(sp);
+        return JSON.stringify(sp.order) !== previousOrder;
     }
     function serializeSubpageGrid(this: any, sp?: any) {
         return EspControlModel.serializeSubpageGrid(sp.grid, sp.sizes || {}, sp.backLabel || "Back");
@@ -915,6 +921,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         "applySubpageRaw": staticGlobal(applySubpageRaw),
         "getSubpage": staticGlobal(getSubpage),
         "buildSubpageGrid": staticGlobal(buildSubpageGrid),
+        "buildSubpageGridAndNormalizeOrder": staticGlobal(buildSubpageGridAndNormalizeOrder),
         "serializeSubpageGrid": staticGlobal(serializeSubpageGrid),
         "enterSubpage": staticGlobal(enterSubpage),
         "exitSubpage": staticGlobal(exitSubpage),

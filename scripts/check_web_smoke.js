@@ -110,6 +110,12 @@ const rotatedSubpage = plain(hooks.normalizeSubpageOrderForLayoutChange(["1l", "
 assert.strictEqual(rotatedSubpage.changed, true, "subpage rotation detects a relocated Back cell");
 assert.strictEqual(rotatedSubpage.order[0], "1l", "subpage rotation keeps the valid 4x3 card size");
 assert.strictEqual(rotatedSubpage.order[12], "B", "subpage rotation persists the Back cell outside the 4x3 span");
+const preservedWideCard = plain(hooks.normalizeGridOrderForLayoutChange("1l,,,,,,,,,,,,2w", 20, 4, 5));
+assert.strictEqual(preservedWideCard.sizes["2"], 3, "rotation preserves a displaced wide card's size");
+assert.strictEqual(preservedWideCard.order.split(",")[15], "2w", "rotation relocates the complete wide card span");
+const loadedPortraitSubpage = plain(hooks.normalizeLoadedSubpageOrderForLayout(["1l", "", "", "", "B"], 3));
+assert.strictEqual(loadedPortraitSubpage.changed, true, "a late portrait subpage detects its invalid 4x3 size");
+assert.strictEqual(loadedPortraitSubpage.order[0], "1", "a late portrait subpage persists a safe single-card size");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"

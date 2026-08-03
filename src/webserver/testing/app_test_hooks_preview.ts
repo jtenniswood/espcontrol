@@ -116,6 +116,14 @@ export function installAppTestHooksPreview(): GlobalDescriptors {
                 var normalizedOrder: any = EspControlModel.serializeSubpageGrid(parsed.grid, parsed.sizes, source.backLabel);
                 return { changed: JSON.stringify(normalizedOrder) !== JSON.stringify(previousOrder), order: normalizedOrder };
             },
+            normalizeLoadedSubpageOrderForLayout: function (this: any, order?: any, toCols?: any) {
+                var oldGridCols: any = GRID_COLS;
+                GRID_COLS = toCols;
+                var source: any = { order: order, buttons: [{}], sizes: {}, backLabel: "Back" };
+                var changed: any = buildSubpageGridAndNormalizeOrder(source);
+                GRID_COLS = oldGridCols;
+                return { changed: changed, order: source.order, sizes: source.sizes };
+            },
         });
     }
     return {};

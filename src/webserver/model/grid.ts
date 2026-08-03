@@ -136,41 +136,35 @@ export function applySpans(
   maxSlots: number,
   gridCols: number,
 ): void {
+  const entries = grid.slice(0, maxSlots);
+  for (let i = 0; i < maxSlots; i += 1) grid[i] = 0;
+
+  const canPlace = (pos: number, size: number): boolean => {
+    if (grid[pos] !== 0 || !sizeFitsAt(pos, size, maxSlots, gridCols)) return false;
+    return coveredCells(pos, size, maxSlots, gridCols, false).every((cell) => grid[cell] === 0);
+  };
+  const findPlacement = (start: number, size: number): number => {
+    for (let offset = 0; offset < maxSlots; offset += 1) {
+      const candidate = (start + offset) % maxSlots;
+      if (canPlace(candidate, size)) return candidate;
+    }
+    return -1;
+  };
+
   for (let i = 0; i < maxSlots; i += 1) {
-    const slot = grid[i] ?? 0;
+    const slot = entries[i] ?? 0;
     if (!(slot > 0 || slot === -2)) continue;
     const slotKey = String(slot);
-    const size = sizes[slotKey] || 1;
-    if (size <= 1) continue;
-    if (!sizeFitsAt(i, size, maxSlots, gridCols)) {
+    let size = sizes[slotKey] || 1;
+    let place = findPlacement(i, size);
+    if (place < 0 && size > 1) {
+      size = 1;
       delete sizes[slotKey];
-      continue;
+      place = findPlacement(i, size);
     }
-    const toReserve = coveredCells(i, size, maxSlots, gridCols, false);
-    let ok = true;
-    for (const cell of toReserve) {
-      const displaced = grid[cell] ?? 0;
-      if (displaced > 0 || displaced === -2) {
-        let placed = false;
-        for (let j = 0; j < maxSlots; j += 1) {
-          if ((grid[j] ?? 0) === 0 && toReserve.indexOf(j) === -1) {
-            grid[j] = displaced;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          ok = false;
-          break;
-        }
-        grid[cell] = 0;
-      }
-    }
-    if (!ok) {
-      delete sizes[slotKey];
-      continue;
-    }
-    for (const cell of toReserve) grid[cell] = -1;
+    if (place < 0) continue;
+    grid[place] = slot;
+    markSpannedCells(grid, place, size, maxSlots, gridCols);
   }
 }
 

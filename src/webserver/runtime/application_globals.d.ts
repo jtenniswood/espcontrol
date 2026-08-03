@@ -282,6 +282,7 @@ declare global {
   var buildScreenScheduleSettingsCard: any;
   var buildSettingsPage: any;
   var buildSubpageGrid: any;
+  var buildSubpageGridAndNormalizeOrder: any;
   var buildSystemSettingsCards: any;
   var buildUI: any;
   var buttonConfigChangedByNormalize: any;
