@@ -43,7 +43,6 @@ export function installSettingsPageModule(): GlobalDescriptors {
         var languageCard: any = makeCollapsibleCard("Language", languageBody, true);
         els.setLanguage = languageSelect;
         var blBody: any = document.createElement("div");
-        blBody.appendChild(fieldLabel("Brightness Mode"));
         var brightnessModeSegment: any = segmentControl([
             ["manual", "Manual"],
             ["sunrise_sunset", "Sunrise & sunset"],
@@ -52,7 +51,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             state.brightnessMode = normalizeBrightnessMode(mode);
             postBrightnessMode(state.brightnessMode);
             syncScreenScheduleUi();
-        }, "sp-segment sp-segment-scroll");
+        }, "sp-segment sp-segment-scroll sp-brightness-mode-segment");
         blBody.appendChild(brightnessModeSegment.segment);
         els.setBrightnessModeButtons = brightnessModeSegment.buttons;
         var brightnessManualField: any = condField();
