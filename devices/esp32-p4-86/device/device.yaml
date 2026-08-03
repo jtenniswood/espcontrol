@@ -233,6 +233,9 @@ light:
     on_turn_off:
       then:
         - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
 
 # ---------------------------------------------------------------------------
 # Built-in relays (ESP32-P4-86-Panel-ETH-2RO bottom board)

@@ -24,6 +24,9 @@ lvgl:
             on_press:
               then:
                 - script.execute: setup_screen_dim_cancel
+                - script.execute:
+                    id: backlight_note_internal_brightness
+                    brightness: 0.9
                 - light.turn_on:
                     id: display_backlight
                     brightness: 90%

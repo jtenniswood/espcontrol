@@ -2522,7 +2522,8 @@ function backupFixture(device, slots) {
     screen: {
       brightness_day: 88,
       brightness_night: 55,
-      automatic_brightness: false,
+      brightness_mode: "fixed_times",
+      manual_brightness: 62,
       schedule_enabled: true,
       schedule_sensor_activation: "on",
       schedule_on_hour: 7,

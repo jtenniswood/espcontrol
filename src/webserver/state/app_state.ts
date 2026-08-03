@@ -50,7 +50,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     clockBrightnessNight: 35, clockBrightnessSplitReceived: false, screensaverDimmedBrightness: 10,
     screensaverTimeout: 300, screensaverTimeoutMin: 60, screensaverTimeoutMax: 3600,
     screensaverTimeoutLimitsLoaded: false, homeScreenTimeout: 60, brightnessDayVal: 100,
-    brightnessNightVal: 75, automaticBrightnessEnabled: true, brightnessDawnTime: "06:00",
+    brightnessNightVal: 75, brightnessMode: "sunrise_sunset", manualBrightnessVal: 100, brightnessDawnTime: "06:00",
     brightnessDuskTime: "18:00", scheduleTrigger: "disabled", _scheduleTriggerReceived: false,
     scheduleEnabled: false, scheduleSensorActivation: "off", scheduleOnHour: 6, scheduleOffHour: 23, scheduleMode: "screen_off",
     scheduleWakeTimeout: 60, scheduleWakeBrightness: 10, scheduleDimmedBrightness: 10,

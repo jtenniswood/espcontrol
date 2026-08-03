@@ -238,9 +238,19 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                     els.setNightBrightnessVal.textContent = Math.round(state.brightnessNightVal) + "%";
                 }
             },
-            "switch-screen__automatic_brightness": function (this: any, val?: any, d?: any) {
-                state.automaticBrightnessEnabled = d.value === true || val === "ON";
+            "select-screen__brightness_mode": function (this: any, val?: any, d?: any) {
+                state.brightnessMode = normalizeBrightnessMode(d.value || val);
                 syncScreenScheduleUi();
+            },
+            "light-display_backlight": function (this: any, val?: any, d?: any) {
+                var brightness: any = parseFloat(d && d.brightness);
+                if (isFinite(brightness)) {
+                    state.manualBrightnessVal = Math.max(1, Math.min(100, Math.round(brightness / 2.55)));
+                    if (els.setManualBrightness) {
+                        els.setManualBrightness.value = state.manualBrightnessVal;
+                        els.setManualBrightnessVal.textContent = state.manualBrightnessVal + "%";
+                    }
+                }
             },
             "text-screen__brightness_dawn_time": function (this: any, val?: any) {
                 state.brightnessDawnTime = normalizeTimeOfDay(val, "06:00");

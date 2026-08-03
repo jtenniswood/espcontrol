@@ -50,4 +50,4 @@ Pressing and holding a button on the touchscreen for 3 seconds puts the screen t
 
 ## Brightness
 
-Screen schedule works alongside the daytime and nighttime brightness settings. When the screen is awake during scheduled-on hours, brightness follows the calculated sunrise and sunset for your selected timezone, or the manual Dawn and Dusk times when **Automatic Brightness** is off. **Screen Dimmed** uses its own overnight brightness setting. **Screen Off** turns the physical backlight off and can run invisible burn-in protection while dark, while **Clock** uses its own clock brightness and text colour settings.
+Screen schedule works alongside the selected **Brightness Mode**. During scheduled-on hours, **Manual** restores the saved manual level, **Sunrise and sunset** uses calculated local solar times, and **Fixed times** uses the saved Dawn and Dusk times. **Screen Dimmed** uses its own overnight brightness setting. **Screen Off** turns the physical backlight off and can run invisible burn-in protection while dark, while **Clock** uses its own clock brightness and text colour settings.

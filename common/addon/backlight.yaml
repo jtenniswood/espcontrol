@@ -334,6 +334,9 @@ script:
               return id(espcontrol_app).display().transition_is_current(
                   static_cast<uint32_t>(generation), espcontrol::DisplayMode::SETUP_DIMMED);
           then:
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: 0.5
             - light.turn_on:
                 id: display_backlight
                 brightness: 50%
@@ -1174,6 +1177,9 @@ script:
               return id(espcontrol_app).display().current_mode_is(
                   espcontrol::DisplayMode::DIMMED);
           then:
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_dimmed_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_dimmed_target_level);'
@@ -1205,6 +1211,9 @@ script:
             - lambda: 'refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));'
             - lvgl.widget.show: dim_screensaver_touch_guard
             - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_dimmed_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_dimmed_target_level);'
@@ -1254,8 +1263,14 @@ script:
             int rise_m = id(sunrise_minute);
             int set_h = id(sunset_hour);
             int set_m = id(sunset_minute);
+            std::string timing_mode = normalize_brightness_mode(
+                id(brightness_mode).current_option());
+            if (brightness_mode_manual(timing_mode)) {
+              timing_mode = id(brightness_last_automatic_uses_sun)
+                  ? "Sunrise and sunset" : "Fixed times";
+            }
             bool times_valid = brightness_schedule_times(
-              id(automatic_brightness_enabled).state,
+              timing_mode,
               id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
               id(sunset_hour), id(sunset_minute),
               id(brightness_dawn_time).state, id(brightness_dusk_time).state,
@@ -1277,6 +1292,9 @@ script:
               return id(espcontrol_app).display().current_mode_is(
                   espcontrol::DisplayMode::CLOCK);
           then:
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_clock_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_clock_target_level);'
@@ -1391,6 +1409,9 @@ script:
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_clock_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_clock_target_level);'

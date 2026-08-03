@@ -411,6 +411,7 @@ export function installStylesModule(): GlobalDescriptors {
         "border:none;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .25s;font-family:inherit}" +
         ".sp-segment button:hover{color:var(--text)}" +
         ".sp-segment button.active{background:var(--accent);color:#fff}" +
+        ".sp-brightness-mode-segment{margin-bottom:28px}" +
         ".sp-screensaver-mode{margin-bottom:24px}" +
         ".sp-clock-brightness-field{margin:18px 0 22px}" +
         ".sp-cond-field{padding:0 0 4px;display:none}" +
