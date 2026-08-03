@@ -137,100 +137,96 @@ export function applySpans(
   gridCols: number,
 ): void {
   const entries = grid.slice(0, maxSlots);
-  for (let i = 0; i < maxSlots; i += 1) grid[i] = 0;
-
   interface GridEntry {
     readonly slot: number;
     readonly originalPos: number;
+    readonly size: number;
+    readonly area: number;
+    readonly candidates: number[];
   }
   const items: GridEntry[] = [];
-  const itemBySlot: Record<string, GridEntry> = {};
   for (let i = 0; i < maxSlots; i += 1) {
     const slot = entries[i] ?? 0;
     if (!(slot > 0 || slot === -2)) continue;
-    const item = { slot, originalPos: i };
-    items.push(item);
-    itemBySlot[String(slot)] = item;
-    grid[i] = slot;
-  }
-
-  const canPlaceIn = (targetGrid: readonly number[], pos: number, size: number): boolean => {
-    if (targetGrid[pos] !== 0 || !sizeFitsAt(pos, size, maxSlots, gridCols)) return false;
-    return coveredCells(pos, size, maxSlots, gridCols, false).every((cell) => targetGrid[cell] === 0);
-  };
-  const findPlacementIn = (targetGrid: readonly number[], start: number, size: number): number => {
+    const size = sizes[String(slot)] || 1;
+    const candidates: number[] = [];
     for (let offset = 0; offset < maxSlots; offset += 1) {
-      const candidate = (start + offset) % maxSlots;
-      if (canPlaceIn(targetGrid, candidate, size)) return candidate;
+      const candidate = (i + offset) % maxSlots;
+      if (sizeFitsAt(candidate, size, maxSlots, gridCols)) candidates.push(candidate);
     }
-    return -1;
+    items.push({
+      slot,
+      originalPos: i,
+      size,
+      area: sizeRowSpan(size) * sizeColSpan(size),
+      candidates,
+    });
+  }
+  const multiItems = items
+    .filter((item) => item.size > 1)
+    .sort((a, b) => a.candidates.length - b.candidates.length || b.area - a.area || a.originalPos - b.originalPos);
+  let bestPenalty = Number.POSITIVE_INFINITY;
+  let bestGrid: number[] | null = null;
+  let bestDowngraded: Record<string, boolean> = {};
+
+  const canPlace = (targetGrid: readonly number[], pos: number, itemSize: number): boolean => {
+    if (targetGrid[pos] !== 0) return false;
+    return coveredCells(pos, itemSize, maxSlots, gridCols, true).every((cell) => targetGrid[cell] === 0);
   };
-  const processed: Record<string, boolean> = {};
-  const relocate = (item: GridEntry, start: number): void => {
-    const slotKey = String(item.slot);
-    let size = sizes[slotKey] || 1;
-    let place = findPlacementIn(grid, start, size);
-    if (place < 0 && size > 1) {
-      size = 1;
-      delete sizes[slotKey];
-      place = findPlacementIn(grid, start, size);
-    }
-    if (place < 0) return;
-    grid[place] = item.slot;
-    markSpannedCells(grid, place, size, maxSlots, gridCols);
-    processed[slotKey] = true;
+  const place = (targetGrid: number[], item: GridEntry, pos: number): void => {
+    targetGrid[pos] = item.slot;
+    markSpannedCells(targetGrid, pos, item.size, maxSlots, gridCols);
   };
-
-  for (const item of items) {
-    const slotKey = String(item.slot);
-    if (processed[slotKey]) continue;
-    const pos = grid.indexOf(item.slot);
-    if (pos < 0) continue;
-    const size = sizes[slotKey] || 1;
-    const spanCells = coveredCells(pos, size, maxSlots, gridCols, false);
-    if (!sizeFitsAt(pos, size, maxSlots, gridCols) || spanCells.some((cell) => grid[cell] === -1)) {
-      grid[pos] = 0;
-      relocate(item, pos);
-      continue;
-    }
-
-    const displaced: Array<{ item: GridEntry; pos: number }> = [];
-    for (const cell of spanCells) {
-      const displacedSlot = grid[cell] ?? 0;
-      if (!(displacedSlot > 0 || displacedSlot === -2)) continue;
-      const displacedItem = itemBySlot[String(displacedSlot)];
-      if (!displacedItem || displaced.some((entry) => entry.item.slot === displacedSlot)) continue;
-      displaced.push({ item: displacedItem, pos: cell });
-    }
-
-    const trialGrid = grid.slice();
-    for (const entry of displaced) {
-      trialGrid[entry.pos] = 0;
-    }
-    markSpannedCells(trialGrid, pos, size, maxSlots, gridCols);
-    const placements: GridEntry[] = [];
-    let allDisplacedFit = true;
-    for (const entry of displaced) {
-      const displacedSize = sizes[String(entry.item.slot)] || 1;
-      const destination = findPlacementIn(trialGrid, entry.pos + 1, displacedSize);
-      if (destination < 0) {
-        allDisplacedFit = false;
-        break;
+  const completeWithSingles = (
+    targetGrid: number[],
+    downgraded: Record<string, boolean>,
+    penalty: number,
+  ): boolean => {
+    const singleItems = items.filter((item) => item.size <= 1 || downgraded[String(item.slot)]);
+    if (targetGrid.filter((cell) => cell === 0).length < singleItems.length) return false;
+    for (const item of singleItems) {
+      let destination = targetGrid[item.originalPos] === 0 ? item.originalPos : -1;
+      for (let offset = 0; destination < 0 && offset < maxSlots; offset += 1) {
+        const candidate = (item.originalPos + offset) % maxSlots;
+        if (targetGrid[candidate] === 0) destination = candidate;
       }
-      trialGrid[destination] = entry.item.slot;
-      markSpannedCells(trialGrid, destination, displacedSize, maxSlots, gridCols);
-      placements.push(entry.item);
+      if (destination < 0) return false;
+      targetGrid[destination] = item.slot;
     }
-    if (!allDisplacedFit) {
-      delete sizes[slotKey];
-      processed[slotKey] = true;
-      continue;
+    if (penalty < bestPenalty) {
+      bestPenalty = penalty;
+      bestGrid = targetGrid;
+      bestDowngraded = { ...downgraded };
     }
-    for (let cell = 0; cell < maxSlots; cell += 1) grid[cell] = trialGrid[cell] ?? 0;
-    processed[slotKey] = true;
-    for (const placement of placements) {
-      processed[String(placement.slot)] = true;
+    return penalty === 0;
+  };
+  const search = (
+    index: number,
+    targetGrid: number[],
+    downgraded: Record<string, boolean>,
+    penalty: number,
+  ): boolean => {
+    if (penalty >= bestPenalty) return false;
+    if (index >= multiItems.length) return completeWithSingles(targetGrid, downgraded, penalty);
+    const item = multiItems[index]!;
+    for (const candidate of item.candidates) {
+      if (!canPlace(targetGrid, candidate, item.size)) continue;
+      const nextGrid = targetGrid.slice();
+      place(nextGrid, item, candidate);
+      if (search(index + 1, nextGrid, downgraded, penalty)) return true;
     }
+    const slotKey = String(item.slot);
+    downgraded[slotKey] = true;
+    const foundExact = search(index + 1, targetGrid, downgraded, penalty + item.area - 1);
+    delete downgraded[slotKey];
+    return foundExact;
+  };
+
+  search(0, Array<number>(maxSlots).fill(0), {}, 0);
+  const plannedGrid = bestGrid || Array<number>(maxSlots).fill(0);
+  for (let i = 0; i < maxSlots; i += 1) grid[i] = plannedGrid[i] ?? 0;
+  for (const item of items) {
+    if (item.size <= 1 || bestDowngraded[String(item.slot)]) delete sizes[String(item.slot)];
   }
 }
 

@@ -116,6 +116,10 @@ assert.strictEqual(preservedWideCard.order.split(",")[15], "2w", "rotation reloc
 const crowdedWideCard = plain(hooks.normalizeGridOrderForLayoutChange("1,2,3w,4,5,6", 6, 3, 3));
 assert.strictEqual(crowdedWideCard.order, "1,2,3,4,5,6", "a crowded grid keeps every card when a wide span cannot expand");
 assert.strictEqual(crowdedWideCard.sizes["3"], undefined, "a crowded grid safely downgrades the blocked wide span");
+const repackedPortraitCard = plain(hooks.normalizeGridOrderForLayoutChange(",2t,1p,,,,,,,,,,,,,6w", 20, 5, 4));
+assert.strictEqual(repackedPortraitCard.sizes["1"], 10, "rotation repacks the full grid before downgrading a portrait card");
+assert.strictEqual(repackedPortraitCard.sizes["2"], 5, "rotation preserves the accompanying extra-tall card");
+assert.strictEqual(repackedPortraitCard.sizes["6"], 3, "rotation preserves the accompanying wide card");
 const loadedPortraitSubpage = plain(hooks.normalizeLoadedSubpageOrderForLayout(["1l", "", "", "", "B"], 3));
 assert.strictEqual(loadedPortraitSubpage.changed, true, "a late portrait subpage detects its invalid 4x3 size");
 assert.strictEqual(loadedPortraitSubpage.order[0], "1", "a late portrait subpage persists a safe single-card size");

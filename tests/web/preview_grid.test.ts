@@ -59,6 +59,13 @@ export function runPreviewGridTests(): void {
   deepEqual(rejectedWideResize.grid, noRoomForWideCard, "rejected expansion preserves the wide card span");
   deepEqual(rejectedWideResize.sizes, { "2": 3 }, "rejected expansion preserves the wide card size");
 
+  const constrainedGrid = [0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 0, 0, -1, 0, 0];
+  const constrainedResize = resizeGridSlot(constrainedGrid, { "3": 2 }, 1, 1, 11, 15, 5, true);
+  equal(constrainedResize.accepted, true, "landscape expansion plans constrained cards before singles");
+  equal(constrainedResize.grid[0], 3, "the displaced tall card uses the only two-cell destination");
+  equal(constrainedResize.grid[5], -1, "the relocated tall card keeps its full span");
+  equal(constrainedResize.grid[10], 2, "the flexible single card moves after the tall card");
+
   const moved = moveSelectedGridEntries([1, 2, 3, 4, 0, 0], {}, [1, 2], 0, 3, 6, 3);
   equal(moved.accepted, true, "multi-selection move is accepted");
   deepEqual(moved.grid, [3, 4, 1, 2, 0, 0], "multi-selection keeps selection order after the target");
