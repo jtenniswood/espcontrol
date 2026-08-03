@@ -2000,8 +2000,10 @@ script:
                 next, id(cover_art_content_type));
               const auto decision = espcontrol::media::media_metadata_clear_decision(
                 id(cover_art_content_id), previous_kind, next, next_kind);
-              id(cover_art_content_id) = next;
-              id(cover_art_content_kind) = static_cast<uint8_t>(next_kind);
+              if (espcontrol::media::should_replace_media_metadata_identity(next)) {
+                id(cover_art_content_id) = next;
+                id(cover_art_content_kind) = static_cast<uint8_t>(next_kind);
+              }
               if (!decision.item_changed) return;
 
               id(cover_art_title).clear();

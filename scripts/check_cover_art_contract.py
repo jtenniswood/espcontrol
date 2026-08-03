@@ -261,6 +261,7 @@ if cover_art_subscription_order != sorted(cover_art_subscription_order):
     )
 for required in (
     "media_metadata_clear_decision(",
+    "should_replace_media_metadata_identity(next)",
     "id(cover_art_content_id).clear();",
     "id(cover_art_content_type).clear();",
     "id(cover_art_content_kind) = static_cast<uint8_t>(",
@@ -311,6 +312,7 @@ if not 0 <= content_type_subscription < content_id_subscription:
     raise SystemExit("Media content type must be subscribed before the content ID")
 for required in (
     "media_metadata_clear_decision(",
+    "should_replace_media_metadata_identity(",
     "if (decision.clear_title) state->title.clear();",
     "if (decision.clear_grouping) state->artist.clear();",
 ):

@@ -96,4 +96,12 @@ inline MediaMetadataClearDecision media_metadata_clear_decision(
   };
 }
 
+inline bool should_replace_media_metadata_identity(
+    const std::string &next_content_id) {
+  // Home Assistant may briefly clear media_content_id between queue items.
+  // Retain the last established identity through that gap so the next item can
+  // still be compared with the item whose metadata is currently displayed.
+  return !next_content_id.empty();
+}
+
 }  // namespace espcontrol::media

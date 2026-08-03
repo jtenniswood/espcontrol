@@ -1442,9 +1442,12 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
             state->current_content_id, state->current_content_kind,
             next_content_id, next_kind);
 
-        state->current_content_id = next_content_id;
-        state->current_content_kind = next_kind;
-        state->has_current_content_id = !state->current_content_id.empty();
+        state->has_current_content_id = !next_content_id.empty();
+        if (espcontrol::media::should_replace_media_metadata_identity(
+              next_content_id)) {
+          state->current_content_id = next_content_id;
+          state->current_content_kind = next_kind;
+        }
         if (decision.clear_title) state->title.clear();
         if (decision.clear_grouping) state->artist.clear();
 

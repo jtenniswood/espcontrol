@@ -6,6 +6,7 @@ int main() {
   using espcontrol::media::MediaItemKind;
   using espcontrol::media::media_item_kind;
   using espcontrol::media::media_metadata_clear_decision;
+  using espcontrol::media::should_replace_media_metadata_identity;
 
   assert(media_item_kind("library://track/456") == MediaItemKind::TRACK);
   assert(media_item_kind("audiobookshelf://audiobook/book-id") ==
@@ -67,6 +68,21 @@ int main() {
   assert(!missing_next_item.item_changed);
   assert(!missing_next_item.clear_title);
   assert(!missing_next_item.clear_grouping);
+
+  std::string remembered_content_id = "library://track/1";
+  MediaItemKind remembered_kind = MediaItemKind::TRACK;
+  assert(!should_replace_media_metadata_identity(""));
+  if (should_replace_media_metadata_identity("")) {
+    remembered_content_id.clear();
+    remembered_kind = MediaItemKind::UNKNOWN;
+  }
+  const auto item_after_empty_gap = media_metadata_clear_decision(
+    remembered_content_id, remembered_kind,
+    "library://audiobook/2", MediaItemKind::AUDIOBOOK);
+  assert(item_after_empty_gap.item_changed);
+  assert(item_after_empty_gap.clear_title);
+  assert(item_after_empty_gap.clear_grouping);
+  assert(should_replace_media_metadata_identity("library://audiobook/2"));
 
   const auto initial_value = media_metadata_clear_decision(
     "", MediaItemKind::UNKNOWN,
