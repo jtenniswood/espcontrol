@@ -85,6 +85,29 @@ export function installAppTestHooksPreview(): GlobalDescriptors {
                 });
                 return { order: normalizedOrder, persistedOrder: persistedOrder, sizes: parsed.sizes };
             },
+            normalizeDeferredGridOrderForLayoutChange: function (this: any, orderStr?: any, toCols?: any) {
+                var oldGridCols: any = GRID_COLS;
+                var oldGrid: any = state.grid;
+                var oldSizes: any = state.sizes;
+                var oldSelectedSlots: any = state.selectedSlots;
+                var oldOrderReceived: any = orderReceived;
+                GRID_COLS = toCols;
+                state.grid = [];
+                state.sizes = {};
+                state.selectedSlots = [];
+                orderReceived = !!(orderStr && orderStr.trim());
+                var persistedOrder: any = null;
+                var normalizedOrder: any = applyDeferredButtonOrderValue(orderStr, function (this: any, value?: any) {
+                    persistedOrder = value;
+                });
+                var sizes: any = Object.assign({}, state.sizes);
+                GRID_COLS = oldGridCols;
+                state.grid = oldGrid;
+                state.sizes = oldSizes;
+                state.selectedSlots = oldSelectedSlots;
+                orderReceived = oldOrderReceived;
+                return { order: normalizedOrder, persistedOrder: persistedOrder, sizes: sizes };
+            },
             normalizeSubpageOrderForLayoutChange: function (this: any, order?: any, maxSlots?: any, fromCols?: any, toCols?: any) {
                 var source: any = { order: order, buttons: [{}], sizes: {}, backLabel: "Back" };
                 var parsed: any = EspControlModel.buildSubpageGrid(source, maxSlots, fromCols);

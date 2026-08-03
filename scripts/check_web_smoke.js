@@ -101,6 +101,11 @@ assert.deepStrictEqual(
   { order: "1", persistedOrder: "1", sizes: {} },
   "rotating a 7-inch 4x3 card to the three-column layout persists its safe single-card size"
 );
+assert.deepStrictEqual(
+  plain(hooks.normalizeDeferredGridOrderForLayoutChange("1l", 3)),
+  { order: "1", persistedOrder: "1", sizes: {} },
+  "starting a portrait 7-inch panel with a deferred 4x3 order persists its safe single-card size"
+);
 const rotatedSubpage = plain(hooks.normalizeSubpageOrderForLayoutChange(["1l", "", "", "", "B"], 20, 5, 4));
 assert.strictEqual(rotatedSubpage.changed, true, "subpage rotation detects a relocated Back cell");
 assert.strictEqual(rotatedSubpage.order[0], "1l", "subpage rotation keeps the valid 4x3 card size");

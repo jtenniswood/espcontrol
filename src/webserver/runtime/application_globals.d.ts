@@ -247,6 +247,7 @@ declare global {
   var appendTimezoneOption: any;
   var applyButtonConfigStateEvent: any;
   var applyButtonOrderValue: any;
+  var applyDeferredButtonOrderValue: any;
   var applyCardMetadataFields: any;
   var applyClockBarStateValue: any;
   var applyClockBarTemperatureEntities: any;
