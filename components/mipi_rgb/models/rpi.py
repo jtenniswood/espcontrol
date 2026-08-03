@@ -1,9 +1,9 @@
 from esphome.components.mipi import DriverChip
-from esphome.config_validation import UNDEFINED
+from esphome.const import CONF_MIRROR_X, CONF_MIRROR_Y
 
 # A driver chip for Raspberry Pi MIPI RGB displays. These require no init sequence
 DriverChip(
     "RPI",
-    swap_xy=UNDEFINED,
+    transforms={CONF_MIRROR_X, CONF_MIRROR_Y},
     initsequence=(),
 )

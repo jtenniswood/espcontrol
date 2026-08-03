@@ -1,10 +1,10 @@
 from esphome.components.mipi import DriverChip
-from esphome.config_validation import UNDEFINED
+from esphome.const import CONF_MIRROR_X, CONF_MIRROR_Y
 
 # fmt: off
 sunton = DriverChip(
     "ESP32-8048S070",
-    swap_xy=UNDEFINED,
+    transforms={CONF_MIRROR_X, CONF_MIRROR_Y},
     initsequence=(),
     width=800,
     height=480,
@@ -28,7 +28,7 @@ sunton = DriverChip(
 
 sunton.extend(
     "ESP32-8048S050",
-    swap_xy=UNDEFINED,
+    transforms={CONF_MIRROR_X, CONF_MIRROR_Y},
     initsequence=(),
     width=800,
     height=480,
