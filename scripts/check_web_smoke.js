@@ -137,6 +137,21 @@ const importedPortraitSubpage = plain(hooks.planBackupImportForGridCols({
 }, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, 3));
 assert.strictEqual(importedPortraitSubpage.subpages["1"].order[0], "1", "a portrait backup import normalizes a subpage 4x3 card before saving");
 assert.strictEqual(importedPortraitSubpage.subpages["1"].sizes["1"], undefined, "a portrait backup import removes the invalid subpage 4x3 size");
+const restoredLandscapeCols = hooks.backupImportGridColsFor({ screen_rotation: "0" }, "90");
+assert.strictEqual(restoredLandscapeCols, 5, "backup layout planning uses the imported landscape rotation instead of current portrait rotation");
+const restoredLandscapeGrid = plain(hooks.importedButtonOrderFor("1l", {}, restoredLandscapeCols));
+assert.strictEqual(restoredLandscapeGrid.order, "1l", "restoring landscape preserves a valid main-grid 4x3 card");
+const restoredLandscapeSubpage = plain(hooks.planBackupImportForGridCols({
+  version: 2,
+  format: "espcontrol.backup",
+  device: "guition-esp32-p4-jc1060p470",
+  slots: 15,
+  button_order: "1l",
+  buttons: Array.from({ length: 15 }, (_, index) => index === 0 ? { type: "subpage", label: "Camera" } : {}),
+  subpages: { "1": "~1l,,,,B|I,camera.front_door,Front Door,,,,image" },
+  settings: { screen_rotation: "0" },
+}, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, restoredLandscapeCols));
+assert.strictEqual(restoredLandscapeSubpage.subpages["1"].order[0], "1l", "restoring landscape preserves a valid subpage 4x3 card");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"

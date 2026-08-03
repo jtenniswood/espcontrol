@@ -266,6 +266,8 @@ declare global {
   var backupEmptyButtonConfig: any;
   var backupExportFileDate: any;
   var backupExportFileName: any;
+  var normalizeImportedPanelSettings: any;
+  var gridColsForImportedSettings: any;
   var backupExportScreenSizeSlug: any;
   var backupNormalizeButtonConfig: any;
   var backupOrderUsedSlots: any;
