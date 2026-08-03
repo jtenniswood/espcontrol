@@ -171,8 +171,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.subpages[subpageKey] = backupPlan.subpages[subpageKey];
                     saveSubpageEntity(subpageKey);
                 }
-                postText(entityName("button_order"), backupPlan.button_order);
-                applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
+                var normalizedButtonOrder: any = applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
+                postText(entityName("button_order"), normalizedButtonOrder);
                 state.onColor = backupPlan.config.button_on_color;
                 if (els.setOnColor && els.setOnColor._syncColor)
                     els.setOnColor._syncColor(state.onColor);

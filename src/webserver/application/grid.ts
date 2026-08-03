@@ -89,6 +89,7 @@ export function installGridModule(): GlobalDescriptors {
     function applyImportedButtonOrder(this: any, orderStr?: any, importedSizes?: any) {
         state.sizes = importedSizes || {};
         state.grid = parseOrder(orderStr);
+        return serializeGrid(state.grid);
     }
     function clearSpans(this: any, grid?: any, maxSlots?: any) {
         EspControlModel.clearSpans(grid, maxSlots);

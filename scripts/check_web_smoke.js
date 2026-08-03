@@ -123,6 +123,20 @@ assert.strictEqual(repackedPortraitCard.sizes["6"], 3, "rotation preserves the a
 const loadedPortraitSubpage = plain(hooks.normalizeLoadedSubpageOrderForLayout(["1l", "", "", "", "B"], 3));
 assert.strictEqual(loadedPortraitSubpage.changed, true, "a late portrait subpage detects its invalid 4x3 size");
 assert.strictEqual(loadedPortraitSubpage.order[0], "1", "a late portrait subpage persists a safe single-card size");
+const importedPortraitGrid = plain(hooks.importedButtonOrderFor("1l", {}, 3));
+assert.strictEqual(importedPortraitGrid.order, "1", "a portrait backup import posts a layout-safe main-grid order");
+assert.strictEqual(importedPortraitGrid.sizes["1"], undefined, "a portrait backup import removes the invalid main-grid 4x3 size");
+const importedPortraitSubpage = plain(hooks.planBackupImportForGridCols({
+  version: 2,
+  format: "espcontrol.backup",
+  device: "guition-esp32-p4-jc1060p470",
+  slots: 15,
+  button_order: "1",
+  buttons: Array.from({ length: 15 }, (_, index) => index === 0 ? { type: "subpage", label: "Camera" } : {}),
+  subpages: { "1": "~1l,,,,B|I,camera.front_door,Front Door,,,,image" },
+}, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, 3));
+assert.strictEqual(importedPortraitSubpage.subpages["1"].order[0], "1", "a portrait backup import normalizes a subpage 4x3 card before saving");
+assert.strictEqual(importedPortraitSubpage.subpages["1"].sizes["1"], undefined, "a portrait backup import removes the invalid subpage 4x3 size");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"

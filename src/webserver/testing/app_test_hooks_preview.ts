@@ -61,21 +61,28 @@ export function installAppTestHooksPreview(): GlobalDescriptors {
                 state.firmwareVersionRefreshPending = oldPending;
                 return label;
             },
-            importedButtonOrderFor: function (this: any, orderStr?: any, existingSizes?: any) {
+            importedButtonOrderFor: function (this: any, orderStr?: any, existingSizes?: any, gridCols?: any) {
                 var oldSizes: any = state.sizes;
                 var oldGrid: any = state.grid;
+                var oldGridCols: any = GRID_COLS;
                 state.sizes = existingSizes || {};
                 state.grid = [];
                 for (var i: any = 0; i < NUM_SLOTS; i++)
                     state.grid.push(0);
-                applyImportedButtonOrder(orderStr, {});
-                var sizes: any = {};
-                for (var k in state.sizes)
-                    sizes[k] = state.sizes[k];
-                var grid: any = state.grid.slice();
-                state.sizes = oldSizes;
-                state.grid = oldGrid;
-                return { grid: grid, sizes: sizes };
+                if (gridCols)
+                    GRID_COLS = gridCols;
+                try {
+                    var normalizedOrder: any = applyImportedButtonOrder(orderStr, {});
+                    var sizes: any = {};
+                    for (var k in state.sizes)
+                        sizes[k] = state.sizes[k];
+                    return { grid: state.grid.slice(), sizes: sizes, order: normalizedOrder };
+                }
+                finally {
+                    GRID_COLS = oldGridCols;
+                    state.sizes = oldSizes;
+                    state.grid = oldGrid;
+                }
             },
             normalizeGridOrderForLayoutChange: function (this: any, orderStr?: any, maxSlots?: any, fromCols?: any, toCols?: any) {
                 var parsed: any = EspControlModel.parseGridOrder(orderStr, maxSlots, fromCols);
