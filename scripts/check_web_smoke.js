@@ -88,7 +88,7 @@ assert.deepStrictEqual(
   [
     { size: 8, label: "Max wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
-    { size: 11, label: "Landscape (4x3)" },
+    { size: 11, label: "Massive Wide (3x4)" },
   ],
   "camera card size menu exposes the three larger shapes"
 );

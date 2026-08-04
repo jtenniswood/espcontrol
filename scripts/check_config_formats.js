@@ -349,14 +349,14 @@ assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 9), 1, "
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 10), 1, "ordinary cards reject portrait-large size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 11), 1, "ordinary cards reject landscape-large size");
 assert.strictEqual(
-  Array.from(tenInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 10 && option.label === "Portrait (3x4)"),
+  Array.from(tenInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 10 && option.label === "Massive (4x3)"),
   true,
-  "10-inch cover art size menu exposes Portrait (3x4)",
+  "10-inch cover art size menu exposes Massive (4x3)",
 );
 assert.strictEqual(
-  Array.from(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 11 && option.label === "Landscape (4x3)"),
+  Array.from(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 11 && option.label === "Massive Wide (3x4)"),
   true,
-  "7-inch camera size menu exposes Landscape (4x3)",
+  "7-inch camera size menu exposes Massive Wide (3x4)",
 );
 const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],

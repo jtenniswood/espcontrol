@@ -124,9 +124,9 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
         }
         if (cardSupportsLandscapeLargeSize(b))
-            options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Landscape (4x3)" });
+            options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Massive Wide (3x4)" });
         if (cardSupportsPortraitLargeSize(b))
-            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Portrait (3x4)" });
+            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Massive (4x3)" });
         return options;
     }
     function addSingleCardMenuItems(this: any, slot?: any) {
