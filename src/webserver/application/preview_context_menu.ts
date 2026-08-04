@@ -120,7 +120,7 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         if (cardRequiresSquareSize(b))
             options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
         if (cardSupportsMaxSize(b)) {
-            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max wide (3x2)" });
+            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
         }
         if (cardSupportsLandscapeLargeSize(b))

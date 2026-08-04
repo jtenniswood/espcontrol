@@ -86,7 +86,7 @@ assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "
 assert.deepStrictEqual(
   plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-3),
   [
-    { size: 8, label: "Max wide (3x2)" },
+    { size: 8, label: "Max Wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
     { size: 11, label: "Massive Wide (3x4)" },
   ],
