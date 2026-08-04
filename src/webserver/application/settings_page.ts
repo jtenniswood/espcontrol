@@ -197,6 +197,14 @@ export function installSettingsPageModule(): GlobalDescriptors {
             syncClockBarUi();
             postClockBar(state.clockBarOn);
         });
+        var clockBarNightMode: any = toggleRow("Show Night Mode Icon", "sp-set-clock-bar-night-mode", state.clockBarNightModeOn);
+        clockBarBody.appendChild(clockBarNightMode.row);
+        els.setClockBarNightModeToggle = clockBarNightMode.input;
+        clockBarNightMode.input.addEventListener("change", function (this: any) {
+            state.clockBarNightModeOn = this.checked;
+            syncClockBarUi();
+            postClockBarNightMode(state.clockBarNightModeOn);
+        });
         var clockBarBadge: any = statusBadge("Clock bar on");
         els.setClockBarBadge = clockBarBadge;
         syncClockBarUi();
