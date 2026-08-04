@@ -84,16 +84,17 @@ assert.strictEqual(
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
 assert.deepStrictEqual(
-  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-2),
+  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-3),
   [
     { size: 8, label: "Max Wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
+    { size: 11, label: "Massive Wide (3x4)" },
   ],
-  "7-inch camera card size menu hides Massive Wide"
+  "landscape 7-inch camera card size menu exposes Massive Wide"
 );
 assert(
-  !plain(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 10 || option.size === 11),
-  "7-inch camera card size menu hides both Massive shapes"
+  !plain(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 10),
+  "landscape 7-inch camera card size menu hides Massive portrait"
 );
 assert(
   !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9 || option.size === 10 || option.size === 11),

@@ -93,8 +93,8 @@ Right-click a card and open **Size** to choose:
 - **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
 - **Max Wide** - spans a 3 x 2 area and is available for Camera cards.
 - **Max tall** - spans a 2 x 3 area and is available for Camera cards.
-- **Massive Wide (3x4)** - spans three rows by four columns and is available for Camera cards on both 10.1-inch panels.
-- **Massive (4x3)** - spans four rows by three columns and is available for Camera and Media cover-art cards on both 10.1-inch panels.
+- **Massive Wide (3x4)** - spans three rows by four columns and is available for Camera cards when the current screen orientation has room.
+- **Massive (4x3)** - spans four rows by three columns and is available for Camera and Media cover-art cards when the current screen orientation has room.
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 

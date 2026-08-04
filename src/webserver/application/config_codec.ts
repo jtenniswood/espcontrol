@@ -43,15 +43,11 @@ export function installConfigCodecModule(): GlobalDescriptors {
     function cardSupportsMaxSize(this: any, b?: any) {
         return !!(b && b.type === "image");
     }
-    function deviceSupportsMassiveCardSizes(this: any) {
-        return DEVICE_ID === "guition-esp32-p4-jc8012p4a1" ||
-            DEVICE_ID === "guition-esp32-p4-jc8012p4a1-v2";
-    }
     function cardSupportsPortraitLargeSize(this: any, b?: any) {
-        return deviceSupportsMassiveCardSizes() && (cardRequiresSquareSize(b) || cardSupportsMaxSize(b));
+        return (cardRequiresSquareSize(b) || cardSupportsMaxSize(b)) && GRID_ROWS >= 4 && GRID_COLS >= 3;
     }
     function cardSupportsLandscapeLargeSize(this: any, b?: any) {
-        return deviceSupportsMassiveCardSizes() && cardSupportsMaxSize(b) && GRID_COLS >= 4 && GRID_ROWS >= 3;
+        return cardSupportsMaxSize(b) && GRID_ROWS >= 3 && GRID_COLS >= 4;
     }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
