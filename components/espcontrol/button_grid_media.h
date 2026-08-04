@@ -166,7 +166,8 @@ inline void media_control_send_power_action(MediaControlCtx *ctx) {
 }
 
 inline std::string media_metadata_text(esphome::StringRef value, const char *fallback) {
-  std::string text = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+  std::string text = decode_html_entities(
+    string_ref_limited(value, HA_STATE_TEXT_MAX_LEN));
   if (text.empty() || text == "unknown" || text == "unavailable")
     text = fallback ? fallback : "--";
   return text;
@@ -760,7 +761,7 @@ inline bool media_playback_generation_valid(MediaPlaybackState *state,
 
 inline std::string media_playback_metadata_value(esphome::StringRef value,
                                                  size_t max_len) {
-  std::string text = string_ref_limited(value, max_len);
+  std::string text = decode_html_entities(string_ref_limited(value, max_len));
   if (text == "unknown" || text == "unavailable") text.clear();
   return text;
 }
