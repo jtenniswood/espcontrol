@@ -528,19 +528,39 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: keep {legacy_setup} inside the shared date-time driver"
                 )
-        for guard, refresh in (
-            ("calendar_card_ref_ready", "refresh_calendar_cards"),
-            ("timezone_card_ref_ready", "update_timezone_cards"),
+        for guard, compact, refresh, register in (
+            (
+                "calendar_card_ref_ready",
+                "compact_calendar_card_refs",
+                "refresh_calendar_cards",
+                "register_calendar_card",
+            ),
+            (
+                "timezone_card_ref_ready",
+                "compact_timezone_card_refs",
+                "update_timezone_cards",
+                "register_timezone_card",
+            ),
         ):
             guard_body = function_body(text, guard)
+            compact_body = function_body(text, compact)
             refresh_body = function_body(text, refresh)
+            register_body = function_body(text, register)
             if guard_body is None or "lv_obj_is_valid" not in guard_body:
                 failures.append(
                     f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {guard} must reject deleted LVGL labels"
                 )
-            if refresh_body is None or guard not in refresh_body:
+            if compact_body is None or guard not in compact_body or "count = write_index;" not in compact_body:
                 failures.append(
-                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {refresh} must skip deleted LVGL labels"
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {compact} must remove deleted LVGL label references"
+                )
+            if refresh_body is None or compact not in refresh_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {refresh} must compact deleted LVGL label references"
+                )
+            if register_body is None or compact not in register_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {register} must reclaim deleted LVGL label references before registration"
                 )
     sensor_header = root / "components" / "espcontrol" / SENSOR_HEADER
     if sensor_header.exists():
@@ -1234,16 +1254,24 @@ inline void setup_light_temp_visual() {
             {
                 "button_grid_datetime_cards.h": (
                     "inline bool calendar_card_ref_ready() { return true; }\n"
+                    "inline void compact_calendar_card_refs() {}\n"
                     "inline void refresh_calendar_cards() {}\n"
+                    "inline void register_calendar_card() {}\n"
                     "inline bool timezone_card_ref_ready() { return true; }\n"
+                    "inline void compact_timezone_card_refs() {}\n"
                     "inline void update_timezone_cards() {}\n"
+                    "inline void register_timezone_card() {}\n"
                 )
             },
             (
                 "calendar_card_ref_ready must reject deleted LVGL labels",
-                "refresh_calendar_cards must skip deleted LVGL labels",
+                "compact_calendar_card_refs must remove deleted LVGL label references",
+                "refresh_calendar_cards must compact deleted LVGL label references",
+                "register_calendar_card must reclaim deleted LVGL label references before registration",
                 "timezone_card_ref_ready must reject deleted LVGL labels",
-                "update_timezone_cards must skip deleted LVGL labels",
+                "compact_timezone_card_refs must remove deleted LVGL label references",
+                "update_timezone_cards must compact deleted LVGL label references",
+                "register_timezone_card must reclaim deleted LVGL label references before registration",
             ),
         ),
         (
