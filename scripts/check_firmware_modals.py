@@ -112,6 +112,10 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             errors.append(
                 "components/espcontrol/button_grid_modal.h: centralize modal dismissal policy for display takeover"
             )
+        if text.count("!lv_obj_is_valid(active.overlay)") < 2:
+            errors.append(
+                "components/espcontrol/button_grid_modal.h: discard stale active and nested modal overlays before invoking close callbacks"
+            )
         kind_enum = re.search(r"enum class ControlModalKind\s*\{(?P<body>.*?)\};", text, re.S)
         definition = re.search(
             r"inline\s+ControlModalDefinition\s+control_modal_definition\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -1408,7 +1412,12 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {\n"
             "  return {};\n"
             "}\n"
-            "inline void control_modal_close_active_internal(bool honor_close_guard) {}\n"
+            "inline void control_modal_close_active_internal(bool honor_close_guard) {\n"
+            "  if (!lv_obj_is_valid(active.overlay)) control_modal_reset_active();\n"
+            "}\n"
+            "inline void control_modal_close_nested_menu() {\n"
+            "  if (!lv_obj_is_valid(active.overlay)) control_modal_reset_nested_menu();\n"
+            "}\n"
             "inline void control_modal_force_close_active() { control_modal_close_active_internal(false); }\n"
             "inline void control_modal_close_for_display_takeover(bool preserve_policy_active) {}\n"
         ),

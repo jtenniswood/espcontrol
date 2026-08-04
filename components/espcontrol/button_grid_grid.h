@@ -1700,7 +1700,9 @@ inline void grid_phase2(
   if (reconstruct_main_cards) {
     // Rebuilds delete and recreate every registered subpage. Move away from an
     // active subpage first so navigation_clear_subpages() can delete it too.
+    ESP_LOGD("card_runtime", "Live rebuild: return home start");
     navigation_return_home(main_page_obj);
+    ESP_LOGD("card_runtime", "Live rebuild: return home done");
   }
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
@@ -1709,7 +1711,13 @@ inline void grid_phase2(
   set_switch_confirmation_icon_font(display_icon_font(display));
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  if (reconstruct_main_cards) {
+    ESP_LOGD("card_runtime", "Live rebuild: grid layout start");
+  }
   configure_grid_layout(main_page_obj, NS, COLS);
+  if (reconstruct_main_cards) {
+    ESP_LOGD("card_runtime", "Live rebuild: grid layout done");
+  }
   if (NS != cfg.num_slots) {
     ESP_LOGW("sensors", "Grid slot count %d exceeds max %d; ignoring extra slots",
       cfg.num_slots, MAX_GRID_SLOTS);
@@ -1732,11 +1740,17 @@ inline void grid_phase2(
   bool current_card_active[MAX_GRID_SLOTS] = {};
   bool reconstruct_slot[MAX_GRID_SLOTS] = {};
   bool release_runtime_slot[MAX_GRID_SLOTS] = {};
+  if (reconstruct_main_cards) {
+    ESP_LOGD("card_runtime", "Live rebuild: card plan start");
+  }
   for (int pos = 0; pos < NS; ++pos) {
     const int slot = order.positions[pos];
     if (slot >= 1 && slot <= NS) current_card_active[slot - 1] = true;
   }
   for (int i = 0; i < NS; ++i) {
+    if (reconstruct_main_cards) {
+      ESP_LOGD("card_runtime", "Live rebuild: planning card %d", i + 1);
+    }
     const ParsedCfg config = parse_cfg(slots[i].config->state);
     const uint64_t layout_signature =
       espcontrol::cards::combine_card_signatures(
@@ -1770,6 +1784,9 @@ inline void grid_phase2(
                i + 1, static_cast<unsigned>(mutation), domains,
                reconstruct_slot[i], release_runtime_slot[i]);
     }
+  }
+  if (reconstruct_main_cards) {
+    ESP_LOGD("card_runtime", "Live rebuild: card plan done");
   }
 
   if (reconstruct_main_cards) {

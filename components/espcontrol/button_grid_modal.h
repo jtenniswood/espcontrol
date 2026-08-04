@@ -155,6 +155,14 @@ inline void control_modal_block_close_for(uint32_t delay_ms) {
 inline void control_modal_close_active_internal(bool honor_close_guard) {
   ControlModalActive &active = control_modal_active();
   if (active.kind == ControlModalKind::NONE || active.closing) return;
+  // A live card replacement can outlive the LVGL object that originally
+  // opened the modal. Do not invoke a close callback for an overlay LVGL has
+  // already deleted: several callbacks still inspect their modal widgets.
+  if (active.overlay != nullptr && !lv_obj_is_valid(active.overlay)) {
+    ESP_LOGW("control_modal", "Discarding stale active modal during close");
+    control_modal_reset_active();
+    return;
+  }
   if (honor_close_guard && control_modal_close_guard_active(active)) return;
 
   ControlModalKind closing_kind = active.kind;
@@ -301,6 +309,11 @@ inline void control_modal_delete_nested_overlay(lv_obj_t *&overlay) {
 inline void control_modal_close_nested_menu() {
   ControlModalNestedActive &active = control_modal_nested_active();
   if (!active.overlay || active.closing) return;
+  if (!lv_obj_is_valid(active.overlay)) {
+    ESP_LOGW("control_modal", "Discarding stale nested modal during close");
+    control_modal_reset_nested_menu();
+    return;
+  }
 
   lv_obj_t *closing_overlay = active.overlay;
   ControlModalCloseCallback close_callback = active.close_callback;
