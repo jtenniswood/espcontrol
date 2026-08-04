@@ -278,6 +278,7 @@ inline bool card_slot_static_child(const BtnSlot &s, lv_obj_t *child) {
 
 inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   if (!s.btn) return;
+  ESP_LOGD("card_runtime", "Live rebuild: reset slot children start");
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
   sync_card_checked_text_color(s.btn);
@@ -290,11 +291,18 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
     lv_obj_set_style_radius(s.text_lbl, 0, LV_PART_MAIN);
   }
   int32_t count = static_cast<int32_t>(lv_obj_get_child_cnt(s.btn));
+  ESP_LOGD("card_runtime", "Live rebuild: slot has %ld children",
+           static_cast<long>(count));
   for (int32_t i = count - 1; i >= 0; i--) {
     lv_obj_t *child = lv_obj_get_child(s.btn, i);
     if (!child || card_slot_static_child(s, child)) continue;
+    ESP_LOGD("card_runtime", "Live rebuild: deleting dynamic child %ld",
+             static_cast<long>(i));
     lv_obj_del(child);
+    ESP_LOGD("card_runtime", "Live rebuild: deleted dynamic child %ld",
+             static_cast<long>(i));
   }
+  ESP_LOGD("card_runtime", "Live rebuild: reset slot children done");
 }
 
 // A live replacement keeps the persistent slot object but replaces any
@@ -303,8 +311,11 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
 // after grid_release_runtime_allocations() can dispatch LVGL events through
 // user_data that has already been freed.
 inline void prepare_card_slot_visual_for_reconstruction(BtnSlot &s) {
+  ESP_LOGD("card_runtime", "Live rebuild: media detach start");
   grid_prepare_media_runtime_for_visual_reset(s.btn);
+  ESP_LOGD("card_runtime", "Live rebuild: media detach done");
   if (s.btn) lv_obj_set_user_data(s.btn, nullptr);
+  ESP_LOGD("card_runtime", "Live rebuild: button data cleared");
   reset_card_slot_dynamic_children(s);
 }
 
@@ -1767,6 +1778,10 @@ inline void grid_phase2(
         main_card_active[i] != current_card_active[i]) {
       reconstruct_slot[i] = true;
       release_runtime_slot[i] = true;
+      ESP_LOGD("card_runtime",
+               "Card %d active change old=%d new=%d initialized=%d",
+               i + 1, main_card_active[i], current_card_active[i],
+               main_config_snapshots_initialized);
       continue;
     }
     if (!current_card_active[i]) continue;
@@ -1792,7 +1807,9 @@ inline void grid_phase2(
   if (reconstruct_main_cards) {
     for (int i = 0; i < NS; ++i) {
       if (!reconstruct_slot[i]) continue;
+      ESP_LOGD("card_runtime", "Live rebuild: prepare card %d start", i + 1);
       prepare_card_slot_visual_for_reconstruction(slots[i]);
+      ESP_LOGD("card_runtime", "Live rebuild: prepare card %d done", i + 1);
     }
   }
 
