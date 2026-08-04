@@ -17,8 +17,9 @@ wifi:
   password: !secret wifi_password
 
 web_server:
-  js_url: ""
-  js_include: "../../docs/public/webserver/www.js"
+  # Keep the full editor out of the ESP32-P4 executable. Embedding the current
+  # bundle makes the 7-inch OTA trial image reset before it can start Wi-Fi.
+  js_url: "https://cdn.jsdelivr.net/gh/jtenniswood/espcontrol@742365f04/docs/public/webserver/www.js?device=${device_slug}"
 
 packages:
   espcontrol: !include packages.yaml
