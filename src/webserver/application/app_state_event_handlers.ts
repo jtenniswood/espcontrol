@@ -44,6 +44,10 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.clockBarTimeOn = d.value === true || val === "ON";
                 syncClockBarUi();
             },
+            "switch-screen__clock_bar_night_mode_icon": function (this: any, val?: any, d?: any) {
+                state.clockBarNightModeOn = d.value === true || val === "ON";
+                syncClockBarUi();
+            },
             "switch-screen__network_status_icon": function (this: any, val?: any, d?: any) {
                 state.networkStatusOn = d.value === true || val === "ON";
                 syncClockBarUi();

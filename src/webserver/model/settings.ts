@@ -312,6 +312,7 @@ export interface BackupPanelSettingsState {
   clockBarTemperatureEntities: string[];
   clockBar: boolean;
   clockBarTime: boolean;
+  clockBarNightMode: boolean;
   networkStatusIcon: boolean;
   voiceServices: boolean;
   alarmDelayAudio: boolean;
@@ -416,6 +417,7 @@ export function normalizeBackupPanelSettings(
     clockBarTemperatureEntities,
     clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
+    clockBarNightMode: objectValue(settings, "clock_bar_night_mode") != null ? !!settings.clock_bar_night_mode : false,
     networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
     voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
     alarmDelayAudio: objectValue(settings, "alarm_delay_audio") != null ? !!settings.alarm_delay_audio : false,

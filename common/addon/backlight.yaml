@@ -398,6 +398,14 @@ script:
             controller.clear(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
           }
 
+          // The clock bar's optional moon tracks the night schedule. Re-lay the
+          // bar out only on a change so the every-minute schedule check does not
+          // repeat the work.
+          if (schedule_night != id(clock_bar_night_mode_active)) {
+            id(clock_bar_night_mode_active) = schedule_night;
+            id(clock_bar_apply).execute();
+          }
+
           // Playback that began while the night schedule was blocking the
           // display did not yet create a media request. Re-evaluate it from
           // live state when normal hours resume.

@@ -28,6 +28,8 @@ Time and Sensor modes share the same night-time action and brightness settings. 
 
 When the schedule is disabled, the panel uses the normal [screensaver](/features/screensaver) and [backlight](/features/backlight) rules.
 
+To see at a glance when the night period is active, turn on **Show Night Mode Icon** in [Clock Bar](/features/clock-bar). A moon appears beside the connectivity icon for as long as the night schedule is running, in both **Time** and **Sensor** mode.
+
 Time-based Night Schedule has priority over screensaver presence wake while night time is active. If someone walks past during scheduled night time, the normal screensaver sensor does not wake the panel; touch and the panel's **Screen: Wake** button in Home Assistant still work. To make presence control night and daytime behavior, use **Sensor** mode for Night Schedule instead.
 
 ## How the Times Work

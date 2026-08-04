@@ -4,6 +4,7 @@
 
 #include "cover_art.h"
 #include "media_power_capability.h"
+#include "media_metadata_policy.h"
 
 enum class MediaControlTab : uint8_t {
   CONTROLS = 0,
@@ -249,6 +250,7 @@ inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx);
 inline void media_playback_detach_slider(SliderCtx *ctx);
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
+inline void media_playback_subscribe_content(MediaPlaybackState *state);
 inline void media_playback_subscribe_metadata(MediaPlaybackState *state);
 inline void media_playback_subscribe_source(MediaPlaybackState *state);
 inline void media_playback_subscribe_progress(
@@ -320,6 +322,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   if (!state) return;
   media_playback_attach_control(state, ctx);
   media_playback_subscribe_playback_state(state);
+  media_playback_subscribe_content(state);
   media_playback_subscribe_metadata(state);
   media_playback_subscribe_volume(state);
 #ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
@@ -507,7 +510,10 @@ struct MediaPlaybackState {
   std::string source;
   std::string friendly_name;
   std::string current_content_id;
+  uint64_t current_content_fingerprint = 0;
   std::string current_content_type;
+  espcontrol::media::MediaItemKind current_content_kind =
+    espcontrol::media::MediaItemKind::UNKNOWN;
   bool has_state = false;
   bool available = true;
   bool playing = false;
@@ -663,7 +669,9 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->source.clear();
   state->friendly_name.clear();
   state->current_content_id.clear();
+  state->current_content_fingerprint = 0;
   state->current_content_type.clear();
+  state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
   state->has_state = false;
   state->available = true;
   state->playing = false;
@@ -1452,32 +1460,53 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
   ha_subscribe_attribute(
-    entity_id, std::string("media_content_id"),
+    entity_id, std::string("media_content_type"),
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef value) {
         if (!media_playback_generation_valid(state, generation)) return;
-        state->current_content_id = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
-        state->has_current_content_id =
-          !state->current_content_id.empty() &&
-          state->current_content_id != "unknown" &&
-          state->current_content_id != "unavailable";
+        state->current_content_type = media_playback_metadata_value(
+          value, HA_SHORT_STATE_MAX_LEN);
+        state->has_current_content_type = !state->current_content_type.empty();
         media_playback_apply_state_to_playlists(state);
         media_playback_apply_state_to_now_playing(state);
       })
   );
 
   ha_subscribe_attribute(
-    entity_id, std::string("media_content_type"),
+    entity_id, std::string("media_content_id"),
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef value) {
         if (!media_playback_generation_valid(state, generation)) return;
-        state->current_content_type = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
-        state->has_current_content_type =
-          !state->current_content_type.empty() &&
-          state->current_content_type != "unknown" &&
-          state->current_content_type != "unavailable";
+        const std::string next_content_id = media_playback_metadata_value(
+          value, HA_STATE_TEXT_MAX_LEN);
+        const uint64_t next_content_fingerprint = next_content_id.empty()
+          ? 0
+          : espcontrol::media::media_content_identity_fingerprint(
+              value.c_str(), value.size());
+        const espcontrol::media::MediaItemKind next_kind =
+          espcontrol::media::media_item_kind(
+            next_content_id, state->current_content_type);
+        const espcontrol::media::MediaMetadataClearDecision decision =
+          espcontrol::media::media_metadata_clear_decision(
+            state->current_content_fingerprint, state->current_content_kind,
+            next_content_fingerprint, next_kind);
+
+        state->has_current_content_id = !next_content_id.empty();
+        if (espcontrol::media::should_replace_media_metadata_identity(
+              next_content_id)) {
+          state->current_content_id = next_content_id;
+          state->current_content_fingerprint = next_content_fingerprint;
+          state->current_content_kind = next_kind;
+        }
+        if (decision.clear_title) state->title.clear();
+        if (decision.clear_grouping) state->artist.clear();
+
         media_playback_apply_state_to_playlists(state);
-        media_playback_apply_state_to_now_playing(state);
+        if (decision.item_changed) {
+          media_playback_apply_metadata_consumers(state);
+        } else {
+          media_playback_apply_state_to_now_playing(state);
+        }
       })
   );
 }
@@ -3182,6 +3211,7 @@ inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
   MediaPlaybackState *state = media_playback_ensure_state(entity_id);
   if (!state) return;
   if (ctx) media_playback_attach_now_playing(state, ctx);
+  media_playback_subscribe_content(state);
   media_playback_subscribe_metadata(state);
   if (ctx && ctx->progress_slider) {
     subscribe_media_slider_state(lv_obj_get_parent(ctx->progress_slider), ctx->progress_slider, entity_id);
