@@ -67,19 +67,65 @@ inline std::string decode_html_entities(const std::string &text) {
     struct NamedEntity {
       const char *encoded;
       size_t length;
-      char value;
+      uint16_t code_point;
     };
+    // Cover the HTML entities most likely to occur in artist names and media
+    // titles without carrying the much larger browser HTML5 entity table.
     static constexpr NamedEntity named_entities[] = {
       {"&amp;", 5, '&'}, {"&quot;", 6, '"'}, {"&apos;", 6, '\''},
       {"&lt;", 4, '<'}, {"&gt;", 4, '>'},
+      {"&nbsp;", 6, 0x00A0}, {"&iexcl;", 7, 0x00A1},
+      {"&cent;", 6, 0x00A2}, {"&pound;", 7, 0x00A3},
+      {"&yen;", 5, 0x00A5}, {"&copy;", 6, 0x00A9},
+      {"&reg;", 5, 0x00AE}, {"&deg;", 5, 0x00B0},
+      {"&plusmn;", 8, 0x00B1}, {"&middot;", 8, 0x00B7},
+      {"&frac14;", 8, 0x00BC}, {"&frac12;", 8, 0x00BD},
+      {"&frac34;", 8, 0x00BE}, {"&iquest;", 8, 0x00BF},
+      {"&Agrave;", 8, 0x00C0}, {"&Aacute;", 8, 0x00C1},
+      {"&Acirc;", 7, 0x00C2}, {"&Atilde;", 8, 0x00C3},
+      {"&Auml;", 6, 0x00C4}, {"&Aring;", 7, 0x00C5},
+      {"&AElig;", 7, 0x00C6}, {"&Ccedil;", 8, 0x00C7},
+      {"&Egrave;", 8, 0x00C8}, {"&Eacute;", 8, 0x00C9},
+      {"&Ecirc;", 7, 0x00CA}, {"&Euml;", 6, 0x00CB},
+      {"&Igrave;", 8, 0x00CC}, {"&Iacute;", 8, 0x00CD},
+      {"&Icirc;", 7, 0x00CE}, {"&Iuml;", 6, 0x00CF},
+      {"&Ntilde;", 8, 0x00D1}, {"&Ograve;", 8, 0x00D2},
+      {"&Oacute;", 8, 0x00D3}, {"&Ocirc;", 7, 0x00D4},
+      {"&Otilde;", 8, 0x00D5}, {"&Ouml;", 6, 0x00D6},
+      {"&times;", 7, 0x00D7}, {"&Oslash;", 8, 0x00D8},
+      {"&Ugrave;", 8, 0x00D9}, {"&Uacute;", 8, 0x00DA},
+      {"&Ucirc;", 7, 0x00DB}, {"&Uuml;", 6, 0x00DC},
+      {"&Yacute;", 8, 0x00DD}, {"&szlig;", 7, 0x00DF},
+      {"&agrave;", 8, 0x00E0}, {"&aacute;", 8, 0x00E1},
+      {"&acirc;", 7, 0x00E2}, {"&atilde;", 8, 0x00E3},
+      {"&auml;", 6, 0x00E4}, {"&aring;", 7, 0x00E5},
+      {"&aelig;", 7, 0x00E6}, {"&ccedil;", 8, 0x00E7},
+      {"&egrave;", 8, 0x00E8}, {"&eacute;", 8, 0x00E9},
+      {"&ecirc;", 7, 0x00EA}, {"&euml;", 6, 0x00EB},
+      {"&igrave;", 8, 0x00EC}, {"&iacute;", 8, 0x00ED},
+      {"&icirc;", 7, 0x00EE}, {"&iuml;", 6, 0x00EF},
+      {"&ntilde;", 8, 0x00F1}, {"&ograve;", 8, 0x00F2},
+      {"&oacute;", 8, 0x00F3}, {"&ocirc;", 7, 0x00F4},
+      {"&otilde;", 8, 0x00F5}, {"&ouml;", 6, 0x00F6},
+      {"&divide;", 8, 0x00F7}, {"&oslash;", 8, 0x00F8},
+      {"&ugrave;", 8, 0x00F9}, {"&uacute;", 8, 0x00FA},
+      {"&ucirc;", 7, 0x00FB}, {"&uuml;", 6, 0x00FC},
+      {"&yacute;", 8, 0x00FD}, {"&yuml;", 6, 0x00FF},
+      {"&ndash;", 7, 0x2013}, {"&mdash;", 7, 0x2014},
+      {"&lsquo;", 7, 0x2018}, {"&rsquo;", 7, 0x2019},
+      {"&sbquo;", 7, 0x201A}, {"&ldquo;", 7, 0x201C},
+      {"&rdquo;", 7, 0x201D}, {"&bdquo;", 7, 0x201E},
+      {"&bull;", 6, 0x2022}, {"&hellip;", 8, 0x2026},
+      {"&trade;", 7, 0x2122},
     };
     bool matched = false;
     for (const NamedEntity &entity : named_entities) {
       if (text.compare(index, entity.length, entity.encoded) == 0) {
-        decoded.push_back(entity.value);
-        index += entity.length;
-        matched = true;
-        break;
+        if (append_html_code_point(decoded, entity.code_point)) {
+          index += entity.length;
+          matched = true;
+          break;
+        }
       }
     }
     if (matched) continue;

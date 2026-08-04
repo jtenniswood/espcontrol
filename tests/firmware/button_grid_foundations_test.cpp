@@ -35,6 +35,10 @@ int main() {
       "Price \xE2\x82\xAC\x31\x30 \xE2\x80\x94 remastered") {
     return EXIT_FAILURE;
   }
+  if (decode_html_entities("Beyonc&eacute;&nbsp;&ndash;&nbsp;Live&hellip;") !=
+      "Beyonc\xC3\xA9\xC2\xA0\xE2\x80\x93\xC2\xA0Live\xE2\x80\xA6") {
+    return EXIT_FAILURE;
+  }
   if (decode_html_entities("Leave &not_an_entity; unchanged") !=
       "Leave &not_an_entity; unchanged") {
     return EXIT_FAILURE;
