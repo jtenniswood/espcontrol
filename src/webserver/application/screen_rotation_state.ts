@@ -72,13 +72,24 @@ export function installScreenRotationStateModule(): GlobalDescriptors {
             state.screenRotationInitialTimer = setTimeout(resolveInitialScreenRotationCheck, SCREEN_ROTATION_STARTUP_FALLBACK_MS);
         }
     }
+    function applyDeferredButtonOrderValue(this: any, rawOrder?: any, onNormalized?: any) {
+        var receivedOrder: any = String(rawOrder || "").trim();
+        applyButtonOrderValue(receivedOrder, true);
+        var normalizedOrder: any = EspControlModel.serializeGridOrder(state.grid, state.sizes);
+        if (normalizedOrder !== receivedOrder && typeof onNormalized === "function")
+            onNormalized(normalizedOrder);
+        return normalizedOrder;
+    }
     function resolveInitialScreenRotationCheck(this: any) {
         if (state.screenRotationInitialReady)
             return;
         clearInitialScreenRotationTimer();
         state.screenRotationInitialReady = true;
         if (state.pendingButtonOrderRaw !== null) {
-            applyButtonOrderValue(state.pendingButtonOrderRaw, true);
+            applyDeferredButtonOrderValue(state.pendingButtonOrderRaw, function (this: any, normalizedOrder?: any) {
+                if (orderReceived)
+                    postText(entityName("button_order"), normalizedOrder);
+            });
             state.pendingButtonOrderRaw = null;
         }
         if (els.previewMain)
@@ -98,6 +109,7 @@ export function installScreenRotationStateModule(): GlobalDescriptors {
         "gridPreviewBlockedByRotationStartup": staticGlobal(gridPreviewBlockedByRotationStartup),
         "clearInitialScreenRotationTimer": staticGlobal(clearInitialScreenRotationTimer),
         "startInitialScreenRotationCheck": staticGlobal(startInitialScreenRotationCheck),
+        "applyDeferredButtonOrderValue": staticGlobal(applyDeferredButtonOrderValue),
         "resolveInitialScreenRotationCheck": staticGlobal(resolveInitialScreenRotationCheck),
     };
 }

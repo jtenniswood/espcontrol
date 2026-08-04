@@ -8,7 +8,10 @@ export function installBackupContractModule(): GlobalDescriptors {
         normalizeButtonConfig: normalizeButtonConfig,
         parseSubpageConfig: parseSubpageConfig,
         serializeSubpageConfig: serializeSubpageConfig,
-        buildSubpageGrid: buildSubpageGrid,
+        buildSubpageGrid: function (subpage: any) {
+            buildSubpageGridAndNormalizeOrder(subpage);
+            return subpage.grid;
+        },
     });
     var BACKUP_CONFIG_VERSION: any = _backupFeature.BACKUP_CONFIG_VERSION;
     var BACKUP_FORMAT: any = _backupFeature.BACKUP_FORMAT;
