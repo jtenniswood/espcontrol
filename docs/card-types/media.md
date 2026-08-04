@@ -87,6 +87,8 @@ Cover Art uses one of the display's shared image download slots. If all slots ar
 
 All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
 
+When Home Assistant reports that the media player supports both power-on and power-off actions, the popup also includes a Power tab. Media players without both capabilities do not show the tab.
+
 ## Media Content
 
 Media Content is a shortcut for anything Home Assistant can play with the `media_player.play_media` action. It is not tied to Spotify, Music Assistant, Plex, Jellyfin, Sonos, or any other specific music system.
