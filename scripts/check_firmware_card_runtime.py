@@ -213,13 +213,39 @@ def check_root(root: Path) -> list[str]:
                 for guard in (
                     "const bool route_config_changed",
                     "if (route_config_changed) now_playing->active_entity.clear();",
+                    "media_driver_bind_cover_art_control(control, next_entity);",
                     "if (now_playing->progress_slider)",
-                    "if (control)",
                 )
             ):
                 failures.append(
                     "components/espcontrol/button_grid_media_driver.h: preserve and rebind unchanged cover-art routes during live refresh"
                 )
+            bind_cover_art_control = function_body(
+                media_driver_text, "media_driver_bind_cover_art_control"
+            )
+            if bind_cover_art_control is None or any(
+                guard not in bind_cover_art_control
+                for guard in (
+                    "if (control->entity_id != entity_id)",
+                    "media_playback_detach_control(control);",
+                    "control->entity_id = entity_id;",
+                    "subscribe_media_control_state(control);",
+                )
+            ):
+                failures.append(
+                    "components/espcontrol/button_grid_media_driver.h: keep a recreated cover-art modal on the active metadata entity"
+                )
+            if bind_cover_art is not None:
+                bind_control = bind_cover_art.find(
+                    "media_driver_bind_cover_art_control(control, next_entity);"
+                )
+                unchanged_return = bind_cover_art.find(
+                    "if (!entity_changed && !presentation_changed) return;"
+                )
+                if bind_control < 0 or unchanged_return < 0 or bind_control > unchanged_return:
+                    failures.append(
+                        "components/espcontrol/button_grid_media_driver.h: rebind the cover-art modal before an unchanged visual route returns"
+                    )
         visual_setup = function_body(text, "setup_card_visual")
         if visual_setup is not None:
             clickable_reset = "lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);"
