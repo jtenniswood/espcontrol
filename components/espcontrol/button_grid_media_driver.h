@@ -162,6 +162,16 @@ inline MediaNowPlayingCtx *media_driver_track_now_playing(
     : grid_track_media_now_playing_runtime(owner, now_playing);
 }
 
+inline void media_driver_bind_cover_art_control(
+    MediaControlCtx *control, const std::string &entity_id) {
+  if (!control || entity_id.empty()) return;
+  if (control->entity_id != entity_id) {
+    media_playback_detach_control(control);
+    control->entity_id = entity_id;
+  }
+  subscribe_media_control_state(control);
+}
+
 inline SliderCtx *media_driver_track_slider(
     const Context &context, lv_obj_t *owner, SliderCtx *slider) {
   return context.surface == Surface::SUBPAGE
@@ -251,7 +261,13 @@ inline void media_driver_bind_cover_art_route(
     const bool entity_changed = next_entity != now_playing->active_entity;
     const bool presentation_changed =
       external_source_fallback != now_playing->external_source_fallback;
-    if (next_entity.empty() || (!entity_changed && !presentation_changed)) return;
+    if (next_entity.empty()) return;
+
+    // The visual route can survive a live card refresh while its modal control
+    // is recreated with the primary entity. Keep the modal on the same entity
+    // even when the visible cover-art route itself did not change.
+    media_driver_bind_cover_art_control(control, next_entity);
+    if (!entity_changed && !presentation_changed) return;
 
     ESP_LOGI("media_card", "Cover art entity switched from %s to %s",
              now_playing->active_entity.empty() ? "<none>" : now_playing->active_entity.c_str(),
@@ -285,15 +301,6 @@ inline void media_driver_bind_cover_art_route(
       }
     }
 
-    if (control) {
-      // A newly bound or reused control may already target this entity. Only
-      // detach it when the active route genuinely switches to another one.
-      if (entity_changed && control->entity_id != next_entity) {
-        media_playback_detach_control(control);
-        control->entity_id = next_entity;
-      }
-      subscribe_media_control_state(control);
-    }
   };
   now_playing->refresh_entity_route();
   media_playback_apply_state_to_now_playing(primary, now_playing);
