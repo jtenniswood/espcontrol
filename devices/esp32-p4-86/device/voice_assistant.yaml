@@ -855,17 +855,21 @@ script:
   - id: restore_voice_home_ui
     mode: restart
     then:
-      - script.stop: cover_art_delay_timer
-      - script.stop: show_cover_art_view
-      - script.stop: cover_art_show_track_overlay
-      - script.execute: screensaver_wake
-      - script.wait: screensaver_wake
-      - script.execute: hide_cover_art_view
-      - script.wait: hide_cover_art_view
-      - lambda: |-
-          navigation_return_home(id(main_page)->obj);
-      - delay: 50ms
-      - script.execute: clock_bar_apply
+      - if:
+          condition:
+            lambda: return !id(alarm_delay_audio_session_active);
+          then:
+            - script.stop: cover_art_delay_timer
+            - script.stop: show_cover_art_view
+            - script.stop: cover_art_show_track_overlay
+            - script.execute: screensaver_wake
+            - script.wait: screensaver_wake
+            - script.execute: hide_cover_art_view
+            - script.wait: hide_cover_art_view
+            - lambda: |-
+                navigation_return_home(id(main_page)->obj);
+            - delay: 50ms
+            - script.execute: clock_bar_apply
 
   - id: release_voice_after_response
     mode: restart
