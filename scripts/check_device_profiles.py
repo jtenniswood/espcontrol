@@ -231,7 +231,7 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     assert (
         "grid_refresh_layout(slots, cfg,\n"
         "            id(button_order).state,\n"
-        "            id(main_page)->obj);\n"
+        "            id(main_page)->obj, !id(config_apply_reconstruct));\n"
         "          id(clock_bar_apply).execute();"
     ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
     assert (
@@ -264,13 +264,37 @@ def test_button_order_changes_request_card_reconstruction() -> None:
     )
 
 
+def test_live_card_rebuild_skips_stale_widget_layout(profile_slugs: list[str]) -> None:
+    guarded_call = (
+        "grid_refresh_layout(slots, cfg,\n"
+        "            id(button_order).state,\n"
+        "            id(main_page)->obj, !id(config_apply_reconstruct));"
+    )
+    for slug in profile_slugs:
+        sensors = (
+            ROOT / "devices" / slug / "device" / "sensors.yaml"
+        ).read_text(encoding="utf-8")
+        assert guarded_call in sensors, (
+            f"{slug}: live card replacement must not run the new card's layout "
+            "driver against the previous card's widgets"
+        )
+
+    grid = (
+        ROOT / "components" / "espcontrol" / "button_grid_grid.h"
+    ).read_text(encoding="utf-8")
+    assert "bool refresh_card_widgets = true" in grid
+    assert grid.index("if (!refresh_card_widgets)") < grid.index(
+        "refresh_card_layout(s, p, cfg, row_span, col_span);"
+    ), "the stale-widget guard must run before card-specific layout dispatch"
+
+
 def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
     slug = "guition-esp32-p4-jc4880p443"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
     assert (
         "grid_refresh_layout(slots, cfg,\n"
         "            id(button_order).state,\n"
-        "            id(main_page)->obj);\n"
+        "            id(main_page)->obj, !id(config_apply_reconstruct));\n"
         "          id(clock_bar_apply).execute();\n"
         "          navigation_return_home(id(main_page)->obj);"
     ) in sensors, (
@@ -651,6 +675,7 @@ def main() -> int:
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_button_order_changes_request_card_reconstruction()
+    test_live_card_rebuild_skips_stale_widget_layout(profile_slugs)
     test_p4_43_rotation_refresh_rebuilds_subpages()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()

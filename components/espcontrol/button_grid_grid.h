@@ -883,7 +883,8 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
 inline void grid_refresh_layout(
     BtnSlot *slots, const GridConfig &cfg,
     const std::string &order_str,
-    lv_obj_t *main_page_obj = nullptr) {
+    lv_obj_t *main_page_obj = nullptr,
+    bool refresh_card_widgets = true) {
   ESP_LOGI("sensors", "Grid refresh: layout start (%lu ms)", esphome::millis());
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
@@ -910,6 +911,17 @@ inline void grid_refresh_layout(
     first_card = slots[0].btn;
   }
   set_media_home_grid_metrics(main_page_obj, COLS, ROWS, first_card);
+
+  // A live card replacement has already published the new configuration, but
+  // the persistent slot still contains the old card's widget tree until phase
+  // 2 reconstructs it. Do not dispatch the new card type's layout driver
+  // against those old widgets: several drivers read type-specific user_data,
+  // which can otherwise dereference an unrelated stale context and crash LVGL.
+  if (!refresh_card_widgets) {
+    ESP_LOGI("sensors", "Grid refresh: placement done; card widgets pending rebuild (%lu ms)",
+             esphome::millis());
+    return;
+  }
 
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];
