@@ -283,7 +283,17 @@ def test_live_card_rebuild_skips_stale_widget_layout(profile_slugs: list[str]) -
         ROOT / "components" / "espcontrol" / "button_grid_grid.h"
     ).read_text(encoding="utf-8")
     assert "bool refresh_card_widgets = true" in grid
-    assert grid.index("if (!refresh_card_widgets)") < grid.index(
+    guard_position = grid.index("if (!refresh_card_widgets)")
+    assert grid.index("lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);") < guard_position, (
+        "live refresh must unhide placed cards before skipping stale widget layout"
+    )
+    assert grid.index("lv_obj_update_layout(main_page_obj);") < guard_position, (
+        "live refresh must finish grid placement before skipping stale widget layout"
+    )
+    assert grid.index("navigation_register_home_target(") < guard_position, (
+        "live refresh must update safe navigation metadata before rebuilding widgets"
+    )
+    assert guard_position < grid.index(
         "refresh_card_layout(s, p, cfg, row_span, col_span);"
     ), "the stale-widget guard must run before card-specific layout dispatch"
 

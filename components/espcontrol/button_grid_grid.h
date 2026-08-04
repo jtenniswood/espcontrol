@@ -912,17 +912,6 @@ inline void grid_refresh_layout(
   }
   set_media_home_grid_metrics(main_page_obj, COLS, ROWS, first_card);
 
-  // A live card replacement has already published the new configuration, but
-  // the persistent slot still contains the old card's widget tree until phase
-  // 2 reconstructs it. Do not dispatch the new card type's layout driver
-  // against those old widgets: several drivers read type-specific user_data,
-  // which can otherwise dereference an unrelated stale context and crash LVGL.
-  if (!refresh_card_widgets) {
-    ESP_LOGI("sensors", "Grid refresh: placement done; card widgets pending rebuild (%lu ms)",
-             esphome::millis());
-    return;
-  }
-
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];
     if (idx < 1 || idx > NS) continue;
@@ -936,12 +925,32 @@ inline void grid_refresh_layout(
 
   if (main_page_obj) lv_obj_update_layout(main_page_obj);
 
+  // Navigation metadata only reads the saved configuration, so it is safe to
+  // update while a live replacement still has the previous widget tree.
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     ParsedCfg p = parse_cfg(s.config->state);
     navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);
+  }
+
+  // A live card replacement has already published the new configuration, but
+  // the persistent slot still contains the old card's widget tree until phase
+  // 2 reconstructs it. Placement, unhiding, and navigation must still finish,
+  // but do not dispatch the new card type's layout driver against old widgets:
+  // several drivers read type-specific user_data and can otherwise crash LVGL.
+  if (!refresh_card_widgets) {
+    ESP_LOGI("sensors", "Grid refresh: placement done; card widgets pending rebuild (%lu ms)",
+             esphome::millis());
+    return;
+  }
+
+  for (int pos = 0; pos < NS; pos++) {
+    int idx = order.positions[pos];
+    if (idx < 1 || idx > NS) continue;
+    auto &s = slots[idx - 1];
+    ParsedCfg p = parse_cfg(s.config->state);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     refresh_card_layout(s, p, cfg, row_span, col_span);
