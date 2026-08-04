@@ -20,6 +20,21 @@ int main() {
 
   if (string_ref_limited(esphome::StringRef("calendar"), 4) != "cale") return EXIT_FAILURE;
   if (string_ref_limited(esphome::StringRef("clock"), 32) != "clock") return EXIT_FAILURE;
+  if (decode_html_entities("Earth, Wind &amp; Fire") != "Earth, Wind & Fire") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("Rock &quot;N&quot; Roll &apos;Live&apos;") !=
+      "Rock \"N\" Roll 'Live'") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("A &lt; B &gt; C &#38; D &#x266B;") !=
+      "A < B > C & D \xE2\x99\xAB") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("Leave &not_an_entity; unchanged") !=
+      "Leave &not_an_entity; unchanged") {
+    return EXIT_FAILURE;
+  }
 
   using espcontrol::cards::Family;
   const auto media = card_runtime_registration("media");

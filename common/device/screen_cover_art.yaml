@@ -2015,7 +2015,8 @@ script:
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_active_media_player_entity)) return;
-              std::string next = string_ref_limited(title, HA_STATE_TEXT_MAX_LEN);
+              std::string next = decode_html_entities(
+                string_ref_limited(title, HA_STATE_TEXT_MAX_LEN));
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_title)) return;
               // Hide an older track's duration, but keep a duration callback
@@ -2052,7 +2053,8 @@ script:
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_active_media_player_entity)) return;
-              std::string next = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
+              std::string next = decode_html_entities(
+                string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN));
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_artist)) return;
               invalidate_stale_media_duration();
