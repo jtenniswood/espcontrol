@@ -319,6 +319,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "button",
       "input_button",
       "input_boolean",
+      "number",
       "input_number",
       "input_select",
       "select"
@@ -3360,7 +3361,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "allowInSubpage": true,
     "domains": [
       "light",
-      "fan"
+      "fan",
+      "number",
+      "input_number"
     ],
     "normalization": {
       "fields": {

@@ -66,6 +66,8 @@ export function registerSliderCardTypes(): GlobalDescriptors {
                 bindName: "entity",
                 rerender: true,
                 requiredMessage: "Add an entity before saving.",
+                validateDomains: opts.type === "slider",
+                domainValidationMessage: "Choose a light, fan, number, or input_number entity.",
             },
             labelField: {
                 label: "Label",
@@ -266,7 +268,13 @@ export function registerSliderCardTypes(): GlobalDescriptors {
                 }
                 if (opts.renderLabelInSettings && !opts.labelAfterEntity && !opts.coverControlTabs)
                     labelField();
-                helpers.renderCardEntityField(panel, b, helpers, metadata);
+                var entityField: any = helpers.renderCardEntityField(panel, b, helpers, metadata);
+                if (metadata.entity.validateDomains) {
+                    helpers.requireEntityDomain(
+                        entityField.input,
+                        cardContractDomains(opts.type),
+                        metadata.entity.domainValidationMessage);
+                }
                 if (opts.coverControlTabs) {
                     cardSettingsPanel = document.createElement("div");
                     modalSettingsPanel = document.createElement("div");

@@ -1058,6 +1058,13 @@ inline std::string action_card_options_normalized(const std::string &options,
 }
 
 inline void normalize_saved_config_action_fields(ParsedCfg &p) {
+  const bool number_entity = p.entity.size() > 7 && p.entity.compare(0, 7, "number.") == 0;
+  const bool input_number_entity =
+    p.entity.size() > 13 && p.entity.compare(0, 13, "input_number.") == 0;
+  if ((p.sensor == "number.set_value" || p.sensor == "input_number.set_value") &&
+      (number_entity || input_number_entity)) {
+    p.sensor = number_entity ? "number.set_value" : "input_number.set_value";
+  }
   if (action_card_option_select(p)) {
     p.sensor = card_runtime_option_select_canonical_action();
     p.unit.clear();

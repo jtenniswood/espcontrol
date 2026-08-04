@@ -184,6 +184,26 @@ assert.strictEqual(
   "lawn mower subpage type is accepted by the web config normalizer"
 );
 assert.deepStrictEqual(Array.from(hooks.cardContractDomains("climate")), ["climate"], "generated contract exposes card domains");
+assert.deepStrictEqual(
+  Array.from(hooks.cardContractDomains("slider")),
+  ["light", "fan", "number", "input_number"],
+  "slider contract exposes native and helper number domains"
+);
+assert.strictEqual(
+  hooks.entityMatchesDomains("number.boiler_target", ["number", "input_number"]),
+  true,
+  "manual native number entities pass domain validation"
+);
+assert.strictEqual(
+  hooks.entityMatchesDomains("light.kitchen", ["number", "input_number"]),
+  false,
+  "manual incompatible entities fail numeric domain validation"
+);
+assert.strictEqual(
+  hooks.entityMatchesDomains("number.invalid_select", ["select", "input_select"]),
+  false,
+  "manual number entities fail option select domain validation"
+);
 assert.deepStrictEqual(buttonShape(hooks.cardContractDefaultConfig("climate")), buttonShape({
   entity: "",
   label: "Climate",
@@ -797,6 +817,29 @@ assert.deepStrictEqual(buttonShape(legacyV1BackupPlan.buttons[0]), buttonShape({
   type: "weather",
   precision: "tomorrow",
 }), "legacy-v1 backup migrates weather forecast card");
+
+const numericBackupPlan = hooks.planBackupImport({
+  version: 1,
+  device: "guition-esp32-s3-4848s040",
+  button_order: "1,2",
+  buttons: [
+    { entity: "number.boiler_target", label: "Boiler", type: "slider" },
+    { entity: "input_number.test_level", label: "Test", sensor: "input_number.set_value", unit: "2.5", type: "action" },
+  ],
+  subpages: {},
+}, { device: "guition-esp32-s3-4848s040", slots: 20 });
+assert.deepStrictEqual(buttonShape(numericBackupPlan.buttons[0]), buttonShape({
+  entity: "number.boiler_target",
+  label: "Boiler",
+  type: "slider",
+}), "backup import preserves native number sliders");
+assert.deepStrictEqual(buttonShape(numericBackupPlan.buttons[1]), buttonShape({
+  entity: "input_number.test_level",
+  label: "Test",
+  sensor: "input_number.set_value",
+  unit: "2.5",
+  type: "action",
+}), "backup import preserves number helper actions");
 
 assertButtonRoundTrip(hooks, "normal button", {
   entity: "light.kitchen",
@@ -2878,6 +2921,72 @@ assertButtonRoundTrip(hooks, "input number action card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "native number action card", {
+  entity: "number.target_level",
+  label: "Target Level",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "number.set_value",
+  unit: "12.5",
+  type: "action",
+  precision: "",
+}, false);
+
+assertButtonMigration(hooks, "native number action corrects helper service", "number.target_level;Target Level;Flash;Auto;input_number.set_value;12.5;action", {
+  entity: "number.target_level",
+  label: "Target Level",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "number.set_value",
+  unit: "12.5",
+  type: "action",
+  precision: "",
+});
+
+assertButtonMigration(hooks, "number helper action corrects native service", "input_number.target_level;Target Level;Flash;Auto;number.set_value;12.5;action", {
+  entity: "input_number.target_level",
+  label: "Target Level",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "input_number.set_value",
+  unit: "12.5",
+  type: "action",
+  precision: "",
+});
+
+assertButtonRoundTrip(hooks, "native number slider", {
+  entity: "number.boiler_target",
+  label: "Boiler",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "slider",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "number helper slider", {
+  entity: "input_number.test_level",
+  label: "Test Level",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "slider",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "invalid option select is not converted to number", {
+  entity: "number.target_level",
+  label: "Invalid Select",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "input_select.select_option",
+  unit: "",
+  type: "action",
+  precision: "",
+}, false);
+
 assertButtonRoundTrip(hooks, "input select option action card", {
   entity: "input_select.house_mode",
   label: "House Mode",
@@ -2974,6 +3083,14 @@ assertSubpageRoundTrip(hooks, "normal subpage", {
   buttons: [
     buttonShape({ entity: "light.kitchen", label: "Kitchen", icon: "Auto", icon_on: "Lightbulb" }),
     buttonShape({ type: "calendar" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "numeric controls subpage", {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ entity: "number.boiler_target", label: "Boiler", type: "slider" }),
+    buttonShape({ entity: "input_number.test_level", label: "Test", sensor: "input_number.set_value", unit: "2.5", type: "action" }),
   ],
 }, true);
 

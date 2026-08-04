@@ -2543,6 +2543,8 @@ def gen_saved_config_shadow_ts(data):
         "  if (config.type === \"local\") { config.type = \"action\"; config.sensor = \"local\"; }\n"
         "  if (config.type === \"option_select\") { config.type = \"action\"; config.sensor = \"input_select.select_option\"; }\n"
         "  if (config.type !== \"action\") return null;\n"
+        "  const entityDomain = config.entity.split(\".\")[0] || \"\";\n"
+        "  if ([\"number.set_value\", \"input_number.set_value\"].indexOf(config.sensor) >= 0 && [\"number\", \"input_number\"].indexOf(entityDomain) >= 0) config.sensor = entityDomain + \".set_value\";\n"
         "  if (ACTION_OPTION_SELECT_ACTIONS.indexOf(config.sensor as typeof ACTION_OPTION_SELECT_ACTIONS[number]) >= 0) {\n"
         "    config.sensor = \"input_select.select_option\"; config.unit = \"\"; config.precision = \"\"; config.options = \"\"; config.icon_on = \"Auto\";\n"
         "    if (!config.icon || config.icon === \"Auto\" || config.icon === \"Chevron Down\") config.icon = \"Flash\"; return config;\n"
@@ -2711,6 +2713,9 @@ def gen_saved_config_shadow_h(data):
         "  if (config.type == \"local\") { config.type = \"action\"; config.sensor = \"local\"; }\n",
         "  if (config.type == \"option_select\") { config.type = \"action\"; config.sensor = \"input_select.select_option\"; }\n",
         "  if (config.type != \"action\") return false;\n",
+        "  const bool number_entity = config.entity.size() > 7 && config.entity.compare(0, 7, \"number.\") == 0;\n",
+        "  const bool input_number_entity = config.entity.size() > 13 && config.entity.compare(0, 13, \"input_number.\") == 0;\n",
+        "  if ((config.sensor == \"number.set_value\" || config.sensor == \"input_number.set_value\") && (number_entity || input_number_entity)) config.sensor = number_entity ? \"number.set_value\" : \"input_number.set_value\";\n",
         "  if (config.icon.empty()) config.icon = \"Auto\";\n",
         "  if (config.icon_on.empty()) config.icon_on = \"Auto\";\n",
         "  if (saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS, sizeof(SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS) / sizeof(SAVED_CONFIG_SHADOW_ACTION_OPTION_SELECT_ACTIONS[0]))) {\n",

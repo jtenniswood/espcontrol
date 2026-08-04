@@ -2,6 +2,11 @@ import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installButtonSettingsModule(): GlobalDescriptors {
     // ── Button settings panel (unified) ────────────────────────────────────
+    function entityMatchesDomains(this: any, entityId?: any, domains?: any) {
+        var value: any = String(entityId || "").trim();
+        var dot: any = value.indexOf(".");
+        return dot > 0 && !!domains && domains.indexOf(value.slice(0, dot)) >= 0;
+    }
     function openCardSettings(this: any, slot?: any) {
         if (isConfigLocked())
             return;
@@ -185,6 +190,31 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             input.addEventListener("input", maybeClearError);
             input.addEventListener("change", maybeClearError);
         }
+        function requireEntityDomain(this: any, input?: any, domains?: any, message?: any, isActive?: any) {
+            if (!input || !domains || !domains.length)
+                return;
+            requiredFields.push({
+                input: input,
+                message: message || "Choose a compatible entity before saving.",
+                isActive: isActive || function (this: any) { return true; },
+                allowEmpty: true,
+                isValid: function (this: any, value?: any) {
+                    return entityMatchesDomains(value, domains);
+                },
+            });
+            function maybeClearError(this: any) {
+                var value: any = String(input.value || "").trim();
+                if ((!isActive || isActive()) && value) {
+                    if (entityMatchesDomains(value, domains))
+                        clearFieldError(input);
+                }
+                else if (isActive && !isActive()) {
+                    clearFieldError(input);
+                }
+            }
+            input.addEventListener("input", maybeClearError);
+            input.addEventListener("change", maybeClearError);
+        }
         function validateSettingsDraft(this: any) {
             var firstInvalid: any = null;
             for (var i: any = 0; i < requiredFields.length; i++) {
@@ -193,7 +223,10 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                     clearFieldError(rule.input);
                     continue;
                 }
-                if (String(rule.input.value || "").trim()) {
+                var value: any = String(rule.input.value || "").trim();
+                if (!value && rule.allowEmpty)
+                    continue;
+                if (value && (!rule.isValid || rule.isValid(value))) {
                     clearFieldError(rule.input);
                     continue;
                 }
@@ -642,6 +675,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             renderBasicCardFields: renderBasicCardFields,
             renderCardSegmentControl: renderCardSegmentControl,
             requireField: requireField,
+            requireEntityDomain: requireEntityDomain,
             clearFieldError: clearFieldError,
             toggleRow: toggleRow,
             cardSize: c.sizes[slot] || 1,
@@ -731,6 +765,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
         container.appendChild(panel);
     }
     return {
+        "entityMatchesDomains": staticGlobal(entityMatchesDomains),
         "openCardSettings": staticGlobal(openCardSettings),
         "renderBackButtonSettings": staticGlobal(renderBackButtonSettings),
         "renderButtonSettings": staticGlobal(renderButtonSettings),

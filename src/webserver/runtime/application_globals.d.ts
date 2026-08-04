@@ -478,6 +478,7 @@ declare global {
   var entityInitialDetail: any;
   var entityInput: any;
   var entityLookupNames: any;
+  var entityMatchesDomains: any;
   var entityModeCardUsesDefaultIcon: any;
   var entityModeValues: any;
   var entityName: any;

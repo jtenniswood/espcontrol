@@ -65,6 +65,12 @@ target_compile_options(slider_geometry_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(slider_geometry_test PRIVATE ../../components/espcontrol)
 add_test(NAME slider_geometry_test COMMAND slider_geometry_test)
 
+add_executable(number_slider_policy_test number_slider_policy_test.cpp)
+target_compile_features(number_slider_policy_test PRIVATE cxx_std_17)
+target_compile_options(number_slider_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(number_slider_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME number_slider_policy_test COMMAND number_slider_policy_test)
+
 add_executable(display_mode_controller_test display_mode_controller_test.cpp)
 target_compile_features(display_mode_controller_test PRIVATE cxx_std_17)
 target_compile_options(display_mode_controller_test PRIVATE -Wall -Wextra -Werror)

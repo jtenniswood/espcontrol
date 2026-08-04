@@ -17,6 +17,7 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             cardContractOptions: cardContractOptions,
             cardContractDefaultConfig: cardContractDefaultConfig,
             cardContractDomains: cardContractDomains,
+            entityMatchesDomains: entityMatchesDomains,
             cardContractMigrationAlias: cardContractMigrationAlias,
             cardContractOptionSupportedFor: cardContractOptionSupportedFor,
             cardLargeNumbersEnabled: cardLargeNumbersEnabled,

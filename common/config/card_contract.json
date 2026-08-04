@@ -242,7 +242,7 @@
     "action": {
       "label": "Action",
       "allowInSubpage": true,
-      "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "input_number", "input_select", "select"],
+      "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "number", "input_number", "input_select", "select"],
       "options": [
         {
           "name": "large_numbers",
@@ -2082,7 +2082,7 @@
     "slider": {
       "label": "Slider",
       "allowInSubpage": true,
-      "domains": ["light", "fan"],
+      "domains": ["light", "fan", "number", "input_number"],
       "normalization": {
         "fields": {
           "entity": { "policy": "keep" },

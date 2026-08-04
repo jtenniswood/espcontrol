@@ -9,6 +9,7 @@ export function registerActionCardTypes(): GlobalDescriptors {
         { value: "button.press", label: "Press Button", placeholder: "e.g. button.restart_router", icon: "gesture-tap-button", domains: ["button"] },
         { value: "input_button.press", label: "Press Input Button", placeholder: "e.g. input_button.doorbell", icon: "gesture-tap-button", domains: ["input_button"] },
         { value: "input_boolean.toggle", label: "Toggle Helper", placeholder: "e.g. input_boolean.guest_mode", icon: "toggle-switch-variant", domains: ["input_boolean"] },
+        { value: "number.set_value", label: "Set Number", placeholder: "e.g. number.target_level", icon: "counter", domains: ["number"] },
         { value: "input_number.set_value", label: "Set Number Helper", placeholder: "e.g. input_number.target_level", icon: "counter", domains: ["input_number"] },
         { value: "input_select.select_option", label: "Option Select", placeholder: "e.g. select.wled_preset", icon: "form-dropdown", domains: ["select", "input_select"] },
         { value: "local", label: "Local Action", placeholder: "e.g. zoom_mute", icon: "gesture-tap", domains: [] },
@@ -36,6 +37,11 @@ export function registerActionCardTypes(): GlobalDescriptors {
             return;
         if (b && b.sensor === "select.select_option")
             b.sensor = ACTION_CARD_OPTION_SELECT_ACTION;
+        var entityDomain: any = String(b.entity || "").split(".")[0];
+        if ((b.sensor === "number.set_value" || b.sensor === "input_number.set_value") &&
+            (entityDomain === "number" || entityDomain === "input_number")) {
+            b.sensor = entityDomain + ".set_value";
+        }
         if (!b.sensor)
             b.sensor = "scene.turn_on";
         if (!actionCardInfo(b.sensor))
@@ -121,7 +127,7 @@ export function registerActionCardTypes(): GlobalDescriptors {
         return b.options;
     }
     function actionCardNeedsExtraValue(this: any, value?: any) {
-        return value === "input_number.set_value";
+        return value === "number.set_value" || value === "input_number.set_value";
     }
     var ACTION_CARD_METADATA: any = {
         mode: {
@@ -294,6 +300,14 @@ export function registerActionCardTypes(): GlobalDescriptors {
             }
             entityInp._entityDomains = info.domains || [];
             refreshEntityDatalist(entityInp);
+            if (isOptionSelect || actionCardNeedsExtraValue(b.sensor)) {
+                helpers.requireEntityDomain(
+                    entityInp,
+                    info.domains || [],
+                    isOptionSelect
+                        ? "Choose a select or input_select entity."
+                        : "Choose the number entity type that matches this action.");
+            }
             if (isOptionSelect)
                 return;
             if (actionCardIsScript(b)) {
