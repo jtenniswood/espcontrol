@@ -187,6 +187,7 @@ def check_root(root: Path) -> list[str]:
                 "espcontrol::cards::requires_runtime_release(mutation)",
                 "main_card_snapshots[i] = current_card_nodes[i]",
                 "reconstruct_main_cards && reconstruct_slot[idx - 1]",
+                "prepare_card_slot_visual_for_reconstruction(slots[i]);",
                 "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
                 "media_ctx->cover_art && media_ctx->cover_art->widget",
                 "media_cover_art_refresh_geometry(media_ctx);",
@@ -196,6 +197,21 @@ def check_root(root: Path) -> list[str]:
                     failures.append(
                         f"components/espcontrol/{GRID_HEADER}: live card rebuild is missing deletion cleanup guard {guard}"
                     )
+            prepare_index = text.find(
+                "prepare_card_slot_visual_for_reconstruction(slots[i]);"
+            )
+            release_index = text.find(
+                "grid_release_main_runtime_allocations(\n"
+                "    slots, NS, reconstruct_main_cards ? release_runtime_slot : nullptr);"
+            )
+            if (
+                prepare_index < 0
+                or release_index < 0
+                or prepare_index > release_index
+            ):
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: detach changed card widgets before releasing their runtime allocations"
+                )
         media_driver_header = root / "components" / "espcontrol" / "button_grid_media_driver.h"
         if media_driver_header.exists():
             media_driver_text = media_driver_header.read_text(encoding="utf-8")

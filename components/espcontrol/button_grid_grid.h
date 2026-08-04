@@ -297,6 +297,17 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   }
 }
 
+// A live replacement keeps the persistent slot object but replaces any
+// driver-owned children and runtime state beneath it. Detach the old widget
+// tree while its runtime allocations are still alive: deleting those widgets
+// after grid_release_runtime_allocations() can dispatch LVGL events through
+// user_data that has already been freed.
+inline void prepare_card_slot_visual_for_reconstruction(BtnSlot &s) {
+  grid_prepare_media_runtime_for_visual_reset(s.btn);
+  if (s.btn) lv_obj_set_user_data(s.btn, nullptr);
+  reset_card_slot_dynamic_children(s);
+}
+
 inline void clear_unsupported_card_slot_visuals(BtnSlot &s) {
   // Slot widgets persist across dashboard reloads. An unsupported replacement
   // must not keep showing the icon, label, or value from the previous card.
@@ -1758,6 +1769,13 @@ inline void grid_phase2(
                "Card %d mutation=%u domains=0x%02x visual=%d release=%d",
                i + 1, static_cast<unsigned>(mutation), domains,
                reconstruct_slot[i], release_runtime_slot[i]);
+    }
+  }
+
+  if (reconstruct_main_cards) {
+    for (int i = 0; i < NS; ++i) {
+      if (!reconstruct_slot[i]) continue;
+      prepare_card_slot_visual_for_reconstruction(slots[i]);
     }
   }
 
