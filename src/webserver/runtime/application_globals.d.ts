@@ -42,6 +42,7 @@ declare global {
   var CARD_SIZE_EXTRA_LARGE: any;
   var CARD_SIZE_EXTRA_TALL: any;
   var CARD_SIZE_EXTRA_WIDE: any;
+  var CARD_SIZE_LANDSCAPE_LARGE: any;
   var CARD_SIZE_LARGE: any;
   var CARD_SIZE_MAX_TALL: any;
   var CARD_SIZE_MAX_WIDE: any;
@@ -247,6 +248,7 @@ declare global {
   var appendTimezoneOption: any;
   var applyButtonConfigStateEvent: any;
   var applyButtonOrderValue: any;
+  var applyDeferredButtonOrderValue: any;
   var applyCardMetadataFields: any;
   var applyClockBarStateValue: any;
   var applyClockBarTemperatureEntities: any;
@@ -265,6 +267,8 @@ declare global {
   var backupEmptyButtonConfig: any;
   var backupExportFileDate: any;
   var backupExportFileName: any;
+  var normalizeImportedPanelSettings: any;
+  var gridColsForImportedSettings: any;
   var backupExportScreenSizeSlug: any;
   var backupNormalizeButtonConfig: any;
   var backupOrderUsedSlots: any;
@@ -281,6 +285,7 @@ declare global {
   var buildScreenScheduleSettingsCard: any;
   var buildSettingsPage: any;
   var buildSubpageGrid: any;
+  var buildSubpageGridAndNormalizeOrder: any;
   var buildSystemSettingsCards: any;
   var buildUI: any;
   var buttonConfigChangedByNormalize: any;
@@ -325,6 +330,7 @@ declare global {
   var cardContractOptions: any;
   var cardContractPickerKey: any;
   var cardRequiresSquareSize: any;
+  var cardSupportsLandscapeLargeSize: any;
   var cardSupportsMaxSize: any;
   var cardSupportsPortraitLargeSize: any;
   var cardContractSubpageTypeCode: any;
@@ -744,6 +750,7 @@ declare global {
   var normalizeHexColor: any;
   var normalizeHomeAssistantArtworkPort: any;
   var normalizeHomeAssistantArtworkProtocol: any;
+  var normalizeGridSpansForLayout: any;
   var normalizeHour: any;
   var normalizeImageModalMode: any;
   var normalizeImageOptions: any;

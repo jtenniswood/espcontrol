@@ -96,6 +96,15 @@ export function installCore(): GlobalDescriptors {
         r.setProperty("--subpage-right", scaledCqw(subpageBadge.right, scale));
         r.setProperty("--subpage-fs", scaledCqw(subpageBadge.fontSize, scale));
     }
+    function normalizeGridSpansForLayout(this: any, grid?: any, sizes?: any, maxSlots?: any, gridCols?: any, onChanged?: any) {
+        var previousOrder: any = EspControlModel.serializeGridOrder(grid, sizes || {});
+        EspControlModel.clearSpans(grid, maxSlots);
+        EspControlModel.applySpans(grid, sizes || {}, maxSlots, gridCols);
+        var normalizedOrder: any = EspControlModel.serializeGridOrder(grid, sizes || {});
+        if (normalizedOrder !== previousOrder && typeof onChanged === "function")
+            onChanged(normalizedOrder);
+        return normalizedOrder;
+    }
     function syncPreviewOrientation(this: any) {
         var layout: any = activeLayout();
         var screen: any = layout.screen || CFG.screen;
@@ -112,13 +121,23 @@ export function installCore(): GlobalDescriptors {
             ? CFG.largeSensorUnitOffsetPercent : -10;
         r.setProperty("--large-sensor-unit-offset-y", "calc(var(--btn-icon) * 2.5 * " + (largeSensorUnitOffsetPercent / 100) + ")");
         if (state.grid && state.grid.length) {
-            clearSpans(state.grid, NUM_SLOTS);
-            applySpans(state.grid, state.sizes, NUM_SLOTS);
+            normalizeGridSpansForLayout(state.grid, state.sizes, NUM_SLOTS, GRID_COLS, function (this: any, normalizedOrder?: any) {
+                if (orderReceived)
+                    postText(entityName("button_order"), normalizedOrder);
+            });
         }
-        if (state.editingSubpage) {
-            var sp: any = getSubpage(state.editingSubpage);
-            clearSpans(sp.grid, NUM_SLOTS);
-            applySpans(sp.grid, sp.sizes, NUM_SLOTS);
+        if (orderReceived) {
+            for (var homeSlot in state.subpages) {
+                var sp: any = state.subpages[homeSlot];
+                if (!sp || !sp.grid || !sp.grid.length)
+                    continue;
+                var previousSubpageOrder: any = JSON.stringify(serializeSubpageGrid(sp));
+                normalizeGridSpansForLayout(sp.grid, sp.sizes, NUM_SLOTS, GRID_COLS);
+                sp.order = serializeSubpageGrid(sp);
+                if (JSON.stringify(sp.order) !== previousSubpageOrder) {
+                    saveSubpageEntity(homeSlot);
+                }
+            }
         }
     }
     var ICON_EXCEPTIONS: any = GENERATED_ICON_EXCEPTIONS;
@@ -197,6 +216,7 @@ export function installCore(): GlobalDescriptors {
         "scaledCqwText": staticGlobal(scaledCqwText),
         "syncPreviewGridTop": staticGlobal(syncPreviewGridTop),
         "syncPreviewStyleVars": staticGlobal(syncPreviewStyleVars),
+        "normalizeGridSpansForLayout": staticGlobal(normalizeGridSpansForLayout),
         "syncPreviewOrientation": staticGlobal(syncPreviewOrientation),
         "ICON_EXCEPTIONS": liveGlobal(() => ICON_EXCEPTIONS, (value?: any) => { ICON_EXCEPTIONS = value; }),
         "ICON_NAMES": liveGlobal(() => ICON_NAMES, (value?: any) => { ICON_NAMES = value; }),

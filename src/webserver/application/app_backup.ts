@@ -20,6 +20,31 @@ export function installAppBackupModule(): GlobalDescriptors {
         return "espcontrol-" + backupExportScreenSizeSlug(CFG.screenSize) + "-" +
             backupExportFileDate(date) + ".json";
     }
+    function normalizeImportedPanelSettings(this: any, settings?: any) {
+        if (!settings)
+            return null;
+        return EspControlModel.normalizeBackupPanelSettings(settings, {
+            timezone: state.timezone,
+            language: state.language,
+            clockFormat: state.clockFormat,
+            clockFormatOptions: state.clockFormatOptions,
+            ntpDefaults: NTP_SERVER_DEFAULTS,
+            ntpServer1: state.ntpServer1,
+            ntpServer2: state.ntpServer2,
+            ntpServer3: state.ntpServer3,
+            coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
+            coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
+            autoUpdate: state.autoUpdate,
+            updateFrequency: state.updateFrequency,
+            updateFrequencyOptions: state.updateFreqOptions,
+            screenRotationOptions: allScreenRotationOptions(),
+        });
+    }
+    function gridColsForImportedSettings(this: any, importedSettings?: any) {
+        var rotation: any = importedSettings ? importedSettings.screenRotation : state.screenRotation;
+        var layout: any = isPortraitRotation(rotation) && CFG.portrait ? CFG.portrait : CFG;
+        return layout.cols || CFG.cols;
+    }
     function exportConfig(this: any) {
         var data: any = createBackupConfig({
             device: DEVICE_ID,
@@ -146,8 +171,20 @@ export function installAppBackupModule(): GlobalDescriptors {
                     return;
                 }
                 var backupPlan: any;
+                var importedSettings: any;
+                var importedGridCols: any;
                 try {
-                    backupPlan = planBackupImport(data, { device: DEVICE_ID, slots: NUM_SLOTS });
+                    var normalizedBackup: any = normalizeBackupConfig(data);
+                    importedSettings = normalizeImportedPanelSettings(normalizedBackup.settings);
+                    importedGridCols = gridColsForImportedSettings(importedSettings);
+                    var previousGridCols: any = GRID_COLS;
+                    GRID_COLS = importedGridCols;
+                    try {
+                        backupPlan = planBackupImport(data, { device: DEVICE_ID, slots: NUM_SLOTS });
+                    }
+                    finally {
+                        GRID_COLS = previousGridCols;
+                    }
                 }
                 catch (e) {
                     showBanner((e as any).backupMessage || "Invalid config file \u2014 missing required fields", "error");
@@ -172,29 +209,21 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.subpages[subpageKey] = backupPlan.subpages[subpageKey];
                     saveSubpageEntity(subpageKey);
                 }
-                postText(entityName("button_order"), backupPlan.button_order);
-                applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
+                var activeGridCols: any = GRID_COLS;
+                GRID_COLS = importedGridCols;
+                var normalizedButtonOrder: any;
+                try {
+                    normalizedButtonOrder = applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
+                }
+                finally {
+                    GRID_COLS = activeGridCols;
+                }
+                postText(entityName("button_order"), normalizedButtonOrder);
                 state.onColor = backupPlan.config.button_on_color;
                 if (els.setOnColor && els.setOnColor._syncColor)
                     els.setOnColor._syncColor(state.onColor);
                 if (backupPlan.settings) {
                     var s: any = backupPlan.settings;
-                    var importedSettings: any = EspControlModel.normalizeBackupPanelSettings(s, {
-                        timezone: state.timezone,
-                        language: state.language,
-                        clockFormat: state.clockFormat,
-                        clockFormatOptions: state.clockFormatOptions,
-                        ntpDefaults: NTP_SERVER_DEFAULTS,
-                        ntpServer1: state.ntpServer1,
-                        ntpServer2: state.ntpServer2,
-                        ntpServer3: state.ntpServer3,
-                        coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
-                        coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
-                        autoUpdate: state.autoUpdate,
-                        updateFrequency: state.updateFrequency,
-                        updateFrequencyOptions: state.updateFreqOptions,
-                        screenRotationOptions: allScreenRotationOptions(),
-                    });
                     state._clockBarTemperatureVisibilityReceived = true;
                     state._outdoorOn = importedSettings.outdoorTempEnable;
                     state._indoorOn = importedSettings.indoorTempEnable;
@@ -438,6 +467,8 @@ export function installAppBackupModule(): GlobalDescriptors {
         "backupExportScreenSizeSlug": staticGlobal(backupExportScreenSizeSlug),
         "backupExportFileDate": staticGlobal(backupExportFileDate),
         "backupExportFileName": staticGlobal(backupExportFileName),
+        "normalizeImportedPanelSettings": staticGlobal(normalizeImportedPanelSettings),
+        "gridColsForImportedSettings": staticGlobal(gridColsForImportedSettings),
         "exportConfig": staticGlobal(exportConfig),
         "importConfig": staticGlobal(importConfig),
     };

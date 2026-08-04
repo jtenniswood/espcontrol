@@ -61,21 +61,75 @@ export function installAppTestHooksPreview(): GlobalDescriptors {
                 state.firmwareVersionRefreshPending = oldPending;
                 return label;
             },
-            importedButtonOrderFor: function (this: any, orderStr?: any, existingSizes?: any) {
+            importedButtonOrderFor: function (this: any, orderStr?: any, existingSizes?: any, gridCols?: any) {
                 var oldSizes: any = state.sizes;
                 var oldGrid: any = state.grid;
+                var oldGridCols: any = GRID_COLS;
                 state.sizes = existingSizes || {};
                 state.grid = [];
                 for (var i: any = 0; i < NUM_SLOTS; i++)
                     state.grid.push(0);
-                applyImportedButtonOrder(orderStr, {});
-                var sizes: any = {};
-                for (var k in state.sizes)
-                    sizes[k] = state.sizes[k];
-                var grid: any = state.grid.slice();
-                state.sizes = oldSizes;
+                if (gridCols)
+                    GRID_COLS = gridCols;
+                try {
+                    var normalizedOrder: any = applyImportedButtonOrder(orderStr, {});
+                    var sizes: any = {};
+                    for (var k in state.sizes)
+                        sizes[k] = state.sizes[k];
+                    return { grid: state.grid.slice(), sizes: sizes, order: normalizedOrder };
+                }
+                finally {
+                    GRID_COLS = oldGridCols;
+                    state.sizes = oldSizes;
+                    state.grid = oldGrid;
+                }
+            },
+            normalizeGridOrderForLayoutChange: function (this: any, orderStr?: any, maxSlots?: any, fromCols?: any, toCols?: any) {
+                var parsed: any = EspControlModel.parseGridOrder(orderStr, maxSlots, fromCols);
+                var persistedOrder: any = null;
+                var normalizedOrder: any = normalizeGridSpansForLayout(parsed.grid, parsed.sizes, maxSlots, toCols, function (this: any, value?: any) {
+                    persistedOrder = value;
+                });
+                return { order: normalizedOrder, persistedOrder: persistedOrder, sizes: parsed.sizes };
+            },
+            normalizeDeferredGridOrderForLayoutChange: function (this: any, orderStr?: any, toCols?: any) {
+                var oldGridCols: any = GRID_COLS;
+                var oldGrid: any = state.grid;
+                var oldSizes: any = state.sizes;
+                var oldSelectedSlots: any = state.selectedSlots;
+                var oldOrderReceived: any = orderReceived;
+                GRID_COLS = toCols;
+                state.grid = [];
+                state.sizes = {};
+                state.selectedSlots = [];
+                orderReceived = !!(orderStr && orderStr.trim());
+                var persistedOrder: any = null;
+                var normalizedOrder: any = applyDeferredButtonOrderValue(orderStr, function (this: any, value?: any) {
+                    persistedOrder = value;
+                });
+                var sizes: any = Object.assign({}, state.sizes);
+                GRID_COLS = oldGridCols;
                 state.grid = oldGrid;
-                return { grid: grid, sizes: sizes };
+                state.sizes = oldSizes;
+                state.selectedSlots = oldSelectedSlots;
+                orderReceived = oldOrderReceived;
+                return { order: normalizedOrder, persistedOrder: persistedOrder, sizes: sizes };
+            },
+            normalizeSubpageOrderForLayoutChange: function (this: any, order?: any, maxSlots?: any, fromCols?: any, toCols?: any) {
+                var source: any = { order: order, buttons: [{}], sizes: {}, backLabel: "Back" };
+                var parsed: any = EspControlModel.buildSubpageGrid(source, maxSlots, fromCols);
+                var previousOrder: any = EspControlModel.serializeSubpageGrid(parsed.grid, parsed.sizes, source.backLabel);
+                normalizeGridSpansForLayout(parsed.grid, parsed.sizes, maxSlots, toCols);
+                var normalizedOrder: any = EspControlModel.serializeSubpageGrid(parsed.grid, parsed.sizes, source.backLabel);
+                return { changed: JSON.stringify(normalizedOrder) !== JSON.stringify(previousOrder), order: normalizedOrder };
+            },
+            normalizeLoadedSubpageOrderForLayout: function (this: any, order?: any, toCols?: any) {
+                var oldGridCols: any = GRID_COLS;
+                GRID_COLS = toCols;
+                var source: any = { order: order, buttons: [{}], sizes: {}, backLabel: "Back" };
+                var changed: any = buildSubpageGridAndNormalizeOrder(source);
+                GRID_COLS = oldGridCols;
+                return { changed: changed, order: source.order, sizes: source.sizes };
             },
         });
     }

@@ -175,6 +175,18 @@ assert.strictEqual(
   "1p",
   "portrait-large grid order serializes with its saved token"
 );
+assert.deepStrictEqual(plain(model.parseGridOrder("1l", 15, 5)), {
+  grid: [1, -1, -1, -1, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, 0],
+  sizes: { 1: 11 },
+}, "landscape-large grid order reserves four columns across three rows");
+assert.strictEqual(
+  model.serializeGridOrder(
+    [1, -1, -1, -1, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, 0],
+    { 1: model.CARD_SIZE_LANDSCAPE_LARGE },
+  ),
+  "1l",
+  "landscape-large grid order serializes with its saved token"
+);
 
 const transferCard = {
   entity: "media_player.kitchen",
@@ -273,12 +285,21 @@ assert.strictEqual(
   model.CARD_SIZE_PORTRAIT_LARGE,
   "card transfer accepts the supported 3x4 card size",
 );
+const landscapeLargeTransferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [{ ...transferCard, type: "image", size: model.CARD_SIZE_LANDSCAPE_LARGE }],
+);
+assert.strictEqual(
+  model.parseCardTransferCode(landscapeLargeTransferCode).cards[0].size,
+  model.CARD_SIZE_LANDSCAPE_LARGE,
+  "card transfer accepts the supported 4x3 camera card size",
+);
 const maxWideSubpageCard = {
   ...transferSubpageCard,
   subpage: {
     ...transferSubpageCard.subpage,
     order: ["B", "1h"],
-    buttons: [{ ...model.cloneCardConfig(transferCard), type: "camera" }],
+    buttons: [{ ...model.cloneCardConfig(transferCard), type: "image" }],
   },
 };
 assert.deepStrictEqual(
@@ -288,6 +309,22 @@ assert.deepStrictEqual(
   )).cards[0]),
   plain(maxWideSubpageCard),
   "card transfer accepts a 3x2 camera card inside a subpage",
+);
+const landscapeLargeSubpageCard = {
+  ...transferSubpageCard,
+  subpage: {
+    ...transferSubpageCard.subpage,
+    order: ["B", "1l"],
+    buttons: [{ ...model.cloneCardConfig(transferCard), type: "camera" }],
+  },
+};
+assert.deepStrictEqual(
+  plain(model.parseCardTransferCode(model.createCardTransferCode(
+    { device: "panel-a", firmware: "2026.7.0" },
+    [landscapeLargeSubpageCard],
+  )).cards[0]),
+  plain(landscapeLargeSubpageCard),
+  "card transfer accepts a 4x3 camera card inside a subpage",
 );
 
 function assertTransferError(value, expected) {
@@ -304,7 +341,7 @@ assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: 
   "newer version");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
   "no cards");
-assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_PORTRAIT_LARGE + 1 }] },
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_LANDSCAPE_LARGE + 1 }] },
   "invalid size");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");

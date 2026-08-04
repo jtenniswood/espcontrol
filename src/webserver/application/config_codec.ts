@@ -48,8 +48,13 @@ export function installConfigCodecModule(): GlobalDescriptors {
             DEVICE_ID === "guition-esp32-p4-jc8012p4a1-v2";
         return tenInch && (cardRequiresSquareSize(b) || cardSupportsMaxSize(b));
     }
+    function cardSupportsLandscapeLargeSize(this: any, b?: any) {
+        return cardSupportsMaxSize(b) && GRID_COLS >= 4 && GRID_ROWS >= 3;
+    }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        if (size === CARD_SIZE_LANDSCAPE_LARGE)
+            return cardSupportsLandscapeLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_PORTRAIT_LARGE)
             return cardSupportsPortraitLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
@@ -781,9 +786,9 @@ export function installConfigCodecModule(): GlobalDescriptors {
             var migrateConfig: any = subpageConfigNeedsMigration(combined);
             var sp: any = parseSubpageConfig(combined);
             sp.sizes = sp.sizes || {};
-            buildSubpageGrid(sp);
+            var layoutNormalized: any = buildSubpageGridAndNormalizeOrder(sp);
             state.subpages[slot] = sp;
-            if (migrateConfig)
+            if (migrateConfig || layoutNormalized)
                 scheduleSliderSubpageMigration(slot);
         }
         else {
@@ -809,6 +814,12 @@ export function installConfigCodecModule(): GlobalDescriptors {
         sp.grid = result.grid;
         sp.sizes = result.sizes;
         return sp.grid;
+    }
+    function buildSubpageGridAndNormalizeOrder(this: any, sp?: any) {
+        var previousOrder: any = JSON.stringify((sp && sp.order) || []);
+        buildSubpageGrid(sp);
+        sp.order = serializeSubpageGrid(sp);
+        return JSON.stringify(sp.order) !== previousOrder;
     }
     function serializeSubpageGrid(this: any, sp?: any) {
         return EspControlModel.serializeSubpageGrid(sp.grid, sp.sizes || {}, sp.backLabel || "Back");
@@ -868,6 +879,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         "cardRequiresSquareSize": staticGlobal(cardRequiresSquareSize),
         "cardSupportsMaxSize": staticGlobal(cardSupportsMaxSize),
         "cardSupportsPortraitLargeSize": staticGlobal(cardSupportsPortraitLargeSize),
+        "cardSupportsLandscapeLargeSize": staticGlobal(cardSupportsLandscapeLargeSize),
         "normalizeCardSizeForConfig": staticGlobal(normalizeCardSizeForConfig),
         "isBrightnessSliderType": staticGlobal(isBrightnessSliderType),
         "isFanCardType": staticGlobal(isFanCardType),
@@ -909,6 +921,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         "applySubpageRaw": staticGlobal(applySubpageRaw),
         "getSubpage": staticGlobal(getSubpage),
         "buildSubpageGrid": staticGlobal(buildSubpageGrid),
+        "buildSubpageGridAndNormalizeOrder": staticGlobal(buildSubpageGridAndNormalizeOrder),
         "serializeSubpageGrid": staticGlobal(serializeSubpageGrid),
         "enterSubpage": staticGlobal(enterSubpage),
         "exitSubpage": staticGlobal(exitSubpage),

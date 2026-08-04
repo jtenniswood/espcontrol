@@ -84,17 +84,74 @@ assert.strictEqual(
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
 assert.deepStrictEqual(
-  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-2),
+  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-3),
   [
     { size: 8, label: "Max wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
+    { size: 11, label: "Landscape (4x3)" },
   ],
-  "camera card size menu exposes the two max shapes"
+  "camera card size menu exposes the three larger shapes"
 );
 assert(
-  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9),
-  "non-camera card size menus do not expose max shapes"
+  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9 || option.size === 11),
+  "non-camera card size menus do not expose camera-only shapes"
 );
+assert.deepStrictEqual(
+  plain(hooks.normalizeGridOrderForLayoutChange("1l", 15, 5, 3)),
+  { order: "1", persistedOrder: "1", sizes: {} },
+  "rotating a 7-inch 4x3 card to the three-column layout persists its safe single-card size"
+);
+assert.deepStrictEqual(
+  plain(hooks.normalizeDeferredGridOrderForLayoutChange("1l", 3)),
+  { order: "1", persistedOrder: "1", sizes: {} },
+  "starting a portrait 7-inch panel with a deferred 4x3 order persists its safe single-card size"
+);
+const rotatedSubpage = plain(hooks.normalizeSubpageOrderForLayoutChange(["1l", "", "", "", "B"], 20, 5, 4));
+assert.strictEqual(rotatedSubpage.changed, true, "subpage rotation detects a relocated Back cell");
+assert.strictEqual(rotatedSubpage.order[0], "1l", "subpage rotation keeps the valid 4x3 card size");
+assert.strictEqual(rotatedSubpage.order[12], "B", "subpage rotation persists the Back cell outside the 4x3 span");
+const preservedWideCard = plain(hooks.normalizeGridOrderForLayoutChange("1l,,,,,,,,,,,,2w", 20, 4, 5));
+assert.strictEqual(preservedWideCard.sizes["2"], 3, "rotation preserves a displaced wide card's size");
+assert.strictEqual(preservedWideCard.order.split(",")[15], "2w", "rotation relocates the complete wide card span");
+const crowdedWideCard = plain(hooks.normalizeGridOrderForLayoutChange("1,2,3w,4,5,6", 6, 3, 3));
+assert.strictEqual(crowdedWideCard.order, "1,2,3,4,5,6", "a crowded grid keeps every card when a wide span cannot expand");
+assert.strictEqual(crowdedWideCard.sizes["3"], undefined, "a crowded grid safely downgrades the blocked wide span");
+const repackedPortraitCard = plain(hooks.normalizeGridOrderForLayoutChange(",2t,1p,,,,,,,,,,,,,6w", 20, 5, 4));
+assert.strictEqual(repackedPortraitCard.sizes["1"], 10, "rotation repacks the full grid before downgrading a portrait card");
+assert.strictEqual(repackedPortraitCard.sizes["2"], 5, "rotation preserves the accompanying extra-tall card");
+assert.strictEqual(repackedPortraitCard.sizes["6"], 3, "rotation preserves the accompanying wide card");
+const loadedPortraitSubpage = plain(hooks.normalizeLoadedSubpageOrderForLayout(["1l", "", "", "", "B"], 3));
+assert.strictEqual(loadedPortraitSubpage.changed, true, "a late portrait subpage detects its invalid 4x3 size");
+assert.strictEqual(loadedPortraitSubpage.order[0], "1", "a late portrait subpage persists a safe single-card size");
+const importedPortraitGrid = plain(hooks.importedButtonOrderFor("1l", {}, 3));
+assert.strictEqual(importedPortraitGrid.order, "1", "a portrait backup import posts a layout-safe main-grid order");
+assert.strictEqual(importedPortraitGrid.sizes["1"], undefined, "a portrait backup import removes the invalid main-grid 4x3 size");
+const importedPortraitSubpage = plain(hooks.planBackupImportForGridCols({
+  version: 2,
+  format: "espcontrol.backup",
+  device: "guition-esp32-p4-jc1060p470",
+  slots: 15,
+  button_order: "1",
+  buttons: Array.from({ length: 15 }, (_, index) => index === 0 ? { type: "subpage", label: "Camera" } : {}),
+  subpages: { "1": "~1l,,,,B|I,camera.front_door,Front Door,,,,image" },
+}, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, 3));
+assert.strictEqual(importedPortraitSubpage.subpages["1"].order[0], "1", "a portrait backup import normalizes a subpage 4x3 card before saving");
+assert.strictEqual(importedPortraitSubpage.subpages["1"].sizes["1"], undefined, "a portrait backup import removes the invalid subpage 4x3 size");
+const restoredLandscapeCols = hooks.backupImportGridColsFor({ screen_rotation: "0" }, "90");
+assert.strictEqual(restoredLandscapeCols, 5, "backup layout planning uses the imported landscape rotation instead of current portrait rotation");
+const restoredLandscapeGrid = plain(hooks.importedButtonOrderFor("1l", {}, restoredLandscapeCols));
+assert.strictEqual(restoredLandscapeGrid.order, "1l", "restoring landscape preserves a valid main-grid 4x3 card");
+const restoredLandscapeSubpage = plain(hooks.planBackupImportForGridCols({
+  version: 2,
+  format: "espcontrol.backup",
+  device: "guition-esp32-p4-jc1060p470",
+  slots: 15,
+  button_order: "1l",
+  buttons: Array.from({ length: 15 }, (_, index) => index === 0 ? { type: "subpage", label: "Camera" } : {}),
+  subpages: { "1": "~1l,,,,B|I,camera.front_door,Front Door,,,,image" },
+  settings: { screen_rotation: "0" },
+}, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, restoredLandscapeCols));
+assert.strictEqual(restoredLandscapeSubpage.subpages["1"].order[0], "1l", "restoring landscape preserves a valid subpage 4x3 card");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"
