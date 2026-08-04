@@ -44,6 +44,15 @@ globals:
   - id: cover_art_album
     type: std::string
     initial_value: '""'
+  - id: cover_art_content_fingerprint
+    type: uint64_t
+    initial_value: '0'
+  - id: cover_art_content_type
+    type: std::string
+    initial_value: '""'
+  - id: cover_art_content_kind
+    type: uint8_t
+    initial_value: '0'
   - id: cover_art_media_source
     type: std::string
     initial_value: '""'
@@ -746,6 +755,10 @@ script:
           id(cover_art_title).clear();
           id(cover_art_artist).clear();
           id(cover_art_album).clear();
+          id(cover_art_content_fingerprint) = 0;
+          id(cover_art_content_type).clear();
+          id(cover_art_content_kind) = static_cast<uint8_t>(
+            espcontrol::media::MediaItemKind::UNKNOWN);
           id(cover_art_media_source).clear();
           id(cover_art_external_input_active) = false;
           id(cover_art_primary_external_input_active) = false;
@@ -1819,6 +1832,10 @@ script:
             id(cover_art_last_playback_state).clear();
             id(cover_art_media_source).clear();
             id(cover_art_album).clear();
+            id(cover_art_content_fingerprint) = 0;
+            id(cover_art_content_type).clear();
+            id(cover_art_content_kind) = static_cast<uint8_t>(
+              espcontrol::media::MediaItemKind::UNKNOWN);
             if (!previous_entity.empty() && previous_entity != cover_entity) {
               id(cover_art_runtime).clear_image();
               id(cover_art_title).clear();
@@ -1945,6 +1962,79 @@ script:
               subscribe_secondary_content_probe(std::string("entity_picture_local"), 4u);
               subscribe_secondary_content_probe(std::string("media_content_id"), 8u);
             }
+          }
+
+          std::function<void(esphome::StringRef)> handle_media_content_type =
+            [cover_entity, subscription_generation](esphome::StringRef content_type) {
+              if (!id(cover_art_screensaver_enabled).state ||
+                  subscription_generation != id(cover_art_subscription_generation) ||
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
+              std::string next = string_ref_limited(
+                content_type, HA_SHORT_STATE_MAX_LEN);
+              if (next == "unknown" || next == "unavailable") next.clear();
+              id(cover_art_content_type) = next;
+            };
+          if (!already_subscribed) {
+            bool content_type_subscribed = ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_content_type"),
+              handle_media_content_type,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
+            ESP_LOGI("cover_art", "Content type subscription %s",
+                     content_type_subscribed ? "ready" : "failed");
+          }
+
+          std::function<void(esphome::StringRef)> handle_media_content_id =
+            [cover_entity, subscription_generation,
+             mark_artwork_refresh_needed](esphome::StringRef content_id) {
+              if (!id(cover_art_screensaver_enabled).state ||
+                  subscription_generation != id(cover_art_subscription_generation) ||
+                  cover_entity != id(cover_art_active_media_player_entity)) return;
+              std::string next = string_ref_limited(
+                content_id, HA_STATE_TEXT_MAX_LEN);
+              if (next == "unknown" || next == "unavailable") next.clear();
+              const uint64_t next_fingerprint = next.empty()
+                ? 0
+                : espcontrol::media::media_content_identity_fingerprint(
+                    content_id.c_str(), content_id.size());
+              const auto previous_kind = static_cast<espcontrol::media::MediaItemKind>(
+                id(cover_art_content_kind));
+              const auto next_kind = espcontrol::media::media_item_kind(
+                next, id(cover_art_content_type));
+              const auto decision = espcontrol::media::media_metadata_clear_decision(
+                id(cover_art_content_fingerprint), previous_kind,
+                next_fingerprint, next_kind);
+              if (espcontrol::media::should_replace_media_metadata_identity(next)) {
+                id(cover_art_content_fingerprint) = next_fingerprint;
+                id(cover_art_content_kind) = static_cast<uint8_t>(next_kind);
+              }
+              if (!decision.item_changed) return;
+
+              id(cover_art_title).clear();
+              if (decision.clear_grouping) {
+                id(cover_art_artist).clear();
+                id(cover_art_album).clear();
+              }
+              mark_artwork_refresh_needed();
+              id(cover_art_sync_track_text).execute();
+              if (id(espcontrol_app).display().target_mode_is(
+                    espcontrol::DisplayMode::COVER_ART)) {
+                id(cover_art_show_track_overlay).execute();
+                id(cover_art_request_artwork).execute();
+              } else if (id(cover_art_runtime).loaded_url.empty()) {
+                id(cover_art_runtime).image_available = false;
+              }
+            };
+          if (!already_subscribed) {
+            bool content_id_subscribed = ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_content_id"),
+              handle_media_content_id,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
+            ESP_LOGI("cover_art", "Content ID subscription %s",
+                     content_id_subscribed ? "ready" : "failed");
           }
 
           std::function<void(esphome::StringRef)> handle_playback_state =
