@@ -38,6 +38,17 @@ inline bool append_html_code_point(std::string &output, uint32_t code_point) {
   return true;
 }
 
+inline uint32_t remap_legacy_html_code_point(uint32_t code_point) {
+  if (code_point < 0x80 || code_point > 0x9F) return code_point;
+  static constexpr uint16_t windows_1252[] = {
+    0x20AC, 0x0081, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008D, 0x017D, 0x008F,
+    0x0090, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x009D, 0x017E, 0x0178,
+  };
+  return windows_1252[code_point - 0x80];
+}
+
 // Home Assistant integrations can expose HTML-escaped media metadata. Decode
 // the common named entities plus numeric character references before sending
 // titles and artist names to LVGL labels.
@@ -104,7 +115,8 @@ inline std::string decode_html_entities(const std::string &text) {
       }
       if (valid && digit > first_digit && digit < text.size() &&
           text[digit] == ';') {
-        if (append_html_code_point(decoded, code_point)) {
+        if (append_html_code_point(
+              decoded, remap_legacy_html_code_point(code_point))) {
           index = digit + 1;
           continue;
         }

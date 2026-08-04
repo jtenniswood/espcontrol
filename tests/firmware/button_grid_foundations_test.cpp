@@ -31,6 +31,10 @@ int main() {
       "A < B > C & D \xE2\x99\xAB") {
     return EXIT_FAILURE;
   }
+  if (decode_html_entities("Price &#128;10 &#x97; remastered") !=
+      "Price \xE2\x82\xAC\x31\x30 \xE2\x80\x94 remastered") {
+    return EXIT_FAILURE;
+  }
   if (decode_html_entities("Leave &not_an_entity; unchanged") !=
       "Leave &not_an_entity; unchanged") {
     return EXIT_FAILURE;
