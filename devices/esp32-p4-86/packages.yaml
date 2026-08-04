@@ -39,8 +39,12 @@ substitutions:
     lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
   voice_clock_bar_apply_code: |-
     if (id(voice_services_enabled).state) {
+      const int voice_clock_bar_icon_x_box = lv_obj_get_width(id(voice_clock_bar_mute_button));
+      const int voice_clock_bar_icon_x = clock_bar_right_icons_next_x(
+          clock_bar_right_icons, voice_clock_bar_icon_x_box,
+          clock_bar_glyph_width(id(voice_clock_bar_mute_icon_label), voice_clock_bar_icon_x_box));
       lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,
-                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);
+                   voice_clock_bar_icon_x, clock_bar_icon_y);
       lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
       const bool microphone_muted = id(master_mute_switch).state;
       const bool output_muted = id(voice_media_player).is_muted();

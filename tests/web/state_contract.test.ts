@@ -92,6 +92,7 @@ export function runStateContractTests(): void {
   const canonicals: Readonly<Record<keyof typeof SSE_ALIAS_GROUPS, string>> = {
     clockBar: "switch-screen__clock_bar",
     clockBarTime: "switch-screen__clock_bar_time",
+    clockBarNightMode: "switch-screen__clock_bar_night_mode_icon",
     clockBarTemperatureEntities: "text-clock_bar_temperature_entities",
     networkStatus: "switch-screen__network_status_icon",
     batteryStatus: "switch-screen__battery_status",

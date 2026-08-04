@@ -126,6 +126,7 @@ export interface AppState {
   clockBarOn: boolean;
   _clockBarStateValues: Record<string, boolean>;
   clockBarTimeOn: boolean;
+  clockBarNightModeOn: boolean;
   networkStatusOn: boolean;
   batteryStatusOn: boolean;
   voiceServicesOn: boolean;

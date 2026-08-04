@@ -6,6 +6,7 @@ export type SseHandlers = Record<string, SseHandler>;
 export const SSE_ALIAS_GROUPS = {
   clockBar: ["switch-screen__clock_bar", "switch-screen_clock_bar", "switch-clock_bar_enabled"],
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
+  clockBarNightMode: ["switch-screen__clock_bar_night_mode_icon", "switch-screen_clock_bar_night_mode_icon", "switch-clock_bar_night_mode_enabled"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
   batteryStatus: ["switch-screen__battery_status", "switch-screen_battery_status", "switch-battery_status_enabled"],
@@ -57,6 +58,7 @@ function addSseAliases(handlers: SseHandlers, names: readonly string[], canonica
 export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBar, "switch-screen__clock_bar");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTime, "switch-screen__clock_bar_time");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarNightMode, "switch-screen__clock_bar_night_mode_icon");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, "text-clock_bar_temperature_entities");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.networkStatus, "switch-screen__network_status_icon");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.batteryStatus, "switch-screen__battery_status");
