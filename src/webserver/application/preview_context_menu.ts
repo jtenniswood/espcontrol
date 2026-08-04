@@ -120,13 +120,13 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         if (cardRequiresSquareSize(b))
             options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
         if (cardSupportsMaxSize(b)) {
-            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max wide (3x2)" });
+            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
         }
         if (cardSupportsLandscapeLargeSize(b))
-            options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Landscape (4x3)" });
+            options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Massive Wide (3x4)" });
         if (cardSupportsPortraitLargeSize(b))
-            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Portrait (3x4)" });
+            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Massive (4x3)" });
         return options;
     }
     function addSingleCardMenuItems(this: any, slot?: any) {
