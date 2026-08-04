@@ -117,7 +117,7 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
             options.push({ size: CARD_SIZE_EXTRA_WIDE, label: "Extra Wide (1x3)" });
         }
         options.push({ size: CARD_SIZE_LARGE, label: "Large (2x2)" });
-        if (cardRequiresSquareSize(b))
+        if (cardRequiresSquareSize(b) && GRID_COLS >= 3 && GRID_ROWS >= 3)
             options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
         if (cardSupportsMaxSize(b)) {
             options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });

@@ -137,6 +137,7 @@ const hooks = loadHooks();
 const portraitHooks = loadHooks("?device=guition-esp32-p4-jc1060p470", { cols: 3, rows: 5 });
 const tenInchHooks = loadHooks("?device=guition-esp32-p4-jc8012p4a1");
 const fourInchHooks = loadHooks("?device=esp32-p4-86");
+const fourPointThreeInchHooks = loadHooks("?device=guition-esp32-p4-jc4880p443");
 const s3Hooks = loadHooks("?device=guition-esp32-s3-4848s040");
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const cardNormalizationFixtures = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
@@ -384,6 +385,11 @@ assert.strictEqual(
   Array.from(portraitHooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 11),
   false,
   "portrait 7-inch camera size menu hides Massive Wide (3x4)",
+);
+assert.strictEqual(
+  Array.from(fourPointThreeInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 7),
+  false,
+  "4.3-inch cover art size menu hides Extra Large (3x3)",
 );
 const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],
