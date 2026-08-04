@@ -102,11 +102,19 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
   if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label_text);
 }
 
+inline bool calendar_card_ref_ready(const CalendarCardRef &ref) {
+  if (!ref.value_lbl || !ref.unit_lbl || !ref.label_lbl) return false;
+  return lv_obj_is_valid(ref.value_lbl) &&
+         lv_obj_is_valid(ref.unit_lbl) &&
+         lv_obj_is_valid(ref.label_lbl);
+}
+
 inline void refresh_calendar_cards() {
   CalendarDateState &state = calendar_date_state();
   CalendarCardRef *refs = calendar_card_refs();
   int count = calendar_card_count();
   for (int i = 0; i < count; i++) {
+    if (!calendar_card_ref_ready(refs[i])) continue;
     apply_calendar_card_text(refs[i], state);
   }
 }
@@ -302,6 +310,13 @@ inline void register_timezone_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
   apply_timezone_card_text(timezone_card_refs()[count - 1], false, 0, timezone, false);
 }
 
+inline bool timezone_card_ref_ready(const TimezoneCardRef &ref) {
+  if (!ref.value_lbl || !ref.unit_lbl || !ref.label_lbl) return false;
+  return lv_obj_is_valid(ref.value_lbl) &&
+         lv_obj_is_valid(ref.unit_lbl) &&
+         lv_obj_is_valid(ref.label_lbl);
+}
+
 inline void update_timezone_cards(bool valid,
                                   time_t epoch,
                                   const std::string &active_timezone,
@@ -309,6 +324,7 @@ inline void update_timezone_cards(bool valid,
   TimezoneCardRef *refs = timezone_card_refs();
   int count = timezone_card_count();
   for (int i = 0; i < count; i++) {
+    if (!timezone_card_ref_ready(refs[i])) continue;
     apply_timezone_card_text(refs[i], valid, epoch, active_timezone, use_12h);
   }
 }

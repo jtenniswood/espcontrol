@@ -528,6 +528,20 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: keep {legacy_setup} inside the shared date-time driver"
                 )
+        for guard, refresh in (
+            ("calendar_card_ref_ready", "refresh_calendar_cards"),
+            ("timezone_card_ref_ready", "update_timezone_cards"),
+        ):
+            guard_body = function_body(text, guard)
+            refresh_body = function_body(text, refresh)
+            if guard_body is None or "lv_obj_is_valid" not in guard_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {guard} must reject deleted LVGL labels"
+                )
+            if refresh_body is None or guard not in refresh_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {refresh} must skip deleted LVGL labels"
+                )
     sensor_header = root / "components" / "espcontrol" / SENSOR_HEADER
     if sensor_header.exists():
         text = sensor_header.read_text(encoding="utf-8")
@@ -1215,6 +1229,22 @@ inline void setup_light_temp_visual() {
                 )
             },
             ("missing shared date-time lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_datetime_cards.h": (
+                    "inline bool calendar_card_ref_ready() { return true; }\n"
+                    "inline void refresh_calendar_cards() {}\n"
+                    "inline bool timezone_card_ref_ready() { return true; }\n"
+                    "inline void update_timezone_cards() {}\n"
+                )
+            },
+            (
+                "calendar_card_ref_ready must reject deleted LVGL labels",
+                "refresh_calendar_cards must skip deleted LVGL labels",
+                "timezone_card_ref_ready must reject deleted LVGL labels",
+                "update_timezone_cards must skip deleted LVGL labels",
+            ),
         ),
         (
             {
