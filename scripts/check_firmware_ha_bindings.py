@@ -1464,6 +1464,50 @@ def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Pa
     return errors
 
 
+def firmware_media_power_binding_errors(firmware_dir: Path, root: Path) -> list[str]:
+    media_path = firmware_dir / "button_grid_media.h"
+    capability_path = firmware_dir / "media_power_capability.h"
+    errors: list[str] = []
+    if not media_path.exists() or not capability_path.exists():
+        return [
+            "components/espcontrol: keep media Power capability and Home Assistant binding helpers"
+        ]
+
+    media_text = media_path.read_text(encoding="utf-8")
+    capability_text = capability_path.read_text(encoding="utf-8")
+    media_required = (
+        'std::string("supported_features")',
+        "media_playback_subscribe_volume(state)",
+        "media_control_send_power_action",
+        'send_media_player_action(ctx->entity_id, "media_player.turn_on")',
+        'send_media_player_action(ctx->entity_id, "media_player.turn_off")',
+    )
+    capability_required = (
+        "SUPPORT_TURN_ON = 128",
+        "SUPPORT_TURN_OFF = 256",
+        "power_toggle_supported",
+        "PowerCommand power_command",
+        'state == "off" ? PowerCommand::TURN_ON : PowerCommand::TURN_OFF',
+    )
+    if any(needle not in media_text for needle in media_required) or any(
+        needle not in capability_text for needle in capability_required
+    ):
+        errors.append(
+            "components/espcontrol: keep media Power gated by supported_features and dispatch explicit turn_on/turn_off actions"
+        )
+
+    match = MEDIA_CONTROL_STATE_PATTERN.search(media_text)
+    if match:
+        always_on = match.group("body").split(
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL", 1
+        )[0]
+        if "media_playback_subscribe_volume(state)" not in always_on:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: keep media Power capabilities subscribed on low-heap displays"
+            )
+    return errors
+
+
 def firmware_cover_art_low_heap_progress_errors(
     firmware_dir: Path, cover_art_path: Path, root: Path
 ) -> list[str]:
@@ -3043,6 +3087,7 @@ def run_scan() -> int:
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_phase3_live_rebind_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_power_binding_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
@@ -3520,6 +3565,52 @@ def expect_media_control_low_heap_metadata_errors(name: str, text: str, expected
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
             assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_power_binding_errors(
+    name: str, media_text: str, capability_text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(media_text, encoding="utf-8")
+        (firmware_dir / "media_power_capability.h").write_text(
+            capability_text, encoding="utf-8"
+        )
+
+        errors = firmware_media_power_binding_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_power_binding_text() -> tuple[str, str]:
+    media_text = (
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"supported_features\"), cb);\n"
+        "}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  media_playback_subscribe_volume(state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n"
+        "inline void media_control_send_power_action(MediaControlCtx *ctx) {\n"
+        "  send_media_player_action(ctx->entity_id, \"media_player.turn_on\");\n"
+        "  send_media_player_action(ctx->entity_id, \"media_player.turn_off\");\n"
+        "}\n"
+    )
+    capability_text = (
+        "constexpr int SUPPORT_TURN_ON = 128;\n"
+        "constexpr int SUPPORT_TURN_OFF = 256;\n"
+        "inline bool power_toggle_supported() {}\n"
+        "inline PowerCommand power_command() {\n"
+        "  return state == \"off\" ? PowerCommand::TURN_ON : PowerCommand::TURN_OFF;\n"
+        "}\n"
+    )
+    return media_text, capability_text
 
 
 def expect_cover_art_low_heap_progress_errors(
@@ -5544,6 +5635,24 @@ def run_self_test() -> int:
         "",
         "",
         ("keep takeover restore from showing cover art during stop grace",),
+    )
+    valid_media_power, valid_media_power_capability = valid_media_power_binding_text()
+    expect_media_power_binding_errors(
+        "media Power binding",
+        valid_media_power,
+        valid_media_power_capability,
+        (),
+    )
+    expect_media_power_binding_errors(
+        "low heap media Power subscription removed",
+        valid_media_power.replace(
+            "  media_playback_subscribe_volume(state);\n"
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n",
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+            "  media_playback_subscribe_volume(state);\n",
+        ),
+        valid_media_power_capability,
+        ("low-heap displays",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",

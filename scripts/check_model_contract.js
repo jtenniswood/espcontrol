@@ -537,6 +537,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   outdoor_temp_enable: false,
   clock_bar_temperature_entities: "sensor.porch_temperature",
   clock_bar_time: false,
+  clock_bar_night_mode: true,
   network_status_icon: false,
   voice_services: true,
   alarm_delay_audio: true,
@@ -578,6 +579,7 @@ assert.strictEqual(panelSettings.temperatureUnit, "\u00B0C", "panel temperature 
 assert.strictEqual(panelSettings.outdoorTempEnable, false, "panel clock bar temperature visibility imports");
 assert.deepStrictEqual(plain(panelSettings.clockBarTemperatureEntities), ["sensor.porch_temperature"], "panel clock bar temperature entity imports");
 assert.strictEqual(panelSettings.clockBarTime, false, "panel clock bar time imports");
+assert.strictEqual(panelSettings.clockBarNightMode, true, "panel clock bar night mode icon imports");
 assert.strictEqual(panelSettings.networkStatusIcon, false, "panel clock bar network status imports");
 assert.strictEqual(panelSettings.voiceServices, true, "panel voice services imports");
 assert.strictEqual(panelSettings.alarmDelayAudio, true, "panel alarm delay audio imports");
@@ -713,6 +715,7 @@ const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
+assert.strictEqual(legacyPanelSettings.clockBarNightMode, false, "legacy panel settings default clock bar night mode icon off");
 assert.strictEqual(legacyPanelSettings.voiceServices, false, "legacy panel settings default voice services off");
 assert.strictEqual(legacyPanelSettings.alarmDelayAudio, false, "legacy panel settings default alarm audio off");
 assert.strictEqual(legacyPanelSettings.alarmDelayTts, true, "legacy panel settings default alarm TTS on");

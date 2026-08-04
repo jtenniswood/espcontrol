@@ -21,6 +21,13 @@ globals:
     type: bool
     restore_value: yes
     initial_value: 'false'
+  # Live copy of "the night schedule is the winning display request", kept in
+  # step by display_mode_reconcile so the clock bar can show a moon without
+  # recomputing the schedule itself.
+  - id: clock_bar_night_mode_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 esphome:
   on_boot:
@@ -85,6 +92,7 @@ script:
           hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                            id(display_time),
                                            id(network_status_button));
+          clock_bar_set_widget_hidden(id(night_mode_status_icon), true);
           ${voice_clock_bar_hide_code}
           ${battery_status_hide_code}
           network_status_hide_modal();
@@ -102,6 +110,8 @@ script:
           bool visible = visibility.visible;
           bool show_time = visible && id(clock_bar_time_enabled).state;
           bool show_network = visible && id(network_status_enabled).state;
+          bool show_night_mode = visible && id(clock_bar_night_mode_enabled).state &&
+                                 id(clock_bar_night_mode_active);
           int clock_bar_screen_width = clock_bar_current_screen_width(${screen_width});
           int clock_bar_screen_height = clock_bar_current_screen_height(${screen_height});
           bool clock_bar_480_square =
@@ -127,10 +137,25 @@ script:
             hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                              id(display_time),
                                              id(network_status_button));
+            clock_bar_set_widget_hidden(id(night_mode_status_icon), true);
             ${voice_clock_bar_hide_code}
             ${battery_status_hide_code}
             network_status_hide_modal();
             return;
+          }
+
+          // Visible status icons pack leftwards from the screen edge. Seed the
+          // network glyph only when it is shown so a hidden network icon does
+          // not leave an empty slot before optional icons.
+          ClockBarRightIcons clock_bar_right_icons =
+              clock_bar_right_icons_begin(clock_bar_right_x, 8);
+          if (show_network) {
+            int clock_bar_network_box = lv_obj_get_width(id(network_status_button));
+            clock_bar_right_icons_seed(
+                clock_bar_right_icons,
+                clock_bar_network_box,
+                clock_bar_glyph_width(id(network_status_icon_label),
+                                      clock_bar_network_box));
           }
 
           apply_clock_bar_fixed_layout(
@@ -160,6 +185,20 @@ script:
           }
           ${voice_clock_bar_apply_code}
           ${battery_status_apply_code}
+          if (show_night_mode) {
+            const int night_mode_box = lv_obj_get_width(id(night_mode_status_icon));
+            const int night_mode_icon_x = clock_bar_right_icons_next_x(
+                clock_bar_right_icons,
+                night_mode_box,
+                clock_bar_glyph_width(id(night_mode_status_icon_label),
+                                      night_mode_box));
+            lv_obj_align(id(night_mode_status_icon), LV_ALIGN_TOP_RIGHT,
+                         night_mode_icon_x,
+                         clock_bar_icon_y);
+            lv_obj_clear_flag(id(night_mode_status_icon), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(night_mode_status_icon), LV_OBJ_FLAG_HIDDEN);
+          }
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
@@ -198,6 +237,21 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     entity_category: config
     icon: "mdi:wifi"
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - script.execute: clock_bar_apply
+    on_turn_off:
+      - script.execute: clock_bar_apply
+
+  - platform: template
+    name: "${entity_screen_clock_bar_night_mode}"
+    internal: true
+    id: clock_bar_night_mode_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:weather-night"
     web_server:
       sorting_group_id: sg_display
     on_turn_on:

@@ -56,6 +56,7 @@ declare global {
   var CLIMATE_LABEL_DISPLAY_OPTION: any;
   var CLIMATE_NUMBER_DISPLAY_OPTION: any;
   var CLIMATE_TEMPERATURE_STEP_OPTION: any;
+  var CLOCK_BAR_NIGHT_MODE_UNAVAILABLE: any;
   var CLOCK_BAR_TIME_UNAVAILABLE: any;
   var CLOCK_BAR_UNAVAILABLE: any;
   var COVER_CONTROL_TABS_OPTION: any;
@@ -846,6 +847,7 @@ declare global {
   var postC6FirmwareAutoUpdate: any;
   var postC6FirmwareUpdateInstall: any;
   var postClockBar: any;
+  var postClockBarNightMode: any;
   var postClockBarTemperatureEntities: any;
   var postClockBarTime: any;
   var postClockBrightnessDay: any;

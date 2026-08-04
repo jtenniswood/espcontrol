@@ -64,6 +64,32 @@ lvgl:
             then:
               - script.execute: network_status_open_info
 
+      # Night mode indicator (schedule night period only). Starts hidden;
+      # clock_bar_apply positions and reveals it beside the network icon, so the
+      # x/y here are unused placeholders.
+      - obj:
+          id: night_mode_status_icon
+          align: top_right
+          x: 0
+          y: 0
+          width: 42
+          height: 38
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: false
+          hidden: true
+          widgets:
+            - label:
+                id: night_mode_status_icon_label
+                text: "\U000F00DC"
+                text_font: font_icon_status
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+
   # ---------------------------------------------------------------------------
   # Main page (fixed 3x2 grid of button widgets)
   # ---------------------------------------------------------------------------
