@@ -269,7 +269,17 @@ def main() -> int:
     )[1].split("\n}\n\ninline void media_playback_apply_state_to_controls", 1)[0]
     if "media_control_refresh_group_member_volumes(ctx);" not in apply_control:
         raise SystemExit("Discovery updates must refresh the grouped-volume cache")
-    if media_header.count("media_control_store_group_volume(") < 5:
+    refresh_volumes = media_header.split(
+        "inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {", 1
+    )[1].split("\n}\n\ninline bool media_control_group_volume_percent", 1)[0]
+    if "ctx->current_pct" in refresh_volumes:
+        raise SystemExit("Grouped-volume refresh must preserve the primary raw volume")
+    refresh_speakers = media_header.split(
+        "inline void media_control_refresh_speakers(MediaControlCtx *ctx) {", 1
+    )[1].split("\n}\n\ninline void media_control_create_speakers_tab_content", 1)[0]
+    if "row->volume_known = item.volume_known;" not in refresh_speakers:
+        raise SystemExit("Discovery updates must clear stale unknown speaker volumes")
+    if media_header.count("media_control_store_group_volume(") < 4:
         raise SystemExit("Primary and discovered speaker volumes must persist in the group cache")
     for reset in (
         "ctx->speaker_helper_members.clear();",

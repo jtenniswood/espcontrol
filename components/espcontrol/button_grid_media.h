@@ -3090,8 +3090,6 @@ inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
         return std::find(members.begin(), members.end(), known.entity_id) == members.end();
       }),
     ctx->group_volume_states.end());
-  media_control_store_group_volume(
-    ctx, ctx->entity_id, ctx->current_pct, ctx->volume_known, ctx->available);
   for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
     if (std::find(members.begin(), members.end(), item.entity_id) == members.end()) continue;
     media_control_store_group_volume(
@@ -3520,9 +3518,9 @@ inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
     for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
       if (item.entity_id != row->entity_id) continue;
       if (!item.friendly_name.empty()) row->friendly_name = item.friendly_name;
+      row->volume_known = item.volume_known;
       if (item.volume_known) {
         row->volume_pct = item.volume_pct;
-        row->volume_known = true;
       }
       if (row->entity_id != ctx->entity_id) row->available = item.available;
       break;
