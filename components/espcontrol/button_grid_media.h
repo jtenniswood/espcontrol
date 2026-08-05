@@ -3192,7 +3192,7 @@ inline void media_control_toggle_speaker(MediaControlCtx *ctx,
   row->selected = selected;
   row->pending = true;
   row->pending_until_ms = esphome::millis() + MEDIA_GROUP_ACTION_TIMEOUT_MS;
-  media_control_set_speaker_status(espcontrol_i18n("Updating speakers"), false, true);
+  media_control_set_speaker_status(nullptr);
   media_control_refresh_speaker_row(ctx, row);
   auto call_id = std::make_shared<uint32_t>(0);
   auto callback = [ctx, entity_id = row->entity_id, call_id](

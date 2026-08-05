@@ -278,8 +278,8 @@ def main() -> int:
     ):
         if reset not in media_header:
             raise SystemExit("Media route changes must clear stale speaker discovery data")
-    if 'media_control_set_speaker_status(espcontrol_i18n("Updating speakers"), false, true);' not in media_header:
-        raise SystemExit("Pending speaker group changes must show their status")
+    if 'media_control_set_speaker_status(espcontrol_i18n("Updating speakers"), false, true);' in media_header:
+        raise SystemExit("Pending speaker group changes must not show temporary status text")
     if "media_control_refresh_speaker_state(ctx, row);" in media_header:
         raise SystemExit("Speaker rows must not depend on late one-shot Home Assistant reads")
     print("Firmware media-group checks passed.")
