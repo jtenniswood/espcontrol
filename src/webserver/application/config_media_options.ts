@@ -20,6 +20,10 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         mode = mediaEditorMode(mode);
         if (mode === "control_modal") {
             var controlOut: any = "";
+            var controlGroupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+            if (controlGroupEntity) {
+                controlOut = setConfigOptionValue(controlOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, controlGroupEntity);
+            }
             var labelMode: any = normalizeMediaLabelDisplayMode(configOptionValue(options, MEDIA_LABEL_DISPLAY_OPTION));
             var numberMode: any = normalizeMediaNumberDisplayMode(configOptionValue(options, MEDIA_NUMBER_DISPLAY_OPTION));
             if (labelMode !== "status") {
@@ -33,6 +37,18 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
                 controlOut = setConfigOptionValue(controlOut, MEDIA_VOLUME_MAX_OPTION, controlMaxVolume);
             }
             return controlOut;
+        }
+        if (mode === "speaker_group") {
+            var groupOut: any = "";
+            var groupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+            if (groupEntity) {
+                groupOut = setConfigOptionValue(groupOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, groupEntity);
+            }
+            var groupMaxVolume: any = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
+            if (groupMaxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
+                groupOut = setConfigOptionValue(groupOut, MEDIA_VOLUME_MAX_OPTION, groupMaxVolume);
+            }
+            return groupOut;
         }
         if (mode === "playlist") {
             var playlistOut: any = "";
@@ -128,6 +144,19 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
     function mediaVolumeMax(this: any, b?: any) {
         return normalizeMediaVolumeMax(configOptionValue(b && b.options, MEDIA_VOLUME_MAX_OPTION));
     }
+    function normalizeMediaSpeakerGroupEntity(this: any, value?: any) {
+        return String(value || "").trim();
+    }
+    function mediaSpeakerGroupEntity(this: any, b?: any) {
+        return normalizeMediaSpeakerGroupEntity(configOptionValue(b && b.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    }
+    function setMediaSpeakerGroupEntity(this: any, b?: any, value?: any) {
+        if (!b)
+            return "";
+        b.options = setConfigOptionValue(b.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, normalizeMediaSpeakerGroupEntity(value));
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
+    }
     function setMediaVolumeMax(this: any, b?: any, value?: any) {
         if (!b)
             return "";
@@ -205,6 +234,9 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         "normalizeMediaNumberDisplayMode": staticGlobal(normalizeMediaNumberDisplayMode),
         "mediaVolumeMax": staticGlobal(mediaVolumeMax),
         "setMediaVolumeMax": staticGlobal(setMediaVolumeMax),
+        "normalizeMediaSpeakerGroupEntity": staticGlobal(normalizeMediaSpeakerGroupEntity),
+        "mediaSpeakerGroupEntity": staticGlobal(mediaSpeakerGroupEntity),
+        "setMediaSpeakerGroupEntity": staticGlobal(setMediaSpeakerGroupEntity),
         "mediaLabelDisplayMode": staticGlobal(mediaLabelDisplayMode),
         "setMediaLabelDisplayMode": staticGlobal(setMediaLabelDisplayMode),
         "mediaNumberDisplayMode": staticGlobal(mediaNumberDisplayMode),

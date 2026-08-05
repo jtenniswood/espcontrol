@@ -161,6 +161,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
       "cover_art_action",
       "cover_art_details",
       "cover_art_secondary_entity",
+      "speaker_group_entity",
       "volume_max",
       "playlist_content_id",
       "playlist_content_type",
@@ -292,7 +293,7 @@ const VACUUM_MIGRATIONS: Readonly<Record<string, MigrationActionSpec>> = {
   }
 };
 const ACTION_OPTION_SELECT_ACTIONS = ["input_select.select_option", "select.select_option"] as const;
-const MEDIA_MODES = ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"] as const;
+const MEDIA_MODES = ["control_modal", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"] as const;
 const MEDIA_DEFAULT_MODE = "play_pause";
 const MEDIA_MODE_ALIASES: Readonly<Record<string, string>> = {"controls": "play_pause"};
 const MEDIA_STATE_DISPLAY_MODES = ["play_pause", "position"] as const;

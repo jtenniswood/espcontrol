@@ -5,6 +5,7 @@ export const MEDIA_CARD_CONFIG_VERSION = 1 as const;
 
 export type MediaCardMode =
   | "control_modal"
+  | "speaker_group"
   | "play_pause"
   | "previous"
   | "next"
@@ -32,6 +33,7 @@ export interface MediaCardConfigV1 {
   controlLabelDisplay: MediaControlLabelDisplay;
   controlNumberDisplay: MediaControlNumberDisplay;
   maxVolumePercent: number;
+  speakerGroupEntity: string;
   playlist: {
     contentId: string;
     contentType: string;
@@ -42,6 +44,7 @@ export interface MediaCardConfigV1 {
 
 const MEDIA_CARD_MODES: readonly MediaCardMode[] = [
   "control_modal",
+  "speaker_group",
   "play_pause",
   "previous",
   "next",
@@ -100,6 +103,7 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
     controlNumberDisplay:
       configOptionValue(options, "number_display") === "volume" ? "volume" : "icon",
     maxVolumePercent: boundedVolumePercent(configOptionValue(options, "volume_max")),
+    speakerGroupEntity: configOptionValue(options, "speaker_group_entity").trim(),
     playlist: {
       contentId: configOptionValue(options, "playlist_content_id").trim(),
       contentType: configOptionValue(options, "playlist_content_type").trim() || "playlist",

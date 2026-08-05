@@ -97,6 +97,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Media") == 0) return "Média";
   if (std::strcmp(text, "Media Control") == 0) return "Ovládání médií";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
+  if (std::strcmp(text, "Group") == 0) return "Skupina";
   if (std::strcmp(text, "Monthly") == 0) return "Měsíčně";
   if (std::strcmp(text, "more") == 0) return "další";
   if (std::strcmp(text, "More items") == 0) return "Další položky";
@@ -230,6 +231,12 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojena";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavení WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorů";
+  if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
+  if (std::strcmp(text, "No Speakers") == 0) return "Žádné reproduktory";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Seskupení se nezdařilo";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizovány";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizace reproduktorů";
   return text;
 }
 
@@ -315,6 +322,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediestyring";
   if (std::strcmp(text, "Playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(text, "Mode") == 0) return "Tilstand";
+  if (std::strcmp(text, "Group") == 0) return "Gruppe";
   if (std::strcmp(text, "Monthly") == 0) return "Månedligt";
   if (std::strcmp(text, "more") == 0) return "mere";
   if (std::strcmp(text, "More items") == 0) return "Flere elementer";
@@ -442,6 +450,12 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi afbrudt";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-opsætning";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Højttalergruppe";
+  if (std::strcmp(text, "Speakers") == 0) return "Højttalere";
+  if (std::strcmp(text, "No Speakers") == 0) return "Ingen højttalere";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislykkedes";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Højttalere opdateret";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Opdaterer højttalere";
   return text;
 }
 
@@ -529,6 +543,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediensteuerung";
   if (std::strcmp(text, "Playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
+  if (std::strcmp(text, "Group") == 0) return "Gruppe";
   if (std::strcmp(text, "Monthly") == 0) return "Monatlich";
   if (std::strcmp(text, "more") == 0) return "weitere";
   if (std::strcmp(text, "More items") == 0) return "Weitere Elemente";
@@ -652,6 +667,12 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi getrennt";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-Einrichtung";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Lautsprechergruppe";
+  if (std::strcmp(text, "Speakers") == 0) return "Lautsprecher";
+  if (std::strcmp(text, "No Speakers") == 0) return "Keine Lautsprecher";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Gruppierung fehlgeschlagen";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Lautsprecher aktualisiert";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Lautsprecher werden aktualisiert";
   return text;
 }
 
@@ -738,6 +759,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Control multimedia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
+  if (std::strcmp(text, "Group") == 0) return "Grupo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensual";
   if (std::strcmp(text, "more") == 0) return "más";
   if (std::strcmp(text, "More items") == 0) return "Más elementos";
@@ -869,6 +891,12 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Error en la actualización";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuración WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de altavoces";
+  if (std::strcmp(text, "Speakers") == 0) return "Altavoces";
+  if (std::strcmp(text, "No Speakers") == 0) return "Sin altavoces";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Error al agrupar";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Altavoces actualizados";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Actualizando altavoces";
   return text;
 }
 
@@ -959,6 +987,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Soittolista";
   if (std::strcmp(text, "Medium") == 0) return "Keskitaso";
   if (std::strcmp(text, "Mode") == 0) return "Tila";
+  if (std::strcmp(text, "Group") == 0) return "Ryhmä";
   if (std::strcmp(text, "Monthly") == 0) return "Kuukausittain";
   if (std::strcmp(text, "more") == 0) return "lisää";
   if (std::strcmp(text, "More items") == 0) return "Lisää kohteita";
@@ -1096,6 +1125,12 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi katkaistu";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-asennus";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Kaiutinryhmä";
+  if (std::strcmp(text, "Speakers") == 0) return "Kaiuttimet";
+  if (std::strcmp(text, "No Speakers") == 0) return "Ei kaiuttimia";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Ryhmittely epäonnistui";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Kaiuttimet päivitetty";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Päivitetään kaiuttimia";
   return text;
 }
 
@@ -1179,6 +1214,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Media") == 0) return "Média";
   if (std::strcmp(text, "Media Control") == 0) return "Contrôle multimédia";
   if (std::strcmp(text, "Playlist") == 0) return "Liste de lecture";
+  if (std::strcmp(text, "Group") == 0) return "Groupe";
   if (std::strcmp(text, "Monthly") == 0) return "Mensuel";
   if (std::strcmp(text, "more") == 0) return "de plus";
   if (std::strcmp(text, "More items") == 0) return "Plus d’éléments";
@@ -1306,6 +1342,12 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi déconnecté";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuration WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Groupe d’enceintes";
+  if (std::strcmp(text, "Speakers") == 0) return "Enceintes";
+  if (std::strcmp(text, "No Speakers") == 0) return "Aucune enceinte";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Échec du regroupement";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Enceintes mises à jour";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Mise à jour des enceintes";
   return text;
 }
 
@@ -1397,6 +1439,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(text, "Medium") == 0) return "Közepes";
   if (std::strcmp(text, "Mode") == 0) return "Mód";
+  if (std::strcmp(text, "Group") == 0) return "Csoport";
   if (std::strcmp(text, "Monthly") == 0) return "Havonta";
   if (std::strcmp(text, "more") == 0) return "további";
   if (std::strcmp(text, "More items") == 0) return "További elemek";
@@ -1533,6 +1576,12 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi megszakadt";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi beállítás";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Hangszórócsoport";
+  if (std::strcmp(text, "Speakers") == 0) return "Hangszórók";
+  if (std::strcmp(text, "No Speakers") == 0) return "Nincsenek hangszórók";
+  if (std::strcmp(text, "Grouping failed") == 0) return "A csoportosítás sikertelen";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Hangszórók frissítve";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Hangszórók frissítése";
   return text;
 }
 
@@ -1619,6 +1668,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Controllo multimediale";
   if (std::strcmp(text, "Medium") == 0) return "Medio";
   if (std::strcmp(text, "Mode") == 0) return "Modalità";
+  if (std::strcmp(text, "Group") == 0) return "Gruppo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensile";
   if (std::strcmp(text, "more") == 0) return "altri";
   if (std::strcmp(text, "More items") == 0) return "Altri elementi";
@@ -1752,6 +1802,12 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi disconnesso";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configurazione WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Gruppo di altoparlanti";
+  if (std::strcmp(text, "Speakers") == 0) return "Altoparlanti";
+  if (std::strcmp(text, "No Speakers") == 0) return "Nessun altoparlante";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Raggruppamento non riuscito";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Altoparlanti aggiornati";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Aggiornamento altoparlanti";
   return text;
 }
 
@@ -1837,6 +1893,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediekontroll";
   if (std::strcmp(text, "Playlist") == 0) return "Spilleliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
+  if (std::strcmp(text, "Group") == 0) return "Gruppe";
   if (std::strcmp(text, "Monthly") == 0) return "Månedlig";
   if (std::strcmp(text, "more") == 0) return "flere";
   if (std::strcmp(text, "More items") == 0) return "Flere elementer";
@@ -1967,6 +2024,12 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frakoblet";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-oppsett";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Høyttalergruppe";
+  if (std::strcmp(text, "Speakers") == 0) return "Høyttalere";
+  if (std::strcmp(text, "No Speakers") == 0) return "Ingen høyttalere";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislyktes";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Høyttalere oppdatert";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Oppdaterer høyttalere";
   return text;
 }
 
@@ -2054,6 +2117,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediabediening";
   if (std::strcmp(text, "Playlist") == 0) return "Afspeellijst";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
+  if (std::strcmp(text, "Group") == 0) return "Groep";
   if (std::strcmp(text, "Monthly") == 0) return "Maandelijks";
   if (std::strcmp(text, "more") == 0) return "meer";
   if (std::strcmp(text, "More items") == 0) return "Meer items";
@@ -2183,6 +2247,12 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Update mislukt";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi verbroken";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-installatie";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Luidsprekergroep";
+  if (std::strcmp(text, "Speakers") == 0) return "Luidsprekers";
+  if (std::strcmp(text, "No Speakers") == 0) return "Geen luidsprekers";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Groeperen mislukt";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Luidsprekers bijgewerkt";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Luidsprekers bijwerken";
   return text;
 }
 
@@ -2268,6 +2338,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Sterowanie multimediami";
   if (std::strcmp(text, "Playlist") == 0) return "Playlista";
   if (std::strcmp(text, "Mode") == 0) return "Tryb";
+  if (std::strcmp(text, "Group") == 0) return "Grupa";
   if (std::strcmp(text, "Monthly") == 0) return "Co miesiąc";
   if (std::strcmp(text, "more") == 0) return "więcej";
   if (std::strcmp(text, "More items") == 0) return "Więcej elementów";
@@ -2398,6 +2469,12 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi rozłączone";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Konfiguracja WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Grupa głośników";
+  if (std::strcmp(text, "Speakers") == 0) return "Głośniki";
+  if (std::strcmp(text, "No Speakers") == 0) return "Brak głośników";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Grupowanie nie powiodło się";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Głośniki zaktualizowane";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizowanie głośników";
   return text;
 }
 
@@ -2484,6 +2561,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Controle de mídia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
+  if (std::strcmp(text, "Group") == 0) return "Grupo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
   if (std::strcmp(text, "more") == 0) return "mais";
   if (std::strcmp(text, "More items") == 0) return "Mais itens";
@@ -2615,6 +2693,12 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de alto-falantes";
+  if (std::strcmp(text, "Speakers") == 0) return "Alto-falantes";
+  if (std::strcmp(text, "No Speakers") == 0) return "Nenhum alto-falante";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Alto-falantes atualizados";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Atualizando alto-falantes";
   return text;
 }
 
@@ -2702,6 +2786,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Controlo multimédia";
   if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
+  if (std::strcmp(text, "Group") == 0) return "Grupo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
   if (std::strcmp(text, "more") == 0) return "mais";
   if (std::strcmp(text, "More items") == 0) return "Mais itens";
@@ -2833,6 +2918,12 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desligado";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de colunas";
+  if (std::strcmp(text, "Speakers") == 0) return "Colunas";
+  if (std::strcmp(text, "No Speakers") == 0) return "Sem colunas";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Colunas atualizadas";
+  if (std::strcmp(text, "Updating speakers") == 0) return "A atualizar colunas";
   return text;
 }
 
@@ -2923,6 +3014,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Listă de redare";
   if (std::strcmp(text, "Medium") == 0) return "Mediu";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
+  if (std::strcmp(text, "Group") == 0) return "Grup";
   if (std::strcmp(text, "Monthly") == 0) return "Lunar";
   if (std::strcmp(text, "more") == 0) return "încă";
   if (std::strcmp(text, "More items") == 0) return "Mai multe elemente";
@@ -3060,6 +3152,12 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi deconectat";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configurare WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Grup de difuzoare";
+  if (std::strcmp(text, "Speakers") == 0) return "Difuzoare";
+  if (std::strcmp(text, "No Speakers") == 0) return "Niciun difuzor";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Gruparea a eșuat";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Difuzoare actualizate";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Se actualizează difuzoarele";
   return text;
 }
 
@@ -3153,6 +3251,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Плейлист";
   if (std::strcmp(text, "Medium") == 0) return "Средняя";
   if (std::strcmp(text, "Mode") == 0) return "Режим";
+  if (std::strcmp(text, "Group") == 0) return "Группа";
   if (std::strcmp(text, "Monthly") == 0) return "Ежемесячно";
   if (std::strcmp(text, "more") == 0) return "ещё";
   if (std::strcmp(text, "More items") == 0) return "Ещё элементы";
@@ -3294,6 +3393,12 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Ошибка обновления";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi отключён";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Настройка WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Группа динамиков";
+  if (std::strcmp(text, "Speakers") == 0) return "Динамики";
+  if (std::strcmp(text, "No Speakers") == 0) return "Нет динамиков";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Не удалось сгруппировать";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Динамики обновлены";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Обновление динамиков";
   return text;
 }
 
@@ -3380,6 +3485,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Ovládanie médií";
   if (std::strcmp(text, "Playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
+  if (std::strcmp(text, "Group") == 0) return "Skupina";
   if (std::strcmp(text, "Monthly") == 0) return "Mesačne";
   if (std::strcmp(text, "more") == 0) return "ďalšie";
   if (std::strcmp(text, "More items") == 0) return "Ďalšie položky";
@@ -3513,6 +3619,12 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojené";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavenie WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorov";
+  if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
+  if (std::strcmp(text, "No Speakers") == 0) return "Žiadne reproduktory";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Zoskupenie zlyhalo";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizované";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizácia reproduktorov";
   return text;
 }
 
@@ -3603,6 +3715,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(text, "Medium") == 0) return "Srednje";
   if (std::strcmp(text, "Mode") == 0) return "Način";
+  if (std::strcmp(text, "Group") == 0) return "Skupina";
   if (std::strcmp(text, "Monthly") == 0) return "Mesečno";
   if (std::strcmp(text, "more") == 0) return "več";
   if (std::strcmp(text, "More items") == 0) return "Več elementov";
@@ -3736,6 +3849,12 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi prekinjen";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavitev WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Skupina zvočnikov";
+  if (std::strcmp(text, "Speakers") == 0) return "Zvočniki";
+  if (std::strcmp(text, "No Speakers") == 0) return "Ni zvočnikov";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Združevanje ni uspelo";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Zvočniki posodobljeni";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Posodabljanje zvočnikov";
   return text;
 }
 
@@ -3822,6 +3941,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Media Control") == 0) return "Mediekontroll";
   if (std::strcmp(text, "Playlist") == 0) return "Spellista";
   if (std::strcmp(text, "Mode") == 0) return "Läge";
+  if (std::strcmp(text, "Group") == 0) return "Grupp";
   if (std::strcmp(text, "Monthly") == 0) return "Månadsvis";
   if (std::strcmp(text, "more") == 0) return "fler";
   if (std::strcmp(text, "More items") == 0) return "Fler objekt";
@@ -3951,6 +4071,12 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frånkopplat";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-installation";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Högtalargrupp";
+  if (std::strcmp(text, "Speakers") == 0) return "Högtalare";
+  if (std::strcmp(text, "No Speakers") == 0) return "Inga högtalare";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering misslyckades";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Högtalare uppdaterade";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Uppdaterar högtalare";
   return text;
 }
 
@@ -4040,6 +4166,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Çalma listesi";
   if (std::strcmp(text, "Medium") == 0) return "Orta";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
+  if (std::strcmp(text, "Group") == 0) return "Grup";
   if (std::strcmp(text, "Monthly") == 0) return "Aylık";
   if (std::strcmp(text, "more") == 0) return "daha";
   if (std::strcmp(text, "More items") == 0) return "Daha fazla öğe";
@@ -4178,6 +4305,12 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi bağlantısı kesildi";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi Kurulumu";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Hoparlör Grubu";
+  if (std::strcmp(text, "Speakers") == 0) return "Hoparlörler";
+  if (std::strcmp(text, "No Speakers") == 0) return "Hoparlör Yok";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Gruplama başarısız";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Hoparlörler güncellendi";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Hoparlörler güncelleniyor";
   return text;
 }
 
@@ -4269,6 +4402,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Playlist") == 0) return "Список відтворення";
   if (std::strcmp(text, "Medium") == 0) return "Середньо";
   if (std::strcmp(text, "Mode") == 0) return "Режим";
+  if (std::strcmp(text, "Group") == 0) return "Група";
   if (std::strcmp(text, "Monthly") == 0) return "Щомісяця";
   if (std::strcmp(text, "more") == 0) return "ще";
   if (std::strcmp(text, "More items") == 0) return "Більше елементів";
@@ -4407,6 +4541,12 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Помилка оновлення";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi від’єднано";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Налаштування WiFi";
+  if (std::strcmp(text, "Speaker Group") == 0) return "Група динаміків";
+  if (std::strcmp(text, "Speakers") == 0) return "Динаміки";
+  if (std::strcmp(text, "No Speakers") == 0) return "Немає динаміків";
+  if (std::strcmp(text, "Grouping failed") == 0) return "Не вдалося згрупувати";
+  if (std::strcmp(text, "Speakers updated") == 0) return "Динаміки оновлено";
+  if (std::strcmp(text, "Updating speakers") == 0) return "Оновлення динаміків";
   return text;
 }
 
@@ -4501,6 +4641,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Playlist";
   if (std::strcmp(key, "medium") == 0) return "Medium";
   if (std::strcmp(key, "mode") == 0) return "Mode";
+  if (std::strcmp(key, "group") == 0) return "Group";
   if (std::strcmp(key, "monthly") == 0) return "Monthly";
   if (std::strcmp(key, "more") == 0) return "more";
   if (std::strcmp(key, "more_items") == 0) return "More items";
@@ -4644,6 +4785,12 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update failed";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi Disconnected";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Setup";
+  if (std::strcmp(key, "speaker_group") == 0) return "Speaker Group";
+  if (std::strcmp(key, "speakers") == 0) return "Speakers";
+  if (std::strcmp(key, "no_speakers") == 0) return "No Speakers";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Grouping failed";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Speakers updated";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Updating speakers";
   return key;
 }
 
@@ -4729,6 +4876,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "media") == 0) return "Média";
   if (std::strcmp(key, "media_control") == 0) return "Ovládání médií";
   if (std::strcmp(key, "mode") == 0) return "Režim";
+  if (std::strcmp(key, "group") == 0) return "Skupina";
   if (std::strcmp(key, "monthly") == 0) return "Měsíčně";
   if (std::strcmp(key, "more") == 0) return "další";
   if (std::strcmp(key, "more_items") == 0) return "Další položky";
@@ -4863,6 +5011,12 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojena";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavení WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Skupina reproduktorů";
+  if (std::strcmp(key, "speakers") == 0) return "Reproduktory";
+  if (std::strcmp(key, "no_speakers") == 0) return "Žádné reproduktory";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Seskupení se nezdařilo";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizovány";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizace reproduktorů";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -4948,6 +5102,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediestyring";
   if (std::strcmp(key, "playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(key, "mode") == 0) return "Tilstand";
+  if (std::strcmp(key, "group") == 0) return "Gruppe";
   if (std::strcmp(key, "monthly") == 0) return "Månedligt";
   if (std::strcmp(key, "more") == 0) return "mere";
   if (std::strcmp(key, "more_items") == 0) return "Flere elementer";
@@ -5076,6 +5231,12 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi afbrudt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-opsætning";
+  if (std::strcmp(key, "speaker_group") == 0) return "Højttalergruppe";
+  if (std::strcmp(key, "speakers") == 0) return "Højttalere";
+  if (std::strcmp(key, "no_speakers") == 0) return "Ingen højttalere";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislykkedes";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Højttalere opdateret";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Opdaterer højttalere";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5163,6 +5324,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediensteuerung";
   if (std::strcmp(key, "playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
+  if (std::strcmp(key, "group") == 0) return "Gruppe";
   if (std::strcmp(key, "monthly") == 0) return "Monatlich";
   if (std::strcmp(key, "more") == 0) return "weitere";
   if (std::strcmp(key, "more_items") == 0) return "Weitere Elemente";
@@ -5287,6 +5449,12 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi getrennt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-Einrichtung";
+  if (std::strcmp(key, "speaker_group") == 0) return "Lautsprechergruppe";
+  if (std::strcmp(key, "speakers") == 0) return "Lautsprecher";
+  if (std::strcmp(key, "no_speakers") == 0) return "Keine Lautsprecher";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Gruppierung fehlgeschlagen";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Lautsprecher aktualisiert";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Lautsprecher werden aktualisiert";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5373,6 +5541,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Control multimedia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(key, "mode") == 0) return "Modo";
+  if (std::strcmp(key, "group") == 0) return "Grupo";
   if (std::strcmp(key, "monthly") == 0) return "Mensual";
   if (std::strcmp(key, "more") == 0) return "más";
   if (std::strcmp(key, "more_items") == 0) return "Más elementos";
@@ -5505,6 +5674,12 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Error en la actualización";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuración WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Grupo de altavoces";
+  if (std::strcmp(key, "speakers") == 0) return "Altavoces";
+  if (std::strcmp(key, "no_speakers") == 0) return "Sin altavoces";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Error al agrupar";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Altavoces actualizados";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Actualizando altavoces";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5595,6 +5770,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Soittolista";
   if (std::strcmp(key, "medium") == 0) return "Keskitaso";
   if (std::strcmp(key, "mode") == 0) return "Tila";
+  if (std::strcmp(key, "group") == 0) return "Ryhmä";
   if (std::strcmp(key, "monthly") == 0) return "Kuukausittain";
   if (std::strcmp(key, "more") == 0) return "lisää";
   if (std::strcmp(key, "more_items") == 0) return "Lisää kohteita";
@@ -5733,6 +5909,12 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi katkaistu";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-asennus";
+  if (std::strcmp(key, "speaker_group") == 0) return "Kaiutinryhmä";
+  if (std::strcmp(key, "speakers") == 0) return "Kaiuttimet";
+  if (std::strcmp(key, "no_speakers") == 0) return "Ei kaiuttimia";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Ryhmittely epäonnistui";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Kaiuttimet päivitetty";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Päivitetään kaiuttimia";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5816,6 +5998,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "media") == 0) return "Média";
   if (std::strcmp(key, "media_control") == 0) return "Contrôle multimédia";
   if (std::strcmp(key, "playlist") == 0) return "Liste de lecture";
+  if (std::strcmp(key, "group") == 0) return "Groupe";
   if (std::strcmp(key, "monthly") == 0) return "Mensuel";
   if (std::strcmp(key, "more") == 0) return "de plus";
   if (std::strcmp(key, "more_items") == 0) return "Plus d’éléments";
@@ -5944,6 +6127,12 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi déconnecté";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuration WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Groupe d’enceintes";
+  if (std::strcmp(key, "speakers") == 0) return "Enceintes";
+  if (std::strcmp(key, "no_speakers") == 0) return "Aucune enceinte";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Échec du regroupement";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Enceintes mises à jour";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Mise à jour des enceintes";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6035,6 +6224,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(key, "medium") == 0) return "Közepes";
   if (std::strcmp(key, "mode") == 0) return "Mód";
+  if (std::strcmp(key, "group") == 0) return "Csoport";
   if (std::strcmp(key, "monthly") == 0) return "Havonta";
   if (std::strcmp(key, "more") == 0) return "további";
   if (std::strcmp(key, "more_items") == 0) return "További elemek";
@@ -6172,6 +6362,12 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi megszakadt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi beállítás";
+  if (std::strcmp(key, "speaker_group") == 0) return "Hangszórócsoport";
+  if (std::strcmp(key, "speakers") == 0) return "Hangszórók";
+  if (std::strcmp(key, "no_speakers") == 0) return "Nincsenek hangszórók";
+  if (std::strcmp(key, "grouping_failed") == 0) return "A csoportosítás sikertelen";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Hangszórók frissítve";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Hangszórók frissítése";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6258,6 +6454,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Controllo multimediale";
   if (std::strcmp(key, "medium") == 0) return "Medio";
   if (std::strcmp(key, "mode") == 0) return "Modalità";
+  if (std::strcmp(key, "group") == 0) return "Gruppo";
   if (std::strcmp(key, "monthly") == 0) return "Mensile";
   if (std::strcmp(key, "more") == 0) return "altri";
   if (std::strcmp(key, "more_items") == 0) return "Altri elementi";
@@ -6392,6 +6589,12 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi disconnesso";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurazione WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Gruppo di altoparlanti";
+  if (std::strcmp(key, "speakers") == 0) return "Altoparlanti";
+  if (std::strcmp(key, "no_speakers") == 0) return "Nessun altoparlante";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Raggruppamento non riuscito";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Altoparlanti aggiornati";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Aggiornamento altoparlanti";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6477,6 +6680,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediekontroll";
   if (std::strcmp(key, "playlist") == 0) return "Spilleliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
+  if (std::strcmp(key, "group") == 0) return "Gruppe";
   if (std::strcmp(key, "monthly") == 0) return "Månedlig";
   if (std::strcmp(key, "more") == 0) return "flere";
   if (std::strcmp(key, "more_items") == 0) return "Flere elementer";
@@ -6608,6 +6812,12 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frakoblet";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-oppsett";
+  if (std::strcmp(key, "speaker_group") == 0) return "Høyttalergruppe";
+  if (std::strcmp(key, "speakers") == 0) return "Høyttalere";
+  if (std::strcmp(key, "no_speakers") == 0) return "Ingen høyttalere";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislyktes";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Høyttalere oppdatert";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Oppdaterer høyttalere";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6695,6 +6905,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediabediening";
   if (std::strcmp(key, "playlist") == 0) return "Afspeellijst";
   if (std::strcmp(key, "mode") == 0) return "Modus";
+  if (std::strcmp(key, "group") == 0) return "Groep";
   if (std::strcmp(key, "monthly") == 0) return "Maandelijks";
   if (std::strcmp(key, "more") == 0) return "meer";
   if (std::strcmp(key, "more_items") == 0) return "Meer items";
@@ -6824,6 +7035,12 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update mislukt";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi verbroken";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installatie";
+  if (std::strcmp(key, "speaker_group") == 0) return "Luidsprekergroep";
+  if (std::strcmp(key, "speakers") == 0) return "Luidsprekers";
+  if (std::strcmp(key, "no_speakers") == 0) return "Geen luidsprekers";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Groeperen mislukt";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Luidsprekers bijgewerkt";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Luidsprekers bijwerken";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6909,6 +7126,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Sterowanie multimediami";
   if (std::strcmp(key, "playlist") == 0) return "Playlista";
   if (std::strcmp(key, "mode") == 0) return "Tryb";
+  if (std::strcmp(key, "group") == 0) return "Grupa";
   if (std::strcmp(key, "monthly") == 0) return "Co miesiąc";
   if (std::strcmp(key, "more") == 0) return "więcej";
   if (std::strcmp(key, "more_items") == 0) return "Więcej elementów";
@@ -7040,6 +7258,12 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi rozłączone";
   if (std::strcmp(key, "wifi_setup") == 0) return "Konfiguracja WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Grupa głośników";
+  if (std::strcmp(key, "speakers") == 0) return "Głośniki";
+  if (std::strcmp(key, "no_speakers") == 0) return "Brak głośników";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Grupowanie nie powiodło się";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Głośniki zaktualizowane";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizowanie głośników";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7126,6 +7350,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Controle de mídia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
+  if (std::strcmp(key, "group") == 0) return "Grupo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
   if (std::strcmp(key, "more") == 0) return "mais";
   if (std::strcmp(key, "more_items") == 0) return "Mais itens";
@@ -7258,6 +7483,12 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Grupo de alto-falantes";
+  if (std::strcmp(key, "speakers") == 0) return "Alto-falantes";
+  if (std::strcmp(key, "no_speakers") == 0) return "Nenhum alto-falante";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Alto-falantes atualizados";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Atualizando alto-falantes";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7345,6 +7576,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Controlo multimédia";
   if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
+  if (std::strcmp(key, "group") == 0) return "Grupo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
   if (std::strcmp(key, "more") == 0) return "mais";
   if (std::strcmp(key, "more_items") == 0) return "Mais itens";
@@ -7477,6 +7709,12 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desligado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Grupo de colunas";
+  if (std::strcmp(key, "speakers") == 0) return "Colunas";
+  if (std::strcmp(key, "no_speakers") == 0) return "Sem colunas";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Colunas atualizadas";
+  if (std::strcmp(key, "updating_speakers") == 0) return "A atualizar colunas";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7567,6 +7805,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Listă de redare";
   if (std::strcmp(key, "medium") == 0) return "Mediu";
   if (std::strcmp(key, "mode") == 0) return "Mod";
+  if (std::strcmp(key, "group") == 0) return "Grup";
   if (std::strcmp(key, "monthly") == 0) return "Lunar";
   if (std::strcmp(key, "more") == 0) return "încă";
   if (std::strcmp(key, "more_items") == 0) return "Mai multe elemente";
@@ -7705,6 +7944,12 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi deconectat";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurare WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Grup de difuzoare";
+  if (std::strcmp(key, "speakers") == 0) return "Difuzoare";
+  if (std::strcmp(key, "no_speakers") == 0) return "Niciun difuzor";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Gruparea a eșuat";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Difuzoare actualizate";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Se actualizează difuzoarele";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7798,6 +8043,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Плейлист";
   if (std::strcmp(key, "medium") == 0) return "Средняя";
   if (std::strcmp(key, "mode") == 0) return "Режим";
+  if (std::strcmp(key, "group") == 0) return "Группа";
   if (std::strcmp(key, "monthly") == 0) return "Ежемесячно";
   if (std::strcmp(key, "more") == 0) return "ещё";
   if (std::strcmp(key, "more_items") == 0) return "Ещё элементы";
@@ -7940,6 +8186,12 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Ошибка обновления";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi отключён";
   if (std::strcmp(key, "wifi_setup") == 0) return "Настройка WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Группа динамиков";
+  if (std::strcmp(key, "speakers") == 0) return "Динамики";
+  if (std::strcmp(key, "no_speakers") == 0) return "Нет динамиков";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Не удалось сгруппировать";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Динамики обновлены";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Обновление динамиков";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8026,6 +8278,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Ovládanie médií";
   if (std::strcmp(key, "playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(key, "mode") == 0) return "Režim";
+  if (std::strcmp(key, "group") == 0) return "Skupina";
   if (std::strcmp(key, "monthly") == 0) return "Mesačne";
   if (std::strcmp(key, "more") == 0) return "ďalšie";
   if (std::strcmp(key, "more_items") == 0) return "Ďalšie položky";
@@ -8160,6 +8413,12 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojené";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavenie WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Skupina reproduktorov";
+  if (std::strcmp(key, "speakers") == 0) return "Reproduktory";
+  if (std::strcmp(key, "no_speakers") == 0) return "Žiadne reproduktory";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Zoskupenie zlyhalo";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizované";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizácia reproduktorov";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8250,6 +8509,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(key, "medium") == 0) return "Srednje";
   if (std::strcmp(key, "mode") == 0) return "Način";
+  if (std::strcmp(key, "group") == 0) return "Skupina";
   if (std::strcmp(key, "monthly") == 0) return "Mesečno";
   if (std::strcmp(key, "more") == 0) return "več";
   if (std::strcmp(key, "more_items") == 0) return "Več elementov";
@@ -8384,6 +8644,12 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi prekinjen";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavitev WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Skupina zvočnikov";
+  if (std::strcmp(key, "speakers") == 0) return "Zvočniki";
+  if (std::strcmp(key, "no_speakers") == 0) return "Ni zvočnikov";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Združevanje ni uspelo";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Zvočniki posodobljeni";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Posodabljanje zvočnikov";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8470,6 +8736,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "media_control") == 0) return "Mediekontroll";
   if (std::strcmp(key, "playlist") == 0) return "Spellista";
   if (std::strcmp(key, "mode") == 0) return "Läge";
+  if (std::strcmp(key, "group") == 0) return "Grupp";
   if (std::strcmp(key, "monthly") == 0) return "Månadsvis";
   if (std::strcmp(key, "more") == 0) return "fler";
   if (std::strcmp(key, "more_items") == 0) return "Fler objekt";
@@ -8600,6 +8867,12 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frånkopplat";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installation";
+  if (std::strcmp(key, "speaker_group") == 0) return "Högtalargrupp";
+  if (std::strcmp(key, "speakers") == 0) return "Högtalare";
+  if (std::strcmp(key, "no_speakers") == 0) return "Inga högtalare";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering misslyckades";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Högtalare uppdaterade";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Uppdaterar högtalare";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8689,6 +8962,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Çalma listesi";
   if (std::strcmp(key, "medium") == 0) return "Orta";
   if (std::strcmp(key, "mode") == 0) return "Mod";
+  if (std::strcmp(key, "group") == 0) return "Grup";
   if (std::strcmp(key, "monthly") == 0) return "Aylık";
   if (std::strcmp(key, "more") == 0) return "daha";
   if (std::strcmp(key, "more_items") == 0) return "Daha fazla öğe";
@@ -8828,6 +9102,12 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi bağlantısı kesildi";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Kurulumu";
+  if (std::strcmp(key, "speaker_group") == 0) return "Hoparlör Grubu";
+  if (std::strcmp(key, "speakers") == 0) return "Hoparlörler";
+  if (std::strcmp(key, "no_speakers") == 0) return "Hoparlör Yok";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Gruplama başarısız";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Hoparlörler güncellendi";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Hoparlörler güncelleniyor";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8919,6 +9199,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "playlist") == 0) return "Список відтворення";
   if (std::strcmp(key, "medium") == 0) return "Середньо";
   if (std::strcmp(key, "mode") == 0) return "Режим";
+  if (std::strcmp(key, "group") == 0) return "Група";
   if (std::strcmp(key, "monthly") == 0) return "Щомісяця";
   if (std::strcmp(key, "more") == 0) return "ще";
   if (std::strcmp(key, "more_items") == 0) return "Більше елементів";
@@ -9058,6 +9339,12 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Помилка оновлення";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi від’єднано";
   if (std::strcmp(key, "wifi_setup") == 0) return "Налаштування WiFi";
+  if (std::strcmp(key, "speaker_group") == 0) return "Група динаміків";
+  if (std::strcmp(key, "speakers") == 0) return "Динаміки";
+  if (std::strcmp(key, "no_speakers") == 0) return "Немає динаміків";
+  if (std::strcmp(key, "grouping_failed") == 0) return "Не вдалося згрупувати";
+  if (std::strcmp(key, "speakers_updated") == 0) return "Динаміки оновлено";
+  if (std::strcmp(key, "updating_speakers") == 0) return "Оновлення динаміків";
   return espcontrol_i18n_key_en(key);
 }
 

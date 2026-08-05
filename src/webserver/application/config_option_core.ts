@@ -36,6 +36,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
     var CLIMATE_NUMBER_DISPLAY_OPTION: any = cardContractOptionName("number_display");
     var CLIMATE_TEMPERATURE_STEP_OPTION: any = cardContractOptionName("temperature_step");
     var MEDIA_VOLUME_MAX_OPTION: any = cardContractOptionName("volume_max");
+    var MEDIA_SPEAKER_GROUP_ENTITY_OPTION: any = cardContractOptionName("speaker_group_entity");
     var MEDIA_LABEL_DISPLAY_OPTION: any = cardContractOptionName("label_display");
     var MEDIA_NUMBER_DISPLAY_OPTION: any = cardContractOptionName("number_display");
     var MEDIA_PLAYLIST_CONTENT_ID_OPTION: any = cardContractOptionName("playlist_content_id");
@@ -129,6 +130,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "CLIMATE_NUMBER_DISPLAY_OPTION": liveGlobal(() => CLIMATE_NUMBER_DISPLAY_OPTION, (value?: any) => { CLIMATE_NUMBER_DISPLAY_OPTION = value; }),
         "CLIMATE_TEMPERATURE_STEP_OPTION": liveGlobal(() => CLIMATE_TEMPERATURE_STEP_OPTION, (value?: any) => { CLIMATE_TEMPERATURE_STEP_OPTION = value; }),
         "MEDIA_VOLUME_MAX_OPTION": liveGlobal(() => MEDIA_VOLUME_MAX_OPTION, (value?: any) => { MEDIA_VOLUME_MAX_OPTION = value; }),
+        "MEDIA_SPEAKER_GROUP_ENTITY_OPTION": liveGlobal(() => MEDIA_SPEAKER_GROUP_ENTITY_OPTION, (value?: any) => { MEDIA_SPEAKER_GROUP_ENTITY_OPTION = value; }),
         "MEDIA_LABEL_DISPLAY_OPTION": liveGlobal(() => MEDIA_LABEL_DISPLAY_OPTION, (value?: any) => { MEDIA_LABEL_DISPLAY_OPTION = value; }),
         "MEDIA_NUMBER_DISPLAY_OPTION": liveGlobal(() => MEDIA_NUMBER_DISPLAY_OPTION, (value?: any) => { MEDIA_NUMBER_DISPLAY_OPTION = value; }),
         "MEDIA_PLAYLIST_CONTENT_ID_OPTION": liveGlobal(() => MEDIA_PLAYLIST_CONTENT_ID_OPTION, (value?: any) => { MEDIA_PLAYLIST_CONTENT_ID_OPTION = value; }),

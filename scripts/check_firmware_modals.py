@@ -588,7 +588,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_media.h": (
-            "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)",
+            "control_modal_calc_tab_layout(layout, media_control_tab_count, true)",
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);",
             "control_modal_calc_content_layout(",
@@ -694,7 +694,7 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
 
     text = path.read_text(encoding="utf-8")
     required = (
-        "POWER = 3",
+        "POWER = 4",
         "media_control_power_supported",
         "media_control_ensure_power_tab_button",
         "media_control_create_power_tab_content",
@@ -703,7 +703,7 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
         "ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)",
         "ui.tab = MediaControlTab::CONTROLS",
         "media_control_tab_count(",
-        "MediaControlTabLayout tabs[4]",
+        "MediaControlTabLayout tabs[5]",
     )
     if any(needle not in text for needle in required):
         return [
@@ -1287,7 +1287,7 @@ def valid_modal_tab_layout_files() -> dict[str, str]:
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_media.h": (
-            "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)\n"
+            "control_modal_calc_tab_layout(layout, media_control_tab_count, true)\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);\n"
             "control_modal_calc_content_layout(\n"
@@ -1353,7 +1353,7 @@ def expect_media_modal_power_tab_errors(name: str, text: str, expected: tuple[st
 
 def valid_media_modal_power_tab_text() -> str:
     return (
-        "enum class MediaControlTab { POWER = 3 };\n"
+        "enum class MediaControlTab { POWER = 4 };\n"
         "inline bool media_control_power_supported() {}\n"
         "inline bool media_control_ensure_power_tab_button() {}\n"
         "inline void media_control_create_power_tab_content() {}\n"
@@ -1363,7 +1363,7 @@ def valid_media_modal_power_tab_text() -> str:
         "  ui.tab = MediaControlTab::CONTROLS;\n"
         "}\n"
         "int count = media_control_tab_count(progress_supported, power_supported);\n"
-        "MediaControlTabLayout tabs[4] = {};\n"
+        "MediaControlTabLayout tabs[5] = {};\n"
     )
 
 

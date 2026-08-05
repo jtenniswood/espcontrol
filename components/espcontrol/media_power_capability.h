@@ -22,8 +22,10 @@ inline bool power_toggle_supported(bool supported_features_known,
 }
 
 constexpr int media_control_tab_count(bool progress_supported,
-                                      bool power_supported) {
-  return 2 + (progress_supported ? 1 : 0) + (power_supported ? 1 : 0);
+                                      bool power_supported,
+                                      bool speakers_supported = false) {
+  return 2 + (progress_supported ? 1 : 0) + (power_supported ? 1 : 0) +
+         (speakers_supported ? 1 : 0);
 }
 
 inline PowerCommand power_command(bool supported_features_known,

@@ -1274,6 +1274,21 @@
       "mdi": "speaker"
     },
     {
+      "name": "Speaker Multiple",
+      "codepoint": "F0D38",
+      "mdi": "speaker-multiple"
+    },
+    {
+      "name": "Speaker Wireless",
+      "codepoint": "F071F",
+      "mdi": "speaker-wireless"
+    },
+    {
+      "name": "Speaker Off",
+      "codepoint": "F04C4",
+      "mdi": "speaker-off"
+    },
+    {
       "name": "Speaker Pause",
       "codepoint": "F1B73",
       "mdi": "speaker-pause"

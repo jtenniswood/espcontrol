@@ -270,6 +270,10 @@ constexpr const char *card_runtime_option_name_volume_max() {
   return CARD_CONTRACT_OPTION_NAME_VOLUME_MAX;
 }
 
+constexpr const char *card_runtime_option_name_speaker_group_entity() {
+  return CARD_CONTRACT_OPTION_NAME_SPEAKER_GROUP_ENTITY;
+}
+
 constexpr const char *card_runtime_option_name_playlist_content_id() {
   return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_ID;
 }

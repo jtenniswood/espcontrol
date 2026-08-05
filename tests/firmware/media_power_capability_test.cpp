@@ -22,6 +22,8 @@ int main() {
   assert(media_control_tab_count(true, false) == 3);
   assert(media_control_tab_count(false, true) == 3);
   assert(media_control_tab_count(true, true) == 4);
+  assert(media_control_tab_count(false, false, true) == 3);
+  assert(media_control_tab_count(true, true, true) == 5);
 
   const int power_features = SUPPORT_TURN_ON | SUPPORT_TURN_OFF;
   assert(power_command(true, power_features, true, true, "off") ==

@@ -804,6 +804,20 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{MEDIA_DRIVER_HEADER}: avoid duplicate access-token subscriptions on cover-art route switches"
                 )
+            unchanged_route_return = route_body.find(
+                "if (!entity_changed && !presentation_changed) return;"
+            )
+            control_subscription = route_body.find(
+                "subscribe_media_control_state(control);"
+            )
+            if (
+                unchanged_route_return < 0
+                or control_subscription < 0
+                or control_subscription > unchanged_route_return
+            ):
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: subscribe reused cover-art control modals before the unchanged-route return"
+                )
             clear_route = route_body.find("now_playing->refresh_entity_route = nullptr")
             attach_primary = route_body.find("media_playback_attach_now_playing(primary, now_playing)")
             if clear_route < 0 or attach_primary < 0 or clear_route > attach_primary:

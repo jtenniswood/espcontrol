@@ -13,6 +13,7 @@ inline bool media_driver_matches(const Context &context) {
   switch (context.runtime.driver) {
     case Driver::MEDIA:
     case Driver::MEDIA_CONTROL:
+    case Driver::MEDIA_GROUP:
     case Driver::MEDIA_PLAY_PAUSE:
     case Driver::MEDIA_TRANSPORT:
     case Driver::MEDIA_VOLUME:
@@ -238,7 +239,19 @@ inline void media_driver_bind_cover_art_route(
     const bool entity_changed = next_entity != now_playing->active_entity;
     const bool presentation_changed =
       external_source_fallback != now_playing->external_source_fallback;
-    if (next_entity.empty() || (!entity_changed && !presentation_changed)) return;
+    if (next_entity.empty()) return;
+
+    // Reused cover-art routes still need to attach the current generation's
+    // control context. Returning before this point leaves the modal visible,
+    // but skips its grouping and speaker-discovery subscriptions.
+    if (control) {
+      if (control->entity_id != next_entity) {
+        media_playback_detach_control(control);
+        control->entity_id = next_entity;
+      }
+      subscribe_media_control_state(control);
+    }
+    if (!entity_changed && !presentation_changed) return;
 
     ESP_LOGI("media_card", "Cover art entity switched from %s to %s",
              now_playing->active_entity.empty() ? "<none>" : now_playing->active_entity.c_str(),
@@ -270,15 +283,6 @@ inline void media_driver_bind_cover_art_route(
       }
     }
 
-    if (entity_changed && control) {
-      // A newly bound control already targets the primary entity. Rebind it
-      // only when the active route genuinely switches to another entity.
-      if (control->entity_id != next_entity) {
-        media_playback_detach_control(control);
-        control->entity_id = next_entity;
-      }
-      subscribe_media_control_state(control);
-    }
   };
   now_playing->refresh_entity_route();
   media_playback_apply_state_to_now_playing(primary, now_playing);
@@ -302,7 +306,7 @@ inline bool media_driver_bind_data(
         media_play_pause_show_state(config) ? slot.text_lbl : nullptr,
         config.entity);
     }
-  } else if (mode == "control_modal") {
+  } else if (media_control_modal_mode(mode)) {
     MediaControlCtx *control = media_driver_create_control(
       slot, config, context, environment);
     subscribe_media_control_state(control);
@@ -392,7 +396,7 @@ inline bool media_driver_handle_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button) {
   if (!media_driver_matches(context)) return false;
   const std::string mode = media_card_mode(config.sensor);
-  if (mode == "control_modal") {
+  if (media_control_modal_mode(mode)) {
     MediaControlCtx *control = button
       ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
     if (!control) control = grid_media_control_runtime_for_owner(button);
@@ -432,7 +436,7 @@ inline bool media_driver_handle_main_click(
 inline bool media_driver_subpage_clickable(
     const ParsedCfg &config) {
   const std::string mode = media_card_mode(config.sensor);
-  return mode == "control_modal" || mode == "volume" ||
+  return media_control_modal_mode(mode) || mode == "volume" ||
          mode == "playlist" || mode == "cover_art" ||
          media_playback_button_mode(mode) ||
          (mode == "now_playing" && config.precision == "play_pause");

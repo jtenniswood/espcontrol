@@ -73,6 +73,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{border-color:var(--accent)}" +
         ".sp-btn-icon{font-size:var(--btn-icon);line-height:1;color:#fff}" +
+        ".sp-media-group-active{box-shadow:inset 0 0 0 3px var(--accent)}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);" +
         "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--btn-lines);" +
         "overflow:hidden;word-break:break-word;min-height:0}" +
