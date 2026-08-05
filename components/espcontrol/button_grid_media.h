@@ -1202,6 +1202,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   media_control_store_group_volume(
     ctx, ctx->entity_id, state->volume_pct,
     state->volume_known, state->available);
+  media_control_refresh_group_member_volumes(ctx);
 
   set_card_checked_state(ctx->btn, ctx->available &&
     (ctx->group_only ? media_control_group_size(ctx) > 1
@@ -3077,7 +3078,7 @@ inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
 }
 
 inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
-  if (!ctx || media_control_group_size(ctx) < 2) return;
+  if (!ctx) return;
   std::vector<std::string> members;
   media_group_append_unique(members, ctx->entity_id);
   for (const std::string &entity_id : ctx->group_members) {
@@ -3287,6 +3288,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
       media_control_find_speaker_row(entity_id)) return;
   MediaSpeakerRowState *row = new MediaSpeakerRowState();
   row->entity_id = entity_id;
+  row->selected = media_control_group_contains(ctx, entity_id);
   if (entity_id == ctx->entity_id) row->available = ctx->available;
   bool discovery_item_found = false;
   for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
@@ -3298,13 +3300,14 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
     if (entity_id != ctx->entity_id) row->available = item.available;
     break;
   }
+  const bool listed_by_helper =
+    std::find(ctx->speaker_helper_members.begin(),
+              ctx->speaker_helper_members.end(), entity_id) !=
+      ctx->speaker_helper_members.end();
   if (!discovery_item_found && entity_id != ctx->entity_id &&
-      std::find(ctx->speaker_helper_members.begin(),
-                ctx->speaker_helper_members.end(), entity_id) !=
-        ctx->speaker_helper_members.end()) {
+      (listed_by_helper || row->selected)) {
     row->available = true;
   }
-  row->selected = media_control_group_contains(ctx, entity_id);
   row->row = lv_btn_create(ui.speaker_list);
   lv_obj_set_size(row->row, lv_obj_get_width(ui.speaker_list), 118);
   lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);

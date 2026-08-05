@@ -259,6 +259,16 @@ def main() -> int:
         raise SystemExit("Speaker membership taps must resolve row state from the row event target")
     if "row->available = item.available;" not in media_header:
         raise SystemExit("Speaker rows must use availability from the discovery helper")
+    add_speaker = media_header.split(
+        "inline void media_control_add_speaker_candidate", 1
+    )[1].split("\n}\n\ninline void media_control_sync_speaker_candidates", 1)[0]
+    if "(listed_by_helper || row->selected)" not in add_speaker:
+        raise SystemExit("Live group members missing from discovery must remain removable")
+    apply_control = media_header.split(
+        "inline void media_playback_apply_state_to_control", 1
+    )[1].split("\n}\n\ninline void media_playback_apply_state_to_controls", 1)[0]
+    if "media_control_refresh_group_member_volumes(ctx);" not in apply_control:
+        raise SystemExit("Discovery updates must refresh the grouped-volume cache")
     if media_header.count("media_control_store_group_volume(") < 5:
         raise SystemExit("Primary and discovered speaker volumes must persist in the group cache")
     for reset in (
