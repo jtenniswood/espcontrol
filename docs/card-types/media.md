@@ -123,7 +123,7 @@ Restart Home Assistant after adding the template. Replace `sonos` with the integ
 
 The earlier comma-separated ESPHome Media Player format remains supported for existing installations. The versioned JSON format is recommended because speaker names can safely contain commas and it reports availability explicitly. Older helpers without that final availability value continue to work and infer it from the reported volume.
 
-The optional **Speaker Discovery Entity** card setting remains available as an override. A Home Assistant media-player Group helper can be entered there for a manually maintained list; otherwise leave it blank to use `sensor.speaker_group` automatically.
+The optional **Speaker Discovery Entity** card setting remains available as an override. A Home Assistant media-player Group helper can provide a manually maintained list for joining and removing speakers, but it exposes only entity IDs. Group and per-speaker volume controls therefore require the discovery sensor format above, which also supplies each member's volume. Leave the setting blank to use `sensor.speaker_group` automatically.
 
 Home Assistant does not expose enough integration-registry information directly through EspControl's device connection to prove that two players are compatible, so the template performs discovery inside Home Assistant. Speakers already in the live group are also shown even when they are missing from the discovery sensor, so they can still be controlled or removed.
 
