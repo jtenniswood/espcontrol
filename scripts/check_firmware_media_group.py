@@ -246,8 +246,10 @@ def main() -> int:
         raise SystemExit("Grouped volume arc must defer actions until release")
     if "speaker_discovery_available" not in media_header:
         raise SystemExit("Speaker tab must track discovery availability")
-    if "lv_event_get_target(event) != lv_event_get_current_target(event)" not in media_header:
-        raise SystemExit("Speaker card must ignore clicks bubbled from its volume controls")
+    if "media_control_speaker_event_from_volume_controls" not in media_header:
+        raise SystemExit("Speaker cards must distinguish volume-control taps from membership taps")
+    if "lv_obj_get_user_data(row_obj)" not in media_header:
+        raise SystemExit("Speaker membership taps must resolve row state from the row event target")
     if "bool available = false;" not in media_header:
         raise SystemExit("Speaker rows must remain disabled until availability is hydrated")
     if media_header.count("media_control_store_group_volume(") < 5:
@@ -261,6 +263,13 @@ def main() -> int:
             raise SystemExit("Media route changes must clear stale speaker discovery data")
     if 'media_control_set_speaker_status(espcontrol_i18n("Updating speakers"), false, true);' not in media_header:
         raise SystemExit("Pending speaker group changes must show their status")
+    create_speakers = media_header.split(
+        "inline void media_control_create_speakers_tab_content", 1
+    )[1].split("\n}\n\ninline void media_control_create_power_tab_content", 1)[0]
+    refresh_pos = create_speakers.find("media_control_refresh_speakers(ctx);")
+    hydrate_pos = create_speakers.find("media_control_refresh_speaker_state(ctx, row);")
+    if refresh_pos < 0 or hydrate_pos < refresh_pos:
+        raise SystemExit("Speaker rows must hydrate immediately after the complete list is built")
     print("Firmware media-group checks passed.")
     return 0
 

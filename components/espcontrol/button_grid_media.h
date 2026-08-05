@@ -3372,6 +3372,19 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
   return btn;
 }
 
+inline bool media_control_speaker_event_from_volume_controls(
+    MediaSpeakerRowState *row, lv_obj_t *target) {
+  if (!row || !target) return false;
+  for (lv_obj_t *obj = target; obj && obj != row->row; obj = lv_obj_get_parent(obj)) {
+    if (obj == row->volume_controls ||
+        obj == row->volume_minus_btn ||
+        obj == row->volume_plus_btn) {
+      return true;
+    }
+  }
+  return false;
+}
+
 inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
                                                 const std::string &entity_id) {
   MediaControlModalUi &ui = media_control_modal_ui();
@@ -3398,12 +3411,14 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   control_modal_apply_pressed_fill(row->row);
   lv_obj_set_user_data(row->row, row);
   lv_obj_add_event_cb(row->row, [](lv_event_t *event) {
-    // The row contains its own volume buttons. LVGL can bubble their click
-    // events to this callback, but only a direct tap on the card should change
-    // group membership.
-    if (lv_event_get_target(event) != lv_event_get_current_target(event)) return;
+    lv_obj_t *row_obj = static_cast<lv_obj_t *>(lv_event_get_current_target(event));
     MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
-      lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
+      lv_obj_get_user_data(row_obj));
+    // Decorative children can become the event target on some LVGL/device
+    // combinations. Accept those taps as a row press, but keep the nested
+    // volume controls from also changing group membership.
+    if (media_control_speaker_event_from_volume_controls(
+          row, static_cast<lv_obj_t *>(lv_event_get_target(event)))) return;
     MediaControlModalUi &ui = media_control_modal_ui();
     if (esphome::millis() - ui.speaker_last_scroll_ms < 250) return;
     MediaControlCtx *ctx = ui.active;
@@ -3656,6 +3671,14 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   // object width (which truncated names such as "Play Room" to "Play R...").
   lv_obj_update_layout(ui.speaker_list);
   media_control_refresh_speakers(ctx);
+  // Rows start disabled until their live availability is known. Hydrate them
+  // after the complete list exists so the first deliberate tap is actionable,
+  // without allowing state callbacks to re-enter a partially-built LVGL tree.
+  if (ha_api_state_connected()) {
+    for (MediaSpeakerRowState *row : ui.speaker_rows) {
+      media_control_refresh_speaker_state(ctx, row);
+    }
+  }
 #ifdef ESP_PLATFORM
   ESP_LOGI("media_group", "Speaker controls ready: rows=%u internal_free=%u largest=%u",
            (unsigned) ui.speaker_rows.size(),
