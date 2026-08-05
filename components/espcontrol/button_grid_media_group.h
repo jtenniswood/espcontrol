@@ -11,6 +11,7 @@ struct MediaGroupDiscoveryItem {
   std::string friendly_name;
   int volume_pct = 0;
   bool volume_known = false;
+  bool available = false;
 };
 
 inline std::string media_group_trim(std::string value) {
@@ -210,10 +211,10 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_v2(
         !media_group_json_take(raw, pos, ',')) return {};
     media_group_json_skip_ws(raw, pos);
     size_t number_start = pos;
-    while (pos < raw.size() && raw[pos] != ']') pos++;
+    while (pos < raw.size() && raw[pos] != ',' && raw[pos] != ']') pos++;
     if (pos >= raw.size()) return {};
     std::string volume_text = media_group_trim(raw.substr(number_start, pos - number_start));
-    pos++;
+    bool has_availability = raw[pos] == ',';
 
     MediaGroupDiscoveryItem item;
     item.entity_id = media_group_trim(entity_id);
@@ -226,6 +227,21 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_v2(
       item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
       item.volume_known = true;
     }
+    item.available = item.volume_known;
+    if (has_availability) {
+      pos++;
+      media_group_json_skip_ws(raw, pos);
+      size_t availability_start = pos;
+      while (pos < raw.size() && raw[pos] != ']') pos++;
+      if (pos >= raw.size()) return {};
+      std::string availability_text = media_group_trim(
+        raw.substr(availability_start, pos - availability_start));
+      if (availability_text == "true") item.available = true;
+      else if (availability_text == "false") item.available = false;
+      else return {};
+    }
+    if (raw[pos] != ']') return {};
+    pos++;
     out.push_back(std::move(item));
     media_group_json_skip_ws(raw, pos);
     if (pos < raw.size() && raw[pos] == ']') {
@@ -286,6 +302,7 @@ inline std::vector<MediaGroupDiscoveryItem> media_group_parse_discovery_items(
       if (end && end != volume_values[i].c_str()) {
         item.volume_pct = std::max(0, std::min(100, (int) std::lround(volume * 100.0f)));
         item.volume_known = true;
+        item.available = true;
       }
     }
     out.push_back(std::move(item));

@@ -1428,12 +1428,8 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
             "apply the configured maximum only to speaker volume increases",
         ),
         (
-            "MEDIA_GROUP_REFRESH_INTERVAL_MS",
-            "refresh speaker state only while the modal is open",
-        ),
-        (
-            "media_control_refresh_speaker_state(ctx, row)",
-            "poll visible speaker rows without lifetime subscriptions",
+            "row->available = item.available",
+            "use the startup speaker-discovery subscription for row availability",
         ),
         (
             "media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);",

@@ -142,12 +142,10 @@ struct MediaControlModalUi {
   bool progress_layout_ready = false;
   bool progress_refresh_pending = false;
   uint32_t speaker_generation = 0;
-  uint32_t speaker_last_refresh_ms = 0;
   uint32_t speaker_last_scroll_ms = 0;
 };
 
 constexpr uint32_t MEDIA_GROUP_ACTION_TIMEOUT_MS = 12000;
-constexpr uint32_t MEDIA_GROUP_REFRESH_INTERVAL_MS = 2000;
 
 inline MediaControlModalUi &media_control_modal_ui() {
   static MediaControlModalUi ui;
@@ -303,8 +301,6 @@ inline void media_control_refresh_power(MediaControlCtx *ctx);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
 inline void media_control_refresh_speakers(MediaControlCtx *ctx);
-inline void media_control_refresh_speaker_state(MediaControlCtx *ctx,
-                                                MediaSpeakerRowState *row);
 inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx);
 inline size_t media_control_group_size(MediaControlCtx *ctx);
 inline bool media_control_group_volume_percent(MediaControlCtx *ctx, int *pct);
@@ -2764,7 +2760,6 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   if (!ctx || !ui.content_box || ui.volume_arc) return;
   if (!ui.speaker_action_timer) {
     ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
-    ui.speaker_last_refresh_ms = 0;
   }
   media_control_refresh_group_member_volumes(ctx);
 
@@ -3032,18 +3027,6 @@ inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
   MediaControlCtx *ctx = ui.active;
   if (!ctx) return;
   uint32_t now = esphome::millis();
-  if (now - ui.speaker_last_refresh_ms >= MEDIA_GROUP_REFRESH_INTERVAL_MS) {
-    ui.speaker_last_refresh_ms = now;
-    if (ha_api_state_connected()) {
-      if (ui.tab == MediaControlTab::SPEAKERS) {
-        for (MediaSpeakerRowState *row : ui.speaker_rows) {
-          media_control_refresh_speaker_state(ctx, row);
-        }
-      } else if (ui.tab == MediaControlTab::VOLUME) {
-        media_control_refresh_group_member_volumes(ctx);
-      }
-    }
-  }
   bool expired = false;
   for (MediaSpeakerRowState *row : ui.speaker_rows) {
     if (!row || !row->pending || row->pending_until_ms == 0 ||
@@ -3094,7 +3077,7 @@ inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
 }
 
 inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
-  if (!ctx || media_control_group_size(ctx) < 2 || !ha_api_state_connected()) return;
+  if (!ctx || media_control_group_size(ctx) < 2) return;
   std::vector<std::string> members;
   media_group_append_unique(members, ctx->entity_id);
   for (const std::string &entity_id : ctx->group_members) {
@@ -3106,44 +3089,12 @@ inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
         return std::find(members.begin(), members.end(), known.entity_id) == members.end();
       }),
     ctx->group_volume_states.end());
-  for (const std::string &entity_id : members) {
-    ha_get_state(entity_id, [ctx, entity_id](esphome::StringRef value) {
-      if (media_control_modal_ui().active != ctx) return;
-      for (MediaGroupVolumeState &known : ctx->group_volume_states) {
-        if (known.entity_id != entity_id) continue;
-        known.available = !ha_state_unavailable_ref(value);
-        media_control_refresh_volume(ctx);
-        return;
-      }
-      MediaGroupVolumeState known;
-      known.entity_id = entity_id;
-      known.available = !ha_state_unavailable_ref(value);
-      ctx->group_volume_states.push_back(std::move(known));
-      media_control_refresh_volume(ctx);
-    });
-    ha_get_attribute(entity_id, std::string("volume_level"),
-      [ctx, entity_id](esphome::StringRef value) {
-        if (media_control_modal_ui().active != ctx) return;
-        MediaGroupVolumeState *known = nullptr;
-        for (MediaGroupVolumeState &candidate : ctx->group_volume_states) {
-          if (candidate.entity_id == entity_id) {
-            known = &candidate;
-            break;
-          }
-        }
-        if (!known) {
-          ctx->group_volume_states.push_back({});
-          known = &ctx->group_volume_states.back();
-          known->entity_id = entity_id;
-        }
-        float level = 0.0f;
-        known->volume_known = parse_float_ref(value, level) && std::isfinite(level);
-        if (known->volume_known) {
-          known->volume_pct = std::max(
-            0, std::min(100, static_cast<int>(level * 100.0f + 0.5f)));
-        }
-        media_control_refresh_volume(ctx);
-      });
+  media_control_store_group_volume(
+    ctx, ctx->entity_id, ctx->current_pct, ctx->volume_known, ctx->available);
+  for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
+    if (std::find(members.begin(), members.end(), item.entity_id) == members.end()) continue;
+    media_control_store_group_volume(
+      ctx, item.entity_id, item.volume_pct, item.volume_known, item.available);
   }
 }
 
@@ -3268,62 +3219,6 @@ inline void media_control_toggle_speaker(MediaControlCtx *ctx,
   }
 }
 
-inline void media_control_refresh_speaker_state(MediaControlCtx *ctx,
-                                                MediaSpeakerRowState *row) {
-  if (!ctx || !row) return;
-  MediaControlModalUi &ui = media_control_modal_ui();
-  uint32_t generation = ui.speaker_generation;
-  std::string entity_id = row->entity_id;
-  HomeAssistantStateCallback state_callback = [ctx, entity_id, generation](esphome::StringRef value) {
-    MediaControlModalUi &ui = media_control_modal_ui();
-    if (ui.active != ctx || ui.speaker_generation != generation) return;
-    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
-    if (!row) return;
-    row->available = !ha_state_unavailable_ref(value);
-    media_control_store_group_volume(
-      ctx, row->entity_id, row->volume_pct,
-      row->volume_known, row->available);
-    media_control_refresh_speaker_row(ctx, row);
-    media_control_refresh_group_volume(ctx);
-  };
-  HomeAssistantStateCallback name_callback = [ctx, entity_id, generation](esphome::StringRef value) {
-    MediaControlModalUi &ui = media_control_modal_ui();
-    if (ui.active != ctx || ui.speaker_generation != generation) return;
-    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
-    if (!row) return;
-    row->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
-    if (row->friendly_name == "unknown" || row->friendly_name == "unavailable") row->friendly_name.clear();
-    media_control_refresh_speaker_row(ctx, row);
-  };
-  HomeAssistantStateCallback volume_callback = [ctx, entity_id, generation](esphome::StringRef value) {
-    MediaControlModalUi &ui = media_control_modal_ui();
-    if (ui.active != ctx || ui.speaker_generation != generation) return;
-    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
-    if (!row) return;
-    float level = 0.0f;
-    if (!parse_float_ref(value, level) || !std::isfinite(level)) {
-      row->volume_known = false;
-      media_control_store_group_volume(
-        ctx, row->entity_id, row->volume_pct,
-        row->volume_known, row->available);
-      media_control_refresh_speaker_row(ctx, row);
-      media_control_refresh_group_volume(ctx);
-      return;
-    }
-    row->volume_known = true;
-    row->volume_pct = std::max(
-      0, std::min(100, static_cast<int>(level * 100.0f + 0.5f)));
-    media_control_store_group_volume(
-      ctx, row->entity_id, row->volume_pct,
-      row->volume_known, row->available);
-    media_control_refresh_speaker_row(ctx, row);
-    media_control_refresh_group_volume(ctx);
-  };
-  ha_get_state(entity_id, state_callback);
-  ha_get_attribute(entity_id, std::string("friendly_name"), name_callback);
-  ha_get_attribute(entity_id, std::string("volume_level"), volume_callback);
-}
-
 inline lv_obj_t *media_control_create_speaker_volume_button(
     MediaControlCtx *ctx, MediaSpeakerRowState *row, lv_obj_t *parent,
     lv_coord_t size, const char *icon, bool increase) {
@@ -3393,12 +3288,21 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   MediaSpeakerRowState *row = new MediaSpeakerRowState();
   row->entity_id = entity_id;
   if (entity_id == ctx->entity_id) row->available = ctx->available;
+  bool discovery_item_found = false;
   for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
     if (item.entity_id != entity_id) continue;
+    discovery_item_found = true;
     row->friendly_name = item.friendly_name;
     row->volume_pct = item.volume_pct;
     row->volume_known = item.volume_known;
+    if (entity_id != ctx->entity_id) row->available = item.available;
     break;
+  }
+  if (!discovery_item_found && entity_id != ctx->entity_id &&
+      std::find(ctx->speaker_helper_members.begin(),
+                ctx->speaker_helper_members.end(), entity_id) !=
+        ctx->speaker_helper_members.end()) {
+    row->available = true;
   }
   row->selected = media_control_group_contains(ctx, entity_id);
   row->row = lv_btn_create(ui.speaker_list);
@@ -3613,12 +3517,15 @@ inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
     for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
       if (item.entity_id != row->entity_id) continue;
       if (!item.friendly_name.empty()) row->friendly_name = item.friendly_name;
-      if (item.volume_known && !row->volume_known) {
+      if (item.volume_known) {
         row->volume_pct = item.volume_pct;
         row->volume_known = true;
       }
+      if (row->entity_id != ctx->entity_id) row->available = item.available;
       break;
     }
+    media_control_store_group_volume(
+      ctx, row->entity_id, row->volume_pct, row->volume_known, row->available);
     media_control_refresh_speaker_row(ctx, row);
   }
   if (ui.speaker_rows.empty()) {
@@ -3664,7 +3571,6 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
     media_control_modal_ui().speaker_last_scroll_ms = esphome::millis();
   }, LV_EVENT_SCROLL, nullptr);
   ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
-  ui.speaker_last_refresh_ms = esphome::millis();
 
   // The flat S3 rows calculate the space left between the speaker icon and
   // volume buttons. Resolve the flex layout before creating those rows so the
@@ -3672,14 +3578,6 @@ inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
   // object width (which truncated names such as "Play Room" to "Play R...").
   lv_obj_update_layout(ui.speaker_list);
   media_control_refresh_speakers(ctx);
-  // Rows start disabled until their live availability is known. Hydrate them
-  // after the complete list exists so the first deliberate tap is actionable,
-  // without allowing state callbacks to re-enter a partially-built LVGL tree.
-  if (ha_api_state_connected()) {
-    for (MediaSpeakerRowState *row : ui.speaker_rows) {
-      media_control_refresh_speaker_state(ctx, row);
-    }
-  }
 #ifdef ESP_PLATFORM
   ESP_LOGI("media_group", "Speaker controls ready: rows=%u internal_free=%u largest=%u",
            (unsigned) ui.speaker_rows.size(),
@@ -3760,7 +3658,6 @@ inline void media_control_clear_tab_content() {
   ui.updating_volume = false;
   ui.progress_layout_ready = false;
   ui.progress_refresh_pending = false;
-  ui.speaker_last_refresh_ms = 0;
   ui.speaker_last_scroll_ms = 0;
 }
 

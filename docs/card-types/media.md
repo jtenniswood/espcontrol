@@ -113,14 +113,15 @@ template:
             {%- set s = integration_entities("sonos") | select("match", "media_player") | list -%}
             {%- set ns = namespace(items=[]) -%}
             {%- for entity_id in s -%}
-              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level")]] -%}
+              {%- set available = states(entity_id) not in ["unknown", "unavailable"] -%}
+              {%- set ns.items = ns.items + [[entity_id, state_attr(entity_id, "friendly_name") or entity_id, state_attr(entity_id, "volume_level"), available]] -%}
             {%- endfor -%}
             v2|{{ ns.items | to_json }}
 ```
 
 Restart Home Assistant after adding the template. Replace `sonos` with the integration name when using another compatible speaker platform.
 
-The earlier comma-separated ESPHome Media Player format remains supported for existing installations. The versioned JSON format is recommended because speaker names can safely contain commas and future versions can evolve without changing existing helpers.
+The earlier comma-separated ESPHome Media Player format remains supported for existing installations. The versioned JSON format is recommended because speaker names can safely contain commas and it reports availability explicitly. Older helpers without that final availability value continue to work and infer it from the reported volume.
 
 The optional **Speaker Discovery Entity** card setting remains available as an override. A Home Assistant media-player Group helper can be entered there for a manually maintained list; otherwise leave it blank to use `sensor.speaker_group` automatically.
 
