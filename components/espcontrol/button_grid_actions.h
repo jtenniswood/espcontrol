@@ -529,7 +529,7 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
       cover_tilt ? "cover.set_cover_tilt_position" : "cover.set_cover_position",
       false, 2)) return;
     ha_action_add_entity(req, entity_id);
-    char buf[8];
+    char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, cover_tilt ? "tilt_position" : "position", buf);
   } else if (is_fan_entity(entity_id)) {
@@ -539,7 +539,7 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
     } else {
       if (!ha_action_begin(req, "fan.turn_on", false, 2)) return;
       ha_action_add_entity(req, entity_id);
-      char buf[8];
+      char buf[12];
       snprintf(buf, sizeof(buf), "%d", value);
       ha_action_add_data(req, "percentage", buf);
     }
@@ -549,7 +549,7 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
   } else {
     if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
     ha_action_add_entity(req, entity_id);
-    char buf[8];
+    char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, "brightness_pct", buf);
   }

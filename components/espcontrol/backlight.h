@@ -47,8 +47,8 @@ inline void backlight_close_modals_for_display_takeover() {
 struct SunCalcResult {
   int rise_h, rise_m, set_h, set_m;
   bool valid;
-  char sunrise_str[16];
-  char sunset_str[16];
+  char sunrise_str[32];
+  char sunset_str[32];
 };
 
 inline SunCalcResult recalc_sunrise_sunset(

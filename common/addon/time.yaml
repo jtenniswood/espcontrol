@@ -479,7 +479,7 @@ script:
                                             id(homeassistant_time).now());
           bool use_12h = id(clock_format_12h);
           if (now.is_valid()) {
-            static char date_buf[11];
+            static char date_buf[16];
             snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
                      now.year, now.month, now.day_of_month);
             id(screen_date_sensor).publish_state(date_buf);

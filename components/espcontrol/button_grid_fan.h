@@ -505,7 +505,7 @@ inline void send_fan_step_action(FanCardCtx *ctx, bool increase) {
   if (!ctx) return;
   const char *service = increase ? "fan.increase_speed" : "fan.decrease_speed";
   if (ctx->percentage_step_known && ctx->percentage_step > 0) {
-    char buf[8];
+    char buf[12];
     snprintf(buf, sizeof(buf), "%d", ctx->percentage_step);
     send_fan_action(ctx->entity_id, service, "percentage_step", buf);
   } else {
