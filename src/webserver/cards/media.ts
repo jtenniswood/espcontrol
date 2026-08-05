@@ -686,10 +686,10 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             }
             var playlistCardSettings: any = null;
             if (b.sensor === "playlist") {
-                var playlistSourceDisclosure: any = helpers.disclosureSection("Source", helpers.idPrefix + "playlist-source-settings", true);
+                var playlistSourceDisclosure: any = helpers.disclosureSection("Source", helpers.idPrefix + "playlist-source-settings", false);
                 var playlistSourceSettings: any = playlistSourceDisclosure.section;
                 panel.appendChild(playlistSourceDisclosure.panel);
-                var playlistCardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "playlist-card-settings", true);
+                var playlistCardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "playlist-card-settings", false);
                 playlistCardSettings = playlistCardSettingsDisclosure.section;
                 panel.appendChild(playlistCardSettingsDisclosure.panel);
                 var playlistInfo: any = document.createElement("div");

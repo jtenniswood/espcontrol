@@ -2254,17 +2254,27 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   await page.locator("#sp-inp-media-mode").selectOption("playlist");
-  await page.waitForSelector("#sp-inp-playlist-content-id");
+  await page.waitForSelector("#sp-inp-playlist-content-id", { state: "attached" });
 
   const sourceSettings = page
     .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Source" })
-    .first();
+    .filter({ has: page.locator("#sp-inp-playlist-source-settings") });
+  const cardSettings = page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ has: page.locator("#sp-inp-playlist-card-settings") });
   assert(await sourceSettings.isVisible(), `${label}: playlist source panel should render`);
+  assert(await cardSettings.isVisible(), `${label}: playlist card settings panel should render`);
+  assert(
+    !(await sourceSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: playlist source panel should start collapsed`,
+  );
+  assert(
+    !(await cardSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: playlist card settings panel should start collapsed`,
+  );
+  await sourceSettings.locator("> .sp-disclosure-button").click();
   await page.locator("#sp-inp-playlist-content-id").fill("");
-  if ((await sourceSettings.getAttribute("class")).includes("sp-open")) {
-    await sourceSettings.locator("> .sp-disclosure-button").click();
-  }
+  await sourceSettings.locator("> .sp-disclosure-button").click();
   assert(
     !(await sourceSettings.getAttribute("class")).includes("sp-open"),
     `${label}: playlist source panel should be collapsed before validation`,
