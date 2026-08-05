@@ -274,6 +274,9 @@ display:
       number: GPIO05
     update_interval: never
     auto_clear_enabled: false
+    # Some JC1060P470 panel revisions corrupt the image with the model's
+    # default 40-pixel pulse. The original working profile used 20 pixels.
+    hsync_pulse_width: 20
 
 # ---------------------------------------------------------------------------
 # LVGL base (display binding, must be before any page definitions)
