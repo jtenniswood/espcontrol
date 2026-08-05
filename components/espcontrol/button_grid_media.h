@@ -3574,7 +3574,8 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   // Discovery already supplies the initial name and volume. Do not issue
   // cached Home Assistant reads while LVGL is still constructing the list:
   // those callbacks can run immediately and re-enter the partially-built UI.
-  // The modal timer performs the first live refresh after construction.
+  // The speakers-tab builder performs the first live refresh after the
+  // complete list exists; the modal timer handles later refreshes.
 }
 
 inline void media_control_sync_speaker_candidates(
