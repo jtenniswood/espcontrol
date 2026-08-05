@@ -1631,10 +1631,9 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     "settings",
     `${label}: settings tab is marked active on mobile`,
   );
-  assert.strictEqual(
+  assert(
     mobile.supportVisible,
-    false,
-    `${label}: support button should not cover mobile settings`,
+    `${label}: support button remains visible on the settings tab`,
   );
   assert(
     mobile.activeCardVisible,
@@ -1713,10 +1712,9 @@ async function assertMobileDeviceViewport(browser, testCase) {
       mobile.documentScrollWidth <= mobile.windowWidth + 1,
       `${testCase.name}: mobile device settings tab has horizontal overflow`,
     );
-    assert.strictEqual(
+    assert(
       mobile.supportVisible,
-      false,
-      `${testCase.name}: support button should not cover settings on mobile devices`,
+      `${testCase.name}: support button remains visible on settings on mobile devices`,
     );
   } catch (error) {
     fs.mkdirSync(FAILURE_DIR, { recursive: true });

@@ -212,7 +212,7 @@ export function installControlsShellModule(): GlobalDescriptors {
     function syncTabChrome(this: any) {
         var support: any = document.querySelector(".sp-support-btn");
         if (support)
-            support.classList.toggle("sp-support-hidden", state.activeTab === "settings");
+            support.classList.remove("sp-support-hidden");
     }
     function isConfigLocked(this: any) {
         return !!state.configLocked;
