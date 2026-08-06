@@ -19,6 +19,9 @@ export function registerScreenLockCardTypes(): GlobalDescriptors {
             var defaults: any = cardContractDefaultConfig("screen_lock");
             Object.keys(defaults).forEach(function (this: any, key?: any) { b[key] = defaults[key]; });
         },
+        // Screen Lock is entirely local and uses fixed translated labels/icons.
+        // Defining an empty renderer prevents the generic Switch settings fallback.
+        renderSettings: function () {},
         renderPreview: function (this: any, b?: any, helpers?: any) {
             return cardBadgePreview(b, helpers, {
                 label: "Screen Unlocked",

@@ -2781,8 +2781,8 @@
       "web": {
         "registration": "media_cover_art",
         "picker": {
-          "main": true,
-          "subpage": true,
+          "main": false,
+          "subpage": false,
           "infoOnly": false
         },
         "preview": {

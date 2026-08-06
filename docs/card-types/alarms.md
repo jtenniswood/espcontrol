@@ -6,7 +6,7 @@ description:
 
 # Alarm
 
-An Alarm card controls a Home Assistant `alarm_control_panel` entity. It can be a combined control panel card, or a one-tap card for **Arm Away**, **Arm Home**, **Arm Night**, **Arm Vacation**, or **Disarm**.
+An Alarm card controls a Home Assistant `alarm_control_panel` entity. It can provide **All Controls**, or a one-tap card for **Arm Away**, **Arm Home**, **Arm Night**, **Arm Vacation**, or **Disarm**.
 
 Use Alarm cards for house alarms, zone alarms, and Home Assistant alarm integrations that expose an `alarm_control_panel` entity.
 
@@ -14,21 +14,21 @@ Use Alarm cards for house alarms, zone alarms, and Home Assistant alarm integrat
 
 1. Select a card and change its type to **Alarm**.
 2. Choose the alarm **Type**:
-   - **Combined Control** opens an alarm control screen with the visible actions you choose.
+   - **All Controls** opens an alarm control screen with the visible actions you choose.
    - **Arm Away** sends the arm-away action.
    - **Arm Home** sends the arm-home action.
    - **Arm Night** sends the arm-night action.
    - **Arm Vacation** sends the arm-vacation action.
    - **Disarm** sends the disarm action.
 3. Enter the **Alarm Entity**, for example `alarm_control_panel.house`.
-4. For **Combined Control**, choose the visible actions for this panel.
-5. For **Combined Control**, choose whether the card label shows the alarm name or the current alarm status.
-6. For **Combined Control**, choose whether the icon is static or follows the current alarm status.
+4. For **All Controls**, choose the visible actions for this panel.
+5. For **All Controls**, choose whether the card label shows the alarm name or the current alarm status.
+6. For **All Controls**, choose whether the icon is static or follows the current alarm status.
 7. Choose whether a PIN is required for arming, disarming, or both.
 
-## Combined Control
+## All Controls
 
-Combined Control is the most complete alarm card mode. Tapping the card opens an alarm screen on the panel, where the available actions can include **Arm Away**, **Arm Home**, **Arm Night**, **Arm Vacation**, and **Disarm**.
+All Controls is the most complete alarm card mode. Tapping the card opens an alarm screen on the panel, where the available actions can include **Arm Away**, **Arm Home**, **Arm Night**, **Arm Vacation**, and **Disarm**.
 
 The setup page lets you choose up to three actions to appear. This is useful when a panel should allow arming but not disarming, or when you only use certain arming modes such as Night and Away.
 
@@ -88,7 +88,7 @@ Firmware compile checks confirm that the speaker panel and non-speaker panels bu
 ## How It Works on the Panel
 
 - The card subscribes to the alarm entity state in Home Assistant.
-- Combined Control opens the alarm control screen when tapped.
+- All Controls opens the alarm control screen when tapped.
 - One-tap modes send only their selected arm or disarm action.
 - The card can be used on the home screen or inside subpages.
 - If Home Assistant reports the alarm as unavailable, the card shows that state instead of pretending the action succeeded.

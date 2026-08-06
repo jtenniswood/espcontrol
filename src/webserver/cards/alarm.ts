@@ -10,7 +10,7 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
     }
     function alarmCardTypeOptions(this: any) {
         var options: any = [
-            { value: alarmControlPanelValue(), label: "Combined Control" },
+            { value: alarmControlPanelValue(), label: "All Controls" },
         ];
         var actions: any = alarmActionSpecs();
         for (var i: any = 0; i < actions.length; i++)

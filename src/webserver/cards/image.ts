@@ -115,7 +115,9 @@ export function registerImageCardTypes(): GlobalDescriptors {
                 b.label = "";
             helpers.renderCardEntityField(panel, b, helpers, IMAGE_CARD_METADATA);
             renderImageLabelSettings(panel, b, helpers);
-            renderImageModalSettings(panel, b, helpers);
+            var modalSettingsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "image-modal-settings", false);
+            renderImageModalSettings(modalSettingsDisclosure.section, b, helpers);
+            panel.appendChild(modalSettingsDisclosure.panel);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var tertiaryColor: any = WEB_UI_COLORS.tertiary;

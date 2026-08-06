@@ -57,7 +57,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 | local | accepted_legacy_input | action | web_parser, saved_config_parser | Older local-action input; normalizes to Action with local dispatch. |
 | text_sensor | accepted_legacy_input | sensor | web_parser, saved_config_parser | Older sensor input; normalizes to Sensor text mode. |
 | todo | accepted_legacy_input | todo | web_parser, firmware | Removed configurator type retained only for saved-card compatibility. |
-| media_cover_art | obsolete_implementation_residue | media | web_registry | Hidden web picker implementation that creates a Media cover-art configuration. |
+| media_cover_art | obsolete_implementation_residue | media | web_registry | Hidden compatibility registration that normalizes older Cover Art aliases to Media. |
 
 ## Baseline lifecycle vocabulary
 

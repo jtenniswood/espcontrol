@@ -2,7 +2,7 @@ import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/glo
 export function registerFanCardTypes(): GlobalDescriptors {
     // Fan cards: grouped controls for Home Assistant fan entities.
     var FAN_CONTROL_TYPE_OPTIONS: any = [
-        ["fan_control", "Control Modal"],
+        ["fan_control", "All Controls"],
         ["fan_switch", "Switch"],
         ["fan_speed", "Speed"],
         ["fan_oscillate", "Oscillation"],
@@ -98,13 +98,16 @@ export function registerFanCardTypes(): GlobalDescriptors {
         }));
     }
     function renderFanControlTabSettings(this: any, panel?: any, b?: any, helpers?: any) {
-        renderModalTabSettings(panel, b, helpers, {
+        var modalSettingsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "fan-modal-settings", b._modalSettingsOpen === true);
+        renderModalTabSettings(modalSettingsDisclosure.section, b, helpers, {
             definitions: fanControlTabDefinitions,
             tabs: fanControlTabs,
             normalizeOptions: normalizeFanControlOptions,
             setTabs: setFanControlTabs,
             idPrefix: "fan-tab-",
+            hideHeading: true,
         });
+        panel.appendChild(modalSettingsDisclosure.panel);
     }
     function fanTypeFactory(this: any, opts?: any) {
         return {

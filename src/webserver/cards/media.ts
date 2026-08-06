@@ -573,7 +573,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 panel.appendChild(cardSettingsDisclosure.panel);
 
                 var secondaryPlayerDisclosure: any = helpers.disclosureSection(
-                    "External sources",
+                    "External Sources",
                     helpers.idPrefix + "media-cover-art-secondary-player",
                     false);
                 var secondaryPlayerSettings: any = secondaryPlayerDisclosure.section;
@@ -927,7 +927,9 @@ export function registerMediaCardTypes(): GlobalDescriptors {
     registerButtonType("media_cover_art", {
         label: "Cover Art",
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("media"); },
-        pickerKey: "media_cover_art",
+        // Retain the old registration only to normalize any saved alias. Cover Art is
+        // selected from the Media card's Type field and is not a top-level card type.
+        pickerKey: "media",
         hidden: true,
         hideLabel: true,
         cardMetadata: MEDIA_CARD_METADATA,
@@ -936,6 +938,14 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             config.sensor = "cover_art";
             config.label = "Cover Art";
             return config;
+        },
+        normalizeConfig: function (this: any, config?: any) {
+            config.type = "media";
+            config.sensor = "cover_art";
+            config.unit = "";
+            config.precision = "";
+            config.icon_on = "Auto";
+            config.options = normalizeMediaOptions(config.options, config.sensor);
         },
     });
     return {

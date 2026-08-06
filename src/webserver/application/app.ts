@@ -20,13 +20,27 @@ export function installAppModule(): GlobalDescriptors {
     function addSupportButton(this: any) {
         if (document.querySelector(".sp-support-btn"))
             return;
+        var panel: any = document.createElement("div");
+        panel.className = "sp-support-btn";
         var link: any = document.createElement("a");
-        link.className = "sp-support-btn";
+        link.className = "sp-support-link";
         link.href = "https://www.buymeacoffee.com/jtenniswood";
         link.target = "_blank";
         link.rel = "noopener";
         link.innerHTML = '<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60" style="border-radius:999px;">';
-        document.body.appendChild(link);
+        panel.appendChild(link);
+        var dismiss: any = document.createElement("button");
+        dismiss.type = "button";
+        dismiss.className = "sp-support-dismiss";
+        dismiss.setAttribute("aria-label", "Hide support button until this page is refreshed");
+        dismiss.title = "Hide until refresh";
+        dismiss.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.7 5.3 5.3 6.7 10.6 12l-5.3 5.3 1.4 1.4 5.3-5.3 5.3 5.3 1.4-1.4-5.3-5.3 5.3-5.3-1.4-1.4-5.3 5.3z"></path></svg>';
+        dismiss.addEventListener("click", function (this: any) {
+            panel.setAttribute("data-dismissed", "true");
+            panel.classList.add("sp-support-hidden");
+        });
+        panel.appendChild(dismiss);
+        document.body.appendChild(panel);
         syncTabChrome();
     }
     function init(this: any) {

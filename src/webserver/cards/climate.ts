@@ -93,7 +93,6 @@ export function registerClimateCardTypes(): GlobalDescriptors {
                 idPrefix: "climate-tab-",
                 hideHeading: true,
             });
-            panel.appendChild(modalTabsDisclosure.panel);
             var labelField: any = condField();
             labelField.classList.add("sp-climate-settings-gap");
             helpers.renderCardTextField(labelField, b, helpers, {
@@ -174,6 +173,7 @@ export function registerClimateCardTypes(): GlobalDescriptors {
             });
             helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
             panel.appendChild(cardSettingsDisclosure.panel);
+            panel.appendChild(modalTabsDisclosure.panel);
             var advancedDisclosure: any = helpers.disclosureSection("Advanced", helpers.idPrefix + "climate-advanced", false);
             var advanced: any = advancedDisclosure.section;
             advanced.appendChild(precisionField.field);

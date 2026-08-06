@@ -243,8 +243,8 @@ assert.strictEqual(
 );
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.buttonTypeVisibleInPickerFor("media_cover_art", false),
-  true,
-  "S3 exposes Media Cover Art cards",
+  false,
+  "S3 exposes Cover Art only through the Media subtype list",
 );
 
 for (const [slug, device] of Object.entries(manifest.devices || {})) {

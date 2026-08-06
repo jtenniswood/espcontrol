@@ -62,11 +62,11 @@ Some names in the setup page group several related modes:
 | Setup page name | Modes |
 |---|---|
 | **Lights** | All Controls, Switch, Brightness, Colour Temperature |
-| **Fans** | Switch, Speed, Oscillation, Direction, Preset |
+| **Fans** | All Controls, Switch, Speed, Oscillation, Direction, Preset |
 | **Action** | Scene, Script, Automation, Button, Helper, Option Select, Local Action |
 | **Vacuum** | Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, Clean Area |
 | **Lawn Mower** | Status, Start Mowing, Dock, Pause / Resume |
-| **Alarm** | Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, Disarm |
+| **Alarm** | All Controls, Arm Away, Arm Home, Arm Night, Arm Vacation, Disarm |
 | **Date & Time** | Clock, Date, Time & Date, World Clock |
 | **Media** | Play/Pause, Previous, Next, Volume, Track Position, Now Playing |
 | **Cover** | All Controls, Position, Tilt, Toggle, Open, Close, Stop, Set Position |

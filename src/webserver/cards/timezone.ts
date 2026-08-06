@@ -81,7 +81,9 @@ export function registerTimezoneCardTypes(): GlobalDescriptors {
                 helpers.saveField("entity", b.entity);
                 helpers.saveField("label", "");
             });
-            panel.appendChild(helpers.fieldWithControl("City / Timezone", helpers.idPrefix + "timezone", tzSelect));
+            var timezoneField: any = helpers.fieldWithControl("City / Timezone", helpers.idPrefix + "timezone", tzSelect);
+            panel.appendChild(timezoneField);
+            helpers.markCardPrimaryField(timezoneField, "entity");
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var tz: any = b.entity || (typeof state !== "undefined" && state.timezone) || "UTC (GMT+0)";

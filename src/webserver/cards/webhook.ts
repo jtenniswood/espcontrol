@@ -46,7 +46,7 @@ export function registerWebhookCardTypes(): GlobalDescriptors {
             placeholder: "e.g. http://jeedom.local/core/api/jeeApi.php?...",
         },
         method: {
-            label: "Method",
+            label: "Type",
             idSuffix: "webhook-method",
             options: WEBHOOK_METHODS,
         },
@@ -77,6 +77,8 @@ export function registerWebhookCardTypes(): GlobalDescriptors {
         },
         renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             normalizeWebhookConfig(b);
+            var webhookSettingsDisclosure: any = helpers.disclosureSection("Webhook Settings", helpers.idPrefix + "webhook-settings", false);
+            var webhookSettings: any = webhookSettingsDisclosure.section;
             var methodField: any = helpers.selectField(WEBHOOK_CARD_METADATA.method.label, helpers.idPrefix + WEBHOOK_CARD_METADATA.method.idSuffix, WEBHOOK_CARD_METADATA.method.options, webhookMethod(b.sensor), function (this: any) {
                 b.sensor = webhookMethod(this.value);
                 helpers.saveField("sensor", b.sensor);
@@ -86,19 +88,24 @@ export function registerWebhookCardTypes(): GlobalDescriptors {
                 }
                 renderButtonSettings();
             });
-            panel.appendChild(methodField.field);
+            webhookSettings.appendChild(methodField.field);
+            panel.appendChild(webhookSettingsDisclosure.panel);
+            var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "webhook-card-settings", false);
+            panel.appendChild(cardSettingsDisclosure.panel);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             normalizeWebhookConfig(b);
+            var webhookSettingsButton: any = panel.querySelector("#" + helpers.idPrefix + "webhook-settings");
+            var webhookSettings: any = webhookSettingsButton && webhookSettingsButton.nextElementSibling || panel;
             var urlField: any = helpers.textField(WEBHOOK_CARD_METADATA.url.label, helpers.idPrefix + WEBHOOK_CARD_METADATA.url.idSuffix, b.entity, WEBHOOK_CARD_METADATA.url.placeholder, "entity", true);
-            panel.appendChild(urlField.field);
+            webhookSettings.appendChild(urlField.field);
             helpers.requireField(urlField.input, "Add a webhook URL before saving.");
             if (b.sensor !== "GET" && b.sensor !== "DELETE") {
                 var bodyField: any = helpers.textField("Body", helpers.idPrefix + "webhook-body", b.unit, "e.g. {\"value1\":\"Gate\"}", "unit", false);
-                panel.appendChild(bodyField.field);
+                webhookSettings.appendChild(bodyField.field);
             }
             var headersField: any = helpers.textField("Headers", helpers.idPrefix + "webhook-headers", webhookHeaders(b), "e.g. Content-Type: application/json; Authorization: Bearer token", null, false);
-            panel.appendChild(headersField.field);
+            webhookSettings.appendChild(headersField.field);
             headersField.input.addEventListener("input", saveHeaders);
             headersField.input.addEventListener("change", saveHeaders);
             headersField.input.addEventListener("blur", saveHeaders);

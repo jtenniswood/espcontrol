@@ -564,6 +564,7 @@ declare global {
   var getTzId: any;
   var gridHasAny: any;
   var gridPreviewBlockedByRotationStartup: any;
+  var groupCardSettingsFields: any;
   var handleBtnClick: any;
   var handleDocumentSelectionMouseDown: any;
   var handleWebServerPingEvent: any;
@@ -671,6 +672,7 @@ declare global {
   var lockModeOptionValues: any;
   var lockUsesDefaultIcon: any;
   var makeCollapsibleCard: any;
+  var markCardPrimaryField: any;
   var markSpannedCells: any;
   var mdiIcon: any;
   var mediaBehaviorSpec: any;

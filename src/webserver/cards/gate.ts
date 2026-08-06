@@ -37,7 +37,7 @@ export function registerGateCardTypes(): GlobalDescriptors {
     }
     var GATE_CARD_METADATA: any = {
         mode: {
-            label: "Interaction",
+            label: "Type",
             idSuffix: "gate-interaction",
             options: GATE_MODE_OPTIONS,
             value: function (this: any, b?: any) {

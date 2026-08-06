@@ -163,15 +163,16 @@ export function registerLightTemperatureCardTypes(): GlobalDescriptors {
         return helpers.renderCardModeSelector(panel, b, helpers, LIGHT_CONTROL_TYPE_METADATA);
     }
     function renderLightControlTabSettings(this: any, panel?: any, b?: any, helpers?: any) {
-        renderModalTabSettings(panel, b, helpers, {
+        var modalSettingsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "light-modal-settings", b._modalSettingsOpen === true);
+        renderModalTabSettings(modalSettingsDisclosure.section, b, helpers, {
             definitions: lightControlTabDefinitions,
             tabs: lightControlTabs,
             normalizeOptions: normalizeLightControlOptions,
             setTabs: setLightControlTabs,
             idPrefix: "light-tab-",
-            groupLabel: "Modal Controls",
-            groupIdSuffix: "light-modal-controls",
+            hideHeading: true,
         });
+        panel.appendChild(modalSettingsDisclosure.panel);
     }
     registerButtonType("light_temperature", {
         label: function (this: any) { return cardContractCardLabel("light_temperature"); },
@@ -285,12 +286,12 @@ export function registerLightTemperatureCardTypes(): GlobalDescriptors {
             renderLightControlTypeField(panel, b, helpers);
             b.options = normalizeLightControlOptions(b.options);
             helpers.renderCardEntityField(panel, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA);
-            renderLightControlTabSettings(panel, b, helpers);
             var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "light-card-settings", false);
             var cardSettings: any = cardSettingsDisclosure.section;
             helpers.renderCardTextField(cardSettings, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA.labelField);
             helpers.renderCardIconPair(cardSettings, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA.iconOff, LIGHT_FULL_CONTROL_CARD_METADATA.iconOn);
             panel.appendChild(cardSettingsDisclosure.panel);
+            renderLightControlTabSettings(panel, b, helpers);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var label: any = b.label || b.entity || "Light";

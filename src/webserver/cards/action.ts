@@ -125,7 +125,7 @@ export function registerActionCardTypes(): GlobalDescriptors {
     }
     var ACTION_CARD_METADATA: any = {
         mode: {
-            label: "Action",
+            label: "Type",
             idSuffix: "action",
             options: ACTION_CARD_ACTIONS,
             value: function (this: any, b?: any) {
@@ -492,6 +492,7 @@ export function registerActionCardTypes(): GlobalDescriptors {
         var pickerSection: any = document.createElement("div");
         pickerSection.className = "sp-field";
         panel.appendChild(pickerSection);
+        helpers.markCardPrimaryField(pickerSection, "entity");
         helpers.renderCardIconPicker(panel, b, helpers, {
             pickerIdSuffix: "icon-picker",
             idSuffix: "icon",

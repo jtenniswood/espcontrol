@@ -30,7 +30,7 @@ export function registerGarageCardTypes(): GlobalDescriptors {
     }
     var GARAGE_CARD_METADATA: any = {
         mode: {
-            label: "Interaction",
+            label: "Type",
             idSuffix: "garage-interaction",
             options: GARAGE_MODE_OPTIONS,
             value: function (this: any, b?: any) {

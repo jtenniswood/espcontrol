@@ -139,6 +139,64 @@ export function installControlsFieldsModule(): GlobalDescriptors {
             section: section,
         };
     }
+    function markCardPrimaryField(this: any, field?: any, kind?: any) {
+        if (field && kind)
+            field.setAttribute("data-sp-card-primary", kind);
+        return field;
+    }
+    function cardSettingsDisclosureIn(this: any, panel?: any) {
+        var children: any = panel ? Array.prototype.slice.call(panel.children || []) : [];
+        for (var i: any = 0; i < children.length; i++) {
+            var child: any = children[i];
+            if (!child.classList || !child.classList.contains("sp-disclosure"))
+                continue;
+            var button: any = child.querySelector(".sp-disclosure-button");
+            var label: any = button && button.firstElementChild;
+            if (label && String(label.textContent || "").trim() === "Card Settings") {
+                return {
+                    panel: child,
+                    button: button,
+                    section: child.querySelector(".sp-disclosure-body"),
+                };
+            }
+        }
+        return null;
+    }
+    function groupCardSettingsFields(this: any, panel?: any, idPrefix?: any) {
+        if (!panel)
+            return null;
+        var primaryKinds: any = {
+            card: false,
+            type: false,
+            entity: false,
+        };
+        var movable: any = [];
+        var firstDisclosure: any = null;
+        Array.prototype.slice.call(panel.children || []).forEach(function (this: any, child?: any) {
+            if (child.classList && child.classList.contains("sp-disclosure")) {
+                if (!firstDisclosure)
+                    firstDisclosure = child;
+                return;
+            }
+            var kind: any = child.getAttribute && child.getAttribute("data-sp-card-primary");
+            if (Object.prototype.hasOwnProperty.call(primaryKinds, kind) && !primaryKinds[kind]) {
+                primaryKinds[kind] = true;
+                return;
+            }
+            movable.push(child);
+        });
+        if (!movable.length)
+            return cardSettingsDisclosureIn(panel);
+        var disclosure: any = cardSettingsDisclosureIn(panel);
+        if (!disclosure) {
+            disclosure = disclosureSection("Card Settings", (idPrefix || "sp-inp-") + "card-settings", false);
+            panel.insertBefore(disclosure.panel, firstDisclosure);
+        }
+        movable.forEach(function (this: any, child?: any) {
+            disclosure.section.appendChild(child);
+        });
+        return disclosure;
+    }
     function colorField(this: any, id?: any, value?: any, onChange?: any) {
         var row: any = document.createElement("div");
         row.className = "sp-color-row";
@@ -262,6 +320,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
                 mode.onChange.call(this, b, helpers);
         });
         panel.appendChild(field.field);
+        markCardPrimaryField(field.field, "type");
         return field;
     }
     function renderCardLargeNumbersToggle(this: any, panel?: any, b?: any, helpers?: any, metadata?: any) {
@@ -300,6 +359,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         var domains: any = cardMetadataValue(entity.domains, b, helpers) || [];
         var field: any = helpers.entityField(cardMetadataValue(entity.label, b, helpers) || "Entity", helpers.idPrefix + (entity.idSuffix || "entity"), value || "", cardMetadataValue(entity.placeholder, b, helpers) || "", domains, bindName, entity.rerender !== false, cardMetadataValue(entity.requiredMessage, b, helpers) || "");
         panel.appendChild(field.field);
+        markCardPrimaryField(field.field, "entity");
         return field;
     }
     function renderCardTextField(this: any, panel?: any, b?: any, helpers?: any, metadata?: any) {
@@ -398,6 +458,8 @@ export function installControlsFieldsModule(): GlobalDescriptors {
                 segment.onSelect(b, helpers, value, button, control);
         });
         panel.appendChild(helpers.fieldWithControl(segment.label || "Type", segment.inputId || null, control.segment));
+        if (segment.primary)
+            markCardPrimaryField(control.segment.parentNode, segment.primary === true ? "type" : segment.primary);
         return control;
     }
     function cardSensorPreviewHtml(this: any, b?: any, helpers?: any, value?: any, unit?: any, extraClass?: any, valueClass?: any) {
@@ -473,6 +535,9 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         "selectField": staticGlobal(selectField),
         "segmentControl": staticGlobal(segmentControl),
         "disclosureSection": staticGlobal(disclosureSection),
+        "markCardPrimaryField": staticGlobal(markCardPrimaryField),
+        "cardSettingsDisclosureIn": staticGlobal(cardSettingsDisclosureIn),
+        "groupCardSettingsFields": staticGlobal(groupCardSettingsFields),
         "colorField": staticGlobal(colorField),
         "toggleRow": staticGlobal(toggleRow),
         "cardMetadataValue": staticGlobal(cardMetadataValue),

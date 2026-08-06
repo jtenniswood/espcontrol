@@ -355,7 +355,7 @@ function reportMarkdown(inventory, contract, cases) {
     local: "Older local-action input; normalizes to Action with local dispatch.",
     text_sensor: "Older sensor input; normalizes to Sensor text mode.",
     todo: "Removed configurator type retained only for saved-card compatibility.",
-    media_cover_art: "Hidden web picker implementation that creates a Media cover-art configuration.",
+    media_cover_art: "Hidden compatibility registration that normalizes older Cover Art aliases to Media.",
   };
   for (const [type, spec] of Object.entries(inventory.runtimeOnlyTypes)) {
     lines.push(`| ${type} | ${spec.classification} | ${spec.canonicalType} | ${spec.surfaces.join(", ")} | ${reasons[type] || "Reviewed runtime-only type."} |`);

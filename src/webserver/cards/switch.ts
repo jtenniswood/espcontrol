@@ -8,6 +8,10 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             domains: function (this: any) { return cardContractDomains(""); },
             requiredMessage: "Add an entity before saving.",
         },
+        labelField: {
+            label: "Label",
+            placeholder: "e.g. Kitchen",
+        },
         iconOff: {
             field: "icon",
             fallback: "Auto",
@@ -122,13 +126,19 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage(""); },
         pickerKey: function (this: any) { return cardContractPickerKey(""); },
         hidden: function (this: any) { return cardContractHidden(""); },
+        hideLabel: true,
         defaultConfig: function (this: any) { return cardContractDefaultConfig(""); },
         cardMetadata: SWITCH_CARD_METADATA,
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             var showSensor: any = !!b.sensor;
             var sensorMode: any = b.precision === "text" ? "text" : "numeric";
-            helpers.renderBasicCardFields(panel, b, helpers, SWITCH_CARD_METADATA);
-            var sensorToggle: any = helpers.renderCardOptionToggle(panel, b, helpers, SWITCH_CARD_METADATA.activeDisplay);
+            helpers.renderCardEntityField(panel, b, helpers, SWITCH_CARD_METADATA);
+            var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "switch-card-settings", false);
+            var cardSettings: any = cardSettingsDisclosure.section;
+            helpers.renderBasicCardFields(cardSettings, b, helpers, SWITCH_CARD_METADATA, {
+                entity: false,
+            });
+            var sensorToggle: any = helpers.renderCardOptionToggle(cardSettings, b, helpers, SWITCH_CARD_METADATA.activeDisplay);
             var sensorSection: any = condField();
             if (showSensor)
                 sensorSection.classList.add("sp-visible");
@@ -153,7 +163,7 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             numericSection.appendChild(precisionField.field);
             helpers.renderCardLargeNumbersToggle(numericSection, b, helpers, SWITCH_CARD_METADATA);
             sensorSection.appendChild(numericSection);
-            panel.appendChild(sensorSection);
+            cardSettings.appendChild(sensorSection);
             function setSensorMode(this: any, mode?: any, persist?: any) {
                 sensorMode = mode;
                 numericBtn.classList.toggle("active", mode === "numeric");
@@ -195,7 +205,7 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             });
             var confirmOn: any = switchConfirmationEnabled(b);
             var confirmMode: any = switchConfirmationMode(b) || "off";
-            var confirmToggle: any = helpers.renderCardOptionToggle(panel, b, helpers, SWITCH_CARD_METADATA.confirmationToggle);
+            var confirmToggle: any = helpers.renderCardOptionToggle(cardSettings, b, helpers, SWITCH_CARD_METADATA.confirmationToggle);
             var confirmSection: any = condField();
             if (confirmOn)
                 confirmSection.classList.add("sp-visible");
@@ -219,7 +229,8 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             var noField: any = helpers.renderCardTextField(confirmSection, b, helpers, SWITCH_CARD_METADATA.confirmationNo);
             var noInput: any = noField.input;
             noInput.maxLength = 20;
-            panel.appendChild(confirmSection);
+            cardSettings.appendChild(confirmSection);
+            panel.appendChild(cardSettingsDisclosure.panel);
             function saveConfirmationOptions(this: any) {
                 setSwitchConfirmationOptions(b, confirmToggle.input.checked ? confirmMode : "", messageInput.value || switchConfirmationDefaultMessageForMode(confirmMode), yesInput.value || SWITCH_CONFIRM_DEFAULT_YES, noInput.value || SWITCH_CONFIRM_DEFAULT_NO);
                 helpers.saveField("options", b.options);

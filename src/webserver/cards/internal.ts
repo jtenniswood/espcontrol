@@ -68,7 +68,7 @@ export function registerInternalCardTypes(): GlobalDescriptors {
     }
     var INTERNAL_CARD_METADATA: any = {
         mode: {
-            label: "Mode",
+            label: "Type",
             inputId: "internal-mode",
             options: [
                 ["switch", "Switch"],
@@ -106,17 +106,23 @@ export function registerInternalCardTypes(): GlobalDescriptors {
             ensureInternalRelaySelection(b);
         },
         renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
-            renderInternalRelayField(panel, b, helpers);
+            var controlsDisclosure: any = helpers.disclosureSection("Controls", helpers.idPrefix + "internal-controls", false);
+            renderInternalRelayField(controlsDisclosure.section, b, helpers);
+            panel.appendChild(controlsDisclosure.panel);
+            var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "internal-card-settings", false);
+            panel.appendChild(cardSettingsDisclosure.panel);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             ensureInternalRelaySelection(b);
+            var controlsButton: any = panel.querySelector("#" + helpers.idPrefix + "internal-controls");
+            var controls: any = controlsButton && controlsButton.nextElementSibling || panel;
             var mode: any = internalRelayMode(b);
             if (internalRelayUsesDefaultIcon(mode, b.icon))
                 b.icon = internalRelayDefaultIcon(mode);
             if (mode === "switch" && internalRelayUsesDefaultOnIcon(b.icon_on)) {
                 b.icon_on = internalRelayDefaultOnIcon();
             }
-            var modeControl: any = helpers.renderCardSegmentControl(panel, b, helpers, {
+            var modeControl: any = helpers.renderCardSegmentControl(controls, b, helpers, {
                 segment: Object.assign({}, INTERNAL_CARD_METADATA.mode, {
                     inputId: helpers.idPrefix + "internal-mode",
                     value: function (this: any) { return mode; },

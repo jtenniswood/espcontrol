@@ -1929,6 +1929,18 @@ assertButtonRoundTrip(hooks, "media cover art card", {
   options: "cover_art_action=control_modal,cover_art_details",
 }, false);
 
+assertButtonMigration(hooks, "legacy cover art card alias becomes media subtype", "media_player.office;Artwork;Auto;Auto;;;media_cover_art;;cover_art_action=control_modal", {
+  entity: "media_player.office",
+  label: "Artwork",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "cover_art_action=control_modal",
+});
+
 assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art", {
   entity: "media_player.office",
   label: "Now Playing",
