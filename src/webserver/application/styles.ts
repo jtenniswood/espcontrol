@@ -29,11 +29,11 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-tab-docs::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--border)}" +
         ".sp-tab-docs .mdi{font-size:16px;line-height:1;opacity:.7}" +
         ".sp-page{display:none}.sp-page.active{display:block}" +
-        ".sp-support-btn{position:fixed;right:28px;bottom:28px;z-index:150;display:inline-block;line-height:0}" +
+        ".sp-support-btn{position:fixed;right:28px;bottom:28px;z-index:150;display:inline-block;width:260px;height:60px;box-sizing:border-box;border-radius:999px;background:#ffdd00;line-height:0}" +
         ".sp-support-link{display:block}" +
         ".sp-support-btn img{height:60px;display:block;border-radius:999px}" +
-        ".sp-support-dismiss{position:absolute;top:50%;right:7px;width:26px;height:26px;padding:0;transform:translateY(-50%);border:0;border-radius:999px;background:rgba(255,255,255,.42);color:#111329;cursor:pointer;display:grid;place-items:center;transition:background .2s,transform .2s}" +
-        ".sp-support-dismiss:hover{background:rgba(255,255,255,.72);transform:translateY(-50%) scale(1.08)}" +
+        ".sp-support-dismiss{position:absolute;top:50%;right:10px;width:30px;height:30px;padding:0;transform:translateY(-50%);border:0;border-radius:999px;background:#111;color:#fff;cursor:pointer;display:grid;place-items:center;transition:background .2s,transform .2s}" +
+        ".sp-support-dismiss:hover{background:#333;transform:translateY(-50%) scale(1.08)}" +
         ".sp-support-dismiss:focus-visible{outline:2px solid var(--accent);outline-offset:2px}" +
         ".sp-support-dismiss svg{width:15px;height:15px;fill:currentColor;pointer-events:none}" +
         ".sp-support-btn.sp-support-hidden{display:none}" +
