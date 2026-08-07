@@ -140,6 +140,10 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
         assert f"imageSlotCapacity:{capacity}" in text or f'"imageSlotCapacity":{capacity}' in text, (
             f"{slug}: generated web bundle has wrong image slot capacity"
         )
+        background_limit = profile["capabilities"]["cardBackgrounds"]["maxActive"]
+        assert f"cardBackgroundImageLimit:{background_limit}" in text or f'"cardBackgroundImageLimit":{background_limit}' in text, (
+            f"{slug}: generated web bundle has wrong card background limit"
+        )
 
     core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
     assert "webserver/www.js?device=${device_slug}" in core, "hosted web URL does not select a shared profile"
@@ -160,11 +164,35 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         device_path = ROOT / "devices" / slug / "device" / "device.yaml"
         sensor_path = ROOT / "devices" / slug / "device" / "sensors.yaml"
         package = package_path.read_text(encoding="utf-8")
-        device_path.read_text(encoding="utf-8")
+        device = device_path.read_text(encoding="utf-8")
         sensors = sensor_path.read_text(encoding="utf-8")
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
+        assert 'partitions: ${partition_table_file}' in device, f"{slug}: device YAML missing generated partition path"
+        capabilities = (ROOT / "devices" / slug / "device" / "card_asset_capabilities.yaml").read_text(
+            encoding="utf-8"
+        )
+        assert 'partition_table_file: "../../common/device/' in capabilities, (
+            f"{slug}: partition path must resolve inside the active checkout"
+        )
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        slots = int(profile["slots"])
+        resident_frames = int(profile["capabilities"]["cardBackgrounds"]["residentFrames"])
+        assert f"card_background_images_{resident_frames}.yaml" in package, (
+            f"{slug}: packages.yaml background-image decoder package must match its asset budget"
+        )
+        assert f"cfg.card_background_image_count = {resident_frames};" in sensors, (
+            f"{slug}: sensors.yaml background-image capacity must match its asset budget"
+        )
+        assert f"id(card_background_download_{resident_frames})," in sensors, (
+            f"{slug}: sensors.yaml missing its final background-image decoder"
+        )
+        assert f"id(card_background_download_{resident_frames + 1})," not in sensors, (
+            f"{slug}: sensors.yaml allocates more background-image decoders than its asset budget"
+        )
+        assert "Card background resident frame budget exceeds this device grid" in sensors, (
+            f"{slug}: sensors.yaml missing the background capacity compile-time guard"
+        )
         capacity = image_slot_capacity(profile)
         if capacity > 0:
             package_name = "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"
@@ -185,6 +213,22 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
+
+
+def test_card_image_partition_reserves_settings_headroom() -> None:
+    for flash_mb in (16, 32):
+        partition = (ROOT / "common" / "device" / f"partitions_{flash_mb}mb_card_images.csv").read_text(
+            encoding="utf-8"
+        )
+        assert "nvs,      data, nvs,     0x9000,    0xd000," in partition, (
+            f"{flash_mb} MB card-image layout must reserve enough NVS space for image-bearing card configs"
+        )
+        assert "otadata,  data, ota,     0x16000,   0x2000," in partition, (
+            f"{flash_mb} MB card-image layout must place OTA metadata after the enlarged NVS partition"
+        )
+        assert "app0,     app,  ota_0,   0x20000," in partition, (
+            f"{flash_mb} MB card-image layout must keep the first app partition flash-aligned"
+        )
 
 
 def test_upgrades_do_not_reset_saved_panel_config() -> None:
@@ -633,6 +677,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_card_image_partition_reserves_settings_headroom()
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()

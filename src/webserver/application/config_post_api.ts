@@ -6,6 +6,60 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         var b: any = state.buttons[slot - 1];
         postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
     }
+    function clearCardImageReferences(this: any, id?: any, persistChanges?: any) {
+        persistChanges = persistChanges !== false;
+        id = normalizeCardBackgroundImageId(id);
+        var entries: any = [];
+        var seen: any = [];
+        var mainSlots: any = [];
+        var subpageKeys: any = [];
+        var snapshot: any = {
+            changed: 0,
+            restore: function (this: any) {
+                entries.forEach(function (this: any, entry?: any) {
+                    setCardBackgroundImage(entry.button, entry.imageId);
+                });
+            },
+            persist: function (this: any) {
+                mainSlots.forEach(function (this: any, slot?: any) { saveButtonConfig(slot); });
+                subpageKeys.forEach(function (this: any, key?: any) { saveSubpageEntity(key); });
+            },
+        };
+        if (!id)
+            return snapshot;
+        var changed: any = 0;
+        function clearButtons(this: any, buttons?: any, save?: any) {
+            (buttons || []).forEach(function (this: any, button?: any, index?: any) {
+                if (cardBackgroundImage(button) !== id)
+                    return;
+                if (seen.indexOf(button) < 0) {
+                    seen.push(button);
+                    entries.push({ button: button, imageId: cardBackgroundImage(button) });
+                }
+                setCardBackgroundImage(button, "");
+                changed++;
+                if (save) {
+                    save(index);
+                    mainSlots.push(index + 1);
+                }
+            });
+        }
+        clearButtons(state.buttons, persistChanges
+            ? function (this: any, index?: any) { saveButtonConfig(index + 1); }
+            : null);
+        clearButtons(state.settingsDraft && [state.settingsDraft.button]);
+        Object.keys(state.subpages || {}).forEach(function (this: any, key?: any) {
+            var subpage: any = state.subpages[key];
+            var before: any = changed;
+            clearButtons(subpage && subpage.buttons);
+            if (changed !== before && persistChanges) {
+                saveSubpageEntity(key);
+                subpageKeys.push(key);
+            }
+        });
+        snapshot.changed = changed;
+        return snapshot;
+    }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];
         var count: any = (CFG.features && CFG.features.subpageConfigChunks) || keys.length;
@@ -57,6 +111,7 @@ export function installConfigPostApiModule(): GlobalDescriptors {
     }
     return {
         "saveButtonConfig": staticGlobal(saveButtonConfig),
+        "clearCardImageReferences": staticGlobal(clearCardImageReferences),
         "subpageEntityKeys": staticGlobal(subpageEntityKeys),
         "SUBPAGE_RAW_CHUNK_FIELDS": liveGlobal(() => SUBPAGE_RAW_CHUNK_FIELDS, (value?: any) => { SUBPAGE_RAW_CHUNK_FIELDS = value; }),
         "subpageChunkShouldPost": staticGlobal(subpageChunkShouldPost),

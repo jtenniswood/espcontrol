@@ -42,6 +42,7 @@ import { installApiModule } from "./application/api";
 import { installFirmwareUpdatePostApiModule } from "./application/firmware_update_post_api";
 import { installPublicFirmwareInstallModule } from "./application/public_firmware_install";
 import { installConfigOptionCoreModule } from "./application/config_option_core";
+import { installCardImageServiceModule } from "./application/card_image_service";
 import { installConfigMediaOptionsModule } from "./application/config_media_options";
 import { installConfigImageOptionsModule } from "./application/config_image_options";
 import { installConfigModalTabOptionsModule } from "./application/config_modal_tab_options";
@@ -170,6 +171,7 @@ function startEspControl(): void {
   installGlobals(installFirmwareUpdatePostApiModule());
   installGlobals(installPublicFirmwareInstallModule());
   installGlobals(installConfigOptionCoreModule());
+  installGlobals(installCardImageServiceModule());
   installGlobals(installConfigMediaOptionsModule());
   installGlobals(installConfigImageOptionsModule());
   installGlobals(installConfigModalTabOptionsModule());

@@ -33,6 +33,7 @@ static const char *const TAG = "artwork_image";
 static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
 static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 300;
 static constexpr size_t MAX_RETIRED_IMAGE_BUFFERS = 1;
+static constexpr size_t DIRECT_CONTAINER_READ_CHUNK_SIZE = 64 * 1024;
 static constexpr size_t ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
@@ -596,6 +597,9 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   int content_height = height;
   int offset_x = 0;
   int offset_y = 0;
+  bool frame_will_be_fully_overwritten =
+      this->type_ == ImageType::IMAGE_TYPE_RGB565 && !this->has_transparency() &&
+      this->resize_mode_ == ImageResizeMode::COVER && width_in > 0 && height_in > 0;
   if (this->is_auto_resize_()) {
     width = width_in;
     height = height_in;
@@ -632,7 +636,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
       this->decode_content_height_ = content_height;
       this->decode_offset_x_ = offset_x;
       this->decode_offset_y_ = offset_y;
-      memset(this->decode_buffer_, 0, new_size);
+      if (!frame_will_be_fully_overwritten) memset(this->decode_buffer_, 0, new_size);
       ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
                width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
       return new_size;
@@ -660,7 +664,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   this->decode_content_height_ = content_height;
   this->decode_offset_x_ = offset_x;
   this->decode_offset_y_ = offset_y;
-  memset(this->decode_buffer_, 0, new_size);
+  if (!frame_will_be_fully_overwritten) memset(this->decode_buffer_, 0, new_size);
   ESP_LOGI(TAG, "Artwork fit: source=%dx%d target=%dx%d content=%dx%d offset=%d,%d",
            width_in, height_in, width, height, content_width, content_height, offset_x, offset_y);
   return new_size;
@@ -700,6 +704,43 @@ std::string ArtworkImage::request_update_url(const std::string &url, int max_sou
   return effective_url;
 }
 
+bool ArtworkImage::request_update_container(std::shared_ptr<http_request::HttpContainer> container,
+                                            const std::string &source_key) {
+  if (container == nullptr || source_key.empty() || this->is_busy_()) return false;
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
+  this->url_ = source_key;
+  this->direct_container_stream_ = true;
+  this->downloader_ = std::move(container);
+  this->log_state_("local-stream-start");
+  this->start_download_();
+  return true;
+}
+
+bool ArtworkImage::request_update_rgb565_frame(
+    const std::string &source_key, int width, int height,
+    const std::function<bool(uint8_t *, size_t)> &loader) {
+  if (source_key.empty() || width <= 0 || height <= 0 || !loader || this->is_busy_() ||
+      this->type_ != ImageType::IMAGE_TYPE_RGB565) {
+    return false;
+  }
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
+  this->url_ = source_key;
+  size_t size = this->resize_(width, height);
+  if (size == 0 || this->decode_buffer_ == nullptr || !loader(this->decode_buffer_, size)) {
+    this->discard_decode_buffer_();
+    return false;
+  }
+  if (!this->promote_decode_buffer_()) {
+    this->discard_decode_buffer_();
+    return false;
+  }
+  ESP_LOGI(TAG, "Loaded cached RGB565 frame: %dx%d (%zu bytes)", width, height, size);
+  this->download_finished_callback_.call(true);
+  return true;
+}
+
 void ArtworkImage::cancel_update() {
   this->update_pending_ = false;
   this->pending_url_.clear();
@@ -736,6 +777,7 @@ bool ArtworkImage::start_service_update_(uint32_t generation) {
 void ArtworkImage::start_update_() {
   this->last_http_status_ = 0;
   this->last_error_was_ha_media_proxy_ = false;
+  this->direct_container_stream_ = false;
   this->peak_download_buffer_size_ = this->download_buffer_.size();
   this->completed_transfer_bytes_ = 0;
   this->request_started_ms_ = millis();
@@ -807,6 +849,10 @@ void ArtworkImage::start_update_() {
   }
   this->response_ready_ms_ = millis();
 
+  this->start_download_();
+}
+
+void ArtworkImage::start_download_() {
   int http_code = this->downloader_->status_code;
   this->log_state_("response-ready");
   if (http_code == HTTP_CODE_NOT_MODIFIED) {
@@ -1019,7 +1065,10 @@ void ArtworkImage::loop() {
       return;
     }
 
-    size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
+    size_t read_chunk_size = this->direct_container_stream_
+                                 ? DIRECT_CONTAINER_READ_CHUNK_SIZE
+                                 : this->download_buffer_initial_size_;
+    size_t available = std::min(this->download_buffer_.free_capacity(), read_chunk_size);
     auto len = this->downloader_->read(this->download_buffer_.append(), available);
     bool transfer_complete = false;
     if (len > 0) {
@@ -1102,7 +1151,10 @@ void ArtworkImage::loop() {
     return;
   }
 
-  size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
+  size_t read_chunk_size = this->direct_container_stream_
+                               ? DIRECT_CONTAINER_READ_CHUNK_SIZE
+                               : this->download_buffer_initial_size_;
+  size_t available = std::min(this->download_buffer_.free_capacity(), read_chunk_size);
   auto len = this->downloader_->read(this->download_buffer_.append(), available);
   if (len > 0) {
     this->download_buffer_.write(len);
@@ -1815,6 +1867,8 @@ void ArtworkImage::end_connection_() {
   this->decoder_.reset();
   this->discard_decode_buffer_();
   this->download_buffer_.reset();
+  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);
+  this->direct_container_stream_ = false;
   // Staging memory belongs to the active service request only. Completed image
   // surfaces stay resident, but compressed transfer bytes are returned to PSRAM.
   this->download_buffer_.shrink_to(0);

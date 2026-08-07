@@ -14,6 +14,12 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
     function imageSlotCapacity(this: any) {
         return IMAGE_SLOT_CAPACITY;
     }
+    function cardBackgroundImageLimit(this: any) {
+        return CARD_BACKGROUND_IMAGE_LIMIT;
+    }
+    function cardBackgroundImageLimitMessage(this: any) {
+        return "Every card position on this display can use a background image.";
+    }
     function imageSlotCapacityMessage(this: any) {
         if (IMAGE_SLOT_CAPACITY <= 0)
             return "Image cards are not available on this display.";
@@ -101,6 +107,29 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
             count++;
         return count;
     }
+    function cardBackgroundImageCountWithCandidate(this: any, candidate?: any) {
+        var buttons: any = state.buttons;
+        var grid: any = state.grid;
+        if (candidate && candidate.isSub) {
+            var subpage: any = state.subpages && state.subpages[candidate.homeSlot];
+            buttons = subpage && subpage.buttons || [];
+            grid = subpage && subpage.grid || [];
+        }
+        var count: any = 0;
+        var matchedCandidate: any = false;
+        activeGridSlots(grid).forEach(function (this: any, slot?: any) {
+            var button: any = buttons && buttons[slot - 1];
+            if (candidate && candidate.slot === slot) {
+                button = candidate.button;
+                matchedCandidate = true;
+            }
+            if (cardBackgroundImage(button))
+                count++;
+        });
+        if (candidate && !matchedCandidate && cardBackgroundImage(candidate.button))
+            count++;
+        return count;
+    }
     function canAddImageCards(this: any, extraCount?: any) {
         extraCount = parseInt(extraCount || 0, 10);
         if (!isFinite(extraCount) || extraCount <= 0)
@@ -109,6 +138,9 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
     }
     function showImageCardLimitBanner(this: any) {
         showBanner(imageSlotCapacityMessage(), "error");
+    }
+    function showCardBackgroundImageLimitBanner(this: any) {
+        showBanner(cardBackgroundImageLimitMessage(), "error");
     }
     function imageModalMode(this: any, b?: any) {
         return normalizeImageModalMode(configOptionValue(b && b.options, IMAGE_MODAL_MODE_OPTION));
@@ -161,6 +193,8 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         "imageModalModeValues": staticGlobal(imageModalModeValues),
         "normalizeImageModalMode": staticGlobal(normalizeImageModalMode),
         "imageSlotCapacity": staticGlobal(imageSlotCapacity),
+        "cardBackgroundImageLimit": staticGlobal(cardBackgroundImageLimit),
+        "cardBackgroundImageLimitMessage": staticGlobal(cardBackgroundImageLimitMessage),
         "imageSlotCapacityMessage": staticGlobal(imageSlotCapacityMessage),
         "isImageCard": staticGlobal(isImageCard),
         "activeGridSlots": staticGlobal(activeGridSlots),
@@ -169,8 +203,10 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         "imageCardCountInClipboardEntry": staticGlobal(imageCardCountInClipboardEntry),
         "imageCardCountInClipboardEntries": staticGlobal(imageCardCountInClipboardEntries),
         "imageCardCountWithCandidate": staticGlobal(imageCardCountWithCandidate),
+        "cardBackgroundImageCountWithCandidate": staticGlobal(cardBackgroundImageCountWithCandidate),
         "canAddImageCards": staticGlobal(canAddImageCards),
         "showImageCardLimitBanner": staticGlobal(showImageCardLimitBanner),
+        "showCardBackgroundImageLimitBanner": staticGlobal(showCardBackgroundImageLimitBanner),
         "imageModalMode": staticGlobal(imageModalMode),
         "imageLabelEnabled": staticGlobal(imageLabelEnabled),
         "imageIconEnabled": staticGlobal(imageIconEnabled),

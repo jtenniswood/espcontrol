@@ -50,6 +50,7 @@ CONF_PLACEHOLDER = "placeholder"
 CONF_TRANSPARENCY = "transparency"
 CONF_UPDATE = "update"
 CONF_RESIZE_MODE = "resize_mode"
+CONF_LOCAL_ONLY = "local_only"
 CONF_PRIORITY = "priority"
 CONF_HARDWARE_ACCELERATION = "hardware_acceleration"
 CONF_P4_PIPELINE = "p4_pipeline"
@@ -199,6 +200,7 @@ ARTWORK_IMAGE_SCHEMA = (
             cv.Optional(CONF_PLACEHOLDER): cv.use_id(Image_),
             cv.Optional(CONF_BUFFER_SIZE, default=65536): cv.int_range(256, 524288),
             cv.Optional(CONF_ALLOW_INSECURE_LOCAL_URLS, default=False): cv.boolean,
+            cv.Optional(CONF_LOCAL_ONLY, default=False): cv.boolean,
             cv.Optional(CONF_HARDWARE_ACCELERATION, default=True): cv.boolean,
             cv.Optional(CONF_P4_PIPELINE, default="DISABLED"): cv.one_of(
                 "DISABLED", "TILE", "MODAL", upper=True
@@ -215,7 +217,9 @@ _SOCKET_RESERVED = False
 
 
 def _consume_sockets(config):
-    """Reserve the one outbound socket owned by the shared image service."""
+    """Reserve the shared outbound socket only for network-backed images."""
+    if config.get(CONF_LOCAL_ONLY):
+        return config
     global _SOCKET_RESERVED
     if _SOCKET_RESERVED:
         return config

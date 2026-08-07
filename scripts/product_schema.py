@@ -517,6 +517,34 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                 storage = option.get("storage", [])
                 if isinstance(storage, list):
                     global_option_names.update(item for item in storage if isinstance(item, str))
+
+    appearance = data.get("appearance")
+    if not isinstance(appearance, dict):
+        errors.append(path_error("appearance", "must be an object"))
+    else:
+        unknown_appearance = sorted(set(appearance) - {"backgroundImage"})
+        if unknown_appearance:
+            errors.append(path_error("appearance", f"contains unsupported keys: {', '.join(unknown_appearance)}"))
+        background = appearance.get("backgroundImage")
+        if not isinstance(background, dict):
+            errors.append(path_error("appearance.backgroundImage", "must be an object"))
+        else:
+            unknown_background = sorted(set(background) - {"option", "supportedCardTypes"})
+            if unknown_background:
+                errors.append(path_error("appearance.backgroundImage", f"contains unsupported keys: {', '.join(unknown_background)}"))
+            option = background.get("option")
+            if not isinstance(option, str) or option not in global_option_names:
+                errors.append(path_error("appearance.backgroundImage.option", "must reference a declared option name"))
+            supported = background.get("supportedCardTypes")
+            if not isinstance(supported, list) or not all(isinstance(card_type, str) for card_type in supported):
+                errors.append(path_error("appearance.backgroundImage.supportedCardTypes", "must be a list of card type strings"))
+            else:
+                if len(set(supported)) != len(supported):
+                    errors.append(path_error("appearance.backgroundImage.supportedCardTypes", "must not contain duplicates"))
+                if isinstance(cards, dict):
+                    unknown_types = sorted(set(supported) - set(cards))
+                    if unknown_types:
+                        errors.append(path_error("appearance.backgroundImage.supportedCardTypes", f"contains unknown card types: {', '.join(unknown_types)}"))
     validate_migration_actions(data.get("migrationActions"), hook_names, global_option_names, errors)
 
     validate_subpage_type_codes(data, cards, errors)

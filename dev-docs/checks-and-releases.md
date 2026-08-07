@@ -197,6 +197,12 @@ The ESPHome Docker image version used by firmware compile, nightly firmware, and
 release firmware workflows is set in `.github/esphome.env`. Update that one file
 when moving to a new ESPHome release.
 
+The `Firmware Compile` GitHub workflow starts for pull requests and checks the
+changed paths before scheduling device builds. Firmware-visible changes in
+`common/`, `components/`, `devices/`, `builds/`, generated web bundles, or the
+device build scripts compile every supported device serially and must pass the
+`Firmware Compile Gate`. Other changes skip the expensive builds. The workflow
+can also be started manually with `workflow_dispatch`.
 ## Atomic Firmware Releases
 
 Firmware releases begin as GitHub drafts. The `Build Release` workflow is

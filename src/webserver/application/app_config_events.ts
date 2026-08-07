@@ -21,6 +21,8 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
         b.type = parsed.type;
         b.precision = parsed.precision;
         b.options = parsed.options;
+        EspControlModel.setCardBackgroundAssetId(
+            b, EspControlModel.cardBackgroundAssetId(parsed));
         if (migrateConfig)
             saveButtonConfig(slot);
         scheduleRender();

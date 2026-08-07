@@ -5,6 +5,7 @@ const { loadTypescriptTest } = require("./helpers/load_typescript_test");
 
 describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
+  const { runCardImagesFeatureTests } = loadTypescriptTest("tests/web/card_images_feature.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
@@ -23,5 +24,9 @@ describe("browserless application contracts", () => {
 
   test("preserves request fallback and ordering", async () => {
     await runDeviceApiTests();
+  });
+
+  test("preserves card-image storage and deletion safety", async () => {
+    await runCardImagesFeatureTests();
   });
 });

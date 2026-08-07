@@ -47,7 +47,7 @@
     "check:web-smoke": "python3 scripts/check_tasks.py run-task web-smoke",
     "check:web-browser-smoke": "python3 scripts/check_tasks.py run-task web-browser-smoke",
     "check:all:legacy": "npm run check:ci:legacy && npm run docs:build",
-    "check:backup-contract:legacy": "node scripts/check_backup_contract.js",
+    "check:backup-contract:legacy": "node scripts/check_backup_contract.js && node scripts/check_backup_image_restore.js",
     "check:card-contract-outputs:legacy": "python3 scripts/check_card_contract_outputs.py",
     "check:card-runtime-coverage:legacy": "node scripts/generate_card_runtime_coverage.js --check",
     "check:saved-config-production:legacy": "node scripts/check_saved_config_production.js",

@@ -84,6 +84,12 @@ class ArtworkImage : public PollingComponent,
   }
   /** Set the URL and start an update, returning the effective URL after any downloader rewrite. */
   std::string request_update_url(const std::string &url, int max_source_dim = 0);
+  /** Decode an already-open local stream without routing it through HTTP. */
+  bool request_update_container(std::shared_ptr<http_request::HttpContainer> container,
+                                const std::string &source_key);
+  /** Load a device-native RGB565 frame directly into the display buffer. */
+  bool request_update_rgb565_frame(const std::string &source_key, int width, int height,
+                                   const std::function<bool(uint8_t *, size_t)> &loader);
   /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
@@ -150,6 +156,8 @@ class ArtworkImage : public PollingComponent,
   int get_content_offset_y() const { return this->buffer_offset_y_; }
   ImageResizeMode get_resize_mode() const { return this->resize_mode_; }
   image::ImageType image_type() const { return this->type_; }
+  const uint8_t *get_buffer_data() const { return this->buffer_; }
+  size_t get_active_buffer_size() const { return this->get_buffer_size_(); }
   bool has_image() const {
     return this->data_start_ != nullptr && this->buffer_width_ > 0 &&
            this->buffer_height_ > 0;
@@ -235,6 +243,7 @@ class ArtworkImage : public PollingComponent,
   void draw_pixel_(int x, int y, Color color);
 
   void end_connection_();
+  void start_download_();
 
   CallbackManager<void(bool)> download_finished_callback_{};
   CallbackManager<void()> download_error_callback_{};
@@ -275,6 +284,7 @@ class ArtworkImage : public PollingComponent,
    */
   bool is_big_endian_;
   bool allow_insecure_local_urls_;
+  bool direct_container_stream_{false};
   bool hardware_acceleration_enabled_{true};
   /**
    * Actual width of the current image. If fixed_width_ is specified,
@@ -331,6 +341,7 @@ class ArtworkImage : public PollingComponent,
   friend bool ImageDecoder::set_size(int width, int height);
   friend void ImageDecoder::draw(int x, int y, int w, int h, const Color &color);
   friend void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *data);
+  friend void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes, const uint8_t *data);
   friend void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
                                               const uint8_t *data);
   friend class ImageService;

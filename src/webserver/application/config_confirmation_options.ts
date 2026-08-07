@@ -59,7 +59,7 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
     }
     function normalizeSwitchConfirmationOptions(this: any, options?: any) {
         var mode: any = switchConfirmationMode({ options: options });
-        var out: any = "";
+        var out: any = copyCardBackgroundOptions("", options, { type: "" });
         out = copyLargeNumbersOption(out, options);
         var onPattern: any = normalizeCardOnPattern(configOptionValue(options, CARD_ON_PATTERN_OPTION));
         if (onPattern)
@@ -90,6 +90,7 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
         mode = mode === "on" || mode === "both" || mode === "off" ? mode : "";
         var out: any = "";
         out = copyLargeNumbersOption(out, b.options);
+        out = copyCardBackgroundOptions(out, b.options, b);
         var storage: any = switchConfirmationModeStorage();
         out = setConfigOption(out, storage[0], mode === "off" || mode === "both");
         out = setConfigOption(out, storage[1], mode === "on" || mode === "both");
@@ -238,9 +239,10 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
         return out;
     }
     function normalizeActionOptions(this: any, options?: any, action?: any) {
+        var out: any = copyCardBackgroundOptions("", options, { type: "action" });
         if (action === ACTION_CARD_LOCAL_ACTION)
-            return "";
-        var out: any = copyActionCardStateOptions("", options);
+            return out;
+        out = copyActionCardStateOptions(out, options);
         if (action !== "script.turn_on") {
             return out;
         }
@@ -267,7 +269,8 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
     function setActionScriptConfirmationOptions(this: any, b?: any, enabled?: any, message?: any, yesText?: any, noText?: any) {
         if (!b)
             return "";
-        var out: any = copyActionCardStateOptions("", b.options);
+        var out: any = copyCardBackgroundOptions("", b.options, b);
+        out = copyActionCardStateOptions(out, b.options);
         var fields: any = actionScriptFields(b);
         if (fields)
             out = setConfigOptionValue(out, ACTION_SCRIPT_FIELDS_OPTION, fields);

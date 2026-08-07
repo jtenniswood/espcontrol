@@ -29,6 +29,7 @@ export function installAppTestHooksBackup(): GlobalDescriptors {
                 }
             },
             backupExportFileName: backupExportFileName,
+            backupRestoreArchivedImages: backupRestoreArchivedImages,
         });
     }
     return {};

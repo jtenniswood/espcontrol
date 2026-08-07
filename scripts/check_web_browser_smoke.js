@@ -129,6 +129,7 @@ function publicFirmwareVersions(slug) {
 }
 
 async function installRoutes(context, slug) {
+  const deviceSlots = readManifest().devices[slug].slots;
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   assert(
     fs.existsSync(scriptPath),
@@ -156,6 +157,51 @@ async function installRoutes(context, slug) {
         status: 200,
         contentType: "application/javascript",
         body: fs.readFileSync(scriptPath, "utf8"),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/card-images" &&
+      route.request().method() === "GET"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          available: true,
+          requires_usb_flash: false,
+          format_version: 2,
+          max_active_backgrounds: deviceSlots,
+          storage_bytes: 2 * 1024 * 1024,
+          used_bytes: 0,
+          free_bytes: 2 * 1024 * 1024,
+          max_bytes: 64 * 1024,
+          reference_transactions: true,
+          images: [{
+            id: "test-image",
+            name: "Test image",
+            size: 12 * 1024,
+            url: "/card-images/test-image.jpg",
+          }],
+        }),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/card-images/test-image/rename" &&
+      route.request().method() === "POST"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "test-image",
+          name: "Renamed image",
+          size: 12 * 1024,
+          url: "/card-images/test-image.jpg",
+        }),
       });
       return;
     }
@@ -1401,6 +1447,60 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await assertVoiceClockBarPreview(page, label, options.slug === "esp32-p4-86");
+}
+
+async function assertCardImageManagerFeedback(page, label) {
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.waitForSelector("#sp-settings.sp-page.active");
+  const card = page
+    .locator("#sp-settings .card")
+    .filter({ has: page.locator(".card-header h3", { hasText: /^Card Images$/ }) })
+    .first();
+  if (!(await card.locator(".sp-card-image-manager").isVisible())) {
+    await card.locator(":scope > .card-header").click();
+  }
+  assert(
+    await card.getByRole("button", { name: "Add image", exact: true }).isVisible(),
+    `${label}: image manager should use the concise Add image action`,
+  );
+  assert.strictEqual(
+    await card.getByRole("button", { name: "Refresh", exact: true }).count(),
+    0,
+    `${label}: image manager should refresh automatically without a manual action`,
+  );
+  assert.strictEqual(
+    await card.locator(".sp-card-image-storage").innerText(),
+    "0 B used • 2.0 MB free",
+    `${label}: image manager should show a concise storage summary`,
+  );
+  const thumbnailBounds = await card.locator(".sp-card-image-thumb").first().boundingBox();
+  assert(thumbnailBounds, `${label}: image manager should show an image preview`);
+  assert(
+    Math.abs(thumbnailBounds.width - thumbnailBounds.height) <= 1,
+    `${label}: image manager preview should be square`,
+  );
+  const rename = card.getByRole("button", { name: "Rename image", exact: true }).first();
+  const remove = card.getByRole("button", { name: "Delete image", exact: true }).first();
+  assert.strictEqual(await rename.innerText(), "", `${label}: rename action should be icon-only`);
+  assert.strictEqual(await remove.innerText(), "", `${label}: delete action should be icon-only`);
+  await rename.click();
+  const renameDialog = page.getByRole("dialog", { name: "Rename image", exact: true });
+  await renameDialog.waitFor({ state: "visible" });
+  await renameDialog.getByLabel("Image name").fill("Renamed image");
+  await renameDialog.getByRole("button", { name: "Save", exact: true }).click();
+  await renameDialog.waitFor({ state: "detached" });
+  const status = card.locator(".sp-card-image-manager-status");
+  await status.waitFor({ state: "visible" });
+  assert.strictEqual(
+    await status.innerText(),
+    "Image renamed.",
+    `${label}: image rename confirmation should appear inside the Card Images panel`,
+  );
+  assert.strictEqual(
+    await status.getAttribute("role"),
+    "status",
+    `${label}: image rename confirmation should be announced accessibly`,
+  );
 }
 
 async function assertVoiceClockBarPreview(page, label, supported) {
@@ -3304,6 +3404,12 @@ async function assertEditSmoke(page, posts, errors) {
     .click();
   await page.locator("#sp-inp-label").fill("Kitchen Main");
   await page.locator("#sp-inp-entity").fill("switch.kitchen_main");
+  const cardImageSettings = page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Image" })
+    .first();
+  await cardImageSettings.locator(".sp-disclosure-button").click();
+  await page.locator("#sp-inp-bg-image").selectOption("test-image");
   await page.getByRole("button", { name: "Save" }).click();
   await waitForPost(
     posts,
@@ -3311,7 +3417,7 @@ async function assertEditSmoke(page, posts, errors) {
       domain: "text",
       name: "button_1_config",
       action: "set",
-      value: "switch.kitchen_main;Kitchen Main;Lightbulb;Lightbulb",
+      value: "switch.kitchen_main;Kitchen Main;Lightbulb;Lightbulb;;;;;bg_image=test-image",
     },
     "switch card edit",
     before,
@@ -4384,6 +4490,7 @@ async function runCase(browser, testCase) {
     );
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
+      await assertCardImageManagerFeedback(page, testCase.name);
       await assertNightScheduleSensorControls(page, posts, testCase.name);
     }
     assertNoLayoutBreaks(

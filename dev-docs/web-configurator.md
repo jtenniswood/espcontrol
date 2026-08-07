@@ -10,6 +10,7 @@ server. It is written in TypeScript and bundled into a single
 |---|---|
 | `src/webserver/entry.ts` | Composition root. It installs application modules and card registrations in one deliberate order. |
 | `src/webserver/application/` | Shared state, rendering, API, backup, settings, preview, and codec modules. Each file exports an explicit installer. |
+| `src/webserver/features/` | Typed, directly testable product features. Card-image storage and backup assets live here; application modules expose compatibility adapters for the existing UI. |
 | `src/webserver/cards/` | Card-specific settings panels and previews. Each file exports an explicit registration function. |
 | `src/webserver/model/*.ts` | Typed model sources. |
 | `src/webserver/state/*.ts` | Typed device configuration, application state factory, event aliases, and event parsing. |
@@ -28,6 +29,13 @@ same factory.
 Controllers keep responsibility for banners, reconnect scheduling, and UI
 locking; the typed device API owns transport, fallback attempts, throttling,
 keepalive requests, and JSON decoding.
+
+Card-image list, upload, rename, delete, storage metadata, and backup/restore
+operations cross the typed boundary in `features/card_images.ts`. Backup treats
+images as an asset provider rather than reaching into card-image globals or API
+routes itself. Keep `application/card_image_service.ts` and the backup helpers
+as adapters until the remaining application modules consume the typed feature
+directly.
 
 ## Build
 

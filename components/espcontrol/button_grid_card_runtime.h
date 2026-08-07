@@ -162,6 +162,10 @@ inline bool card_runtime_brightness_slider_type(const std::string &type) {
   return card_contract_is_brightness_slider_type(type);
 }
 
+inline bool card_runtime_supports_background(const std::string &type) {
+  return card_contract_supports_background(type);
+}
+
 inline bool card_runtime_fan_card_type(const std::string &type) {
   return card_contract_is_fan_card_type(type);
 }

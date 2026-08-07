@@ -45,7 +45,7 @@ export function installControlsShellModule(): GlobalDescriptors {
             clearTimeout(els._bannerTimer);
             els._bannerTimer = setTimeout(function (this: any) {
                 els.banner.className = "sp-banner";
-            }, 6000);
+            }, 10000);
         }
     }
     function buildUI(this: any) {

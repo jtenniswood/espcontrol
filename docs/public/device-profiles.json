@@ -11,6 +11,11 @@
       "orientation": "Landscape",
       "slots": 15,
       "imageSlots": 6,
+      "cardBackgrounds": {
+        "maxActive": 15,
+        "partitionBytes": 2097152,
+        "residentFrames": 15
+      },
       "imageCardTypes": [
         "image",
         "media_cover_art"
@@ -35,6 +40,11 @@
       "orientation": "Portrait",
       "slots": 6,
       "imageSlots": 6,
+      "cardBackgrounds": {
+        "maxActive": 6,
+        "partitionBytes": 2097152,
+        "residentFrames": 6
+      },
       "imageCardTypes": [
         "image",
         "media_cover_art"
@@ -59,6 +69,11 @@
       "orientation": "Landscape",
       "slots": 20,
       "imageSlots": 6,
+      "cardBackgrounds": {
+        "maxActive": 20,
+        "partitionBytes": 2097152,
+        "residentFrames": 20
+      },
       "imageCardTypes": [
         "image",
         "media_cover_art"
@@ -83,6 +98,11 @@
       "orientation": "Landscape",
       "slots": 20,
       "imageSlots": 6,
+      "cardBackgrounds": {
+        "maxActive": 20,
+        "partitionBytes": 2097152,
+        "residentFrames": 20
+      },
       "imageCardTypes": [
         "image",
         "media_cover_art"
@@ -107,6 +127,11 @@
       "orientation": "Square",
       "slots": 9,
       "imageSlots": 6,
+      "cardBackgrounds": {
+        "maxActive": 9,
+        "partitionBytes": 2097152,
+        "residentFrames": 9
+      },
       "imageCardTypes": [
         "image",
         "media_cover_art"
@@ -131,6 +156,11 @@
       "orientation": "Square",
       "slots": 9,
       "imageSlots": 1,
+      "cardBackgrounds": {
+        "maxActive": 9,
+        "partitionBytes": 2097152,
+        "residentFrames": 9
+      },
       "imageCardTypes": [
         "media_cover_art"
       ],

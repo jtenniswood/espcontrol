@@ -245,6 +245,9 @@ class AsyncWebServer {
 #ifdef USE_WEBSERVER_OTA
   esp_err_t handle_multipart_upload_(httpd_req_t *r, const char *content_type);
 #endif
+#ifdef USE_WEBSERVER_AUTH
+  bool authenticate_shortcut_request_(AsyncWebServerRequest *request) const;
+#endif
   std::vector<AsyncWebHandler *> handlers_;
   std::function<void(AsyncWebServerRequest *request)> on_not_found_{};
 };
@@ -263,6 +266,11 @@ class AsyncWebHandler {
   virtual void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {}
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual bool isRequestHandlerTrivial() const { return true; }
+#ifdef USE_WEBSERVER_AUTH
+  // ESPHome's AuthMiddlewareHandler overrides this virtual hook, allowing
+  // shortcut routes to reuse the configured Basic credentials.
+  virtual bool check_auth(AsyncWebServerRequest * /*request*/) { return true; }
+#endif
 };
 
 #ifdef USE_WEBSERVER
