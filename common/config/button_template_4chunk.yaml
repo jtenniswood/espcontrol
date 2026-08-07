@@ -21,6 +21,9 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_button
+    on_value:
+      then:
+        - script.execute: refresh_subpage_grid
 
   - platform: template
     name: "${entity_subpage_config_prefix}${num}${entity_subpage_config_suffix}"
