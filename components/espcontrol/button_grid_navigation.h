@@ -28,6 +28,8 @@ struct NavigationSubpageEntry {
   std::vector<Card> cards;
 };
 
+inline void navigation_release_subpage_runtime(NavigationSubpageEntry &entry);
+
 inline std::vector<NavigationHomeTargetEntry> &navigation_home_targets() {
   static std::vector<NavigationHomeTargetEntry> entries;
   return entries;
@@ -231,7 +233,9 @@ inline void navigation_retire_subpage(int slot, lv_obj_t *main_page_obj) {
     if (it->screen != nullptr && it->screen == lv_scr_act()) {
       navigation_return_home(main_page_obj);
     }
+    navigation_release_subpage_runtime(*it);
     clock_bar_unregister_button_grid_page(it->screen);
+    if (it->screen != nullptr) lv_obj_del(it->screen);
     entries.erase(it);
     return;
   }

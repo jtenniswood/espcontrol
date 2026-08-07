@@ -1441,6 +1441,17 @@ inline void grid_release_runtime_allocations(
   if (allocations.empty()) std::vector<GridRuntimeAllocation>().swap(allocations);
 }
 
+inline void navigation_release_subpage_runtime(NavigationSubpageEntry &entry) {
+  if (!entry.screen) return;
+  ha_release_callbacks_for_owner(entry.screen);
+  grid_prepare_media_runtime_for_visual_reset(entry.back_button);
+  grid_release_runtime_allocations(entry.back_button);
+  for (const auto &card : entry.cards) {
+    grid_prepare_media_runtime_for_visual_reset(card.button);
+    grid_release_runtime_allocations(card.button);
+  }
+}
+
 template<typename T>
 inline T *grid_track_runtime_allocation(lv_obj_t *owner, T *ptr) {
   if (owner != nullptr && ptr != nullptr) {
@@ -1934,6 +1945,7 @@ inline void grid_phase2(
     }
     espcontrol::cards::navigation_driver_own_subpage(
       slots[si], p, parent_context, si + 1, display_order, sub_scr);
+    HaCallbackOwnerScope subpage_callback_owner(sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
