@@ -237,11 +237,12 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
     device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
     assert (
-        "grid_refresh_layout(slots, cfg,\n"
+        "grid_rebuild_all(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, nullptr, nullptr, nullptr, nullptr,\n"
         "            id(button_order).state,\n"
+        "            id(button_on_color).state,\n"
         "            id(main_page)->obj);\n"
         "      - script.execute: clock_bar_apply"
-    ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
+    ) in sensors, "S3 grid refresh must rebuild safely and reapply the fixed clock bar"
     assert (
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
         "              id(button_order).state,\n"
@@ -259,22 +260,51 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     ) in device, "S3 rotation changes must reapply the fixed clock bar"
 
 
-def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
-    slug = "guition-esp32-p4-jc4880p443"
-    sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
-    assert (
-        "grid_refresh_layout(slots, cfg,\n"
-        "            id(button_order).state,\n"
-        "            id(main_page)->obj);\n"
-        "          navigation_return_home(id(main_page)->obj);"
-    ) in sensors, (
-        "4.3-inch P4 rotation refresh must refresh the home grid before rebuilding subpages"
+def test_rotation_refresh_rebuilds_subpages() -> None:
+    slugs = (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+        "esp32-p4-86",
+        "guition-esp32-s3-4848s040",
     )
-    assert "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7," in sensors, (
-        "4.3-inch P4 rotation refresh must rebuild subpage grids with the current column count"
+    for slug in slugs:
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        refresh_script = sensors.split("  - id: refresh_button_grid", 1)[1].split(
+            "  - id: refresh_subpage_grid", 1)[0]
+        assert "grid_rebuild_all(slots, cfg," in refresh_script, (
+            f"{slug}: rotation refresh must rebuild secondary cards safely"
+        )
+
+
+def test_subpage_config_changes_schedule_live_refresh() -> None:
+    templates = {
+        "common/config/button_template.yaml": 8,
+        "common/config/button_template_4chunk.yaml": 4,
+    }
+    for relative_path, subpage_config_count in templates.items():
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert text.count("- script.execute: refresh_subpage_grid") == subpage_config_count + 1, (
+            f"{relative_path}: the parent and every subpage config chunk must refresh the secondary page"
+        )
+
+    for sensors_path in sorted((ROOT / "devices").glob("*/device/sensors.yaml")):
+        sensors = sensors_path.read_text(encoding="utf-8")
+        assert "  - id: refresh_subpage_grid" in sensors, (
+            f"{sensors_path}: missing secondary-page refresh script"
+        )
+        refresh_script = sensors.split("  - id: refresh_subpage_grid", 1)[1].split("\nesphome:", 1)[0]
+        assert "grid_rebuild_all(slots, cfg," in refresh_script, (
+            f"{sensors_path}: secondary-page refresh must rebuild card subscriptions"
+        )
+
+    grid_runtime = (ROOT / "components/espcontrol/button_grid_grid.h").read_text(encoding="utf-8")
+    assert "inline bool grid_rebuild_all(" in grid_runtime, (
+        "secondary-page refresh must use the full runtime cleanup path"
     )
-    assert "id(button_on_color).state" in sensors and "id(button_off_color).state" not in sensors, (
-        "4.3-inch P4 subpage rebuild must keep the configured primary color only"
+    assert "navigation_active_subpage_slot()" in grid_runtime, (
+        "secondary-page refresh must restore the page that was active before rebuilding"
     )
 
 
@@ -660,7 +690,8 @@ def main() -> int:
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
-    test_p4_43_rotation_refresh_rebuilds_subpages()
+    test_rotation_refresh_rebuilds_subpages()
+    test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()
     test_setup_icon_glyphs()

@@ -166,6 +166,19 @@ inline void clock_bar_clear_responsive_grid_cards(lv_obj_t *page) {
       cards.end());
 }
 
+// A card that has been reduced to one grid cell must no longer keep the
+// explicit width or height that was applied while it spanned multiple cells.
+inline void clock_bar_unregister_responsive_grid_card(lv_obj_t *card) {
+  if (!card) return;
+  std::vector<ClockBarResponsiveGridCard> &cards = clock_bar_responsive_grid_cards();
+  cards.erase(
+      std::remove_if(cards.begin(), cards.end(),
+                     [card](const ClockBarResponsiveGridCard &entry) {
+                       return entry.card == card;
+                     }),
+      cards.end());
+}
+
 inline void clock_bar_refresh_responsive_grid_cards(lv_obj_t *page = nullptr) {
   std::vector<ClockBarResponsiveGridCard> &cards = clock_bar_responsive_grid_cards();
   for (const ClockBarResponsiveGridCard &entry : cards) {
@@ -224,6 +237,13 @@ inline void clock_bar_register_button_grid_page(lv_obj_t *page) {
   if (std::find(pages.begin(), pages.end(), page) == pages.end()) {
     pages.push_back(page);
   }
+}
+
+inline void clock_bar_unregister_button_grid_page(lv_obj_t *page) {
+  if (!page) return;
+  clock_bar_clear_responsive_grid_cards(page);
+  std::vector<lv_obj_t *> &pages = clock_bar_button_grid_pages();
+  pages.erase(std::remove(pages.begin(), pages.end(), page), pages.end());
 }
 
 inline void clock_bar_set_button_grid_pages_pad_top(lv_obj_t *main_page_obj,

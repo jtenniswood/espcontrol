@@ -91,12 +91,21 @@ inline bool sensor_driver_refresh_layout(
       sensor_driver_is_text(config, context) || config.precision == "icon") {
     return true;
   }
-  if (large_number_square_card_layout(row_span, col_span) &&
-      card_large_numbers_active_for_layout(config, row_span, col_span) &&
-      display_large_sensor_font(display)) {
+  const bool use_large_font =
+    large_number_square_card_layout(row_span, col_span) &&
+    card_large_numbers_active_for_layout(config, row_span, col_span) &&
+    display_large_sensor_font(display);
+  if (use_large_font) {
     apply_large_sensor_number_style(
       slot, display_large_sensor_font(display),
       display_large_sensor_unit_offset_percent(display));
+  } else {
+    if (slot.sensor_lbl && display_sensor_font(display)) {
+      lv_obj_set_style_text_font(slot.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
+    }
+    if (slot.unit_lbl) {
+      lv_obj_set_style_translate_y(slot.unit_lbl, 0, LV_PART_MAIN);
+    }
   }
   return true;
 }

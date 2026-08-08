@@ -113,6 +113,7 @@
           },
           "wrapTallLabels": true,
           "volumeWidthCompensationPercent": 95,
+          "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,
           "coverArt": {
             "cover_art_size": "600",
@@ -486,6 +487,7 @@
           "wrapTallLabels": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "refreshRebuildsSubpages": true,
           "modal": {
             "layoutFamily": "large-landscape",
             "density": "spacious",
@@ -674,6 +676,7 @@
           "wrapTallLabels": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "refreshRebuildsSubpages": true,
           "modal": {
             "layoutFamily": "large-landscape",
             "density": "spacious",
@@ -864,6 +867,7 @@
             "baseTouchTarget": 69
           },
           "wrapTallLabels": false,
+          "refreshRebuildsSubpages": true,
           "coverArt": {
             "cover_art_size": "720",
             "cover_art_decode_size": "720",
@@ -1076,6 +1080,7 @@
             "baseTouchTarget": 46
           },
           "wrapTallLabels": false,
+          "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96,

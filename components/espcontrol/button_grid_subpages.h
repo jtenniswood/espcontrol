@@ -17,6 +17,15 @@ struct SubpageBtn {
   std::string options;    // comma-delimited card options
 };
 
+inline bool subpage_btn_same_definition(const SubpageBtn &left,
+                                        const SubpageBtn &right) {
+  return left.entity == right.entity && left.label == right.label &&
+         left.icon == right.icon && left.icon_on == right.icon_on &&
+         left.sensor == right.sensor && left.unit == right.unit &&
+         left.type == right.type && left.precision == right.precision &&
+         left.options == right.options;
+}
+
 inline std::vector<std::string> split_subpage_fields(const std::string &value, char delim) {
   std::vector<std::string> out;
   size_t start = 0;

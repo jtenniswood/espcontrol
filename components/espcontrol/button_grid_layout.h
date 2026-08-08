@@ -280,7 +280,11 @@ inline void set_grid_card_cell(lv_obj_t *btn,
   lv_grid_align_t row_align = row_span > 1 ? LV_GRID_ALIGN_START : LV_GRID_ALIGN_STRETCH;
   lv_obj_set_grid_cell(btn, col_align, col, col_span, row_align, row, row_span);
 
-  if (!grid || card_span_is_single(row_span, col_span)) return;
+  if (!grid) return;
+  if (card_span_is_single(row_span, col_span)) {
+    clock_bar_unregister_responsive_grid_card(btn);
+    return;
+  }
   clock_bar_register_responsive_grid_card(
     grid, btn, col, row, col_span, row_span, cols, rows);
 }

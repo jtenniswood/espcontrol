@@ -17,7 +17,18 @@ struct NavigationSubpageEntry {
   int display_order = 0;
   std::string kind;
   lv_obj_t *screen = nullptr;
+  lv_obj_t *back_button = nullptr;
+  BtnSlot back_slot{};
+  struct Card {
+    int index = 0;
+    lv_obj_t *button = nullptr;
+    BtnSlot slot{};
+    SubpageBtn definition{};
+  };
+  std::vector<Card> cards;
 };
+
+inline void navigation_release_subpage_runtime(NavigationSubpageEntry &entry);
 
 inline std::vector<NavigationHomeTargetEntry> &navigation_home_targets() {
   static std::vector<NavigationHomeTargetEntry> entries;
@@ -187,6 +198,78 @@ inline NavigationSubpageEntry *navigation_find_first_kind(const std::string &kin
     }
   }
   return best;
+}
+
+inline NavigationSubpageEntry *navigation_find_slot(int slot) {
+  if (slot <= 0) return nullptr;
+  for (auto &entry : navigation_subpages()) {
+    if (entry.screen != nullptr && entry.slot == slot) return &entry;
+  }
+  return nullptr;
+}
+
+inline int navigation_active_subpage_slot() {
+  lv_obj_t *active = lv_scr_act();
+  for (const auto &entry : navigation_subpages()) {
+    if (entry.screen == active) return entry.slot;
+  }
+  return 0;
+}
+
+inline bool navigation_restore_subpage_slot(int slot) {
+  NavigationSubpageEntry *entry = navigation_find_slot(slot);
+  if (entry == nullptr || entry->screen == nullptr) return false;
+  lv_scr_load_anim(entry->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  return true;
+}
+
+inline void navigation_register_subpage_back_button(int slot,
+                                                    const BtnSlot &back_slot) {
+  NavigationSubpageEntry *entry = navigation_find_slot(slot);
+  if (entry != nullptr) {
+    entry->back_button = back_slot.btn;
+    entry->back_slot = back_slot;
+  }
+}
+
+inline void navigation_register_subpage_card(int slot, int index,
+                                             const BtnSlot &card_slot,
+                                             const SubpageBtn &definition) {
+  if (index <= 0 || card_slot.btn == nullptr) return;
+  NavigationSubpageEntry *entry = navigation_find_slot(slot);
+  if (entry == nullptr) return;
+  entry->cards.push_back({index, card_slot.btn, card_slot, definition});
+}
+
+inline void navigation_retire_subpage(int slot, lv_obj_t *main_page_obj) {
+  std::vector<NavigationSubpageEntry> &entries = navigation_subpages();
+  for (auto it = entries.begin(); it != entries.end(); ++it) {
+    if (it->slot != slot) continue;
+    if (it->screen != nullptr && it->screen == lv_scr_act()) {
+      navigation_return_home(main_page_obj);
+    }
+    navigation_release_subpage_runtime(*it);
+    clock_bar_unregister_button_grid_page(it->screen);
+    if (it->screen != nullptr) lv_obj_del(it->screen);
+    entries.erase(it);
+    return;
+  }
+}
+
+inline NavigationSubpageEntry::Card *navigation_subpage_card(
+    NavigationSubpageEntry &entry, int index) {
+  for (auto &card : entry.cards) {
+    if (card.index == index) return &card;
+  }
+  return nullptr;
+}
+
+inline lv_obj_t *navigation_subpage_card_button(
+    const NavigationSubpageEntry &entry, int index) {
+  for (const auto &card : entry.cards) {
+    if (card.index == index) return card.button;
+  }
+  return nullptr;
 }
 
 inline bool navigation_open_first_kind(const std::string &kind,

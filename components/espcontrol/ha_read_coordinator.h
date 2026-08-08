@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -48,10 +49,11 @@ class HaReadCoordinator {
   bool subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback,
-                 uint32_t scope) {
+                 uint32_t scope,
+                 void *owner = nullptr) {
     if (!available() || entity_id.empty() || !callback) return false;
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
-    subscriptions_.push_back({callback_ref, scope});
+    subscriptions_.push_back({callback_ref, scope, owner});
     transport_.subscribe(
         entity_id, attribute,
         [this, callback_ref](State state) { invoke(callback_ref, state); });
@@ -99,6 +101,15 @@ class HaReadCoordinator {
     reset_subscriptions(default_scope);
   }
 
+  void release_owner(void *owner) {
+    if (!owner) return;
+    if (callback_depth_ != 0) {
+      pending_owner_releases_.push_back(owner);
+      return;
+    }
+    release_owner_subscriptions(owner);
+  }
+
  private:
   struct DeferredRequest {
     std::string entity_id;
@@ -111,6 +122,7 @@ class HaReadCoordinator {
   struct SubscriptionRef {
     std::shared_ptr<Callback> callback;
     uint32_t scope = 0;
+    void *owner = nullptr;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
@@ -170,6 +182,11 @@ class HaReadCoordinator {
       pending_reset_mask_ = 0;
       release_subscriptions(mask == UINT32_MAX ? 0 : mask);
     }
+    if (callback_depth_ == 0 && !pending_owner_releases_.empty()) {
+      std::vector<void *> owners;
+      owners.swap(pending_owner_releases_);
+      for (void *owner : owners) release_owner_subscriptions(owner);
+    }
   }
 
   void release_subscriptions(uint32_t scope) {
@@ -177,6 +194,21 @@ class HaReadCoordinator {
     for (size_t read_index = 0; read_index < subscriptions_.size(); read_index++) {
       SubscriptionRef &ref = subscriptions_[read_index];
       if (scope == 0 || (ref.scope & scope) != 0) {
+        if (ref.callback && *ref.callback) *ref.callback = nullptr;
+        continue;
+      }
+      if (write_index != read_index) subscriptions_[write_index] = std::move(ref);
+      write_index++;
+    }
+    subscriptions_.resize(write_index);
+    if (subscriptions_.empty()) std::vector<SubscriptionRef>().swap(subscriptions_);
+  }
+
+  void release_owner_subscriptions(void *owner) {
+    size_t write_index = 0;
+    for (size_t read_index = 0; read_index < subscriptions_.size(); read_index++) {
+      SubscriptionRef &ref = subscriptions_[read_index];
+      if (ref.owner == owner) {
         if (ref.callback && *ref.callback) *ref.callback = nullptr;
         continue;
       }
@@ -198,5 +230,6 @@ class HaReadCoordinator {
   std::vector<SubscriptionRef> subscriptions_;
   uint32_t generation_ = 1;
   uint32_t pending_reset_mask_ = 0;
+  std::vector<void *> pending_owner_releases_;
   uint8_t callback_depth_ = 0;
 };

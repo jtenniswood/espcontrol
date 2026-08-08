@@ -1042,6 +1042,151 @@ inline std::string optional_text_state(esphome::text::Text **configs, int index)
   return (configs != nullptr && configs[index] != nullptr) ? configs[index]->state : "";
 }
 
+// Moving a card changes only the saved order, not the card itself. Keep the
+// existing LVGL widgets and their Home Assistant callbacks alive, and update
+// just their grid cells. Structural card edits are applied on the next normal
+// grid rebuild rather than risking a blank live page.
+inline bool grid_refresh_subpage_layouts(
+    BtnSlot *slots, const GridConfig &cfg, lv_obj_t *main_page_obj,
+    esphome::text::Text **sp_configs,
+    esphome::text::Text **sp_ext_configs,
+    esphome::text::Text **sp_ext2_configs,
+    esphome::text::Text **sp_ext3_configs,
+    esphome::text::Text **sp_ext4_configs,
+    esphome::text::Text **sp_ext5_configs,
+    esphome::text::Text **sp_ext6_configs,
+    esphome::text::Text **sp_ext7_configs) {
+  if (slots == nullptr) return false;
+  const int NS = bounded_grid_slots(cfg.num_slots);
+  const int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  const int ROWS = (NS + COLS - 1) / COLS;
+  const DisplayProfile display = display_profile_from_grid_config(cfg);
+  static lv_coord_t subpage_cols[MAX_GRID_SLOTS + 1];
+  static lv_coord_t subpage_rows[MAX_GRID_SLOTS + 1];
+  for (int i = 0; i < COLS; i++) subpage_cols[i] = LV_GRID_FR(1);
+  subpage_cols[COLS] = LV_GRID_TEMPLATE_LAST;
+  for (int i = 0; i < ROWS; i++) subpage_rows[i] = LV_GRID_FR(1);
+  subpage_rows[ROWS] = LV_GRID_TEMPLATE_LAST;
+
+  bool refreshed = false;
+  for (int si = 0; si < NS; si++) {
+    const auto parent_context = card_runtime_context(parse_cfg(slots[si].config->state));
+    if (!espcontrol::cards::navigation_driver_matches(parent_context)) {
+      navigation_retire_subpage(si + 1, main_page_obj);
+      continue;
+    }
+
+    const std::string sp_cfg = optional_text_state(sp_configs, si) +
+      optional_text_state(sp_ext_configs, si) +
+      optional_text_state(sp_ext2_configs, si) +
+      optional_text_state(sp_ext3_configs, si) +
+      optional_text_state(sp_ext4_configs, si) +
+      optional_text_state(sp_ext5_configs, si) +
+      optional_text_state(sp_ext6_configs, si) +
+      optional_text_state(sp_ext7_configs, si);
+    if (sp_cfg.empty()) continue;
+
+    NavigationSubpageEntry *entry = navigation_find_slot(si + 1);
+    const auto sp_btns = parse_subpage_config(sp_cfg);
+    if (entry == nullptr || entry->screen == nullptr || entry->back_button == nullptr) {
+      ESP_LOGW("sensors", "Subpage %d is not ready for a layout refresh", si + 1);
+      continue;
+    }
+    if (entry->cards.size() != sp_btns.size()) {
+      ESP_LOGW("sensors", "Subpage %d card count changed; repositioning existing cards", si + 1);
+    }
+
+    const std::string order = get_subpage_order(sp_cfg);
+    SubpageOrder sp_order;
+    parse_subpage_order(order, NS, sp_btns.size(), sp_order);
+
+    // Binding a card to another entity/type requires new HA callbacks. Keep
+    // the existing data-bound widgets intact and defer that structural edit to
+    // a normal rebuild rather than moving a card that still controls its old
+    // entity. Pure order and span changes continue to update in place.
+    bool structural_change = false;
+    for (int gp = 0; gp < NS; gp++) {
+      const int button_index = sp_order.positions[gp];
+      if (button_index < 1 || button_index > static_cast<int>(sp_btns.size())) continue;
+      NavigationSubpageEntry::Card *card = navigation_subpage_card(*entry, button_index);
+      if (card != nullptr &&
+          !subpage_btn_same_definition(card->definition, sp_btns[button_index - 1])) {
+        structural_change = true;
+        break;
+      }
+    }
+    if (structural_change) {
+      ESP_LOGW("sensors", "Subpage %d card details changed; deferring until the next normal rebuild", si + 1);
+      continue;
+    }
+
+    // Change the descriptor only when the preserved cards will be repositioned
+    // below. A deferred structural edit must keep its current grid intact.
+    lv_obj_set_grid_dsc_array(entry->screen, subpage_cols, subpage_rows);
+    const std::string back_label = get_subpage_back_label(order);
+    if (entry->back_slot.text_lbl != nullptr) {
+      lv_label_set_text(entry->back_slot.text_lbl, back_label.c_str());
+    }
+    set_grid_card_cell(
+      entry->back_button, entry->screen,
+      sp_order.back_pos % COLS, sp_order.back_pos / COLS,
+      sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
+    apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
+                                sp_order.back_row_span);
+
+    // Preserve card instances (and their HA subscriptions), but hide cards
+    // removed from the saved order so stale content is never left visible.
+    bool visible_cards[MAX_GRID_SLOTS] = {};
+    for (int gp = 0; gp < NS; gp++) {
+      const int button_index = sp_order.positions[gp];
+      if (button_index >= 1 &&
+          button_index <= static_cast<int>(sp_btns.size()) &&
+          button_index <= MAX_GRID_SLOTS) {
+        visible_cards[button_index - 1] = true;
+      }
+    }
+    for (auto &card : entry->cards) {
+      const bool visible = card.index >= 1 && card.index <= MAX_GRID_SLOTS &&
+        card.index <= static_cast<int>(sp_btns.size()) &&
+        visible_cards[card.index - 1];
+      if (card.button != nullptr) {
+        if (visible) {
+          lv_obj_clear_flag(card.button, LV_OBJ_FLAG_HIDDEN);
+        } else {
+          lv_obj_add_flag(card.button, LV_OBJ_FLAG_HIDDEN);
+        }
+      }
+    }
+
+    for (int gp = 0; gp < NS; gp++) {
+      const int button_index = sp_order.positions[gp];
+      if (button_index < 1 || button_index > static_cast<int>(sp_btns.size())) continue;
+      NavigationSubpageEntry::Card *card = navigation_subpage_card(*entry, button_index);
+      if (card == nullptr || card->button == nullptr) {
+        ESP_LOGW("sensors", "Subpage %d is missing card %d", si + 1, button_index);
+        continue;
+      }
+      const int col = sp_order.has_back_token ? gp % COLS : (gp + 1) % COLS;
+      const int row = sp_order.has_back_token ? gp / COLS : (gp + 1) / COLS;
+      const int col_span = sp_order.col_span[button_index - 1] > 0
+        ? sp_order.col_span[button_index - 1] : 1;
+      const int row_span = sp_order.row_span[button_index - 1] > 0
+        ? sp_order.row_span[button_index - 1] : 1;
+      set_grid_card_cell(card->button, entry->screen, col, row, col_span, row_span, COLS, ROWS);
+      const ParsedCfg button_config =
+        parsed_cfg_from_subpage_btn(sp_btns[button_index - 1]);
+      const auto context = card_runtime_context(
+        button_config, espcontrol::cards::Surface::SUBPAGE);
+      refresh_card_layout(card->slot, button_config, cfg, row_span, col_span);
+      espcontrol::cards::sensor_driver_refresh_layout(
+        card->slot, button_config, context, display, row_span, col_span);
+    }
+    lv_obj_update_layout(entry->screen);
+    refreshed = true;
+  }
+  return refreshed;
+}
+
 template<typename T>
 inline T *grid_delete_with_owner(lv_obj_t *owner, T *ptr) {
   if (owner != nullptr && ptr != nullptr) {
@@ -1294,6 +1439,18 @@ inline void grid_release_runtime_allocations(
   }
   allocations.resize(write_index);
   if (allocations.empty()) std::vector<GridRuntimeAllocation>().swap(allocations);
+}
+
+inline void navigation_release_subpage_runtime(NavigationSubpageEntry &entry) {
+  if (!entry.screen) return;
+  ha_release_callbacks_for_owner(entry.screen);
+  screen_lock_unregister_tree(entry.screen);
+  grid_prepare_media_runtime_for_visual_reset(entry.back_button);
+  grid_release_runtime_allocations(entry.back_button);
+  for (const auto &card : entry.cards) {
+    grid_prepare_media_runtime_for_visual_reset(card.button);
+    grid_release_runtime_allocations(card.button);
+  }
 }
 
 template<typename T>
@@ -1789,6 +1946,7 @@ inline void grid_phase2(
     }
     espcontrol::cards::navigation_driver_own_subpage(
       slots[si], p, parent_context, si + 1, display_order, sub_scr);
+    HaCallbackOwnerScope subpage_callback_owner(sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
@@ -1823,6 +1981,7 @@ inline void grid_phase2(
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
     }, LV_EVENT_CLICKED, main_page_obj);
     screen_lock_register_controlled_button(back_btn);
+    navigation_register_subpage_back_button(si + 1, back_slot);
 
     auto add_parent_indicator = [&](const std::string &entity_id,
                                     bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
@@ -1873,6 +2032,7 @@ inline void grid_phase2(
       BtnSlot sub_slot = create_dynamic_card_slot(
         sb_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color,
         cfg.subpage_chevron_font);
+      navigation_register_subpage_card(si + 1, bn, sub_slot, sb);
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
@@ -1996,6 +2156,38 @@ inline void grid_phase2(
   refresh_weather_forecast_cards();
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
+}
+
+// Secondary-page definitions can change the cards, subscriptions, or runtime
+// resources they own. Recreate the complete grid instead of retaining widgets
+// that may still refer to the previous definition. Restore the current page
+// only when its parent survives the rebuild.
+inline bool grid_rebuild_all(
+    BtnSlot *slots, const GridConfig &cfg,
+    esphome::text::Text **sp_configs,
+    esphome::text::Text **sp_ext_configs,
+    esphome::text::Text **sp_ext2_configs,
+    esphome::text::Text **sp_ext3_configs,
+    esphome::text::Text **sp_ext4_configs,
+    esphome::text::Text **sp_ext5_configs,
+    esphome::text::Text **sp_ext6_configs,
+    esphome::text::Text **sp_ext7_configs,
+    const std::string &order_str,
+    const std::string &on_hex,
+    lv_obj_t *main_page_obj) {
+  const int active_subpage_slot = navigation_active_subpage_slot();
+  if (!navigation_return_home(main_page_obj)) return false;
+  grid_phase1(slots, cfg, order_str, on_hex, main_page_obj);
+  grid_phase2(slots, cfg, sp_configs, sp_ext_configs, sp_ext2_configs,
+              sp_ext3_configs, sp_ext4_configs, sp_ext5_configs,
+              sp_ext6_configs, sp_ext7_configs, order_str, on_hex,
+              main_page_obj);
+  if (active_subpage_slot > 0 &&
+      !navigation_restore_subpage_slot(active_subpage_slot)) {
+    ESP_LOGI("navigation", "Secondary page %d was removed during rebuild",
+             active_subpage_slot);
+  }
+  return true;
 }
 
 inline void grid_phase2(

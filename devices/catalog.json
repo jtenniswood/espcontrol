@@ -103,7 +103,8 @@
           "display": {
             "wrapTallLabels": true,
             "subpageChevronX": 4,
-            "subpageChevronY": -2
+            "subpageChevronY": -2,
+            "refreshRebuildsSubpages": true
           },
           "package": {
             "firmwareVersion": "dev",
@@ -473,6 +474,7 @@
           "display": {
             "wrapTallLabels": true,
             "volumeWidthCompensationPercent": 95,
+            "refreshRebuildsSubpages": true,
             "mediaArtworkWidthCompensationPercent": 98,
             "coverArt": {
               "cover_art_size": "600",
@@ -867,6 +869,7 @@
         "firmware": {
           "display": {
             "wrapTallLabels": false,
+            "refreshRebuildsSubpages": true,
             "coverArt": {
               "cover_art_size": "720",
               "cover_art_decode_size": "720",
@@ -1057,6 +1060,7 @@
         "firmware": {
           "display": {
             "wrapTallLabels": false,
+            "refreshRebuildsSubpages": true,
             "subpageChevronX": 3,
             "subpageChevronY": -2,
             "subpageChevronTextWidthPercent": 96,
