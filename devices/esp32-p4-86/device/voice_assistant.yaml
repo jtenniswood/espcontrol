@@ -11,7 +11,8 @@
 # =============================================================================
 
 external_components:
-  - source: github://n-IA-hane/esphome-audio-stack@3c30b96ad2540f676eadd30bdbb93104b105dee0
+  # v2026.7.0 fixes ESPHome 2026.7's portable integer format warnings.
+  - source: github://n-IA-hane/esphome-audio-stack@v2026.7.0
     components: [esp_audio_stack, esp_afe]
 
 esp_afe:
