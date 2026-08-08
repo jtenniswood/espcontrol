@@ -33,10 +33,6 @@ esp32:
       disable_vfs_support_select: false
       disable_vfs_support_dir: false
     sdkconfig_options:
-      # Reserve 28KB for the ESP32-P4 bootloader (from 0x2000 to 0x9000).
-      # The automatically aligned app partitions remain at 0x10000, preserving
-      # their OTA capacity in factory/web-install images.
-      CONFIG_PARTITION_TABLE_OFFSET: "0x9000"
       CONFIG_SDMMC_HOST_DEFAULT: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
