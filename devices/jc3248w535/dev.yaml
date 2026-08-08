@@ -1,0 +1,17 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (JC3248W535)
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "jc3248w535-dev"
+  friendly_name: "JC3248W535 Dev"
+  espcontrol_component_url: "../.."
+  espcontrol_component_ref: "HEAD"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+packages:
+  espcontrol: !include packages.yaml
