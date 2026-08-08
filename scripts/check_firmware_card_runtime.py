@@ -56,6 +56,7 @@ CLEANING_HEADER = "button_grid_cleaning_driver.h"
 ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
 COVER_MODAL_DRIVER_HEADER = "button_grid_cover_modal_driver.h"
 MEDIA_DRIVER_HEADER = "button_grid_media_driver.h"
+SUBPAGES_HEADER = "button_grid_subpages.h"
 LEGACY_COMPATIBILITY_DRIVER_HEADER = "button_grid_legacy_compatibility_driver.h"
 NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
 IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
@@ -836,6 +837,15 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"
         )
+    subpages_header = root / "components" / "espcontrol" / SUBPAGES_HEADER
+    if subpages_header.exists():
+        normalize_subpage = function_body(
+            subpages_header.read_text(encoding="utf-8"), "normalize_subpage_btn"
+        ) or ""
+        if 'b.sensor != "speaker_group"' not in normalize_subpage:
+            failures.append(
+                f"components/espcontrol/{SUBPAGES_HEADER}: preserve speaker-group media cards on subpages"
+            )
     compatibility_driver_header = (
         root / "components" / "espcontrol" / LEGACY_COMPATIBILITY_DRIVER_HEADER
     )

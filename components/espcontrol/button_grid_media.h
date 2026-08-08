@@ -2932,11 +2932,20 @@ inline bool media_control_speaker_row_shows_volume(MediaControlCtx *ctx,
 inline lv_coord_t media_control_speaker_row_height(MediaControlCtx *ctx,
                                                    MediaSpeakerRowState *row,
                                                    lv_coord_t short_side) {
-  (void) ctx;
-  (void) row;
   lv_coord_t height = control_modal_scaled_px(80, short_side);
   const lv_coord_t minimum = 76;
-  return height < minimum ? minimum : height;
+  if (height < minimum) height = minimum;
+
+  // Selected speakers show both their name and volume. On compact portrait
+  // panels, those two text lines plus the row padding need more room than the
+  // historical fixed-height card allowed, which made the lines overlap.
+  if (!media_control_speaker_row_shows_volume(ctx, row)) return height;
+  const lv_font_t *label_font = ctx ? ctx->label_font : nullptr;
+  const lv_coord_t text_line_h = label_font && label_font->line_height > 0
+    ? label_font->line_height : 24;
+  const lv_coord_t vertical_padding = control_modal_scaled_px(12, short_side);
+  const lv_coord_t text_height = text_line_h * 2 + vertical_padding * 2;
+  return text_height > height ? text_height : height;
 }
 
 inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
@@ -3748,8 +3757,15 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     }
   }
 
+  // A standalone Speaker Group has no tab bar, so its list would otherwise
+  // start behind the Back control. Keep the first row below that touch target.
+  lv_coord_t content_safe_top = 0;
+  if (!show_tabs) {
+    content_safe_top = layout.back_inset_y + layout.back_size +
+      control_modal_scaled_px(12, layout.short_side);
+  }
   const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
-    layout, tabs_layout, show_tabs, 180);
+    layout, tabs_layout, show_tabs, 180, content_safe_top);
   lv_coord_t content_top = content.top;
   lv_coord_t content_w = content.width;
   lv_coord_t content_h = content.height;
