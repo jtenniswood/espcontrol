@@ -25,6 +25,7 @@ import type { ApplicationApiFeature } from "./api";
 import type { AppStatusPreviewFeature } from "./app_status_preview";
 import type { ClockBarPostApiFeature } from "./clock_bar_post_api";
 import type { ControlsFieldsFeature } from "./controls_fields";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
 
 export interface SettingsPageHelpersControllers {
     readonly settingsUiFeature: SettingsUiFeature;
@@ -37,12 +38,13 @@ export interface SettingsPageHelpersControllers {
     readonly layout: ApplicationLayoutState;
     readonly screenScheduleState: ScreenScheduleStateFeature;
     readonly clockBar: Pick<ClockBarFeature, "syncUi">;
-    readonly entityState: Pick<EntityStateFeature, "entityInput">;
+    readonly entityState: Pick<EntityStateFeature, "entityInput" | "entityName">;
     readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "switchTab">;
     readonly requestApi: Pick<ApplicationApiFeature, "postScreensaverAction" | "postScreensaverDimmedBrightness" | "postScreensaverDimmedBrightnessDay" | "postScreensaverDimmedBrightnessNight" | "postSwitch">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput">;
     readonly clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBrightnessDay" | "postClockBrightnessNight" | "postClockScreensaver" | "postAlarmDelayAudio" | "postAlarmDelayTts" | "postAlarmDelayEntryAnnouncement" | "postAlarmDelayExitAnnouncement" | "postAlarmDelayBeepVolume" | "postAlarmDelayFinalCountdown">;
     readonly fields: Pick<ControlsFieldsFeature, "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">;
+    readonly artworkPostApi: Pick<ArtworkPostApiFeature, "postScreensaverCameraEntity">;
 }
 
 export interface SettingsPageHelpersFeature {
@@ -73,7 +75,7 @@ export interface SettingsPageHelpersFeature {
 export function createSettingsPageHelpersFeature(
     controllers: SettingsPageHelpersControllers,
 ): SettingsPageHelpersFeature {
-    const { entityInput } = controllers.entityState;
+    const { entityInput, entityName } = controllers.entityState;
     const { isConfigLocked, switchTab } = controllers.shell;
     const { bindTextPost } = controllers.codec;
     const { syncInput } = controllers.statusPreview;
@@ -99,6 +101,7 @@ export function createSettingsPageHelpersFeature(
     const els = controllers.runtime.els;
     const { formatDuration, formatHour } = controllers.screenScheduleState;
     const { syncUi: syncClockBarUi } = controllers.clockBar;
+    const { postScreensaverCameraEntity } = controllers.artworkPostApi;
     // ── Settings Page Helpers ──────────────────────────────────────────
     // ── Settings UI helpers ─────────────────────────────────────────────
     const _settingsUiFeature: SettingsUiFeature = controllers.settingsUiFeature;
@@ -343,6 +346,7 @@ export function createSettingsPageHelpersFeature(
         var mode: any = controlState.mode;
         var clockDisplay: any = controlState.clockVisible ? "" : "none";
         var dimDisplay: any = controlState.dimVisible ? "" : "none";
+        var cameraDisplay: any = controlState.cameraVisible ? "" : "none";
         var automaticBrightness: any = normalizeBrightnessMode(state.brightnessMode) !== "manual";
         state.clockScreensaverOn = mode === "clock";
         syncClockBarUi();
@@ -354,6 +358,12 @@ export function createSettingsPageHelpersFeature(
         syncOptionalClockBrightness(els.setSensorClockBrightnessField, els.setSensorDimBrightnessField || els.setSensorClockField, clockDisplay);
         syncOptionalClockBrightness(els.setDimBrightnessField, els.setClockField, dimDisplay);
         syncOptionalClockBrightness(els.setSensorDimBrightnessField, els.setSensorClockField, dimDisplay);
+        if (els.setScreensaverCameraField)
+            els.setScreensaverCameraField.style.display = cameraDisplay;
+        if (els.setSensorScreensaverCameraField)
+            els.setSensorScreensaverCameraField.style.display = cameraDisplay;
+        syncInput(els.setScreensaverCamera, state.screensaverCameraEntity);
+        syncInput(els.setSensorScreensaverCamera, state.screensaverCameraEntity);
         if (els.setManualDimBrightnessField)
             els.setManualDimBrightnessField.style.display = automaticBrightness ? "none" : "";
         if (els.setAutomaticDimBrightnessField)
@@ -482,6 +492,7 @@ export function createSettingsPageHelpersFeature(
             { value: "off", label: "Display Off" },
             { value: "dim", label: "Screen Dimmed" },
             { value: "clock", label: "Clock" },
+            ...(CFG.features && CFG.features.cameraScreensaver ? [{ value: "camera", label: "Camera" }] : []),
         ].forEach(function (this: any, opt?: any) {
             var o: any = document.createElement("option");
             o.value = opt.value;
@@ -496,6 +507,20 @@ export function createSettingsPageHelpersFeature(
             postClockScreensaver(state.clockScreensaverOn);
         });
         clockField.appendChild(clockSelect);
+        var cameraField: any = document.createElement("div");
+        cameraField.className = "sp-field";
+        cameraField.style.display = _screensaverController.uiState(screensaverState()).cameraVisible ? "" : "none";
+        var cameraId: any = selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-screensaver-camera"
+            : "sp-set-screensaver-camera";
+        cameraField.appendChild(fieldLabel("Camera Entity", cameraId));
+        var cameraInput: any = entityInput(cameraId, state.screensaverCameraEntity,
+            "Camera or image entity", ["camera", "image"]);
+        cameraField.appendChild(cameraInput);
+        bindTextPost(cameraInput, entityName("screen_saver_camera_entity"), {
+            post: postScreensaverCameraEntity,
+            onBlur: function (value: any) { state.screensaverCameraEntity = value; },
+        });
         var dimBrightnessField: any = document.createElement("div");
         dimBrightnessField.style.display = _screensaverController.uiState(screensaverState()).dimVisible ? "" : "none";
         var manualDimBrightnessField: any = document.createElement("div");
@@ -557,6 +582,8 @@ export function createSettingsPageHelpersFeature(
         return {
             clockField: clockField,
             clockSelect: clockSelect,
+            cameraField: cameraField,
+            cameraInput: cameraInput,
             dimBrightnessField: dimBrightnessField,
             manualDimBrightnessField: manualDimBrightnessField,
             automaticDimBrightnessField: automaticDimBrightnessField,
