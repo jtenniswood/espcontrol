@@ -477,7 +477,7 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Reference',
+        text: 'Advanced',
         items: [
           { text: 'Contributing', link: '/reference/contributing' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
