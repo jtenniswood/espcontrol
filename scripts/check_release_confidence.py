@@ -97,14 +97,12 @@ def test_generated_device_docs(devices: list[dict]) -> None:
         grid_text = grid.read_text(encoding="utf-8")
         install_text = install.read_text(encoding="utf-8")
         for value in (
-            capability["slug"],
-            capability["installSlug"],
-            capability["chipFamily"],
             str(capability["slots"]),
             str(capability["grid"]["rows"]),
             str(capability["grid"]["cols"]),
         ):
-            assert value in grid_text or value in install_text, f"{stem}: generated docs missing {value!r}"
+            assert value in grid_text, f"{stem}: generated grid docs missing {value!r}"
+        assert capability["installSlug"] in install_text, f"{stem}: generated install docs missing install slug"
 
 
 def test_generated_card_docs() -> None:

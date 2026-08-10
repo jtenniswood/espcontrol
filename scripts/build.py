@@ -3523,17 +3523,6 @@ def gen_device_grid_snippet(capability):
     rows = capability["grid"]["rows"]
     cols = capability["grid"]["cols"]
     slots = capability["slots"]
-    relays = capability.get("relays", 0)
-    relay_text = "No built-in relays" if relays == 0 else f"{relays} built-in relay" + ("" if relays == 1 else "s")
-    ethernet = "Yes, manual ESPHome install only" if capability.get("ethernetManualInstall") else "No"
-    image_slots = capability["imageSlots"]
-    image_card_types = capability.get("imageCardTypes", [])
-    if image_slots == 0 or not image_card_types:
-        image_slot_text = "Not supported"
-    elif image_card_types == ["media_cover_art"]:
-        image_slot_text = f"Up to {image_slots} Media Cover Art card" + ("" if image_slots == 1 else "s")
-    else:
-        image_slot_text = f"Up to {image_slots} simultaneous Image or Media Cover Art cards"
     if capability.get("subpages", True):
         layout_text = (
             f"The home screen uses a **{rows}-row x {cols}-column** grid, giving you "
@@ -3548,16 +3537,7 @@ def gen_device_grid_snippet(capability):
     return (
         generated_markdown_header("SCREEN GRID CAPABILITIES") +
         layout_text +
-        "Flexible card sizes are supported: Single, Tall, Wide, and Large.\n\n"
-        "| Capability | Value |\n"
-        "|---|---|\n"
-        f"| Screen | {capability['screenSize']}, {capability['resolution']}, {capability['orientation']} |\n"
-        f"| Processor | {capability['chipFamily']} |\n"
-        f"| Built-in relays | {relay_text} |\n"
-        f"| Image-based cards | {image_slot_text} |\n"
-        f"| Rotation support | {'Yes' if capability.get('rotation') else 'No'} |\n"
-        f"| Browser install slug | `{capability['installSlug']}` |\n"
-        f"| Ethernet option | {ethernet} |\n"
+        "Flexible card sizes are supported: Single, Tall, Wide, and Large.\n"
     )
 
 

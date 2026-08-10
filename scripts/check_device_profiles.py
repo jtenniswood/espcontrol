@@ -99,27 +99,7 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
             assert "[Subpage](/features/subpages)" in grid, f"{stem}: grid snippet missing subpage support"
         else:
             assert "Touch subpages are not available" in grid, f"{stem}: grid snippet missing no-subpage note"
-        assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
-        assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
-        assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
-        image_card_types = capability.get("imageCardTypes", [])
-        if capability["imageSlots"] == 0 or not image_card_types:
-            image_capacity_text = "Not supported"
-        elif image_card_types == ["media_cover_art"]:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} Media Cover Art card' +
-                ("" if capability["imageSlots"] == 1 else "s")
-            )
-        else:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
-            )
-        assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
-        assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
-        relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
-        assert relay_text in grid, f"{stem}: grid snippet missing relay availability"
-        ethernet_text = "Yes, manual ESPHome install only" if capability["ethernetManualInstall"] else "No"
-        assert ethernet_text in grid, f"{stem}: grid snippet missing Ethernet support"
+        assert "| Capability | Value |" not in grid, f"{stem}: grid snippet must not include a device specs table"
         assert f'slug="{capability["installSlug"]}"' in install, f"{stem}: install snippet missing slug"
 
 
