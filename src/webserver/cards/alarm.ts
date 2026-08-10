@@ -232,19 +232,6 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
             function setLabelVisible(this: any, value?: any) {
                 labelHost.classList.toggle("sp-visible", value === "name");
             }
-            helpers.renderCardSegmentControl(cardSettings, b, helpers, {
-                segment: Object.assign({}, ALARM_CARD_METADATA.labelDisplay, {
-                    value: function (this: any) { return alarmLabelDisplayMode(b); },
-                    onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
-                        setAlarmLabelDisplayMode(button, value);
-                        cardHelpers.saveField("options", button.options);
-                        setLabelVisible(value);
-                        scheduleRender();
-                    },
-                }),
-            });
-            setLabelVisible(alarmLabelDisplayMode(b));
-            cardSettings.appendChild(labelHost);
             var iconHost: any = condField();
             helpers.renderCardIconPicker(iconHost, b, helpers, {
                 pickerIdSuffix: "alarm-icon-picker",
@@ -269,6 +256,19 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
             });
             setIconVisible(alarmIconDisplayMode(b));
             cardSettings.appendChild(iconHost);
+            helpers.renderCardSegmentControl(cardSettings, b, helpers, {
+                segment: Object.assign({}, ALARM_CARD_METADATA.labelDisplay, {
+                    value: function (this: any) { return alarmLabelDisplayMode(b); },
+                    onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
+                        setAlarmLabelDisplayMode(button, value);
+                        cardHelpers.saveField("options", button.options);
+                        setLabelVisible(value);
+                        scheduleRender();
+                    },
+                }),
+            });
+            setLabelVisible(alarmLabelDisplayMode(b));
+            cardSettings.appendChild(labelHost);
             panel.appendChild(cardSettingsDisclosure.panel);
             renderAlarmVisibleActionsField(modalSettings, b, helpers);
             function savePinOptions(this: any) {

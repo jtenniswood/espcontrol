@@ -108,19 +108,6 @@ export function registerClimateCardTypes(): GlobalDescriptors {
             var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "climate-card-settings", false);
             var cardSettings: any = cardSettingsDisclosure.section;
             helpers.renderCardSegmentControl(cardSettings, b, helpers, {
-                segment: Object.assign({}, CLIMATE_CARD_METADATA.labelDisplay, {
-                    value: function (this: any) { return climateLabelDisplayMode(b); },
-                    onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
-                        setClimateLabelDisplayMode(button, value);
-                        cardHelpers.saveField("options", button.options);
-                        syncLabelField();
-                        scheduleRender();
-                    },
-                }),
-            });
-            syncLabelField();
-            cardSettings.appendChild(labelField);
-            helpers.renderCardSegmentControl(cardSettings, b, helpers, {
                 segment: Object.assign({}, CLIMATE_CARD_METADATA.numberDisplay, {
                     value: function (this: any) { return climateNumberDisplayMode(b); },
                     onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
@@ -154,6 +141,19 @@ export function registerClimateCardTypes(): GlobalDescriptors {
             }
             syncIconFields();
             cardSettings.appendChild(iconFields);
+            helpers.renderCardSegmentControl(cardSettings, b, helpers, {
+                segment: Object.assign({}, CLIMATE_CARD_METADATA.labelDisplay, {
+                    value: function (this: any) { return climateLabelDisplayMode(b); },
+                    onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
+                        setClimateLabelDisplayMode(button, value);
+                        cardHelpers.saveField("options", button.options);
+                        syncLabelField();
+                        scheduleRender();
+                    },
+                }),
+            });
+            syncLabelField();
+            cardSettings.appendChild(labelField);
             var precisionField: any = helpers.selectField("Temperature Settings", helpers.idPrefix + "climate-precision", [
                 ["", "10"],
                 ["1", "10.2"],

@@ -19,17 +19,6 @@ export function registerImageCardTypes(): GlobalDescriptors {
         ];
     }
     function renderImageLabelSettings(this: any, panel?: any, b?: any, helpers?: any) {
-        var labelToggle: any = helpers.toggleRow("Show Label", helpers.idPrefix + "image-label-toggle", imageLabelEnabled(b));
-        panel.appendChild(labelToggle.row);
-        var labelField: any = helpers.renderCardTextField(panel, b, helpers, {
-            text: {
-                label: "Label",
-                idSuffix: "image-label",
-                placeholder: "Uses entity name when blank",
-                bindName: "label",
-                rerender: true,
-            },
-        });
         var iconToggle: any = helpers.toggleRow("Show Icon", helpers.idPrefix + "image-icon-toggle", imageIconEnabled(b));
         panel.appendChild(iconToggle.row);
         if (imageIconEnabled(b) && (!b.icon || b.icon === "Auto"))
@@ -43,6 +32,17 @@ export function registerImageCardTypes(): GlobalDescriptors {
             onChange: function (this: any) { renderPreview(); },
         });
         iconField.classList.add("sp-cond-field");
+        var labelToggle: any = helpers.toggleRow("Show Label", helpers.idPrefix + "image-label-toggle", imageLabelEnabled(b));
+        panel.appendChild(labelToggle.row);
+        var labelField: any = helpers.renderCardTextField(panel, b, helpers, {
+            text: {
+                label: "Label",
+                idSuffix: "image-label",
+                placeholder: "Uses entity name when blank",
+                bindName: "label",
+                rerender: true,
+            },
+        });
         function syncLabelField(this: any) {
             labelField.field.hidden = !imageLabelEnabled(b);
         }
