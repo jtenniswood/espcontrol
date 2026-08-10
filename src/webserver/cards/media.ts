@@ -485,15 +485,37 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 groupEntityTooltip.setAttribute("aria-live", "polite");
                 groupEntityTooltip.textContent = groupEntityHintText;
                 groupEntityHint.setAttribute("aria-describedby", groupEntityTooltip.id);
+                var groupEntityHintHovered: any = false;
+                var groupEntityHintFocused: any = false;
                 function setGroupEntityTooltipVisible(this: any, visible?: any) {
                     groupEntityTooltip.classList.toggle("sp-visible", !!visible);
                     groupEntityHint.setAttribute("aria-expanded", visible ? "true" : "false");
                 }
-                groupEntityHint.addEventListener("focus", function (this: any) { setGroupEntityTooltipVisible(true); });
+                function syncGroupEntityTooltipVisibility(this: any) {
+                    setGroupEntityTooltipVisible(groupEntityHintHovered || groupEntityHintFocused);
+                }
+                groupEntityHint.addEventListener("mouseenter", function (this: any) {
+                    groupEntityHintHovered = true;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("mouseleave", function (this: any) {
+                    groupEntityHintHovered = false;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("focus", function (this: any) {
+                    groupEntityHintFocused = true;
+                    syncGroupEntityTooltipVisibility();
+                });
                 groupEntityHint.addEventListener("click", function (this: any) { setGroupEntityTooltipVisible(true); });
-                groupEntityHint.addEventListener("blur", function (this: any) { setGroupEntityTooltipVisible(false); });
+                groupEntityHint.addEventListener("blur", function (this: any) {
+                    groupEntityHintFocused = false;
+                    syncGroupEntityTooltipVisibility();
+                });
                 groupEntityHint.addEventListener("keydown", function (this: any, event?: any) {
-                    if (event.key === "Escape") setGroupEntityTooltipVisible(false);
+                    if (event.key === "Escape") {
+                        groupEntityHintFocused = false;
+                        setGroupEntityTooltipVisible(false);
+                    }
                 });
                 groupEntityField.field.querySelector("label").appendChild(groupEntityHint);
                 groupEntityField.field.insertBefore(groupEntityTooltip, groupEntityField.input);
