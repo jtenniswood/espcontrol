@@ -49,6 +49,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     screensaverMode: "disabled", _screensaverModeReceived: false, screensaverAction: "off",
     _screensaverActionReceived: false, clockScreensaverOn: false, clockBrightnessDay: 35,
     clockBrightnessNight: 35, clockBrightnessSplitReceived: false, screensaverDimmedBrightness: 10,
+    screensaverDimmedBrightnessDay: 10, screensaverDimmedBrightnessNight: 10,
     screensaverTimeout: 300, screensaverTimeoutMin: 60, screensaverTimeoutMax: 3600,
     screensaverTimeoutLimitsLoaded: false, homeScreenTimeout: 60, brightnessDayVal: 100,
     brightnessNightVal: 75, brightnessMode: "sunrise_sunset", manualBrightnessVal: 100, brightnessDawnTime: "06:00",

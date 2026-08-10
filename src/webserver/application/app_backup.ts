@@ -141,6 +141,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                 clock_brightness_day: state.clockBrightnessDay,
                 clock_brightness_night: state.clockBrightnessNight,
                 screensaver_dimmed_brightness: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightness),
+                screensaver_dimmed_brightness_day: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightnessDay),
+                screensaver_dimmed_brightness_night: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightnessNight),
                 screensaver_timeout: state.screensaverTimeout,
                 home_screen_timeout: state.homeScreenTimeout,
                 screen_rotation: state.screenRotation,
@@ -302,6 +304,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     }
                     var importedScreensaverAction: any = importedSettings.screensaverAction;
                     var importedScreensaverDimmedBrightness: any = importedSettings.screensaverDimmedBrightness;
+                    var importedScreensaverDimmedBrightnessDay: any = importedSettings.screensaverDimmedBrightnessDay;
+                    var importedScreensaverDimmedBrightnessNight: any = importedSettings.screensaverDimmedBrightnessNight;
                     var importedClockBrightnessDay: any = importedSettings.clockBrightnessDay;
                     var importedClockBrightnessNight: any = importedSettings.clockBrightnessNight;
                     postScreensaverAction(importedScreensaverAction);
@@ -309,6 +313,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     postClockBrightnessDay(importedClockBrightnessDay);
                     postClockBrightnessNight(importedClockBrightnessNight);
                     postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
+                    postScreensaverDimmedBrightnessDay(importedScreensaverDimmedBrightnessDay);
+                    postScreensaverDimmedBrightnessNight(importedScreensaverDimmedBrightnessNight);
                     postScreensaverTimeout(importedSettings.screensaverTimeout);
                     postHomeScreenTimeout(importedSettings.homeScreenTimeout);
                     var importedScreenRotation: any = importedSettings.screenRotation;
@@ -364,6 +370,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                     state.clockBrightnessDay = importedClockBrightnessDay;
                     state.clockBrightnessNight = importedClockBrightnessNight;
                     state.screensaverDimmedBrightness = importedScreensaverDimmedBrightness;
+                    state.screensaverDimmedBrightnessDay = importedScreensaverDimmedBrightnessDay;
+                    state.screensaverDimmedBrightnessNight = importedScreensaverDimmedBrightnessNight;
                     state.screensaverTimeout = importedSettings.screensaverTimeout;
                     state.homeScreenTimeout = importedSettings.homeScreenTimeout;
                     state.screenRotation = importedScreenRotation;

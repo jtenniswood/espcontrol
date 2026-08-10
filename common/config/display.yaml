@@ -756,6 +756,52 @@ text:
 
 number:
   - platform: template
+    name: "${entity_screen_saver_daytime_dimmed_brightness}"
+    internal: true
+    id: screensaver_dimmed_brightness_day
+    min_value: 1
+    max_value: 100
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-7"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::DIMMED);'
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
+
+  - platform: template
+    name: "${entity_screen_saver_nighttime_dimmed_brightness}"
+    internal: true
+    id: screensaver_dimmed_brightness_night
+    min_value: 1
+    max_value: 100
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-4"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::DIMMED);'
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
+
+  - platform: template
     name: "${entity_screen_saver_daytime_clock_brightness}"
     internal: true
     id: clock_brightness_day
@@ -803,6 +849,8 @@ number:
             then:
               - script.execute: clock_screensaver_refresh_brightness
 
+  # Retained for Manual brightness mode and to migrate existing panels to
+  # separate automatic day/night dimmed-screen settings.
   - platform: template
     name: "${entity_screen_saver_dimmed_brightness}"
     internal: true

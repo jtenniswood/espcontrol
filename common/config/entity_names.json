@@ -55,6 +55,8 @@
     { "key": "screen_saver_daytime_clock_brightness", "domain": "number", "name": "Screen Saver: Daytime Clock Brightness", "objectIds": ["screen_saver__daytime_clock_brightness", "screen_saver__clock_brightness"], "groups": ["settings"] },
     { "key": "screen_saver_nighttime_clock_brightness", "domain": "number", "name": "Screen Saver: Nighttime Clock Brightness", "objectIds": ["screen_saver__nighttime_clock_brightness", "screen_saver__clock_brightness"], "groups": ["settings"] },
     { "key": "screen_saver_clock_brightness", "domain": "number", "name": "Screen Saver: Clock Brightness", "groups": ["settings"] },
+    { "key": "screen_saver_daytime_dimmed_brightness", "domain": "number", "name": "Screen Saver: Daytime Dimmed Brightness", "objectIds": ["screen_saver__daytime_dimmed_brightness"], "groups": ["settings"] },
+    { "key": "screen_saver_nighttime_dimmed_brightness", "domain": "number", "name": "Screen Saver: Nighttime Dimmed Brightness", "objectIds": ["screen_saver__nighttime_dimmed_brightness"], "groups": ["settings"] },
     { "key": "screen_saver_dimmed_brightness", "domain": "number", "name": "Screen Saver: Dimmed Brightness", "objectIds": ["screen_saver__dimmed_brightness", "screen_saver_dimmed_brightness", "screensaver_dimmed_brightness"], "groups": ["settings"] },
     { "key": "screensaver_timeout", "domain": "number", "name": "Screensaver Timeout", "objectIds": ["screensaver_timeout"], "groups": ["settings"] },
     { "key": "home_screen_timeout", "domain": "number", "name": "Home Screen Timeout", "objectIds": ["home_screen_timeout"], "groups": ["settings"] },

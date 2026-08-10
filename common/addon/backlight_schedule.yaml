@@ -242,6 +242,13 @@ select:
             }
             id(brightness_mode_last_observed) = mode;
         - script.execute: backlight_apply_brightness
+        - if:
+            condition:
+              lambda: |-
+                return id(espcontrol_app).display().current_mode_is(
+                    espcontrol::DisplayMode::DIMMED);
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
 
   - platform: template
     name: "${entity_screen_schedule_sensor_activation}"
@@ -942,6 +949,13 @@ interval:
               return changed;
           then:
             - script.execute: backlight_apply_brightness
+            - if:
+                condition:
+                  lambda: |-
+                    return id(espcontrol_app).display().current_mode_is(
+                        espcontrol::DisplayMode::DIMMED);
+                then:
+                  - script.execute: screensaver_dimmed_refresh_brightness
       - if:
           condition:
             lambda: |-

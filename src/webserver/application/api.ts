@@ -138,6 +138,12 @@ export function installApiModule(): GlobalDescriptors {
     function postScreensaverDimmedBrightness(this: any, value?: any) {
         postNumberWithObjectIds(entityName("screen_saver_dimmed_brightness"), entityObjectIds("screen_saver_dimmed_brightness"), value, SCREENSAVER_ACTION_UNAVAILABLE);
     }
+    function postScreensaverDimmedBrightnessDay(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("screen_saver_daytime_dimmed_brightness"), entityObjectIds("screen_saver_daytime_dimmed_brightness"), value, SCREENSAVER_ACTION_UNAVAILABLE);
+    }
+    function postScreensaverDimmedBrightnessNight(this: any, value?: any) {
+        postNumberWithObjectIds(entityName("screen_saver_nighttime_dimmed_brightness"), entityObjectIds("screen_saver_nighttime_dimmed_brightness"), value, SCREENSAVER_ACTION_UNAVAILABLE);
+    }
     function postHomeScreenTimeout(this: any, value?: any) {
         postNumberWithObjectIds(entityName("home_screen_timeout"), entityObjectIds("home_screen_timeout"), value);
     }
@@ -213,6 +219,8 @@ export function installApiModule(): GlobalDescriptors {
         "SCREENSAVER_ACTION_UNAVAILABLE": liveGlobal(() => SCREENSAVER_ACTION_UNAVAILABLE, (value?: any) => { SCREENSAVER_ACTION_UNAVAILABLE = value; }),
         "postScreensaverAction": staticGlobal(postScreensaverAction),
         "postScreensaverDimmedBrightness": staticGlobal(postScreensaverDimmedBrightness),
+        "postScreensaverDimmedBrightnessDay": staticGlobal(postScreensaverDimmedBrightnessDay),
+        "postScreensaverDimmedBrightnessNight": staticGlobal(postScreensaverDimmedBrightnessNight),
         "postHomeScreenTimeout": staticGlobal(postHomeScreenTimeout),
         "postSwitchWithObjectId": staticGlobal(postSwitchWithObjectId),
         "postSwitchWithObjectIds": staticGlobal(postSwitchWithObjectIds),

@@ -368,6 +368,20 @@ export const ENTITY_CATALOG = {
       "domain": "number",
       "name": "Screen Saver: Clock Brightness"
     },
+    "screen_saver_daytime_dimmed_brightness": {
+      "domain": "number",
+      "name": "Screen Saver: Daytime Dimmed Brightness",
+      "objectIds": [
+        "screen_saver__daytime_dimmed_brightness"
+      ]
+    },
+    "screen_saver_nighttime_dimmed_brightness": {
+      "domain": "number",
+      "name": "Screen Saver: Nighttime Dimmed Brightness",
+      "objectIds": [
+        "screen_saver__nighttime_dimmed_brightness"
+      ]
+    },
     "screen_saver_dimmed_brightness": {
       "domain": "number",
       "name": "Screen Saver: Dimmed Brightness",
@@ -739,6 +753,8 @@ export const ENTITY_CATALOG = {
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
       "screen_saver_clock_brightness",
+      "screen_saver_daytime_dimmed_brightness",
+      "screen_saver_nighttime_dimmed_brightness",
       "screen_saver_dimmed_brightness",
       "screensaver_timeout",
       "home_screen_timeout",

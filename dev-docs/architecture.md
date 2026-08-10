@@ -77,11 +77,13 @@ source or a committed generated input.
    cards.
 
 `EspControlAppCore` owns the long-lived configuration, card runtime, Home
-Assistant callback, display lifecycle, grid navigation, and modal-state
-services. The navigation and modal-state slots have fixed capacity so their
+Assistant binding and callback, display lifecycle, grid navigation, and
+modal-state services. The navigation and modal-state slots have fixed capacity so their
 LVGL-specific types remain in the UI layer with a bounded, reviewable memory
 budget. Firmware UI accesses those services only after the core starts; the
 standalone host-test fallbacks are excluded from firmware images.
+`EspControlApp` starts the core before WiFi so the 250-priority boot automations
+also use the core-owned Home Assistant binding.
 
 ## Build-Time Flow
 

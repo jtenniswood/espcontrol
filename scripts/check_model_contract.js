@@ -588,6 +588,9 @@ const panelSettings = model.normalizeBackupPanelSettings({
   firmware_update_frequency: "Weekly",
   clock_brightness_day: 44,
   clock_brightness_night: 22,
+  screensaver_dimmed_brightness: 15,
+  screensaver_dimmed_brightness_day: 30,
+  screensaver_dimmed_brightness_night: 5,
   screen_rotation: "90",
 }, {
   timezone: "UTC (GMT+0)",
@@ -703,6 +706,20 @@ assert.strictEqual(
 );
 assert.strictEqual(panelSettings.clockBrightnessDay, 44, "panel day clock brightness imports");
 assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock brightness imports");
+assert.strictEqual(panelSettings.screensaverDimmedBrightnessDay, 30, "panel day dimmed brightness imports");
+assert.strictEqual(panelSettings.screensaverDimmedBrightnessNight, 5, "panel night dimmed brightness imports");
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({ screensaver_dimmed_brightness: 18 }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h",
+    clockFormatOptions: ["12h", "24h"], ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
+    ntpServer1: "0.pool.ntp.org", ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org",
+    coverArtHomeAssistantProtocol: "http", coverArtHomeAssistantPort: 8123,
+    coverArtHomeAssistantBaseUrl: "", autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).screensaverDimmedBrightnessNight,
+  18,
+  "legacy panel backup uses its single dimmed brightness for nighttime"
+);
 assert.strictEqual(panelSettings.subpageChevron, true, "panel subpage chevron defaults on");
 assert.strictEqual(panelSettings.screenRotation, "90", "panel rotation validates against options");
 

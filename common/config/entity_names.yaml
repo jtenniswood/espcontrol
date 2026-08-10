@@ -66,6 +66,8 @@ substitutions:
   entity_screen_saver_daytime_clock_brightness: "Screen Saver: Daytime Clock Brightness"
   entity_screen_saver_nighttime_clock_brightness: "Screen Saver: Nighttime Clock Brightness"
   entity_screen_saver_clock_brightness: "Screen Saver: Clock Brightness"
+  entity_screen_saver_daytime_dimmed_brightness: "Screen Saver: Daytime Dimmed Brightness"
+  entity_screen_saver_nighttime_dimmed_brightness: "Screen Saver: Nighttime Dimmed Brightness"
   entity_screen_saver_dimmed_brightness: "Screen Saver: Dimmed Brightness"
   entity_screensaver_timeout: "Screensaver Timeout"
   entity_home_screen_timeout: "Home Screen Timeout"

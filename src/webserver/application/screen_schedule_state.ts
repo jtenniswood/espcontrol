@@ -83,6 +83,8 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             els.setBrightnessManualTimes.className =
                 "sp-cond-field" + (state.brightnessMode === "fixed_times" ? " sp-visible" : "");
         }
+        if (els.setDimBrightnessField || els.setSensorDimBrightnessField)
+            syncClockScreensaverControls();
         updateSunInfo();
         if (els.setScheduleToggle)
             els.setScheduleToggle.checked = !!state.scheduleEnabled;

@@ -931,6 +931,8 @@ declare global {
   var postScreenScheduleWakeTimeout: any;
   var postScreensaverAction: any;
   var postScreensaverDimmedBrightness: any;
+  var postScreensaverDimmedBrightnessDay: any;
+  var postScreensaverDimmedBrightnessNight: any;
   var postScreensaverMode: any;
   var postScreensaverTimeout: any;
   var postSelect: any;

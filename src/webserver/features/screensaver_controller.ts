@@ -1,10 +1,13 @@
 export type ScreensaverBrightnessField = "clockBrightnessDay" | "clockBrightnessNight";
+export type ScreensaverDimBrightnessField = "dimBrightnessDay" | "dimBrightnessNight";
 
 export interface ScreensaverState {
   readonly action: string;
   readonly clockBrightnessDay: number;
   readonly clockBrightnessNight: number;
   readonly dimBrightness: number;
+  readonly dimBrightnessDay: number;
+  readonly dimBrightnessNight: number;
 }
 
 export interface ScreensaverUiState {
@@ -14,6 +17,8 @@ export interface ScreensaverUiState {
   readonly dayBrightnessLabel: string;
   readonly nightBrightnessLabel: string;
   readonly dimBrightnessLabel: string;
+  readonly dimBrightnessDayLabel: string;
+  readonly dimBrightnessNightLabel: string;
 }
 
 export interface ScreensaverNormalizers {
@@ -26,6 +31,11 @@ export interface ScreensaverController {
   uiState(state: ScreensaverState): ScreensaverUiState;
   setAction(state: ScreensaverState, action: unknown): ScreensaverState;
   setDimBrightness(state: ScreensaverState, value: unknown): ScreensaverState;
+  setDimBrightnessByPeriod(
+    state: ScreensaverState,
+    field: ScreensaverDimBrightnessField,
+    value: unknown,
+  ): ScreensaverState;
   setClockBrightness(
     state: ScreensaverState,
     field: ScreensaverBrightnessField,
@@ -45,6 +55,8 @@ export function createScreensaverController(normalizers: ScreensaverNormalizers)
         dayBrightnessLabel: `${Math.round(state.clockBrightnessDay)}%`,
         nightBrightnessLabel: `${Math.round(state.clockBrightnessNight)}%`,
         dimBrightnessLabel: `${Math.round(state.dimBrightness)}%`,
+        dimBrightnessDayLabel: `${Math.round(state.dimBrightnessDay)}%`,
+        dimBrightnessNightLabel: `${Math.round(state.dimBrightnessNight)}%`,
       };
     },
     setAction(state, action) {
@@ -52,6 +64,12 @@ export function createScreensaverController(normalizers: ScreensaverNormalizers)
     },
     setDimBrightness(state, value) {
       return { ...state, dimBrightness: normalizers.dimBrightness(value) };
+    },
+    setDimBrightnessByPeriod(state, field, value) {
+      const fallback = field === "dimBrightnessNight"
+        ? state.dimBrightnessDay
+        : 10;
+      return { ...state, [field]: normalizers.dimBrightness(value || fallback) };
     },
     setClockBrightness(state, field, value) {
       const fallback = field === "clockBrightnessNight"

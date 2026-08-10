@@ -62,6 +62,10 @@ globals:
   - id: screensaver_dimmed_target_level
     type: float
     initial_value: '0.10'
+  - id: dimmed_brightness_migrated
+    type: bool
+    restore_value: true
+    initial_value: 'false'
   - id: clock_brightness_migrated
     type: bool
     restore_value: true
@@ -141,6 +145,26 @@ esphome:
             }
 
             id(clock_brightness_migrated) = true;
+            global_preferences->sync();
+          }
+
+          if (!id(dimmed_brightness_migrated)) {
+            float legacy_dimmed_pct = id(screensaver_dimmed_brightness).state;
+            if (std::isnan(legacy_dimmed_pct) || legacy_dimmed_pct <= 0.0f) {
+              legacy_dimmed_pct = 10.0f;
+            }
+            if (legacy_dimmed_pct < 1.0f) legacy_dimmed_pct = 1.0f;
+            if (legacy_dimmed_pct > 100.0f) legacy_dimmed_pct = 100.0f;
+
+            auto day_call = id(screensaver_dimmed_brightness_day).make_call();
+            day_call.set_value(legacy_dimmed_pct);
+            day_call.perform();
+
+            auto night_call = id(screensaver_dimmed_brightness_night).make_call();
+            night_call.set_value(legacy_dimmed_pct);
+            night_call.perform();
+
+            id(dimmed_brightness_migrated) = true;
             global_preferences->sync();
           }
       - delay: 10s
@@ -1154,7 +1178,38 @@ script:
     mode: restart
     then:
       - lambda: |-
+          std::string mode = normalize_brightness_mode(
+              id(brightness_mode).current_option());
           float pct = id(screensaver_dimmed_brightness).state;
+          if (!brightness_mode_manual(mode)) {
+            float day_pct = id(screensaver_dimmed_brightness_day).state;
+            if (std::isnan(day_pct) || day_pct <= 0.0f) day_pct = 10.0f;
+            if (day_pct < 1.0f) day_pct = 1.0f;
+            if (day_pct > 100.0f) day_pct = 100.0f;
+
+            float night_pct = id(screensaver_dimmed_brightness_night).state;
+            if (std::isnan(night_pct) || night_pct <= 0.0f) night_pct = day_pct;
+            if (night_pct < 1.0f) night_pct = 1.0f;
+            if (night_pct > 100.0f) night_pct = 100.0f;
+
+            auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+            bool is_day = id(last_is_daytime);
+            int rise_h = id(sunrise_hour);
+            int rise_m = id(sunrise_minute);
+            int set_h = id(sunset_hour);
+            int set_m = id(sunset_minute);
+            bool times_valid = brightness_schedule_times(
+              mode,
+              id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
+              id(sunset_hour), id(sunset_minute),
+              id(brightness_dawn_time).state, id(brightness_dusk_time).state,
+              rise_h, rise_m, set_h, set_m);
+            pct = calc_brightness_pct(
+              times_valid, rise_h, rise_m, set_h, set_m,
+              now.is_valid() ? now.hour : 12, now.is_valid() ? now.minute : 0,
+              &is_day, day_pct, night_pct);
+            id(last_is_daytime) = is_day;
+          }
           if (std::isnan(pct) || pct <= 0.0f) pct = 10.0f;
           if (pct < 1.0f) pct = 1.0f;
           if (pct > 100.0f) pct = 100.0f;

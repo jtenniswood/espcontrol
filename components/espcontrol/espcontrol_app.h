@@ -30,7 +30,9 @@ class EspControlApp : public esphome::Component {
   void loop() override;
   void on_shutdown() override;
   float get_setup_priority() const override {
-    return esphome::setup_priority::AFTER_WIFI;
+    // Cover-art boot automation resets Home Assistant subscriptions at 250.
+    // Start the core just before WiFi (251) so it always owns that state.
+    return esphome::setup_priority::WIFI + 1.0f;
   }
 
   DisplayModeController &display() { return core_.display(); }
@@ -52,6 +54,8 @@ class EspControlApp : public esphome::Component {
   }
 
  private:
+  void register_panel_config_endpoints();
+
   struct LegacyButtonTextSources {
     configuration::EspHomeLegacyTextValue button;
     std::array<configuration::EspHomeLegacyTextValue,

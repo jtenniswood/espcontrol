@@ -1,4 +1,5 @@
 #include "ha_read_coordinator.h"
+#include "espcontrol_app_core.h"
 #include "home_assistant_binding_service.h"
 
 #include <cstdlib>
@@ -236,6 +237,19 @@ void app_owned_callback_owner_is_used_when_bound() {
           "callback scope did not restore app-owned state");
 }
 
+void core_owns_binding_service_lifetime() {
+  espcontrol::EspControlAppCore app;
+  require(app.start(), "application core did not start");
+  BindingService &service = app.home_assistant_binding_service<BindingService>();
+  int owner = 0;
+  {
+    auto scope = service.callback_owner_scope(&owner);
+    require(app.home_assistant_callback_owner().callback_owner() == &owner,
+            "core-owned binding did not use the app callback state");
+  }
+  require(app.stop(), "application core did not stop");
+}
+
 }  // namespace
 
 int main() {
@@ -249,5 +263,6 @@ int main() {
   released_owner_drops_pending_reads_even_if_its_address_is_reused();
   callback_owner_scope_restores_the_previous_owner();
   app_owned_callback_owner_is_used_when_bound();
+  core_owns_binding_service_lifetime();
   return EXIT_SUCCESS;
 }

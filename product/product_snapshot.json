@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 98,
+    "entityNames": 100,
     "icons": 334,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -6295,6 +6295,28 @@
         "key": "screen_saver_clock_brightness",
         "domain": "number",
         "name": "Screen Saver: Clock Brightness",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_daytime_dimmed_brightness",
+        "domain": "number",
+        "name": "Screen Saver: Daytime Dimmed Brightness",
+        "objectIds": [
+          "screen_saver__daytime_dimmed_brightness"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_nighttime_dimmed_brightness",
+        "domain": "number",
+        "name": "Screen Saver: Nighttime Dimmed Brightness",
+        "objectIds": [
+          "screen_saver__nighttime_dimmed_brightness"
+        ],
         "groups": [
           "settings"
         ]

@@ -174,6 +174,14 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(val);
                 syncClockScreensaverControls();
             },
+            "number-screen_saver__daytime_dimmed_brightness": function (this: any, val?: any) {
+                state.screensaverDimmedBrightnessDay = normalizeScreensaverDimmedBrightness(val);
+                syncClockScreensaverControls();
+            },
+            "number-screen_saver__nighttime_dimmed_brightness": function (this: any, val?: any) {
+                state.screensaverDimmedBrightnessNight = normalizeScreensaverDimmedBrightness(val);
+                syncClockScreensaverControls();
+            },
             "text-presence_sensor_entity": function (this: any, val?: any) {
                 state.presenceEntity = val;
                 syncInput(els.setPresence, val);

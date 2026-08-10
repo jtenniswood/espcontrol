@@ -57,12 +57,18 @@ export function runSettingsFeatureTests(): void {
     clockBrightnessDay: 35,
     clockBrightnessNight: 12,
     dimBrightness: 10,
+    dimBrightnessDay: 20,
+    dimBrightnessNight: 5,
   };
   equal(screensaver.uiState(dim).dimVisible, true, "dim controls show in dim mode");
   equal(screensaver.uiState(dim).clockVisible, false, "clock controls hide in dim mode");
   const clockMode = screensaver.setAction(dim, "clock");
   equal(screensaver.uiState(clockMode).clockVisible, true, "clock controls show in clock mode");
   equal(screensaver.setDimBrightness(clockMode, 200).dimBrightness, 100, "dim brightness is normalized");
+  equal(screensaver.setDimBrightnessByPeriod(clockMode, "dimBrightnessDay", 25).dimBrightnessDay,
+        25, "daytime dim brightness is updated independently");
+  equal(screensaver.setDimBrightnessByPeriod(clockMode, "dimBrightnessNight", 0).dimBrightnessNight,
+        20, "nighttime dim brightness falls back to the daytime value");
   equal(screensaver.setClockBrightness(clockMode, "clockBrightnessNight", 0).clockBrightnessNight,
         35, "night brightness uses daytime brightness as its fallback");
 

@@ -49,6 +49,8 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             clockBrightnessDay: state.clockBrightnessDay,
             clockBrightnessNight: state.clockBrightnessNight,
             dimBrightness: state.screensaverDimmedBrightness,
+            dimBrightnessDay: state.screensaverDimmedBrightnessDay,
+            dimBrightnessNight: state.screensaverDimmedBrightnessNight,
         };
     }
     function applyScreensaverState(this: any, next?: any) {
@@ -56,6 +58,8 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         state.clockBrightnessDay = next.clockBrightnessDay;
         state.clockBrightnessNight = next.clockBrightnessNight;
         state.screensaverDimmedBrightness = next.dimBrightness;
+        state.screensaverDimmedBrightnessDay = next.dimBrightnessDay;
+        state.screensaverDimmedBrightnessNight = next.dimBrightnessNight;
         state.clockScreensaverOn = next.action === "clock";
     }
     function coverArtScreensaverState(this: any) {
@@ -246,6 +250,7 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         var mode: any = controlState.mode;
         var clockDisplay: any = controlState.clockVisible ? "" : "none";
         var dimDisplay: any = controlState.dimVisible ? "" : "none";
+        var automaticBrightness: any = normalizeBrightnessMode(state.brightnessMode) !== "manual";
         state.clockScreensaverOn = mode === "clock";
         syncClockBarUi();
         if (els.setClockSelect)
@@ -256,6 +261,14 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         syncOptionalClockBrightness(els.setSensorClockBrightnessField, els.setSensorDimBrightnessField || els.setSensorClockField, clockDisplay);
         syncOptionalClockBrightness(els.setDimBrightnessField, els.setClockField, dimDisplay);
         syncOptionalClockBrightness(els.setSensorDimBrightnessField, els.setSensorClockField, dimDisplay);
+        if (els.setManualDimBrightnessField)
+            els.setManualDimBrightnessField.style.display = automaticBrightness ? "none" : "";
+        if (els.setAutomaticDimBrightnessField)
+            els.setAutomaticDimBrightnessField.style.display = automaticBrightness ? "" : "none";
+        if (els.setSensorManualDimBrightnessField)
+            els.setSensorManualDimBrightnessField.style.display = automaticBrightness ? "none" : "";
+        if (els.setSensorAutomaticDimBrightnessField)
+            els.setSensorAutomaticDimBrightnessField.style.display = automaticBrightness ? "" : "none";
         if (els.setDimBrightness) {
             els.setDimBrightness.value = state.screensaverDimmedBrightness;
             els.setDimBrightnessVal.textContent = controlState.dimBrightnessLabel;
@@ -263,6 +276,22 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         if (els.setSensorDimBrightness) {
             els.setSensorDimBrightness.value = state.screensaverDimmedBrightness;
             els.setSensorDimBrightnessVal.textContent = controlState.dimBrightnessLabel;
+        }
+        if (els.setDimBrightnessDay) {
+            els.setDimBrightnessDay.value = state.screensaverDimmedBrightnessDay;
+            els.setDimBrightnessDayVal.textContent = controlState.dimBrightnessDayLabel;
+        }
+        if (els.setDimBrightnessNight) {
+            els.setDimBrightnessNight.value = state.screensaverDimmedBrightnessNight;
+            els.setDimBrightnessNightVal.textContent = controlState.dimBrightnessNightLabel;
+        }
+        if (els.setSensorDimBrightnessDay) {
+            els.setSensorDimBrightnessDay.value = state.screensaverDimmedBrightnessDay;
+            els.setSensorDimBrightnessDayVal.textContent = controlState.dimBrightnessDayLabel;
+        }
+        if (els.setSensorDimBrightnessNight) {
+            els.setSensorDimBrightnessNight.value = state.screensaverDimmedBrightnessNight;
+            els.setSensorDimBrightnessNightVal.textContent = controlState.dimBrightnessNightLabel;
         }
         if (els.setClockBrightnessDay) {
             els.setClockBrightnessDay.value = state.clockBrightnessDay;
@@ -368,14 +397,43 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         clockField.appendChild(clockSelect);
         var dimBrightnessField: any = document.createElement("div");
         dimBrightnessField.style.display = _screensaverController.uiState(screensaverState()).dimVisible ? "" : "none";
+        var manualDimBrightnessField: any = document.createElement("div");
         var dimSlider: any = createRangeSlider("Dimmed Screen Brightness", state.screensaverDimmedBrightness, postScreensaverDimmedBrightness);
+        dimSlider.range.id = selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-dimmed-brightness"
+            : "sp-set-dimmed-brightness";
         dimSlider.range.min = "1";
         dimSlider.range.step = "1";
         dimSlider.range.addEventListener("input", function (this: any) {
             applyScreensaverState(_screensaverController.setDimBrightness(screensaverState(), this.value));
             syncClockScreensaverControls();
         });
-        dimBrightnessField.appendChild(dimSlider.wrap);
+        manualDimBrightnessField.appendChild(dimSlider.wrap);
+        dimBrightnessField.appendChild(manualDimBrightnessField);
+        var automaticDimBrightnessField: any = document.createElement("div");
+        var dimDaySlider: any = createRangeSlider("Daytime Dimmed Screen Brightness", state.screensaverDimmedBrightnessDay, postScreensaverDimmedBrightnessDay);
+        dimDaySlider.range.id = selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-daytime-dimmed-brightness"
+            : "sp-set-daytime-dimmed-brightness";
+        dimDaySlider.range.min = "1";
+        dimDaySlider.range.step = "1";
+        dimDaySlider.range.addEventListener("input", function (this: any) {
+            applyScreensaverState(_screensaverController.setDimBrightnessByPeriod(screensaverState(), "dimBrightnessDay", this.value));
+            syncClockScreensaverControls();
+        });
+        automaticDimBrightnessField.appendChild(dimDaySlider.wrap);
+        var dimNightSlider: any = createRangeSlider("Nighttime Dimmed Screen Brightness", state.screensaverDimmedBrightnessNight, postScreensaverDimmedBrightnessNight);
+        dimNightSlider.range.id = selectId === "sp-set-sensor-clock-mode"
+            ? "sp-set-sensor-nighttime-dimmed-brightness"
+            : "sp-set-nighttime-dimmed-brightness";
+        dimNightSlider.range.min = "1";
+        dimNightSlider.range.step = "1";
+        dimNightSlider.range.addEventListener("input", function (this: any) {
+            applyScreensaverState(_screensaverController.setDimBrightnessByPeriod(screensaverState(), "dimBrightnessNight", this.value));
+            syncClockScreensaverControls();
+        });
+        automaticDimBrightnessField.appendChild(dimNightSlider.wrap);
+        dimBrightnessField.appendChild(automaticDimBrightnessField);
         var clockBrightnessField: any = document.createElement("div");
         clockBrightnessField.className = "sp-clock-brightness-field";
         clockBrightnessField.style.display = _screensaverController.uiState(screensaverState()).clockVisible ? "" : "none";
@@ -399,8 +457,14 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             clockField: clockField,
             clockSelect: clockSelect,
             dimBrightnessField: dimBrightnessField,
+            manualDimBrightnessField: manualDimBrightnessField,
+            automaticDimBrightnessField: automaticDimBrightnessField,
             dimBrightness: dimSlider.range,
             dimBrightnessVal: dimSlider.val,
+            dimBrightnessDay: dimDaySlider.range,
+            dimBrightnessDayVal: dimDaySlider.val,
+            dimBrightnessNight: dimNightSlider.range,
+            dimBrightnessNightVal: dimNightSlider.val,
             brightnessField: clockBrightnessField,
             clockBrightnessDay: daySlider.range,
             clockBrightnessDayVal: daySlider.val,

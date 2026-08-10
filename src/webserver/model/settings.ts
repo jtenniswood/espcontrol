@@ -375,6 +375,8 @@ export interface BackupPanelSettingsState {
   clockBrightnessDay: number;
   clockBrightnessNight: number;
   screensaverDimmedBrightness: number;
+  screensaverDimmedBrightnessDay: number;
+  screensaverDimmedBrightnessNight: number;
   screensaverTimeout: unknown;
   homeScreenTimeout: unknown;
   screenRotation: string;
@@ -418,6 +420,19 @@ export function normalizeBackupPanelSettings(
   const clockBrightnessNight = normalizeClockBrightness(
     objectValue(settings, "clock_brightness_night") != null ? settings.clock_brightness_night : settings.clock_brightness,
     clockBrightnessDay,
+  );
+  const screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(
+    settings.screensaver_dimmed_brightness,
+  );
+  const screensaverDimmedBrightnessDay = normalizeScreensaverDimmedBrightness(
+    objectValue(settings, "screensaver_dimmed_brightness_day") != null
+      ? settings.screensaver_dimmed_brightness_day
+      : screensaverDimmedBrightness,
+  );
+  const screensaverDimmedBrightnessNight = normalizeScreensaverDimmedBrightness(
+    objectValue(settings, "screensaver_dimmed_brightness_night") != null
+      ? settings.screensaver_dimmed_brightness_night
+      : screensaverDimmedBrightnessDay,
   );
   const legacyTemperatureEntities: string[] = [];
   if (settings.outdoor_temp_enable && settings.outdoor_temp_entity) {
@@ -516,7 +531,9 @@ export function normalizeBackupPanelSettings(
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,
     clockBrightnessNight,
-    screensaverDimmedBrightness: normalizeScreensaverDimmedBrightness(settings.screensaver_dimmed_brightness),
+    screensaverDimmedBrightness,
+    screensaverDimmedBrightnessDay,
+    screensaverDimmedBrightnessNight,
     screensaverTimeout: settings.screensaver_timeout || 300,
     homeScreenTimeout: objectValue(settings, "home_screen_timeout") != null ? settings.home_screen_timeout : 60,
     screenRotation: normalizeScreenRotationValue(settings.screen_rotation, current.screenRotationOptions),

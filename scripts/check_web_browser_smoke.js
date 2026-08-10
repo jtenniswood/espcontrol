@@ -1139,6 +1139,51 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       has: page.locator(".card-header h3", { hasText: /^Night Schedule$/ }),
     })
     .first();
+  const brightnessCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Backlight$/ }),
+    })
+    .first();
+  const screensaverCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }),
+    })
+    .first();
+  assert(await brightnessCard.isVisible(), `${label}: backlight settings should render`);
+  assert(await screensaverCard.isVisible(), `${label}: screensaver settings should render`);
+  await brightnessCard.locator(".card-header").click();
+  await screensaverCard.locator(".card-header").click();
+  await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
+  const dimmedAction = screensaverCard.locator("#sp-set-clock-mode");
+  await dimmedAction.selectOption("dim");
+  const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
+  const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
+  const nighttimeDimmedBrightness = screensaverCard.locator("#sp-set-nighttime-dimmed-brightness");
+  await brightnessCard.getByRole("button", { name: "Manual", exact: true }).click();
+  assert(await manualDimmedBrightness.isVisible(), `${label}: Manual mode shows one dimmed-screen brightness`);
+  assert.strictEqual(await daytimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides daytime dimmed brightness`);
+  assert.strictEqual(await nighttimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides nighttime dimmed brightness`);
+  await brightnessCard.getByRole("button", { name: "Automatic", exact: true }).click();
+  assert.strictEqual(await manualDimmedBrightness.isVisible(), false, `${label}: Automatic mode hides the manual dimmed brightness`);
+  assert(await daytimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows daytime dimmed brightness`);
+  assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows nighttime dimmed brightness`);
+  const dimmedBrightnessPostStart = posts.length;
+  await daytimeDimmedBrightness.evaluate((input) => {
+    input.value = "30";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitForPost(
+    posts,
+    { domain: "number", name: "screen_saver__daytime_dimmed_brightness", action: "set", value: "30" },
+    `${label}: Automatic mode posts daytime dimmed brightness`,
+    dimmedBrightnessPostStart,
+  );
+  await brightnessCard.getByRole("button", { name: "Timed", exact: true }).click();
+  assert(await daytimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps daytime dimmed brightness visible`);
+  assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps nighttime dimmed brightness visible`);
   assert(
     await nightScheduleCard.isVisible(),
     `${label}: night schedule settings card should render`,
@@ -3006,6 +3051,8 @@ function backupFixture(device, slots) {
       clock_brightness_day: 44,
       clock_brightness_night: 22,
       screensaver_dimmed_brightness: 15,
+      screensaver_dimmed_brightness_day: 30,
+      screensaver_dimmed_brightness_night: 5,
       screensaver_timeout: 60,
       home_screen_timeout: 120,
       screen_rotation: "90",
@@ -3305,6 +3352,24 @@ async function assertBackupImportSmoke(page, posts, testCase) {
         value: "15",
       },
       "backup dimmed screensaver brightness import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__daytime_dimmed_brightness",
+        action: "set",
+        value: "30",
+      },
+      "backup daytime dimmed screensaver brightness import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__nighttime_dimmed_brightness",
+        action: "set",
+        value: "5",
+      },
+      "backup nighttime dimmed screensaver brightness import",
     ],
     [
       { domain: "number", name: "screensaver_timeout", action: "set", value: "60" },

@@ -56,6 +56,7 @@
       "coverArtHomeAssistantBaseUrl": "",
       "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
+      "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
       "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
     },
     "screenInput": {
@@ -107,5 +108,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2449479, "gzip": 964863, "gzipTolerance": 8192 }
+  "bundleSize": { "minified": 2454936, "gzip": 964863, "gzipTolerance": 8192 }
 }

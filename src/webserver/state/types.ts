@@ -163,6 +163,8 @@ export interface AppState {
   clockBrightnessNight: number;
   clockBrightnessSplitReceived: boolean;
   screensaverDimmedBrightness: number;
+  screensaverDimmedBrightnessDay: number;
+  screensaverDimmedBrightnessNight: number;
   screensaverTimeout: number;
   screensaverTimeoutMin: number;
   screensaverTimeoutMax: number;

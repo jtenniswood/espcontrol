@@ -55,6 +55,26 @@ void EspControlApp::set_panel_config_button(
   legacy_config_.set_button(slot, &sources.button, legacy_subpages);
 }
 
+void EspControlApp::register_panel_config_endpoints() {
+  configuration::ConfigurationService *const panel_config_service =
+      core_.configuration_service();
+  const bool can_register_document_endpoints =
+      panel_config_service != nullptr && panel_config_document_buffer_ != nullptr;
+  const bool read_endpoint_registered = can_register_document_endpoints &&
+      configuration::register_panel_config_read_endpoint(
+          *panel_config_service, panel_config_document_buffer_,
+          PANEL_CONFIG_STORAGE_SLOT_CAPACITY, web_auth_username_.c_str(),
+          web_auth_password_.c_str());
+  const bool write_endpoint_registered = can_register_document_endpoints &&
+      configuration::register_panel_config_write_endpoint(
+          *panel_config_service, panel_config_document_buffer_,
+          PANEL_CONFIG_STORAGE_SLOT_CAPACITY, web_auth_username_.c_str(),
+          web_auth_password_.c_str());
+  configuration::set_panel_config_read_supported(read_endpoint_registered);
+  configuration::set_panel_config_write_supported(write_endpoint_registered);
+  configuration::register_panel_config_capabilities_endpoint();
+}
+
 void EspControlApp::setup() {
   if (core_.start()) {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
@@ -64,14 +84,14 @@ void EspControlApp::setup() {
   if (!core_.configure_configuration_service(
           panel_config_store_, legacy_config_, &panel_config_validator_)) {
     ESP_LOGE(TAG, "Native configuration service is already configured");
-    configuration::register_panel_config_capabilities_endpoint();
+    register_panel_config_endpoints();
     return;
   }
   configuration::ConfigurationService *const panel_config_service =
       core_.configuration_service();
   if (panel_config_service == nullptr) {
     ESP_LOGE(TAG, "Native configuration service is unavailable");
-    configuration::register_panel_config_capabilities_endpoint();
+    register_panel_config_endpoints();
     return;
   }
   if (!legacy_config_.configured()) {
@@ -90,7 +110,7 @@ void EspControlApp::setup() {
         !panel_config_backend_.begin(panel_config_memory_,
                                      PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 2)) {
       ESP_LOGE(TAG, "Native configuration memory is unavailable");
-      configuration::register_panel_config_capabilities_endpoint();
+      register_panel_config_endpoints();
       return;
     }
     panel_config_service->set_scratch_buffer(
@@ -118,29 +138,16 @@ void EspControlApp::setup() {
       ESP_LOGE(TAG, "Native configuration refresh failed (%u)",
                static_cast<unsigned>(refreshed.status));
     }
-    const bool read_endpoint_registered =
-        configuration::register_panel_config_read_endpoint(
-            *panel_config_service, panel_config_document_buffer_,
-            PANEL_CONFIG_STORAGE_SLOT_CAPACITY, web_auth_username_.c_str(),
-            web_auth_password_.c_str());
-    configuration::set_panel_config_read_supported(read_endpoint_registered);
-    if (!read_endpoint_registered) {
-      ESP_LOGW(TAG, "Native configuration read endpoint is unavailable");
-    }
-    const bool write_endpoint_registered =
-        configuration::register_panel_config_write_endpoint(
-            *panel_config_service, panel_config_document_buffer_,
-            PANEL_CONFIG_STORAGE_SLOT_CAPACITY, web_auth_username_.c_str(),
-            web_auth_password_.c_str());
-    configuration::set_panel_config_write_supported(write_endpoint_registered);
-    if (!write_endpoint_registered) {
-      ESP_LOGW(TAG, "Native configuration write endpoint is unavailable");
-    }
   }
-  configuration::register_panel_config_capabilities_endpoint();
+  register_panel_config_endpoints();
 }
 
-void EspControlApp::loop() { core_.run_once(); }
+void EspControlApp::loop() {
+  core_.run_once();
+  // The app core starts before WiFi so Home Assistant boot automations are
+  // safe. The IDF web server starts later, so retry idempotent registrations.
+  register_panel_config_endpoints();
+}
 
 void EspControlApp::on_shutdown() {
   cards::set_card_runtime_registry_service(nullptr);
