@@ -488,12 +488,13 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 groupEntityHint.setAttribute("aria-describedby", groupEntityTooltip.id);
                 var groupEntityHintHovered: any = false;
                 var groupEntityHintFocused: any = false;
+                var groupEntityHintTapped: any = false;
                 function setGroupEntityTooltipVisible(this: any, visible?: any) {
                     groupEntityTooltip.classList.toggle("sp-visible", !!visible);
                     groupEntityHint.setAttribute("aria-expanded", visible ? "true" : "false");
                 }
                 function syncGroupEntityTooltipVisibility(this: any) {
-                    setGroupEntityTooltipVisible(groupEntityHintHovered || groupEntityHintFocused);
+                    setGroupEntityTooltipVisible(groupEntityHintHovered || groupEntityHintFocused || groupEntityHintTapped);
                 }
                 groupEntityHint.addEventListener("mouseenter", function (this: any) {
                     groupEntityHintHovered = true;
@@ -507,14 +508,20 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     groupEntityHintFocused = true;
                     syncGroupEntityTooltipVisibility();
                 });
-                groupEntityHint.addEventListener("click", function (this: any) { setGroupEntityTooltipVisible(true); });
+                groupEntityHint.addEventListener("click", function (this: any) {
+                    if (document.activeElement !== groupEntityHint)
+                        groupEntityHintTapped = !groupEntityHintTapped;
+                    syncGroupEntityTooltipVisibility();
+                });
                 groupEntityHint.addEventListener("blur", function (this: any) {
                     groupEntityHintFocused = false;
+                    groupEntityHintTapped = false;
                     syncGroupEntityTooltipVisibility();
                 });
                 groupEntityHint.addEventListener("keydown", function (this: any, event?: any) {
                     if (event.key === "Escape") {
                         groupEntityHintFocused = false;
+                        groupEntityHintTapped = false;
                         setGroupEntityTooltipVisible(false);
                     }
                 });
