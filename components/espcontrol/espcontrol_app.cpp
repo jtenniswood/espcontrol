@@ -76,6 +76,30 @@ void EspControlApp::register_panel_config_endpoints() {
   configuration::register_panel_config_capabilities_endpoint();
 }
 
+void EspControlApp::apply_boot_configuration() {
+  if (!boot_configuration_pending_ || boot_configuration_buffer_ == nullptr)
+    return;
+
+  boot_configuration_pending_ = false;
+  configuration::ConfigurationService *const panel_config_service =
+      core_.configuration_service();
+  if (panel_config_service == nullptr) return;
+  // Do not retain the document captured during setup: a browser save can
+  // complete before this timeout runs, and the newest durable document must
+  // always win over startup restoration. The boot buffer is intentionally
+  // separate from the HTTP request buffer. ConfigurationService serializes
+  // this reload and live apply with HTTP saves so neither its scratch buffer
+  // nor the running grid can be reverted by an older startup document.
+  const configuration::ServiceLoadResult loaded =
+      panel_config_service->load_and_apply_runtime(
+          boot_configuration_buffer_, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+  if (!loaded.ok()) {
+    ESP_LOGE(TAG, "Native configuration could not reload for the live grid (%u)",
+             static_cast<unsigned>(loaded.status));
+    return;
+  }
+}
+
 void EspControlApp::setup() {
   if (core_.start()) {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
@@ -103,8 +127,10 @@ void EspControlApp::setup() {
     ESP_LOGE(TAG, "Native configuration storage is unavailable");
   } else {
 #ifdef USE_ESP32
+    // Two fixed slots back the atomic store; the scratch, HTTP request, and
+    // delayed boot-application buffers must not overlap each other.
     constexpr size_t panel_config_memory_size =
-        PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 4;
+        PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 5;
     panel_config_memory_ = static_cast<uint8_t *>(
         heap_caps_malloc(panel_config_memory_size,
                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
@@ -121,6 +147,8 @@ void EspControlApp::setup() {
         PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
     panel_config_document_buffer_ =
         panel_config_memory_ + PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 3;
+    boot_configuration_buffer_ =
+        panel_config_memory_ + PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 4;
     const configuration::ServiceLoadResult loaded = panel_config_service->load(
         panel_config_document_buffer_, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
     if (loaded.status == configuration::ServiceStatus::IMPORTED_LEGACY) {
@@ -145,11 +173,15 @@ void EspControlApp::setup() {
       }
       if (refreshed.ok()) live_document = refreshed;
     }
-    if (live_document.ok() &&
-        !legacy_config_.apply(live_document.document_version,
-                              panel_config_document_buffer_,
-                              live_document.document_size)) {
-      ESP_LOGE(TAG, "Native configuration could not update the live grid");
+    if (live_document.ok()) {
+      // Publishing the restored values triggers the existing grid-refresh
+      // automations. Run that only after every ESPHome component has completed
+      // setup: on P4 panels the grid and LVGL objects are not safe to refresh
+      // while this component's WiFi-priority setup callback is still running.
+      // Browser PUT requests still apply immediately through the runtime
+      // adapter; this deferral is strictly for startup restoration.
+      boot_configuration_pending_ = true;
+      this->set_timeout(1000, [this]() { this->apply_boot_configuration(); });
     }
   }
   register_panel_config_endpoints();

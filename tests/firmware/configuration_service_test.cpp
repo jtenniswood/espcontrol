@@ -224,6 +224,27 @@ bool successful_save_updates_the_native_runtime() {
          runtime.applied == expected;
 }
 
+bool stored_document_can_be_applied_to_the_runtime_atomically() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const std::vector<uint8_t> expected = bytes("boot-native-document");
+  if (!service.save_current(expected.data(), expected.size()).ok()) {
+    return false;
+  }
+
+  std::array<uint8_t, 64> output{};
+  const ServiceLoadResult loaded =
+      service.load_and_apply_runtime(output.data(), output.size());
+  return loaded.ok() && loaded.generation == 1 && runtime.apply_calls == 2 &&
+         runtime.applied_version == CURRENT_CONFIGURATION_DOCUMENT_VERSION &&
+         runtime.applied == expected &&
+         std::equal(expected.begin(), expected.end(), output.begin());
+}
+
 bool runtime_is_updated_even_if_the_legacy_mirror_fails() {
   MemoryBackend backend(256);
   ConfigurationStore store(backend);
@@ -406,6 +427,7 @@ int main() {
       failed_durable_save_never_updates_legacy() &&
       successful_save_dual_writes() &&
       successful_save_updates_the_native_runtime() &&
+      stored_document_can_be_applied_to_the_runtime_atomically() &&
       runtime_is_updated_even_if_the_legacy_mirror_fails() &&
       read_import_only_preserves_upgrade_import_without_legacy_writes() &&
       conditional_save_rejects_a_stale_generation() &&

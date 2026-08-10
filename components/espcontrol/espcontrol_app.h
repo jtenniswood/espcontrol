@@ -55,6 +55,7 @@ class EspControlApp : public esphome::Component {
 
  private:
   void register_panel_config_endpoints();
+  void apply_boot_configuration();
 
   struct LegacyButtonTextSources {
     configuration::EspHomeLegacyTextValue button;
@@ -72,6 +73,8 @@ class EspControlApp : public esphome::Component {
   EspControlAppCore core_{};
   uint8_t *panel_config_memory_{nullptr};
   uint8_t *panel_config_document_buffer_{nullptr};
+  uint8_t *boot_configuration_buffer_{nullptr};
+  bool boot_configuration_pending_{false};
   std::string web_auth_username_;
   std::string web_auth_password_;
   configuration::EspHomeLegacyTextValue button_order_text_{};
