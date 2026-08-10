@@ -473,12 +473,30 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     helpers.idPrefix + "speaker-group-entity",
                     mediaSpeakerGroupEntity(b),
                     "Default: sensor.speaker_group", "", false);
-                var groupEntityHint: any = document.createElement("span");
-                groupEntityHint.className = "mdi mdi-information-outline sp-field-tooltip";
-                groupEntityHint.title = "Leave this blank to use sensor.speaker_group. Only enter another helper if you have more than one speaker helper or have changed the default entity name.";
-                groupEntityHint.setAttribute("role", "img");
-                groupEntityHint.setAttribute("aria-label", groupEntityHint.title);
+                var groupEntityHintText: any = "Leave this blank to use sensor.speaker_group. Only enter another helper if you have more than one speaker helper or have changed the default entity name.";
+                var groupEntityHint: any = document.createElement("button");
+                groupEntityHint.type = "button";
+                groupEntityHint.className = "mdi mdi-information-outline sp-field-info-button";
+                groupEntityHint.setAttribute("aria-label", "About the speaker discovery entity");
+                groupEntityHint.setAttribute("aria-expanded", "false");
+                var groupEntityTooltip: any = document.createElement("div");
+                groupEntityTooltip.className = "sp-field-info-text";
+                groupEntityTooltip.id = helpers.idPrefix + "speaker-group-entity-tooltip";
+                groupEntityTooltip.setAttribute("aria-live", "polite");
+                groupEntityTooltip.textContent = groupEntityHintText;
+                groupEntityHint.setAttribute("aria-describedby", groupEntityTooltip.id);
+                function setGroupEntityTooltipVisible(this: any, visible?: any) {
+                    groupEntityTooltip.classList.toggle("sp-visible", !!visible);
+                    groupEntityHint.setAttribute("aria-expanded", visible ? "true" : "false");
+                }
+                groupEntityHint.addEventListener("focus", function (this: any) { setGroupEntityTooltipVisible(true); });
+                groupEntityHint.addEventListener("click", function (this: any) { setGroupEntityTooltipVisible(true); });
+                groupEntityHint.addEventListener("blur", function (this: any) { setGroupEntityTooltipVisible(false); });
+                groupEntityHint.addEventListener("keydown", function (this: any, event?: any) {
+                    if (event.key === "Escape") setGroupEntityTooltipVisible(false);
+                });
                 groupEntityField.field.querySelector("label").appendChild(groupEntityHint);
+                groupEntityField.field.insertBefore(groupEntityTooltip, groupEntityField.input);
                 panel.appendChild(groupEntityField.field);
                 groupEntityField.input.pattern = "(?:media_player|sensor)\\.[A-Za-z0-9_]+";
                 groupEntityField.input.addEventListener("change", function (this: any) {
