@@ -485,7 +485,6 @@ export default defineConfig({
           { text: 'Language Support', link: '/reference/language-support' },
           { text: 'Request Device Support', link: '/reference/request-device-support' },
           { text: 'FAQ', link: '/reference/faq' },
-          { text: 'Roadmap', link: '/reference/roadmap' },
         ],
       },
     ],
