@@ -32,4 +32,3 @@ Choose the print file that matches your exact screen model. The cases are shaped
 
 - [Install EspControl](/getting-started/install)
 - [Supported Screens](/screens/jc1060p470)
-- [Request Device Support](/reference/request-device-support)
