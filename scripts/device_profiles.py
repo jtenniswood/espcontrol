@@ -891,6 +891,8 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
         features["alarmDelayAudio"] = True
     if package.get("subpageConfigChunks"):
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
+    if profile["firmware"]["build"].get("chip") == "ESP32-P4":
+        features["cameraScreensaver"] = True
     return features
 
 
@@ -954,6 +956,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "display_mode": display.get("mode", "color"),
         "modal": copy.deepcopy(display["modal"]),
         "package": firmware.get("package"),
+        "camera_screensaver_supported": firmware["build"].get("chip") == "ESP32-P4",
     }
     if "portraitCols" in layout:
         slot["portrait_cols"] = layout["portraitCols"]

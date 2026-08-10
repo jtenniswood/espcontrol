@@ -86,6 +86,9 @@ globals:
   - id: screensaver_action_dimmed
     type: bool
     initial_value: 'false'
+  - id: screensaver_action_camera
+    type: bool
+    initial_value: 'false'
   # Connectivity setup must remain visible even when a restored time-based
   # schedule would otherwise keep the panel dark while time is unavailable.
   - id: connectivity_setup_display_active
@@ -101,6 +104,8 @@ esphome:
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+            id(screensaver_action_camera) =
+                ${screensaver_camera_supported} && screensaver_action_camera_mode(action);
           };
           update_screensaver_action_cache();
 
@@ -206,6 +211,15 @@ script:
                   - script.wait: cover_art_hide_effect
             - if:
                 condition:
+                  lambda: 'return target_mode != static_cast<int>(espcontrol::DisplayMode::CAMERA);'
+                then:
+                  - script.execute:
+                      id: camera_screensaver_hide_effect
+                      generation: !lambda 'return generation;'
+                      target_mode: !lambda 'return target_mode;'
+                  - script.wait: camera_screensaver_hide_effect
+            - if:
+                condition:
                   lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::ACTIVE);'
                 then:
                   - script.execute:
@@ -277,30 +291,42 @@ script:
                                   else:
                                     - if:
                                         condition:
-                                          lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
+                                          lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::CAMERA);'
                                         then:
                                           - script.execute:
-                                              id: display_mode_effect_off
+                                              id: display_mode_effect_camera
                                               generation: !lambda 'return generation;'
-                                          - script.wait: display_mode_effect_off
+                                          - script.wait: display_mode_effect_camera
                                           - lambda: |-
                                               id(espcontrol_app).display().complete_transition(
-                                                  static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF);
+                                                  static_cast<uint32_t>(generation), espcontrol::DisplayMode::CAMERA);
                                         else:
                                           - if:
                                               condition:
-                                                lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                                                lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
                                               then:
-                                                - globals.set:
-                                                    id: cover_art_transition_generation
-                                                    value: !lambda 'return static_cast<uint32_t>(generation);'
                                                 - script.execute:
-                                                    id: display_mode_effect_cover_art
+                                                    id: display_mode_effect_off
                                                     generation: !lambda 'return generation;'
-                                                - script.wait: display_mode_effect_cover_art
+                                                - script.wait: display_mode_effect_off
                                                 - lambda: |-
                                                     id(espcontrol_app).display().complete_transition(
-                                                        static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART);
+                                                        static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF);
+                                              else:
+                                                - if:
+                                                    condition:
+                                                      lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                                                    then:
+                                                      - globals.set:
+                                                          id: cover_art_transition_generation
+                                                          value: !lambda 'return static_cast<uint32_t>(generation);'
+                                                      - script.execute:
+                                                          id: display_mode_effect_cover_art
+                                                          generation: !lambda 'return generation;'
+                                                      - script.wait: display_mode_effect_cover_art
+                                                      - lambda: |-
+                                                          id(espcontrol_app).display().complete_transition(
+                                                              static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART);
 
   - id: display_mode_effect_active
     mode: restart
@@ -469,6 +495,7 @@ script:
               transition.target_mode == espcontrol::DisplayMode::SETUP_DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::CLOCK ||
+              transition.target_mode == espcontrol::DisplayMode::CAMERA ||
               transition.target_mode == espcontrol::DisplayMode::COVER_ART ||
               transition.target_mode == espcontrol::DisplayMode::DISPLAY_OFF;
 
@@ -678,9 +705,17 @@ script:
                                   id: display_mode_request_automatic
                                   target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DIMMED);'
                             else:
-                              - script.execute:
-                                  id: display_mode_request_automatic
-                                  target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
+                              - if:
+                                  condition:
+                                    lambda: 'return id(screensaver_action_camera);'
+                                  then:
+                                    - script.execute:
+                                        id: display_mode_request_automatic
+                                        target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CAMERA);'
+                                  else:
+                                    - script.execute:
+                                        id: display_mode_request_automatic
+                                        target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF);'
             - globals.set:
                 id: screensaver_sensor_sleep_pending
                 value: 'false'
@@ -1062,6 +1097,7 @@ script:
       - script.stop: show_dimmed_view
       - script.stop: screensaver_dimmed_refresh_brightness
       - script.stop: show_cover_art_view
+      - script.stop: camera_screensaver_request_image
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - lambda: |-
@@ -1071,6 +1107,8 @@ script:
           id(screensaver_wake_touch_guard_skip_once) =
               id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::COVER_ART) ||
+              id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::CAMERA) ||
               id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::DISPLAY_OFF);
       - if:
