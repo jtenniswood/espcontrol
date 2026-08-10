@@ -51,8 +51,15 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb]
+    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb, companion]
     refresh: 1s
+
+# A local, panel-hosted TLS WebSocket endpoint for the optional macOS Companion
+# app. The panel never discovers or connects to the Mac; the Mac reconnects to
+# this endpoint after the user starts pairing on the physical display.
+companion:
+  id: mac_companion
+  port: 8443
 
 espcontrol:
   id: espcontrol_app

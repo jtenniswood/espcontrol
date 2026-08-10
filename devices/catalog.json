@@ -968,7 +968,8 @@
       "config": {
         "slots": 9,
         "capabilities": {
-          "imageSlots": 1
+          "imageSlots": 1,
+          "companion": true
         },
         "public": {
           "name": "Guition 4848S040",

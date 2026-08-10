@@ -33,6 +33,7 @@ api:
           }
         }
         register_local_action_endpoint();
+        register_companion_actions_endpoint();
     - delay: 2s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();

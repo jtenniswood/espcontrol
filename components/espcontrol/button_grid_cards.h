@@ -3,6 +3,7 @@
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #include "button_grid_datetime_cards.h"
+#include "companion_controls.h"
 
 inline void apply_push_button_transition(lv_obj_t *btn);
 inline void clear_push_button_transition(lv_obj_t *btn);
@@ -149,6 +150,21 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
 }
 
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
+
+inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
+  std::string label = p.label.empty() ? (p.entity.empty() ? "Mac App" : p.entity) : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
+  const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
+  lv_label_set_text(s.icon_lbl, icon);
+  const bool available = companion_action_available(p.entity);
+  if (available) {
+    lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
+    apply_push_button_transition(s.btn);
+  } else {
+    lv_obj_add_state(s.btn, LV_STATE_DISABLED);
+    clear_push_button_transition(s.btn);
+  }
+}
 
 inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   if (action_card_local_action(p)) {

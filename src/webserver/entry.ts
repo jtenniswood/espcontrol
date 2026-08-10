@@ -94,6 +94,7 @@ import { installAppStartModule } from "./application/app_start";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
 import { registerCalendarCardTypes } from "./cards/calendar";
+import { registerCompanionCardTypes } from "./cards/companion";
 import { registerClimateCardTypes } from "./cards/climate";
 import { registerClockCardTypes } from "./cards/clock";
 import { registerCoverLikeCardHelpers } from "./cards/cover_like_card";
@@ -205,6 +206,7 @@ const cardBootstrapModules: readonly EditorBootstrapModule[] = [
   { name: "card-action", install: registerActionCardTypes },
   { name: "card-alarm", install: registerAlarmCardTypes },
   { name: "card-calendar", install: registerCalendarCardTypes },
+  { name: "card-companion", install: registerCompanionCardTypes },
   { name: "card-climate", install: registerClimateCardTypes },
   { name: "card-clock", install: registerClockCardTypes },
   { name: "card-cover-like", install: registerCoverLikeCardHelpers },

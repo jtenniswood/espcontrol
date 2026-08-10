@@ -80,6 +80,7 @@
       "media_playlist",
       "option_select",
       "push",
+      "companion",
       "screen_lock",
       "webhook",
       "sensor",
@@ -139,6 +140,7 @@
       },
       "option_select": {"driver": "option_select", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "push": {"driver": "push", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "companion": {"driver": "companion", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "screen_lock": {"driver": "screen_lock", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "webhook": {"driver": "webhook", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "sensor": {"driver": "sensor", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
@@ -1862,6 +1864,37 @@
         "options": ""
       }
     },
+    "companion": {
+      "label": "Companion",
+      "allowInSubpage": true,
+      "domains": [],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "default_if_empty", "value": "Monitor" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "companion" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Monitor",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "companion",
+        "precision": "",
+        "options": ""
+      }
+    },
     "screen_lock": {
       "label": "Screen Lock",
       "allowInSubpage": true,
@@ -2517,6 +2550,7 @@
     "climate": "H",
     "climate_control": "HC",
     "push": "P",
+    "companion": "CP",
     "screen_lock": "SL",
     "webhook": "WH",
     "internal": "I",

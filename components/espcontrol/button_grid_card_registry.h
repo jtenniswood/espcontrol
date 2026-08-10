@@ -26,6 +26,7 @@ enum class Family : uint8_t {
   MEDIA,
   OPTION_SELECT,
   PUSH,
+  COMPANION,
   SCREEN_LOCK,
   SENSOR,
   SLIDER,

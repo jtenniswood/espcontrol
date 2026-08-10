@@ -13,6 +13,7 @@ export interface DeviceConfigFeatures {
   voiceServices?: boolean;
   battery?: boolean;
   alarmDelayAudio?: boolean;
+  companion?: boolean;
 }
 
 export interface DeviceConfig {

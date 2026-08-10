@@ -436,6 +436,7 @@ export default defineConfig({
           { text: 'Lawn Mower', link: '/card-types/lawn-mower' },
           { text: 'Lights', link: '/card-types/lights' },
           { text: 'Local Action', link: '/card-types/local-actions' },
+          { text: 'Companion', link: '/card-types/companion' },
           { text: 'Lock', link: '/card-types/locks' },
           { text: 'Media', link: '/card-types/media' },
           { text: 'Option Select', link: '/card-types/option-select' },

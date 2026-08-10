@@ -4,7 +4,7 @@
 // The same visual, binding, interaction, layout, and cleanup entry points serve
 // main-grid and subpage cards while preserving their established ownership.
 // Contract coverage markers: type == "", "action", "alarm_action",
-// "fan_switch", "internal", "light_switch", "push", "screen_lock", "webhook".
+// "companion", "fan_switch", "internal", "light_switch", "push", "screen_lock", "webhook".
 
 namespace espcontrol::cards {
 
@@ -19,6 +19,7 @@ inline bool basic_action_driver_matches(const Context &context,
     case Driver::ALARM_ACTION:
     case Driver::INTERNAL:
     case Driver::PUSH:
+    case Driver::COMPANION:
     case Driver::SCREEN_LOCK:
     case Driver::WEBHOOK:
       return !action_card_option_select(config);
@@ -36,6 +37,9 @@ inline bool basic_action_driver_setup_visual(
   switch (context.runtime.driver) {
     case Driver::SCREEN_LOCK:
       setup_screen_lock_card(slot, config);
+      break;
+    case Driver::COMPANION:
+      setup_companion_card(slot, config);
       break;
     case Driver::ALARM_ACTION:
       setup_alarm_action_card(slot, config);
@@ -466,6 +470,15 @@ inline bool basic_action_driver_handle_main_click(
       snprintf(slot_buffer, sizeof(slot_buffer), "%d", slot_number);
       ha_action_add_data(request, "slot", slot_buffer);
       ha_action_send(request);
+      break;
+    }
+    case Driver::COMPANION: {
+      char request_id[24];
+      snprintf(request_id, sizeof(request_id), "%08lx-%d",
+               static_cast<unsigned long>(companion_next_request_number()), slot_number);
+      if (!invoke_companion_action(config.entity, request_id)) {
+        ESP_LOGW("companion", "Action unavailable: %s", config.entity.c_str());
+      }
       break;
     }
     case Driver::ALARM_ACTION: {
