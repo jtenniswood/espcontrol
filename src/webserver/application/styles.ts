@@ -291,7 +291,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-field-stack{display:grid;gap:10px}" +
         ".sp-field-stack.sp-hidden{display:none}" +
         ".sp-field-label{display:block;font-size:.8rem;font-weight:500;color:var(--text2);margin-bottom:8px}" +
-        ".sp-field-info-button{margin-left:5px;padding:0;border:0;background:none;color:inherit;cursor:help;font-size:.9rem;vertical-align:middle}" +
+        ".sp-field-info-button{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:-4px 0 -4px 2px;padding:0;border:0;background:none;color:inherit;cursor:help;font-size:.9rem;vertical-align:middle}" +
         ".sp-field-info-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}" +
         ".sp-field-info-text{display:none;font-size:.75rem;color:var(--text2);line-height:1.35;margin:-2px 0 8px}" +
         ".sp-field-info-text.sp-visible{display:block}" +
