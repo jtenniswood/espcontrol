@@ -396,7 +396,6 @@ export default defineConfig({
           { text: 'Install', link: '/getting-started/install' },
           { text: 'C6 WiFi Recovery', link: '/getting-started/c6-recovery' },
           { text: 'Enable Actions', link: '/getting-started/home-assistant-actions' },
-          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
         ],
       },
@@ -479,6 +478,7 @@ export default defineConfig({
       {
         text: 'Advanced',
         items: [
+          { text: 'Manual Setup', link: '/getting-started/manual-esphome-setup' },
           { text: 'Contributing', link: '/reference/contributing' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Icon Reference', link: '/reference/icons' },
