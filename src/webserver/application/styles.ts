@@ -291,6 +291,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-field-stack{display:grid;gap:10px}" +
         ".sp-field-stack.sp-hidden{display:none}" +
         ".sp-field-label{display:block;font-size:.8rem;font-weight:500;color:var(--text2);margin-bottom:8px}" +
+        ".sp-field-tooltip{margin-left:5px;cursor:help;font-size:.9rem;vertical-align:middle}" +
         ".sp-input,.sp-select{width:100%;padding:10px 12px;background:var(--surface2);" +
         "border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.875rem;" +
         "font-family:inherit;box-sizing:border-box;outline:none;" +

@@ -473,6 +473,12 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     helpers.idPrefix + "speaker-group-entity",
                     mediaSpeakerGroupEntity(b),
                     "Default: sensor.speaker_group", "", false);
+                var groupEntityHint: any = document.createElement("span");
+                groupEntityHint.className = "mdi mdi-information-outline sp-field-tooltip";
+                groupEntityHint.title = "Leave this blank to use sensor.speaker_group. Only enter another helper if you have more than one speaker helper or have changed the default entity name.";
+                groupEntityHint.setAttribute("role", "img");
+                groupEntityHint.setAttribute("aria-label", groupEntityHint.title);
+                groupEntityField.field.querySelector("label").appendChild(groupEntityHint);
                 panel.appendChild(groupEntityField.field);
                 groupEntityField.input.pattern = "(?:media_player|sensor)\\.[A-Za-z0-9_]+";
                 groupEntityField.input.addEventListener("change", function (this: any) {
