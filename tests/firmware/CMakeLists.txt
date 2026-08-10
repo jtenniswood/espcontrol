@@ -28,7 +28,12 @@ target_compile_options(grid_navigation_service_test PRIVATE -Wall -Wextra -Werro
 target_include_directories(grid_navigation_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME grid_navigation_service_test COMMAND grid_navigation_service_test)
 
-add_executable(control_modal_service_test control_modal_service_test.cpp)
+add_executable(control_modal_service_test
+  control_modal_service_test.cpp
+  ../../components/espcontrol/espcontrol_app_core.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+)
 target_compile_features(control_modal_service_test PRIVATE cxx_std_17)
 target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)

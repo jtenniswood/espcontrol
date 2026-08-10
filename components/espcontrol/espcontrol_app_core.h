@@ -18,9 +18,10 @@ namespace espcontrol {
 // UI-owned service types can carry LVGL handles, so the core cannot name them
 // directly without taking on framework dependencies. This fixed-capacity slot
 // gives one such service an explicit application-owned lifetime instead.
+template<size_t Capacity>
 class FixedRuntimeServiceSlot {
  public:
-  static constexpr size_t CAPACITY = 128;
+  static constexpr size_t CAPACITY = Capacity;
 
   FixedRuntimeServiceSlot() = default;
   ~FixedRuntimeServiceSlot() { reset(); }
@@ -120,6 +121,13 @@ class EspControlAppCore {
     return grid_navigation_service_.get_or_create<NavigationService>();
   }
 
+  // Modal widgets stay in the LVGL-facing UI layer, while their lifecycle
+  // state receives the same application-owned lifetime as navigation.
+  template<typename ModalService>
+  ModalService &modal_state_service() {
+    return modal_state_service_.get_or_create<ModalService>();
+  }
+
   // Compatibility facade for ESPHome YAML while display ownership migrates to
   // the explicit lifecycle service.
   DisplayModeController &display() { return display_lifecycle_.controller(); }
@@ -134,7 +142,11 @@ class EspControlAppCore {
   cards::CardRuntimeRegistryService card_runtime_registry_{};
   std::optional<configuration::ConfigurationService> configuration_service_;
   HomeAssistantCallbackOwnerService home_assistant_callback_owner_{};
-  FixedRuntimeServiceSlot grid_navigation_service_{};
+  // The concrete UI services assert their own sizes when they bind to these
+  // slots. Keeping each bound small avoids reserving a generic 128-byte buffer
+  // for every service in every firmware image.
+  FixedRuntimeServiceSlot<64> grid_navigation_service_{};
+  FixedRuntimeServiceSlot<64> modal_state_service_{};
 };
 
 inline EspControlAppCore *&active_espcontrol_app_core() {

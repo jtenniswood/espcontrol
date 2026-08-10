@@ -76,6 +76,13 @@ source or a committed generated input.
 6. Firmware parses the saved compact config string and updates the on-device
    cards.
 
+`EspControlAppCore` owns the long-lived configuration, card runtime, Home
+Assistant callback, display lifecycle, grid navigation, and modal-state
+services. The navigation and modal-state slots have fixed capacity so their
+LVGL-specific types remain in the UI layer with a bounded, reviewable memory
+budget. Firmware UI accesses those services only after the core starts; the
+standalone host-test fallbacks are excluded from firmware images.
+
 ## Build-Time Flow
 
 ```text

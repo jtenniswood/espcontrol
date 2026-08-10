@@ -1,6 +1,7 @@
 #include <cassert>
 
 #include "control_modal_service.h"
+#include "espcontrol_app_core.h"
 
 namespace {
 
@@ -46,5 +47,14 @@ int main() {
   assert(close_callback == close_modal);
   modal.clear_nested_menu(&nested_overlay);
   assert(modal.nested_active().overlay == nullptr);
+
+  espcontrol::EspControlAppCore app;
+  assert(app.start());
+  auto &core_modal = app.modal_state_service<ControlModalStateService<Overlay>>();
+  core_modal.set_active(ControlModalKind::TODO_LIST, &overlay, nullptr,
+                        ControlModalDismissPolicy::DISMISS);
+  assert(core_modal.active().kind == ControlModalKind::TODO_LIST);
+  assert(app.stop());
+
   return 0;
 }

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "espcontrol_app_core.h"
+#include "control_modal_service.h"
 #include "grid_navigation_service.h"
 
 using espcontrol::AppLifecycleState;
@@ -58,6 +59,12 @@ struct Subpage {
 };
 
 using NavigationService = GridNavigationService<HomeTarget, Subpage>;
+
+struct ModalOverlay {
+  int slot = 0;
+};
+
+using ModalService = ControlModalStateService<ModalOverlay>;
 
 }  // namespace
 
@@ -120,6 +127,12 @@ int main() {
   if (navigation.home_target_count() != 1 || navigation.subpage_count() != 1) {
     return EXIT_FAILURE;
   }
+
+  ModalOverlay overlay;
+  ModalService &modal = app.modal_state_service<ModalService>();
+  modal.set_active(ControlModalKind::TODO_LIST, &overlay, nullptr,
+                   ControlModalDismissPolicy::DISMISS);
+  if (modal.active().overlay != &overlay) return EXIT_FAILURE;
 
   if (!app.run_once() || !app.run_once() || app.loop_count() != 2 ||
       app.display_lifecycle().loop_count() != 2) {
