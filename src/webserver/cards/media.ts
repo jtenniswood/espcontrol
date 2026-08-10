@@ -834,6 +834,20 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     fallback: "Speaker",
                 });
             }
+            if (b.sensor === "control_modal" || b.sensor === "speaker_group") {
+                var groupEntityField: any = helpers.textField(
+                    "Speaker Discovery Entity (optional)",
+                    helpers.idPrefix + "speaker-group-entity",
+                    mediaSpeakerGroupEntity(b),
+                    "Default: sensor.speaker_group", "", false);
+                panel.appendChild(groupEntityField.field);
+                groupEntityField.input.pattern = "(?:media_player|sensor)\\.[A-Za-z0-9_]+";
+                groupEntityField.input.addEventListener("change", function (this: any) {
+                    setMediaSpeakerGroupEntity(b, groupEntityField.input.value);
+                    groupEntityField.input.value = mediaSpeakerGroupEntity(b);
+                    helpers.saveField("options", b.options);
+                });
+            }
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             function modeInfo(this: any, value?: any) {
