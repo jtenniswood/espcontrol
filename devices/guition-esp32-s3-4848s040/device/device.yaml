@@ -17,6 +17,7 @@ substitutions:
 esp32:
   board: esp32-s3-devkitc-1
   flash_size: 16MB
+  partitions: ../../common/device/partitions_16mb_card_images.csv
   framework:
     type: esp-idf
     # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues

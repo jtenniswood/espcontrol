@@ -20,6 +20,30 @@ COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.j
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
 BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_weather_driver.h"
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
+LEGACY_OTA_PARTITION_LAYOUTS = {
+    "esp32-p4-86": "partitions_32mb_card_images.csv",
+    "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc4880p443": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1-v2": "partitions_16mb_card_images.csv",
+    "guition-esp32-s3-4848s040": "partitions_16mb_card_images.csv",
+}
+LEGACY_OTA_PARTITION_ROWS = {
+    "partitions_16mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0x6f0000,",
+        "app1,          app,  ota_1,   0x710000,  0x6f0000,",
+        "card_images,   data, 0x40,    0xe00000,  0x200000,",
+    ),
+    "partitions_32mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0xef0000,",
+        "app1,          app,  ota_1,   0xf10000,  0xef0000,",
+        "card_images,   data, 0x40,    0x1e00000, 0x200000,",
+    ),
+}
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -182,6 +206,20 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
+
+
+def test_ota_preserves_deployed_partition_layouts() -> None:
+    for slug, table_name in LEGACY_OTA_PARTITION_LAYOUTS.items():
+        device_path = ROOT / "devices" / slug / "device" / "device.yaml"
+        device = device_path.read_text(encoding="utf-8")
+        assert f"partitions: ../../common/device/{table_name}" in device, (
+            f"{slug}: OTA builds must retain the deployed {table_name} flash layout"
+        )
+
+    for table_name, rows in LEGACY_OTA_PARTITION_ROWS.items():
+        table = (ROOT / "common" / "device" / table_name).read_text(encoding="utf-8")
+        for row in rows:
+            assert row in table, f"{table_name}: missing deployed partition row {row}"
 
 
 def test_upgrades_do_not_reset_saved_panel_config() -> None:
@@ -676,6 +714,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()

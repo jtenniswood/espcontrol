@@ -19,6 +19,7 @@ esp32:
   variant: esp32p4
   # Waveshare documents this panel with 32MB external NOR flash.
   flash_size: 32MB
+  partitions: ../../common/device/partitions_32mb_card_images.csv
   cpu_frequency: 360MHZ
   engineering_sample: true
   framework:
