@@ -126,6 +126,7 @@ inline AccentColor darken_accent_color(AccentColor color) {
 
 struct RuntimeState {
   espcontrol::artwork::SourceCandidates sources;
+  espcontrol::artwork::RefreshBatch artwork_refresh;
   std::string source_url, effective_download_url, active_download_source_url;
   std::string loaded_url, last_good_url, retry_url, fallback_url;
   int retry_count{0};
@@ -160,6 +161,7 @@ struct RuntimeState {
   bool begin_retry() { if (!can_retry()) return false; ++retry_count; return true; }
   void clear_image() {
     sources.clear();
+    artwork_refresh.reset();
     source_url.clear(); effective_download_url.clear(); active_download_source_url.clear(); loaded_url.clear();
     last_good_url.clear();
     retry_url.clear(); fallback_url.clear(); retry_count = 0; image_available = false; refresh_needed = false;

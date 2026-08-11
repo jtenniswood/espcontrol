@@ -7,6 +7,7 @@
 # =============================================================================
 
 substitutions:
+  partition_table: "../common/device/partitions_32mb_card_images.csv"
   cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-p4-86"
   friendly_name: "EspControl P4 86 Panel"

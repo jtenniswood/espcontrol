@@ -102,7 +102,6 @@ web_server:
   version: 3
   include_internal: true
   js_url: https://jtenniswood.github.io/espcontrol/webserver/www.js?device=${device_slug}&v=${firmware_version}&ui=20260714-shared
-  js_include: ../../docs/public/webserver/embedded/www.js
   sorting_groups:
     - id: sg_button
       name: "Button Configuration"

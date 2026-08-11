@@ -72,14 +72,14 @@ export function registerMediaCardTypes(): GlobalDescriptors {
         var options: any = [
             ["control_modal", "All Controls"],
             ["cover_art", "Cover Art"],
+            ["playlist", "Track, Album or Playlist"],
             ["speaker_group", "Speaker Group"],
-            ["play_pause", "Play/Pause Button"],
-            ["previous", "Previous Button"],
-            ["next", "Next Button"],
-            ["volume", "Volume Button"],
+            ["play_pause", "Play/Pause"],
+            ["previous", "Previous"],
+            ["next", "Next"],
+            ["volume", "Volume"],
             ["position", "Track Position"],
             ["now_playing", "Now Playing"],
-            ["playlist", "Media Content"],
         ];
         return mediaCoverArtCardsSupported() ? options : options.filter(function (this: any, option?: any) {
             return option[0] !== "cover_art";
@@ -254,7 +254,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
         cardMetadata: MEDIA_CARD_METADATA,
         onSelect: function (this: any, b?: any) {
             b.entity = "";
-            b.sensor = "play_pause";
+            b.sensor = "cover_art";
             b.unit = "";
             b.precision = (b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "";
             b.icon = "Auto";
@@ -379,7 +379,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
-                        if ((oldMode === "control_modal" || oldMode === "speaker_group") &&
+                        if ((oldMode === "control_modal" || oldMode === "speaker_group" || oldMode === "cover_art") &&
                             b.sensor !== "control_modal" && b.sensor !== "speaker_group" &&
                             mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
