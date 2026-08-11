@@ -68,6 +68,8 @@ wifi:
         then:
           - script.execute: wifi_reconnect_flow
 
+improv_serial:
+
 api:
   on_client_connected:
     - script.execute: ha_restore_after_api
