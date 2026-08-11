@@ -97,18 +97,26 @@ using EspHomeHaReadCoordinator = HaReadCoordinator<EspHomeHaReadTransport, EspHo
 using EspHomeHaBindingService =
     HomeAssistantBindingService<EspHomeHaReadTransport, EspHomeHaHeapProbe>;
 
-inline EspHomeHaBindingService &ha_binding_service() {
-  if (auto *core = espcontrol::active_espcontrol_app_core()) {
-    return core->home_assistant_binding_service<EspHomeHaBindingService>();
-  }
-#ifdef ESP_PLATFORM
-  // Firmware UI work begins only after EspControlAppCore starts. Keeping the
-  // contract strict avoids a second permanent binding-service allocation.
-  std::abort();
-#else
+inline EspHomeHaBindingService &pre_core_ha_binding_service() {
   static EspHomeHaBindingService service;
   return service;
-#endif
+}
+
+inline bool &pre_core_ha_binding_service_is_active() {
+  static bool active = false;
+  return active;
+}
+
+inline EspHomeHaBindingService &ha_binding_service() {
+  if (auto *core = espcontrol::active_espcontrol_app_core(); core != nullptr &&
+      !pre_core_ha_binding_service_is_active()) {
+    return core->home_assistant_binding_service<EspHomeHaBindingService>();
+  }
+  // ESPHome can reset subscriptions before the application core starts. Once
+  // that happens, preserve this service for the firmware lifetime so callback
+  // ownership and deferred subscriptions never switch to a different object.
+  pre_core_ha_binding_service_is_active() = true;
+  return pre_core_ha_binding_service();
 }
 
 inline EspHomeHaReadCoordinator &ha_read_coordinator() {

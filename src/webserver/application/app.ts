@@ -30,7 +30,11 @@ export function installAppModule(): GlobalDescriptors {
         link.href = "https://www.buymeacoffee.com/jtenniswood";
         link.target = "_blank";
         link.rel = "noopener";
-        link.textContent = "Support EspControl";
+        var icon: any = document.createElement("span");
+        icon.className = "mdi mdi-coffee-maker";
+        icon.setAttribute("aria-hidden", "true");
+        link.appendChild(icon);
+        link.append("Buy me a coffee");
         panel.appendChild(link);
         document.body.appendChild(panel);
         syncTabChrome();

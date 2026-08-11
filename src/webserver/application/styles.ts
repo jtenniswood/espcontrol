@@ -30,7 +30,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-tab-docs .mdi{font-size:16px;line-height:1;opacity:.7}" +
         ".sp-page{display:none}.sp-page.active{display:block}" +
         ".sp-support-btn{position:fixed;right:28px;bottom:28px;z-index:150;display:inline-block}" +
-        ".sp-support-link{display:block;padding:10px 16px;border-radius:999px;background:#ffdd00;color:#101010;font-size:13px;font-weight:700;line-height:1;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.25)}" +
+        ".sp-support-link{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:#ffdd00;color:#101010;font-size:13px;font-weight:700;line-height:1;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.25)}" +
         ".sp-support-btn.sp-support-hidden{display:none}" +
         ".fade-in{animation:fadeIn .3s ease}" +
         "@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}" +
@@ -38,7 +38,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-screen{width:var(--screen-w);aspect-ratio:var(--screen-aspect);background:#000;" +
         "border-radius:var(--radius);position:relative;overflow:hidden;" +
         "box-shadow:0 2px 20px rgba(0,0,0,.35);border:2px solid var(--surface);" +
-        "container-type:inline-size;font-family:Roboto,sans-serif;user-select:none}" +
+        "container-type:inline-size;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;user-select:none}" +
         ".sp-config-locked .sp-screen{filter:grayscale(1) brightness(.58);opacity:.62;pointer-events:none}" +
         ".sp-config-locked .sp-screen::after{content:'';position:absolute;inset:0;background:rgba(80,80,84,.28);z-index:5}" +
         ".sp-topbar{position:absolute;top:0;left:0;right:0;height:var(--topbar-h);" +
@@ -84,7 +84,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-btn-big .sp-sensor-preview-large .sp-sensor-unit,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-unit{transform:translateY(var(--large-sensor-unit-offset-y,-20px))}" +
         ".sp-date-time-wide-large{justify-content:center;align-items:center}" +
         ".sp-clock-wide-large{justify-content:center;align-items:flex-start}" +
-        ".sp-clock-wide-large .sp-sensor-value{font-family:Roboto,sans-serif;font-weight:100}" +
+        ".sp-clock-wide-large .sp-sensor-value{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:100}" +
         ".sp-forecast-preview{white-space:nowrap;gap:0}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +

@@ -3,20 +3,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <string>
+#include <memory>
 
 #include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
 
 #include "espcontrol_app_core.h"
-#include "configuration_service.h"
-#include "configuration_store.h"
-#include "panel_config_espidf_storage.h"
-#include "panel_config_esphome_text.h"
-#include "panel_config_legacy_adapter.h"
-#include "panel_config_service_validator.h"
-#include "panel_config_storage_backend.h"
-
 namespace espcontrol {
 
 // The single ESPHome component boundary for EspControl-owned firmware state.
@@ -26,13 +18,18 @@ class EspControlApp : public esphome::Component {
  public:
   static constexpr size_t PANEL_CONFIG_STORAGE_SLOT_CAPACITY = 40 * 1024;
 
+  EspControlApp();
+  ~EspControlApp();
+
   void setup() override;
   void loop() override;
   void on_shutdown() override;
   float get_setup_priority() const override {
-    // Cover-art boot automation resets Home Assistant subscriptions at 250.
-    // Start the core just before WiFi (251) so it always owns that state.
-    return esphome::setup_priority::WIFI + 1.0f;
+    // The native configuration wiring binds restored ESPHome text entities.
+    // Those entities, and the P4 display services they can refresh, are only
+    // ready once Wi-Fi setup has completed. Starting the owner earlier makes
+    // P4 firmware reset before ESPHome can confirm a new OTA boot.
+    return esphome::setup_priority::AFTER_WIFI;
   }
 
   DisplayModeController &display() { return core_.display(); }
@@ -49,40 +46,36 @@ class EspControlApp : public esphome::Component {
       esphome::text::Text *subpage_4, esphome::text::Text *subpage_5,
       esphome::text::Text *subpage_6, esphome::text::Text *subpage_7);
   void set_web_auth_credentials(const char *username, const char *password) {
-    web_auth_username_ = username == nullptr ? "" : username;
-    web_auth_password_ = password == nullptr ? "" : password;
+    web_auth_username_ = username;
+    web_auth_password_ = password;
   }
 
  private:
+  class NativeConfigurationRuntime;
+
   void register_panel_config_endpoints();
   void initialize_native_configuration();
   void apply_boot_configuration();
+  bool native_configuration_requested() const;
+  bool create_native_configuration_runtime();
 
-  struct LegacyButtonTextSources {
-    configuration::EspHomeLegacyTextValue button;
-    std::array<configuration::EspHomeLegacyTextValue,
-               configuration::PanelConfigLegacyAdapter::MAX_SUBPAGE_CHUNKS>
-        subpages{};
+  struct PanelConfigTextSources {
+    esphome::text::Text *button{nullptr};
+    std::array<esphome::text::Text *, 8> subpages{};
   };
 
-  configuration::PanelConfigLegacyAdapter legacy_config_{};
-  configuration::PanelConfigDocumentValidator panel_config_validator_{};
-  configuration::EspIdfPanelConfigBlobStorage panel_config_blobs_{};
-  configuration::BufferedBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
-      panel_config_backend_{panel_config_blobs_};
-  configuration::ConfigurationStore panel_config_store_{panel_config_backend_};
+  const char *panel_config_device_profile_{nullptr};
+  esphome::text::Text *panel_config_button_order_{nullptr};
+  esphome::text::Text *panel_config_button_on_color_{nullptr};
+  std::array<PanelConfigTextSources, 32> panel_config_button_texts_{};
+  // This owns every non-trivial configuration object. Keeping it separate
+  // leaves the ESPHome-created application object safe to construct before
+  // the framework's allocators and component setup are ready.
+  std::unique_ptr<NativeConfigurationRuntime> native_configuration_runtime_;
   EspControlAppCore core_{};
-  uint8_t *panel_config_memory_{nullptr};
-  uint8_t *panel_config_document_buffer_{nullptr};
-  uint8_t *boot_configuration_buffer_{nullptr};
   bool native_configuration_initialized_{false};
-  bool boot_configuration_pending_{false};
-  std::string web_auth_username_;
-  std::string web_auth_password_;
-  configuration::EspHomeLegacyTextValue button_order_text_{};
-  configuration::EspHomeLegacyTextValue button_on_color_text_{};
-  std::array<LegacyButtonTextSources, configuration::PANEL_CONFIG_MAX_SLOT_COUNT>
-      legacy_button_texts_{};
+  const char *web_auth_username_{nullptr};
+  const char *web_auth_password_{nullptr};
 };
 
 }  // namespace espcontrol

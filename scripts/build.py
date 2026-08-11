@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MDI_VERSION = "7.4.47"
 MDI_CSS_URL = f"https://cdn.jsdelivr.net/npm/@mdi/font@{MDI_VERSION}/css/materialdesignicons.css"
 MDI_WEB_FONT = ROOT / "common" / "assets" / "fonts" / f"materialdesignicons-webfont-{MDI_VERSION}.ttf"
+INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "theme-default" / "fonts" / "inter-roman-latin.woff2"
 WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 
 # The hosted editor remains available to the development firmware plus the
@@ -3642,14 +3643,16 @@ def web_mdi_icon_names(data, codepoints):
 
 
 def embedded_web_mdi_styles():
-    """Build the local icon font and CSS used by the browser bundle.
+    """Build the local interface and icon font CSS used by the browser bundle.
 
     Browsers receive this as part of www.js, rather than requesting a CDN
-    stylesheet and font after the editor has started. This matters when a
-    display is reachable on the local network but cannot reach the Internet.
+    stylesheet or font after the editor has started. This matters when a display
+    is reachable on the local network but cannot reach the Internet.
     """
     if not MDI_WEB_FONT.exists():
         raise BuildError(f"Missing bundled web icon font: {MDI_WEB_FONT.relative_to(ROOT)}")
+    if not INTER_WEB_FONT.exists():
+        raise BuildError(f"Missing bundled web interface font: {INTER_WEB_FONT.relative_to(ROOT)}")
 
     data = load_json(ICONS_JSON)
     codepoints = web_mdi_icon_codepoints(data)
@@ -3658,10 +3661,14 @@ def embedded_web_mdi_styles():
     if missing:
         raise BuildError("Missing MDI codepoints for browser icons: " + ", ".join(missing))
 
-    font_data = base64.b64encode(MDI_WEB_FONT.read_bytes()).decode("ascii")
+    interface_font_data = base64.b64encode(INTER_WEB_FONT.read_bytes()).decode("ascii")
+    icon_font_data = base64.b64encode(MDI_WEB_FONT.read_bytes()).decode("ascii")
     css = [
+        "@font-face{font-family:'Inter';src:url(data:font/woff2;base64,",
+        interface_font_data,
+        ") format('woff2');font-weight:100 900;font-style:normal;font-display:swap}",
         "@font-face{font-family:'Material Design Icons';src:url(data:font/ttf;base64,",
-        font_data,
+        icon_font_data,
         ") format('truetype');font-weight:normal;font-style:normal;font-display:block}",
         ".mdi{display:inline-block;font-family:'Material Design Icons';font-weight:normal;font-style:normal;line-height:1;text-rendering:auto;-webkit-font-smoothing:antialiased}",
         ".mdi::before{display:inline-block}",

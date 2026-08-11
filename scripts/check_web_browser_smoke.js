@@ -4624,6 +4624,15 @@ async function runCase(browser, testCase) {
       iconStyle.includes(".mdi-cog::before{content:'\\F0493'}"),
       `${testCase.name}: the local icon stylesheet should use a CSS codepoint escape`,
     );
+    assert(
+      iconStyle.includes("@font-face{font-family:'Inter'"),
+      `${testCase.name}: the local stylesheet should embed the interface font`,
+    );
+    assert.strictEqual(
+      await page.locator(".sp-support-link").textContent(),
+      "Buy me a coffee",
+      `${testCase.name}: the support button should retain its recognised label`,
+    );
     assertNoLayoutBreaks(
       await measureCoreLayout(page),
       testCase.name,
