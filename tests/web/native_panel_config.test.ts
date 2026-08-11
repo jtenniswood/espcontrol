@@ -4,6 +4,7 @@ import {
   type NativePanelConfigRequest,
   type NativePanelConfigResponse,
 } from "../../src/webserver/features/native_panel_config";
+import { installNativePanelConfigMigrationModule } from "../../src/webserver/application/native_panel_config_migration";
 import { decodePanelConfig, encodePanelConfig, type PanelConfigDocument } from "../../src/webserver/model";
 
 interface MigrationFixture {
@@ -124,6 +125,75 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   nativeInitializationComplete = true;
   equal(await reconnectingClient.save((current) => current), "saved",
     "a later save rediscovers native configuration after initialization completes");
+
+  let panelRestarted = false;
+  const restartedClient = createNativePanelConfigClient(async (path, request) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    if (request?.method === "PUT") return response(204);
+    return panelRestarted ? { ...response(404), json: async () => ({}) } : response(200, document, "\"9\"");
+  });
+  equal(await restartedClient.discover(), true, "native support is available before a panel restart");
+  panelRestarted = true;
+  equal(await restartedClient.save((current) => current), "unsupported",
+    "a missing configuration endpoint resets cached native support after restart");
+  equal(restartedClient.supported(), false,
+    "a restarted panel no longer uses stale native capability state");
+  equal(restartedClient.retryable(), true,
+    "a restarted panel retries native discovery when its endpoint is temporarily missing");
+
+  const savedDescriptors = new Map<string, PropertyDescriptor | undefined>();
+  const saveDescriptor = (name: string): void => {
+    if (!savedDescriptors.has(name))
+      savedDescriptors.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+  };
+  const setGlobal = (name: string, value: unknown): void => {
+    saveDescriptor(name);
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      writable: true,
+      value,
+    });
+  };
+  try {
+    let capabilityRequests = 0;
+    let nativeSaves = 0;
+    setGlobal("fetch", async (path: string, request?: NativePanelConfigRequest) => {
+      if (path === "/api/v1/capabilities") {
+        capabilityRequests += 1;
+        return capabilityRequests === 1
+          ? { ...response(404), json: async () => ({}) }
+          : response(200);
+      }
+      if (request?.method === "PUT") {
+        nativeSaves += 1;
+        return response(204);
+      }
+      return response(200, document, "\"10\"");
+    });
+    setGlobal("setTimeout", (callback: () => void) => { callback(); return 0; });
+    setGlobal("DEVICE_ID", "panel-a");
+    setGlobal("entityName", (name: string) => name);
+    setGlobal("showBanner", () => undefined);
+    const descriptors = installNativePanelConfigMigrationModule();
+    for (const name of Object.keys(descriptors)) saveDescriptor(name);
+    Object.defineProperties(globalThis, descriptors);
+    const migrationGlobals = globalThis as unknown as {
+      nativePanelConfigTextWrite: (name: string, value: string) => unknown;
+    };
+    await Promise.resolve();
+    await Promise.resolve();
+    equal(await migrationGlobals.nativePanelConfigTextWrite("button_order", "1,2"), "saved",
+      "an edit waits for deferred native setup instead of writing a stale legacy shadow");
+    equal(capabilityRequests, 2,
+      "a deferred edit retries capability discovery after the temporary 404");
+    equal(nativeSaves, 1,
+      "a deferred edit is written once the native configuration endpoint is ready");
+  } finally {
+    for (const [name, descriptor] of savedDescriptors) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete (globalThis as Record<string, unknown>)[name];
+    }
+  }
 
   if (!migrationFixture) return;
   const downgrade = migrationFixture.scenarios.downgrade;

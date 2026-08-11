@@ -25,6 +25,10 @@
 namespace espcontrol {
 
 static const char *const TAG = "espcontrol.config";
+// This component is shared by devices whose OTA rollback window can be as
+// short as 10 seconds. Leave enough of that window for initialization itself
+// to fail safely after the display and restored text entities have settled.
+constexpr uint32_t NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS = 5000;
 
 class EspControlApp::NativeConfigurationRuntime {
  public:
@@ -186,12 +190,17 @@ void EspControlApp::setup() {
   }
 
   // NVS work and the legacy snapshot can be expensive on a populated panel.
-  // Schedule it after ESPHome has completed every component setup so it cannot
-  // run while the display or OTA boot validation is still coming up.
-  this->set_timeout(1000, [this]() { this->initialize_native_configuration(); });
+  // Give the display and restored text entities time to come up before
+  // collecting the first legacy snapshot, while preserving the OTA rollback
+  // window for every supported device.
+  ESP_LOGI(TAG, "Deferring native configuration initialization for %" PRIu32 " ms",
+           NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS);
+  this->set_timeout(NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS,
+                    [this]() { this->initialize_native_configuration(); });
 }
 
 void EspControlApp::initialize_native_configuration() {
+  ESP_LOGI(TAG, "Starting native configuration initialization");
   if (!native_configuration_requested()) {
     ESP_LOGD(TAG, "Native configuration is not requested for this device");
     native_configuration_initialized_ = true;
@@ -226,6 +235,7 @@ void EspControlApp::initialize_native_configuration() {
   } else if (!runtime.blobs.begin()) {
     ESP_LOGE(TAG, "Native configuration storage is unavailable");
   } else {
+    ESP_LOGI(TAG, "Allocating native configuration buffers");
 #ifdef USE_ESP32
     // Two fixed slots back the atomic store; the scratch, HTTP request, and
     // delayed boot-application buffers must not overlap each other.
@@ -243,6 +253,7 @@ void EspControlApp::initialize_native_configuration() {
       register_panel_config_endpoints();
       return;
     }
+    ESP_LOGI(TAG, "Loading native configuration document");
     panel_config_service->set_scratch_buffer(
         runtime.memory + PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 2,
         PANEL_CONFIG_STORAGE_SLOT_CAPACITY);

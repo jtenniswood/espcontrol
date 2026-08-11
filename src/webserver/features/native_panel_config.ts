@@ -72,6 +72,12 @@ export class NativePanelConfigClient {
   supported(): boolean { return this.supported_; }
   retryable(): boolean { return this.retryable_; }
 
+  private retryDiscovery(): void {
+    this.supported_ = false;
+    this.retryable_ = true;
+    this.discovery_ = null;
+  }
+
   async discover(): Promise<boolean> {
     if (this.discovery_) return this.discovery_;
     this.discovery_ = this.fetch_("/api/v1/capabilities", { cache: "no-store" })
@@ -102,7 +108,13 @@ export class NativePanelConfigClient {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const current = await this.fetch_("/api/v1/config", { cache: "no-store" });
-        if (!current.ok) return "failed";
+        if (!current.ok) {
+          if (current.status === 404 || current.status === 503) {
+            this.retryDiscovery();
+            return "unsupported";
+          }
+          return "failed";
+        }
         const generation = current.headers.get("ETag");
         if (!generation) return "failed";
         const currentDocument = decodePanelConfig(new Uint8Array(await current.arrayBuffer()));
@@ -120,6 +132,10 @@ export class NativePanelConfigClient {
         // save so callers do not claim that an older firmware can restore it.
         if (next.status === 202) return "mirror-failed";
         if (next.ok) return "saved";
+        if (next.status === 404 || next.status === 503) {
+          this.retryDiscovery();
+          return "unsupported";
+        }
         if (next.status !== 409) return "failed";
       } catch {
         return "failed";
