@@ -127,6 +127,11 @@ bool PanelConfigLegacyAdapter::write_value(LegacyTextValue *target,
                                            size_t value_size,
                                            bool persist_legacy) {
   if (target == nullptr) return false;
+  const std::string &current = target->value();
+  if (current.size() == value_size &&
+      (value_size == 0 || std::memcmp(current.data(), value, value_size) == 0)) {
+    return true;
+  }
   return persist_legacy ? target->set_value(value, value_size)
                         : target->publish_value(value, value_size);
 }
@@ -137,22 +142,15 @@ bool PanelConfigLegacyAdapter::apply_document(const uint8_t *document,
   PanelConfigReader reader(document, document_size);
   if (reader.begin() != PanelConfigStatus::OK) return false;
 
-  // Clear known values first. Missing records intentionally mean that the
-  // corresponding compatibility entity is empty in the native document.
-  if (!write_value(button_order_, "", 0, persist_legacy)) return false;
-  if (button_on_color_ != nullptr &&
-      !write_value(button_on_color_, "", 0, persist_legacy))
-    return false;
-  for (ButtonSources &sources : buttons_) {
-    if (sources.button != nullptr &&
-        !write_value(sources.button, "", 0, persist_legacy))
-      return false;
-    for (LegacyTextValue *chunk : sources.subpage_chunks) {
-      if (chunk != nullptr && !write_value(chunk, "", 0, persist_legacy))
-        return false;
-    }
-  }
-
+  // Track the records present in the document, then clear only fields that
+  // are absent. Clearing every text entity before restoring it used to emit
+  // hundreds of grid-refresh callbacks for a single card save on panels with
+  // many subpage chunks. That can exhaust the 7-inch panel's live UI while a
+  // browser save is in progress.
+  uint32_t button_slots = 0;
+  uint32_t subpage_slots = 0;
+  bool has_button_order = false;
+  bool has_button_on_color = false;
   PanelConfigRecord record;
   PanelConfigStatus status = PanelConfigStatus::OK;
   while ((status = reader.next(&record)) == PanelConfigStatus::OK) {
@@ -170,6 +168,7 @@ bool PanelConfigLegacyAdapter::apply_document(const uint8_t *document,
                        record.value_size, persist_legacy)) {
         return false;
       }
+      button_slots |= uint32_t{1} << (record.slot - 1);
     } else if (record.type == PanelConfigRecordType::SUBPAGE) {
       ButtonSources &sources = buttons_[record.slot - 1];
       size_t offset = 0;
@@ -184,6 +183,7 @@ bool PanelConfigLegacyAdapter::apply_document(const uint8_t *document,
         offset += chunk_size;
       }
       if (offset != record.value_size) return false;
+      subpage_slots |= uint32_t{1} << (record.slot - 1);
     } else if (record.type == PanelConfigRecordType::SETTING &&
                record.key_size == sizeof(BUTTON_ORDER_KEY) - 1 &&
                std::memcmp(record.key, BUTTON_ORDER_KEY, record.key_size) == 0) {
@@ -192,6 +192,7 @@ bool PanelConfigLegacyAdapter::apply_document(const uint8_t *document,
                        record.value_size, persist_legacy)) {
         return false;
       }
+      has_button_order = true;
     } else if (record.type == PanelConfigRecordType::SETTING &&
                record.key_size == sizeof(BUTTON_ON_COLOR_KEY) - 1 &&
                std::memcmp(record.key, BUTTON_ON_COLOR_KEY, record.key_size) == 0) {
@@ -201,9 +202,31 @@ bool PanelConfigLegacyAdapter::apply_document(const uint8_t *document,
                        record.value_size, persist_legacy)) {
         return false;
       }
+      has_button_on_color = true;
     }
   }
-  return status == PanelConfigStatus::END;
+  if (status != PanelConfigStatus::END) return false;
+
+  // Missing records intentionally mean that the corresponding compatibility
+  // entity is empty in the native document.
+  if (!has_button_order && !write_value(button_order_, "", 0, persist_legacy))
+    return false;
+  if (!has_button_on_color && button_on_color_ != nullptr &&
+      !write_value(button_on_color_, "", 0, persist_legacy))
+    return false;
+  for (size_t index = 0; index < buttons_.size(); ++index) {
+    ButtonSources &sources = buttons_[index];
+    const uint32_t slot_mask = uint32_t{1} << index;
+    if ((button_slots & slot_mask) == 0 && sources.button != nullptr &&
+        !write_value(sources.button, "", 0, persist_legacy))
+      return false;
+    if ((subpage_slots & slot_mask) != 0) continue;
+    for (LegacyTextValue *chunk : sources.subpage_chunks) {
+      if (chunk != nullptr && !write_value(chunk, "", 0, persist_legacy))
+        return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace espcontrol::configuration

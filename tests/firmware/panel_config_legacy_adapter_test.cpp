@@ -129,10 +129,22 @@ bool native_document_mirrors_back_to_legacy_entities_for_downgrade() {
       writer.finish(&document_size) != PanelConfigStatus::OK) {
     return false;
   }
+  if (!adapter.mirror(1, document.data(), document_size) ||
+      button.value() != "new-button" || subpage_a.value() != "123456789" ||
+      !subpage_b.value().empty() || order.value() != "1" ||
+      on_color.value() != "0088FF") {
+    return false;
+  }
+  // A native save mirrors the document for downgrade compatibility, then
+  // applies it to the live grid. Neither stage should republish unchanged
+  // text entities and flood the panel with grid refreshes.
   return adapter.mirror(1, document.data(), document_size) &&
-         button.value() == "new-button" && subpage_a.value() == "123456789" &&
-         subpage_b.value().empty() && order.value() == "1" &&
-         on_color.value() == "0088FF";
+         adapter.apply(1, document.data(), document_size) &&
+         button.persistent_writes == 1 && subpage_a.persistent_writes == 1 &&
+         subpage_b.persistent_writes == 1 && order.persistent_writes == 1 &&
+         on_color.persistent_writes == 1 && button.runtime_publishes == 0 &&
+         subpage_a.runtime_publishes == 0 && subpage_b.runtime_publishes == 0 &&
+         order.runtime_publishes == 0 && on_color.runtime_publishes == 0;
 }
 
 bool native_document_updates_live_grid_without_writing_legacy_preferences() {
@@ -162,7 +174,7 @@ bool native_document_updates_live_grid_without_writing_legacy_preferences() {
   return adapter.apply(1, document.data(), document_size) &&
          button.value() == "new-button" && order.value() == "1" &&
          button.persistent_writes == 0 && order.persistent_writes == 0 &&
-         button.runtime_publishes == 2 && order.runtime_publishes == 2;
+         button.runtime_publishes == 1 && order.runtime_publishes == 1;
 }
 
 }  // namespace
