@@ -5,7 +5,6 @@
 # =============================================================================
 
 substitutions:
-  partition_table: "../common/device/partitions_16mb_card_images.csv"
   cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-4848s040"
   friendly_name: "Guition ESP32-S3-4848S040"
@@ -13,6 +12,9 @@ substitutions:
   espcontrol_component_url: "file:///config"
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
+
+esp32:
+  partitions: "../common/device/partitions_16mb_card_images.csv"
 
 packages:
   core: !include ../devices/guition-esp32-s3-4848s040/packages.yaml

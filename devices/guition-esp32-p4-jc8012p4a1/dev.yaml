@@ -5,13 +5,15 @@
 # =============================================================================
 
 substitutions:
-  partition_table: "../../common/device/partitions_16mb_card_images.csv"
   cover_art_placeholder_file: "../../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-10inch-p4"
   friendly_name: "EspControl 10inch P4"
   espcontrol_component_url: "../.."
   mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
+
+esp32:
+  partitions: "../../common/device/partitions_16mb_card_images.csv"
 
 wifi:
   ssid: !secret wifi_ssid

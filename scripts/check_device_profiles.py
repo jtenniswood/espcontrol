@@ -223,20 +223,20 @@ def test_ota_preserves_deployed_partition_layouts() -> None:
         public_config = public_config_path.read_text(encoding="utf-8")
         build = build_path.read_text(encoding="utf-8")
         factory = factory_path.read_text(encoding="utf-8")
-        assert "partitions: ${partition_table}" in device, (
-            f"{slug}: OTA builds must select the deployed partition table per entry point"
+        assert "partitions:" not in device, (
+            f"{slug}: device package must not require a local partition table from remote installs"
         )
-        assert f'partition_table: "../../common/device/{table_name}"' in dev, (
+        assert f'partitions: "../../common/device/{table_name}"' in dev, (
             f"{slug}: local development builds must retain the deployed {table_name} flash layout"
         )
-        assert f'partition_table: "../../common/device/{table_name}"' in public_config, (
-            f"{slug}: published configuration must retain the deployed {table_name} flash layout"
+        assert "partition_table:" not in public_config, (
+            f"{slug}: published remote configuration must not reference a local partition table"
         )
-        assert f'partition_table: "../common/device/{table_name}"' in build, (
+        assert f'partitions: "../common/device/{table_name}"' in build, (
             f"{slug}: copied firmware builds must retain the deployed {table_name} flash layout"
         )
         assert (
-            f'partition_table: "../common/device/{table_name}"' in factory
+            f'partitions: "../common/device/{table_name}"' in factory
             or f"!include {slug}.yaml" in factory
         ), f"{slug}: factory builds must retain the deployed {table_name} flash layout"
 

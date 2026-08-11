@@ -7,7 +7,6 @@
 # =============================================================================
 
 substitutions:
-  partition_table: "../common/device/partitions_32mb_card_images.csv"
   cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-p4-86"
   friendly_name: "EspControl P4 86 Panel"
@@ -17,6 +16,9 @@ substitutions:
   voice_stt_failure_chime_file: "../devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
   alarm_delay_entry_beep_file: "../devices/esp32-p4-86/device/alarm_delay_entry_beep.flac"
   alarm_delay_exit_beep_file: "../devices/esp32-p4-86/device/alarm_delay_exit_beep.flac"
+
+esp32:
+  partitions: "../common/device/partitions_32mb_card_images.csv"
 
 esphome:
   name_add_mac_suffix: true
