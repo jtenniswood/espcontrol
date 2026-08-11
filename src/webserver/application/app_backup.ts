@@ -2,6 +2,7 @@ import { state } from "../state/app_instance";
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import { createBackupImportController } from "../features/backup_import_controller";
 import { createBackupExportController } from "../features/backup_export_controller";
+import { createBackupFileController } from "../features/backup_file_controller";
 import { createBackupRestoreController } from "../features/backup_restore_controller";
 export function installAppBackupModule(): GlobalDescriptors {
     // ── Export / Import ────────────────────────────────────────────────────
@@ -61,17 +62,53 @@ export function installAppBackupModule(): GlobalDescriptors {
         "postQueueIdle": postQueueIdle,
         "postQueueHadError": postQueueHadError,
     });
+    var backupFileController = createBackupFileController({
+        "transport": {
+            "download": function (content: string, filename: string) {
+                var blob: any = new Blob([content], { type: "application/json" });
+                var url: any = URL.createObjectURL(blob);
+                var a: any = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            },
+            "chooseJsonFile": function (onText: any, onError: any) {
+                var input: any = document.createElement("input");
+                input.type = "file";
+                input.accept = ".json";
+                input.style.display = "none";
+                function cleanupInput() {
+                    if (input.parentNode)
+                        input.parentNode.removeChild(input);
+                }
+                input.addEventListener("cancel", cleanupInput);
+                input.addEventListener("change", function () {
+                    if (!input.files || !input.files[0]) {
+                        cleanupInput();
+                        return;
+                    }
+                    var reader: any = new FileReader();
+                    reader.onerror = function () {
+                        cleanupInput();
+                        onError();
+                    };
+                    reader.onload = function () {
+                        cleanupInput();
+                        onText(String(reader.result || ""));
+                    };
+                    reader.readAsText(input.files[0]);
+                });
+                document.body.appendChild(input);
+                input.click();
+            },
+        },
+        "showBanner": showBanner,
+    });
     function downloadBackupConfig(this: any, data?: any) {
-        var json: any = JSON.stringify(data, null, 2);
-        var blob: any = new Blob([json], { type: "application/json" });
-        var url: any = URL.createObjectURL(blob);
-        var a: any = document.createElement("a");
-        a.href = url;
-        a.download = backupExportFileName();
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        backupFileController.download(data, backupExportFileName());
     }
     function addNativeConfigToBackup(this: any, data?: any) {
         return backupExportController.addNativeConfig(data, {
@@ -171,35 +208,7 @@ export function installAppBackupModule(): GlobalDescriptors {
         downloadBackupConfig(addNativeConfigToBackup(data));
     }
     function importConfig(this: any) {
-        var input: any = document.createElement("input");
-        input.type = "file";
-        input.accept = ".json";
-        input.style.display = "none";
-        function cleanupInput(this: any) {
-            if (input.parentNode)
-                input.parentNode.removeChild(input);
-        }
-        input.addEventListener("cancel", cleanupInput);
-        input.addEventListener("change", function (this: any) {
-            if (!input.files || !input.files[0]) {
-                cleanupInput();
-                return;
-            }
-            var reader: any = new FileReader();
-            reader.onerror = function (this: any) {
-                cleanupInput();
-                showBanner("Invalid file \u2014 could not read backup", "error");
-            };
-            reader.onload = function (this: any) {
-                var data: any;
-                try {
-                    data = JSON.parse(reader.result);
-                }
-                catch (_) {
-                    showBanner("Invalid file \u2014 could not parse JSON", "error");
-                    cleanupInput();
-                    return;
-                }
+        backupFileController.import(function (data: any) {
                 function applyBackupRestorePlan(this: any, plannedImport: any) {
                 var importedSettings: any = plannedImport.importedSettings;
                 var importedGridCols: any = plannedImport.importedGridCols;
@@ -473,12 +482,7 @@ export function installAppBackupModule(): GlobalDescriptors {
                 switchTab("screen");
                 }
                 backupRestoreController.restore(data, { device: DEVICE_ID, slots: NUM_SLOTS }, applyBackupRestorePlan);
-                cleanupInput();
-            };
-            reader.readAsText(input.files[0]);
         });
-        document.body.appendChild(input);
-        input.click();
     }
     return {
         "backupExportScreenSizeSlug": staticGlobal(backupExportScreenSizeSlug),
