@@ -463,7 +463,10 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
-        image_card_handle_media_artwork_picture(art, picture, false);
+        // Attribute subscriptions are independent. Ask the artwork coordinator
+        // to obtain a matching remote/local pair instead of downloading from
+        // this individual notification.
+        image_card_request_media_artwork(art);
       })
   );
   ha_subscribe_attribute(
@@ -481,7 +484,9 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
-        image_card_handle_media_artwork_picture(art, picture, true);
+        // See the remote callback above: one notification starts one paired
+        // refresh, which prevents either attribute winning by arrival order.
+        image_card_request_media_artwork(art);
       })
   );
   subscribe_image_card_access_token(art, entity_id);

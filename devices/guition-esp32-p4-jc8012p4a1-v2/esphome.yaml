@@ -10,6 +10,7 @@
 # Device identity
 # ---------------------------------------------------------------------------
 substitutions:
+  partition_table: "../../common/device/partitions_16mb_card_images.csv"
   name: "your-device-name"
   friendly_name: "Your Device Name"
 

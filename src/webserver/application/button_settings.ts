@@ -409,8 +409,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             if (td && td.onSelect && !keepMediaEntity)
                 td.onSelect(b);
             if (pickerType === "media_control") {
-                b.sensor = "control_modal";
-                b.label = "All Controls";
+                b.sensor = "cover_art";
+                b.label = "Cover Art";
                 b.icon = "Auto";
                 b.icon_on = "Auto";
                 b.unit = "";

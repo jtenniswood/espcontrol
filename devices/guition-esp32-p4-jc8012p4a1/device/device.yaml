@@ -17,6 +17,7 @@ substitutions:
 esp32:
   variant: esp32p4
   flash_size: 16MB
+  partitions: ${partition_table}
   cpu_frequency: 360MHZ
   engineering_sample: true
   framework:

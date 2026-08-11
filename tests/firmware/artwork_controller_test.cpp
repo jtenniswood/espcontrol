@@ -8,10 +8,13 @@ using espcontrol::artwork::RemoteUpdatePolicy;
 using espcontrol::artwork::ARTWORK_SOURCE_BOTH;
 using espcontrol::artwork::ARTWORK_SOURCE_LOCAL;
 using espcontrol::artwork::ARTWORK_SOURCE_REMOTE;
+using espcontrol::artwork::RefreshBatch;
 using espcontrol::artwork::artwork_source_failed_mask;
 using espcontrol::artwork::artwork_source_mark_received;
 using espcontrol::artwork::artwork_source_request_mask;
 using espcontrol::artwork::artwork_picture_response_clears_retry;
+using espcontrol::artwork::artwork_batch_waits_for_companion;
+using espcontrol::artwork::artwork_refresh_forced;
 using espcontrol::artwork::artwork_response_needs_processing;
 using espcontrol::artwork::artwork_selection_needs_download;
 using espcontrol::artwork::source_response_can_apply_immediately;
@@ -74,6 +77,13 @@ int main() {
   assert(!artwork_selection_needs_download(false, true));
   assert(artwork_selection_needs_download(false, false));
   assert(artwork_selection_needs_download(true, true));
+  assert(artwork_batch_waits_for_companion(false, true));
+  assert(!artwork_batch_waits_for_companion(false, false));
+  assert(!artwork_batch_waits_for_companion(true, true));
+  assert(artwork_refresh_forced(true, false, false));
+  assert(artwork_refresh_forced(false, true, false));
+  assert(artwork_refresh_forced(false, false, true));
+  assert(!artwork_refresh_forced(false, false, false));
 
   // A state update with the same selected local artwork does not download it
   // again. Reconnect and attribute-read retry use the forced path instead.
@@ -117,6 +127,61 @@ int main() {
   assert(artwork_picture_response_clears_retry(false, ARTWORK_SOURCE_LOCAL));
   assert(artwork_picture_response_clears_retry(true, 0));
   assert(!artwork_picture_response_clears_retry(true, ARTWORK_SOURCE_LOCAL));
+
+  // One Home Assistant refresh reads both artwork attributes. Arrival order
+  // cannot produce two image requests, and callbacks from a superseded read
+  // must be ignored.
+  RefreshBatch batch;
+  const uint32_t first_read = batch.begin(ARTWORK_SOURCE_BOTH, false);
+  assert(batch.accepts(first_read, false));
+  assert(batch.receive(first_read, false));
+  assert(!batch.complete());
+  assert(batch.receive(first_read, true));
+  assert(batch.complete());
+  assert(batch.finish());
+  assert(!batch.active());
+
+  const uint32_t second_read = batch.begin(ARTWORK_SOURCE_BOTH, true);
+  assert(second_read != first_read && batch.forced);
+  assert(!batch.receive(first_read, true));
+  assert(batch.receive(second_read, true));
+  assert(!batch.complete());
+  assert(batch.receive(second_read, false));
+  assert(batch.complete());
+  assert(batch.finish());
+
+  // Each paired read captures its own generation. A delayed response from the
+  // previous track cannot be accepted into the newer track's batch.
+  const uint32_t track_a_read = batch.begin(ARTWORK_SOURCE_BOTH, false);
+  const uint32_t track_b_read = batch.begin(ARTWORK_SOURCE_BOTH, false);
+  assert(track_b_read != track_a_read);
+  assert(!batch.receive(track_a_read, true));
+  assert(batch.receive(track_b_read, false));
+  assert(batch.receive(track_b_read, true));
+  assert(batch.complete());
+  assert(batch.finish());
+
+  // A timeout may settle a one-sided response, after which its delayed
+  // companion must not replace the selected artwork mid-download.
+  const uint32_t timed_out_read = batch.begin(ARTWORK_SOURCE_BOTH, false);
+  assert(batch.receive(timed_out_read, false));
+  assert(batch.finish());
+  assert(!batch.receive(timed_out_read, true));
+
+  // Partial retry reads track only the failed source and complete after that
+  // one response, preserving the existing source as the fallback.
+  const uint32_t local_retry = batch.begin(ARTWORK_SOURCE_LOCAL, true);
+  assert(batch.receive(local_retry, true));
+  assert(batch.complete());
+  assert(batch.finish());
+
+  // A retry of a failed local read leaves the earlier remote result available
+  // when the retry returns empty.
+  sources.clear();
+  assert(sources.update(false, "remote-retry", RemoteUpdatePolicy::PRESERVE_LOCAL));
+  assert(!sources.update(true, ""));
+  selected = sources.select("", false);
+  assert(selected.primary == "remote-retry");
 
   // When a stable local proxy URL still points at the previous track, a fresh
   // remote URL wins for every changed track and the local URL remains the

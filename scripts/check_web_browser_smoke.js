@@ -2208,6 +2208,66 @@ async function assertEmptyCellSettings(page, posts, label) {
   );
 }
 
+async function assertNewMediaCardDefaults(page, posts, label) {
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+
+  const before = posts.length;
+  const pos = await emptyCell.getAttribute("data-pos");
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Media card type" }).click();
+  await page.locator("#sp-inp-media-mode").waitFor({ state: "visible" });
+
+  assert.strictEqual(
+    await page.locator("#sp-inp-media-mode").inputValue(),
+    "cover_art",
+    `${label}: a new Media card should default to Cover Art`,
+  );
+  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Play/Pause",
+    `${label}: leaving Cover Art should refresh the generated label`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+
+  await page.locator(`.sp-main [data-pos="${pos}"].sp-empty-cell`).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Action card type" }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
+  await page.locator("#sp-inp-label").fill("Custom media label");
+  await page.locator("#sp-inp-type").selectOption("media");
+  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Custom media label",
+    `${label}: changing a labelled card to Media preserves its custom label`,
+  );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: checking new Media card defaults should not post a card`,
+  );
+}
+
 async function assertAllCardSettingsGrouped(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -2671,14 +2731,23 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
   assert.strictEqual(await page.locator("#sp-inp-media-mode").inputValue(), "cover_art", `${label}: existing Cover Art card should retain its subtype`);
   assert.strictEqual(await page.locator("#sp-inp-entity").inputValue(), "media_player.living", `${label}: existing Cover Art card should retain its entity`);
   assert.deepStrictEqual(
-    await page.locator("#sp-inp-media-mode option").evaluateAll((options) => options.slice(0, 2).map((option) => option.value)),
-    ["control_modal", "cover_art"],
-    `${label}: Media Type should start with All Controls followed by Cover Art`,
+    await page.locator("#sp-inp-media-mode option").evaluateAll((options) => options.slice(0, 3).map((option) => option.value)),
+    ["control_modal", "cover_art", "playlist"],
+    `${label}: Media Type should place Track, Album or Playlist below Cover Art`,
   );
   assert.strictEqual(
     await page.locator("#sp-inp-media-mode").locator('option[value="cover_art"]').textContent(),
     "Cover Art",
     `${label}: Media should offer Cover Art in its Type selector`,
+  );
+  assert.deepStrictEqual(
+    await page
+      .locator("#sp-inp-media-mode option")
+      .evaluateAll((options) => options
+        .filter((option) => ["play_pause", "previous", "next", "volume"].includes(option.value))
+        .map((option) => option.textContent)),
+    ["Play/Pause", "Previous", "Next", "Volume"],
+    `${label}: Media action types should use their concise names`,
   );
 
   const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({
@@ -4660,6 +4729,7 @@ async function runCase(browser, testCase) {
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);
+    await assertNewMediaCardDefaults(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);

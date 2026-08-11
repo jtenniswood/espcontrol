@@ -20,6 +20,30 @@ COMPAT_FIXTURES = ROOT / "product" / "v2" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
 BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_weather_driver.h"
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
+LEGACY_OTA_PARTITION_LAYOUTS = {
+    "esp32-p4-86": "partitions_32mb_card_images.csv",
+    "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc4880p443": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1-v2": "partitions_16mb_card_images.csv",
+    "guition-esp32-s3-4848s040": "partitions_16mb_card_images.csv",
+}
+LEGACY_OTA_PARTITION_ROWS = {
+    "partitions_16mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0x6f0000,",
+        "app1,          app,  ota_1,   0x710000,  0x6f0000,",
+        "card_images,   data, 0x40,    0xe00000,  0x200000,",
+    ),
+    "partitions_32mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0xef0000,",
+        "app1,          app,  ota_1,   0xf10000,  0xef0000,",
+        "card_images,   data, 0x40,    0x1e00000, 0x200000,",
+    ),
+}
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -127,13 +151,16 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
 
     core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
     assert "webserver/www.js?device=${device_slug}" in core, "hosted web URL does not select a shared profile"
-    assert "docs/public/webserver/embedded/www.js" in core, "firmware does not embed its offline web editor fallback"
     assert 'ESPCONTROL_DEVICE_SLUG=\\"${device_slug}\\"' in core, "firmware build does not expose its profile slug"
     server = (ROOT / "components" / "web_server_idf" / "web_server_idf.cpp").read_text(encoding="utf-8")
     assert '\\"device_slug\\"' in server and "ESPCONTROL_DEVICE_PROFILE" in server, (
         "firmware metadata endpoint does not expose the shared web profile"
     )
     for slug in profiles:
+        dev = (ROOT / "devices" / slug / "dev.yaml").read_text(encoding="utf-8")
+        assert 'js_include: "../../docs/public/webserver/embedded/www.js"' in dev, (
+            f"{slug}: local development firmware does not embed its offline editor"
+        )
         for suffix in (".yaml", ".factory.yaml"):
             build = (ROOT / "builds" / f"{slug}{suffix}").read_text(encoding="utf-8")
             assert 'docs/public/webserver/embedded/www.js"' in build, f"{slug}{suffix}: firmware does not embed its offline editor"
@@ -182,6 +209,41 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
+
+
+def test_ota_preserves_deployed_partition_layouts() -> None:
+    for slug, table_name in LEGACY_OTA_PARTITION_LAYOUTS.items():
+        device_path = ROOT / "devices" / slug / "device" / "device.yaml"
+        dev_path = ROOT / "devices" / slug / "dev.yaml"
+        public_config_path = ROOT / "devices" / slug / "esphome.yaml"
+        build_path = ROOT / "builds" / f"{slug}.yaml"
+        factory_path = ROOT / "builds" / f"{slug}.factory.yaml"
+        device = device_path.read_text(encoding="utf-8")
+        dev = dev_path.read_text(encoding="utf-8")
+        public_config = public_config_path.read_text(encoding="utf-8")
+        build = build_path.read_text(encoding="utf-8")
+        factory = factory_path.read_text(encoding="utf-8")
+        assert "partitions: ${partition_table}" in device, (
+            f"{slug}: OTA builds must select the deployed partition table per entry point"
+        )
+        assert f'partition_table: "../../common/device/{table_name}"' in dev, (
+            f"{slug}: local development builds must retain the deployed {table_name} flash layout"
+        )
+        assert f'partition_table: "../../common/device/{table_name}"' in public_config, (
+            f"{slug}: published configuration must retain the deployed {table_name} flash layout"
+        )
+        assert f'partition_table: "../common/device/{table_name}"' in build, (
+            f"{slug}: copied firmware builds must retain the deployed {table_name} flash layout"
+        )
+        assert (
+            f'partition_table: "../common/device/{table_name}"' in factory
+            or f"!include {slug}.yaml" in factory
+        ), f"{slug}: factory builds must retain the deployed {table_name} flash layout"
+
+    for table_name, rows in LEGACY_OTA_PARTITION_ROWS.items():
+        table = (ROOT / "common" / "device" / table_name).read_text(encoding="utf-8")
+        for row in rows:
+            assert row in table, f"{table_name}: missing deployed partition row {row}"
 
 
 def test_upgrades_do_not_reset_saved_panel_config() -> None:
@@ -676,6 +738,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()

@@ -976,7 +976,11 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     if cached_body and "id(cover_art_runtime).select_source(chosen);" not in cached_body:
         errors.append(f"{rel}: mark changed cached artwork URLs as stale before downloading")
     resubscribe_body = yaml_script_body(text, "cover_art_resubscribe") or ""
-    if resubscribe_body and "if (!url.empty() && url != id(cover_art_runtime).source_url)" not in resubscribe_body:
+    artwork_refresh_body = (
+        resubscribe_body +
+        (yaml_script_body(text, "cover_art_request_paired_artwork") or "")
+    )
+    if artwork_refresh_body and "if (!url.empty() && url != id(cover_art_runtime).source_url)" not in artwork_refresh_body:
         errors.append(f"{rel}: mark changed Home Assistant artwork attributes as stale")
 
     base_url_body = yaml_script_body(text, "cover_art_resolve_home_assistant_base_url") or ""
