@@ -25,8 +25,7 @@ import * as ConfigPrimitives from "./model/config_primitives";
 import * as CardContract from "./generated/card_contract";
 import * as Icons from "./generated/icons";
 import { ENTITY_CATALOG } from "./generated/entity_catalog";
-import { installStaticGlobals } from "./runtime/globals";
-import { installEditorBootstrap, type EditorBootstrapModule } from "./runtime/editor_bootstrap";
+import { installGlobals, installStaticGlobals } from "./runtime/globals";
 import { installCore } from "./application/core";
 import { installFirmwareMetadataModule } from "./application/firmware_metadata";
 import { installStylesModule } from "./application/styles";
@@ -135,111 +134,111 @@ const startupState = globalThis as typeof globalThis & {
   __ESPCONTROL_UI_STARTING__?: boolean;
 };
 
-const applicationBootstrapModules: readonly EditorBootstrapModule[] = [
-  { name: "core", install: installCore },
-  { name: "firmware-metadata", install: installFirmwareMetadataModule },
-  { name: "styles", install: installStylesModule },
-  { name: "state", install: installStateModule },
-  { name: "language-state", install: installLanguageStateModule },
-  { name: "environment-state", install: installEnvironmentStateModule },
-  { name: "screen-rotation-state", install: installScreenRotationStateModule },
-  { name: "screen-schedule-state", install: installScreenScheduleStateModule },
-  { name: "ntp-state", install: installNtpStateModule },
-  { name: "appearance-state", install: installAppearanceStateModule },
-  { name: "idle-state", install: installIdleStateModule },
-  { name: "artwork-state", install: installArtworkStateModule },
-  { name: "screensaver-state", install: installScreensaverStateModule },
-  { name: "firmware-version-state", install: installFirmwareVersionStateModule },
-  { name: "entity-state", install: installEntityStateModule },
-  { name: "clock-bar-state", install: installClockBarStateModule },
-  { name: "firmware-update-state", install: installFirmwareUpdateStateModule },
-  { name: "screensaver-timeout", install: installScreensaverTimeoutModule },
-  { name: "c6-firmware-ui", install: installC6FirmwareUiModule },
-  { name: "grid", install: installGridModule },
-  { name: "native-panel-config-migration", install: installNativePanelConfigMigrationModule },
-  { name: "api", install: installApiModule },
-  { name: "firmware-update-post-api", install: installFirmwareUpdatePostApiModule },
-  { name: "public-firmware-install", install: installPublicFirmwareInstallModule },
-  { name: "config-option-core", install: installConfigOptionCoreModule },
-  { name: "config-media-options", install: installConfigMediaOptionsModule },
-  { name: "config-image-options", install: installConfigImageOptionsModule },
-  { name: "config-modal-tab-options", install: installConfigModalTabOptionsModule },
-  { name: "config-subpage-options", install: installConfigSubpageOptionsModule },
-  { name: "config-sensor-options", install: installConfigSensorOptionsModule },
-  { name: "config-confirmation-options", install: installConfigConfirmationOptionsModule },
-  { name: "config-access-climate-alarm-options", install: installConfigAccessClimateAlarmOptionsModule },
-  { name: "config-codec", install: installConfigCodecModule },
-  { name: "config-post-api", install: installConfigPostApiModule },
-  { name: "state-loader-api", install: installStateLoaderApiModule },
-  { name: "artwork-post-api", install: installArtworkPostApiModule },
-  { name: "screen-schedule-post-api", install: installScreenSchedulePostApiModule },
-  { name: "clock-bar-post-api", install: installClockBarPostApiModule },
-  { name: "controls", install: installControlsModule },
-  { name: "controls-shell", install: installControlsShellModule },
-  { name: "settings-page-helpers", install: installSettingsPageHelpersModule },
-  { name: "settings-schedule-section", install: installSettingsScheduleSectionModule },
-  { name: "settings-cover-art-section", install: installSettingsCoverArtSectionModule },
-  { name: "settings-system-section", install: installSettingsSystemSectionModule },
-  { name: "settings-page", install: installSettingsPageModule },
-  { name: "controls-fields", install: installControlsFieldsModule },
-  { name: "preview-render", install: installPreviewRenderModule },
-  { name: "button-settings-selection", install: installButtonSettingsSelectionModule },
-  { name: "button-settings-render-queue", install: installButtonSettingsRenderQueueModule },
-  { name: "button-settings-icon-picker", install: installButtonSettingsIconPickerModule },
-  { name: "button-settings", install: installButtonSettingsModule },
-  { name: "preview-grid-placement", install: installPreviewGridPlacementModule },
-  { name: "preview-context-menu", install: installPreviewContextMenuModule },
-  { name: "preview-clipboard", install: installPreviewClipboardModule },
-  { name: "preview-interactions", install: installPreviewInteractionsModule },
-  { name: "backup-contract", install: installBackupContractModule },
-  { name: "app-backup", install: installAppBackupModule },
-  { name: "app-status-preview", install: installAppStatusPreviewModule },
-  { name: "app-title", install: installAppTitleModule },
-  { name: "app-config-events", install: installAppConfigEventsModule },
-  { name: "app-state-event-handlers", install: installAppStateEventHandlersModule },
-  { name: "app-events", install: installAppEventsModule },
-  { name: "app", install: installAppModule },
-];
+function installApplicationCompatibility(): void {
+  installGlobals(installCore());
+  installGlobals(installFirmwareMetadataModule());
+  installGlobals(installStylesModule());
+  installGlobals(installStateModule());
+  installGlobals(installLanguageStateModule());
+  installGlobals(installEnvironmentStateModule());
+  installGlobals(installScreenRotationStateModule());
+  installGlobals(installScreenScheduleStateModule());
+  installGlobals(installNtpStateModule());
+  installGlobals(installAppearanceStateModule());
+  installGlobals(installIdleStateModule());
+  installGlobals(installArtworkStateModule());
+  installGlobals(installScreensaverStateModule());
+  installGlobals(installFirmwareVersionStateModule());
+  installGlobals(installEntityStateModule());
+  installGlobals(installClockBarStateModule());
+  installGlobals(installFirmwareUpdateStateModule());
+  installGlobals(installScreensaverTimeoutModule());
+  installGlobals(installC6FirmwareUiModule());
+  installGlobals(installGridModule());
+  installGlobals(installNativePanelConfigMigrationModule());
+  installGlobals(installApiModule());
+  installGlobals(installFirmwareUpdatePostApiModule());
+  installGlobals(installPublicFirmwareInstallModule());
+  installGlobals(installConfigOptionCoreModule());
+  installGlobals(installConfigMediaOptionsModule());
+  installGlobals(installConfigImageOptionsModule());
+  installGlobals(installConfigModalTabOptionsModule());
+  installGlobals(installConfigSubpageOptionsModule());
+  installGlobals(installConfigSensorOptionsModule());
+  installGlobals(installConfigConfirmationOptionsModule());
+  installGlobals(installConfigAccessClimateAlarmOptionsModule());
+  installGlobals(installConfigCodecModule());
+  installGlobals(installConfigPostApiModule());
+  installGlobals(installStateLoaderApiModule());
+  installGlobals(installArtworkPostApiModule());
+  installGlobals(installScreenSchedulePostApiModule());
+  installGlobals(installClockBarPostApiModule());
+  installGlobals(installControlsModule());
+  installGlobals(installControlsShellModule());
+  installGlobals(installSettingsPageHelpersModule());
+  installGlobals(installSettingsScheduleSectionModule());
+  installGlobals(installSettingsCoverArtSectionModule());
+  installGlobals(installSettingsSystemSectionModule());
+  installGlobals(installSettingsPageModule());
+  installGlobals(installControlsFieldsModule());
+  installGlobals(installPreviewRenderModule());
+  installGlobals(installButtonSettingsSelectionModule());
+  installGlobals(installButtonSettingsRenderQueueModule());
+  installGlobals(installButtonSettingsIconPickerModule());
+  installGlobals(installButtonSettingsModule());
+  installGlobals(installPreviewGridPlacementModule());
+  installGlobals(installPreviewContextMenuModule());
+  installGlobals(installPreviewClipboardModule());
+  installGlobals(installPreviewInteractionsModule());
+  installGlobals(installBackupContractModule());
+  installGlobals(installAppBackupModule());
+  installGlobals(installAppStatusPreviewModule());
+  installGlobals(installAppTitleModule());
+  installGlobals(installAppConfigEventsModule());
+  installGlobals(installAppStateEventHandlersModule());
+  installGlobals(installAppEventsModule());
+  installGlobals(installAppModule());
+}
 
-const cardBootstrapModules: readonly EditorBootstrapModule[] = [
-  { name: "card-action", install: registerActionCardTypes },
-  { name: "card-alarm", install: registerAlarmCardTypes },
-  { name: "card-calendar", install: registerCalendarCardTypes },
-  { name: "card-climate", install: registerClimateCardTypes },
-  { name: "card-clock", install: registerClockCardTypes },
-  { name: "card-cover-like", install: registerCoverLikeCardHelpers },
-  { name: "card-door-window", install: registerDoorWindowCardTypes },
-  { name: "card-entity-mode", install: registerEntityModeCardHelpers },
-  { name: "card-fan", install: registerFanCardTypes },
-  { name: "card-garage", install: registerGarageCardTypes },
-  { name: "card-gate", install: registerGateCardTypes },
-  { name: "card-image", install: registerImageCardTypes },
-  { name: "card-internal", install: registerInternalCardTypes },
-  { name: "card-lawn-mower", install: registerLawnMowerCardTypes },
-  { name: "card-light-temperature", install: registerLightTemperatureCardTypes },
-  { name: "card-lock", install: registerLockCardTypes },
-  { name: "card-media", install: registerMediaCardTypes },
-  { name: "card-presence", install: registerPresenceCardTypes },
-  { name: "card-push", install: registerPushCardTypes },
-  { name: "card-screen-lock", install: registerScreenLockCardTypes },
-  { name: "card-sensor", install: registerSensorCardTypes },
-  { name: "card-slider", install: registerSliderCardTypes },
-  { name: "card-subpage", install: registerSubpageCardTypes },
-  { name: "card-switch", install: registerSwitchCardTypes },
-  { name: "card-timezone", install: registerTimezoneCardTypes },
-  { name: "card-vacuum", install: registerVacuumCardTypes },
-  { name: "card-weather", install: registerWeatherCardTypes },
-  { name: "card-weather-forecast", install: registerWeatherForecastCardTypes },
-  { name: "card-webhook", install: registerWebhookCardTypes },
-];
+function installCardCompatibility(): void {
+  installGlobals(registerActionCardTypes());
+  installGlobals(registerAlarmCardTypes());
+  installGlobals(registerCalendarCardTypes());
+  installGlobals(registerClimateCardTypes());
+  installGlobals(registerClockCardTypes());
+  installGlobals(registerCoverLikeCardHelpers());
+  installGlobals(registerDoorWindowCardTypes());
+  installGlobals(registerEntityModeCardHelpers());
+  installGlobals(registerFanCardTypes());
+  installGlobals(registerGarageCardTypes());
+  installGlobals(registerGateCardTypes());
+  installGlobals(registerImageCardTypes());
+  installGlobals(registerInternalCardTypes());
+  installGlobals(registerLawnMowerCardTypes());
+  installGlobals(registerLightTemperatureCardTypes());
+  installGlobals(registerLockCardTypes());
+  installGlobals(registerMediaCardTypes());
+  installGlobals(registerPresenceCardTypes());
+  installGlobals(registerPushCardTypes());
+  installGlobals(registerScreenLockCardTypes());
+  installGlobals(registerSensorCardTypes());
+  installGlobals(registerSliderCardTypes());
+  installGlobals(registerSubpageCardTypes());
+  installGlobals(registerSwitchCardTypes());
+  installGlobals(registerTimezoneCardTypes());
+  installGlobals(registerVacuumCardTypes());
+  installGlobals(registerWeatherCardTypes());
+  installGlobals(registerWeatherForecastCardTypes());
+  installGlobals(registerWebhookCardTypes());
+}
 
-const testHookBootstrapModules: readonly EditorBootstrapModule[] = [
-  { name: "test-hooks", install: installAppTestHooks },
-  { name: "test-hooks-config", install: installAppTestHooksConfig },
-  { name: "test-hooks-preview", install: installAppTestHooksPreview },
-  { name: "test-hooks-backup", install: installAppTestHooksBackup },
-  { name: "test-hooks-settings", install: installAppTestHooksSettings },
-];
+function installTestCompatibility(): void {
+  installGlobals(installAppTestHooks());
+  installGlobals(installAppTestHooksConfig());
+  installGlobals(installAppTestHooksPreview());
+  installGlobals(installAppTestHooksBackup());
+  installGlobals(installAppTestHooksSettings());
+}
 
 function startEspControl(): void {
   if (startupState.__ESPCONTROL_UI_STARTED__ || startupState.__ESPCONTROL_UI_STARTING__) return;
@@ -278,13 +277,12 @@ function startEspControl(): void {
       AppState.defaultTimezoneOptionsForDevice(DeviceConfig.deviceConfig),
   });
 
-  const installedModules = new Set<string>();
-  installEditorBootstrap(applicationBootstrapModules, undefined, installedModules);
-  installEditorBootstrap(cardBootstrapModules, undefined, installedModules);
+  installApplicationCompatibility();
+  installCardCompatibility();
   if (__ESPCONTROL_TEST_HOOKS_ENABLED__) {
-    installEditorBootstrap(testHookBootstrapModules, undefined, installedModules);
+    installTestCompatibility();
   }
-  installEditorBootstrap([{ name: "app-start", install: installAppStartModule }], undefined, installedModules);
+  installGlobals(installAppStartModule());
 }
 
 function startEmbeddedFallback(error: unknown): void {
