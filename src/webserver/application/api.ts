@@ -26,7 +26,11 @@ export function installApiModule(): GlobalDescriptors {
         var urls: any = Array.isArray(url) ? url.slice() : [url];
         if (fallbackUrl)
             urls.push(fallbackUrl);
-        _postQueue = _deviceApi.enqueuePost(urls).then(function (this: any, result?: any) {
+        _postQueue = enqueuePost(urls, errorMessage);
+        return _postQueue;
+    }
+    function enqueuePost(this: any, urls?: any, errorMessage?: any) {
+        return _deviceApi.enqueuePost(urls).then(function (this: any, result?: any) {
             var failure: any = requestFailureInfo(result, errorMessage);
             if (failure && failure.reconnect) {
                 _postQueueHadError = true;
@@ -41,7 +45,10 @@ export function installApiModule(): GlobalDescriptors {
             }
             return result.value;
         });
-        return _postQueue;
+    }
+    function postTextLegacy(this: any, name?: any, value?: any) {
+        var encodedValue: any = encodeURIComponent(value);
+        return enqueuePost(entityPostUrls("text", name, [], "set?value=" + encodedValue));
     }
     function postOptional(this: any, url?: any) {
         var urls: any = Array.isArray(url) ? url.slice() : [url];
@@ -69,6 +76,8 @@ export function installApiModule(): GlobalDescriptors {
         var nativeSave: any = nativePanelConfigTextWrite(name, value);
         if (nativeSave) {
             _postQueue = _postQueue.then(function () { return nativeSave; }).then(function (result: any) {
+                if (result === "legacy-fallback")
+                    return postTextLegacy(name, value);
                 if (result !== "saved")
                     _postQueueHadError = true;
                 return result;
@@ -197,6 +206,7 @@ export function installApiModule(): GlobalDescriptors {
         "postQueueHadError": staticGlobal(postQueueHadError),
         "postQuiet": staticGlobal(postQuiet),
         "post": staticGlobal(post),
+        "postTextLegacy": staticGlobal(postTextLegacy),
         "postOptional": staticGlobal(postOptional),
         "postFirstAvailable": staticGlobal(postFirstAvailable),
         "postText": staticGlobal(postText),

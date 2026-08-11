@@ -24,6 +24,27 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         return !!((raw && rawField && raw[rawField]) ||
             (previousPendingChunks && previousPendingChunks[index]));
     }
+    function saveSubpageEntityLegacy(this: any, slot?: any, full?: any, direct?: any) {
+        var keys: any = subpageEntityKeys();
+        var chunks: any = EspControlModel.splitSubpageConfigChunks(full, keys.length, 255);
+        if (!chunks)
+            return;
+        var previousPendingChunks: any = EspControlModel.splitSubpageConfigChunks(state.subpageSavePending[slot] || "", keys.length, 255) || [];
+        state.subpageSavePending[slot] = full;
+        var directPosts: any = [];
+        for (var ki: any = 0; ki < keys.length; ki++) {
+            var chunkName: any = entityNameForSlot(keys[ki], slot);
+            var chunk: any = chunks[ki] || "";
+            if (!subpageChunkShouldPost(slot, keys, chunks, ki, previousPendingChunks))
+                continue;
+            if (direct)
+                directPosts.push(postTextLegacy(chunkName, chunk));
+            else
+                postText(chunkName, chunk);
+        }
+        if (direct)
+            return Promise.all(directPosts);
+    }
     function saveSubpageEntity(this: any, slot?: any) {
         var sp: any = state.subpages[slot];
         var full: any = sp ? serializeSubpageConfig(sp) : "";
@@ -36,17 +57,16 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         var nativeSave: any = nativePanelConfigSubpageWrite(slot, full);
         if (nativeSave) {
             state.subpageSavePending[slot] = full;
-            return;
+            _postQueue = _postQueue.then(function () { return nativeSave; }).then(function (result: any) {
+                if (result === "legacy-fallback")
+                    return saveSubpageEntityLegacy(slot, full, true);
+                if (result !== "saved")
+                    _postQueueHadError = true;
+                return result;
+            });
+            return _postQueue;
         }
-        var previousPendingChunks: any = EspControlModel.splitSubpageConfigChunks(state.subpageSavePending[slot] || "", keys.length, 255) || [];
-        state.subpageSavePending[slot] = full;
-        for (var ki: any = 0; ki < keys.length; ki++) {
-            var chunkName: any = entityNameForSlot(keys[ki], slot);
-            var chunk: any = chunks[ki] || "";
-            if (!subpageChunkShouldPost(slot, keys, chunks, ki, previousPendingChunks))
-                continue;
-            postText(chunkName, chunk);
-        }
+        saveSubpageEntityLegacy(slot, full);
     }
     function scheduleSliderSubpageMigration(this: any, slot?: any) {
         pendingSliderSubpageMigrations[slot] = true;
@@ -65,6 +85,7 @@ export function installConfigPostApiModule(): GlobalDescriptors {
         "subpageEntityKeys": staticGlobal(subpageEntityKeys),
         "SUBPAGE_RAW_CHUNK_FIELDS": liveGlobal(() => SUBPAGE_RAW_CHUNK_FIELDS, (value?: any) => { SUBPAGE_RAW_CHUNK_FIELDS = value; }),
         "subpageChunkShouldPost": staticGlobal(subpageChunkShouldPost),
+        "saveSubpageEntityLegacy": staticGlobal(saveSubpageEntityLegacy),
         "saveSubpageEntity": staticGlobal(saveSubpageEntity),
         "scheduleSliderSubpageMigration": staticGlobal(scheduleSliderSubpageMigration),
     };

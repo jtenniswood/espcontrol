@@ -8,6 +8,7 @@ import {
 import type { PanelConfigDocument } from "../model";
 
 export type NativePanelConfigUpdate = (document: PanelConfigDocument) => PanelConfigDocument;
+export type NativePanelConfigSaveOutcome = NativePanelConfigSaveResult | "legacy-fallback";
 
 export interface NativePanelConfigControllerDependencies {
   readonly fetch: NativePanelConfigFetch | null;
@@ -23,19 +24,28 @@ export interface NativePanelConfigControllerDependencies {
 /** Owns native configuration discovery and serialised document writes. */
 export class NativePanelConfigController {
   private client_: NativePanelConfigClient | null;
-  private saveQueue_: Promise<NativePanelConfigSaveResult> = Promise.resolve("saved");
+  private saveQueue_: Promise<NativePanelConfigSaveOutcome> = Promise.resolve("saved");
+  private legacyFallback_ = false;
   private retryDelayMs_ = 250;
+  private maxDiscoveryRetries_ = 20;
 
   constructor(private readonly dependencies: NativePanelConfigControllerDependencies) {
     this.client_ = dependencies.fetch ? createNativePanelConfigClient(dependencies.fetch) : null;
   }
 
   get client(): NativePanelConfigClient | null { return this.client_; }
-  set client(value: NativePanelConfigClient | null) { this.client_ = value; }
-  get saveQueue(): Promise<NativePanelConfigSaveResult> { return this.saveQueue_; }
-  set saveQueue(value: Promise<NativePanelConfigSaveResult>) { this.saveQueue_ = value; }
+  set client(value: NativePanelConfigClient | null) {
+    this.client_ = value;
+    this.legacyFallback_ = false;
+  }
+  get saveQueue(): Promise<NativePanelConfigSaveOutcome> { return this.saveQueue_; }
+  set saveQueue(value: Promise<NativePanelConfigSaveOutcome>) { this.saveQueue_ = value; }
+  get legacyFallback(): boolean { return this.legacyFallback_; }
+  set legacyFallback(value: boolean) { this.legacyFallback_ = value; }
   get retryDelayMs(): number { return this.retryDelayMs_; }
   set retryDelayMs(value: number) { this.retryDelayMs_ = value; }
+  get maxDiscoveryRetries(): number { return this.maxDiscoveryRetries_; }
+  set maxDiscoveryRetries(value: number) { this.maxDiscoveryRetries_ = value; }
 
   begin(): Promise<boolean> {
     return this.client_ ? this.client_.discover() : Promise.resolve(false);
@@ -45,7 +55,7 @@ export class NativePanelConfigController {
     return this.client_?.supported() ?? false;
   }
 
-  private report(result: NativePanelConfigSaveResult): NativePanelConfigSaveResult {
+  private report(result: NativePanelConfigSaveOutcome): NativePanelConfigSaveOutcome {
     if (result === "conflict") {
       this.dependencies.showBanner("Configuration changed in another browser. Reload before saving again.", "error");
     } else if (result === "mirror-failed") {
@@ -56,14 +66,25 @@ export class NativePanelConfigController {
     return result;
   }
 
-  async waitForDiscovery(): Promise<boolean> {
+  async waitForDiscovery(attempts = 0): Promise<boolean | "legacy-fallback"> {
+    if (this.legacyFallback_) return "legacy-fallback";
     const supported = await this.begin();
-    if (supported || !this.client_?.retryable()) return supported;
+    if (supported) {
+      this.legacyFallback_ = false;
+      return true;
+    }
+    if (!this.client_?.retryable()) return false;
+    if (attempts >= this.maxDiscoveryRetries_) {
+      // Older firmware never exposes the native endpoints. Preserve this
+      // capped decision so queued saves use their legacy paths immediately.
+      this.legacyFallback_ = true;
+      return "legacy-fallback";
+    }
     await new Promise<void>((resolve) => { this.dependencies.delay(resolve, this.retryDelayMs_); });
-    return this.waitForDiscovery();
+    return this.waitForDiscovery(attempts + 1);
   }
 
-  schedule(update: NativePanelConfigUpdate): Promise<NativePanelConfigSaveResult> | null {
+  schedule(update: NativePanelConfigUpdate): Promise<NativePanelConfigSaveOutcome> | null {
     const client = this.client_;
     if (!client) return null;
     if (!this.supported() && !client.retryable()) {
@@ -73,17 +94,21 @@ export class NativePanelConfigController {
     }
     const save = this.saveQueue_
       .then(async () => this.supported() || await this.waitForDiscovery())
-      .then(async (supported) => supported ? client.save(update) : "unsupported" as const)
+      .then(async (supported) => supported === "legacy-fallback"
+        ? supported
+        : supported ? client.save(update) : "unsupported" as const)
       .then(async (result) => {
         if (result !== "unsupported" || !client.retryable()) return result;
-        return await this.waitForDiscovery() ? client.save(update) : result;
+        const supported = await this.waitForDiscovery();
+        if (supported === "legacy-fallback") return supported;
+        return supported ? client.save(update) : result;
       })
       .then((result) => this.report(result), () => this.report("failed"));
     this.saveQueue_ = save;
     return save;
   }
 
-  writeText(name: string, value: string): Promise<NativePanelConfigSaveResult> | null | false {
+  writeText(name: string, value: string): Promise<NativePanelConfigSaveOutcome> | null | false {
     if (name === this.dependencies.entityName("button_order")) {
       return this.schedule((current) => updateNativePanelConfigDocument(
         current, this.dependencies.deviceProfile(), "settings", "button_order", value,
@@ -106,7 +131,7 @@ export class NativePanelConfigController {
     return false;
   }
 
-  writeSubpage(slot: number, value: string): Promise<NativePanelConfigSaveResult> | false | null {
+  writeSubpage(slot: number, value: string): Promise<NativePanelConfigSaveOutcome> | false | null {
     if (!Number.isInteger(slot) || slot < 1 || slot > this.dependencies.slotCount()) return false;
     return this.schedule((current) => updateNativePanelConfigDocument(
       current, this.dependencies.deviceProfile(), "subpages", slot, value,

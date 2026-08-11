@@ -179,6 +179,8 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     Object.defineProperties(globalThis, descriptors);
     const migrationGlobals = globalThis as unknown as {
       nativePanelConfigTextWrite: (name: string, value: string) => unknown;
+      NATIVE_PANEL_CONFIG_MAX_DISCOVERY_RETRIES: number;
+      _nativePanelConfigClient: ReturnType<typeof createNativePanelConfigClient>;
     };
     await Promise.resolve();
     await Promise.resolve();
@@ -188,6 +190,24 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
       "a deferred edit retries capability discovery after the temporary 404");
     equal(nativeSaves, 1,
       "a deferred edit is written once the native configuration endpoint is ready");
+
+    migrationGlobals.NATIVE_PANEL_CONFIG_MAX_DISCOVERY_RETRIES = 0;
+    let permanentlyMissingCapabilityRequests = 0;
+    const permanentlyMissingClient = createNativePanelConfigClient(async (path) => {
+      if (path === "/api/v1/capabilities") {
+        permanentlyMissingCapabilityRequests += 1;
+        return { ...response(404), json: async () => ({}) };
+      }
+      return response(500);
+    });
+    await permanentlyMissingClient.discover();
+    migrationGlobals._nativePanelConfigClient = permanentlyMissingClient;
+    equal(await migrationGlobals.nativePanelConfigTextWrite("button_order", "2,1"), "legacy-fallback",
+      "a permanently absent capabilities endpoint releases the pending edit to the legacy route");
+    equal(await migrationGlobals.nativePanelConfigTextWrite("button_order", "1,2"), "legacy-fallback",
+      "later queued edits reuse the older-firmware fallback");
+    equal(permanentlyMissingCapabilityRequests, 2,
+      "the capped older-firmware fallback avoids rediscovering native configuration for each save");
   } finally {
     for (const [name, descriptor] of savedDescriptors) {
       if (descriptor) Object.defineProperty(globalThis, name, descriptor);

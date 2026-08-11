@@ -944,6 +944,7 @@ declare global {
   var postSwitchWithObjectIds: any;
   var postTemperatureDegreeSymbol: any;
   var postText: any;
+  var postTextLegacy: any;
   var postTextWithObjectIds: any;
   var postVoiceServices: any;
   var postWithObjectId: any;
@@ -1025,6 +1026,7 @@ declare global {
   var saveClockBarTemperatureSettings: any;
   var saveSubpageConfig: any;
   var saveSubpageEntity: any;
+  var saveSubpageEntityLegacy: any;
   var scaledCqw: any;
   var scaledCqwText: any;
   var scheduleFirmwareWebOtaFallback: any;

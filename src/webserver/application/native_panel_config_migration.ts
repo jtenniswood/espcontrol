@@ -26,7 +26,9 @@ export function installNativePanelConfigMigrationModule(): GlobalDescriptors {
   return {
     "_nativePanelConfigClient": liveGlobal(() => controller.client, (value) => { controller.client = value as typeof controller.client; }),
     "_nativePanelConfigSaveQueue": liveGlobal(() => controller.saveQueue, (value) => { controller.saveQueue = value as typeof controller.saveQueue; }),
+    "_nativePanelConfigLegacyFallback": liveGlobal(() => controller.legacyFallback, (value) => { controller.legacyFallback = Boolean(value); }),
     "NATIVE_PANEL_CONFIG_RETRY_DELAY_MS": liveGlobal(() => controller.retryDelayMs, (value) => { controller.retryDelayMs = value as number; }),
+    "NATIVE_PANEL_CONFIG_MAX_DISCOVERY_RETRIES": liveGlobal(() => controller.maxDiscoveryRetries, (value) => { controller.maxDiscoveryRetries = value as number; }),
     "beginNativePanelConfigMigration": staticGlobal(() => controller.begin()),
     "nativePanelConfigMigrationSupported": staticGlobal(() => controller.supported()),
     "nativePanelConfigSubpageWrite": staticGlobal((slot?: unknown, value?: unknown) =>
