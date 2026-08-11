@@ -26,9 +26,9 @@ Edit these files when changing product behavior or supported hardware:
 - `product/v2/product_compatibility.json` - saved config, backup,
   layout, and migration fixtures that protect upgrades.
 
-`model_v2.json` records the device catalogue and translation sources. Sources
-that have not yet migrated deliberately continue through the established files;
-only the selected pilot is authored in `product/v2/`.
+`model_v2.json` records the complete card-contract and device-catalogue sources
+in `product/v2/`. The selected pilot overlays below prove the per-card and
+per-device composition path without changing the generated output.
 
 ## Product Model v2 Pilot
 
@@ -38,8 +38,8 @@ only the selected pilot is authored in `product/v2/`.
 
 `python3 scripts/check_product_model_v2.py` proves that the composed model is
 byte-for-byte equivalent to the legacy card contract and device catalogue.
-Until another family is migrated, edit all other cards and devices in their
-established source files.
+Until another family receives a per-item overlay, edit its shared definition in
+`product/v2/card_contract.json` or `product/v2/device_catalog.json`.
 
 ## Generated Outputs
 
