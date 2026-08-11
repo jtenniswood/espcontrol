@@ -247,7 +247,7 @@ TASKS = (
          domains=("firmware", "product"), inputs=("common/assets/**", "devices/**", "scripts/generate_device_slots.py"), generated_inputs=("devices/*/packages.yaml", "devices/*/device/sensors.yaml"), parallel_safe=True),
     task("icon-groups", ("python3", "scripts/check_icon_groups.py"), dependencies=("generated",), profiles=FAST,
          domains=("firmware", "product", "docs"),
-         inputs=("common/assets/**", "devices/**", "docs/.vitepress/theme/components/IconGallery.vue", "scripts/check_icon_groups.py"), parallel_safe=True),
+         inputs=("common/assets/**", "product/v2/icons.json", "product/model_v2.json", "devices/**", "docs/.vitepress/theme/components/IconGallery.vue", "scripts/check_icon_groups.py", "scripts/product_model_v2.py"), parallel_safe=True),
     task("status-icon-glyphs", ("python3", "scripts/check_status_icon_glyphs.py"), profiles=FAST,
          domains=("firmware",),
          inputs=("common/assets/network_status_glyphs.yaml", "components/espcontrol/*_status.h", "scripts/check_status_icon_glyphs.py"), parallel_safe=True),
