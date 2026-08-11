@@ -253,28 +253,28 @@ def canonicalize_device(device: dict[str, Any]) -> dict[str, Any]:
 
 def compose_catalog_data(data: Any) -> dict[str, Any]:
     if not isinstance(data, dict):
-        raise DeviceProfileError("devices/catalog.json must contain a JSON object")
+        raise DeviceProfileError("product/v2/device_catalog.json must contain a JSON object")
     _reject_nulls(data, "catalog", "", "catalog")
     unknown_top = set(data) - {"settings", "profiles", "devices"}
     if unknown_top:
-        raise DeviceProfileError(f"devices/catalog.json has unknown fields: {', '.join(sorted(unknown_top))}")
+        raise DeviceProfileError(f"product/v2/device_catalog.json has unknown fields: {', '.join(sorted(unknown_top))}")
     settings = data.get("settings", {})
     profiles = data.get("profiles", {})
     devices = data.get("devices")
     if not isinstance(settings, dict):
-        raise DeviceProfileError("devices/catalog.json: settings must be an object")
+        raise DeviceProfileError("product/v2/device_catalog.json: settings must be an object")
     if not isinstance(profiles, dict):
-        raise DeviceProfileError("devices/catalog.json: profiles must be an object")
+        raise DeviceProfileError("product/v2/device_catalog.json: profiles must be an object")
     unknown_categories = set(profiles) - set(PROFILE_CATEGORIES)
     if unknown_categories:
         raise DeviceProfileError(
-            "devices/catalog.json: unknown profile categories: " + ", ".join(sorted(unknown_categories))
+            "product/v2/device_catalog.json: unknown profile categories: " + ", ".join(sorted(unknown_categories))
         )
     for category in PROFILE_CATEGORIES:
         if not isinstance(profiles.get(category, {}), dict):
-            raise DeviceProfileError(f"devices/catalog.json: profiles.{category} must be an object")
+            raise DeviceProfileError(f"product/v2/device_catalog.json: profiles.{category} must be an object")
     if not isinstance(devices, dict) or not devices:
-        raise DeviceProfileError("devices/catalog.json: devices must be a non-empty object")
+        raise DeviceProfileError("product/v2/device_catalog.json: devices must be a non-empty object")
 
     expanded: dict[str, Any] = {"settings": copy.deepcopy(settings), "devices": {}}
     for slug, entry in devices.items():

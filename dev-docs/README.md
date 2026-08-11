@@ -65,8 +65,8 @@ or upstream project instead.
 
 - The hard ownership map is [Source of Truth Contract](source-of-truth.md):
   edit authored sources, never generated outputs.
-- Product metadata starts in `devices/catalog.json`; `devices/manifest.json` is generated for compatibility.
-- Card behavior starts in `common/config/card_contract.json`.
+- Product metadata starts in `product/v2/device_catalog.json`; `devices/manifest.json` is generated for compatibility.
+- Card behavior starts in `product/v2/card_contract.json`.
 - Shared Home Assistant entity names start in `product/v2/entity_names.json`.
 - Web setup code lives under `src/webserver/`.
 - Firmware UI code lives in `components/espcontrol/`, with `button_grid.h` as
@@ -80,7 +80,7 @@ or upstream project instead.
 | Path | What lives here |
 |---|---|
 | `common/` | Shared ESPHome YAML, theme, screens, addons, config, assets, icon lists, and glyph sets. |
-| `common/config/card_contract.json` | Source of truth for card metadata, options, defaults, generated web constants, and generated firmware constants. |
+| `product/v2/card_contract.json` | Source of truth for card metadata, options, defaults, generated web constants, and generated firmware constants. |
 | `components/espcontrol/` | C++ for the on-device LVGL UI. `button_grid.h` is the YAML compatibility facade; focused headers and compiled modules own the implementation. |
 | `src/webserver/` | TypeScript web configurator source. `cards/<card>.ts` holds card-specific registrations; `application/` holds shared setup-page logic. |
 | `devices/<slug>/` | Per-device ESPHome entry points, package manifests, fonts, display drivers, pins, and local development config. |

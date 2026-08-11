@@ -14,7 +14,7 @@ from device_profiles import ROOT, load_device_profiles, public_device_capabiliti
 WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
-CARD_CONTRACT_JSON = ROOT / "common" / "config" / "card_contract.json"
+CARD_CONTRACT_JSON = ROOT / "product" / "v2" / "card_contract.json"
 CARD_CAPABILITIES_DOC = ROOT / "docs" / "generated" / "cards" / "capabilities.md"
 
 

@@ -58,11 +58,11 @@ jobs:
             common/assets/*.yaml
             common/assets/fonts/*
             common/assets/icons.json
-            common/config/card_contract.json
+            product/v2/card_contract.json
             common/config/entity_names.json
             common/config/strings.*.txt
             compatibility/fixtures/product_compatibility.json
-            devices/catalog.json
+            product/v2/device_catalog.json
             devices/manifest.json
             devices/*/device/fonts.yaml
             product/model_v2.json

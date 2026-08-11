@@ -513,7 +513,7 @@ int main() {
 }
 
 function main() {
-  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, "common/config/card_contract.json"), "utf8"));
+  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, "product/v2/card_contract.json"), "utf8"));
   assert.deepStrictEqual(contract.cards.action.normalization.migrationActions.slice(0, 2), ["legacy_local_action", "legacy_option_select"]);
   const generatedAction = loadTypeScriptModule(path.join(ROOT, "src/webserver/generated/saved_config_action.ts"));
   const localAction = { type: "local", sensor: "stale", unit: "unit", precision: "2", options: "unknown=1", icon_on: "Custom" };

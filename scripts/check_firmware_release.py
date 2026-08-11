@@ -182,7 +182,7 @@ def test_device_matrix_sparse_checkouts_include_product_model() -> None:
         "product/model_v2.json",
         "scripts/product_model_v2.py",
         "product/v2/icons.json",
-        "common/config/card_contract.json",
+        "product/v2/card_contract.json",
         "product/v2/entity_names.json",
         "product/v2/translations/strings.*.txt",
         "product/v2/product_compatibility.json",

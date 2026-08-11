@@ -2045,7 +2045,7 @@ def self_test() -> None:
             "docs/staged-then-reverted.md": "initial\n",
             "src/webserver/old.js": "initial\n",
             "components/espcontrol/example.h": "initial\n",
-            "devices/catalog.json": "{}\n",
+            "product/v2/device_catalog.json": "{}\n",
         }
         for relative, content in initial.items():
             destination = repo / relative
@@ -2071,8 +2071,8 @@ def self_test() -> None:
         run_git("restore", "--source=main", "--staged", "--worktree", "docs/guide.md")
         run_git("mv", "src/webserver/old.js", "src/webserver/new.js")
         (repo / "components/espcontrol/example.h").unlink()
-        (repo / "devices/catalog.json").write_text('{"changed": true}\n')
-        run_git("add", "devices/catalog.json")
+        (repo / "product/v2/device_catalog.json").write_text('{"changed": true}\n')
+        run_git("add", "product/v2/device_catalog.json")
         staged_then_reverted = repo / "docs/staged-then-reverted.md"
         staged_then_reverted.write_text("staged\n")
         run_git("add", "docs/staged-then-reverted.md")
@@ -2087,7 +2087,7 @@ def self_test() -> None:
             "src/webserver/old.js",
             "src/webserver/new.js",
             "components/espcontrol/example.h",
-            "devices/catalog.json",
+            "product/v2/device_catalog.json",
             "untracked.txt",
         }
         if not expected_paths <= discovered:

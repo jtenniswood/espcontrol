@@ -1,6 +1,6 @@
 # Card Contract
 
-`common/config/card_contract.json` is the source of truth for card type metadata.
+`product/v2/card_contract.json` is the source of truth for card type metadata.
 It keeps the web setup page and firmware aligned.
 
 `contractVersion` versions the authored contract language. It is deliberately
@@ -247,7 +247,7 @@ is usually missing.
 
 ## Contract Change Checklist
 
-After editing `common/config/card_contract.json`:
+After editing `product/v2/card_contract.json`:
 
 ```bash
 python3 scripts/build.py
@@ -286,7 +286,7 @@ Action state, script-field, and confirmation text values also ignore leading and
 
 | Concern | Typical path |
 |---|---|
-| Type metadata and defaults | `common/config/card_contract.json` |
+| Type metadata and defaults | `product/v2/card_contract.json` |
 | Web settings and preview | `src/webserver/cards/<type>.ts` |
 | Web parsing/serialization | `src/webserver/application/config_codec.ts` |
 | Firmware parsing | `components/espcontrol/button_grid_config.h` |
@@ -301,7 +301,7 @@ A card type usually spans the contract, setup page, and firmware. Work in this
 order:
 
 1. Register the card and its runtime driver/capabilities in
-   `common/config/card_contract.json`.
+   `product/v2/card_contract.json`.
 2. Add web settings and preview behavior in `src/webserver/cards/<type>.ts`.
 3. If it stores options, update web parsing and option preservation in
    `src/webserver/application/config_codec.ts`.

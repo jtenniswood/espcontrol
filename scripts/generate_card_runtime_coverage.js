@@ -9,7 +9,7 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const INVENTORY_PATH = path.join(ROOT, "common", "config", "card_runtime_inventory.json");
-const CONTRACT_PATH = path.join(ROOT, "common", "config", "card_contract.json");
+const CONTRACT_PATH = path.join(ROOT, "product", "v2", "card_contract.json");
 const NORMALIZATION_PATH = path.join(ROOT, "common", "config", "card_runtime_baseline_card_normalization_fixtures.json");
 const SURFACE_PATH = path.join(ROOT, "compatibility", "fixtures", "card_runtime_surface_baseline.json");
 const REPORT_PATH = path.join(ROOT, "docs", "generated", "cards", "runtime-coverage.md");

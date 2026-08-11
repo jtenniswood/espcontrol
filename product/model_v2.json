@@ -4,12 +4,12 @@
   "description": "The Product Model v2 ownership boundary, with the sensor card and 10-inch V1 device pilot authored under product/.",
   "sources": {
     "cardContract": {
-      "path": "common/config/card_contract.json",
+      "path": "product/v2/card_contract.json",
       "kind": "file",
       "role": "authored"
     },
     "deviceCatalog": {
-      "path": "devices/catalog.json",
+      "path": "product/v2/device_catalog.json",
       "kind": "file",
       "role": "authored"
     },

@@ -13,7 +13,7 @@ const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
-const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
+const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(ROOT, "product", "v2", "card_contract.json"), "utf8"));
 
 function loadHooks(search, grid) {
   const params = new URLSearchParams(search || "");

@@ -3,7 +3,7 @@
   "generatedBy": "scripts/check_product_snapshot.py --update",
   "sources": {
     "deviceProfiles": "devices/manifest.json",
-    "cardContract": "common/config/card_contract.json",
+    "cardContract": "product/v2/card_contract.json",
     "entityNames": "product/v2/entity_names.json",
     "icons": "product/v2/icons.json",
     "compatibilityFixtures": "product/v2/product_compatibility.json"

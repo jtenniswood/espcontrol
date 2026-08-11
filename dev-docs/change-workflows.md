@@ -10,7 +10,7 @@ Playbook: [Add or change a card type](playbooks/add-card-type.md).
 
 Start with the contract, then wire both UI surfaces.
 
-1. Edit `common/config/card_contract.json`.
+1. Edit `product/v2/card_contract.json`.
 2. If the card has web settings or a preview, add or update
    `src/webserver/cards/<type>.ts`.
 3. If the card stores options, update option parsing/preservation in
@@ -64,7 +64,7 @@ npm run check:product
 
 Playbook: [Add or change a supported device](playbooks/add-supported-device.md).
 
-1. Add or update the device entry and its modal profile in `devices/catalog.json`.
+1. Add or update the device entry and its modal profile in `product/v2/device_catalog.json`.
 2. Add or update `devices/<slug>/packages.yaml`, `dev.yaml`, `esphome.yaml`, and
    files under `devices/<slug>/device/`.
 3. Confirm the device has the required font roles in `firmware.fonts`.

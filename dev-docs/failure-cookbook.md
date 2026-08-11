@@ -9,7 +9,7 @@ First files:
 
 - `src/webserver/application/config_codec.ts`
 - `components/espcontrol/button_grid_config.h`
-- `common/config/card_contract.json`
+- `product/v2/card_contract.json`
 
 Likely cause: the editor writes an option, but web normalization or firmware
 parsing strips it as unknown.
@@ -109,7 +109,7 @@ Before publishing, compile the affected S3 firmware.
 
 First files:
 
-- `common/config/card_contract.json`
+- `product/v2/card_contract.json`
 - `src/webserver/cards/<type>.ts`
 - `components/espcontrol/button_grid.h`
 - `components/espcontrol/button_grid_grid.h`

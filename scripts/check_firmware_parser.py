@@ -794,7 +794,7 @@ def runtime_capability_enum_name(value: str) -> str:
 
 
 def generated_card_runtime_assertions() -> str:
-    contract = json.loads((ROOT / "common" / "config" / "card_contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "product" / "v2" / "card_contract.json").read_text(encoding="utf-8"))
     runtime = contract["runtime"]
     lines = [
         "  struct RuntimeConfig {",

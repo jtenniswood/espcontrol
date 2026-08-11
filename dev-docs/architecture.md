@@ -15,8 +15,8 @@ outputs. For the hard edit/rebuild/check contract, use
 
 | Area | Path | Purpose |
 |---|---|---|
-| Product profiles | `devices/catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
-| Card metadata | `common/config/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
+| Product profiles | `product/v2/device_catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
+| Card metadata | `product/v2/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
 | Entity names | `product/v2/entity_names.json` | Shared Home Assistant entity names used by firmware and the setup page. |
 | Icons | `product/v2/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
 | Firmware UI | `components/espcontrol/*.h` | LVGL card grid, card renderers, modals, config parsing, Home Assistant bindings. |
@@ -88,7 +88,7 @@ also use the core-owned Home Assistant binding.
 ## Build-Time Flow
 
 ```text
-common/config/card_contract.json
+product/v2/card_contract.json
   -> src/webserver/generated/card_contract.ts
   -> components/espcontrol/button_grid_contract_generated.h
   -> docs/generated/cards/capabilities.md
