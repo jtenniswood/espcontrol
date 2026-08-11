@@ -31,14 +31,14 @@ Do not translate or change:
    - `components/espcontrol/`
    - `common/device/`
    - `common/addon/` when text can appear on the display
-   - `common/config/strings.en.txt`
+   - `product/v2/translations/strings.en.txt`
 3. Avoid treating `src/webserver/` strings as in scope unless the same string is shared with firmware output and appears on the physical display.
 4. For each candidate string, classify it before editing:
-   - Already present in `common/config/strings.en.txt` and rendered through `espcontrol_i18n(...)` or `espcontrol_i18n_key(...)`: leave it alone.
-   - Present in `common/config/strings.en.txt` but displayed as raw English: update the firmware code to use the translation helper.
-   - Passed into a local helper that later renders text through `espcontrol_i18n(...)`: make sure the English value exists in every `common/config/strings.*.txt` file.
+   - Already present in `product/v2/translations/strings.en.txt` and rendered through `espcontrol_i18n(...)` or `espcontrol_i18n_key(...)`: leave it alone.
+   - Present in `product/v2/translations/strings.en.txt` but displayed as raw English: update the firmware code to use the translation helper.
+   - Passed into a local helper that later renders text through `espcontrol_i18n(...)`: make sure the English value exists in every `product/v2/translations/strings.*.txt` file.
    - Returned from a local helper and later displayed without another translation call: translate the known static return values before returning or before display.
-   - Missing from `common/config/strings.en.txt`: add a stable `snake_case` key to `strings.en.txt` and add the matching key to every `common/config/strings.*.txt` file.
+   - Missing from `product/v2/translations/strings.en.txt`: add a stable `snake_case` key to `strings.en.txt` and add the matching key to every `product/v2/translations/strings.*.txt` file.
 5. For non-English translation files, add a reasonable translation. If uncertain, use the English source text instead of guessing badly.
 6. Regenerate firmware translation output:
 
@@ -62,8 +62,8 @@ If `npm run check:product` fails because `esbuild` is missing in a fresh worktre
 Use targeted searches and then inspect context manually. Useful starting points:
 
 ```bash
-rg --line-number --glob '!src/webserver/**' '"[^"]*[A-Za-z][^"]*"' components/espcontrol common/device common/addon common/config
-rg --line-number "espcontrol_i18n|espcontrol_i18n_key|strings\\.en\\.txt" components/espcontrol common/device common/addon common/config
+rg --line-number --glob '!src/webserver/**' '"[^"]*[A-Za-z][^"]*"' components/espcontrol common/device common/addon product/v2/translations
+rg --line-number "espcontrol_i18n|espcontrol_i18n_key|strings\\.en\\.txt" components/espcontrol common/device common/addon product/v2/translations
 rg --line-number "lv_label_set_text\([^\n]*(\"|std::string|sentence_cap_text)|text:\s*\"|text:\s*!lambda" components/espcontrol common/device common/addon --glob '!components/espcontrol/i18n_generated.h'
 rg --line-number "static const char \*|const char \*.*\[\]|std::array<.*char|std::vector<.*string" components/espcontrol --glob '!components/espcontrol/i18n_generated.h'
 ```
@@ -103,7 +103,7 @@ for path in files:
         )
 
 english = {}
-for line in (root / "common/config/strings.en.txt").read_text().splitlines():
+for line in (root / "product/v2/translations/strings.en.txt").read_text().splitlines():
     if not line.strip() or line.lstrip().startswith("#") or "=" not in line:
         continue
     key, value = line.split("=", 1)
