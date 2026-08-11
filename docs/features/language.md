@@ -13,12 +13,12 @@ The selector shows languages that are included in the firmware. English, Czech, 
 
 ## Translation Files
 
-Panel strings are kept in `product/v2/translations/strings.en.txt`. Each translated language has a matching `common/config/strings.<language-code>.txt` file.
+Panel strings are kept in `product/v2/translations/strings.en.txt`. Each translated language has a matching `product/v2/translations/strings.<language-code>.txt` file.
 
 To contribute another language:
 
 1. Copy `product/v2/translations/strings.en.txt`.
-2. Rename the copy to `common/config/strings.<language-code>.txt`, for example `strings.it.txt` for Italian.
+2. Rename the copy to `product/v2/translations/strings.<language-code>.txt`, for example `strings.it.txt` for Italian.
 3. Translate only the text after the `=`.
 4. Keep every key before the `=` exactly the same.
 5. Add the language code to the firmware language select options in `common/addon/time.yaml`.
