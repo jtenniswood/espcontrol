@@ -35,6 +35,11 @@ jobs:
             devices/manifest.json
             devices/*/device/fonts.yaml
             product/model_v2.json
+            product/v2/icons.json
+            product/v2/entity_names.json
+            product/v2/translations/strings.*.txt
+            product/v2/product_compatibility.json
+            product/v2/**
             scripts/device_matrix.py
             scripts/device_profiles.py
             scripts/product_model_v2.py
