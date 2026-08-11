@@ -214,10 +214,12 @@ def test_ota_preserves_deployed_partition_layouts() -> None:
         dev_path = ROOT / "devices" / slug / "dev.yaml"
         public_config_path = ROOT / "devices" / slug / "esphome.yaml"
         build_path = ROOT / "builds" / f"{slug}.yaml"
+        factory_path = ROOT / "builds" / f"{slug}.factory.yaml"
         device = device_path.read_text(encoding="utf-8")
         dev = dev_path.read_text(encoding="utf-8")
         public_config = public_config_path.read_text(encoding="utf-8")
         build = build_path.read_text(encoding="utf-8")
+        factory = factory_path.read_text(encoding="utf-8")
         assert "partitions: ${partition_table}" in device, (
             f"{slug}: OTA builds must select the deployed partition table per entry point"
         )
@@ -230,6 +232,10 @@ def test_ota_preserves_deployed_partition_layouts() -> None:
         assert f'partition_table: "../common/device/{table_name}"' in build, (
             f"{slug}: copied firmware builds must retain the deployed {table_name} flash layout"
         )
+        assert (
+            f'partition_table: "../common/device/{table_name}"' in factory
+            or f"!include {slug}.yaml" in factory
+        ), f"{slug}: factory builds must retain the deployed {table_name} flash layout"
 
     for table_name, rows in LEGACY_OTA_PARTITION_ROWS.items():
         table = (ROOT / "common" / "device" / table_name).read_text(encoding="utf-8")
