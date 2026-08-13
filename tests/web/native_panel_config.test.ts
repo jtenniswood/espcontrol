@@ -5,6 +5,7 @@ import {
   type NativePanelConfigResponse,
 } from "../../src/webserver/features/native_panel_config";
 import { createNativePanelConfigMigrationController } from "../../src/webserver/application/native_panel_config_migration";
+import { NativePanelConfigController } from "../../src/webserver/controllers/native_panel_config_controller";
 import { decodePanelConfig, encodePanelConfig, type PanelConfigDocument } from "../../src/webserver/model";
 
 interface MigrationFixture {
@@ -110,6 +111,16 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   equal(legacyClient.confirmedUnsupported(), true,
     "a valid capabilities response can confirm that native configuration is unsupported");
 
+  let confirmedLegacyRequests = 0;
+  const confirmedLegacyClient = createNativePanelConfigClient(async () => {
+    confirmedLegacyRequests += 1;
+    if (confirmedLegacyRequests > 1) throw new Error("confirmed legacy discovery should be reused");
+    return {
+      ...response(200),
+      json: async () => ({ configuration: { read: false, write: false, document_versions: [] } }),
+    };
+  });
+
   let discoveryAttempts = 0;
   const recoveringDiscoveryClient = createNativePanelConfigClient(async (path, request) => {
     if (path === "/api/v1/capabilities" && discoveryAttempts++ === 0)
@@ -133,6 +144,15 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     "a capabilities object without a configuration contract is rejected");
   equal(malformedCapabilitiesClient.confirmedUnsupported(), false,
     "a malformed capabilities object is not mistaken for older firmware");
+
+  const malformedVersionClient = createNativePanelConfigClient(async () => ({
+    ...response(200),
+    json: async () => ({ configuration: { read: true, write: true, document_versions: ["1"] } }),
+  }));
+  equal(await malformedVersionClient.discover(), false,
+    "a non-numeric document version is rejected");
+  equal(malformedVersionClient.confirmedUnsupported(), false,
+    "a malformed version list is not mistaken for older firmware");
 
   let nativeInitializationComplete = false;
   const reconnectingClient = createNativePanelConfigClient(async (path, request) => {
@@ -181,6 +201,24 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     });
   };
   try {
+    const confirmedLegacyController = new NativePanelConfigController({
+      fetch: null,
+      deviceProfile: () => "panel-a",
+      slotCount: () => 2,
+      entityName: (name: string) => name,
+      entityNameForSlot: (name: string, slot: number) => `${name}_${slot}`,
+      normalizeHexColor: (value: string) => value,
+      showBanner: () => undefined,
+      delay: (callback: () => void) => { callback(); return 0 as any; },
+    });
+    confirmedLegacyController.client = confirmedLegacyClient;
+    equal(await confirmedLegacyController.begin(), false,
+      "controller setup records a confirmed older-firmware response");
+    equal(await confirmedLegacyController.writeDocument(decodePanelConfig(document)), "legacy-fallback",
+      "a confirmed older-firmware result is reused without another capabilities request");
+    equal(confirmedLegacyRequests, 1,
+      "confirmed older firmware is discovered only once");
+
     let rejectInitialDiscovery: ((reason?: unknown) => void) | undefined;
     let recoveringControllerCapabilityRequests = 0;
     setGlobal("fetch", async (path: string, request?: NativePanelConfigRequest) => {

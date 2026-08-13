@@ -68,6 +68,10 @@ export class NativePanelConfigController {
 
   async waitForDiscovery(attempts = 0): Promise<boolean | "legacy-fallback" | "failed"> {
     if (this.legacyFallback_) return "legacy-fallback";
+    if (this.client_?.confirmedUnsupported()) {
+      this.legacyFallback_ = true;
+      return "legacy-fallback";
+    }
     const supported = await this.begin();
     if (supported) {
       this.legacyFallback_ = false;

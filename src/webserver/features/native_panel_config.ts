@@ -63,6 +63,8 @@ function supportedCapabilities(value: unknown): boolean | null {
       typeof configuration.read !== "boolean" ||
       typeof configuration.write !== "boolean" ||
       !Array.isArray(configuration.document_versions)) return null;
+  if (!configuration.document_versions.every((version) =>
+    Number.isInteger(version) && Number(version) > 0)) return null;
   return configuration.read && configuration.write &&
     configuration.document_versions.includes(PANEL_CONFIG_DOCUMENT_VERSION);
 }
