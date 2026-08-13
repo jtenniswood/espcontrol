@@ -132,7 +132,7 @@ export class NativePanelConfigController {
   }
 
   writeDocument(document: PanelConfigDocument): Promise<NativePanelConfigSaveOutcome> | null {
-    if (!this.client_ || !this.supported()) return null;
+    if (!this.client_) return null;
     return this.schedule((current) => {
       if (current.deviceProfile !== document.deviceProfile) {
         throw new Error("The backup targets a different device profile.");

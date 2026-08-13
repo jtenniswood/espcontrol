@@ -157,6 +157,7 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   try {
     let capabilityRequests = 0;
     let nativeSaves = 0;
+    const savedDocuments: PanelConfigDocument[] = [];
     setGlobal("fetch", async (path: string, request?: NativePanelConfigRequest) => {
       if (path === "/api/v1/capabilities") {
         capabilityRequests += 1;
@@ -166,6 +167,7 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
       }
       if (request?.method === "PUT") {
         nativeSaves += 1;
+        savedDocuments.push(decodePanelConfig(new Uint8Array(request.body!)));
         return response(204);
       }
       return response(200, document, "\"10\"");
@@ -182,12 +184,21 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     });
     await Promise.resolve();
     await Promise.resolve();
+    const deferredBackupDocument = decodePanelConfig(document);
+    const deferredBackup = {
+      ...deferredBackupDocument,
+      settings: { ...deferredBackupDocument.settings, future_native_setting: "preserved" },
+    };
+    equal(await controller.writeDocument(deferredBackup), "saved",
+      "a backup restore waits for deferred native setup instead of losing native-only settings");
+    equal(savedDocuments[0]?.settings.future_native_setting, "preserved",
+      "deferred backup restore writes the exact native document");
     equal(await controller.writeText("button_order", "1,2"), "saved",
       "an edit waits for deferred native setup instead of writing a stale legacy shadow");
     equal(capabilityRequests, 2,
       "a deferred edit retries capability discovery after the temporary 404");
-    equal(nativeSaves, 1,
-      "a deferred edit is written once the native configuration endpoint is ready");
+    equal(nativeSaves, 2,
+      "deferred backup restore and edit are written once the native endpoint is ready");
 
     controller.maxDiscoveryRetries = 0;
     let permanentlyMissingCapabilityRequests = 0;
