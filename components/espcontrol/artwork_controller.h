@@ -156,6 +156,14 @@ constexpr bool artwork_batch_waits_for_companion(bool batch_complete,
   return !response_window_expired && !batch_complete && selection_empty;
 }
 
+// A metadata notification received while the current paired read is settling
+// already promises a replacement read. Keep that pending refresh intact rather
+// than clearing it with the empty result from the superseded batch.
+constexpr bool artwork_empty_selection_preserves_pending_refresh(
+    bool selection_empty, bool refresh_pending) {
+  return selection_empty && refresh_pending;
+}
+
 // A later ordinary refresh supersedes the earlier callbacks, but must retain
 // the earlier request's explicit refresh requirement.
 constexpr bool artwork_refresh_forced(bool active_forced,

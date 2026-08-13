@@ -15,6 +15,7 @@ using espcontrol::artwork::artwork_source_mark_received;
 using espcontrol::artwork::artwork_source_request_mask;
 using espcontrol::artwork::artwork_picture_response_clears_retry;
 using espcontrol::artwork::artwork_batch_waits_for_companion;
+using espcontrol::artwork::artwork_empty_selection_preserves_pending_refresh;
 using espcontrol::artwork::artwork_refresh_forced;
 using espcontrol::artwork::artwork_response_needs_processing;
 using espcontrol::artwork::artwork_selection_needs_download;
@@ -92,6 +93,9 @@ int main() {
   assert(!artwork_batch_waits_for_companion(false, true, true));
   assert(!artwork_batch_waits_for_companion(false, false));
   assert(!artwork_batch_waits_for_companion(true, true));
+  assert(artwork_empty_selection_preserves_pending_refresh(true, true));
+  assert(!artwork_empty_selection_preserves_pending_refresh(true, false));
+  assert(!artwork_empty_selection_preserves_pending_refresh(false, true));
   assert(artwork_refresh_forced(true, false, false));
   assert(artwork_refresh_forced(false, true, false));
   assert(artwork_refresh_forced(false, false, true));

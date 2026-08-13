@@ -2133,6 +2133,11 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
   ctx->media_artwork_refresh.finish();
   ctx->media_artwork_remote_refresh_pending = false;
   if (chosen.empty()) {
+    if (espcontrol::artwork::artwork_empty_selection_preserves_pending_refresh(
+          true, ctx->media_artwork_trigger.pending)) {
+      image_card_log_diagnostics(ctx, "media-artwork-pending-refresh-preserved");
+      return;
+    }
     image_card_clear_media_artwork(ctx);
     return;
   }
@@ -2223,6 +2228,13 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
   // companion as a fallback so an empty retry result cannot clear valid art.
   if (request_mask == espcontrol::artwork::ARTWORK_SOURCE_BOTH) {
     ctx->media_artwork_sources.clear();
+  }
+  // A response-window timer belongs to the batch that created it. A partial
+  // queue retry can begin a new batch before that timer expires, so cancel it
+  // here rather than allowing the old timeout to settle the new generation.
+  if (ctx->media_artwork_timer) {
+    lv_timer_del(ctx->media_artwork_timer);
+    ctx->media_artwork_timer = nullptr;
   }
   const uint32_t request_generation = ctx->media_artwork_refresh.begin(
     request_mask, refresh_forced);
