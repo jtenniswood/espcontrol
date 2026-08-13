@@ -73,7 +73,12 @@ export class NativePanelConfigController {
       this.legacyFallback_ = false;
       return true;
     }
-    if (!this.client_?.retryable()) return false;
+    if (!this.client_?.retryable()) {
+      // Discovery has completed and confirmed that the native contract is not
+      // available. Callers can now safely use the legacy entity path.
+      this.legacyFallback_ = true;
+      return "legacy-fallback";
+    }
     if (attempts >= this.maxDiscoveryRetries_) {
       // Older firmware never exposes the native endpoints. Preserve this
       // capped decision so queued saves use their legacy paths immediately.
@@ -87,11 +92,6 @@ export class NativePanelConfigController {
   schedule(update: NativePanelConfigUpdate): Promise<NativePanelConfigSaveOutcome> | null {
     const client = this.client_;
     if (!client) return null;
-    if (!this.supported() && !client.retryable()) {
-      // A restarting panel can serve the editor before deferred endpoints are ready.
-      void this.begin();
-      return null;
-    }
     const save = this.saveQueue_
       .then(async () => this.supported() || await this.waitForDiscovery())
       .then(async (supported) => supported === "legacy-fallback"

@@ -155,6 +155,40 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     });
   };
   try {
+    let resolveInitialDiscovery: ((value: NativePanelConfigResponse) => void) | undefined;
+    let initialDiscoverySaves = 0;
+    setGlobal("fetch", async (path: string, request?: NativePanelConfigRequest) => {
+      if (path === "/api/v1/capabilities") {
+        return new Promise<NativePanelConfigResponse>((resolve) => {
+          resolveInitialDiscovery = resolve;
+        });
+      }
+      if (request?.method === "PUT") {
+        initialDiscoverySaves += 1;
+        return response(204);
+      }
+      return response(200, document, "\"9a\"");
+    });
+    const discoveringController = createNativePanelConfigMigrationController({
+      deviceProfile: () => "panel-a",
+      slotCount: () => 2,
+      entityName: (name: string) => name,
+      entityNameForSlot: (name: string, slot: number) => `${name}_${slot}`,
+      normalizeHexColor: (value: string) => value,
+      showBanner: () => undefined,
+      delay: (callback: () => void) => { callback(); return 0 as any; },
+    });
+    const initialDiscoveryRestore = discoveringController.writeDocument(decodePanelConfig(document));
+    if (!initialDiscoveryRestore) throw new Error("initial discovery restore was not queued");
+    equal(initialDiscoverySaves, 0,
+      "a restore does not fall back or write before initial capability discovery finishes");
+    if (!resolveInitialDiscovery) throw new Error("initial capability discovery did not start");
+    resolveInitialDiscovery(response(200));
+    equal(await initialDiscoveryRestore, "saved",
+      "a backup restore queued during initial discovery uses native configuration");
+    equal(initialDiscoverySaves, 1,
+      "a restore queued during initial discovery writes the native document once");
+
     let capabilityRequests = 0;
     let nativeSaves = 0;
     const savedDocuments: PanelConfigDocument[] = [];
