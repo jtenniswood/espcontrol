@@ -302,6 +302,25 @@ void stalled_reusable_channel_coalesces_reads_per_owner() {
           "stalled artwork retries retained superseded callbacks for one owner");
 }
 
+void unowned_reusable_channel_keeps_independent_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "reusable artwork subscription should register");
+
+  int first_calls = 0;
+  int second_calls = 0;
+  require(coordinator.get("media_player.room", "entity_picture",
+                          [&](std::string) { first_calls++; }, true, 10, 5),
+          "first unowned artwork read should wait");
+  require(coordinator.get("media_player.room", "entity_picture",
+                          [&](std::string) { second_calls++; }, true, 10, 5),
+          "second unowned artwork read should wait independently");
+  coordinator.transport().publish(0, "new");
+  require(first_calls == 1 && second_calls == 1,
+          "duplicate cards did not both receive the first artwork update");
+}
+
 void stale_generations_do_not_deliver() {
   Coordinator coordinator;
   int calls = 0;
@@ -407,6 +426,7 @@ int main() {
   ordinary_subscriptions_do_not_retain_state_for_reads();
   inactive_reusable_channels_release_cached_state();
   stalled_reusable_channel_coalesces_reads_per_owner();
+  unowned_reusable_channel_keeps_independent_reads();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
   released_owner_drops_pending_reads_even_if_its_address_is_reused();

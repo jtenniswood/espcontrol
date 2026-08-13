@@ -358,7 +358,7 @@ class HaReadCoordinator {
     // Keep distinct card owners independent, but cap them as a final guard
     // against a channel that Home Assistant never publishes.
     for (auto &pending : subscription.pending_reads) {
-      if (pending.owner == callback_ref.owner) {
+      if (callback_ref.owner != nullptr && pending.owner == callback_ref.owner) {
         pending = std::move(callback_ref);
         return;
       }
