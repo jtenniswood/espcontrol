@@ -342,6 +342,12 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     if (nativeSubpageValue)
                         nativeDocument.subpages[Number(nativeSubpageKey)] = nativeSubpageValue;
                 }
+                var backedUpNativeConfig: any = backupPlan.config.native_config;
+                if (backedUpNativeConfig &&
+                    backedUpNativeConfig.device_profile === controllers.layout.deviceId) {
+                    nativeDocument = EspControlModel.decodePanelConfig(
+                        EspControlModel.decodePanelConfigBackupPayload(backedUpNativeConfig));
+                }
                 function queueLegacyLayoutRestore() {
                     postText(entityName("button_on_color"), backupPlan.config.button_on_color);
                     for (var legacyButtonIndex: any = 0; legacyButtonIndex < controllers.layout.numSlots; legacyButtonIndex++)

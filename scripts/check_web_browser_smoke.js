@@ -4900,7 +4900,8 @@ async function assertNativeProfileJourney(browser, testCase) {
     const restoredFields = restoredDocument.buttons[2].split(";");
     restoredFields[1] = restoredLabel;
     restoredDocument.buttons[2] = restoredFields.join(";");
-    backup.buttons[1].label = restoredLabel;
+    restoredDocument.settings.future_native_setting = `native-${testCase.slug}`;
+    backup.buttons[1].label = `Readable ${testCase.slug}`;
     backup.native_config = createPanelConfigBackupPayload(
       encodePanelConfig(restoredDocument),
     );
@@ -4917,6 +4918,11 @@ async function assertNativeProfileJourney(browser, testCase) {
       panelConfigLabel(nativeState.document, 2),
       restoredLabel,
       `${testCase.name}: backup restore writes the native document`,
+    );
+    assert.strictEqual(
+      nativeState.document.settings.future_native_setting,
+      `native-${testCase.slug}`,
+      `${testCase.name}: backup restore retains native-only settings`,
     );
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForSelector("#sp-app");
