@@ -203,6 +203,20 @@ async function installRoutes(context, slug, options = {}) {
       return;
     }
     if (
+      !nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/capabilities"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configuration: { read: false, write: false, document_versions: [] },
+        }),
+      });
+      return;
+    }
+    if (
       nativeState &&
       requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname === "/api/v1/config"
