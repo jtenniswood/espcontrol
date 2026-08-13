@@ -171,13 +171,15 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
       return response(200, document, "\"10\"");
     });
     setGlobal("setTimeout", (callback: () => void) => { callback(); return 0; });
-    setGlobal("DEVICE_ID", "panel-a");
-    setGlobal("entityName", (name: string) => name);
-    setGlobal("showBanner", () => undefined);
-    setGlobal("NUM_SLOTS", 2);
-    setGlobal("entityNameForSlot", (name: string, slot: number) => `${name}_${slot}`);
-    setGlobal("normalizeHexColor", (value: string) => value);
-    const controller = createNativePanelConfigMigrationController();
+    const controller = createNativePanelConfigMigrationController({
+      deviceProfile: () => "panel-a",
+      slotCount: () => 2,
+      entityName: (name: string) => name,
+      entityNameForSlot: (name: string, slot: number) => `${name}_${slot}`,
+      normalizeHexColor: (value: string) => value,
+      showBanner: () => undefined,
+      delay: (callback: () => void) => { callback(); return 0 as any; },
+    });
     await Promise.resolve();
     await Promise.resolve();
     equal(await controller.writeText("button_order", "1,2"), "saved",

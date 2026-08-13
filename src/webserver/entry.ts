@@ -1,81 +1,73 @@
 import * as DeviceConfig from "./device_config";
 import * as Model from "./model";
 import { createDeviceApi } from "./api/device_api";
-import * as RequestFailure from "./api/request_failure";
-import * as UiTokens from "./state/ui_tokens";
-import * as AppState from "./state/app_state";
+import { NTP_SERVER_DEFAULTS, defaultTimezoneOptionsForDevice } from "./state/app_state";
 import * as AppInstance from "./state/app_instance";
 import { state } from "./state/app_instance";
-import * as EventAliases from "./state/event_aliases";
-import * as EventState from "./state/event_state";
-import * as FirmwareEvents from "./state/firmware_events";
-import * as ConfigPrimitives from "./model/config_primitives";
-import * as CardContract from "./generated/card_contract";
-import * as Icons from "./generated/icons";
-import { ENTITY_CATALOG } from "./generated/entity_catalog";
-import { installGlobals, installStaticGlobals } from "./runtime/globals";
-import { installCore } from "./application/core";
+import { textSpan } from "./application/ui_primitives";
+import { createCoreFeature } from "./application/core";
 import {
   createApplicationContext,
   createApplicationLayoutState,
-  createCompatibilityCardRegistry,
   type ApplicationContext,
   type ApplicationDomServices,
 } from "./application/application_context";
-import { installFirmwareMetadataModule } from "./application/firmware_metadata";
-import { installStylesModule } from "./application/styles";
-import { installStateModule } from "./application/state";
-import { installLanguageStateModule } from "./application/language_state";
-import { installEnvironmentStateModule } from "./application/environment_state";
-import { installScreenRotationStateModule } from "./application/screen_rotation_state";
-import { installScreenScheduleStateModule } from "./application/screen_schedule_state";
-import { installNtpStateModule } from "./application/ntp_state";
-import { installAppearanceStateModule } from "./application/appearance_state";
-import { installIdleStateModule } from "./application/idle_state";
-import { installArtworkStateModule } from "./application/artwork_state";
-import { installScreensaverStateModule } from "./application/screensaver_state";
-import { installFirmwareVersionStateModule } from "./application/firmware_version_state";
-import { installEntityStateModule } from "./application/entity_state";
-import { installClockBarStateModule } from "./application/clock_bar_state";
-import { installFirmwareUpdateStateModule } from "./application/firmware_update_state";
-import { installScreensaverTimeoutModule } from "./application/screensaver_timeout";
-import { installC6FirmwareUiModule } from "./application/c6_firmware_ui";
-import { installGridModule } from "./application/grid";
-import { installApiModule } from "./application/api";
-import { installFirmwareUpdatePostApiModule } from "./application/firmware_update_post_api";
-import { installPublicFirmwareInstallModule } from "./application/public_firmware_install";
-import { installConfigOptionCoreModule } from "./application/config_option_core";
-import { installConfigMediaOptionsModule } from "./application/config_media_options";
-import { installConfigImageOptionsModule } from "./application/config_image_options";
-import { installConfigModalTabOptionsModule } from "./application/config_modal_tab_options";
-import { installConfigSubpageOptionsModule } from "./application/config_subpage_options";
-import { installConfigSensorOptionsModule } from "./application/config_sensor_options";
-import { installConfigConfirmationOptionsModule } from "./application/config_confirmation_options";
-import { installConfigAccessClimateAlarmOptionsModule } from "./application/config_access_climate_alarm_options";
-import { installConfigCodecModule } from "./application/config_codec";
+import { createCardRegistry } from "./application/card_registry";
+import { createWebStyles } from "./application/styles";
+import { createUiRuntimeState } from "./application/state";
+import { createEnvironmentStateFeature } from "./application/environment_state";
+import { createScreenRotationFeature } from "./application/screen_rotation_state";
+import { createScreenScheduleStateFeature } from "./application/screen_schedule_state";
+import { createAppearanceFeature } from "./application/appearance_state";
+import { createFirmwareVersionFeature } from "./application/firmware_version_state";
+import { createEntityStateFeature } from "./application/entity_state";
+import { createClockBarFeature, type ClockBarFeature } from "./application/clock_bar_state";
+import { createFirmwareUpdateFeature, type FirmwareUpdateFeature } from "./application/firmware_update_state";
+import { createScreensaverTimeoutFeature } from "./application/screensaver_timeout";
+import { createC6FirmwareFeature, type C6FirmwareFeature } from "./application/c6_firmware_ui";
+import { createGridFeature } from "./application/grid";
+import {
+  createApplicationApiFeature,
+  type ApplicationApiFeature,
+} from "./application/api";
+import { createFirmwareUpdatePostApiFeature, type FirmwareUpdatePostApiFeature } from "./application/firmware_update_post_api";
+import { createPublicFirmwareInstallFeature, type PublicFirmwareInstallFeature } from "./application/public_firmware_install";
+import { createConfigMediaOptionsFeature } from "./application/config_media_options";
+import { createConfigImageOptionsFeature } from "./application/config_image_options";
+import { createConfigWeatherOptionsFeature } from "./application/config_weather_options";
+import { createConfigWebhookOptionsFeature } from "./application/config_webhook_options";
+import { createConfigInternalRelayOptionsFeature } from "./application/config_internal_relay_options";
+import { createConfigRobotCardOptionsFeature } from "./application/config_robot_card_options";
+import { createConfigLockOptionsFeature } from "./application/config_lock_options";
+import { createConfigDateTimeOptionsFeature } from "./application/config_date_time_options";
+import { createConfigModalTabOptionsFeature } from "./application/config_modal_tab_options";
+import { createConfigSensorOptionsFeature } from "./application/config_sensor_options";
+import { createConfigConfirmationOptionsFeature } from "./application/config_confirmation_options";
+import { createConfigAccessClimateAlarmOptionsFeature } from "./application/config_access_climate_alarm_options";
+import { createConfigCodecFeature } from "./application/config_codec";
 import { createNativePanelConfigMigrationController } from "./application/native_panel_config_migration";
 import { createConfigPersistenceFeature } from "./application/config_post_api";
-import { installStateLoaderApiModule } from "./application/state_loader_api";
-import { installArtworkPostApiModule } from "./application/artwork_post_api";
-import { installScreenSchedulePostApiModule } from "./application/screen_schedule_post_api";
-import { installClockBarPostApiModule } from "./application/clock_bar_post_api";
-import { installControlsModule } from "./application/controls";
-import { installControlsShellModule } from "./application/controls_shell";
-import { installSettingsPageHelpersModule } from "./application/settings_page_helpers";
-import { installSettingsScheduleSectionModule } from "./application/settings_schedule_section";
-import { installSettingsCoverArtSectionModule } from "./application/settings_cover_art_section";
-import { installSettingsSystemSectionModule } from "./application/settings_system_section";
-import { installSettingsPageModule } from "./application/settings_page";
-import { installControlsFieldsModule } from "./application/controls_fields";
-import { installPreviewRenderModule } from "./application/preview_render";
-import { installButtonSettingsSelectionModule } from "./application/button_settings_selection";
-import { installButtonSettingsRenderQueueModule } from "./application/button_settings_render_queue";
-import { installButtonSettingsIconPickerModule } from "./application/button_settings_icon_picker";
-import { installButtonSettingsModule } from "./application/button_settings";
-import { installPreviewGridPlacementModule } from "./application/preview_grid_placement";
-import { installPreviewContextMenuModule } from "./application/preview_context_menu";
-import { installPreviewClipboardModule } from "./application/preview_clipboard";
-import { installPreviewInteractionsModule } from "./application/preview_interactions";
+import { createStateLoaderFeature, type StateLoaderFeature } from "./application/state_loader_api";
+import { createGridMigrationFeature } from "./application/grid_migration";
+import { createArtworkPostApiFeature } from "./application/artwork_post_api";
+import { createScreenSchedulePostApiFeature } from "./application/screen_schedule_post_api";
+import { createClockBarPostApiFeature } from "./application/clock_bar_post_api";
+import { createControlsShellFeature } from "./application/controls_shell";
+import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } from "./application/settings_page_helpers";
+import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
+import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
+import { createSettingsSystemSectionFeature } from "./application/settings_system_section";
+import { createSettingsPageFeature, type SettingsPageFeature } from "./application/settings_page";
+import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./application/controls_fields";
+import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
+import { createButtonSettingsSelectionFeature, type ButtonSettingsSelectionFeature } from "./application/button_settings_selection";
+import { createButtonSettingsRenderQueueFeature } from "./application/button_settings_render_queue";
+import { createButtonSettingsIconPickerFeature } from "./application/button_settings_icon_picker";
+import { createButtonSettingsFeature, type ButtonSettingsFeature } from "./application/button_settings";
+import { createPreviewGridPlacementFeature } from "./application/preview_grid_placement";
+import { createPreviewContextMenuFeature, type PreviewContextMenuFeature } from "./application/preview_context_menu";
+import { createPreviewClipboardFeature } from "./application/preview_clipboard";
+import { createPreviewInteractionsFeature, type PreviewInteractionsFeature } from "./application/preview_interactions";
 import { createCardEditorDraftController } from "./features/card_editor_draft_controller";
 import { createCardEditorValidationController } from "./features/card_editor_validation_controller";
 import { createCardEditorSaveController } from "./features/card_editor_save_controller";
@@ -93,25 +85,23 @@ import { createBackupExportController } from "./features/backup_export_controlle
 import { createBackupFileController } from "./features/backup_file_controller";
 import { createBackupRestoreController } from "./features/backup_restore_controller";
 import { createBackupFeature } from "./features/backup";
-import { installBackupContractModule } from "./application/backup_contract";
+import { createBackupContractFeature } from "./application/backup_contract";
 import { createAppBackupFeature } from "./application/app_backup";
-import { installAppStatusPreviewModule } from "./application/app_status_preview";
-import { installAppTitleModule } from "./application/app_title";
-import { installAppConfigEventsModule } from "./application/app_config_events";
-import { installAppStateEventHandlersModule } from "./application/app_state_event_handlers";
-import { installAppEventsModule } from "./application/app_events";
-import { installAppModule } from "./application/app";
-import { installAppStartModule } from "./application/app_start";
+import { createAppStatusPreviewFeature, type AppStatusPreviewFeature } from "./application/app_status_preview";
+import { createAppTitleFeature } from "./application/app_title";
+import { createAppConfigEventsFeature } from "./application/app_config_events";
+import { createAppStateEventHandlersFeature } from "./application/app_state_event_handlers";
+import { createAppEventsFeature, type AppEventsFeature } from "./application/app_events";
+import { createAppFeature, type AppFeature } from "./application/app";
+import { startApp } from "./application/app_start";
 import { createReconnectController } from "./features/reconnect";
-import type { SseHandlerFactory } from "./application/app_state_event_handlers";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
 import { registerCalendarCardTypes } from "./cards/calendar";
 import { registerClimateCardTypes } from "./cards/climate";
 import { registerClockCardTypes } from "./cards/clock";
-import { registerCoverLikeCardHelpers } from "./cards/cover_like_card";
+import { createCoverLikeCardRegistration } from "./cards/cover_like_card";
 import { registerDoorWindowCardTypes } from "./cards/door_window";
-import { registerEntityModeCardHelpers } from "./cards/entity_mode_card";
 import { registerFanCardTypes } from "./cards/fan";
 import { registerGarageCardTypes } from "./cards/garage";
 import { registerGateCardTypes } from "./cards/gate";
@@ -133,7 +123,7 @@ import { registerVacuumCardTypes } from "./cards/vacuum";
 import { registerWeatherCardTypes } from "./cards/weather";
 import { registerWeatherForecastCardTypes } from "./cards/weather_forecast";
 import { registerWebhookCardTypes } from "./cards/webhook";
-import { installAppTestHooks } from "./testing/app_test_hooks";
+import { createAppTestHookRegistrar } from "./testing/app_test_hooks";
 import { installAppTestHooksConfig } from "./testing/app_test_hooks_config";
 import { installAppTestHooksPreview } from "./testing/app_test_hooks_preview";
 import { installAppTestHooksBackup } from "./testing/app_test_hooks_backup";
@@ -148,161 +138,111 @@ const startupState = globalThis as typeof globalThis & {
   __ESPCONTROL_UI_STARTING__?: boolean;
 };
 
-function installApplicationCompatibility(context: ApplicationContext): void {
-  installGlobals(installCore(context.layout));
-  installGlobals(installFirmwareMetadataModule());
-  installGlobals(installStylesModule());
-  installGlobals(installStateModule());
-  installGlobals(installLanguageStateModule());
-  const voiceServicesController = context.controllers.voiceServices;
-  installGlobals(installEnvironmentStateModule(voiceServicesController));
-  installGlobals(installScreenRotationStateModule());
-  const screenScheduleController = context.controllers.screenSchedule;
-  installGlobals(installScreenScheduleStateModule(screenScheduleController));
-  installGlobals(installNtpStateModule());
-  installGlobals(installAppearanceStateModule());
-  installGlobals(installIdleStateModule());
-  installGlobals(installArtworkStateModule());
-  installGlobals(installScreensaverStateModule());
-  installGlobals(installFirmwareVersionStateModule());
-  installGlobals(installEntityStateModule());
-  const clockBarController = context.controllers.clockBar;
-  installGlobals(installClockBarStateModule(clockBarController));
-  installGlobals(installFirmwareUpdateStateModule());
-  installGlobals(installScreensaverTimeoutModule());
-  installGlobals(installC6FirmwareUiModule());
-  installGlobals(installGridModule());
-  const deviceApi = context.api;
-  const nativePanelConfig = context.configuration.native;
-  const configPersistence = context.configuration.persistence;
-  const cardEditorDraft = context.controllers.cardEditorDraft;
-  const cardEditorValidation = context.controllers.cardEditorValidation;
-  const previewPlacementController = context.controllers.previewPlacement;
-  installGlobals(installApiModule(nativePanelConfig, deviceApi));
-  installGlobals(installFirmwareUpdatePostApiModule());
-  installGlobals(installPublicFirmwareInstallModule(deviceApi));
-  installGlobals(installConfigOptionCoreModule());
-  installGlobals(installConfigMediaOptionsModule());
-  installGlobals(installConfigImageOptionsModule());
-  installGlobals(installConfigModalTabOptionsModule());
-  installGlobals(installConfigSubpageOptionsModule());
-  installGlobals(installConfigSensorOptionsModule());
-  installGlobals(installConfigConfirmationOptionsModule());
-  installGlobals(installConfigAccessClimateAlarmOptionsModule());
-  installGlobals(installConfigCodecModule());
-  const cardEditorSave = context.controllers.cardEditorSave;
-  installGlobals(configPersistence.globals);
-  installGlobals(installStateLoaderApiModule());
-  installGlobals(installArtworkPostApiModule());
-  installGlobals(installScreenSchedulePostApiModule());
-  installGlobals(installClockBarPostApiModule());
-  installGlobals(installControlsModule());
-  installGlobals(installControlsShellModule());
-  const settingsUiFeature = context.controllers.settingsUi;
-  const alarmDelayAudioController = context.controllers.alarmDelayAudio;
-  const screensaverController = context.controllers.screensaver;
-  const coverArtScreensaverController = context.controllers.coverArtScreensaver;
-  const mediaPlaybackController = context.controllers.mediaPlayback;
-  installGlobals(installSettingsPageHelpersModule({
-    settingsUiFeature,
-    alarmDelayAudio: alarmDelayAudioController,
-    screensaver: screensaverController,
-    coverArtScreensaver: coverArtScreensaverController,
-    mediaPlayback: mediaPlaybackController,
-  }));
-  installGlobals(installSettingsScheduleSectionModule());
-  installGlobals(installSettingsCoverArtSectionModule());
-  installGlobals(installSettingsPageModule());
-  installGlobals(installControlsFieldsModule());
-  installGlobals(installPreviewRenderModule({
-    document: context.dom.document,
-    layout: context.layout,
-  }));
-  installGlobals(installButtonSettingsSelectionModule());
-  installGlobals(installButtonSettingsRenderQueueModule());
-  installGlobals(installButtonSettingsIconPickerModule());
-  installGlobals(installButtonSettingsModule(
-    cardEditorDraft, cardEditorValidation, cardEditorSave, configPersistence,
-  ));
-  installGlobals(installPreviewGridPlacementModule({
-    controller: previewPlacementController,
-    layout: context.layout,
-  }));
-  installGlobals(installPreviewContextMenuModule({
-    document: context.dom.document,
-    window: context.dom.window,
-    layout: context.layout,
-  }));
-  installGlobals(installPreviewClipboardModule({
-    configPersistence,
-    document: context.dom.document,
-    layout: context.layout,
-  }));
-  installGlobals(installPreviewInteractionsModule({
-    cardEditorDraft,
-    configPersistence,
-    layout: context.layout,
-    window: context.dom.window,
-  }));
-  installGlobals(installBackupContractModule(context.backup.contract));
-  const backupUiFeature = context.backup.application;
-  installGlobals(installSettingsSystemSectionModule({
-    exportBackup: backupUiFeature.exportConfig,
-    importBackup: backupUiFeature.importConfig,
-  }));
-  installGlobals(backupUiFeature.globals);
-  installGlobals(installAppStatusPreviewModule());
-  installGlobals(installAppTitleModule());
-  installGlobals(installAppConfigEventsModule(configPersistence));
-  let sseHandlerFactory: SseHandlerFactory | undefined;
-  installGlobals(installAppStateEventHandlersModule((factory) => {
-    sseHandlerFactory = factory;
-  }));
-  const reconnectController = context.controllers.reconnect;
-  if (!sseHandlerFactory) throw new Error("SSE handler factory was not initialized");
-  installGlobals(installAppEventsModule(reconnectController, sseHandlerFactory));
-  installGlobals(installAppModule());
-}
-
-function installCardCompatibility(context: ApplicationContext): void {
+function registerCards(context: ApplicationContext) {
   const registry = context.cards;
-  registry.registerCompatibility(registerActionCardTypes());
-  registry.registerCompatibility(registerAlarmCardTypes());
-  registry.registerCompatibility(registerCalendarCardTypes());
-  registry.registerCompatibility(registerClimateCardTypes());
-  registry.registerCompatibility(registerClockCardTypes());
-  registry.registerCompatibility(registerCoverLikeCardHelpers());
-  registry.registerCompatibility(registerDoorWindowCardTypes());
-  registry.registerCompatibility(registerEntityModeCardHelpers());
-  registry.registerCompatibility(registerFanCardTypes());
-  registry.registerCompatibility(registerGarageCardTypes());
-  registry.registerCompatibility(registerGateCardTypes());
-  registry.registerCompatibility(registerImageCardTypes());
-  registry.registerCompatibility(registerInternalCardTypes());
-  registry.registerCompatibility(registerLawnMowerCardTypes());
-  registry.registerCompatibility(registerLightTemperatureCardTypes());
-  registry.registerCompatibility(registerLockCardTypes());
-  registry.registerCompatibility(registerMediaCardTypes());
-  registry.registerCompatibility(registerPresenceCardTypes());
-  registry.registerCompatibility(registerPushCardTypes());
-  registry.registerCompatibility(registerScreenLockCardTypes());
-  registry.registerCompatibility(registerSensorCardTypes());
-  registry.registerCompatibility(registerSliderCardTypes());
-  registry.registerCompatibility(registerSubpageCardTypes());
-  registry.registerCompatibility(registerSwitchCardTypes());
-  registry.registerCompatibility(registerTimezoneCardTypes());
-  registry.registerCompatibility(registerVacuumCardTypes());
-  registry.registerCompatibility(registerWeatherCardTypes());
-  registry.registerCompatibility(registerWeatherForecastCardTypes());
-  registry.registerCompatibility(registerWebhookCardTypes());
+  const fields = context.controllers.fields;
+  const cardUi = {
+    renderPreview: () => context.controllers.preview.render(),
+    renderButtonSettings: (force?: boolean) => context.controllers.buttonSettings.render(force),
+  };
+  const coverLikeCards = createCoverLikeCardRegistration(registry, context.controllers.renderQueue, fields, cardUi);
+  registerActionCardTypes(registry, context.configuration.confirmationOptions, context.controllers.entityState, fields, cardUi);
+  registerAlarmCardTypes(registry, context.configuration.accessClimateAlarm, context.controllers.renderQueue, fields, cardUi);
+  registerCalendarCardTypes(registry, context.configuration.dateTimeOptions, fields);
+  registerClimateCardTypes(
+    registry,
+    context.configuration.modalTabs,
+    context.configuration.accessClimateAlarm,
+    context.controllers.clockBarState,
+    context.controllers.renderQueue,
+    fields,
+  );
+  registerClockCardTypes(registry, context.configuration.dateTimeOptions, fields);
+  registerDoorWindowCardTypes(registry, context.configuration.options, fields);
+  registerFanCardTypes(registry, context.configuration.modalTabs, fields, cardUi);
+  registerGarageCardTypes(
+    coverLikeCards.register,
+    context.configuration.accessClimateAlarm,
+    context.configuration.confirmationOptions,
+  );
+  registerGateCardTypes(
+    coverLikeCards.register,
+    context.configuration.accessClimateAlarm,
+  );
+  registerImageCardTypes(
+    registry,
+    context.configuration.imageOptions,
+    fields,
+    cardUi,
+  );
+  registerInternalCardTypes(
+    registry,
+    context.configuration.internalRelayOptions,
+    context.dom.document,
+    fields,
+  );
+  registerLawnMowerCardTypes(registry, context.configuration.robotOptions, fields, cardUi);
+  const lightCards = registerLightTemperatureCardTypes(registry, context.configuration.modalTabs, fields, cardUi);
+  registerLockCardTypes(registry, context.configuration.lockOptions, fields, cardUi);
+  registerMediaCardTypes(registry, context.configuration.mediaOptions, context.device.id, fields, context.controllers.settingsUi, cardUi);
+  registerPresenceCardTypes(registry, context.configuration.options, fields);
+  registerPushCardTypes(registry, fields);
+  registerScreenLockCardTypes(registry, fields);
+  registerSensorCardTypes(registry, context.configuration.options, fields, cardUi);
+  registerSliderCardTypes(registry, context.configuration.modalTabs, lightCards, fields, context.controllers.settingsUi);
+  registerSubpageCardTypes(registry, context.configuration.codec, context.core, context.controllers.selection, fields, cardUi);
+  registerSwitchCardTypes(registry, context.configuration.confirmationOptions, lightCards, fields);
+  registerTimezoneCardTypes(registry, context.configuration.dateTimeOptions, context.dom.document, fields);
+  registerVacuumCardTypes(registry, context.configuration.robotOptions, fields, cardUi);
+  const weatherCards = registerWeatherCardTypes(registry, context.configuration.weatherOptions, context.controllers.clockBarState, fields, cardUi);
+  registerWeatherForecastCardTypes(registry, weatherCards, context.controllers.clockBarState, fields);
+  registerWebhookCardTypes(registry, context.configuration.webhookOptions, fields, cardUi);
+  return lightCards;
 }
 
-function installTestCompatibility(): void {
-  installGlobals(installAppTestHooks());
-  installGlobals(installAppTestHooksConfig());
-  installGlobals(installAppTestHooksPreview());
-  installGlobals(installAppTestHooksBackup());
-  installGlobals(installAppTestHooksSettings());
+function installTestHooks(context: ApplicationContext, lightCards: ReturnType<typeof registerLightTemperatureCardTypes>): void {
+  const register = createAppTestHookRegistrar();
+  installAppTestHooksConfig(
+    context.cards,
+    context.configuration.options,
+    context.configuration.mediaOptions,
+    context.configuration.imageOptions,
+    context.configuration.weatherOptions,
+    context.configuration.webhookOptions,
+    context.configuration.internalRelayOptions,
+    context.configuration.lockOptions,
+    context.configuration.dateTimeOptions,
+    context.configuration.modalTabs,
+    context.configuration.accessClimateAlarm,
+    context.configuration.confirmationOptions,
+    context.configuration.codec,
+    lightCards,
+    context.core,
+    context.layout,
+    context.configuration.persistence,
+    context.controllers.preview,
+    context.controllers.clipboard,
+    context.controllers.contextMenu,
+    context.controllers.fields,
+    register,
+  );
+  installAppTestHooksPreview(context.cards, context.configuration.codec, context.runtime, context.core, context.layout, context.controllers.screenRotation, context.controllers.firmwareVersion, context.controllers.statusPreview, context.controllers.grid, register);
+  installAppTestHooksBackup(context.layout, context.backup.contract, context.backup.application, register);
+  installAppTestHooksSettings(
+    () => defaultTimezoneOptionsForDevice(context.device.profile),
+    context.controllers.environment,
+    context.controllers.screensaverTimeout,
+    context.controllers.firmwareVersion,
+    context.controllers.firmwareUpdate,
+    context.controllers.clockBarState,
+    context.controllers.entityState,
+    context.controllers.requestApi,
+    context.controllers.statusPreview,
+    context.controllers.artworkPostApi,
+    context.controllers.clockBarPostApi,
+    context.controllers.publicFirmwareInstall,
+    register,
+  );
 }
 
 function composeApplicationContext(): ApplicationContext {
@@ -314,24 +254,173 @@ function composeApplicationContext(): ApplicationContext {
     window,
     fetch: fetchService,
     createEventSource: () => new EventSource("/events"),
-    schedule: setTimeout,
+    schedule: ((callback: TimerHandler, delay?: number) => window.setTimeout(callback, delay)) as typeof setTimeout,
   };
   const deviceApi = createDeviceApi((url, init) =>
     dom.fetch(url, init as RequestInit));
+  const pageTitle = createAppTitleFeature({
+    document: dom.document,
+    eventStreamEnabled: () => {
+      try { return new URLSearchParams(dom.window.location.search).get("events") === "1"; }
+      catch (_) { return false; }
+    },
+    eventSourceAvailable: () => typeof EventSource === "function",
+    createEventSource: dom.createEventSource,
+  });
   const layout = createApplicationLayoutState(
     DeviceConfig.deviceId,
     DeviceConfig.deviceConfig,
   );
+  const runtime = createUiRuntimeState(layout, dom.document);
+  let requestApi: ApplicationApiFeature;
+  let stateLoader: StateLoaderFeature;
+  let appEvents: AppEventsFeature;
+  let selection: ButtonSettingsSelectionFeature;
+  let preview: PreviewRenderFeature;
+  let contextMenu: PreviewContextMenuFeature;
+  let interactions: PreviewInteractionsFeature;
+  let fields: ControlsFieldsFeature;
+  let settingsHelpers: SettingsPageHelpersFeature;
+  let settingsPage: SettingsPageFeature;
+  let buttonSettings: ButtonSettingsFeature;
+  let app: AppFeature;
+  const shell = createControlsShellFeature(runtime, {
+    document: dom.document,
+    state: AppInstance.state,
+    schedule: dom.schedule,
+    cancelSchedule: (handle) => { dom.window.clearTimeout(handle); },
+    buildSettingsPage: (parent) => { settingsPage.buildSettingsPage(parent); },
+    closeSettings: () => { selection.closeSettings(); },
+    postButtonPress: (name) => requestApi.postButtonPress(name),
+    waitForReboot: () => { stateLoader.waitForReboot(); },
+    hideContextMenu: () => { contextMenu.hide(); },
+    hideSettingsOverlay: () => { selection.hideSettingsOverlay(); },
+    clearPlaceholder: () => { interactions.clearPlaceholder(); },
+    updatePreviewHint: () => { selection.updatePreviewHint(); },
+    renderPreview: () => { preview.render(); },
+  });
+  let confirmationOptions: ReturnType<typeof createConfigConfirmationOptionsFeature>;
+  let clockBarState: ClockBarFeature;
+  let statusPreview: AppStatusPreviewFeature;
+  const entityState = createEntityStateFeature({
+    actionCardStateEntity: (button) => confirmationOptions.actionCardStateEntity(button),
+    totalSlots: () => layout.totalSlots,
+    clockBarTemperatureEntities: () => clockBarState.temperatureEntities(),
+    textInput: (id, value, placeholder) => fields.textInput(id, value, placeholder),
+  });
+  const screenRotation = createScreenRotationFeature(runtime, layout, {
+    applyButtonOrder: (value, skipSpanNormalization) => grid.applyButtonOrderValue(value, skipSpanNormalization),
+    postNormalizedOrder: (value) => requestApi.postText(entityState.entityName("button_order"), value),
+    renderPreview: () => preview.render(),
+  });
+  const appearance = createAppearanceFeature(runtime, {
+    renderPreview: () => preview.render(),
+    postOnColor: (value) => requestApi.postText(entityState.entityName("button_on_color"), value),
+  });
+  let firmwareUpdate: FirmwareUpdateFeature;
+  let firmwarePostApi: FirmwareUpdatePostApiFeature;
+  let publicFirmwareInstall: PublicFirmwareInstallFeature;
+  let c6Firmware: C6FirmwareFeature;
+  const firmwareVersion = createFirmwareVersionFeature(runtime, {
+    syncVersionSelect: () => firmwareUpdate.syncVersionSelect(),
+    renderUpdateStatus: () => firmwareUpdate.renderStatus(),
+    stopInstallRefreshIfComplete: () => firmwareUpdate.stopInstallRefreshIfComplete(),
+  });
+  firmwareUpdate = createFirmwareUpdateFeature(runtime, layout.deviceId, firmwareVersion, {
+    postInstall: () => firmwarePostApi.postFirmwareUpdateInstall(),
+    refreshVersion: () => stateLoader.refreshFirmwareVersion(),
+    installViaWebOta: (info) => { void publicFirmwareInstall.installPublicFirmwareViaWebOta(info); },
+    c6UpdateKnownAvailable: () => c6Firmware.updateKnownAvailable(),
+  });
+  c6Firmware = createC6FirmwareFeature(runtime, firmwareUpdate);
+  const voiceServices = createVoiceServicesController();
+  const environment = createEnvironmentStateFeature(
+    voiceServices,
+    () => defaultTimezoneOptionsForDevice(layout.config),
+    layout,
+  );
   const nativePanelConfig = createNativePanelConfigMigrationController({
     deviceProfile: () => layout.deviceId,
     slotCount: () => layout.numSlots,
-    entityName: (name) => entityName(name),
-    entityNameForSlot: (name, slot) => entityNameForSlot(name, slot),
+    entityName: (name) => entityState.entityName(name),
+    entityNameForSlot: (name, slot) => entityState.entityNameForSlot(name, slot),
     normalizeHexColor: (value, fallback) => Model.normalizeHexColor(value, fallback),
-    showBanner: (message, level) => showBanner(message, level),
+    showBanner: shell.showBanner,
     delay: (callback, milliseconds) => dom.schedule(callback, milliseconds),
   });
-  const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig);
+  const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
+  const cards = createCardRegistry();
+  const iconPicker = createButtonSettingsIconPickerFeature(dom.document, () => preview.render());
+  const renderQueue = createButtonSettingsRenderQueueFeature(runtime, {
+    document: dom.document,
+    requestFrame: (callback) => requestAnimationFrame(callback),
+    renderPreview: () => preview.render(),
+    renderButtonSettings: () => buttonSettings.render(),
+    closeSettings: () => selection.closeSettings(),
+  });
+  const configurationOptions = createConfigSensorOptionsFeature(cards);
+  const mediaConfigurationOptions = createConfigMediaOptionsFeature(layout.config);
+  const imageConfigurationOptions = createConfigImageOptionsFeature({
+    layout,
+    mediaOptions: mediaConfigurationOptions,
+    showBanner: shell.showBanner,
+  });
+  const weatherConfigurationOptions = createConfigWeatherOptionsFeature(layout.config);
+  const webhookConfigurationOptions = createConfigWebhookOptionsFeature();
+  const internalRelayConfigurationOptions = createConfigInternalRelayOptionsFeature(layout.config);
+  const robotConfigurationOptions = createConfigRobotCardOptionsFeature();
+  const lockConfigurationOptions = createConfigLockOptionsFeature();
+  let configurationCodec: ReturnType<typeof createConfigCodecFeature>;
+  const core = createCoreFeature(
+    layout,
+    (subpage) => configurationCodec.serializeSubpageGrid(subpage),
+    runtime,
+    {
+      state: AppInstance.state,
+      document: dom.document,
+      clockBarVisibleInPreview: () => clockBarState.visibleInPreview(),
+      postButtonOrder: (value) => requestApi.postText(entityState.entityName("button_order"), value),
+      saveSubpage: (homeSlot) => configurationPersistence.saveSubpageEntity(Number(homeSlot)),
+    },
+  );
+  const dateTimeConfigurationOptions = createConfigDateTimeOptionsFeature({
+    state: AppInstance.state,
+    now: core.now,
+    renderButtonSettings: () => buttonSettings.render(),
+    effectiveTimezoneOption: (value) => environment.effectiveTimezoneOptionForWeb(value),
+    timezoneId: (value) => statusPreview.getTzId(value),
+    timezoneOptionsWithFallback: (options, selected) => environment.timezoneOptionsWithFallback(options, selected),
+    appendTimezoneOption: (select, option) => statusPreview.appendTimezoneOption(select, option),
+    monthNameForIndex: (index) => environment.monthNameForIndex(index),
+  });
+  const modalTabOptions = createConfigModalTabOptionsFeature({
+    document: dom.document,
+    renderButtonSettings: () => buttonSettings.render(),
+  });
+  const accessClimateAlarmOptions = createConfigAccessClimateAlarmOptionsFeature(modalTabOptions);
+  confirmationOptions = createConfigConfirmationOptionsFeature(accessClimateAlarmOptions);
+  configurationCodec = createConfigCodecFeature(
+    cards,
+    configurationOptions,
+    mediaConfigurationOptions,
+    imageConfigurationOptions,
+    weatherConfigurationOptions,
+    webhookConfigurationOptions,
+    robotConfigurationOptions,
+    lockConfigurationOptions,
+    dateTimeConfigurationOptions,
+    modalTabOptions,
+    accessClimateAlarmOptions,
+    confirmationOptions,
+    layout,
+    configurationPersistence,
+    renderQueue,
+    {
+      renderPreview: () => preview.render(),
+      renderButtonSettings: (force) => buttonSettings.render(force),
+    },
+  );
+  configurationPersistence.connectCodec(configurationCodec);
   const cardEditorDraft = createCardEditorDraftController({
     cloneCard: (button) => Model.cloneCardConfig(button),
     emptyCard: () => Model.emptyCardConfig(),
@@ -340,55 +429,257 @@ function composeApplicationContext(): ApplicationContext {
     emptyCard: () => Model.emptyCardConfig(),
     copyCard: (target, source) => {
       Model.copyCardConfig(target, source);
-      normalizeButtonConfig(target);
+      configurationCodec.normalizeButtonConfig(target);
     },
   });
   const cardEditorValidation = createCardEditorValidationController();
   const previewPlacement = createPreviewPlacementController();
-  const voiceServices = createVoiceServicesController();
   const screenSchedule = createScreenScheduleController({
-    trigger: (value, enabled) => normalizeScheduleTrigger(value, enabled),
-    sensorActivation: (value) => normalizeScheduleSensorActivation(value),
-    hour: (value, fallback) => normalizeHour(value, fallback),
-    mode: (value) => normalizeScheduleMode(value),
-    wakeTimeout: (value) => normalizeScheduleWakeTimeout(value),
-    wakeBrightness: (value) => normalizeScheduleWakeBrightness(value),
-    dimmedBrightness: (value) => normalizeScheduleDimmedBrightness(value),
-    clockBrightness: (value) => normalizeScheduleClockBrightness(value),
+    trigger: (value, enabled) => Model.normalizeScheduleTrigger(value, enabled),
+    sensorActivation: (value) => Model.normalizeScheduleSensorActivation(value),
+    hour: (value, fallback) => Model.normalizeHour(value, fallback),
+    mode: (value) => Model.normalizeScheduleMode(value),
+    wakeTimeout: (value) => Model.normalizeScheduleWakeTimeout(value),
+    wakeBrightness: (value) => Model.normalizeScheduleWakeBrightness(value),
+    dimmedBrightness: (value) => Model.normalizeScheduleDimmedBrightness(value),
+    clockBrightness: (value) => Model.normalizeScheduleClockBrightness(value),
   });
+  const screenScheduleState = createScreenScheduleStateFeature(
+    screenSchedule,
+    runtime,
+    {
+      syncClockScreensaverControls: () => settingsHelpers.syncClockScreensaverControls(),
+      updateSunInfo: () => statusPreview.updateSunInfo(),
+    },
+  );
+  const screensaverTimeout = createScreensaverTimeoutFeature(runtime, screenScheduleState);
+  requestApi = createApplicationApiFeature(
+    nativePanelConfig,
+    deviceApi,
+    entityState,
+    screensaverTimeout,
+    shell,
+  );
+  firmwarePostApi = createFirmwareUpdatePostApiFeature(entityState, requestApi);
+  const artworkPostApi = createArtworkPostApiFeature(entityState, requestApi);
+  const schedulePostApi = createScreenSchedulePostApiFeature(entityState, requestApi);
+  const clockBarPostApi = createClockBarPostApiFeature(entityState, requestApi);
+  configurationPersistence.connectRequestApi(requestApi);
+  configurationCodec.connectRequestApi(requestApi);
+  const grid = createGridFeature(configurationCodec, runtime, layout, entityState, requestApi, renderQueue);
+  fields = createControlsFieldsFeature(cards, configurationOptions, shell, requestApi);
+  const placement = createPreviewGridPlacementFeature({
+    controller: previewPlacement,
+    layout,
+    codec: configurationCodec,
+    grid,
+  });
+  const gridMigration = createGridMigrationFeature(runtime, layout, {
+    renderPreview: () => preview.render(),
+    renderButtonSettings: () => buttonSettings.render(),
+    postOrder: (value) => { void requestApi.postText(entityState.entityName("button_order"), value); },
+  });
+  stateLoader = createStateLoaderFeature(
+    runtime,
+    layout,
+    screensaverTimeout,
+    firmwareVersion,
+    firmwareUpdate,
+    c6Firmware,
+    entityState,
+    shell,
+    requestApi,
+    gridMigration,
+    {
+      subpageEntityKeys: configurationPersistence.subpageEntityKeys,
+      connectEvents: () => appEvents.connect(),
+    },
+  );
   const clockBar = createClockBarController();
+  clockBarState = createClockBarFeature(clockBar, runtime, core, environment, {
+    hideSettingsOverlay: () => selection.hideSettingsOverlay(),
+    timezoneId: (value) => statusPreview.getTzId(value),
+    postTemperatureEntities: (value) => clockBarPostApi.postClockBarTemperatureEntities(value),
+    postSwitch: (name, value) => requestApi.postSwitch(name, value),
+    entityName: (key) => entityState.entityName(key),
+    postText: (name, value) => requestApi.postText(name, value),
+    updateTemperaturePreview: () => statusPreview.updateTempPreview(),
+    updateItemUi: () => statusPreview.updateClockBarItemUi(),
+    postTemperatureDegreeSymbol: (value) => clockBarPostApi.postTemperatureDegreeSymbol(value),
+    isTemperatureItem: (item) => statusPreview.isClockBarTemperatureItem(item),
+    postTime: (value) => clockBarPostApi.postClockBarTime(value),
+    postVoiceServices: (value) => clockBarPostApi.postVoiceServices(value),
+    postNetworkStatus: (value) => clockBarPostApi.postNetworkStatusIcon(value),
+    renderSelectionBar: () => selection.renderSelectionBar(grid.ctx()),
+    updateNetworkPreview: () => statusPreview.updateNetworkPreview(),
+    updateVoicePreview: () => statusPreview.updateVoicePreview(),
+  });
+  statusPreview = createAppStatusPreviewFeature(runtime, core, layout, environment, clockBarState);
   const settingsUi = createSettingsUiFeature({
     document: dom.document,
     textSpan: (text, className) => textSpan(text, className),
-    createDisclosureChevron: (className) => createDisclosureChevron(className),
+    createDisclosureChevron: shell.createDisclosureChevron,
   });
   const alarmDelayAudio = createAlarmDelayAudioController({
-    announcement: (value, fallback) => normalizeAlarmDelayAnnouncement(value, fallback),
-    beepVolume: (value) => normalizeAlarmDelayBeepVolume(value),
-    finalCountdown: (value) => normalizeAlarmDelayFinalCountdown(value),
+    announcement: (value, fallback) => Model.normalizeAlarmDelayAnnouncement(value, fallback),
+    beepVolume: (value) => Model.normalizeAlarmDelayBeepVolume(value),
+    finalCountdown: (value) => Model.normalizeAlarmDelayFinalCountdown(value),
   });
   const screensaver = createScreensaverController({
-    action: (value) => normalizeScreensaverAction(value),
-    dimBrightness: (value) => normalizeScreensaverDimmedBrightness(value),
-    clockBrightness: (value, fallback) => normalizeClockBrightness(value, fallback),
+    action: (value) => Model.normalizeScreensaverAction(value),
+    dimBrightness: (value) => Model.normalizeScreensaverDimmedBrightness(value),
+    clockBrightness: (value, fallback) => Model.normalizeClockBrightness(value, fallback),
   });
   const coverArtScreensaver = createCoverArtScreensaverController({
-    delay: (value) => normalizeCoverArtDelay(value),
+    delay: (value) => Model.normalizeCoverArtDelay(value),
     trackOverlayDuration: (value) => parseFloat(String(value)) || 0,
   });
   const mediaPlayback = createMediaPlaybackController();
-  const backupContract = createBackupFeature({
+  settingsHelpers = createSettingsPageHelpersFeature({
+    settingsUiFeature: settingsUi,
+    alarmDelayAudio,
+    screensaver,
+    coverArtScreensaver,
+    mediaPlayback,
+    codec: configurationCodec,
+    runtime,
+    layout,
+    screenScheduleState,
+    clockBar: clockBarState,
+    entityState,
+    shell,
+    requestApi,
+    statusPreview,
+    clockBarPostApi,
+    fields,
+  });
+  selection = createButtonSettingsSelectionFeature(
+    runtime,
+    clockBarState,
+    entityState,
+    shell,
+    statusPreview,
+    grid,
+    renderQueue,
+    {
+      document: dom.document,
+      fields,
+      renderPreview: () => preview.render(),
+      renderButtonSettings: (force) => buttonSettings.render(force),
+      showSelectionMenu: (event) => contextMenu.showSelection(event),
+      contextMenuContains: (target) => contextMenu.contains(target),
+      openVoiceServicesSettings: () => settingsHelpers.openVoiceServicesSettings(),
+    },
+  );
+  preview = createPreviewRenderFeature({
+    document: dom.document,
+    layout,
+    cards,
+    confirmationOptions,
+    codec: configurationCodec,
+    runtime,
+    screenRotation,
+    shell,
+    grid,
+    selection,
+  });
+  const clipboard = createPreviewClipboardFeature({
+    configPersistence: configurationPersistence,
+    document: dom.document,
+    layout,
+    cards,
+    imageOptions: imageConfigurationOptions,
+    sensorOptions: configurationOptions,
+    codec: configurationCodec,
+    entityState,
+    shell,
+    requestApi,
+    grid,
+    preview,
+    placement,
+    deleteSlot: (slot) => interactions.deleteSlot(slot),
+    deleteButtons: (slots) => interactions.deleteButtons(slots),
+    emptyButtonConfig: () => interactions.emptyButtonConfig(),
+  });
+  contextMenu = createPreviewContextMenuFeature({
+    document: dom.document,
+    window: dom.window,
+    layout,
+    cards,
+    codec: configurationCodec,
+    clockBar: clockBarState,
+    shell,
+    statusPreview,
+    grid,
+    selection,
+    preview,
+    clipboard,
+    renderPreview: () => preview.render(),
+    renderButtonSettings: () => buttonSettings.render(),
+    openCardSettings: (slot) => buttonSettings.openCardSettings(slot),
+    openVoiceServicesSettings: () => settingsHelpers.openVoiceServicesSettings(),
+    addSlot: (position) => interactions.addSlot(position),
+    addSubpageSlot: (position) => interactions.addSubpageSlot(position),
+    duplicateButton: (slot) => interactions.duplicateButton(slot),
+    duplicateSubpageButton: (slot) => interactions.duplicateSubpageButton(slot),
+    deleteSlot: (slot) => interactions.deleteSlot(slot),
+    deleteButtons: (slots) => interactions.deleteButtons(slots),
+  });
+  interactions = createPreviewInteractionsFeature({
+    cardEditorDraft,
+    configPersistence: configurationPersistence,
+    layout,
+    window: dom.window,
+    imageOptions: imageConfigurationOptions,
+    codec: configurationCodec,
+    runtime,
+    entityState,
+    shell,
+    requestApi,
+    grid,
+    selection,
+    placement,
+    contextMenu,
+    renderPreview: () => preview.render(),
+    renderButtonSettings: (force) => buttonSettings.render(force),
+  });
+  buttonSettings = createButtonSettingsFeature(
+    cardEditorDraft, cardEditorValidation, cardEditorSave,
+    configurationPersistence, cards, imageConfigurationOptions,
+    confirmationOptions, configurationCodec, layout, runtime, entityState,
+    shell, requestApi, grid, iconPicker, selection, preview, interactions, fields,
+  );
+  const configEvents = createAppConfigEventsFeature(configurationPersistence, configurationCodec, layout, renderQueue);
+  const stateEventHandlers = createAppStateEventHandlersFeature(
+    runtime,
+    core,
+    environment,
+    screenScheduleState,
+    screensaverTimeout,
+    screenRotation,
+    appearance,
+    firmwareVersion,
+    firmwareUpdate,
+    c6Firmware,
+    clockBarState,
+    statusPreview,
+    grid,
+    settingsHelpers,
+    preview,
+  );
+  const backupModel = createBackupFeature({
     deviceId: layout.deviceId,
     gridCols: layout.gridCols,
     numSlots: layout.numSlots,
-    normalizeButtonConfig: (button) => normalizeButtonConfig(button),
-    parseSubpageConfig: (value) => parseSubpageConfig(value),
-    serializeSubpageConfig: (subpage) => serializeSubpageConfig(subpage),
+    normalizeButtonConfig: (button) => configurationCodec.normalizeButtonConfig(button),
+    parseSubpageConfig: (value) => configurationCodec.parseSubpageConfig(value),
+    serializeSubpageConfig: (subpage) => configurationCodec.serializeSubpageConfig(subpage),
     buildSubpageGrid: (subpage) => {
-      buildSubpageGridAndNormalizeOrder(subpage);
+      configurationCodec.buildSubpageGridAndNormalizeOrder(subpage);
       return subpage.grid || [];
     },
   });
+  const backupContract = createBackupContractFeature(backupModel, configurationCodec, cards, layout);
   const normalizeImportedPanelSettings = (settings: any) => {
     if (!settings) return null;
     return Model.normalizeBackupPanelSettings(settings, {
@@ -405,19 +696,19 @@ function composeApplicationContext(): ApplicationContext {
       autoUpdate: state.autoUpdate,
       updateFrequency: state.updateFrequency,
       updateFrequencyOptions: state.updateFreqOptions,
-      screenRotationOptions: allScreenRotationOptions(),
+      screenRotationOptions: screenRotation.allOptions(),
     });
   };
   const gridColsForImportedSettings = (importedSettings: any): number => {
     const rotation = importedSettings ? importedSettings.screenRotation : state.screenRotation;
-    const profile = isPortraitRotation(rotation) && layout.config.portrait
+    const profile = core.isPortraitRotation(rotation) && layout.config.portrait
       ? layout.config.portrait
       : layout.config;
     return profile.cols || layout.config.cols;
   };
   const backupExport = createBackupExportController({
-    serializeButtonConfig: (button) => serializeButtonConfig(button),
-    serializeSubpageConfig: (subpage) => serializeSubpageConfig(subpage),
+    serializeButtonConfig: (button) => configurationCodec.serializeButtonConfig(button),
+    serializeSubpageConfig: (subpage) => configurationCodec.serializeSubpageConfig(subpage),
   });
   const backupImport = createBackupImportController<any, any, any, any>({
     normalizeBackup: (data) => backupContract.normalizeBackupConfig(data),
@@ -430,11 +721,11 @@ function composeApplicationContext(): ApplicationContext {
   const backupRestore = createBackupRestoreController<any, any>({
     plan: backupImport.plan,
     warnings: (plannedImport) => plannedImport.backupPlan.warnings,
-    showBanner: (message, kind) => showBanner(message, kind),
-    setPostThrottle: (milliseconds) => setPostThrottle(milliseconds),
-    resetPostQueueError: () => resetPostQueueError(),
-    postQueueIdle: () => postQueueIdle(),
-    postQueueHadError: () => postQueueHadError(),
+    showBanner: shell.showBanner,
+    setPostThrottle: (milliseconds) => requestApi.setPostThrottle(milliseconds),
+    resetPostQueueError: () => requestApi.resetPostQueueError(),
+    postQueueIdle: () => requestApi.postQueueIdle(),
+    postQueueHadError: () => requestApi.postQueueHadError(),
   });
   const backupFile = createBackupFileController({
     transport: {
@@ -478,7 +769,7 @@ function composeApplicationContext(): ApplicationContext {
         input.click();
       },
     },
-    showBanner: (message, kind) => showBanner(message, kind),
+    showBanner: shell.showBanner,
   });
   const backupApplication = createAppBackupFeature({
     layout,
@@ -489,29 +780,133 @@ function composeApplicationContext(): ApplicationContext {
     normalizeImportedPanelSettings,
     gridColsForImportedSettings,
     nativePanelConfig,
+    codec: configurationCodec,
+    configPersistence: configurationPersistence,
+    backupContract,
+    runtime,
+    core,
+    screenScheduleState,
+    screensaverTimeout,
+    firmwareUpdate,
+    clockBar: clockBarState,
+    entityState,
+    shell,
+    requestApi,
+    statusPreview,
+    grid,
+    artworkPostApi,
+    schedulePostApi,
+    clockBarPostApi,
+    settingsHelpers,
+    preview,
+    buttonSettings,
   });
   const reconnect = createReconnectController<unknown>({
-    eventStreamEnabled: () => eventStreamEnabled(),
+    eventStreamEnabled: stateLoader.eventStreamEnabled,
     loadInitialState: (handleState, markConnected) =>
-      loadInitialState(handleState, markConnected),
+      stateLoader.loadInitialState(handleState, markConnected),
     createEventSource: dom.createEventSource,
-    getActiveSource: () => _eventSource,
-    setActiveSource: (source) => { _eventSource = source; },
+    getActiveSource: () => runtime.eventSource,
+    setActiveSource: (source) => { runtime.eventSource = source; },
     schedule: (callback, delayMs) => dom.schedule(callback, delayMs),
   });
+  appEvents = createAppEventsFeature(
+    reconnect,
+    stateEventHandlers,
+    configEvents,
+    runtime,
+    pageTitle,
+    firmwareVersion,
+    firmwareUpdate,
+    c6Firmware,
+    entityState,
+    shell,
+    stateLoader,
+    gridMigration,
+  );
+  publicFirmwareInstall = createPublicFirmwareInstallFeature(
+    deviceApi,
+    layout.deviceId,
+    firmwareUpdate,
+    shell,
+    requestApi,
+    appEvents,
+  );
+  app = createAppFeature(
+    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
+    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
+    interactions, preview, buttonSettings,
+  );
+  const scheduleSection = createSettingsScheduleSectionFeature(
+    configurationCodec, runtime, screenScheduleState, entityState, requestApi,
+    schedulePostApi, fields, settingsHelpers,
+  );
+  const coverArtSection = createSettingsCoverArtSectionFeature(
+    configurationCodec, runtime, entityState, statusPreview, artworkPostApi,
+    fields, settingsHelpers, coverArtScreensaver, mediaPlayback,
+  );
+  const systemSection = createSettingsSystemSectionFeature({
+    exportBackup: backupApplication.exportConfig,
+    importBackup: backupApplication.importConfig,
+  }, runtime, firmwareVersion, firmwareUpdate, c6Firmware, shell, requestApi,
+  stateLoader, firmwarePostApi, artworkPostApi, publicFirmwareInstall, fields,
+  settingsHelpers);
+  settingsPage = createSettingsPageFeature(
+    configurationCodec, runtime, core, layout, environment, screenScheduleState,
+    screensaverTimeout, screenRotation, appearance, clockBarState, entityState,
+    shell, requestApi, statusPreview, artworkPostApi, schedulePostApi,
+    clockBarPostApi, fields, settingsHelpers, scheduleSection, coverArtSection,
+    systemSection, preview,
+  );
+  requestApi.connectReconnect(appEvents.connect);
   return createApplicationContext({
     layout,
     model: Model,
     state: AppInstance.state,
+    runtime,
+    core,
     api: deviceApi,
     nativeConfiguration: nativePanelConfig,
     configurationPersistence,
+    configurationOptions,
+    mediaConfigurationOptions,
+    imageConfigurationOptions,
+    weatherConfigurationOptions,
+    webhookConfigurationOptions,
+    internalRelayConfigurationOptions,
+    robotConfigurationOptions,
+    lockConfigurationOptions,
+    dateTimeConfigurationOptions,
+    modalTabOptions,
+    accessClimateAlarmOptions,
+    confirmationOptions,
+    configurationCodec,
     backupContract,
     backupExport,
     backupFile,
     backupImport,
     backupRestore,
     backupApplication,
+    appearance,
+    firmwareVersion,
+    firmwareUpdate,
+    firmwarePostApi,
+    artworkPostApi,
+    schedulePostApi,
+    clockBarPostApi,
+    publicFirmwareInstall,
+    c6Firmware,
+    clockBarState,
+    entityState,
+    shell,
+    requestApi,
+    stateLoader,
+    gridMigration,
+    configEvents,
+    stateEventHandlers,
+    appEvents,
+    statusPreview,
+    grid,
     alarmDelayAudio,
     cardEditorDraft,
     cardEditorSave,
@@ -519,46 +914,44 @@ function composeApplicationContext(): ApplicationContext {
     clockBar,
     coverArtScreensaver,
     mediaPlayback,
+    pageTitle,
     previewPlacement,
     reconnect,
     screenSchedule,
+    screenScheduleState,
+    screenRotation,
+    screensaverTimeout,
     screensaver,
     settingsUi,
     voiceServices,
+    environment,
+    iconPicker,
+    renderQueue,
+    fields,
+    selection,
+    preview,
+    placement,
+    clipboard,
+    contextMenu,
+    interactions,
+    buttonSettings,
+    app,
     dom,
-    cards: createCompatibilityCardRegistry(installGlobals),
+    cards,
   });
 }
 
 function startEspControl(): void {
   if (startupState.__ESPCONTROL_UI_STARTED__ || startupState.__ESPCONTROL_UI_STARTING__) return;
   AppInstance.initializeAppState();
-  installStaticGlobals({
-    ...DeviceConfig,
-    EspControlModel: Model,
-    ...Model,
-    ...RequestFailure,
-    ...UiTokens,
-    ...AppState,
-    ...EventAliases,
-    ...EventState,
-    ...FirmwareEvents,
-    ...ConfigPrimitives,
-    ...CardContract,
-    ...Icons,
-    ENTITY_CATALOG,
-    defaultTimezoneOptions: () =>
-      AppState.defaultTimezoneOptionsForDevice(DeviceConfig.deviceConfig),
-  });
 
   const context = composeApplicationContext();
 
-  installApplicationCompatibility(context);
-  installCardCompatibility(context);
+  const lightCards = registerCards(context);
   if (__ESPCONTROL_TEST_HOOKS_ENABLED__) {
-    installTestCompatibility();
+    installTestHooks(context, lightCards);
   }
-  installGlobals(installAppStartModule());
+  startApp(context.controllers.app);
 }
 
 function startEmbeddedFallback(error: unknown): void {

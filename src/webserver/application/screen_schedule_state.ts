@@ -1,13 +1,35 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import {
+    normalizeBrightnessMode,
+    normalizeHour,
+    normalizeScheduleWakeTimeout,
+    normalizeTimeOfDay,
+    scheduleModeOption,
+    scheduleSensorActivationOption,
+} from "../model/settings";
+import { setSelectValue } from "./ui_primitives";
 import type { ScreenScheduleController } from "../features/screen_schedule_controller";
+import type { UiRuntimeState } from "./state";
 
-export function installScreenScheduleStateModule(
+export interface ScreenScheduleStateFeature {
+    readonly controller: ScreenScheduleController;
+    controllerState(): any;
+    applyControllerState(next: any): void;
+    formatDuration(seconds?: any): string;
+    formatHour(hour?: any): string;
+    syncUi(): void;
+}
+
+export function createScreenScheduleStateFeature(
     screenScheduleController: ScreenScheduleController,
-): GlobalDescriptors {
-    // ── Screen Schedule State ──────────────────────────────────────────────
-    var screenScheduleControllerInstance: ScreenScheduleController = screenScheduleController;
-    function screenScheduleControllerState(this: any) {
+    runtime: UiRuntimeState,
+    dependencies: {
+        syncClockScreensaverControls(): void;
+        updateSunInfo(): void;
+    },
+): ScreenScheduleStateFeature {
+    const els = runtime.els;
+    function controllerState() {
         return {
             trigger: state.scheduleTrigger,
             sensorActivation: state.scheduleSensorActivation,
@@ -20,7 +42,7 @@ export function installScreenScheduleStateModule(
             clockBrightness: state.scheduleClockBrightness,
         };
     }
-    function applyScreenScheduleControllerState(this: any, next?: any) {
+    function applyControllerState(next?: any) {
         state.scheduleTrigger = next.trigger;
         state.scheduleSensorActivation = next.sensorActivation;
         state.scheduleOnHour = next.onHour;
@@ -32,7 +54,7 @@ export function installScreenScheduleStateModule(
         state.scheduleClockBrightness = next.clockBrightness;
         state.scheduleEnabled = next.trigger !== "disabled";
     }
-    function formatDuration(this: any, seconds?: any) {
+    function formatDuration(seconds?: any) {
         seconds = normalizeScheduleWakeTimeout(seconds);
         if (seconds < 60)
             return seconds + " second" + (seconds === 1 ? "" : "s");
@@ -42,7 +64,7 @@ export function installScreenScheduleStateModule(
         }
         return seconds + " seconds";
     }
-    function formatHour(this: any, hour?: any) {
+    function formatHour(hour?: any) {
         hour = normalizeHour(hour, 0);
         var suffix: any = hour < 12 ? "AM" : "PM";
         var h: any = hour % 12;
@@ -50,9 +72,9 @@ export function installScreenScheduleStateModule(
             h = 12;
         return h + ":00 " + suffix;
     }
-    function syncScreenScheduleUi(this: any) {
-        applyScreenScheduleControllerState(screenScheduleControllerInstance.normalize(screenScheduleControllerState()));
-        var uiState: any = screenScheduleControllerInstance.uiState(screenScheduleControllerState());
+    function syncUi() {
+        applyControllerState(screenScheduleController.normalize(controllerState()));
+        var uiState: any = screenScheduleController.uiState(controllerState());
         state.brightnessMode = normalizeBrightnessMode(state.brightnessMode);
         state.brightnessDawnTime = normalizeTimeOfDay(state.brightnessDawnTime, "06:00");
         state.brightnessDuskTime = normalizeTimeOfDay(state.brightnessDuskTime, "18:00");
@@ -79,8 +101,8 @@ export function installScreenScheduleStateModule(
                 "sp-cond-field" + (state.brightnessMode === "fixed_times" ? " sp-visible" : "");
         }
         if (els.setDimBrightnessField || els.setSensorDimBrightnessField)
-            syncClockScreensaverControls();
-        updateSunInfo();
+            dependencies.syncClockScreensaverControls();
+        dependencies.updateSunInfo();
         if (els.setScheduleToggle)
             els.setScheduleToggle.checked = !!state.scheduleEnabled;
         if (els.setScheduleModeButtons) {
@@ -140,14 +162,11 @@ export function installScreenScheduleStateModule(
         }
     }
     return {
-        "_screenScheduleController": liveGlobal(
-            () => screenScheduleControllerInstance,
-            (value?: any) => { screenScheduleControllerInstance = value as ScreenScheduleController; },
-        ),
-        "screenScheduleControllerState": staticGlobal(screenScheduleControllerState),
-        "applyScreenScheduleControllerState": staticGlobal(applyScreenScheduleControllerState),
-        "formatDuration": staticGlobal(formatDuration),
-        "formatHour": staticGlobal(formatHour),
-        "syncScreenScheduleUi": staticGlobal(syncScreenScheduleUi),
+        controller: screenScheduleController,
+        controllerState,
+        applyControllerState,
+        formatDuration,
+        formatHour,
+        syncUi,
     };
 }

@@ -1,6 +1,38 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { EntityStateFeature } from "./entity_state";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
+import type { ControlsFieldsFeature } from "./controls_fields";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+import type { CoverArtScreensaverController } from "../features/cover_art_screensaver_controller";
+import type { MediaPlaybackController } from "../features/media_playback_controller";
+
+export interface SettingsCoverArtSectionFeature {
+    buildCoverArtSettingsCard(...args: any[]): any;
+}
+
+export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeature, "bindTextPost">, runtime: UiRuntimeState, entityState: Pick<EntityStateFeature, "entityName" | "entityInput">, statusPreview: Pick<AppStatusPreviewFeature, "syncInput">, artworkPostApi: ArtworkPostApiFeature, fields: Pick<ControlsFieldsFeature, "condField" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">, helpers: Pick<SettingsPageHelpersFeature, "applyCoverArtScreensaverState" | "applyMediaPlaybackState" | "coverArtScreensaverState" | "coverArtTrackOverlayDurationSupported" | "infoPanel" | "inlineDisclosure" | "mediaPlaybackState" | "statusBadge" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">, coverArtScreensaver: CoverArtScreensaverController, mediaPlayback: MediaPlaybackController): SettingsCoverArtSectionFeature {
+    const { applyCoverArtScreensaverState, applyMediaPlaybackState, coverArtScreensaverState, coverArtTrackOverlayDurationSupported, infoPanel, inlineDisclosure, mediaPlaybackState, statusBadge, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = helpers;
+    const _coverArtScreensaverController = coverArtScreensaver;
+    const _mediaPlaybackController = mediaPlayback;
+    const { condField, fieldLabel, makeCollapsibleCard, toggleRow } = fields;
+    const { entityName, entityInput } = entityState;
+    const { bindTextPost } = codec;
+    const { syncInput } = statusPreview;
+    const els = runtime.els;
+    const {
+        postMediaPlayerSleepPrevention,
+        postMediaPlayerSleepPreventionEntity,
+        postCoverArtScreensaver,
+        postCoverArtMediaPlayerEntity,
+        postCoverArtSecondaryMediaPlayerEntity,
+        postCoverArtConditions,
+        postCoverArtHideExternalInput,
+        postCoverArtDelay,
+        postCoverArtTrackOverlayDuration,
+    } = artworkPostApi;
     // ── Settings Cover Art Section ─────────────────────────────────────
     function buildCoverArtSettingsCard(this: any) {
         var coverArtBody: any = document.createElement("div");
@@ -175,6 +207,6 @@ export function installSettingsCoverArtSectionModule(): GlobalDescriptors {
         return coverArtCard;
     }
     return {
-        "buildCoverArtSettingsCard": staticGlobal(buildCoverArtSettingsCard),
+        buildCoverArtSettingsCard,
     };
 }

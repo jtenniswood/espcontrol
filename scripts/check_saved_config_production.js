@@ -901,12 +901,12 @@ function main() {
   assert.match(browser, /normalizeSavedConfigSwitch\(b, normalizeSwitchConfirmationOptions\)/);
   assert.doesNotMatch(browser, /if \(b && !normalizedSavedSensor && !b\.type\)/);
 
-  const vacuumCard = fs.readFileSync(path.join(ROOT, "src/webserver/cards/vacuum.ts"), "utf8");
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumSensor\(String\(b\.sensor \|\| ""\)\)/);
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumPrecision\(String\(b\.precision \|\| ""\)\)/);
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumOptions\(String\(b\.options \|\| ""\)\)/);
-  assert.match(vacuumCard, /normalizeSavedConfigVacuumIconOn\(String\(b\.icon_on \|\| ""\)\)/);
-  assert.doesNotMatch(vacuumCard, /normalizeEntityModeCardConfig\(b,/);
+  const robotOptions = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_robot_card_options.ts"), "utf8");
+  assert.match(robotOptions, /normalizeSavedConfigVacuumSensor\(String\(button\.sensor \|\| ""\)\)/);
+  assert.match(robotOptions, /normalizeSavedConfigVacuumPrecision\(String\(button\.precision \|\| ""\)\)/);
+  assert.match(robotOptions, /normalizeSavedConfigVacuumOptions\(String\(button\.options \|\| ""\)\)/);
+  assert.match(robotOptions, /normalizeSavedConfigVacuumIconOn\(String\(button\.icon_on \|\| ""\)\)/);
+  assert.doesNotMatch(robotOptions, /normalizeEntityModeCardConfig\(button,\s*\{[^}]*vacuum/s);
 
   const firmware = fs.readFileSync(path.join(ROOT, "components/espcontrol/button_grid_config_parser.h"), "utf8");
   assert.match(firmware, /#include "button_grid_saved_config_vacuum_generated\.h"/);

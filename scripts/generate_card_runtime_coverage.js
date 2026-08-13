@@ -60,11 +60,11 @@ function webRegistrationTypes() {
   const types = new Set();
   for (const name of fs.readdirSync(cardsDir).filter((item) => item.endsWith(".ts"))) {
     const source = fs.readFileSync(path.join(cardsDir, name), "utf8");
-    for (const match of source.matchAll(/registerButtonType\(\s*(["'])(.*?)\1\s*,/g)) {
+    for (const match of source.matchAll(/registry\.register\(\s*(["'])(.*?)\1\s*,/g)) {
       types.add(match[2]);
     }
-    if (source.includes("registerCoverLikeCardType(")) {
-      for (const match of source.matchAll(/registerCoverLikeCardType\(\s*\{[\s\S]*?\btype:\s*(["'])(.*?)\1/g)) {
+    if (source.includes("registerCard(")) {
+      for (const match of source.matchAll(/registerCard\(\s*\{[\s\S]*?\btype:\s*(["'])(.*?)\1/g)) {
         types.add(match[2]);
       }
     }

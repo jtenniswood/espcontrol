@@ -1,7 +1,36 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerImageCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigImageOptionsFeature } from "../application/config_image_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerImageCardTypes(
+    registry: CardRegistry,
+    imageOptions: ConfigImageOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderPreview } = cardUi;
+    const { toggleRow } = fields;
+    const {
+        imageModalMode,
+        imageLabelEnabled,
+        imageIconEnabled,
+        normalizeImageOptions,
+        setImageLabelEnabled,
+        setImageIconEnabled,
+        setImageModalMode,
+    } = imageOptions;
     // Read-only Home Assistant camera/image entity card.
-    var IMAGE_CARD_METADATA: any = {
+    const IMAGE_CARD_METADATA: any = {
         entity: {
             label: "Camera Entity",
             idSuffix: "entity",
@@ -81,7 +110,7 @@ export function registerImageCardTypes(): GlobalDescriptors {
             helpers.saveField("options", b.options);
         });
     }
-    registerButtonType("image", {
+    registry.register("image", {
         label: function (this: any) { return cardContractCardLabel("image"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("image"); },
         pickerKey: function (this: any) { return cardContractPickerKey("image"); },
@@ -140,10 +169,4 @@ export function registerImageCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "IMAGE_CARD_METADATA": liveGlobal(() => IMAGE_CARD_METADATA, (value?: any) => { IMAGE_CARD_METADATA = value; }),
-        "imageModalModeOptions": staticGlobal(imageModalModeOptions),
-        "renderImageLabelSettings": staticGlobal(renderImageLabelSettings),
-        "renderImageModalSettings": staticGlobal(renderImageModalSettings),
-    };
 }

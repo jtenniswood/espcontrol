@@ -1,7 +1,7 @@
-import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installStylesModule(): GlobalDescriptors {
-    var WEB_STYLES: any = ":root{" +
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+
+export function createWebStyles(dragAnimation: boolean): string {
+    return ":root{" +
         "--bg:#1b1b1f;--surface:#202127;--surface2:#2e2e32;--border:#3c3f44;" +
         "--text:#dfdfd6;--text2:#98989f;--text3:#6a6a71;--accent:#5c73e7;--accent-hover:#a8b1ff;" +
         "--screen-primary:#" + WEB_UI_COLORS.primary + ";--screen-secondary:#" + WEB_UI_COLORS.secondary + ";" +
@@ -160,7 +160,7 @@ export function installStylesModule(): GlobalDescriptors {
         "background:rgba(92,156,245,.08) !important;cursor:default;pointer-events:none}" +
         ".sp-btn.sp-drop-placeholder{box-shadow:0 0 0 2px rgba(92,156,245,.6),0 0 12px rgba(92,156,245,.25) !important;" +
         "background:rgba(92,156,245,.08) !important}" +
-        (CFG.dragAnimation ? ".sp-btn.sp-dragging{opacity:.4;transform:scale(.95)}" +
+        (dragAnimation ? ".sp-btn.sp-dragging{opacity:.4;transform:scale(.95)}" +
             ".sp-empty-cell.sp-drop-placeholder{border-color:rgba(92,156,245,.5)}" : "") +
         ".sp-hint{text-align:center;font-size:.7rem;color:var(--text3);padding:8px 0 12px;user-select:none}" +
         ".sp-selection-bar{display:none;align-items:center;justify-content:space-between;gap:12px;" +
@@ -593,7 +593,4 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-fw-status{text-align:left}" +
         ".sp-fw-actions .sp-fw-btn,.sp-fw-previous-actions .sp-fw-btn{width:100%}" +
         "}";
-    return {
-        "WEB_STYLES": liveGlobal(() => WEB_STYLES, (value?: any) => { WEB_STYLES = value; }),
-    };
 }

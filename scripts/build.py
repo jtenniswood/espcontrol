@@ -47,7 +47,12 @@ WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 # current stable release and its four supported rollback releases. Keep this
 # list aligned with the GitHub Pages release catalogue in pages.yml.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
-    "dev", "v2.7.1", "v2.7.0", "v2.6.3", "v2.6.2", "v2.6.1",
+    "dev",
+    "v2.8.0",
+    "v2.7.1",
+    "v2.7.0",
+    "v2.6.3",
+    "v2.6.2",
 )
 
 # Fixed editor controls use a few MDI glyphs that are not selectable Product

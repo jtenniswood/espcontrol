@@ -37,8 +37,7 @@ function loadHooks(search, grid) {
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   if (grid) {
-    sandbox.GRID_COLS = grid.cols;
-    sandbox.GRID_ROWS = grid.rows;
+    sandbox.__ESPCONTROL_TEST_HOOKS__.config.setGridDimensions(grid.cols, grid.rows);
   }
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }

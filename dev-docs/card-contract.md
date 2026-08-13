@@ -86,8 +86,8 @@ subpages both resolve the same `Family` before choosing their surface-specific
 widget and lifecycle adapter. The registry test covers every authored contract
 type and checks that subpage capability still matches the contract.
 
-The generated web `CARD_RUNTIME_SPECS` registry is attached to matching
-`BUTTON_TYPES` registrations as `runtimeSpec`. Firmware receives matching
+The generated web `CARD_RUNTIME_SPECS` registry is attached to matching typed
+card-registry definitions as `runtimeSpec`. Firmware receives matching
 `CardTypeId`, `CardDriverId`, capability flags, and a canonical-config resolver
 in `button_grid_contract_generated.h`. Door/Window and Presence cards now use
 the shared handwritten `STATUS_ENTITY` lifecycle driver for main-grid and
@@ -402,8 +402,8 @@ var HELLO_CARD_METADATA = {
   preview: { badge: "hand-wave" },
 };
 
-export function registerHelloCardTypes(): void {
-registerButtonType("hello", {
+export function registerHelloCardTypes(registry: CardRegistry): void {
+registry.register("hello", {
   label: function () { return cardContractCardLabel("hello"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("hello"); },
   pickerKey: function () { return cardContractPickerKey("hello"); },

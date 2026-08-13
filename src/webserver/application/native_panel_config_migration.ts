@@ -6,7 +6,7 @@ export type NativePanelConfigMigrationDependencies = Omit<NativePanelConfigContr
 
 /** Creates the typed configuration persistence controller for the browser app. */
 export function createNativePanelConfigMigrationController(
-  dependencies?: NativePanelConfigMigrationDependencies,
+  dependencies: NativePanelConfigMigrationDependencies,
 ): NativePanelConfigController {
   const fetchNative: NativePanelConfigFetch | null = typeof fetch === "function"
     ? (path: string, request?: NativePanelConfigRequest) =>
@@ -14,13 +14,7 @@ export function createNativePanelConfigMigrationController(
     : null;
   const controller = new NativePanelConfigController({
     fetch: fetchNative,
-    deviceProfile: dependencies?.deviceProfile ?? (() => DEVICE_ID),
-    slotCount: dependencies?.slotCount ?? (() => NUM_SLOTS),
-    entityName: dependencies?.entityName ?? ((name) => entityName(name)),
-    entityNameForSlot: dependencies?.entityNameForSlot ?? ((name, slot) => entityNameForSlot(name, slot)),
-    normalizeHexColor: dependencies?.normalizeHexColor ?? ((value, fallback) => normalizeHexColor(value, fallback)),
-    showBanner: dependencies?.showBanner ?? ((message, level) => showBanner(message, level)),
-    delay: dependencies?.delay ?? ((callback, milliseconds) => setTimeout(callback, milliseconds)),
+    ...dependencies,
   });
 
   if (fetchNative) void controller.begin();

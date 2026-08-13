@@ -118,8 +118,13 @@ class PanelConfigWriteHandler final
         expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, context.document,
         received_size_);
     reset_upload();
+    // ESP-IDF retains header value pointers until httpd_resp_send(). Keep these
+    // buffers in handleRequest() so they remain valid through every send below.
+    char generation_text[16]{};
+    char etag[20]{};
     if (saved.status == ServiceStatus::GENERATION_CONFLICT) {
-      set_generation_headers(raw_request, saved.generation);
+      set_generation_headers(raw_request, saved.generation, generation_text,
+                             etag);
       send_status(raw_request, "409 Conflict",
                   "Panel configuration changed on the device");
       return;
@@ -136,7 +141,8 @@ class PanelConfigWriteHandler final
                           "Panel configuration could not be saved");
       return;
     }
-    set_generation_headers(raw_request, saved.generation);
+    set_generation_headers(raw_request, saved.generation, generation_text,
+                           etag);
     if (saved.status == ServiceStatus::LEGACY_MIRROR_FAILED) {
       httpd_resp_set_hdr(raw_request, "X-Panel-Config-Legacy-Mirror", "failed");
       httpd_resp_set_status(raw_request, "202 Accepted");
@@ -160,9 +166,9 @@ class PanelConfigWriteHandler final
     body_valid_ = false;
   }
 
-  static void set_generation_headers(httpd_req_t *request, uint32_t generation) {
-    char generation_text[16]{};
-    char etag[20]{};
+  static void set_generation_headers(httpd_req_t *request, uint32_t generation,
+                                     char (&generation_text)[16],
+                                     char (&etag)[20]) {
     std::snprintf(generation_text, sizeof(generation_text), "%lu",
                   static_cast<unsigned long>(generation));
     std::snprintf(etag, sizeof(etag), "\"%lu\"",

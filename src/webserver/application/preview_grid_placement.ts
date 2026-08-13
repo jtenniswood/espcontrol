@@ -1,5 +1,4 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import type { PreviewPlacementController } from "../features/preview_placement_controller";
 import { closestGridCell, swapGridCell } from "../features/preview";
 import {
@@ -11,14 +10,32 @@ import {
     resolveSpanPosition,
 } from "../features/preview_grid";
 import type { ApplicationLayoutState } from "./application_context";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { GridFeature } from "./grid";
 export interface PreviewGridPlacementDependencies {
     readonly controller: PreviewPlacementController;
     readonly layout: ApplicationLayoutState;
+    readonly codec: ConfigCodecFeature;
+    readonly grid: Pick<GridFeature, "ctx">;
 }
-export function installPreviewGridPlacementModule(
+export interface PreviewGridPlacementFeature {
+    resolveSpanPos(position?: any): any;
+    getCellFromEvent(event?: any, container?: any): any;
+    moveToCell(fromPosition?: any, toPosition?: any): void;
+    canPlaceSlotAt(grid?: any, position?: any, size?: any, maxSlots?: any): boolean;
+    findPlacementCell(grid?: any, start?: any, size?: any, maxSlots?: any): any;
+    findDuplicatePlacement(grid?: any, start?: any, size?: any, maxSlots?: any): any;
+    placeSlotAt(grid?: any, slot?: any, position?: any, size?: any): void;
+    placeOrderedGridEntries(entries?: any, sizes?: any, maxSlots?: any): any;
+    moveSelectedToCell(fromPosition?: any, toPosition?: any): boolean;
+}
+
+export function createPreviewGridPlacementFeature(
     dependencies: PreviewGridPlacementDependencies,
-): GlobalDescriptors {
+): PreviewGridPlacementFeature {
     const previewPlacementController = dependencies.controller;
+    const { getSubpage } = dependencies.codec;
+    const { ctx } = dependencies.grid;
     // ── Preview Grid Placement ────────────────────────────────────────
     function resolveSpanPos(this: any, pos?: any) {
         var c: any = ctx();
@@ -87,14 +104,14 @@ export function installPreviewGridPlacementModule(
         return true;
     }
     return {
-        "resolveSpanPos": staticGlobal(resolveSpanPos),
-        "getCellFromEvent": staticGlobal(getCellFromEvent),
-        "moveToCell": staticGlobal(moveToCell),
-        "canPlaceSlotAt": staticGlobal(canPlaceSlotAt),
-        "findPlacementCell": staticGlobal(findPlacementCell),
-        "findDuplicatePlacement": staticGlobal(findDuplicatePlacement),
-        "placeSlotAt": staticGlobal(placeSlotAt),
-        "placeOrderedGridEntries": staticGlobal(placeOrderedGridEntries),
-        "moveSelectedToCell": staticGlobal(moveSelectedToCell),
+        resolveSpanPos,
+        getCellFromEvent,
+        moveToCell,
+        canPlaceSlotAt,
+        findPlacementCell,
+        findDuplicatePlacement,
+        placeSlotAt,
+        placeOrderedGridEntries,
+        moveSelectedToCell,
     };
 }

@@ -1,16 +1,73 @@
-import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import type { NativePanelConfigController } from "../controllers/native_panel_config_controller";
 import type { DeviceApi } from "../api/device_api";
+import { requestFailureInfo } from "../api/request_failure";
+import { screensaverActionOption } from "../model/settings";
+import type { ScreensaverTimeoutFeature } from "./screensaver_timeout";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
 
-export function installApiModule(
+export interface ApplicationApiFeature {
+    postQueue: Promise<any>;
+    postQueueError: boolean;
+    connectReconnect(callback: () => void): void;
+    setPostThrottle(ms?: number): void;
+    postQueueIdle(): Promise<any>;
+    resetPostQueueError(): void;
+    postQueueHadError(): boolean;
+    postQuiet(url?: string): Promise<any>;
+    post(url?: string | string[], fallbackUrl?: string | null, errorMessage?: string): Promise<any>;
+    postTextLegacy(name?: string, value?: any): Promise<any>;
+    postOptional(url?: string | string[]): Promise<any>;
+    postFirstAvailable(urls?: string[]): Promise<any>;
+    postText(name?: string, value?: any): Promise<any>;
+    postTextWithObjectIds(name?: string, objectIds?: string[], value?: any, errorMessage?: string): Promise<any>;
+    postSelect(name?: string, option?: any): Promise<any>;
+    postButtonPress(name?: string): Promise<any>;
+    postSwitch(name?: string, on?: boolean): Promise<any>;
+    postScreensaverMode(value?: any): Promise<any>;
+    postFirmwareAutoUpdate(on?: boolean): void;
+    postC6FirmwareAutoUpdate(on?: boolean): void;
+    postFirmwareUpdateFrequency(value?: any): void;
+    postNumber(name?: string, value?: any): Promise<any>;
+    postWithObjectId(domain?: string, name?: string, objectId?: string, action?: string, errorMessage?: string): void;
+    postWithObjectIds(domain?: string, name?: string, objectIds?: string[], action?: string, errorMessage?: string): Promise<any>;
+    postNumberWithObjectId(name?: string, objectId?: string, value?: any, errorMessage?: string): void;
+    postNumberWithObjectIds(name?: string, objectIds?: string[], value?: any, errorMessage?: string): void;
+    postSelectWithObjectId(name?: string, objectId?: string, option?: any, errorMessage?: string): void;
+    postSelectWithObjectIds(name?: string, objectIds?: string[], option?: any, errorMessage?: string): void;
+    postScreensaverTimeout(value?: any): void;
+    postScreensaverAction(value?: any): void;
+    postScreensaverDimmedBrightness(value?: any): void;
+    postScreensaverDimmedBrightnessDay(value?: any): void;
+    postScreensaverDimmedBrightnessNight(value?: any): void;
+    postHomeScreenTimeout(value?: any): void;
+    postSwitchWithObjectId(name?: string, objectId?: string, on?: boolean, errorMessage?: string): void;
+    postSwitchWithObjectIds(name?: string, objectIds?: string[], on?: boolean, errorMessage?: string): void;
+    getJsonQuietly(path?: string, callback?: (data: any) => void): Promise<any>;
+    getJsonFirst(paths?: string[], callback?: (data: any) => void): Promise<any>;
+    entityDetailPath(domain?: string, name?: string, detail?: string): string;
+    entityDetailPaths(domain?: string, names?: string[], detail?: string): string[];
+    entityInitialDetail(domain?: string): string;
+}
+
+export function createApplicationApiFeature(
     nativePanelConfig: NativePanelConfigController,
     deviceApi: DeviceApi,
-): GlobalDescriptors {
+    entityState: Pick<EntityStateFeature, "entityPostUrls" | "entityName" | "entityObjectIds">,
+    screensaverTimeout: ScreensaverTimeoutFeature,
+    shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
+): ApplicationApiFeature {
+    const { entityPostUrls, entityName, entityObjectIds } = entityState;
+    const { supported: screensaverTimeoutSupported, syncUi: syncScreensaverTimeoutUi } = screensaverTimeout;
+    const { setConfigLocked, showBanner } = shell;
     // ── POST queue ─────────────────────────────────────────────────────────
     var deviceApiClient: DeviceApi = deviceApi;
+    var reconnect: () => void = function () {};
     var _postQueue: any = Promise.resolve(null);
     var _postQueueHadError: any = false;
+    function connectReconnect(this: any, callback: () => void) {
+        reconnect = callback;
+    }
     function setPostThrottle(this: any, ms?: any) {
         deviceApiClient.setPostThrottle(ms);
     }
@@ -42,7 +99,7 @@ export function installApiModule(
                 _postQueueHadError = true;
                 setConfigLocked(true, "Reconnecting to device\u2026");
                 showBanner(failure.message, "error");
-                setTimeout(connectEvents, 5000);
+                setTimeout(reconnect, 5000);
                 return null;
             }
             if (failure) {
@@ -64,7 +121,7 @@ export function installApiModule(
                 _postQueueHadError = true;
                 setConfigLocked(true, "Reconnecting to device\u2026");
                 showBanner(failure.message, "error");
-                setTimeout(connectEvents, 5000);
+                setTimeout(reconnect, 5000);
                 return null;
             }
             return result.value;
@@ -148,7 +205,7 @@ export function installApiModule(
         }
         postNumberWithObjectIds(entityName("screensaver_timeout"), entityObjectIds("screensaver_timeout"), value);
     }
-    var SCREENSAVER_ACTION_UNAVAILABLE: any = "Screen dimmed screensaver is not available on this firmware. Update the device firmware, then reload this page.";
+    const SCREENSAVER_ACTION_UNAVAILABLE = "Screen dimmed screensaver is not available on this firmware. Update the device firmware, then reload this page.";
     function postScreensaverAction(this: any, value?: any) {
         postSelectWithObjectIds(entityName("screen_saver_action"), entityObjectIds("screen_saver_action"), screensaverActionOption(value), SCREENSAVER_ACTION_UNAVAILABLE);
     }
@@ -205,46 +262,48 @@ export function installApiModule(
         return domain === "select" ? "state" : "all";
     }
     return {
-        "_postQueue": liveGlobal(() => _postQueue, (value?: any) => { _postQueue = value; }),
-        "_postQueueHadError": liveGlobal(() => _postQueueHadError, (value?: any) => { _postQueueHadError = value; }),
-        "setPostThrottle": staticGlobal(setPostThrottle),
-        "postQueueIdle": staticGlobal(postQueueIdle),
-        "resetPostQueueError": staticGlobal(resetPostQueueError),
-        "postQueueHadError": staticGlobal(postQueueHadError),
-        "postQuiet": staticGlobal(postQuiet),
-        "post": staticGlobal(post),
-        "postTextLegacy": staticGlobal(postTextLegacy),
-        "postOptional": staticGlobal(postOptional),
-        "postFirstAvailable": staticGlobal(postFirstAvailable),
-        "postText": staticGlobal(postText),
-        "postTextWithObjectIds": staticGlobal(postTextWithObjectIds),
-        "postSelect": staticGlobal(postSelect),
-        "postButtonPress": staticGlobal(postButtonPress),
-        "postSwitch": staticGlobal(postSwitch),
-        "postScreensaverMode": staticGlobal(postScreensaverMode),
-        "postFirmwareAutoUpdate": staticGlobal(postFirmwareAutoUpdate),
-        "postC6FirmwareAutoUpdate": staticGlobal(postC6FirmwareAutoUpdate),
-        "postFirmwareUpdateFrequency": staticGlobal(postFirmwareUpdateFrequency),
-        "postNumber": staticGlobal(postNumber),
-        "postWithObjectId": staticGlobal(postWithObjectId),
-        "postWithObjectIds": staticGlobal(postWithObjectIds),
-        "postNumberWithObjectId": staticGlobal(postNumberWithObjectId),
-        "postNumberWithObjectIds": staticGlobal(postNumberWithObjectIds),
-        "postSelectWithObjectId": staticGlobal(postSelectWithObjectId),
-        "postSelectWithObjectIds": staticGlobal(postSelectWithObjectIds),
-        "postScreensaverTimeout": staticGlobal(postScreensaverTimeout),
-        "SCREENSAVER_ACTION_UNAVAILABLE": liveGlobal(() => SCREENSAVER_ACTION_UNAVAILABLE, (value?: any) => { SCREENSAVER_ACTION_UNAVAILABLE = value; }),
-        "postScreensaverAction": staticGlobal(postScreensaverAction),
-        "postScreensaverDimmedBrightness": staticGlobal(postScreensaverDimmedBrightness),
-        "postScreensaverDimmedBrightnessDay": staticGlobal(postScreensaverDimmedBrightnessDay),
-        "postScreensaverDimmedBrightnessNight": staticGlobal(postScreensaverDimmedBrightnessNight),
-        "postHomeScreenTimeout": staticGlobal(postHomeScreenTimeout),
-        "postSwitchWithObjectId": staticGlobal(postSwitchWithObjectId),
-        "postSwitchWithObjectIds": staticGlobal(postSwitchWithObjectIds),
-        "getJsonQuietly": staticGlobal(getJsonQuietly),
-        "getJsonFirst": staticGlobal(getJsonFirst),
-        "entityDetailPath": staticGlobal(entityDetailPath),
-        "entityDetailPaths": staticGlobal(entityDetailPaths),
-        "entityInitialDetail": staticGlobal(entityInitialDetail),
+        get postQueue() { return _postQueue; },
+        set postQueue(value: Promise<any>) { _postQueue = value; },
+        get postQueueError() { return _postQueueHadError; },
+        set postQueueError(value: boolean) { _postQueueHadError = value; },
+        connectReconnect,
+        setPostThrottle,
+        postQueueIdle,
+        resetPostQueueError,
+        postQueueHadError,
+        postQuiet,
+        post,
+        postTextLegacy,
+        postOptional,
+        postFirstAvailable,
+        postText,
+        postTextWithObjectIds,
+        postSelect,
+        postButtonPress,
+        postSwitch,
+        postScreensaverMode,
+        postFirmwareAutoUpdate,
+        postC6FirmwareAutoUpdate,
+        postFirmwareUpdateFrequency,
+        postNumber,
+        postWithObjectId,
+        postWithObjectIds,
+        postNumberWithObjectId,
+        postNumberWithObjectIds,
+        postSelectWithObjectId,
+        postSelectWithObjectIds,
+        postScreensaverTimeout,
+        postScreensaverAction,
+        postScreensaverDimmedBrightness,
+        postScreensaverDimmedBrightnessDay,
+        postScreensaverDimmedBrightnessNight,
+        postHomeScreenTimeout,
+        postSwitchWithObjectId,
+        postSwitchWithObjectIds,
+        getJsonQuietly,
+        getJsonFirst,
+        entityDetailPath,
+        entityDetailPaths,
+        entityInitialDetail,
     };
 }

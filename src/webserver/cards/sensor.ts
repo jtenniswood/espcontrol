@@ -1,18 +1,43 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-import { createSensorCardModeController } from "../features/sensor_card_mode_controller";
-export function registerSensorCardTypes(): GlobalDescriptors {
+import { CARD_SIZE_SINGLE, sizeColSpan } from "../model/grid";
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigSensorOptionsFeature } from "../application/config_sensor_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerSensorCardTypes(
+    registry: CardRegistry,
+    sensorOptions: ConfigSensorOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, toggleRow } = fields;
+    const {
+        sensorCardLocalSource: SENSOR_CARD_LOCAL_SENSOR,
+        sensorCardModeController,
+        sensorCardIsLocal,
+        normalizeSensorOptions,
+        sensorActiveColorEnabled,
+        sensorTimeUnit,
+        setSensorTimeUnit,
+        setSensorActiveColorEnabled,
+        sensorStateLabelsEnabled,
+        sensorStateInput,
+        sensorStateOutput,
+        sensorStateInput2,
+        sensorStateOutput2,
+        setSensorStateTranslations,
+    } = sensorOptions;
     // Read-only sensor card: displays either numeric data or a text state.
-    var SENSOR_CARD_LOCAL_SENSOR: any = "local";
-    function sensorCardModeController(this: any) {
-        return createSensorCardModeController({
-            normalizeOptions: function (options: string, precision: string) { return normalizeSensorOptions(options, precision); },
-            localSensorSource: SENSOR_CARD_LOCAL_SENSOR,
-        });
-    }
-    function sensorCardIsLocal(this: any, b?: any) {
-        return sensorCardModeController().isLocal(b);
-    }
     var SENSOR_CARD_METADATA: any = {
         source: {
             label: "Source",
@@ -68,7 +93,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             textBadge: "format-text",
         },
     };
-    registerButtonType("sensor", {
+    registry.register("sensor", {
         label: function (this: any) { return cardContractCardLabel("sensor"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("sensor"); },
         pickerKey: function (this: any) { return cardContractPickerKey("sensor"); },
@@ -571,11 +596,4 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             labelHtml: cardBadgeLabelHtml(helpers, label, SENSOR_CARD_METADATA.preview.numericBadge),
         };
     }
-    return {
-        "SENSOR_CARD_LOCAL_SENSOR": liveGlobal(() => SENSOR_CARD_LOCAL_SENSOR, (value?: any) => { SENSOR_CARD_LOCAL_SENSOR = value; }),
-        "sensorCardIsLocal": staticGlobal(sensorCardIsLocal),
-        "SENSOR_CARD_METADATA": liveGlobal(() => SENSOR_CARD_METADATA, (value?: any) => { SENSOR_CARD_METADATA = value; }),
-        "renderSensorLocalSettings": staticGlobal(renderSensorLocalSettings),
-        "sensorLocalPreview": staticGlobal(sensorLocalPreview),
-    };
 }

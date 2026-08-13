@@ -1,10 +1,30 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import {
+    DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT,
+    DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT,
+    normalizeBrightnessMode,
+    normalizeHomeAssistantArtworkPort,
+    normalizeHomeAssistantArtworkProtocol,
+    normalizeHour,
+    normalizeTimeOfDay,
+} from "../model/settings";
+import { setSelectValue } from "./ui_primitives";
 import { timedSettingLabel, type SettingsUiFeature } from "../features/settings";
 import type { AlarmDelayAudioController } from "../features/alarm_delay_audio_controller";
 import type { ScreensaverController } from "../features/screensaver_controller";
 import type { CoverArtScreensaverController } from "../features/cover_art_screensaver_controller";
 import type { MediaPlaybackController } from "../features/media_playback_controller";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { ApplicationLayoutState } from "./application_context";
+import type { ScreenScheduleStateFeature } from "./screen_schedule_state";
+import type { ClockBarFeature } from "./clock_bar_state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { ClockBarPostApiFeature } from "./clock_bar_post_api";
+import type { ControlsFieldsFeature } from "./controls_fields";
 
 export interface SettingsPageHelpersControllers {
     readonly settingsUiFeature: SettingsUiFeature;
@@ -12,18 +32,80 @@ export interface SettingsPageHelpersControllers {
     readonly screensaver: ScreensaverController;
     readonly coverArtScreensaver: CoverArtScreensaverController;
     readonly mediaPlayback: MediaPlaybackController;
+    readonly codec: Pick<ConfigCodecFeature, "bindTextPost">;
+    readonly runtime: UiRuntimeState;
+    readonly layout: ApplicationLayoutState;
+    readonly screenScheduleState: ScreenScheduleStateFeature;
+    readonly clockBar: Pick<ClockBarFeature, "syncUi">;
+    readonly entityState: Pick<EntityStateFeature, "entityInput">;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "switchTab">;
+    readonly requestApi: Pick<ApplicationApiFeature, "postScreensaverAction" | "postScreensaverDimmedBrightness" | "postScreensaverDimmedBrightnessDay" | "postScreensaverDimmedBrightnessNight" | "postSwitch">;
+    readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput">;
+    readonly clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBrightnessDay" | "postClockBrightnessNight" | "postClockScreensaver" | "postAlarmDelayAudio" | "postAlarmDelayTts" | "postAlarmDelayEntryAnnouncement" | "postAlarmDelayExitAnnouncement" | "postAlarmDelayBeepVolume" | "postAlarmDelayFinalCountdown">;
+    readonly fields: Pick<ControlsFieldsFeature, "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">;
 }
 
-export function installSettingsPageHelpersModule(
+export interface SettingsPageHelpersFeature {
+    coverArtScreensaverState(...args: any[]): any;
+    applyCoverArtScreensaverState(...args: any[]): any;
+    mediaPlaybackState(...args: any[]): any;
+    applyMediaPlaybackState(...args: any[]): any;
+    settingsStatusHeader(...args: any[]): any;
+    appendSettingsSection(...args: any[]): any;
+    openVoiceServicesSettings(...args: any[]): any;
+    syncAlarmDelayAudioUi(...args: any[]): any;
+    buildAlarmDelayAudioSettingsCard(...args: any[]): any;
+    coverArtTrackOverlayDurationSupported(...args: any[]): any;
+    infoPanel(...args: any[]): any;
+    statusBadge(...args: any[]): any;
+    disclosureBadge(...args: any[]): any;
+    inlineDisclosure(...args: any[]): any;
+    syncClockScreensaverControls(...args: any[]): any;
+    syncMediaPlayerSleepPreventionUi(...args: any[]): any;
+    syncCoverArtScreensaverUi(...args: any[]): any;
+    syncOptionalClockBrightness(...args: any[]): any;
+    createScreensaverThenControls(...args: any[]): any;
+    createHourSelect(...args: any[]): any;
+    createTimeInput(...args: any[]): any;
+    createEntityToggleSection(...args: any[]): any;
+}
+
+export function createSettingsPageHelpersFeature(
     controllers: SettingsPageHelpersControllers,
-): GlobalDescriptors {
+): SettingsPageHelpersFeature {
+    const { entityInput } = controllers.entityState;
+    const { isConfigLocked, switchTab } = controllers.shell;
+    const { bindTextPost } = controllers.codec;
+    const { syncInput } = controllers.statusPreview;
+    const { condField, createRangeSlider, fieldLabel, makeCollapsibleCard, toggleRow } = controllers.fields;
+    const {
+        postClockBrightnessDay,
+        postClockBrightnessNight,
+        postClockScreensaver,
+        postAlarmDelayAudio,
+        postAlarmDelayTts,
+        postAlarmDelayEntryAnnouncement,
+        postAlarmDelayExitAnnouncement,
+        postAlarmDelayBeepVolume,
+        postAlarmDelayFinalCountdown,
+    } = controllers.clockBarPostApi;
+    const {
+        postScreensaverAction,
+        postScreensaverDimmedBrightness,
+        postScreensaverDimmedBrightnessDay,
+        postScreensaverDimmedBrightnessNight,
+        postSwitch,
+    } = controllers.requestApi;
+    const els = controllers.runtime.els;
+    const { formatDuration, formatHour } = controllers.screenScheduleState;
+    const { syncUi: syncClockBarUi } = controllers.clockBar;
     // ── Settings Page Helpers ──────────────────────────────────────────
     // ── Settings UI helpers ─────────────────────────────────────────────
-    var _settingsUiFeature: SettingsUiFeature = controllers.settingsUiFeature;
-    var _alarmDelayAudioController: AlarmDelayAudioController = controllers.alarmDelayAudio;
-    var _screensaverController: ScreensaverController = controllers.screensaver;
-    var _coverArtScreensaverController: CoverArtScreensaverController = controllers.coverArtScreensaver;
-    var _mediaPlaybackController: MediaPlaybackController = controllers.mediaPlayback;
+    const _settingsUiFeature: SettingsUiFeature = controllers.settingsUiFeature;
+    const _alarmDelayAudioController: AlarmDelayAudioController = controllers.alarmDelayAudio;
+    const _screensaverController: ScreensaverController = controllers.screensaver;
+    const _coverArtScreensaverController: CoverArtScreensaverController = controllers.coverArtScreensaver;
+    const _mediaPlaybackController: MediaPlaybackController = controllers.mediaPlayback;
     function alarmDelayAudioState(this: any) {
         return {
             audioEnabled: !!state.alarmDelayAudioOn,
@@ -128,7 +210,7 @@ export function installSettingsPageHelpersModule(
             els.setAlarmDelayFinalCountdown.value = String(uiState.finalCountdown);
     }
     function buildAlarmDelayAudioSettingsCard(this: any) {
-        if (!(CFG.features && CFG.features.alarmDelayAudio))
+        if (!(controllers.layout.config.features && controllers.layout.config.features.alarmDelayAudio))
             return null;
         var body: any = document.createElement("div");
         var master: any = toggleRow("Alarm Delay Audio", "sp-set-alarm-delay-audio", state.alarmDelayAudioOn);
@@ -241,7 +323,7 @@ export function installSettingsPageHelpersModule(
         return makeCollapsibleCard("Alarm Audio", body, true);
     }
     function coverArtTrackOverlayDurationSupported(this: any) {
-        return !!(CFG && CFG.coverArtSquareOverlay);
+        return !!controllers.layout.config.coverArtSquareOverlay;
     }
     function infoPanel(this: any, id?: any, text?: any) {
         return _settingsUiFeature.infoPanel(id, text);
@@ -530,32 +612,14 @@ export function installSettingsPageHelpersModule(
         return { toggle: toggle, field: field, input: inp };
     }
     return {
-        "_settingsUiFeature": liveGlobal(() => _settingsUiFeature, (value?: any) => { _settingsUiFeature = value; }),
-        "_alarmDelayAudioController": liveGlobal(() => _alarmDelayAudioController, (value?: any) => { _alarmDelayAudioController = value; }),
-        "_screensaverController": liveGlobal(() => _screensaverController, (value?: any) => { _screensaverController = value; }),
-        "_coverArtScreensaverController": liveGlobal(() => _coverArtScreensaverController, (value?: any) => { _coverArtScreensaverController = value; }),
-        "_mediaPlaybackController": liveGlobal(() => _mediaPlaybackController, (value?: any) => { _mediaPlaybackController = value; }),
-        "coverArtScreensaverState": staticGlobal(coverArtScreensaverState),
-        "applyCoverArtScreensaverState": staticGlobal(applyCoverArtScreensaverState),
-        "mediaPlaybackState": staticGlobal(mediaPlaybackState),
-        "applyMediaPlaybackState": staticGlobal(applyMediaPlaybackState),
-        "settingsStatusHeader": staticGlobal(settingsStatusHeader),
-        "appendSettingsSection": staticGlobal(appendSettingsSection),
-        "openVoiceServicesSettings": staticGlobal(openVoiceServicesSettings),
-        "syncAlarmDelayAudioUi": staticGlobal(syncAlarmDelayAudioUi),
-        "buildAlarmDelayAudioSettingsCard": staticGlobal(buildAlarmDelayAudioSettingsCard),
-        "coverArtTrackOverlayDurationSupported": staticGlobal(coverArtTrackOverlayDurationSupported),
-        "infoPanel": staticGlobal(infoPanel),
-        "statusBadge": staticGlobal(statusBadge),
-        "disclosureBadge": staticGlobal(disclosureBadge),
-        "inlineDisclosure": staticGlobal(inlineDisclosure),
-        "syncClockScreensaverControls": staticGlobal(syncClockScreensaverControls),
-        "syncMediaPlayerSleepPreventionUi": staticGlobal(syncMediaPlayerSleepPreventionUi),
-        "syncCoverArtScreensaverUi": staticGlobal(syncCoverArtScreensaverUi),
-        "syncOptionalClockBrightness": staticGlobal(syncOptionalClockBrightness),
-        "createScreensaverThenControls": staticGlobal(createScreensaverThenControls),
-        "createHourSelect": staticGlobal(createHourSelect),
-        "createTimeInput": staticGlobal(createTimeInput),
-        "createEntityToggleSection": staticGlobal(createEntityToggleSection),
+        coverArtScreensaverState, applyCoverArtScreensaverState,
+        mediaPlaybackState, applyMediaPlaybackState, settingsStatusHeader,
+        appendSettingsSection, openVoiceServicesSettings, syncAlarmDelayAudioUi,
+        buildAlarmDelayAudioSettingsCard, coverArtTrackOverlayDurationSupported,
+        infoPanel, statusBadge, disclosureBadge, inlineDisclosure,
+        syncClockScreensaverControls, syncMediaPlayerSleepPreventionUi,
+        syncCoverArtScreensaverUi, syncOptionalClockBrightness,
+        createScreensaverThenControls, createHourSelect, createTimeInput,
+        createEntityToggleSection,
     };
 }

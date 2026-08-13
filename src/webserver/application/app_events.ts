@@ -1,17 +1,70 @@
 import { state } from "../state/app_instance";
-import { staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import { applySseHandlerAliases } from "../state/event_aliases";
+import {
+    entityStateKeys,
+    isRemovedLegacyStateEvent,
+    parseEntityEventData,
+    resetStateForConnection,
+} from "../state/event_state";
+import {
+    isC6FirmwareAutoUpdateEvent,
+    isC6FirmwareCheckButtonEvent,
+    isC6FirmwareCurrentEvent,
+    isC6FirmwareInstallButtonEvent,
+    isC6FirmwareLatestEvent,
+    isC6FirmwareUpdateAvailableEvent,
+    isFirmwareCheckButtonEvent,
+    isFirmwareInstallButtonEvent,
+    isFirmwareUpdateEvent,
+    isFirmwareVersionEvent,
+} from "../state/firmware_events";
 import type { ReconnectController } from "../features/reconnect";
-import type { SseHandlerFactory } from "./app_state_event_handlers";
+import type { AppStateEventHandlersFeature } from "./app_state_event_handlers";
+import type { UiRuntimeState } from "./state";
+import type { AppTitleFeature } from "./app_title";
+import type { FirmwareVersionFeature } from "./firmware_version_state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { C6FirmwareFeature } from "./c6_firmware_ui";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { StateLoaderFeature } from "./state_loader_api";
+import type { GridMigrationFeature } from "./grid_migration";
+import type { AppConfigEventsFeature } from "./app_config_events";
 
-export function installAppEventsModule(
+export interface AppEventsFeature {
+    connect(): void;
+}
+
+export function createAppEventsFeature(
     reconnectController: ReconnectController<unknown>,
-    createSseHandlers: SseHandlerFactory,
-): GlobalDescriptors {
+    stateEventHandlers: AppStateEventHandlersFeature,
+    configEvents: Pick<AppConfigEventsFeature, "patterns">,
+    runtime: UiRuntimeState,
+    pageTitle: AppTitleFeature,
+    firmwareVersion: FirmwareVersionFeature,
+    firmwareUpdate: FirmwareUpdateFeature,
+    c6Firmware: C6FirmwareFeature,
+    entityState: Pick<EntityStateFeature, "rememberEntityPostPath">,
+    shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
+    stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout">,
+    gridMigration: Pick<GridMigrationFeature, "schedule">,
+): AppEventsFeature {
+    const { rememberEntityPostPath } = entityState;
+    const { setConfigLocked, showBanner } = shell;
+    const els = runtime.els;
+    const { set: setFirmwareVersion } = firmwareVersion;
+    const { setInfo: setFirmwareUpdateInfo, renderStatus: renderFirmwareUpdateStatus } = firmwareUpdate;
+    const {
+        setCurrentVersion: setC6FirmwareCurrentVersion,
+        setLatestVersion: setC6FirmwareLatestVersion,
+        setUpdateAvailable: setC6FirmwareUpdateAvailable,
+        syncUi: syncC6FirmwareUi,
+    } = c6Firmware;
     // ── SSE ────────────────────────────────────────────────────────────────
     function connectEvents(this: any) {
         function markConnected(this: any) {
             resetStateForConnection(state);
-            orderReceived = false;
+            runtime.orderReceived = false;
             setConfigLocked(false);
             if (els.banner)
                 els.banner.className = "sp-banner";
@@ -19,20 +72,20 @@ export function installAppEventsModule(
                 btn.disabled = false;
                 btn.textContent = "Apply Configuration";
             });
-            clearTimeout(migrationTimer);
-            migrationTimer = setTimeout(scheduleMigration, 5000);
-            clearTimeout(sliderMigrationTimer);
-            pendingSliderSubpageMigrations = {};
-            refreshFirmwareVersion();
-            refreshScreensaverTimeout();
+            clearTimeout(runtime.migrationTimer as any);
+            runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
+            clearTimeout(runtime.sliderMigrationTimer as any);
+            runtime.pendingSliderSubpageMigrations = {};
+            stateLoader.refreshFirmwareVersion();
+            stateLoader.refreshScreensaverTimeout();
         }
         function handleDisconnected(this: any) {
             setConfigLocked(true, "Reconnecting to device\u2026");
             showBanner("Reconnecting to device\u2026", "offline");
         }
-        var sseHandlers: any = createSseHandlers();
+        var sseHandlers: any = stateEventHandlers.createHandlers();
         applySseHandlerAliases(sseHandlers);
-        var ssePatterns: any = configEventPatterns();
+        var ssePatterns: any = configEvents.patterns();
         function handleState(this: any, d?: any) {
             rememberEntityPostPath(d);
             var keys: any = entityStateKeys(d);
@@ -109,12 +162,10 @@ export function installAppEventsModule(
         reconnectController.connect({
             "onConnected": markConnected,
             "onDisconnected": handleDisconnected,
-            "onPing": handleWebServerPingEvent,
+            "onPing": pageTitle.handleWebServerPingEvent,
             "parseState": function (e: any) { return parseEntityEventData(e.data); },
             "onState": handleState,
         });
     }
-    return {
-        "connectEvents": staticGlobal(connectEvents),
-    };
+    return { connect: connectEvents };
 }

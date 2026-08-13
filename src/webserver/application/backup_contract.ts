@@ -1,54 +1,42 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-import type { BackupFeature } from "../features/backup";
+import type { BackupFeature, BackupImportPlan, BackupTargetDevice } from "../features/backup";
+import { buttonConfigDisabledForDevice } from "../features/preview";
+import type { ApplicationLayoutState } from "./application_context";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigCodecFeature } from "./config_codec";
 
-export function installBackupContractModule(backupFeature: BackupFeature): GlobalDescriptors {
-    // ── Backup contract compatibility bridge ──────────────────────────────
-    var _backupFeature: BackupFeature = backupFeature;
-    var BACKUP_CONFIG_VERSION: any = _backupFeature.BACKUP_CONFIG_VERSION;
-    var BACKUP_FORMAT: any = _backupFeature.BACKUP_FORMAT;
-    function backupEmptyButtonConfig(this: any) {
-        return _backupFeature.emptyButtonConfig();
-    }
-    function backupNormalizeButtonConfig(this: any, button?: any) {
-        return _backupFeature.normalizeButtonConfig(button);
-    }
-    function createBackupConfig(this: any, snapshot?: any) {
-        return _backupFeature.createBackupConfig(snapshot);
-    }
-    function normalizeBackupConfig(this: any, data?: any) {
-        return _backupFeature.normalizeBackupConfig(data);
-    }
-    function backupUnsupportedCardError(button: any) {
-        var type: any = button && button.type || "";
-        var label: any = type ? type.replace(/_/g, " ") : "switch";
-        var err: any = new Error("This controller does not support the " + label + " card type in this backup.");
-        err.backupMessage = err.message;
-        return err;
-    }
-    function assertBackupButtonSupported(button: any) {
-        if (buttonConfigDisabledForDevice(button))
-            throw backupUnsupportedCardError(button);
-    }
-    function assertBackupCardsSupported(plan: any) {
-        (plan.config.buttons || []).forEach(assertBackupButtonSupported);
-        for (var subpageKey in plan.config.subpages || {}) {
-            var subpage: any = parseSubpageConfig(plan.config.subpages[subpageKey]);
-            (subpage.buttons || []).forEach(assertBackupButtonSupported);
+export interface BackupContractFeature extends BackupFeature {
+    planBackupImport(data: unknown, targetDevice?: BackupTargetDevice): BackupImportPlan;
+}
+
+export function createBackupContractFeature(
+    backupFeature: BackupFeature,
+    codec: Pick<ConfigCodecFeature, "parseSubpageConfig">,
+    cards: CardRegistry,
+    layout: ApplicationLayoutState,
+): BackupContractFeature {
+    const assertButtonSupported = (button: any): void => {
+        if (!buttonConfigDisabledForDevice(
+            cards.definitions,
+            layout.config.disabledCardTypes || [],
+            button,
+        )) return;
+        const type = button?.type || "";
+        const label = type ? type.replace(/_/g, " ") : "switch";
+        const error = new Error(`This controller does not support the ${label} card type in this backup.`) as Error & { backupMessage?: string };
+        error.backupMessage = error.message;
+        throw error;
+    };
+    const planBackupImport = (data: unknown, targetDevice?: BackupTargetDevice): BackupImportPlan => {
+        const plan = backupFeature.planBackupImport(data, targetDevice);
+        (plan.config.buttons || []).forEach(assertButtonSupported);
+        for (const serialized of Object.values(plan.config.subpages || {})) {
+            const subpage = codec.parseSubpageConfig(serialized);
+            (subpage.buttons || []).forEach(assertButtonSupported);
         }
-    }
-    function planBackupImport(this: any, data?: any, targetDevice?: any) {
-        var plan: any = _backupFeature.planBackupImport(data, targetDevice);
-        assertBackupCardsSupported(plan);
         return plan;
-    }
+    };
     return {
-        "_backupFeature": liveGlobal(() => _backupFeature, (value?: any) => { _backupFeature = value; }),
-        "BACKUP_CONFIG_VERSION": liveGlobal(() => BACKUP_CONFIG_VERSION, (value?: any) => { BACKUP_CONFIG_VERSION = value; }),
-        "BACKUP_FORMAT": liveGlobal(() => BACKUP_FORMAT, (value?: any) => { BACKUP_FORMAT = value; }),
-        "backupEmptyButtonConfig": staticGlobal(backupEmptyButtonConfig),
-        "backupNormalizeButtonConfig": staticGlobal(backupNormalizeButtonConfig),
-        "createBackupConfig": staticGlobal(createBackupConfig),
-        "normalizeBackupConfig": staticGlobal(normalizeBackupConfig),
-        "planBackupImport": staticGlobal(planBackupImport),
+        ...backupFeature,
+        planBackupImport,
     };
 }

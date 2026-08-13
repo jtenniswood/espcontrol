@@ -226,7 +226,7 @@ for required in (
         raise SystemExit(f"Large cover art web font-selection contract missing: {required}")
 web_media = (ROOT / "src" / "webserver" / "cards" / "media.ts").read_text(encoding="utf-8")
 for required in (
-    'DEVICE_ID === "guition-esp32-p4-jc4880p443"',
+    'deviceId === "guition-esp32-p4-jc4880p443"',
     '" sp-media-cover-control-fonts"',
 ):
     if required not in web_media:

@@ -1,7 +1,43 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerSwitchCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry } from "../application/card_registry";
+import type { ConfigConfirmationOptionsFeature } from "../application/config_confirmation_options";
+import type { LightCardRegistration } from "./light_temperature";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+import {
+    SWITCH_CONFIRM_DEFAULT_MESSAGE,
+    SWITCH_CONFIRM_DEFAULT_NO,
+    SWITCH_CONFIRM_DEFAULT_YES,
+} from "../application/config_option_core";
+export function registerSwitchCardTypes(
+    registry: CardRegistry,
+    confirmationOptions: ConfigConfirmationOptionsFeature,
+    lightCards: LightCardRegistration,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardBadgeLabelHtml, cardLargeNumbersActiveForCardSize, cardSensorPreviewHtml, condField } = fields;
+    const {
+        controlTypeMetadata: LIGHT_CONTROL_TYPE_METADATA,
+        renderControlTypeField: renderLightControlTypeField,
+    } = lightCards;
+    const {
+        setSwitchConfirmationOptions,
+        switchConfirmationDefaultMessageForMode,
+        switchConfirmationEnabled,
+        switchConfirmationMessage,
+        switchConfirmationMode,
+        switchConfirmationNoText,
+        switchConfirmationYesText,
+    } = confirmationOptions;
     // Default button type: HA entity toggle (on/off switch)
-    var SWITCH_CARD_METADATA: any = {
+    const SWITCH_CARD_METADATA: any = {
         entity: {
             label: "Entity",
             placeholder: "e.g. light.kitchen",
@@ -95,7 +131,7 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             textBadge: "format-text",
         },
     };
-    var LIGHT_SWITCH_CARD_METADATA: any = {
+    const LIGHT_SWITCH_CARD_METADATA: any = {
         mode: LIGHT_CONTROL_TYPE_METADATA.mode,
         entity: {
             label: "Entity",
@@ -121,7 +157,7 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             badge: "lightbulb",
         },
     };
-    registerButtonType("", {
+    registry.register("", {
         label: function (this: any) { return cardContractCardLabel(""); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage(""); },
         pickerKey: function (this: any) { return cardContractPickerKey(""); },
@@ -268,7 +304,7 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             return preview;
         },
     });
-    registerButtonType("light_switch", {
+    registry.register("light_switch", {
         label: function (this: any) { return cardContractCardLabel("light_switch"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("light_switch"); },
         hideLabel: true,
@@ -299,8 +335,4 @@ export function registerSwitchCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "SWITCH_CARD_METADATA": liveGlobal(() => SWITCH_CARD_METADATA, (value?: any) => { SWITCH_CARD_METADATA = value; }),
-        "LIGHT_SWITCH_CARD_METADATA": liveGlobal(() => LIGHT_SWITCH_CARD_METADATA, (value?: any) => { LIGHT_SWITCH_CARD_METADATA = value; }),
-    };
 }
