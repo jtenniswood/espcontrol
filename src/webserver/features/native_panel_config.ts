@@ -54,27 +54,35 @@ export function updateNativePanelConfigDocument(
   return { ...current, [collection]: values };
 }
 
-function supportedCapabilities(value: unknown): boolean {
-  const capabilities = value as Capabilities | null;
-  const versions = capabilities?.configuration?.document_versions;
-  return capabilities?.configuration?.read === true &&
-    capabilities.configuration.write === true &&
-    Array.isArray(versions) && versions.includes(PANEL_CONFIG_DOCUMENT_VERSION);
+function supportedCapabilities(value: unknown): boolean | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const capabilities = value as Capabilities;
+  if (!("configuration" in capabilities)) return false;
+  const configuration = capabilities.configuration;
+  if (!configuration || typeof configuration !== "object" ||
+      typeof configuration.read !== "boolean" ||
+      typeof configuration.write !== "boolean" ||
+      !Array.isArray(configuration.document_versions)) return null;
+  return configuration.read && configuration.write &&
+    configuration.document_versions.includes(PANEL_CONFIG_DOCUMENT_VERSION);
 }
 
 export class NativePanelConfigClient {
   private supported_ = false;
   private retryable_ = false;
+  private confirmedUnsupported_ = false;
   private discovery_: Promise<boolean> | null = null;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
   retryable(): boolean { return this.retryable_; }
+  confirmedUnsupported(): boolean { return this.confirmedUnsupported_; }
 
   private retryDiscovery(): void {
     this.supported_ = false;
     this.retryable_ = true;
+    this.confirmedUnsupported_ = false;
     this.discovery_ = null;
   }
 
@@ -86,10 +94,15 @@ export class NativePanelConfigClient {
         // A valid legacy capabilities response, however, must remain on the
         // entity fallback path without waiting for another native request.
         this.retryable_ = response.status === 404 || response.status === 503;
-        return response.ok && supportedCapabilities(await response.json());
+        this.confirmedUnsupported_ = false;
+        if (!response.ok) return false;
+        const supported = supportedCapabilities(await response.json());
+        this.confirmedUnsupported_ = supported === false;
+        return supported === true;
       })
       .catch(() => {
         this.retryable_ = false;
+        this.confirmedUnsupported_ = false;
         return false;
       })
       .then((supported) => {
