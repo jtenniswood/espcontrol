@@ -179,6 +179,53 @@ void rebuilt_subscriptions_share_one_transport_channel() {
           "shared transport channel did not invoke only the current callback");
 }
 
+void subscription_backed_reads_reuse_the_live_channel() {
+  Coordinator coordinator;
+  int subscription_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture",
+              [&](std::string) { subscription_calls++; }, 1u),
+          "artwork subscription should register");
+
+  std::string first_read;
+  require(coordinator.get(
+              "media_player.room", "entity_picture",
+              [&](std::string value) { first_read = value; }, true, 10, 5),
+          "first artwork read should wait on its live subscription");
+  require(coordinator.transport().reads.empty(),
+          "subscription-backed artwork read created an unbounded one-shot request");
+
+  coordinator.transport().publish(0, "/api/media_player_proxy/room");
+  require(first_read == "/api/media_player_proxy/room" && subscription_calls == 1,
+          "live artwork response did not satisfy the pending read");
+
+  std::string cached_read;
+  require(coordinator.get(
+              "media_player.room", "entity_picture",
+              [&](std::string value) { cached_read = value; }, true, 10, 5),
+          "later artwork read should reuse the live channel");
+  require(cached_read == "/api/media_player_proxy/room" &&
+              coordinator.transport().reads.empty(),
+          "later artwork read did not reuse the latest live value");
+}
+
+void generation_change_discards_cached_and_pending_channel_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u),
+          "artwork subscription should register");
+  coordinator.transport().publish(0, "old");
+  coordinator.bump_generation(1u);
+
+  int calls = 0;
+  require(coordinator.get("media_player.room", "entity_picture",
+                          [&](std::string) { calls++; }, true, 10, 5),
+          "new generation artwork read should wait for a current value");
+  require(calls == 0, "new generation consumed stale cached artwork");
+  coordinator.transport().publish(0, "new");
+  require(calls == 1, "new generation artwork read did not receive the current value");
+}
+
 void stale_generations_do_not_deliver() {
   Coordinator coordinator;
   int calls = 0;
@@ -278,6 +325,8 @@ int main() {
   reentrant_reads_are_deferred();
   cancellation_is_safe_during_callback();
   rebuilt_subscriptions_share_one_transport_channel();
+  subscription_backed_reads_reuse_the_live_channel();
+  generation_change_discards_cached_and_pending_channel_reads();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
   released_owner_drops_pending_reads_even_if_its_address_is_reused();

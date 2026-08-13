@@ -2237,6 +2237,10 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
     ctx->media_artwork_retry_mask, local);
   std::string raw = string_ref_limited(picture, 4096);
   std::string url = image_card_join_url(image_card_base_url(ctx), raw);
+  ESP_LOGD("image_card", "Artwork %s response for %s: value=%s base_url=%s",
+           local ? "local" : "remote", ctx->entity_id.c_str(),
+           raw.empty() || raw == "unknown" || raw == "unavailable" ? "empty" : "present",
+           image_card_base_url(ctx).empty() ? "missing" : "ready");
   // These two attribute requests run independently. A delayed remote callback
   // must not discard a newer local proxy URL that has already arrived.
   bool source_changed = ctx->media_artwork_sources.update(
@@ -2300,6 +2304,9 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
   }
   const uint32_t request_generation = ctx->media_artwork_refresh.begin(
     request_mask, refresh_forced);
+  ESP_LOGD("image_card", "Requesting artwork pair for %s: mask=%u forced=%d state_connected=%d",
+           entity_id.c_str(), static_cast<unsigned>(request_mask), refresh_forced,
+           ha_api_state_connected());
   bool remote_queued = true;
   if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_REMOTE) != 0) {
     remote_queued = ha_get_attribute(

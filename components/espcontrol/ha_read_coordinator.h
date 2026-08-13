@@ -63,7 +63,10 @@ class HaReadCoordinator {
       }
     }
     if (channel == subscription_channels_.size()) {
-      subscription_channels_.push_back({entity_id, attribute});
+      SubscriptionChannel subscription_channel;
+      subscription_channel.entity_id = entity_id;
+      subscription_channel.attribute = attribute;
+      subscription_channels_.push_back(std::move(subscription_channel));
       transport_.subscribe(
           entity_id, attribute,
           [this, channel](State state) { invoke_subscription_channel(channel, state); });
@@ -110,12 +113,23 @@ class HaReadCoordinator {
     generation_++;
     if (generation_ == 0) generation_ = 1;
     reset_deferred();
+    for (auto &channel : subscription_channels_) {
+      channel.pending_reads.clear();
+      channel.cached_state.clear();
+      channel.has_cached_state = false;
+    }
     reset_subscriptions(default_scope);
   }
 
   void release_owner(void *owner) {
     if (!owner) return;
     release_owner_generation(owner);
+    for (auto &channel : subscription_channels_) {
+      channel.pending_reads.erase(
+          std::remove_if(channel.pending_reads.begin(), channel.pending_reads.end(),
+                         [owner](const CallbackRef &ref) { return ref.owner == owner; }),
+          channel.pending_reads.end());
+    }
     if (callback_depth_ != 0) {
       pending_owner_releases_.push_back(owner);
       return;
@@ -153,6 +167,9 @@ class HaReadCoordinator {
   struct SubscriptionChannel {
     std::string entity_id;
     std::string attribute;
+    std::string cached_state;
+    std::vector<CallbackRef> pending_reads;
+    bool has_cached_state = false;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
@@ -206,6 +223,9 @@ class HaReadCoordinator {
                     CallbackRef callback_ref,
                     bool has_attribute,
                     uint32_t generation) {
+    if (queue_on_subscription_channel(entity_id, attribute, callback_ref, has_attribute)) {
+      return;
+    }
     transport_.get(
         std::move(entity_id), has_attribute ? std::move(attribute) : std::string(),
         [this, callback_ref, generation](State state) {
@@ -220,6 +240,21 @@ class HaReadCoordinator {
                      std::vector<CallbackRef> callbacks,
                      bool has_attribute,
                      uint32_t generation) {
+    size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
+    if (channel != subscription_channels_.size()) {
+      auto &subscription = subscription_channels_[channel];
+      if (subscription.has_cached_state) {
+        State state(subscription.cached_state);
+        for (const auto &callback_ref : callbacks) {
+          if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
+        }
+      } else {
+        for (auto &callback_ref : callbacks) {
+          subscription.pending_reads.push_back(std::move(callback_ref));
+        }
+      }
+      return;
+    }
     auto callback_refs = std::make_shared<std::vector<CallbackRef>>(std::move(callbacks));
     transport_.get(
         std::move(entity_id), has_attribute ? std::move(attribute) : std::string(),
@@ -249,6 +284,12 @@ class HaReadCoordinator {
   }
 
   void invoke_subscription_channel(size_t channel, State state) {
+    if (channel >= subscription_channels_.size()) return;
+    SubscriptionChannel &subscription = subscription_channels_[channel];
+    subscription.cached_state.assign(state.c_str(), state.size());
+    subscription.has_cached_state = true;
+    std::vector<CallbackRef> pending_reads;
+    pending_reads.swap(subscription.pending_reads);
     std::vector<std::shared_ptr<Callback>> callbacks;
     callbacks.reserve(subscriptions_.size());
     for (const auto &ref : subscriptions_) {
@@ -256,7 +297,39 @@ class HaReadCoordinator {
         callbacks.push_back(ref.callback);
       }
     }
+    for (const auto &callback_ref : pending_reads) {
+      if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
+    }
     for (const auto &callback : callbacks) invoke(callback, state);
+  }
+
+  size_t find_subscription_channel(const std::string &entity_id,
+                                   const std::string &attribute,
+                                   bool has_attribute) const {
+    const std::string expected_attribute = has_attribute ? attribute : std::string();
+    for (size_t i = 0; i < subscription_channels_.size(); i++) {
+      if (subscription_channels_[i].entity_id == entity_id &&
+          subscription_channels_[i].attribute == expected_attribute) {
+        return i;
+      }
+    }
+    return subscription_channels_.size();
+  }
+
+  bool queue_on_subscription_channel(const std::string &entity_id,
+                                      const std::string &attribute,
+                                      CallbackRef callback_ref,
+                                      bool has_attribute) {
+    size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
+    if (channel == subscription_channels_.size()) return false;
+    SubscriptionChannel &subscription = subscription_channels_[channel];
+    if (subscription.has_cached_state) {
+      State state(subscription.cached_state);
+      if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
+    } else {
+      subscription.pending_reads.push_back(std::move(callback_ref));
+    }
+    return true;
   }
 
   void release_subscriptions(uint32_t scope) {
