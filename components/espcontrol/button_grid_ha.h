@@ -288,8 +288,10 @@ inline bool ha_get_state(const std::string &entity_id,
 inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    const std::string &attribute,
                                    HomeAssistantStateCallback callback,
-                                   uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  return ha_read_coordinator().subscribe(entity_id, attribute, std::move(callback), scope, ha_callback_owner());
+                                   uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT,
+                                   bool retain_latest = false) {
+  return ha_read_coordinator().subscribe(
+      entity_id, attribute, std::move(callback), scope, ha_callback_owner(), retain_latest);
 }
 
 inline bool ha_get_attribute(const std::string &entity_id,

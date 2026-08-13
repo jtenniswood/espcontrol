@@ -184,7 +184,7 @@ void subscription_backed_reads_reuse_the_live_channel() {
   int subscription_calls = 0;
   require(coordinator.subscribe(
               "media_player.room", "entity_picture",
-              [&](std::string) { subscription_calls++; }, 1u),
+              [&](std::string) { subscription_calls++; }, 1u, nullptr, true),
           "artwork subscription should register");
 
   std::string first_read;
@@ -212,10 +212,13 @@ void subscription_backed_reads_reuse_the_live_channel() {
 void generation_change_discards_cached_and_pending_channel_reads() {
   Coordinator coordinator;
   require(coordinator.subscribe("media_player.room", "entity_picture",
-                                [](std::string) {}, 1u),
+                                [](std::string) {}, 1u, nullptr, true),
           "artwork subscription should register");
   coordinator.transport().publish(0, "old");
   coordinator.bump_generation(1u);
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "new generation artwork subscription should register");
 
   int calls = 0;
   require(coordinator.get("media_player.room", "entity_picture",
@@ -224,6 +227,41 @@ void generation_change_discards_cached_and_pending_channel_reads() {
   require(calls == 0, "new generation consumed stale cached artwork");
   coordinator.transport().publish(0, "new");
   require(calls == 1, "new generation artwork read did not receive the current value");
+}
+
+void ordinary_subscriptions_do_not_retain_state_for_reads() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.room", "friendly_name",
+                                [](std::string) {}, 1u),
+          "ordinary subscription should register");
+  coordinator.transport().publish(0, "A deliberately retained label");
+
+  int calls = 0;
+  require(coordinator.get("sensor.room", "friendly_name",
+                          [&](std::string) { calls++; }, true, 10, 5),
+          "ordinary one-shot read should be dispatched");
+  require(calls == 0 && coordinator.transport().reads.size() == 1,
+          "ordinary subscription unexpectedly retained a persistent state copy");
+}
+
+void inactive_reusable_channels_release_cached_state() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "reusable artwork subscription should register");
+  coordinator.transport().publish(0, "old");
+  coordinator.reset_subscriptions();
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "artwork subscription should be reusable after reset");
+
+  int calls = 0;
+  require(coordinator.get("media_player.room", "entity_picture",
+                          [&](std::string) { calls++; }, true, 10, 5),
+          "recreated artwork read should wait for reannouncement");
+  require(calls == 0, "inactive artwork channel retained stale cached state");
+  coordinator.transport().publish(0, "new");
+  require(calls == 1, "reannounced artwork did not satisfy the recreated read");
 }
 
 void stale_generations_do_not_deliver() {
@@ -327,6 +365,8 @@ int main() {
   rebuilt_subscriptions_share_one_transport_channel();
   subscription_backed_reads_reuse_the_live_channel();
   generation_change_discards_cached_and_pending_channel_reads();
+  ordinary_subscriptions_do_not_retain_state_for_reads();
+  inactive_reusable_channels_release_cached_state();
   stale_generations_do_not_deliver();
   attribute_requests_preserve_attribute();
   released_owner_drops_pending_reads_even_if_its_address_is_reused();

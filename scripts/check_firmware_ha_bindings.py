@@ -140,7 +140,8 @@ ATTRIBUTE_HELPER_PATTERN = re.compile(
     re.DOTALL,
 )
 SUBSCRIPTION_TRACKING_PATTERN = re.compile(
-    r"subscriptions_\.push_back\(\s*\{\s*callback_ref\s*,\s*scope(?:\s*,\s*owner)?(?:\s*,\s*channel)?\s*\}\s*\)"
+    r"subscriptions_\.push_back\(\s*\{\s*callback_ref\s*,\s*scope(?:\s*,\s*owner)?"
+    r"(?:\s*,\s*channel)?(?:\s*,\s*retain_latest)?\s*\}\s*\)"
 )
 DEFERRED_CALLBACK_FANOUT_PATTERN = re.compile(
     r"for\s*\(\s*const\s+auto\s*&\s*callback(?:_ref)?\s*:\s*\*callback_refs\s*\)"

@@ -51,7 +51,8 @@ class HaReadCoordinator {
                  const std::string &attribute,
                  Callback callback,
                  uint32_t scope,
-                 void *owner = nullptr) {
+                 void *owner = nullptr,
+                 bool retain_latest = false) {
     if (!available() || entity_id.empty() || !callback) return false;
     auto callback_ref = std::make_shared<Callback>(std::move(callback));
     size_t channel = subscription_channels_.size();
@@ -71,7 +72,7 @@ class HaReadCoordinator {
           entity_id, attribute,
           [this, channel](State state) { invoke_subscription_channel(channel, state); });
     }
-    subscriptions_.push_back({callback_ref, scope, owner, channel});
+    subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});
     return true;
   }
 
@@ -162,6 +163,7 @@ class HaReadCoordinator {
     uint32_t scope = 0;
     void *owner = nullptr;
     size_t channel = 0;
+    bool retain_latest = false;
   };
 
   struct SubscriptionChannel {
@@ -241,7 +243,7 @@ class HaReadCoordinator {
                      bool has_attribute,
                      uint32_t generation) {
     size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
-    if (channel != subscription_channels_.size()) {
+    if (channel != subscription_channels_.size() && channel_reuses_reads(channel)) {
       auto &subscription = subscription_channels_[channel];
       if (subscription.has_cached_state) {
         State state(subscription.cached_state);
@@ -286,16 +288,23 @@ class HaReadCoordinator {
   void invoke_subscription_channel(size_t channel, State state) {
     if (channel >= subscription_channels_.size()) return;
     SubscriptionChannel &subscription = subscription_channels_[channel];
-    subscription.cached_state.assign(state.c_str(), state.size());
-    subscription.has_cached_state = true;
     std::vector<CallbackRef> pending_reads;
     pending_reads.swap(subscription.pending_reads);
     std::vector<std::shared_ptr<Callback>> callbacks;
     callbacks.reserve(subscriptions_.size());
+    bool retain_latest = false;
     for (const auto &ref : subscriptions_) {
       if (ref.channel == channel && ref.callback && *ref.callback) {
         callbacks.push_back(ref.callback);
+        retain_latest = retain_latest || ref.retain_latest;
       }
+    }
+    if (retain_latest) {
+      subscription.cached_state.assign(state.c_str(), state.size());
+      subscription.has_cached_state = true;
+    } else {
+      subscription.cached_state.clear();
+      subscription.has_cached_state = false;
     }
     for (const auto &callback_ref : pending_reads) {
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
@@ -321,7 +330,7 @@ class HaReadCoordinator {
                                       CallbackRef callback_ref,
                                       bool has_attribute) {
     size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
-    if (channel == subscription_channels_.size()) return false;
+    if (channel == subscription_channels_.size() || !channel_reuses_reads(channel)) return false;
     SubscriptionChannel &subscription = subscription_channels_[channel];
     if (subscription.has_cached_state) {
       State state(subscription.cached_state);
@@ -330,6 +339,23 @@ class HaReadCoordinator {
       subscription.pending_reads.push_back(std::move(callback_ref));
     }
     return true;
+  }
+
+  bool channel_reuses_reads(size_t channel) const {
+    for (const auto &ref : subscriptions_) {
+      if (ref.channel == channel && ref.retain_latest && ref.callback && *ref.callback) return true;
+    }
+    return false;
+  }
+
+  void release_inactive_channel_state() {
+    for (size_t channel = 0; channel < subscription_channels_.size(); channel++) {
+      if (channel_reuses_reads(channel)) continue;
+      SubscriptionChannel &subscription = subscription_channels_[channel];
+      subscription.cached_state.clear();
+      subscription.pending_reads.clear();
+      subscription.has_cached_state = false;
+    }
   }
 
   void release_subscriptions(uint32_t scope) {
@@ -345,6 +371,7 @@ class HaReadCoordinator {
     }
     subscriptions_.resize(write_index);
     if (subscriptions_.empty()) std::vector<SubscriptionRef>().swap(subscriptions_);
+    release_inactive_channel_state();
   }
 
   void release_owner_subscriptions(void *owner) {
@@ -360,6 +387,7 @@ class HaReadCoordinator {
     }
     subscriptions_.resize(write_index);
     if (subscriptions_.empty()) std::vector<SubscriptionRef>().swap(subscriptions_);
+    release_inactive_channel_state();
   }
 
   void release_empty_deferred_storage() {

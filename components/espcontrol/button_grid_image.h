@@ -1666,7 +1666,9 @@ inline void subscribe_image_card_access_token(ImageCardCtx *ctx,
         if (token == ctx->access_token) return;
         ctx->access_token = token;
         image_card_request_picture(ctx);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
 }
 
@@ -2516,7 +2518,9 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
       [ctx, image_card_entity_id, image_card_generation](esphome::StringRef picture) {
         if (!image_card_context_current(ctx, image_card_entity_id, image_card_generation)) return;
         image_card_handle_picture(ctx, picture);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
   subscribe_image_card_access_token(ctx, image_card_entity_id);
   subscribe_image_card_entity_state(ctx, p.entity);
