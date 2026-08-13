@@ -125,6 +125,15 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   equal(await recoveringDiscoveryClient.save((current) => current), "saved",
     "native configuration discovery can recover after a temporary failure");
 
+  const malformedCapabilitiesClient = createNativePanelConfigClient(async () => ({
+    ...response(200),
+    json: async () => ({}),
+  }));
+  equal(await malformedCapabilitiesClient.discover(), false,
+    "a capabilities object without a configuration contract is rejected");
+  equal(malformedCapabilitiesClient.confirmedUnsupported(), false,
+    "a malformed capabilities object is not mistaken for older firmware");
+
   let nativeInitializationComplete = false;
   const reconnectingClient = createNativePanelConfigClient(async (path, request) => {
     if (path === "/api/v1/capabilities") {

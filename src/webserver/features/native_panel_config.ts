@@ -57,7 +57,7 @@ export function updateNativePanelConfigDocument(
 function supportedCapabilities(value: unknown): boolean | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const capabilities = value as Capabilities;
-  if (!("configuration" in capabilities)) return false;
+  if (!("configuration" in capabilities)) return null;
   const configuration = capabilities.configuration;
   if (!configuration || typeof configuration !== "object" ||
       typeof configuration.read !== "boolean" ||
