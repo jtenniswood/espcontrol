@@ -102,6 +102,16 @@ class HaReadCoordinator {
     std::vector<DeferredRequest>().swap(deferred_);
   }
 
+  void invalidate_retained_state() {
+    // Retained values are scoped to one Home Assistant API connection.  In
+    // particular, artwork URLs and access tokens may change while the panel is
+    // offline, so reads after a reconnect must wait for a fresh announcement.
+    for (auto &channel : subscription_channels_) {
+      channel.cached_state.clear();
+      channel.has_cached_state = false;
+    }
+  }
+
   void reset_subscriptions(uint32_t scope = 0) {
     if (callback_depth_ != 0) {
       pending_reset_mask_ = scope == 0 ? UINT32_MAX : (pending_reset_mask_ | scope);

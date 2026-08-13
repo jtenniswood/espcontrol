@@ -229,6 +229,24 @@ void generation_change_discards_cached_and_pending_channel_reads() {
   require(calls == 1, "new generation artwork read did not receive the current value");
 }
 
+void reconnect_discards_retained_channel_state() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("media_player.room", "entity_picture",
+                                [](std::string) {}, 1u, nullptr, true),
+          "artwork subscription should register");
+  coordinator.transport().publish(0, "old-token");
+  coordinator.invalidate_retained_state();
+
+  std::string received;
+  require(coordinator.get("media_player.room", "entity_picture",
+                          [&](std::string value) { received = value; }, true, 10, 5),
+          "reconnected artwork read should wait for a current value");
+  require(received.empty(), "reconnected artwork read reused stale credentials");
+  coordinator.transport().publish(0, "new-token");
+  require(received == "new-token",
+          "reconnected artwork read did not receive the current credentials");
+}
+
 void ordinary_subscriptions_do_not_retain_state_for_reads() {
   Coordinator coordinator;
   require(coordinator.subscribe("sensor.room", "friendly_name",
@@ -385,6 +403,7 @@ int main() {
   rebuilt_subscriptions_share_one_transport_channel();
   subscription_backed_reads_reuse_the_live_channel();
   generation_change_discards_cached_and_pending_channel_reads();
+  reconnect_discards_retained_channel_state();
   ordinary_subscriptions_do_not_retain_state_for_reads();
   inactive_reusable_channels_release_cached_state();
   stalled_reusable_channel_coalesces_reads_per_owner();

@@ -151,6 +151,10 @@ inline void ha_reset_deferred_state_requests() {
 }
 #define ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED 1
 
+inline void ha_invalidate_retained_state() {
+  ha_read_coordinator().invalidate_retained_state();
+}
+
 inline void bump_ha_subscription_generation() {
   ha_read_coordinator().bump_generation(
       HA_SUBSCRIPTION_SCOPE_DEFAULT | HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
