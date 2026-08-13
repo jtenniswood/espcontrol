@@ -89,6 +89,7 @@ int main() {
   assert(artwork_selection_needs_download(false, false));
   assert(artwork_selection_needs_download(true, true));
   assert(artwork_batch_waits_for_companion(false, true));
+  assert(!artwork_batch_waits_for_companion(false, true, true));
   assert(!artwork_batch_waits_for_companion(false, false));
   assert(!artwork_batch_waits_for_companion(true, true));
   assert(artwork_refresh_forced(true, false, false));

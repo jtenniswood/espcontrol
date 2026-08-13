@@ -2115,7 +2115,8 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   image_card_request_source_url(ctx, source_changed);
 }
 
-inline void image_card_process_media_artwork(ImageCardCtx *ctx) {
+inline void image_card_process_media_artwork(ImageCardCtx *ctx,
+                                             bool response_window_expired = false) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
   const bool batch_complete = ctx->media_artwork_refresh.complete();
   const bool refresh_forced = ctx->media_artwork_refresh.forced;
@@ -2125,7 +2126,7 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx) {
       ctx->media_artwork_sources.select(ctx->source_url, prefer_refreshed_remote);
   const std::string &chosen = selection.primary;
   if (espcontrol::artwork::artwork_batch_waits_for_companion(
-          batch_complete, chosen.empty())) {
+          batch_complete, chosen.empty(), response_window_expired)) {
     image_card_log_diagnostics(ctx, "media-artwork-waiting-for-companion");
     return;
   }
@@ -2147,7 +2148,7 @@ inline void image_card_media_artwork_timer_cb(lv_timer_t *timer) {
   ImageCardCtx *ctx = static_cast<ImageCardCtx *>(lv_timer_get_user_data(timer));
   if (ctx && ctx->media_artwork_timer == timer) ctx->media_artwork_timer = nullptr;
   lv_timer_del(timer);
-  image_card_process_media_artwork(ctx);
+  image_card_process_media_artwork(ctx, true);
 }
 
 inline void image_card_schedule_media_artwork_process(ImageCardCtx *ctx) {
@@ -2155,7 +2156,7 @@ inline void image_card_schedule_media_artwork_process(ImageCardCtx *ctx) {
   if (ctx->media_artwork_timer) lv_timer_del(ctx->media_artwork_timer);
   ctx->media_artwork_timer = lv_timer_create(
     image_card_media_artwork_timer_cb, IMAGE_CARD_MEDIA_ARTWORK_RESPONSE_DEBOUNCE_MS, ctx);
-  if (!ctx->media_artwork_timer) image_card_process_media_artwork(ctx);
+  if (!ctx->media_artwork_timer) image_card_process_media_artwork(ctx, true);
 }
 
 inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,

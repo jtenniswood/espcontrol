@@ -146,11 +146,14 @@ constexpr bool artwork_response_needs_processing(bool source_changed,
   return source_changed || refresh_forced;
 }
 
-// An incomplete batch with no usable candidate must remain open. Its delayed
-// companion may be the only artwork attribute that the player provides.
+// An incomplete batch with no usable candidate remains open only while its
+// bounded response window is active. Some media players never return one of
+// the paired attributes, so waiting after that window would block every later
+// artwork refresh behind a batch that can never complete.
 constexpr bool artwork_batch_waits_for_companion(bool batch_complete,
-                                                 bool selection_empty) {
-  return !batch_complete && selection_empty;
+                                                 bool selection_empty,
+                                                 bool response_window_expired = false) {
+  return !response_window_expired && !batch_complete && selection_empty;
 }
 
 // A later ordinary refresh supersedes the earlier callbacks, but must retain
