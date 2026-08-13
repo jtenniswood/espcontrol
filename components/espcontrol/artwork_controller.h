@@ -164,6 +164,13 @@ constexpr bool artwork_empty_selection_preserves_pending_refresh(
   return selection_empty && refresh_pending;
 }
 
+// Every active attribute-read batch needs a bounded deadline, including a
+// retry generation whose provider never invokes the queued callback.
+constexpr bool artwork_batch_needs_response_timer(bool batch_active,
+                                                  bool timer_scheduled) {
+  return batch_active && !timer_scheduled;
+}
+
 // A later ordinary refresh supersedes the earlier callbacks, but must retain
 // the earlier request's explicit refresh requirement.
 constexpr bool artwork_refresh_forced(bool active_forced,

@@ -2271,6 +2271,10 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
       ha_api_connected() ? IMAGE_CARD_API_RETRY_INTERVAL_MS : IMAGE_CARD_RETRY_INTERVAL_MS);
     if (!ctx->image_ready) image_card_set_loading_state(ctx, "Loading", true);
   }
+  if (espcontrol::artwork::artwork_batch_needs_response_timer(
+        ctx->media_artwork_refresh.active(), ctx->media_artwork_timer != nullptr)) {
+    image_card_schedule_media_artwork_process(ctx);
+  }
 }
 
 inline void image_card_media_artwork_trigger_timer_cb(lv_timer_t *timer) {
