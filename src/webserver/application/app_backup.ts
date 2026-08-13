@@ -359,8 +359,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 var nativeRestore: any = controllers.nativePanelConfig
                     ? controllers.nativePanelConfig.writeDocument(nativeDocument)
                     : null;
+                var nativeRestoreCompletion: any = null;
                 if (nativeRestore) {
-                    requestApi.postQueue = requestApi.postQueue.then(function () { return nativeRestore; }).then(function (result: any) {
+                    nativeRestoreCompletion = requestApi.postQueue.then(function () { return nativeRestore; }).then(function (result: any) {
                         if (result === "legacy-fallback") {
                             queueLegacyLayoutRestore();
                         }
@@ -369,6 +370,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         }
                         return result;
                     });
+                    requestApi.postQueue = nativeRestoreCompletion;
                 }
                 else {
                     queueLegacyLayoutRestore();
@@ -614,6 +616,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 renderPreview();
                 renderButtonSettings();
                 switchTab("screen");
+                return nativeRestoreCompletion;
                 }
                 backupRestoreController.restore(data, {
                     device: controllers.layout.deviceId,
