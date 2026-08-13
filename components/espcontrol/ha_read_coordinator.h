@@ -175,6 +175,7 @@ class HaReadCoordinator {
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
+  static constexpr size_t MAX_PENDING_CHANNEL_READS = 64;
 
   uint32_t owner_generation(void *owner) {
     if (!owner) return 0;
@@ -252,7 +253,7 @@ class HaReadCoordinator {
         }
       } else {
         for (auto &callback_ref : callbacks) {
-          subscription.pending_reads.push_back(std::move(callback_ref));
+          queue_pending_channel_read(subscription, std::move(callback_ref));
         }
       }
       return;
@@ -336,9 +337,26 @@ class HaReadCoordinator {
       State state(subscription.cached_state);
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
     } else {
-      subscription.pending_reads.push_back(std::move(callback_ref));
+      queue_pending_channel_read(subscription, std::move(callback_ref));
     }
     return true;
+  }
+
+  void queue_pending_channel_read(SubscriptionChannel &subscription,
+                                  CallbackRef callback_ref) {
+    // Repeated refreshes for one card supersede its earlier pending callback.
+    // Keep distinct card owners independent, but cap them as a final guard
+    // against a channel that Home Assistant never publishes.
+    for (auto &pending : subscription.pending_reads) {
+      if (pending.owner == callback_ref.owner) {
+        pending = std::move(callback_ref);
+        return;
+      }
+    }
+    if (subscription.pending_reads.size() >= MAX_PENDING_CHANNEL_READS) {
+      subscription.pending_reads.erase(subscription.pending_reads.begin());
+    }
+    subscription.pending_reads.push_back(std::move(callback_ref));
   }
 
   bool channel_reuses_reads(size_t channel) const {
