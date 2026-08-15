@@ -28,6 +28,7 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 | 10.1-inch JC8012P4A1 original panel, rear case `2627` or lower | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
 | 10.1-inch JC8012P4A1 new panel, rear case `2628` or higher | `devices/guition-esp32-p4-jc8012p4a1-v2/packages.yaml` |
 | 7-inch JC1060P470 | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
+| 7-inch JC1060P470 new panel, rear label has `V2` in the SKU / material number | `devices/guition-esp32-p4-jc1060p470-v2/packages.yaml` |
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
 | 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
 | 4-inch 4848S040 | `devices/guition-esp32-s3-4848s040/packages.yaml` |
@@ -117,6 +118,7 @@ Use this template for Ethernet-capable models. Do not add a `wifi:` block. Chang
 | Panel | Ethernet package file |
 | --- | --- |
 | 7-inch JC1060P470 Ethernet model | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
+| 7-inch JC1060P470 new panel Ethernet model | `devices/guition-esp32-p4-jc1060p470-v2/packages.yaml` |
 | ESP32-P4 86 Panel ETH-2RO | `devices/esp32-p4-86/packages.yaml` |
 
 ```yaml

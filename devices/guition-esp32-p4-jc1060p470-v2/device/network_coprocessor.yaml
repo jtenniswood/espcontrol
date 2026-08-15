@@ -1,0 +1,20 @@
+# =============================================================================
+# NETWORK CO-PROCESSOR - WiFi firmware variant
+# =============================================================================
+# The 7" panel uses an ESP32-C6 co-processor for hosted WiFi/BLE over SDIO.
+# This is only needed by the normal WiFi firmware.
+# =============================================================================
+
+esp32_hosted:
+  variant: esp32c6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  active_high: true
+  # Use the lower SDIO clock for reliable ESP32-C6 communication across
+  # production panels; camera transfers remain supported at this speed.
+  sdio_frequency: 20MHz

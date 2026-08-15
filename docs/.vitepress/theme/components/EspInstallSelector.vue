@@ -109,6 +109,18 @@ const devices = [
     shape: 'landscape'
   },
   {
+    slug: 'guition-esp32-p4-jc1060p470-v2',
+    name: 'JC1060P470 V2',
+    size: '7 in',
+    resolution: '1024 x 600',
+    orientation: 'Landscape',
+    slots: 15,
+    cols: 5,
+    rows: 3,
+    aspect: '1024 / 600',
+    shape: 'landscape'
+  },
+  {
     slug: 'guition-esp32-p4-jc4880p443',
     name: 'JC4880P443',
     size: '4.3 in',

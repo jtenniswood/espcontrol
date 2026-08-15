@@ -23,6 +23,7 @@ BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid
 LEGACY_OTA_PARTITION_LAYOUTS = {
     "esp32-p4-86": "partitions_32mb_card_images.csv",
     "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc1060p470-v2": "partitions_16mb_card_images.csv",
     "guition-esp32-p4-jc4880p443": "partitions_16mb_card_images.csv",
     "guition-esp32-p4-jc8012p4a1": "partitions_16mb_card_images.csv",
     "guition-esp32-p4-jc8012p4a1-v2": "partitions_16mb_card_images.csv",
@@ -314,6 +315,7 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
 def test_rotation_refresh_rebuilds_subpages() -> None:
     slugs = (
         "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
         "guition-esp32-p4-jc4880p443",
         "guition-esp32-p4-jc8012p4a1",
         "guition-esp32-p4-jc8012p4a1-v2",

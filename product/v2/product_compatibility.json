@@ -178,6 +178,7 @@
     "deviceProfiles": {
       "requiredSlugs": [
         "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
         "guition-esp32-p4-jc4880p443",
         "guition-esp32-p4-jc8012p4a1",
         "guition-esp32-p4-jc8012p4a1-v2",

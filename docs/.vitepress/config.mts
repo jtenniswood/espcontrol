@@ -81,7 +81,15 @@ const screenProducts: Record<string, Record<string, string>> = {
   },
   'screens/jc1060p470.md': {
     name: 'Guition JC1060P470',
-    model: 'JC1060P470',
+    model: 'JC1060P470 / new panel revision',
+    size: '7 inches',
+    resolution: '1024 x 600',
+    processor: 'ESP32-P4',
+  },
+  'screens/jc1060p470-v2.md': {
+    name: 'Guition JC1060P470 V2',
+    brand: 'Guition',
+    model: 'JC1060P470 V2',
     size: '7 inches',
     resolution: '1024 x 600',
     processor: 'ESP32-P4',
