@@ -2,22 +2,34 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
 #include "panel_config_document.h"
 #include "panel_config_legacy_adapter.h"
+#include "panel_config_runtime_adapter.h"
+#include "panel_config_text_bindings.h"
 
 namespace {
 
 using espcontrol::configuration::LegacyStatus;
-using espcontrol::configuration::LegacyTextValue;
 using espcontrol::configuration::PanelConfigLegacyAdapter;
+using espcontrol::configuration::PanelConfigRuntimeAdapter;
+using espcontrol::configuration::PanelConfigTextBindings;
+using espcontrol::configuration::PanelConfigTextValue;
 using espcontrol::configuration::PanelConfigReader;
 using espcontrol::configuration::PanelConfigRecord;
 using espcontrol::configuration::PanelConfigRecordType;
 using espcontrol::configuration::PanelConfigStatus;
 using espcontrol::configuration::PanelConfigWriter;
 
-class FakeText final : public LegacyTextValue {
+static_assert(!std::is_base_of_v<
+              espcontrol::configuration::ConfigurationRuntimeAdapter,
+              PanelConfigLegacyAdapter>);
+static_assert(std::is_base_of_v<
+              espcontrol::configuration::ConfigurationRuntimeAdapter,
+              PanelConfigRuntimeAdapter>);
+
+class FakeText final : public PanelConfigTextValue {
  public:
   explicit FakeText(std::string state = {}) : state_(std::move(state)) {}
   const std::string &value() const override { return state_; }
@@ -47,16 +59,17 @@ bool imports_legacy_button_subpage_and_order() {
   FakeText button("light.kitchen;Kitchen");
   FakeText subpage_a("media.living_room;");
   FakeText subpage_b("media.office");
-  std::array<LegacyTextValue *, PanelConfigLegacyAdapter::MAX_SUBPAGE_CHUNKS>
+  std::array<PanelConfigTextValue *, PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
       chunks{};
   chunks[0] = &subpage_a;
   chunks[1] = &subpage_b;
 
-  PanelConfigLegacyAdapter adapter;
-  adapter.set_device_profile("guition-esp32-p4-jc1060p470");
-  adapter.set_button_order(&order);
-  adapter.set_button_on_color(&on_color);
-  adapter.set_button(1, &button, chunks);
+  PanelConfigTextBindings bindings;
+  PanelConfigLegacyAdapter adapter(bindings);
+  bindings.set_device_profile("guition-esp32-p4-jc1060p470");
+  bindings.set_button_order(&order);
+  bindings.set_button_on_color(&on_color);
+  bindings.set_button(1, &button, chunks);
   std::array<uint8_t, 512> document{};
   const auto loaded = adapter.load(document.data(), document.size());
   if (loaded.status != LegacyStatus::OK || loaded.document_size == 0)
@@ -99,15 +112,17 @@ bool native_document_mirrors_back_to_legacy_entities_for_downgrade() {
   FakeText button("old");
   FakeText subpage_a("old");
   FakeText subpage_b("old");
-  std::array<LegacyTextValue *, PanelConfigLegacyAdapter::MAX_SUBPAGE_CHUNKS>
+  std::array<PanelConfigTextValue *, PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
       chunks{};
   chunks[0] = &subpage_a;
   chunks[1] = &subpage_b;
-  PanelConfigLegacyAdapter adapter;
-  adapter.set_device_profile("profile");
-  adapter.set_button_order(&order);
-  adapter.set_button_on_color(&on_color);
-  adapter.set_button(1, &button, chunks);
+  PanelConfigTextBindings bindings;
+  PanelConfigLegacyAdapter adapter(bindings);
+  PanelConfigRuntimeAdapter runtime(bindings);
+  bindings.set_device_profile("profile");
+  bindings.set_button_order(&order);
+  bindings.set_button_on_color(&on_color);
+  bindings.set_button(1, &button, chunks);
 
   std::array<uint8_t, 512> document{};
   PanelConfigWriter writer(document.data(), document.size());
@@ -139,7 +154,7 @@ bool native_document_mirrors_back_to_legacy_entities_for_downgrade() {
   // applies it to the live grid. Neither stage should republish unchanged
   // text entities and flood the panel with grid refreshes.
   return adapter.mirror(1, document.data(), document_size) &&
-         adapter.apply(1, document.data(), document_size) &&
+         runtime.apply(1, document.data(), document_size) &&
          button.persistent_writes == 1 && subpage_a.persistent_writes == 1 &&
          subpage_b.persistent_writes == 1 && order.persistent_writes == 1 &&
          on_color.persistent_writes == 1 && button.runtime_publishes == 0 &&
@@ -150,12 +165,13 @@ bool native_document_mirrors_back_to_legacy_entities_for_downgrade() {
 bool native_document_updates_live_grid_without_writing_legacy_preferences() {
   FakeText order("old-order");
   FakeText button("old-button");
-  std::array<LegacyTextValue *, PanelConfigLegacyAdapter::MAX_SUBPAGE_CHUNKS>
+  std::array<PanelConfigTextValue *, PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
       chunks{};
-  PanelConfigLegacyAdapter adapter;
-  adapter.set_device_profile("profile");
-  adapter.set_button_order(&order);
-  adapter.set_button(1, &button, chunks);
+  PanelConfigTextBindings bindings;
+  PanelConfigRuntimeAdapter adapter(bindings);
+  bindings.set_device_profile("profile");
+  bindings.set_button_order(&order);
+  bindings.set_button(1, &button, chunks);
 
   std::array<uint8_t, 256> document{};
   PanelConfigWriter writer(document.data(), document.size());

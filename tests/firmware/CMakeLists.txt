@@ -132,6 +132,8 @@ add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_bac
 add_executable(panel_config_legacy_adapter_test
   panel_config_legacy_adapter_test.cpp
   ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_runtime_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
 )
 target_compile_features(panel_config_legacy_adapter_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_legacy_adapter_test PRIVATE -Wall -Wextra -Werror)
