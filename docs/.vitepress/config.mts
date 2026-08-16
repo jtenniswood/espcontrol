@@ -171,7 +171,7 @@ const faqItems = [
   {
     question: 'How Many Cards Can I Have?',
     answer:
-      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
+      'The home screen supports 20 cards on both JC8012P4A1 rear-case revisions, 15 on both JC1060P470 panel revisions, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
   },
   {
     question: 'What Is a Subpage?',
@@ -186,7 +186,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports both Guition JC8012P4A1 rear-case revisions, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
+      'EspControl supports both Guition JC8012P4A1 rear-case revisions, both JC1060P470 panel revisions, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
