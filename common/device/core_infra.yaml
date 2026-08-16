@@ -89,6 +89,7 @@ api:
         if (!is_home_assistant && ha_api_state_connected()) {
           return;
         }
+        ha_invalidate_retained_state();
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");

@@ -467,7 +467,9 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
         // to obtain a matching remote/local pair instead of downloading from
         // this individual notification.
         image_card_schedule_media_artwork_refresh(art);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
   ha_subscribe_attribute(
     entity_id,
@@ -487,7 +489,9 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
         // See the remote callback above: one notification starts one paired
         // refresh, which prevents either attribute winning by arrival order.
         image_card_schedule_media_artwork_refresh(art);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
   subscribe_image_card_access_token(art, entity_id);
   image_card_schedule_media_artwork_refresh(art);

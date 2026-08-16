@@ -18,6 +18,7 @@
 #include "panel_config_espidf_storage.h"
 #include "panel_config_esphome_text.h"
 #include "panel_config_legacy_adapter.h"
+#include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_storage_backend.h"
 #include "panel_config_write_endpoint.h"
@@ -49,16 +50,19 @@ constexpr uint32_t NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS = 5000;
 class EspControlApp::NativeConfigurationRuntime {
  public:
   struct LegacyButtonTextSources {
-    configuration::EspHomeLegacyTextValue button;
-    std::array<configuration::EspHomeLegacyTextValue,
-               configuration::PanelConfigLegacyAdapter::MAX_SUBPAGE_CHUNKS>
+    configuration::EspHomePanelConfigTextValue button;
+    std::array<configuration::EspHomePanelConfigTextValue,
+               configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
         subpages{};
   };
 
   NativeConfigurationRuntime()
-      : backend(blobs), store(backend) {}
+      : legacy_config(text_bindings), runtime_config(text_bindings),
+        backend(blobs), store(backend) {}
 
-  configuration::PanelConfigLegacyAdapter legacy_config{};
+  configuration::PanelConfigTextBindings text_bindings{};
+  configuration::PanelConfigLegacyAdapter legacy_config;
+  configuration::PanelConfigRuntimeAdapter runtime_config;
   configuration::PanelConfigDocumentValidator validator{};
   configuration::EspIdfPanelConfigBlobStorage blobs{};
   configuration::BufferedBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
@@ -68,8 +72,8 @@ class EspControlApp::NativeConfigurationRuntime {
   uint8_t *document_buffer{nullptr};
   uint8_t *boot_buffer{nullptr};
   bool boot_configuration_pending{false};
-  configuration::EspHomeLegacyTextValue button_order{};
-  configuration::EspHomeLegacyTextValue button_on_color{};
+  configuration::EspHomePanelConfigTextValue button_order{};
+  configuration::EspHomePanelConfigTextValue button_on_color{};
   std::array<LegacyButtonTextSources, configuration::PANEL_CONFIG_MAX_SLOT_COUNT>
       buttons{};
 };
@@ -118,11 +122,11 @@ bool EspControlApp::create_native_configuration_runtime() {
     return false;
   }
   native_configuration_runtime_.reset(runtime);
-  runtime->legacy_config.set_device_profile(panel_config_device_profile_);
+  runtime->text_bindings.set_device_profile(panel_config_device_profile_);
   runtime->button_order.bind(panel_config_button_order_);
-  runtime->legacy_config.set_button_order(&runtime->button_order);
+  runtime->text_bindings.set_button_order(&runtime->button_order);
   runtime->button_on_color.bind(panel_config_button_on_color_);
-  runtime->legacy_config.set_button_on_color(&runtime->button_on_color);
+  runtime->text_bindings.set_button_on_color(&runtime->button_on_color);
   for (size_t index = 0; index < panel_config_button_texts_.size(); ++index) {
     const PanelConfigTextSources &sources = panel_config_button_texts_[index];
     // Device profiles only provide text entities for their real panel slots.
@@ -133,14 +137,14 @@ bool EspControlApp::create_native_configuration_runtime() {
     NativeConfigurationRuntime::LegacyButtonTextSources &legacy_sources =
         runtime->buttons[index];
     legacy_sources.button.bind(sources.button);
-    std::array<configuration::LegacyTextValue *,
-               configuration::PanelConfigLegacyAdapter::MAX_SUBPAGE_CHUNKS>
+    std::array<configuration::PanelConfigTextValue *,
+               configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
         legacy_subpages{};
     for (size_t subpage = 0; subpage < sources.subpages.size(); ++subpage) {
       legacy_sources.subpages[subpage].bind(sources.subpages[subpage]);
       legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
     }
-    runtime->legacy_config.set_button(static_cast<uint8_t>(index + 1),
+    runtime->text_bindings.set_button(static_cast<uint8_t>(index + 1),
                                       &legacy_sources.button, legacy_subpages);
   }
   return true;
@@ -250,7 +254,7 @@ void EspControlApp::initialize_native_configuration() {
     register_panel_config_endpoints();
     return;
   }
-  panel_config_service->set_runtime_adapter(&runtime.legacy_config);
+  panel_config_service->set_runtime_adapter(&runtime.runtime_config);
   if (!runtime.legacy_config.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
   } else if (panel_config_card_images_storage_

@@ -42,6 +42,10 @@ mirroring legacy text entities, while an older panel's text configuration can
 still be imported once. Retire legacy reads only after that read/import-only
 release has shipped and its upgrade coverage has been confirmed.
 
+Live grid application uses a separate native runtime adapter. The legacy
+adapter is limited to one-time import and release-controlled downgrade
+mirroring, so disabling legacy writes cannot disable live card updates.
+
 ## Required Migration Shape
 
 Every compatibility-affecting change needs:

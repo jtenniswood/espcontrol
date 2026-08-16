@@ -1463,7 +1463,9 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef value) {
         media_playback_set_artist(state, generation, value);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
 
   media_playback_subscribe_source(state);
@@ -1487,7 +1489,9 @@ inline void media_playback_subscribe_source(MediaPlaybackState *state) {
   };
   ha_subscribe_attribute(
     entity_id, std::string("source"),
-    std::function<void(esphome::StringRef)>(handle_media_source)
+    std::function<void(esphome::StringRef)>(handle_media_source),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
   ha_get_attribute(entity_id, std::string("source"), handle_media_source);
 }
