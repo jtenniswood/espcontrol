@@ -94,6 +94,9 @@ def build_esphome_command(
         "-s",
         "firmware_version",
         firmware_version,
+        "-s",
+        "espcontrol_component_url",
+        ROOT.resolve().as_uri(),
         command,
         str(yaml_path),
         *command_args,
@@ -196,6 +199,9 @@ class LocalEsphomeTests(unittest.TestCase):
                 "-s",
                 "firmware_version",
                 "dev",
+                "-s",
+                "espcontrol_component_url",
+                ROOT.resolve().as_uri(),
                 "run",
                 "/tmp/dev.yaml",
                 "--device",
@@ -234,7 +240,8 @@ class LocalEsphomeTests(unittest.TestCase):
             redirect_stdout(output):
             self.assertEqual(run(["--dry-run", str(path), "run", "--device", "192.0.2.10"]), 0)
             run_mock.assert_not_called()
-        self.assertIn("-s firmware_version local-version run", output.getvalue())
+        self.assertIn("-s firmware_version local-version", output.getvalue())
+        self.assertIn(f"-s espcontrol_component_url {ROOT.resolve().as_uri()}", output.getvalue())
         self.assertIn("--device 192.0.2.10", output.getvalue())
 
 
