@@ -4152,6 +4152,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
       ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
     }
+    const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     if (mode == "cover_art") {
       if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -4178,10 +4179,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       }
       ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(
         row_span, col_span);
-      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
+      ctx->artist_gap = layout_padding.top > 1 ? layout_padding.top / 2 : 0;
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-        media_title_font, padding,
+        media_title_font, layout_padding,
         media_cover_art_limits_title_to_two_lines(row_span, col_span),
         true, 0);
       media_position_now_playing_artist(ctx);
@@ -4194,10 +4195,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
     setup_media_now_playing_layout(
-      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, padding,
+      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, layout_padding,
       row_span == 1, ctx->play_pause_background,
       mode == "now_playing" && media_now_playing_progress_enabled(p)
-        ? padding.left : 0);
+        ? layout_padding.left : 0);
     return;
   }
   if (mode == "position") {

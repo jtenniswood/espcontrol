@@ -741,7 +741,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
     }
     if (ctx->title_lbl && ctx->artist_lbl) {
-      const CardPadding &padding = ctx->content_padding;
+      const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
       const bool large = media_cover_art_uses_screensaver_fonts(row_span, col_span);
       const bool compact_large = media_cover_art_uses_compact_large_fonts(row_span, col_span);
       const bool compact_portrait =
@@ -792,7 +792,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "now_playing") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
-    const CardPadding &padding = ctx->content_padding;
+    const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
     if (ctx->title_lbl) display_apply_main_width(ctx->title_lbl, display);
     if (ctx->artist_lbl) display_apply_main_width(ctx->artist_lbl, display);
     setup_media_now_playing_layout(
