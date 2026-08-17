@@ -1607,6 +1607,7 @@ struct CoverControlModalUi {
   lv_obj_t *presets_box = nullptr;
   lv_obj_t *preset_btns[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
   int selected_preset = -1;
+  int pending_preset = -1;
   lv_obj_t *position_slider = nullptr;
   lv_obj_t *position_fill = nullptr;
   lv_obj_t *position_handle = nullptr;
@@ -1960,16 +1961,23 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
     int pct = static_cast<int>(reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     CoverControlModalUi &ui = cover_control_modal_ui();
     if (!ui.active || !ui.active->available || !cover_control_supports_position(ui.active)) return;
+    const bool previous_position_known = ui.active->current_position_known;
+    const int previous_position = ui.active->current_position;
     ui.active->current_position_known = true;
     ui.active->current_position = slider_clamp_pct(pct);
-    // Lock the tapped preset as the selection and treat the cover as moving so
-    // the highlight holds through travel (and any stale in-flight position
-    // reports) until Home Assistant reports the cover has stopped.
+    // Hold the tapped preset until Home Assistant publishes the next position;
+    // that update reconciles the highlight even when no opening/closing state exists.
     ui.selected_preset = ui.active->current_position;
-    ui.active->moving = true;
+    ui.pending_preset = ui.active->current_position;
     cover_control_set_position_value(ui.active, ui.active->current_position);
     cover_control_apply_card_visual(ui.active);
-    send_slider_action(ui.active->entity_id, ui.active->current_position, false);
+    if (!send_slider_action(ui.active->entity_id, ui.active->current_position, false)) {
+      ui.pending_preset = -1;
+      ui.active->current_position_known = previous_position_known;
+      ui.active->current_position = previous_position;
+      cover_control_set_position_value(ui.active, previous_position);
+      cover_control_apply_card_visual(ui.active);
+    }
   }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(pct)));
 
   return btn;
@@ -2297,14 +2305,14 @@ inline void cover_control_set_slider_value(lv_obj_t *slider, bool &updating,
 }
 
 // Recolour the preset tiles so the highlighted one tracks the cover. While the
-// cover is moving the selection is held (a tapped preset stays lit and stale
-// in-flight position reports do not clear it); once it comes to rest the
+// cover is moving or a tapped preset is awaiting its first position update,
+// the selection is held; once it comes to rest the
 // selection reconciles with the exact position, clearing when it sits between
 // presets. ui.selected_preset carries the choice across updates.
 inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx) {
   CoverControlModalUi &ui = cover_control_modal_ui();
   if (!ctx || ui.active != ctx || !ui.presets_box) return;
-  if (!ctx->moving) {
+  if (!ctx->moving && ui.pending_preset < 0) {
     int selected = -1;
     if (ctx->current_position_known) {
       int pos = slider_clamp_pct(ctx->current_position);
@@ -2652,6 +2660,8 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
       [ctx](esphome::StringRef val) {
         int pct = 0;
         if (!slider_parse_pct(val, pct)) return;
+        CoverControlModalUi &ui = cover_control_modal_ui();
+        if (ui.active == ctx) ui.pending_preset = -1;
         ctx->current_position_known = true;
         ctx->current_position = pct;
         cover_control_set_position_value(ctx, pct);

@@ -78,7 +78,8 @@ class HaReadCoordinator {
         break;
       }
     }
-    if (channel == subscription_channels_.size()) {
+    const bool new_channel = channel == subscription_channels_.size();
+    if (new_channel) {
       SubscriptionChannel subscription_channel;
       subscription_channel.entity_id = entity_id;
       subscription_channel.attribute = attribute;
@@ -88,6 +89,11 @@ class HaReadCoordinator {
           [this, channel](State state) { invoke_subscription_channel(channel, state); });
     }
     subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});
+    // A grid rebuild re-subscribes on an existing channel; replay the last value
+    // so rebuilt cards reflect the live state immediately.
+    if (!new_channel && subscription_channels_[channel].has_last_state) {
+      invoke(callback_ref, State(subscription_channels_[channel].last_state));
+    }
     return true;
   }
 
@@ -122,6 +128,8 @@ class HaReadCoordinator {
     // particular, artwork URLs and access tokens may change while the panel is
     // offline, so reads after a reconnect must wait for a fresh announcement.
     for (auto &channel : subscription_channels_) {
+      channel.last_state.clear();
+      channel.has_last_state = false;
       channel.cached_state.clear();
       channel.has_cached_state = false;
     }
@@ -194,6 +202,8 @@ class HaReadCoordinator {
   struct SubscriptionChannel {
     std::string entity_id;
     std::string attribute;
+    std::string last_state;
+    bool has_last_state = false;
     std::string cached_state;
     std::vector<CallbackRef> pending_reads;
     bool has_cached_state = false;
@@ -201,6 +211,7 @@ class HaReadCoordinator {
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
   static constexpr size_t MAX_PENDING_READS = 64;
+  static constexpr size_t MAX_REPLAY_STATES = 64;
 
   uint32_t owner_generation(void *owner) {
     if (!owner) return 0;
@@ -297,6 +308,12 @@ class HaReadCoordinator {
         retain_latest = retain_latest || ref.retain_latest;
       }
     }
+    if (callbacks.empty()) {
+      subscription.last_state.clear();
+      subscription.has_last_state = false;
+    } else {
+      retain_replay_state(channel, state);
+    }
     if (retain_latest) {
       subscription.cached_state.assign(state.c_str(), state.size());
       subscription.has_cached_state = true;
@@ -365,6 +382,26 @@ class HaReadCoordinator {
       if (ref.channel == channel && ref.retain_latest && ref.callback && *ref.callback) return true;
     }
     return false;
+  }
+
+  void retain_replay_state(size_t channel, const State &state) {
+    SubscriptionChannel &subscription = subscription_channels_[channel];
+    if (!subscription.has_last_state) {
+      size_t retained = 0;
+      for (const auto &candidate : subscription_channels_) {
+        if (candidate.has_last_state) retained++;
+      }
+      if (retained >= MAX_REPLAY_STATES) {
+        for (size_t candidate = 0; candidate < subscription_channels_.size(); candidate++) {
+          if (candidate == channel || !subscription_channels_[candidate].has_last_state) continue;
+          subscription_channels_[candidate].last_state.clear();
+          subscription_channels_[candidate].has_last_state = false;
+          break;
+        }
+      }
+    }
+    subscription.last_state.assign(state.c_str(), state.size());
+    subscription.has_last_state = true;
   }
 
   void release_inactive_channel_state() {

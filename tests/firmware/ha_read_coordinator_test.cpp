@@ -174,6 +174,82 @@ void rebuilt_subscriptions_share_one_transport_channel() {
           "shared transport channel did not invoke only the current callback");
 }
 
+void rebuilt_subscription_replays_last_value() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [](std::string) {}, scope),
+          "initial cover subscription should register");
+  coordinator.transport().publish(0, "42");
+  coordinator.reset_subscriptions(scope);
+
+  std::string received;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [&](std::string value) { received = value; }, scope),
+          "rebuilt cover subscription should register");
+  require(received == "42", "rebuilt subscription did not replay the latest value");
+}
+
+void reconnect_does_not_replay_previous_connection_state() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [](std::string) {}, scope),
+          "initial cover subscription should register");
+  coordinator.transport().publish(0, "42");
+  coordinator.reset_subscriptions(scope);
+  coordinator.invalidate_retained_state();
+
+  int calls = 0;
+  require(coordinator.subscribe("cover.blind", "current_position",
+                                [&](std::string) { calls++; }, scope),
+          "reconnected cover subscription should register");
+  require(calls == 0, "reconnected subscription replayed stale state");
+  coordinator.transport().publish(0, "43");
+  require(calls == 1, "reconnected subscription missed the fresh state");
+}
+
+void inactive_channels_do_not_retain_new_replay_values() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  require(coordinator.subscribe("cover.old", "current_position",
+                                [](std::string) {}, scope),
+          "initial cover subscription should register");
+  coordinator.transport().publish(0, "old");
+  coordinator.reset_subscriptions(scope);
+  coordinator.transport().publish(0, "inactive-update");
+
+  int calls = 0;
+  require(coordinator.subscribe("cover.old", "current_position",
+                                [&](std::string) { calls++; }, scope),
+          "inactive cover subscription should rebuild");
+  require(calls == 0, "inactive channel retained a new replay value");
+}
+
+void replay_state_cache_is_bounded() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u;
+  for (size_t i = 0; i < 65; i++) {
+    require(coordinator.subscribe("sensor.channel_" + std::to_string(i), "state",
+                                  [](std::string) {}, scope),
+            "bounded replay subscription should register");
+    coordinator.transport().publish(i, "value_" + std::to_string(i));
+  }
+  coordinator.reset_subscriptions(scope);
+
+  int oldest_calls = 0;
+  require(coordinator.subscribe("sensor.channel_0", "state",
+                                [&](std::string) { oldest_calls++; }, scope),
+          "oldest bounded replay subscription should rebuild");
+  require(oldest_calls == 0, "replay cache retained more than its bounded capacity");
+
+  std::string newest;
+  require(coordinator.subscribe("sensor.channel_64", "state",
+                                [&](std::string value) { newest = value; }, scope),
+          "newest bounded replay subscription should rebuild");
+  require(newest == "value_64", "bounded replay cache discarded the newest value");
+}
+
 void subscription_backed_reads_reuse_the_live_channel() {
   Coordinator coordinator;
   int subscription_calls = 0;
@@ -496,6 +572,10 @@ int main() {
   reentrant_reads_are_deferred();
   cancellation_is_safe_during_callback();
   rebuilt_subscriptions_share_one_transport_channel();
+  rebuilt_subscription_replays_last_value();
+  reconnect_does_not_replay_previous_connection_state();
+  inactive_channels_do_not_retain_new_replay_values();
+  replay_state_cache_is_bounded();
   subscription_backed_reads_reuse_the_live_channel();
   retained_reads_never_accumulate_transport_callbacks();
   missing_retained_channel_fails_closed();
