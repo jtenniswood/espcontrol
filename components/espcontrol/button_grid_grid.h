@@ -732,8 +732,6 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
                                       int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   std::string mode = media_card_mode(p.sensor);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-
   if (mode == "cover_art") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
@@ -743,6 +741,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
     }
     if (ctx->title_lbl && ctx->artist_lbl) {
+      const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
       const bool large = media_cover_art_uses_screensaver_fonts(row_span, col_span);
       const bool compact_large = media_cover_art_uses_compact_large_fonts(row_span, col_span);
       const bool compact_portrait =
@@ -769,7 +768,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
         lv_obj_set_style_text_font(ctx->artist_lbl, artist_font, LV_PART_MAIN);
       }
       ctx->artist_below_title = large;
-      ctx->artist_gap = pad > 1 ? pad / 2 : 0;
+      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
       if (ctx->show_track_details || ctx->external_source_fallback) {
         lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -781,7 +780,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       display_apply_main_width(ctx->artist_lbl, display);
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-        title_font, pad,
+        title_font, padding,
         media_cover_art_limits_title_to_two_lines(row_span, col_span),
         true, 0, false);
       media_position_now_playing_artist(ctx);
@@ -793,13 +792,14 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "now_playing") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
+    const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
     if (ctx->title_lbl) display_apply_main_width(ctx->title_lbl, display);
     if (ctx->artist_lbl) display_apply_main_width(ctx->artist_lbl, display);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-      display_media_title_font(display), pad,
+      display_media_title_font(display), padding,
       row_span == 1, ctx->play_pause_background,
-      ctx->progress_slider ? pad : 0, false);
+      ctx->progress_slider ? padding.left : 0, false);
     media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
     return;
@@ -808,16 +808,22 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "position") {
     lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
     SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
-    lv_coord_t position_pad = ctx && ctx->content_pad > 0
-      ? ctx->content_pad
+    const lv_coord_t position_left = ctx && ctx->content_pad_left > 0
+      ? ctx->content_pad_left
+      : lv_obj_get_style_pad_left(s.btn, LV_PART_MAIN);
+    const lv_coord_t position_top = ctx && ctx->content_pad_top > 0
+      ? ctx->content_pad_top
       : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+    const lv_coord_t position_bottom = ctx && ctx->content_pad_bottom > 0
+      ? ctx->content_pad_bottom
+      : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
     if (ctx && ctx->media_value_lbl) {
       display_apply_main_width(ctx->media_value_lbl, display);
-      lv_obj_align(ctx->media_value_lbl, LV_ALIGN_TOP_LEFT, position_pad, position_pad);
+      lv_obj_align(ctx->media_value_lbl, LV_ALIGN_TOP_LEFT, position_left, position_top);
       lv_obj_move_foreground(ctx->media_value_lbl);
     }
     if (s.text_lbl) {
-      lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, position_pad, -position_pad);
+      lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, position_left, -position_bottom);
       configure_button_label_wrap(s.text_lbl);
       lv_obj_move_foreground(s.text_lbl);
     }
@@ -845,14 +851,24 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "volume") return;
 
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
-  if (slider) slider_refresh_geometry(slider);
+  if (slider) {
+    refresh_slider_card_layout(s);
+  }
 }
 
 inline void refresh_slider_card_layout(BtnSlot &s) {
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
+  // Reuse the padding captured before the slider zeroed it so the icon and label
+  // stay aligned with every non-slider card.
+  const lv_coord_t pad_left = ctx
+    ? ctx->label_pad_left : lv_obj_get_style_pad_left(s.btn, LV_PART_MAIN);
+  const lv_coord_t pad_top = ctx
+    ? ctx->label_pad_top : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+  const lv_coord_t pad_bottom = ctx
+    ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
+  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
+  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
   if (slider) slider_refresh_geometry(slider);
 }
 
@@ -887,6 +903,9 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     return;
   } else if (espcontrol::cards::media_driver_refresh_layout(
                s, p, context, cfg, row_span, col_span)) {
+    return;
+  } else if (espcontrol::cards::cover_modal_driver_refresh_layout(
+               s, p, context)) {
     return;
   } else {
     espcontrol::cards::access_cover_driver_refresh_layout(

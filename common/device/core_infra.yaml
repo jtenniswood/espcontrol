@@ -45,6 +45,7 @@ api:
               id(cover_art_resolve_home_assistant_base_url).execute();
               if (ha_api_state_connected()) {
                 refresh_weather_forecast_cards();
+                ha_log_subscription_diagnostics("client-connected");
                 ha_flush_deferred_state_requests();
               }
           - delay: 2s

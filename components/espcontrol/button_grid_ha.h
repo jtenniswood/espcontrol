@@ -74,11 +74,6 @@ struct EspHomeHaReadTransport {
   bool available() const { return ha_api_available(); }
   bool state_connected() const { return ha_api_state_connected(); }
 
-  void get(std::string entity_id, std::string attribute, Callback callback) {
-    esphome::api::global_api_server->get_home_assistant_state(
-        std::move(entity_id), std::move(attribute), std::move(callback));
-  }
-
   void subscribe(const std::string &entity_id,
                  const std::string &attribute,
                  Callback callback) {
@@ -146,6 +141,24 @@ inline void ha_reset_subscription_callbacks(uint32_t scope = HA_SUBSCRIPTION_SCO
 }
 #define ESPCONTROL_HA_SUBSCRIPTION_HELPERS_DEFINED 1
 
+inline void ha_log_subscription_diagnostics(const char *stage) {
+  auto &coordinator = ha_read_coordinator();
+  size_t upstream_subscriptions = 0;
+#ifdef USE_API_HOMEASSISTANT_STATES
+  if (ha_api_available()) {
+    upstream_subscriptions = esphome::api::global_api_server->get_state_subs().size();
+  }
+#endif
+  ESP_LOGD("ha", "Subscriptions %s: active=%u retained=%u channels=%u pending=%u deferred=%u upstream=%u",
+           stage ? stage : "status",
+           static_cast<unsigned>(coordinator.subscription_count()),
+           static_cast<unsigned>(coordinator.retained_channel_count()),
+           static_cast<unsigned>(coordinator.subscription_channel_count()),
+           static_cast<unsigned>(coordinator.pending_read_count()),
+           static_cast<unsigned>(coordinator.deferred_count()),
+           static_cast<unsigned>(upstream_subscriptions));
+}
+
 inline void ha_reset_deferred_state_requests() {
   ha_read_coordinator().reset_deferred();
 }
@@ -153,6 +166,7 @@ inline void ha_reset_deferred_state_requests() {
 
 inline void ha_invalidate_retained_state() {
   ha_read_coordinator().invalidate_retained_state();
+  ha_log_subscription_diagnostics("client-disconnected");
 }
 
 inline void bump_ha_subscription_generation() {
@@ -181,6 +195,7 @@ inline void ha_reannounce_state_subscriptions() {
     }
     client->on_subscribe_home_assistant_states_request();
   }
+  ha_log_subscription_diagnostics("grid-reannounce");
 }
 
 inline bool ha_action_begin(esphome::api::HomeassistantActionRequest &req,
@@ -275,20 +290,6 @@ inline bool ha_subscribe_state(const std::string &entity_id,
   return ha_read_coordinator().subscribe(entity_id, std::string(), std::move(callback), scope, ha_callback_owner());
 }
 
-inline bool ha_get_state(const std::string &entity_id,
-                         HomeAssistantStateCallback callback) {
-  void *owner = ha_callback_owner();
-  if (owner != nullptr) {
-    callback = [owner, callback = std::move(callback)](esphome::StringRef state) {
-      if (!lv_obj_is_valid(static_cast<lv_obj_t *>(owner))) return;
-      if (callback) callback(state);
-    };
-  }
-  return ha_read_coordinator().get(
-      entity_id, std::string(), std::move(callback), false,
-      HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
-}
-
 inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    const std::string &attribute,
                                    HomeAssistantStateCallback callback,
@@ -298,9 +299,9 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
       entity_id, attribute, std::move(callback), scope, ha_callback_owner(), retain_latest);
 }
 
-inline bool ha_get_attribute(const std::string &entity_id,
-                             const std::string &attribute,
-                             HomeAssistantStateCallback callback) {
+inline bool ha_read_retained_attribute(const std::string &entity_id,
+                                       const std::string &attribute,
+                                       HomeAssistantStateCallback callback) {
   void *owner = ha_callback_owner();
   if (owner != nullptr) {
     callback = [owner, callback = std::move(callback)](esphome::StringRef state) {
@@ -308,7 +309,7 @@ inline bool ha_get_attribute(const std::string &entity_id,
       if (callback) callback(state);
     };
   }
-  return ha_read_coordinator().get(
+  return ha_read_coordinator().read_retained(
       entity_id, attribute, std::move(callback), true,
       HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
 }

@@ -29,22 +29,37 @@ class HaReadCoordinator {
   uint32_t &generation_ref() { return generation_; }
   size_t deferred_count() const { return deferred_.size(); }
   size_t subscription_count() const { return subscriptions_.size(); }
+  size_t subscription_channel_count() const { return subscription_channels_.size(); }
+  size_t retained_channel_count() const {
+    size_t count = 0;
+    for (size_t i = 0; i < subscription_channels_.size(); i++) {
+      if (channel_reuses_reads(i)) count++;
+    }
+    return count;
+  }
+  size_t pending_read_count() const {
+    size_t count = 0;
+    for (const auto &channel : subscription_channels_) count += channel.pending_reads.size();
+    for (const auto &request : deferred_) count += request.callbacks.size();
+    return count;
+  }
 
-  bool get(const std::string &entity_id,
-           const std::string &attribute,
-           Callback callback,
-           bool has_attribute,
-           size_t min_free,
-           size_t min_largest,
-           void *owner = nullptr) {
+  bool read_retained(const std::string &entity_id,
+                     const std::string &attribute,
+                     Callback callback,
+                     bool has_attribute,
+                     size_t min_free,
+                     size_t min_largest,
+                     void *owner = nullptr) {
     if (!available() || entity_id.empty() || !callback) return false;
     if (!heap_probe_.available("Home Assistant state request", min_free, min_largest)) return false;
+    size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
+    if (channel == subscription_channels_.size() || !channel_reuses_reads(channel)) return false;
     CallbackRef callback_ref{std::make_shared<Callback>(std::move(callback)), owner, owner_generation(owner)};
-    if (callback_depth_ != 0 || !state_connected()) {
+    if (callback_depth_ != 0) {
       return queue(entity_id, attribute, std::move(callback_ref), has_attribute);
     }
-    dispatch_one(entity_id, attribute, std::move(callback_ref), has_attribute, generation_);
-    return true;
+    return queue_on_subscription_channel(entity_id, attribute, std::move(callback_ref), has_attribute);
   }
 
   bool subscribe(const std::string &entity_id,
@@ -63,7 +78,8 @@ class HaReadCoordinator {
         break;
       }
     }
-    if (channel == subscription_channels_.size()) {
+    const bool new_channel = channel == subscription_channels_.size();
+    if (new_channel) {
       SubscriptionChannel subscription_channel;
       subscription_channel.entity_id = entity_id;
       subscription_channel.attribute = attribute;
@@ -73,6 +89,11 @@ class HaReadCoordinator {
           [this, channel](State state) { invoke_subscription_channel(channel, state); });
     }
     subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});
+    // A grid rebuild re-subscribes on an existing channel; replay the last value
+    // so rebuilt cards reflect the live state immediately.
+    if (!new_channel && subscription_channels_[channel].has_last_state) {
+      invoke(callback_ref, State(subscription_channels_[channel].last_state));
+    }
     return true;
   }
 
@@ -92,7 +113,7 @@ class HaReadCoordinator {
       }
       dispatch_many(
           std::move(request.entity_id), std::move(request.attribute),
-          std::move(request.callbacks), request.has_attribute, request.generation);
+          std::move(request.callbacks), request.has_attribute);
       processed++;
     }
     release_empty_deferred_storage();
@@ -107,6 +128,8 @@ class HaReadCoordinator {
     // particular, artwork URLs and access tokens may change while the panel is
     // offline, so reads after a reconnect must wait for a fresh announcement.
     for (auto &channel : subscription_channels_) {
+      channel.last_state.clear();
+      channel.has_last_state = false;
       channel.cached_state.clear();
       channel.has_cached_state = false;
     }
@@ -179,13 +202,16 @@ class HaReadCoordinator {
   struct SubscriptionChannel {
     std::string entity_id;
     std::string attribute;
+    std::string last_state;
+    bool has_last_state = false;
     std::string cached_state;
     std::vector<CallbackRef> pending_reads;
     bool has_cached_state = false;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
-  static constexpr size_t MAX_PENDING_CHANNEL_READS = 64;
+  static constexpr size_t MAX_PENDING_READS = 64;
+  static constexpr size_t MAX_REPLAY_STATES = 64;
 
   uint32_t owner_generation(void *owner) {
     if (!owner) return 0;
@@ -222,37 +248,19 @@ class HaReadCoordinator {
           request.has_attribute == has_attribute &&
           request.entity_id == entity_id &&
           request.attribute == attribute) {
-        request.callbacks.push_back(std::move(callback));
-        return true;
+        return queue_callback_ref(request.callbacks, std::move(callback));
       }
     }
-    if (deferred_.size() >= MAX_DEFERRED_REQUESTS) return false;
+    if (deferred_.size() >= MAX_DEFERRED_REQUESTS ||
+        pending_read_count() >= MAX_PENDING_READS) return false;
     deferred_.push_back({entity_id, attribute, {std::move(callback)}, generation_, has_attribute});
     return true;
-  }
-
-  void dispatch_one(std::string entity_id,
-                    std::string attribute,
-                    CallbackRef callback_ref,
-                    bool has_attribute,
-                    uint32_t generation) {
-    if (queue_on_subscription_channel(entity_id, attribute, callback_ref, has_attribute)) {
-      return;
-    }
-    transport_.get(
-        std::move(entity_id), has_attribute ? std::move(attribute) : std::string(),
-        [this, callback_ref, generation](State state) {
-          if (generation == generation_ && owner_generation_current(callback_ref)) {
-            invoke(callback_ref.callback, state);
-          }
-        });
   }
 
   void dispatch_many(std::string entity_id,
                      std::string attribute,
                      std::vector<CallbackRef> callbacks,
-                     bool has_attribute,
-                     uint32_t generation) {
+                     bool has_attribute) {
     size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
     if (channel != subscription_channels_.size() && channel_reuses_reads(channel)) {
       auto &subscription = subscription_channels_[channel];
@@ -266,17 +274,7 @@ class HaReadCoordinator {
           queue_pending_channel_read(subscription, std::move(callback_ref));
         }
       }
-      return;
     }
-    auto callback_refs = std::make_shared<std::vector<CallbackRef>>(std::move(callbacks));
-    transport_.get(
-        std::move(entity_id), has_attribute ? std::move(attribute) : std::string(),
-        [this, callback_refs, generation](State state) {
-          if (generation != generation_) return;
-          for (const auto &callback_ref : *callback_refs) {
-            if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
-          }
-        });
   }
 
   void invoke(const std::shared_ptr<Callback> &callback, State state) {
@@ -309,6 +307,12 @@ class HaReadCoordinator {
         callbacks.push_back(ref.callback);
         retain_latest = retain_latest || ref.retain_latest;
       }
+    }
+    if (callbacks.empty()) {
+      subscription.last_state.clear();
+      subscription.has_last_state = false;
+    } else {
+      retain_replay_state(channel, state);
     }
     if (retain_latest) {
       subscription.cached_state.assign(state.c_str(), state.size());
@@ -347,26 +351,30 @@ class HaReadCoordinator {
       State state(subscription.cached_state);
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
     } else {
-      queue_pending_channel_read(subscription, std::move(callback_ref));
+      return queue_pending_channel_read(subscription, std::move(callback_ref));
     }
     return true;
   }
 
-  void queue_pending_channel_read(SubscriptionChannel &subscription,
+  bool queue_pending_channel_read(SubscriptionChannel &subscription,
                                   CallbackRef callback_ref) {
     // Repeated refreshes for one card supersede its earlier pending callback.
-    // Keep distinct card owners independent, but cap them as a final guard
-    // against a channel that Home Assistant never publishes.
-    for (auto &pending : subscription.pending_reads) {
+    // Keep distinct card owners independent, but cap all retained-read work as
+    // a final guard against channels that Home Assistant never publishes.
+    return queue_callback_ref(subscription.pending_reads, std::move(callback_ref));
+  }
+
+  bool queue_callback_ref(std::vector<CallbackRef> &callbacks,
+                          CallbackRef callback_ref) {
+    for (auto &pending : callbacks) {
       if (callback_ref.owner != nullptr && pending.owner == callback_ref.owner) {
         pending = std::move(callback_ref);
-        return;
+        return true;
       }
     }
-    if (subscription.pending_reads.size() >= MAX_PENDING_CHANNEL_READS) {
-      subscription.pending_reads.erase(subscription.pending_reads.begin());
-    }
-    subscription.pending_reads.push_back(std::move(callback_ref));
+    if (pending_read_count() >= MAX_PENDING_READS) return false;
+    callbacks.push_back(std::move(callback_ref));
+    return true;
   }
 
   bool channel_reuses_reads(size_t channel) const {
@@ -374,6 +382,26 @@ class HaReadCoordinator {
       if (ref.channel == channel && ref.retain_latest && ref.callback && *ref.callback) return true;
     }
     return false;
+  }
+
+  void retain_replay_state(size_t channel, const State &state) {
+    SubscriptionChannel &subscription = subscription_channels_[channel];
+    if (!subscription.has_last_state) {
+      size_t retained = 0;
+      for (const auto &candidate : subscription_channels_) {
+        if (candidate.has_last_state) retained++;
+      }
+      if (retained >= MAX_REPLAY_STATES) {
+        for (size_t candidate = 0; candidate < subscription_channels_.size(); candidate++) {
+          if (candidate == channel || !subscription_channels_[candidate].has_last_state) continue;
+          subscription_channels_[candidate].last_state.clear();
+          subscription_channels_[candidate].has_last_state = false;
+          break;
+        }
+      }
+    }
+    subscription.last_state.assign(state.c_str(), state.size());
+    subscription.has_last_state = true;
   }
 
   void release_inactive_channel_state() {

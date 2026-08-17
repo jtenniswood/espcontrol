@@ -124,6 +124,7 @@ HA_BOUNDARY_ALLOWLIST = {
     "button_grid_ha.h",
 }
 DIRECT_HA_PATTERNS = (
+    (re.compile(r"\bha_get_(?:state|attribute)\s*\("), "use retained Home Assistant reads instead of one-shot helpers"),
     (re.compile(r"\bglobal_api_server\b"), "access Home Assistant API through button_grid_ha.h helpers"),
     (re.compile(r"(?:->|\.)send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
     (re.compile(r"(?:->|\.)subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
@@ -232,19 +233,30 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     elif "HA_ACTION_INTERNAL_FREE_MIN_BYTES" not in action_send_match.group("body"):
         errors.append(f"{rel}: defer Home Assistant actions when S3 internal heap is critically low")
     if (
-        "ha_read_coordinator().get(" not in text
+        "ha_read_coordinator().read_retained(" not in text
         or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
-        errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
-    if "callback_depth_ != 0 || !state_connected()" not in coordinator_text:
-        errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
+        errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
     if (
-        "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
-        or "request.entity_id == entity_id" not in read_boundary_text
-        or not DEFERRED_CALLBACK_FANOUT_PATTERN.search(read_boundary_text)
+        "get_home_assistant_state" in read_boundary_text
+        or "transport_.get(" in coordinator_text
+        or "ha_get_state" in text
+        or "ha_get_attribute" in text
     ):
-        errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
+        errors.append(f"{rel}: never register accumulating one-shot Home Assistant state reads")
+    if (
+        "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
+        or "!channel_reuses_reads(channel)" not in coordinator_text
+    ):
+        errors.append(f"{rel}: fail retained reads closed without an active retained subscription")
+    if (
+        "if (callback_depth_ != 0)" not in coordinator_text
+        or "queue_callback_ref(request.callbacks, std::move(callback))" not in coordinator_text
+        or "request.entity_id == entity_id" not in coordinator_text
+        or "for (const auto &callback_ref : callbacks)" not in coordinator_text
+    ):
+        errors.append(f"{rel}: queue and fan out bounded reentrant retained reads")
     if not SUBSCRIPTION_TRACKING_PATTERN.search(coordinator_text):
         errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
     if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
@@ -262,6 +274,14 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or "client->on_subscribe_home_assistant_states_request();" not in text
     ):
         errors.append(f"{rel}: re-announce runtime card subscriptions to the connected Home Assistant client")
+    if (
+        "ha_log_subscription_diagnostics" not in text
+        or "get_state_subs().size()" not in text
+        or "pending_read_count()" not in text
+        or "subscription_channel_count()" not in text
+        or "retained_channel_count()" not in text
+    ):
+        errors.append(f"{rel}: expose count-only Home Assistant subscription diagnostics")
     grid_path = firmware_dir / "button_grid_grid.h"
     if grid_path.exists() and "ha_reannounce_state_subscriptions();" not in grid_path.read_text(encoding="utf-8"):
         errors.append(f"{grid_path.relative_to(root)}: re-announce subscriptions after runtime grid rebuilds")
@@ -919,6 +939,9 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
 
+    if re.search(r"\bha_get_(?:state|attribute)\s*\(", text):
+        errors.append(f"{rel}: use retained Home Assistant reads instead of one-shot helpers")
+
     required_state = (
         ("cover_art_runtime).refresh_needed", "track/source metadata changes as stale artwork"),
         ("cover_art_runtime).effective_download_url", "keep source artwork URLs separate from downloader URLs"),
@@ -993,6 +1016,16 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     if cached_body and "id(cover_art_runtime).select_source(chosen);" not in cached_body:
         errors.append(f"{rel}: mark changed cached artwork URLs as stale before downloading")
     resubscribe_body = yaml_script_body(text, "cover_art_resubscribe") or ""
+    for attribute in ("entity_picture", "entity_picture_local"):
+        retained_subscription = re.search(
+            rf'ha_subscribe_attribute\(\s*cover_entity,\s*std::string\("{attribute}"\),'
+            rf'[\s\S]{{0,700}}?HA_SUBSCRIPTION_SCOPE_COVER_ART,\s*true\s*\)',
+            resubscribe_body,
+        )
+        if not retained_subscription:
+            errors.append(
+                f"{rel}: retain {attribute} so artwork refreshes never register one-shot callbacks"
+            )
     artwork_refresh_body = (
         resubscribe_body +
         (yaml_script_body(text, "cover_art_request_paired_artwork") or "")
@@ -1516,9 +1549,9 @@ def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> lis
         subscribe_body = text.split("inline void media_control_refresh_speaker_state", 1)[1]
         subscribe_body = subscribe_body.split("\n}\n\ninline void media_control_add_speaker_candidate", 1)[0]
         for token in (
-            "ha_get_state(entity_id, state_callback)",
-            'ha_get_attribute(entity_id, std::string("friendly_name"), name_callback)',
-            'ha_get_attribute(entity_id, std::string("volume_level"), volume_callback)',
+            "ha_read_retained_state(entity_id, state_callback)",
+            'ha_read_retained_attribute(entity_id, std::string("friendly_name"), name_callback)',
+            'ha_read_retained_attribute(entity_id, std::string("volume_level"), volume_callback)',
         ):
             if token not in subscribe_body:
                 errors.append(f"{rel}: rehydrate a speaker row recreated during a live helper edit")
@@ -2192,7 +2225,7 @@ def firmware_image_card_startup_errors(
         errors.append(f"{rel}: retry image-card startup quickly after Home Assistant API connects")
     if "if (!ha_api_connected()) return;" not in text:
         errors.append(f"{rel}: arm image-card refresh from the Home Assistant API connection")
-    if "if (!ha_api_connected())" not in text or "ha_get_attribute(" not in text:
+    if "if (!ha_api_connected())" not in text or "ha_read_retained_attribute(" not in text:
         errors.append(f"{rel}: request image-card attributes once the Home Assistant API is connected")
     if '"access_token"' not in text or "image_card_proxy_path_with_token" not in text:
         errors.append(f"{rel}: load Home Assistant image-card proxy URLs with the entity access token")
@@ -2532,6 +2565,33 @@ def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> li
     return []
 
 
+def firmware_clock_bar_navigation_errors(
+    connectivity_paths: tuple[Path, ...], root: Path
+) -> list[str]:
+    errors: list[str] = []
+    for path in connectivity_paths:
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        body = yaml_script_body(path.read_text(encoding="utf-8"), "navigate_after_api")
+        if body is None:
+            errors.append(f"{rel}: missing navigate_after_api script")
+            continue
+        active_guard = body.find("target_mode_is(")
+        active_mode = body.find("DisplayMode::ACTIVE", active_guard)
+        page_show = body.find("lvgl.page.show: main_page")
+        if (
+            active_guard == -1
+            or active_mode == -1
+            or page_show == -1
+            or active_guard > page_show
+        ):
+            errors.append(
+                f"{rel}: guard late home-page navigation behind the active display mode"
+            )
+    return errors
+
+
 def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) -> list[str]:
     errors: list[str] = []
     if not backlight_path.exists():
@@ -2612,8 +2672,13 @@ def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) 
     dimmed_body = yaml_script_body(text, "show_dimmed_view")
     if dimmed_body is None:
         errors.append(f"{rel}: missing show_dimmed_view script")
-    elif "lv_obj_move_foreground(id(dim_screensaver_touch_guard))" not in dimmed_body:
-        errors.append(f"{rel}: raise the dim screensaver touch guard above any existing top-layer elements")
+    else:
+        if "lv_obj_move_foreground(id(dim_screensaver_touch_guard))" not in dimmed_body:
+            errors.append(f"{rel}: raise the dim screensaver touch guard above any existing top-layer elements")
+        if "script.execute: clock_bar_hide" in dimmed_body or "script.wait: clock_bar_hide" in dimmed_body:
+            errors.append(f"{rel}: keep the complete clock bar visible over the dimmed home screen")
+        if "script.execute: clock_bar_apply" not in dimmed_body:
+            errors.append(f"{rel}: reapply the clock bar after raising the dim screensaver touch guard")
 
     return errors
 
@@ -3293,6 +3358,7 @@ def run_scan() -> int:
         )
     )
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
+    errors.extend(firmware_clock_bar_navigation_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_override_errors(BACKLIGHT_PATH, ROOT))
@@ -3979,6 +4045,21 @@ def expect_display_backlight_manual_sleep_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_clock_bar_navigation_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "connectivity.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        errors = firmware_clock_bar_navigation_errors((path,), root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_clock_screensaver_overlay_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -4423,7 +4504,7 @@ def run_self_test() -> int:
         ("send Home Assistant actions only after state subscription is ready",),
     )
     expect_ha_boundary_errors(
-        "one-off state read before state connection",
+        "retained state read without channel validation",
         {
             "button_grid_ha.h": (
                 "inline bool ha_subscribe_state() {\n  return true;\n}\n"
@@ -4432,17 +4513,17 @@ def run_self_test() -> int:
                 "inline bool ha_action_send() {\n"
                 "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
                 "}\n"
-                "inline bool ha_get_attribute() {\n"
+                "inline bool ha_read_retained_attribute() {\n"
                 "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
                 "  if (ha_state_callback_depth() != 0) return true;\n"
                 "  return true;\n"
                 "}\n"
             )
         },
-        ("queue one-off Home Assistant reads until state subscription is ready",),
+        ("fail retained reads closed without an active retained subscription",),
     )
     expect_ha_boundary_errors(
-        "duplicate deferred state reads",
+        "unbounded reentrant retained reads",
         {
             "button_grid_ha.h": (
                 "inline bool ha_subscribe_state() {\n  return true;\n}\n"
@@ -4451,18 +4532,18 @@ def run_self_test() -> int:
                 "inline bool ha_action_send() {\n"
                 "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
                 "}\n"
-                "inline bool ha_get_state() {\n"
+                "inline bool ha_read_retained_state() {\n"
                 "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  return true;\n"
                 "}\n"
-                "inline bool ha_get_attribute() {\n"
+                "inline bool ha_read_retained_attribute() {\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  return true;\n"
                 "}\n"
             )
         },
-        ("fan out duplicate deferred Home Assistant reads",),
+        ("queue and fan out bounded reentrant retained reads",),
     )
     expect_ha_boundary_errors(
         "subscription callback bodies retained",
@@ -4480,14 +4561,14 @@ def run_self_test() -> int:
                 "inline bool ha_action_send() {\n"
                 "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
                 "}\n"
-                "inline bool ha_get_state() {\n"
+                "inline bool ha_read_retained_state() {\n"
                 "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  request.callback = std::move(callback);\n"
                 "  request.entity_id == entity_id;\n"
                 "  return true;\n"
                 "}\n"
-                "inline bool ha_get_attribute() {\n"
+                "inline bool ha_read_retained_attribute() {\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  return true;\n"
                 "}\n"
@@ -5490,6 +5571,8 @@ def run_self_test() -> int:
         "          if (!url.empty() && url != id(cover_art_runtime).source_url) {\n"
         "            id(cover_art_runtime).refresh_needed = true;\n"
         "          }\n"
+        "          ha_subscribe_attribute(cover_entity, std::string(\"entity_picture\"), callback, HA_SUBSCRIPTION_SCOPE_COVER_ART, true);\n"
+        "          ha_subscribe_attribute(cover_entity, std::string(\"entity_picture_local\"), callback, HA_SUBSCRIPTION_SCOPE_COVER_ART, true);\n"
         "          ha_subscribe_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n"
         "          // Live subscriptions supply both initial values and updates.\n",
         (),
@@ -6422,7 +6505,7 @@ def run_self_test() -> int:
     expect_image_card_startup_errors(
         "image card missing startup reconnect refresh",
         "inline void image_card_request_picture(ImageCardCtx *ctx) {\n"
-        "  bool requested = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  bool requested = ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
         "}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->url = image_card_cache_bust_url(ctx->source_url);\n"
@@ -6464,14 +6547,14 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_picture(ImageCardCtx *ctx) {\n"
         "  if (!ha_api_connected()) return;\n"
-        "  ha_get_attribute(ctx->entity_id, std::string(\"access_token\"), callback);\n"
+        "  ha_read_retained_attribute(ctx->entity_id, std::string(\"access_token\"), callback);\n"
         "  image_card_proxy_path_with_token(proxy_path, token);\n"
-        "  ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
         "}\n"
         "inline void image_card_request_media_artwork(ImageCardCtx *ctx) {\n"
         "  uint8_t request_mask = artwork_source_request_mask(ctx->media_artwork_retry_mask);\n"
-        "  bool remote_queued = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
-        "  bool local_queued = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture_local\"), callback);\n"
+        "  bool remote_queued = ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  bool local_queued = ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture_local\"), callback);\n"
         "  ctx->media_artwork_retry_mask = artwork_source_failed_mask(request_mask, remote_queued, local_queued);\n"
         "  if (ctx->media_artwork_retry_mask != 0) image_card_schedule_picture_retry(ctx, 250);\n"
         "}\n"
@@ -6701,6 +6784,28 @@ def run_self_test() -> int:
         "",
         ("clear the shared wake guard after a stuck touch timeout",),
     )
+    expect_clock_bar_navigation_errors(
+        "late navigation requires active display mode",
+        "script:\n"
+        "  - id: navigate_after_api\n"
+        "    then:\n"
+        "      - lvgl.page.show: main_page\n",
+        ("guard late home-page navigation",),
+    )
+    expect_clock_bar_navigation_errors(
+        "active navigation remains available",
+        "script:\n"
+        "  - id: navigate_after_api\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(espcontrol_app).display().target_mode_is(\n"
+        "                  espcontrol::DisplayMode::ACTIVE);\n"
+        "          then:\n"
+        "            - lvgl.page.show: main_page\n",
+        (),
+    )
     expect_clock_screensaver_overlay_errors(
         "clock screensaver closes active UI before showing",
         "script:\n"
@@ -6730,12 +6835,17 @@ def run_self_test() -> int:
         "          lv_obj_move_foreground(id(clock_screensaver));\n"
         "  - id: show_dimmed_view\n"
         "    then:\n"
+        "      - script.execute: clock_bar_hide\n"
         "      - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'\n"
+        "      - script.execute: clock_bar_apply\n"
         "interval:\n"
         "  - interval: 1s\n"
         "    then:\n"
         "      - script.execute: clock_screensaver_keep_on_top\n",
-        ("overlay the existing UI without closing it",),
+        (
+            "overlay the existing UI without closing it",
+            "keep the complete clock bar visible over the dimmed home screen",
+        ),
     )
     expect_clock_screensaver_overlay_errors(
         "clock screensaver overlays active UI",
@@ -6767,6 +6877,7 @@ def run_self_test() -> int:
         "  - id: show_dimmed_view\n"
         "    then:\n"
         "      - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'\n"
+        "      - script.execute: clock_bar_apply\n"
         "interval:\n"
         "  - interval: 1s\n"
         "    then:\n"

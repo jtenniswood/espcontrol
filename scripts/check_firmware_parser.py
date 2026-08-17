@@ -245,6 +245,11 @@ int main() {
   assert(awake_clock_bar.reserve_space);
   assert(awake_clock_bar.visible);
 
+  auto dimmed_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, espcontrol::DisplayMode::DIMMED, false);
+  assert(dimmed_clock_bar.reserve_space);
+  assert(dimmed_clock_bar.visible);
+
   auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
     true, &main_page, espcontrol::DisplayMode::CLOCK, false);
   assert(clock_screensaver_clock_bar.reserve_space);

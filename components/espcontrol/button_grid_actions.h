@@ -519,41 +519,41 @@ inline void send_cover_command_action(const CoverCommandCtx &ctx) {
 }
 
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
-inline void send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
+inline bool send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
   esphome::api::HomeassistantActionRequest req;
   if (value < 0) {
-    if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return;
+    if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return false;
     ha_action_add_entity(req, entity_id);
   } else if (is_cover_entity(entity_id)) {
     if (!ha_action_begin(req,
       cover_tilt ? "cover.set_cover_tilt_position" : "cover.set_cover_position",
-      false, 2)) return;
+      false, 2)) return false;
     ha_action_add_entity(req, entity_id);
     char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, cover_tilt ? "tilt_position" : "position", buf);
   } else if (is_fan_entity(entity_id)) {
     if (value == 0) {
-      if (!ha_action_begin(req, "fan.turn_off", false, 1)) return;
+      if (!ha_action_begin(req, "fan.turn_off", false, 1)) return false;
       ha_action_add_entity(req, entity_id);
     } else {
-      if (!ha_action_begin(req, "fan.turn_on", false, 2)) return;
+      if (!ha_action_begin(req, "fan.turn_on", false, 2)) return false;
       ha_action_add_entity(req, entity_id);
       char buf[12];
       snprintf(buf, sizeof(buf), "%d", value);
       ha_action_add_data(req, "percentage", buf);
     }
   } else if (value == 0) {
-    if (!ha_action_begin(req, "light.turn_off", false, 1)) return;
+    if (!ha_action_begin(req, "light.turn_off", false, 1)) return false;
     ha_action_add_entity(req, entity_id);
   } else {
-    if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+    if (!ha_action_begin(req, "light.turn_on", false, 2)) return false;
     ha_action_add_entity(req, entity_id);
     char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, "brightness_pct", buf);
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 // Parse "min-max" kelvin range from the unit config field (e.g. "2000-6500").

@@ -1236,34 +1236,36 @@ inline void image_card_align_label(lv_obj_t *label, lv_obj_t *btn,
                                    lv_coord_t x_offset,
                                    lv_coord_t y_offset) {
   if (!label || !btn) return;
-  lv_obj_update_layout(btn);
-  lv_coord_t width = lv_obj_get_width(btn);
-  lv_coord_t height = lv_obj_get_height(btn);
-  lv_coord_t pad_left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
-  lv_coord_t pad_right = lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
-  lv_coord_t pad_top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
-  lv_coord_t pad_bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
-  if (width > 0) lv_obj_set_width(label, width);
-  lv_obj_set_style_pad_left(label, pad_left, LV_PART_MAIN);
-  lv_obj_set_style_pad_right(label, pad_right, LV_PART_MAIN);
-  lv_obj_set_style_pad_top(label, pad_top, LV_PART_MAIN);
-  lv_obj_set_style_pad_bottom(label, pad_bottom, LV_PART_MAIN);
-  lv_coord_t parent_x = 0;
-  lv_coord_t parent_y = 0;
-  lv_coord_t parent_height = height;
-  image_card_parent_offset_from_button(label, btn, parent_x, parent_y, parent_height);
-  lv_obj_align(
-    label, LV_ALIGN_BOTTOM_LEFT,
-    -pad_left - parent_x + x_offset,
-    pad_bottom - parent_y + (height - parent_height) + y_offset);
+  // Mirror the standard card label layout (configure_button_label_wrap plus a
+  // bottom-left align). The previous version forced the label to the button's
+  // full width and copied the button's 16px padding onto the label, which -
+  // combined with the label's fixed height - squeezed the text area below the
+  // font's line height so LV_LABEL_LONG_WRAP clipped the bottom of the glyphs.
+  // Using a percentage width and the label's natural content height keeps image
+  // tile labels at the same height as every other card, with no clipping.
+  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(label, lv_pct(100));
+  lv_obj_set_height(label, LV_SIZE_CONTENT);
+  lv_obj_set_style_pad_all(label, 0, LV_PART_MAIN);
+  lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, x_offset, y_offset);
   lv_obj_move_foreground(label);
 }
 
 inline void image_card_align_label_stack(lv_obj_t *label, lv_obj_t *btn) {
   if (!label || !btn) return;
-  lv_obj_t *shadow = image_card_label_shadow(label, btn);
-  if (shadow) image_card_align_label(shadow, btn, 1, 1);
   image_card_align_label(label, btn);
+  lv_obj_t *shadow = image_card_label_shadow(label, btn);
+  if (shadow) {
+    // The shadow gets the same layout as the label, then a one-pixel style
+    // translate. Translate is re-applied every time LVGL resolves the layout,
+    // so the shadow stays locked one pixel below and right of the text instead
+    // of drifting the way two independent bottom-left aligns did.
+    image_card_align_label(shadow, btn, 0, 0);
+    lv_obj_set_style_translate_x(shadow, 1, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(shadow, 1, LV_PART_MAIN);
+    lv_obj_move_foreground(shadow);
+  }
+  lv_obj_move_foreground(label);
 }
 
 inline void image_card_move_label_foreground(lv_obj_t *loading_widget) {
@@ -1558,7 +1560,7 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     }
     const uint32_t generation = ha_subscription_generation();
     ctx->access_token_request_pending = true;
-    bool requested = ha_get_attribute(
+    bool requested = ha_read_retained_attribute(
       entity_id,
       std::string("access_token"),
       std::function<void(esphome::StringRef)>(
@@ -1590,7 +1592,7 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
   }
   if (image_card_prefer_local_picture(ctx)) {
     const uint32_t generation = ha_subscription_generation();
-    bool requested_local = ha_get_attribute(
+    bool requested_local = ha_read_retained_attribute(
       entity_id,
       std::string("entity_picture_local"),
       std::function<void(esphome::StringRef)>(
@@ -1608,7 +1610,7 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
             image_card_handle_picture(ctx, esphome::StringRef(fallback));
             return;
           }
-          bool fallback_requested = ha_get_attribute(
+          bool fallback_requested = ha_read_retained_attribute(
             entity_id,
             std::string("entity_picture"),
             std::function<void(esphome::StringRef)>(
@@ -1623,7 +1625,7 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     if (requested_local) return;
   }
   const uint32_t generation = ha_subscription_generation();
-  bool requested = ha_get_attribute(
+  bool requested = ha_read_retained_attribute(
     entity_id,
     std::string("entity_picture"),
     std::function<void(esphome::StringRef)>(
@@ -2064,7 +2066,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     const std::string retry_picture = raw;
     const uint32_t generation = ha_subscription_generation();
     ctx->access_token_request_pending = true;
-    bool requested = ha_get_attribute(
+    bool requested = ha_read_retained_attribute(
       entity_id,
       std::string("access_token"),
       std::function<void(esphome::StringRef)>(
@@ -2311,7 +2313,7 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
            ha_api_state_connected());
   bool remote_queued = true;
   if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_REMOTE) != 0) {
-    remote_queued = ha_get_attribute(
+    remote_queued = ha_read_retained_attribute(
       entity_id,
       std::string("entity_picture"),
       std::function<void(esphome::StringRef)>(
@@ -2323,7 +2325,7 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
   }
   bool local_queued = true;
   if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_LOCAL) != 0) {
-    local_queued = ha_get_attribute(
+    local_queued = ha_read_retained_attribute(
       entity_id,
       std::string("entity_picture_local"),
       std::function<void(esphome::StringRef)>(

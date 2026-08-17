@@ -1064,7 +1064,7 @@ script:
             };
           bool remote_queued = true;
           if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_REMOTE) != 0) {
-            remote_queued = ha_get_attribute(
+            remote_queued = ha_read_retained_attribute(
             cover_entity,
             std::string("entity_picture"),
             std::function<void(esphome::StringRef)>(
@@ -1075,7 +1075,7 @@ script:
           }
           bool local_queued = true;
           if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_LOCAL) != 0) {
-            local_queued = ha_get_attribute(
+            local_queued = ha_read_retained_attribute(
             cover_entity,
             std::string("entity_picture_local"),
             std::function<void(esphome::StringRef)>(
@@ -2544,7 +2544,8 @@ script:
                   if (subscription_generation != id(cover_art_subscription_generation)) return;
                   id(cover_art_schedule_paired_artwork).execute(false);
                 }),
-              HA_SUBSCRIPTION_SCOPE_COVER_ART
+              HA_SUBSCRIPTION_SCOPE_COVER_ART,
+              true
             );
             bool local_picture_subscribed = ha_subscribe_attribute(
               cover_entity,
@@ -2554,7 +2555,8 @@ script:
                   if (subscription_generation != id(cover_art_subscription_generation)) return;
                   id(cover_art_schedule_paired_artwork).execute(false);
                 }),
-              HA_SUBSCRIPTION_SCOPE_COVER_ART
+              HA_SUBSCRIPTION_SCOPE_COVER_ART,
+              true
             );
             ESP_LOGI("cover_art", "Artwork subscriptions entity_picture=%s entity_picture_local=%s",
                      picture_subscribed ? "ready" : "failed",
