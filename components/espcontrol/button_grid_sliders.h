@@ -10,6 +10,29 @@ inline void image_card_set_media_artwork_suppressed(ImageCardCtx *ctx,
                                                      bool suppressed);
 inline void image_card_refresh_media_artwork_on_metadata_change(ImageCardCtx *ctx);
 
+struct CardPadding {
+  lv_coord_t left = 0;
+  lv_coord_t top = 0;
+  lv_coord_t right = 0;
+  lv_coord_t bottom = 0;
+};
+
+inline CardPadding capture_card_padding(lv_obj_t *btn) {
+  CardPadding padding;
+  if (!btn) return padding;
+  // Slider fills cover the entire button, so their setup clears local button
+  // padding. Remove that stale override before reading the themed inset.
+  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_LEFT, LV_PART_MAIN);
+  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_TOP, LV_PART_MAIN);
+  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_RIGHT, LV_PART_MAIN);
+  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_BOTTOM, LV_PART_MAIN);
+  padding.left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
+  padding.top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
+  padding.right = lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
+  padding.bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
+  return padding;
+}
+
 // ── Slider widgets ───────────────────────────────────────────────────
 
 // Context attached to each LVGL slider via user_data
@@ -40,7 +63,15 @@ struct SliderCtx {
   lv_timer_t *geometry_timer = nullptr;
   lv_obj_t *media_value_lbl = nullptr;
   lv_obj_t *media_status_lbl = nullptr;
-  lv_coord_t content_pad = 0;
+  // Button padding captured before the slider widget zeroes it, so the icon and
+  // label can be inset to match every non-slider card (see setup_slider_visual).
+  lv_coord_t label_pad_left = 0;
+  lv_coord_t label_pad_top = 0;
+  lv_coord_t label_pad_bottom = 0;
+  lv_coord_t content_pad_left = 0;
+  lv_coord_t content_pad_top = 0;
+  lv_coord_t content_pad_right = 0;
+  lv_coord_t content_pad_bottom = 0;
   bool available = true;
   bool interactive = true;
   // light_temperature fields
@@ -77,6 +108,7 @@ struct MediaNowPlayingCtx {
   bool play_pause_background = false;
   bool artist_below_title = false;
   lv_coord_t artist_gap = 0;
+  CardPadding content_padding;
 };
 
 struct MediaPlaylistCtx {
@@ -2672,6 +2704,8 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   if (p.type == "cover")
     lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
 
+  const CardPadding padding = capture_card_padding(s.btn);
+
   bool horizontal = false;
   lv_obj_t *slider = setup_slider_widget(s.btn, on_color, horizontal);
   if (!slider) {
@@ -2684,9 +2718,8 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     return;
   }
   ESP_LOGI("slider", "Slider object created for %s", p.entity.c_str());
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
+  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
   lv_obj_t *fill = lv_obj_get_child(s.btn, 0);
@@ -2707,6 +2740,9 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->cover_tilt = p.type == "cover" && cover_tilt_mode(p.sensor);
   ctx->inverted = is_cover_entity(p.entity);
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
+  ctx->label_pad_left = padding.left;
+  ctx->label_pad_top = padding.top;
+  ctx->label_pad_bottom = padding.bottom;
   ctx->interactive = interactive;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
@@ -2993,13 +3029,13 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   int min_k = 2000, max_k = 6500;
   parse_kelvin_range(p.unit, min_k, max_k);
   bool kcolor = (p.precision == "color");
+  const CardPadding padding = capture_card_padding(s.btn);
 
   lv_obj_t *slider = setup_slider_widget(s.btn, on_color, false);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_label_set_long_mode(s.icon_lbl, LV_LABEL_LONG_CLIP);
   lv_obj_set_width(s.icon_lbl, lv_pct(100));
-  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
   lv_obj_t *fill = lv_obj_get_child(s.btn, 0);
@@ -3011,6 +3047,9 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   ctx->cover_tilt = false;
   ctx->inverted = false;
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
+  ctx->label_pad_left = padding.left;
+  ctx->label_pad_top = padding.top;
+  ctx->label_pad_bottom = padding.bottom;
   ctx->light_temp = true;
   ctx->kelvin_min = min_k;
   ctx->kelvin_max = max_k;
