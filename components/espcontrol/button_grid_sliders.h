@@ -20,16 +20,24 @@ struct CardPadding {
 inline CardPadding capture_card_padding(lv_obj_t *btn) {
   CardPadding padding;
   if (!btn) return padding;
-  // Slider fills cover the entire button, so their setup clears local button
-  // padding. Remove that stale override before reading the themed inset.
-  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_LEFT, LV_PART_MAIN);
-  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_TOP, LV_PART_MAIN);
-  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_RIGHT, LV_PART_MAIN);
-  lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_BOTTOM, LV_PART_MAIN);
   padding.left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
   padding.top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
   padding.right = lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
   padding.bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
+  // Preserve an intentional local inset, such as a subpage's calculated
+  // padding. A reused slider button leaves a local zero override behind;
+  // only in that all-zero case remove the stale override and read the theme.
+  if (padding.left == 0 && padding.top == 0 &&
+      padding.right == 0 && padding.bottom == 0) {
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_LEFT, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_TOP, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_RIGHT, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_BOTTOM, LV_PART_MAIN);
+    padding.left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
+    padding.top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
+    padding.right = lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
+    padding.bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
+  }
   return padding;
 }
 
