@@ -4179,7 +4179,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       }
       ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(
         row_span, col_span);
-      ctx->artist_gap = layout_padding.top > 1 ? layout_padding.top / 2 : 0;
+      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
         media_title_font, layout_padding,
