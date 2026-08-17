@@ -327,8 +327,16 @@ display:
     id: my_display
     model: CUSTOM
     color_order: RGB
+    # Panel LCD_RST is GPIO0 on the JC1060P470C_I_W_Y schematic (FPC1 pin 4);
+    # GPIO5 only reaches the expansion header. A wrong reset pin also suppresses
+    # ESPHome's software reset, so a warm reboot (flash, OTA, restart) would keep
+    # the previous firmware's panel registers until the next power cycle.
     reset_pin:
-      number: GPIO05
+      number: GPIO0
+    # Initialise the panel before the backlight light restores its state
+    # (light setup runs at priority ~799); an un-initialised JD9165 shows a
+    # bright lavender field, so the backlight must not come on before init.
+    setup_priority: 850
     update_interval: never
     auto_clear_enabled: false
     dimensions:
@@ -349,6 +357,9 @@ display:
     # Source: Guition JC1060P470C_I_W_Y.zip (2026-07-13), 1-Demo/.../JC1060P470C_I_W_Y_New_Panel/lvgl_demo_v8/src/lcd/esp_lcd_jd9165.{c,h}
     # PIXFMT/MADCTL/SLPOUT/DISPON are appended by ESPHome; do not add 0x3A/0x11/0x29 here.
     init_sequence:
+      # JD9165 needs 120 ms after reset before it accepts the vendor table
+      # (Guition esp_lcd_jd9165.c waits 120 ms; ESPHome itself waits 0 ms).
+      - delay 120ms
       - [0x30, 0x00]
       - [0xF7, 0x49, 0x61, 0x02, 0x00]
       - [0x30, 0x01]
@@ -406,6 +417,10 @@ display:
       - [0x12, 0x05]
       - [0x13, 0x0C]
       - [0x30, 0x00]
+      # SLPOUT here so DISPON (appended by ESPHome ~20 ms after its own SLPOUT)
+      # lands >=120 ms after sleep-out, as the JD9165 power-on sequence requires.
+      - [0x11]
+      - delay 120ms
 
 # ---------------------------------------------------------------------------
 # LVGL base (display binding, must be before any page definitions)
