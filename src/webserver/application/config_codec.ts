@@ -1,5 +1,24 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import * as EspControlModel from "../model";
+import { configOptionEnabled, configOptionValue, setConfigOptionValue } from "../model/config_primitives";
+import {
+    CARD_SIZE_EXTRA_LARGE,
+    CARD_SIZE_LANDSCAPE_LARGE,
+    CARD_SIZE_LARGE,
+    CARD_SIZE_MAX_TALL,
+    CARD_SIZE_MAX_WIDE,
+    CARD_SIZE_PORTRAIT_LARGE,
+    CARD_SIZE_SINGLE,
+} from "../model/grid";
+import {
+    cardContractDefaultConfig,
+    cardContractFanDefaultIcon,
+    cardContractIsBrightnessSliderType,
+    cardContractIsFanCardType,
+    cardContractIsOptionSelectType,
+    cardContractSubpageTypeCode,
+    cardContractSubpageTypeFromCode,
+} from "../generated/card_contract";
 import {
     migrateSavedConfigVacuumLegacy,
     normalizeSavedConfigVacuumIconOn,
@@ -24,14 +43,131 @@ import { normalizeSavedConfigLightControl } from "../generated/saved_config_ligh
 import { normalizeSavedConfigWebhook } from "../generated/saved_config_webhook";
 import { normalizeSavedConfigSubpage } from "../generated/saved_config_subpage";
 import { normalizeSavedConfigSwitch } from "../generated/saved_config_switch";
-export function installConfigCodecModule(): GlobalDescriptors {
+import type { CardRegistry } from "./card_registry";
+import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
+import type { ConfigMediaOptionsFeature } from "./config_media_options";
+import type { ConfigImageOptionsFeature } from "./config_image_options";
+import type { ConfigModalTabOptionsFeature } from "./config_modal_tab_options";
+import type { ConfigAccessClimateAlarmOptionsFeature } from "./config_access_climate_alarm_options";
+import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
+import {
+    IMAGE_ICON_OPTION,
+    MEDIA_COVER_ART_OPTION,
+    copyLargeNumbersOption,
+} from "./config_option_core";
+import {
+    applySubpagePresetConfig,
+    normalizeSubpageOptions,
+    subpageKind,
+} from "./config_subpage_options";
+import {
+    ACTION_CARD_LOCAL_ACTION,
+    ACTION_CARD_OPTION_SELECT_ACTION,
+} from "./config_action_contract";
+import { normalizeCoverMode } from "./config_cover_contract";
+import type { ConfigWeatherOptionsFeature } from "./config_weather_options";
+import type { ConfigWebhookOptionsFeature } from "./config_webhook_options";
+import type { ConfigRobotCardOptionsFeature } from "./config_robot_card_options";
+import type { ConfigLockOptionsFeature } from "./config_lock_options";
+import type { ConfigDateTimeOptionsFeature } from "./config_date_time_options";
+import type { ApplicationLayoutState } from "./application_context";
+import type { ApplicationApiFeature } from "./api";
+import type { ConfigPersistenceFeature } from "./config_post_api";
+import type { ButtonSettingsRenderQueueFeature } from "./button_settings_render_queue";
+export function createConfigCodecFeature(
+    cardRegistry: CardRegistry,
+    sensorOptions: ConfigSensorOptionsFeature,
+    mediaOptions: ConfigMediaOptionsFeature,
+    imageOptions: ConfigImageOptionsFeature,
+    weatherOptions: ConfigWeatherOptionsFeature,
+    webhookOptions: ConfigWebhookOptionsFeature,
+    robotOptions: ConfigRobotCardOptionsFeature,
+    lockOptions: ConfigLockOptionsFeature,
+    dateTimeOptions: ConfigDateTimeOptionsFeature,
+    modalTabs: ConfigModalTabOptionsFeature,
+    accessOptions: ConfigAccessClimateAlarmOptionsFeature,
+    confirmationOptions: ConfigConfirmationOptionsFeature,
+    layout: ApplicationLayoutState,
+    configPersistence: Pick<ConfigPersistenceFeature, "saveSubpageEntity" | "scheduleSliderSubpageMigration">,
+    renderQueue: ButtonSettingsRenderQueueFeature,
+    rendering: { renderPreview(): void; renderButtonSettings(force?: boolean): void },
+) {
+    const { renderPreview, renderButtonSettings } = rendering;
+    const { saveSubpageEntity, scheduleSliderSubpageMigration } = configPersistence;
+    let requestApi: Pick<ApplicationApiFeature, "postText"> | undefined;
+    function connectRequestApi(value: Pick<ApplicationApiFeature, "postText">) {
+        requestApi = value;
+    }
+    function requests(): Pick<ApplicationApiFeature, "postText"> {
+        if (!requestApi)
+            throw new Error("Configuration codec used before the application API was connected");
+        return requestApi;
+    }
+    const {
+        sensorCardLocalSource: SENSOR_CARD_LOCAL_SENSOR,
+        sensorCardIsLocal,
+        cardLargeNumbersSupported,
+        normalizeDateTimeOptions,
+        normalizeDoorWindowSubtype,
+        doorWindowClosedIcon,
+        doorWindowOpenIcon,
+        normalizeDoorWindowOptions,
+        normalizePresenceOptions,
+        normalizeSensorOptions,
+        normalizeTodoOptions,
+    } = sensorOptions;
+    const {
+        mediaEditorMode,
+        mediaNowPlayingControls,
+        mediaStateDisplayModeSupported,
+        normalizeMediaOptions,
+    } = mediaOptions;
+    const {
+        imageLabelEnabled,
+        imageIconEnabled,
+        normalizeImageOptions,
+    } = imageOptions;
+    const { normalizeWeatherCardMode } = weatherOptions;
+    const { normalizeWebhookConfig, webhookMethod } = webhookOptions;
+    const {
+        lawnMowerModeDefaultIcon,
+        normalizeLawnMowerMode,
+        vacuumModeDefaultIcon,
+        vacuumModeNeedsArea,
+    } = robotOptions;
+    const { normalizeLockMode } = lockOptions;
+    const { normalizeDateTimeCardMode } = dateTimeOptions;
+    imageOptions.connectSubpageParser((value) => parseSubpageConfig(value));
+    const {
+        normalizeLightControlOptions,
+        normalizeCoverOptionsForMode,
+        normalizeFanControlOptions,
+    } = modalTabs;
+    const {
+        alarmActionSpecs,
+        alarmActionLegacyIcon,
+        normalizeGarageMode,
+        normalizeGarageOptions,
+        normalizeGateMode,
+        normalizeGateOptions,
+        normalizeClimateOptions,
+        alarmActionInfo,
+        normalizeAlarmOptions,
+        normalizeClimatePrecisionConfig,
+    } = accessOptions;
+    const {
+        actionCardIsOptionSelect,
+        normalizeSavedConfigActionFields,
+        normalizeActionOptions,
+        normalizeSwitchConfirmationOptions,
+    } = confirmationOptions;
     // ── Subpage helpers ────────────────────────────────────────────────────
     function normalizeWithRegisteredCardType(this: any, b?: any) {
-        if (!b || typeof BUTTON_TYPES === "undefined")
+        if (!b)
             return false;
         if (b.type === "action" || b.type === "lawn_mower")
             return false;
-        var typeDef: any = BUTTON_TYPES[b.type || ""];
+        var typeDef: any = cardRegistry.definitions[b.type || ""];
         if (!typeDef || typeof typeDef.normalizeConfig !== "function")
             return false;
         typeDef.normalizeConfig(b);
@@ -44,10 +180,10 @@ export function installConfigCodecModule(): GlobalDescriptors {
         return !!(b && b.type === "image");
     }
     function cardSupportsPortraitLargeSize(this: any, b?: any) {
-        return (cardRequiresSquareSize(b) || cardSupportsMaxSize(b)) && GRID_ROWS >= 4 && GRID_COLS >= 3;
+        return (cardRequiresSquareSize(b) || cardSupportsMaxSize(b)) && layout.gridRows >= 4 && layout.gridCols >= 3;
     }
     function cardSupportsLandscapeLargeSize(this: any, b?: any) {
-        return cardSupportsMaxSize(b) && GRID_ROWS >= 3 && GRID_COLS >= 4;
+        return cardSupportsMaxSize(b) && layout.gridRows >= 3 && layout.gridCols >= 4;
     }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
@@ -495,7 +631,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         else if (type === "subpage") {
             options = normalizeSubpageOptions(options, sensor, precision);
         }
-        else if (type === "webhook" && typeof normalizeWebhookConfig === "function") {
+        else if (type === "webhook") {
             var webhookButton: any = EspControlModel.cloneCardConfig(b || {});
             normalizeWebhookConfig(webhookButton);
             sensor = webhookButton.sensor;
@@ -765,7 +901,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (pending) {
             if (combined !== pending) {
                 if (state.editingSubpage === slot)
-                    scheduleRender();
+                    renderQueue.schedule();
                 return;
             }
             delete state.subpageSavePending[slot];
@@ -776,7 +912,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (state.editingSubpage === slot && localHasData) {
             var localSerialized: any = serializeSubpageConfig(local);
             if (combined !== localSerialized) {
-                scheduleRender();
+                renderQueue.schedule();
                 return;
             }
         }
@@ -793,7 +929,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
             delete state.subpages[slot];
         }
         if (state.editingSubpage === slot) {
-            scheduleRender();
+            renderQueue.schedule();
         }
     }
     function getSubpage(this: any, homeSlot?: any) {
@@ -808,7 +944,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         return subpage;
     }
     function buildSubpageGrid(this: any, sp?: any) {
-        var result: any = EspControlModel.buildSubpageGrid(sp, NUM_SLOTS, GRID_COLS);
+        var result: any = EspControlModel.buildSubpageGrid(sp, layout.numSlots, layout.gridCols);
         sp.grid = result.grid;
         sp.sizes = result.sizes;
         return sp.grid;
@@ -862,7 +998,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
             if (opts && opts.post)
                 opts.post(this.value);
             else
-                postText(postName, this.value);
+                requests().postText(postName, this.value);
             if (opts && opts.rerender)
                 renderPreview();
         });
@@ -871,60 +1007,64 @@ export function installConfigCodecModule(): GlobalDescriptors {
                 this.blur();
         });
     }
-    return {
-        "normalizeWithRegisteredCardType": staticGlobal(normalizeWithRegisteredCardType),
-        "normalizeButtonConfig": staticGlobal(normalizeButtonConfig),
-        "cardRequiresSquareSize": staticGlobal(cardRequiresSquareSize),
-        "cardSupportsMaxSize": staticGlobal(cardSupportsMaxSize),
-        "cardSupportsPortraitLargeSize": staticGlobal(cardSupportsPortraitLargeSize),
-        "cardSupportsLandscapeLargeSize": staticGlobal(cardSupportsLandscapeLargeSize),
-        "normalizeCardSizeForConfig": staticGlobal(normalizeCardSizeForConfig),
-        "isBrightnessSliderType": staticGlobal(isBrightnessSliderType),
-        "isFanCardType": staticGlobal(isFanCardType),
-        "isClimateCardType": staticGlobal(isClimateCardType),
-        "isOptionSelectType": staticGlobal(isOptionSelectType),
-        "fanCardDefaultIcon": staticGlobal(fanCardDefaultIcon),
-        "buttonConfigChangedByNormalize": staticGlobal(buttonConfigChangedByNormalize),
-        "trimConfigFields": staticGlobal(trimConfigFields),
-        "buttonConfigFields": staticGlobal(buttonConfigFields),
-        "encodeConfigField": staticGlobal(encodeConfigField),
-        "decodeConfigField": staticGlobal(decodeConfigField),
-        "legacyButtonConfigSafe": staticGlobal(legacyButtonConfigSafe),
-        "serializeButtonConfig": staticGlobal(serializeButtonConfig),
-        "parseRawButtonConfig": staticGlobal(parseRawButtonConfig),
-        "parseButtonConfig": staticGlobal(parseButtonConfig),
-        "hasLegacySliderDirection": staticGlobal(hasLegacySliderDirection),
-        "buttonConfigHasLegacySliderDirection": staticGlobal(buttonConfigHasLegacySliderDirection),
-        "buttonConfigNeedsMigration": staticGlobal(buttonConfigNeedsMigration),
-        "parseBackOrderToken": staticGlobal(parseBackOrderToken),
-        "backOrderToken": staticGlobal(backOrderToken),
-        "backLabelFromOrder": staticGlobal(backLabelFromOrder),
-        "parseSubpageOrder": staticGlobal(parseSubpageOrder),
-        "subpageOrderForSerialize": staticGlobal(subpageOrderForSerialize),
-        "subpageSerializedOrder": staticGlobal(subpageSerializedOrder),
-        "parseSubpageConfig": staticGlobal(parseSubpageConfig),
-        "subpageTypeCode": staticGlobal(subpageTypeCode),
-        "subpageTypeFromCode": staticGlobal(subpageTypeFromCode),
-        "encodeSubpageField": staticGlobal(encodeSubpageField),
-        "decodeSubpageField": staticGlobal(decodeSubpageField),
-        "parseCompactSubpageConfig": staticGlobal(parseCompactSubpageConfig),
-        "subpageConfigHasLegacySliderDirection": staticGlobal(subpageConfigHasLegacySliderDirection),
-        "subpageConfigNeedsMigration": staticGlobal(subpageConfigNeedsMigration),
-        "serializeSubpageConfig": staticGlobal(serializeSubpageConfig),
-        "subpageLegacyButtonFields": staticGlobal(subpageLegacyButtonFields),
-        "subpageCompactButtonFields": staticGlobal(subpageCompactButtonFields),
-        "legacySubpageConfigSafe": staticGlobal(legacySubpageConfigSafe),
-        "serializeLegacySubpageConfig": staticGlobal(serializeLegacySubpageConfig),
-        "serializeCompactSubpageConfig": staticGlobal(serializeCompactSubpageConfig),
-        "applySubpageRaw": staticGlobal(applySubpageRaw),
-        "getSubpage": staticGlobal(getSubpage),
-        "buildSubpageGrid": staticGlobal(buildSubpageGrid),
-        "buildSubpageGridAndNormalizeOrder": staticGlobal(buildSubpageGridAndNormalizeOrder),
-        "serializeSubpageGrid": staticGlobal(serializeSubpageGrid),
-        "enterSubpage": staticGlobal(enterSubpage),
-        "exitSubpage": staticGlobal(exitSubpage),
-        "saveSubpageConfig": staticGlobal(saveSubpageConfig),
-        "subpageFirstFreeSlot": staticGlobal(subpageFirstFreeSlot),
-        "bindTextPost": staticGlobal(bindTextPost),
+    const feature = {
+        normalizeWithRegisteredCardType,
+        normalizeButtonConfig,
+        cardRequiresSquareSize,
+        cardSupportsMaxSize,
+        cardSupportsPortraitLargeSize,
+        cardSupportsLandscapeLargeSize,
+        normalizeCardSizeForConfig,
+        isBrightnessSliderType,
+        isFanCardType,
+        isClimateCardType,
+        isOptionSelectType,
+        fanCardDefaultIcon,
+        buttonConfigChangedByNormalize,
+        trimConfigFields,
+        buttonConfigFields,
+        encodeConfigField,
+        decodeConfigField,
+        legacyButtonConfigSafe,
+        serializeButtonConfig,
+        parseRawButtonConfig,
+        parseButtonConfig,
+        hasLegacySliderDirection,
+        buttonConfigHasLegacySliderDirection,
+        buttonConfigNeedsMigration,
+        parseBackOrderToken,
+        backOrderToken,
+        backLabelFromOrder,
+        parseSubpageOrder,
+        subpageOrderForSerialize,
+        subpageSerializedOrder,
+        parseSubpageConfig,
+        subpageTypeCode,
+        subpageTypeFromCode,
+        encodeSubpageField,
+        decodeSubpageField,
+        parseCompactSubpageConfig,
+        subpageConfigHasLegacySliderDirection,
+        subpageConfigNeedsMigration,
+        serializeSubpageConfig,
+        subpageLegacyButtonFields,
+        subpageCompactButtonFields,
+        legacySubpageConfigSafe,
+        serializeLegacySubpageConfig,
+        serializeCompactSubpageConfig,
+        applySubpageRaw,
+        getSubpage,
+        buildSubpageGrid,
+        buildSubpageGridAndNormalizeOrder,
+        serializeSubpageGrid,
+        enterSubpage,
+        exitSubpage,
+        saveSubpageConfig,
+        subpageFirstFreeSlot,
+        bindTextPost,
+        connectRequestApi,
     };
+    return feature;
 }
+
+export type ConfigCodecFeature = ReturnType<typeof createConfigCodecFeature>;

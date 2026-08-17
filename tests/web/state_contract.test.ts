@@ -118,7 +118,6 @@ export function runStateContractTests(): void {
     coverArtHideExternalInput: "switch-screen_saver__hide_cover_art_on_external_input",
     homeAssistantArtworkProtocol: "select-home_assistant_artwork_protocol",
     homeAssistantArtworkPort: "number-home_assistant_artwork_port",
-    homeAssistantArtworkBaseUrl: "text-home_assistant_artwork_base_url",
     scheduleTrigger: "text-screen__schedule_trigger",
     scheduleSensorActivation: "select-screen__schedule_sensor_activation",
     scheduleWakeTimeout: "number-screen__schedule_wake_timeout",

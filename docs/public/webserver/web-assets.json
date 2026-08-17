@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "bundles": [
     {
-      "id": "803165937a9b3413c02ffa88319932a1049691f0e2c7c0830270f865132c1c1e",
-      "sha256": "803165937a9b3413c02ffa88319932a1049691f0e2c7c0830270f865132c1c1e",
-      "path": "bundles/803165937a9b3413c02ffa88319932a1049691f0e2c7c0830270f865132c1c1e/www.js",
+      "id": "beb423816410ed9e71e543bf8381468c21648e6f3a727195774a21f525be7ef7",
+      "sha256": "beb423816410ed9e71e543bf8381468c21648e6f3a727195774a21f525be7ef7",
+      "path": "bundles/beb423816410ed9e71e543bf8381468c21648e6f3a727195774a21f525be7ef7/www.js",
       "deviceProfiles": [
         "guition-esp32-p4-jc1060p470",
         "guition-esp32-p4-jc4880p443",
@@ -15,11 +15,11 @@
       ],
       "firmwareVersions": [
         "dev",
+        "v2.8.1",
+        "v2.8.0",
         "v2.7.1",
         "v2.7.0",
-        "v2.6.3",
-        "v2.6.2",
-        "v2.6.1"
+        "v2.6.3"
       ],
       "webAssetVersion": 1
     }

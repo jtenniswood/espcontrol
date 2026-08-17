@@ -267,7 +267,7 @@ inline void media_driver_bind_cover_art_route(
         art->entity_id.clear();
       } else {
         art->entity_id = next_entity;
-        image_card_request_media_artwork(art);
+        image_card_schedule_media_artwork_refresh(art);
       }
     }
 

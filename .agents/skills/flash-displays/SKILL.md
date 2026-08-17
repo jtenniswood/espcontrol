@@ -96,10 +96,13 @@ Never display the secrets file, include its contents in command output, or add i
 
 ## Commands
 
-Use this substitution so ESPHome builds from the local repository checkout:
+Use the project wrapper so a flash always uses the ESPHome version pinned by
+`.github/esphome.env`. It stops before compiling if the installed executable is
+older or newer than the release version. The wrapper also builds from the local
+repository checkout:
 
 ```bash
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run <yaml-file> --device <target> --no-logs
+python3 scripts/local_esphome.py <yaml-file> run --device <target> --no-logs
 ```
 
 Run from the appropriate config directory:
@@ -107,43 +110,43 @@ Run from the appropriate config directory:
 ```bash
 # 7-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.102 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.102 --no-logs
 
 # 7-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 10-inch P4 V1 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.103 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.103 --no-logs
 
 # 10-inch P4 V1 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 4-inch P4 / P4-86 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/esp32-p4-86
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.104 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.104 --no-logs
 
 # 4-inch P4 / P4-86 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/esp32-p4-86
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 4.3-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.101 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.101 --no-logs
 
 # 4.3-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 4-inch S3 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.105 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.105 --no-logs
 
 # 4-inch S3 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 ```
 
 ## Reporting

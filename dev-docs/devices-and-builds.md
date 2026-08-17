@@ -1,12 +1,12 @@
 # Devices and Builds
 
-Device support is authored in `devices/catalog.json` plus per-device ESPHome YAML
+Device support is authored in `product/v2/device_catalog.json` plus per-device ESPHome YAML
 under `devices/<slug>/`. `devices/manifest.json` is a generated, committed
 compatibility copy for existing tools.
 
 ## Device Catalog and Compatibility Manifest
 
-`devices/catalog.json` defines:
+`product/v2/device_catalog.json` defines:
 
 - public name and docs path
 - screen size, resolution, and orientation
@@ -176,7 +176,7 @@ Per-device `platformio_options.build_src_flags` should stay even narrower:
 
 ## Adding a Device Checklist
 
-1. Add the device entry in `devices/catalog.json` and regenerate `devices/manifest.json`.
+1. Add the device entry in `product/v2/device_catalog.json` and regenerate `devices/manifest.json`.
 2. Add per-device YAML under `devices/<slug>/`.
 3. Confirm all required font roles exist.
 4. Confirm slot count equals `layout.cols * layout.rows`.

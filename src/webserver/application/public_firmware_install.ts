@@ -1,6 +1,45 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installPublicFirmwareInstallModule(): GlobalDescriptors {
+import type { DeviceApi } from "../api/device_api";
+import {
+    firmwareInfoFromPublicManifest,
+    firmwareInfosFromPublicVersions,
+    firmwareVersionsSame,
+    isSpecificFirmwareVersion,
+    publicFirmwareManifestUrl,
+    publicFirmwareVersionsUrl,
+} from "./firmware_metadata";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { AppEventsFeature } from "./app_events";
+
+export interface PublicFirmwareInstallFeature {
+    ensurePublicFirmwareOtaUrl(info?: any): Promise<any>;
+    publicFirmwareOtaFilename(info?: any): string;
+    installPublicFirmwareViaWebOta(info?: any): Promise<any>;
+    waitForFirmwareRestart(): void;
+    failPublicFirmwareUpload(message?: any): void;
+}
+
+export function createPublicFirmwareInstallFeature(
+    deviceApi: DeviceApi,
+    deviceId: string,
+    firmwareUpdate: FirmwareUpdateFeature,
+    shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
+    requestApi: Pick<ApplicationApiFeature, "getJsonQuietly">,
+    appEvents: Pick<AppEventsFeature, "connect">,
+): PublicFirmwareInstallFeature {
+    const { setConfigLocked, showBanner } = shell;
+    const {
+        selectedInfo: selectedFirmwareInfo,
+        setPublicVersions: setPublicFirmwareVersions,
+        infoForVersion: firmwareInfoForVersion,
+        setPublicInfo: setPublicFirmwareInfo,
+        clearWebOtaFallback: clearFirmwareWebOtaFallback,
+        renderStatus: renderFirmwareUpdateStatus,
+        startInstallRefresh: startFirmwareInstallRefresh,
+        stopInstallRefresh: stopFirmwareInstallRefresh,
+    } = firmwareUpdate;
     // ── Public Firmware Web OTA ────────────────────────────────────────────
     function ensurePublicFirmwareOtaUrl(this: any, info?: any) {
         info = info || selectedFirmwareInfo();
@@ -9,13 +48,13 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
             return Promise.resolve(info.ota_url);
         if (!isSpecificFirmwareVersion(requestedVersion) && state.firmwareOtaUrl)
             return Promise.resolve(state.firmwareOtaUrl);
-        return getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
+        return requestApi.getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
             setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
         }).then(function (this: any) {
             info = firmwareInfoForVersion(requestedVersion);
             if (info && info.ota_url)
                 return info.ota_url;
-            return getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
+            return requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
             }).then(function (this: any) {
                 info = firmwareInfoForVersion(requestedVersion);
@@ -25,13 +64,13 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
     }
     function publicFirmwareOtaFilename(this: any, info?: any) {
         return info && info.ota_filename ? info.ota_filename :
-            (state.firmwareOtaFilename || (DEVICE_ID + ".ota.bin"));
+            (state.firmwareOtaFilename || (deviceId + ".ota.bin"));
     }
     function installPublicFirmwareViaWebOta(this: any, info?: any) {
         info = info || selectedFirmwareInfo();
         var installingLatest: any = !info ||
             firmwareVersionsSame(info.latest_version, state.firmwareLatestVersion);
-        return getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
+        return requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
             if (installingLatest)
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
         }).then(function (this: any) {
@@ -56,7 +95,7 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
             return ensurePublicFirmwareOtaUrl(info).then(function (this: any, otaUrl?: any) {
                 if (!otaUrl)
                     throw new Error("Firmware file is not available yet.");
-                return _deviceApi.request(otaUrl, { cache: "no-store" });
+                return deviceApi.request(otaUrl, { cache: "no-store" });
             }).then(function (this: any, result?: any) {
                 if (result.kind === "network-error")
                     throw result.error;
@@ -69,7 +108,7 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
                 var form: any = new FormData();
                 form.append("file", blob, filename);
                 uploadStarted = true;
-                return _deviceApi.request("/update", { method: "POST", body: form });
+                return deviceApi.request("/update", { method: "POST", body: form });
             }).then(function (this: any, result?: any) {
                 if (result.kind === "network-error")
                     throw result.error;
@@ -103,7 +142,7 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
         renderFirmwareUpdateStatus();
         setConfigLocked(true, "Waiting for device to restart\u2026");
         showBanner("Firmware uploaded. Waiting for device to restart\u2026", "offline");
-        setTimeout(connectEvents, 5000);
+        setTimeout(appEvents.connect, 5000);
     }
     function failPublicFirmwareUpload(this: any, message?: any) {
         var reason: any = message || "Could not upload firmware update.";
@@ -114,10 +153,10 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
         showBanner(reason, "error");
     }
     return {
-        "ensurePublicFirmwareOtaUrl": staticGlobal(ensurePublicFirmwareOtaUrl),
-        "publicFirmwareOtaFilename": staticGlobal(publicFirmwareOtaFilename),
-        "installPublicFirmwareViaWebOta": staticGlobal(installPublicFirmwareViaWebOta),
-        "waitForFirmwareRestart": staticGlobal(waitForFirmwareRestart),
-        "failPublicFirmwareUpload": staticGlobal(failPublicFirmwareUpload),
+        ensurePublicFirmwareOtaUrl,
+        publicFirmwareOtaFilename,
+        installPublicFirmwareViaWebOta,
+        waitForFirmwareRestart,
+        failPublicFirmwareUpload,
     };
 }

@@ -38,10 +38,11 @@
     "docs-build"
   ],
   "release": [
-    "generated", "device-manifest-output", "product-schema", "product-model-v2", "product-snapshot",
+    "firmware-tests", "web-unit", "generated", "device-manifest-output", "product-schema", "product-model-v2", "product-snapshot",
     "backup-contract", "model-contract", "state-contract", "device-api", "preview-features",
-    "web-smoke", "web-asset-manifest", "firmware-card-runtime",
-    "firmware-release", "device-profiles", "release-confidence", "release-changelog",
-    "card-contract-outputs", "card-runtime-coverage", "device-slots", "public-firmware-script", "release-contract", "docs-build"
+    "web-smoke", "web-asset-manifest", "saved-config-parity", "firmware-card-runtime",
+    "firmware-release", "device-matrix", "device-profiles", "release-confidence", "release-changelog",
+    "card-contract-outputs", "card-runtime-coverage", "device-slots", "public-firmware-script", "release-contract", "docs-build",
+    "web-browser-smoke"
   ]
 }

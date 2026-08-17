@@ -291,6 +291,9 @@ touchscreen:
     id: my_touchscreen
     reset_pin: GPIO22
     interrupt_pin: GPIO21
+    # The controller signals a press reliably but may not interrupt again when
+    # the finger lifts. Poll briefly to deliver LVGL's release/click event.
+    touch_timeout: 50ms
     transform:
       swap_xy: false
       mirror_x: true

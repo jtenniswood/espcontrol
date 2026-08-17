@@ -275,11 +275,14 @@ inline ClockBarVisibility clock_bar_resolve_visibility(
     espcontrol::DisplayMode display_mode,
     bool schedule_inactive) {
   ClockBarVisibility result;
-  // Full-screen screensavers hide the clock bar, but the grid should keep the
-  // same top padding so waking does not briefly resize the cards.
+  // Full-screen screensavers hide the clock bar, but the dimmed screensaver
+  // keeps the normal UI visible and should preserve its complete clock bar.
+  // Keep the same top padding in hidden modes so waking does not briefly
+  // resize the cards.
   result.reserve_space = enabled && !schedule_inactive;
   result.visible = result.reserve_space &&
-      display_mode == espcontrol::DisplayMode::ACTIVE &&
+      (display_mode == espcontrol::DisplayMode::ACTIVE ||
+       display_mode == espcontrol::DisplayMode::DIMMED) &&
       clock_bar_active_on_button_grid_page(main_page_obj);
   return result;
 }

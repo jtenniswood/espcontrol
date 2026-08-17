@@ -475,6 +475,17 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
+        callback_body = function_body(text, "image_card_bind_callbacks")
+        callback_guards = (
+            "callbacks_bound_image != bound_image",
+            "has_on_finished_callbacks()",
+            "has_on_error_callbacks()",
+            "ctx->image == bound_image",
+        )
+        if callback_body is None or any(guard not in callback_body for guard in callback_guards):
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: rebind image completion callbacks after image-card lifecycle changes"
+            )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")
@@ -1423,6 +1434,24 @@ inline void setup_light_temp_visual() {
         (
             {
                 "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("rebind image completion callbacks after image-card lifecycle changes",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void image_card_bind_callbacks(ImageCardCtx *ctx) {\n"
+                    "  auto *bound_image = ctx->image;\n"
+                    "  bool changed = ctx->callbacks_bound_image != bound_image;\n"
+                    "  if (changed || !bound_image->has_on_finished_callbacks()) {\n"
+                    "    if (ctx->image == bound_image) {}\n"
+                    "  }\n"
+                    "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
+                    "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"

@@ -356,23 +356,35 @@ script:
             - script.execute: hide_clock_view
           else:
             - script.execute: hide_clock_view
-            - delay: 100ms
-            - lambda: |-
-                if (!id(espcontrol_app).display().transition_is_current(
-                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
-                  id(display_mode_effect_active).stop();
-                }
+            # The cover-art overlay is already hidden before this effect runs.
+            # Do not hold the controls screen for the clock-screen settling
+            # delay: the large artwork has just triggered a full redraw and a
+            # direct hand-off makes the dismissal feel substantially quicker.
+            - if:
+                condition:
+                  lambda: 'return previous_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - delay: 100ms
+                  - lambda: |-
+                      if (!id(espcontrol_app).display().transition_is_current(
+                            static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
+                        id(display_mode_effect_active).stop();
+                      }
             - if:
                 condition:
                   lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
                 then:
                   - script.execute: navigate_after_api
-            - delay: 50ms
-            - lambda: |-
-                if (!id(espcontrol_app).display().transition_is_current(
-                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
-                  id(display_mode_effect_active).stop();
-                }
+            - if:
+                condition:
+                  lambda: 'return previous_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - delay: 50ms
+                  - lambda: |-
+                      if (!id(espcontrol_app).display().transition_is_current(
+                            static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
+                        id(display_mode_effect_active).stop();
+                      }
             - script.execute: clock_bar_apply
             - script.execute: backlight_apply_brightness
 
@@ -946,15 +958,19 @@ script:
 
   # Home Assistant exposes the physical backlight as a light entity. Treat an
   # OFF command as persistent manual sleep whenever another visible display
-  # mode is active. Internal automatic and scheduled OFF transitions already
-  # target DISPLAY_OFF, so they must not create a manual-sleep request.
+  # mode is active. Ignore restored OFF state during component setup: it is not
+  # a user command and can otherwise put the controller into MANUAL_SLEEP while
+  # the boot sequence turns the physical backlight back on. Internal automatic
+  # and scheduled OFF transitions already target DISPLAY_OFF, so they must not
+  # create a manual-sleep request.
   - id: display_backlight_handle_off
     mode: restart
     then:
       - if:
           condition:
             lambda: |-
-              return !id(espcontrol_app).display().target_mode_is(
+              return App.is_setup_complete() &&
+                     !id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::DISPLAY_OFF);
           then:
             - script.execute: screen_schedule_manual_sleep
@@ -1285,8 +1301,6 @@ script:
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED);
           then:
             - lvgl.resume:
-            - script.execute: clock_bar_hide
-            - script.wait: clock_bar_hide
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED)) {
@@ -1296,6 +1310,7 @@ script:
             - lambda: 'refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));'
             - lvgl.widget.show: dim_screensaver_touch_guard
             - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'
+            - script.execute: clock_bar_apply
             - script.execute:
                 id: backlight_note_internal_brightness
                 brightness: !lambda 'return id(screensaver_dimmed_target_level);'

@@ -1,6 +1,74 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installSettingsPageModule(): GlobalDescriptors {
+import { NTP_SERVER_DEFAULTS } from "../state/app_state";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+import {
+    normalizeBrightnessMode,
+    normalizeLanguage,
+    normalizeTemperatureUnit,
+    normalizeTimeOfDay,
+} from "../model/settings";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { CoreFeature } from "./core";
+import type { ApplicationLayoutState } from "./application_context";
+import { appendLanguageOption, languageOptionsWithFallback } from "./language_state";
+import { hasCustomNtpServers, resetNtpServersToDefaults, syncNtpServerUi } from "./ntp_state";
+import { syncIdleUi } from "./idle_state";
+import { getActiveScreensaverMode } from "./screensaver_state";
+import type { EnvironmentStateFeature } from "./environment_state";
+import type { ScreenScheduleStateFeature } from "./screen_schedule_state";
+import type { ScreensaverTimeoutFeature } from "./screensaver_timeout";
+import type { ScreenRotationFeature } from "./screen_rotation_state";
+import type { AppearanceFeature } from "./appearance_state";
+import type { ClockBarFeature } from "./clock_bar_state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
+import type { ScreenSchedulePostApiFeature } from "./screen_schedule_post_api";
+import type { ClockBarPostApiFeature } from "./clock_bar_post_api";
+import type { ControlsFieldsFeature } from "./controls_fields";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+import type { SettingsScheduleSectionFeature } from "./settings_schedule_section";
+import type { SettingsCoverArtSectionFeature } from "./settings_cover_art_section";
+import type { SettingsSystemSectionFeature } from "./settings_system_section";
+import type { PreviewRenderFeature } from "./preview_render";
+
+export interface SettingsPageFeature {
+    buildSettingsPage(...args: any[]): any;
+}
+
+export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindTextPost">, runtime: UiRuntimeState, core: Pick<CoreFeature, "syncPreviewOrientation">, layout: ApplicationLayoutState, environment: EnvironmentStateFeature, schedule: ScreenScheduleStateFeature, screensaverTimeout: ScreensaverTimeoutFeature, screenRotation: ScreenRotationFeature, appearance: AppearanceFeature, clockBar: ClockBarFeature, entityState: Pick<EntityStateFeature, "entityName" | "entityInput">, shell: Pick<ControlsShellFeature, "createActionButton" | "buildApplyBar">, requestApi: Pick<ApplicationApiFeature, "postText" | "postSelect" | "postScreensaverMode" | "postScreensaverTimeout" | "postHomeScreenTimeout">, statusPreview: Pick<AppStatusPreviewFeature, "appendTimezoneOption" | "syncInput" | "updateClock" | "updateSunInfo" | "updateTempPreview">, artworkPostApi: Pick<ArtworkPostApiFeature, "postPresenceSensorEntity">, schedulePostApi: Pick<ScreenSchedulePostApiFeature, "postBrightnessMode" | "postDisplayBacklightBrightness" | "postBrightnessDawnTime" | "postBrightnessDuskTime">, clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBar" | "postClockBarNightMode" | "postBatteryStatus" | "postVoiceServices">, fields: Pick<ControlsFieldsFeature, "colorField" | "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "segmentControl" | "selectField" | "textInput" | "toggleRow">, helpers: Pick<SettingsPageHelpersFeature, "appendSettingsSection" | "buildAlarmDelayAudioSettingsCard" | "createScreensaverThenControls" | "createTimeInput" | "statusBadge" | "syncClockScreensaverControls" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">, scheduleSection: SettingsScheduleSectionFeature, coverArtSection: SettingsCoverArtSectionFeature, systemSection: SettingsSystemSectionFeature, preview: Pick<PreviewRenderFeature, "render">): SettingsPageFeature {
+    const { render: renderPreview } = preview;
+    const { appendSettingsSection, buildAlarmDelayAudioSettingsCard, createScreensaverThenControls, createTimeInput, statusBadge, syncClockScreensaverControls, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = helpers;
+    const { buildScreenScheduleSettingsCard } = scheduleSection;
+    const { buildCoverArtSettingsCard } = coverArtSection;
+    const { buildSystemSettingsCards } = systemSection;
+    const { colorField, condField, createRangeSlider, fieldLabel, makeCollapsibleCard, segmentControl, selectField, textInput, toggleRow } = fields;
+    const { createActionButton, buildApplyBar } = shell;
+    const { entityName, entityInput } = entityState;
+    const { postText, postSelect, postScreensaverMode, postScreensaverTimeout, postHomeScreenTimeout } = requestApi;
+    const { bindTextPost } = codec;
+    const { appendTimezoneOption, syncInput, updateClock, updateSunInfo, updateTempPreview } = statusPreview;
+    const { syncPreviewOrientation } = core;
+    const { postPresenceSensorEntity } = artworkPostApi;
+    const { postBrightnessMode, postDisplayBacklightBrightness, postBrightnessDawnTime, postBrightnessDuskTime } = schedulePostApi;
+    const { postClockBar, postClockBarNightMode, postBatteryStatus, postVoiceServices } = clockBarPostApi;
+    const els = runtime.els;
+    const { timezoneOptionsWithFallback, voiceServicesUiState, setVoiceServicesEnabled } = environment;
+    const { syncUi: syncScreenScheduleUi } = schedule;
+    const { syncUi: syncScreensaverTimeoutUi } = screensaverTimeout;
+    const { normalize: normalizeScreenRotation, activeOptions: activeScreenRotationOptions, appendOption: appendScreenRotationOption } = screenRotation;
+    const { resetColors: resetAppearanceColors } = appearance;
+    const {
+        controllerState: clockBarControllerState,
+        applyControllerState: applyClockBarControllerState,
+        setEnabled: setClockBarEnabled,
+        setNightModeEnabled,
+        syncUi: syncClockBarUi,
+        syncTemperatureUi,
+    } = clockBar;
     // ── Settings Page ──────────────────────────────────────────────────────
     function buildSettingsPage(this: any, parent?: any) {
         var page: any = document.createElement("div");
@@ -157,7 +225,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
                 postText(entityName("screen_ntp_server_2"), state.ntpServer2);
                 postText(entityName("screen_ntp_server_3"), state.ntpServer3);
             }
-            syncNtpServerUi();
+            syncNtpServerUi(runtime, syncInput);
         });
         var ntpList: any = document.createElement("div");
         ntpList.className = "sp-field-stack";
@@ -170,7 +238,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
                 this.value = value;
                 state[stateKey] = value;
                 state.customNtpServers = true;
-                syncNtpServerUi();
+                syncNtpServerUi(runtime, syncInput);
                 postText(postName, value);
             });
             input.addEventListener("keydown", function (this: any, e?: any) {
@@ -184,7 +252,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.setNtpServer2 = addNtpServerInput("sp-set-ntp-server-2", "ntpServer2", entityName("screen_ntp_server_2"), NTP_SERVER_DEFAULTS[1], "NTP Server 2");
         els.setNtpServer3 = addNtpServerInput("sp-set-ntp-server-3", "ntpServer3", entityName("screen_ntp_server_3"), NTP_SERVER_DEFAULTS[2], "NTP Server 3");
         ntpField.appendChild(ntpList);
-        syncNtpServerUi();
+        syncNtpServerUi(runtime, syncInput);
         clockBody.appendChild(ntpField);
         var timeSettingsCard: any = makeCollapsibleCard("Time", clockBody, true);
         var clockBarBody: any = document.createElement("div");
@@ -201,7 +269,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         clockBarBody.appendChild(clockBarNightMode.row);
         els.setClockBarNightModeToggle = clockBarNightMode.input;
         clockBarNightMode.input.addEventListener("change", function (this: any) {
-            applyClockBarControllerState(_clockBarController.setNightModeEnabled(clockBarControllerState(), this.checked));
+            setNightModeEnabled(this.checked);
             syncClockBarUi();
             postClockBarNightMode(state.clockBarNightModeOn);
         });
@@ -217,7 +285,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             voiceServicesBody.appendChild(voiceServices.row);
             els.setVoiceServicesToggle = voiceServices.input;
             voiceServices.input.addEventListener("change", function (this: any) {
-                applyVoiceServicesState(_voiceServicesController.setEnabled(voiceServicesState(), this.checked));
+                setVoiceServicesEnabled(this.checked);
                 syncClockBarUi();
                 postVoiceServices(state.voiceServicesOn);
             });
@@ -225,7 +293,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             els.voiceServicesCard = voiceServicesCard;
         }
         var batteryStatusCard: any = null;
-        if (CFG.features && CFG.features.battery) {
+        if (layout.config.features && layout.config.features.battery) {
             var batteryStatusBody: any = document.createElement("div");
             var batteryStatus: any = toggleRow("Enable battery support", "sp-set-battery-status", state.batteryStatusOn);
             batteryStatusBody.appendChild(batteryStatus.row);
@@ -243,7 +311,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         }
         var alarmDelayAudioCard: any = buildAlarmDelayAudioSettingsCard();
         var rotationCard: any = null;
-        if (CFG.features && CFG.features.screenRotation) {
+        if (layout.config.features && layout.config.features.screenRotation) {
             var rotationBody: any = document.createElement("div");
             var rotField: any = document.createElement("div");
             rotField.className = "sp-field";
@@ -322,7 +390,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         timerPanel.appendChild(timeoutControl.field);
         var timerClockControls: any = createScreensaverThenControls("sp-set-clock-mode");
         timerPanel.appendChild(timerClockControls.clockField);
-        if (CFG.features && CFG.features.cameraScreensaver)
+        if (layout.config.features && layout.config.features.cameraScreensaver)
             timerPanel.appendChild(timerClockControls.cameraField);
         timerPanel.appendChild(timerClockControls.dimBrightnessField);
         timerPanel.appendChild(timerClockControls.brightnessField);
@@ -360,7 +428,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
         });
         var sensorClockControls: any = createScreensaverThenControls("sp-set-sensor-clock-mode");
         sensorPanel.appendChild(sensorClockControls.clockField);
-        if (CFG.features && CFG.features.cameraScreensaver)
+        if (layout.config.features && layout.config.features.cameraScreensaver)
             sensorPanel.appendChild(sensorClockControls.cameraField);
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
@@ -427,14 +495,14 @@ export function installSettingsPageModule(): GlobalDescriptors {
         });
         hsSelect.addEventListener("change", function (this: any) {
             state.homeScreenTimeout = parseFloat(this.value) || 0;
-            syncIdleUi();
+            syncIdleUi(runtime);
             postHomeScreenTimeout(this.value);
         });
         idleBody.appendChild(hsSelect);
         els.setHSTimeout = hsSelect;
         var idleBadge: any = statusBadge("Idle on");
         els.setIdleBadge = idleBadge;
-        syncIdleUi();
+        syncIdleUi(runtime);
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
         var systemSettingsCards: any = buildSystemSettingsCards();
         appendSettingsSection(config, "Display", [
@@ -470,6 +538,6 @@ export function installSettingsPageModule(): GlobalDescriptors {
         els.settingsPage = page;
     }
     return {
-        "buildSettingsPage": staticGlobal(buildSettingsPage),
+        buildSettingsPage,
     };
 }

@@ -1,5 +1,19 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installFirmwareUpdatePostApiModule(): GlobalDescriptors {
+import type { EntityStateFeature } from "./entity_state";
+import type { ApplicationApiFeature } from "./api";
+
+export interface FirmwareUpdatePostApiFeature {
+    postFirmwareUpdateInstall(): void;
+    postFirmwareUpdateCheck(): void;
+    postC6FirmwareUpdateInstall(): void;
+    postC6FirmwareUpdateCheck(): void;
+}
+
+export function createFirmwareUpdatePostApiFeature(
+    entityState: Pick<EntityStateFeature, "rememberedPostUrls" | "entityName" | "entityObjectIds" | "entityLookupNames" | "uniquePush">,
+    requestApi: Pick<ApplicationApiFeature, "post">,
+): FirmwareUpdatePostApiFeature {
+    const { rememberedPostUrls, entityName, entityObjectIds, entityLookupNames, uniquePush } = entityState;
+    const { post } = requestApi;
     // ── Firmware Update Post API ──────────────────────────────────────────
     function postFirmwareUpdateInstall(this: any) {
         var urls: any = [];
@@ -43,9 +57,9 @@ export function installFirmwareUpdatePostApiModule(): GlobalDescriptors {
         post(urls, null, "Could not check WiFi firmware update.");
     }
     return {
-        "postFirmwareUpdateInstall": staticGlobal(postFirmwareUpdateInstall),
-        "postFirmwareUpdateCheck": staticGlobal(postFirmwareUpdateCheck),
-        "postC6FirmwareUpdateInstall": staticGlobal(postC6FirmwareUpdateInstall),
-        "postC6FirmwareUpdateCheck": staticGlobal(postC6FirmwareUpdateCheck),
+        postFirmwareUpdateInstall,
+        postFirmwareUpdateCheck,
+        postC6FirmwareUpdateInstall,
+        postC6FirmwareUpdateCheck,
     };
 }

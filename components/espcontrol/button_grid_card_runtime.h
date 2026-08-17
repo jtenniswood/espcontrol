@@ -174,6 +174,37 @@ inline bool card_runtime_passive(const espcontrol::cards::Context &context) {
              context, espcontrol::card_runtime::CAPABILITY_ACTIONS);
 }
 
+// Opening a modal replaces the main card immediately, so a separate pressed
+// repaint of that card only adds work and makes the action feel slower. Keep
+// this limited to main-grid routes that actually present an overlay; toggles,
+// sliders, and transport actions retain their ordinary pressed feedback.
+inline bool card_runtime_main_click_opens_modal(
+    const espcontrol::cards::Context &context) {
+  using Driver = espcontrol::card_runtime::CardDriverId;
+  using Type = espcontrol::card_runtime::CardTypeId;
+  if (context.legacy_dispatch) {
+    return context.family == espcontrol::cards::Family::TODO;
+  }
+  switch (context.runtime.driver) {
+    case Driver::ALARM:
+    case Driver::CLIMATE:
+    case Driver::COVER_MODAL:
+    case Driver::FAN_CONTROL:
+    case Driver::IMAGE:
+    case Driver::LIGHT_CONTROL:
+    case Driver::MEDIA_CONTROL:
+    case Driver::MEDIA_GROUP:
+    case Driver::MEDIA_VOLUME:
+    case Driver::MEDIA_COVER_ART:
+    case Driver::OPTION_SELECT:
+      return true;
+    case Driver::FAN:
+      return context.runtime.type == Type::FAN_PRESET;
+    default:
+      return false;
+  }
+}
+
 inline const char *card_runtime_label(const std::string &type) {
   return card_contract_card_label(type);
 }

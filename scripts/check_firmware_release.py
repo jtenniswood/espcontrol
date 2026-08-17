@@ -170,6 +170,9 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "scripts/firmware_release.py verify-recovery" in workflow
     assert "scripts/check_release_contract.py --github-repository" in workflow
     assert "GH_TOKEN: ${{ github.token }}" in workflow
+    assert "CMake ${CMAKE_VERSION} is older than the required version 3.20" in workflow
+    assert '"cmake==3.31.10"' in workflow
+    assert "npx playwright install --with-deps chromium" in workflow
     assert str(prepare_c6_firmware.C6_RELATIVE_PATH) in workflow
     assert "path: dist/firmware/" in workflow, "publishable firmware must use the dist boundary"
 
@@ -178,11 +181,11 @@ def test_device_matrix_sparse_checkouts_include_product_model() -> None:
     required_paths = (
         "product/model_v2.json",
         "scripts/product_model_v2.py",
-        "common/assets/icons.json",
-        "common/config/card_contract.json",
-        "common/config/entity_names.json",
-        "common/config/strings.*.txt",
-        "compatibility/fixtures/product_compatibility.json",
+        "product/v2/icons.json",
+        "product/v2/card_contract.json",
+        "product/v2/entity_names.json",
+        "product/v2/translations/strings.*.txt",
+        "product/v2/product_compatibility.json",
     )
     for workflow_path in (FIRMWARE_COMPILE_WORKFLOW, NIGHTLY_FIRMWARE_WORKFLOW):
         workflow = workflow_path.read_text(encoding="utf-8")

@@ -54,12 +54,35 @@ jobs:
         with:
           node-version: 24
 
+      - name: Ensure CMake is available
+        shell: bash
+        run: |
+          if command -v cmake >/dev/null 2>&1; then
+            CMAKE_VERSION="$(cmake --version | awk 'NR == 1 { print $3 }')"
+            if python3 -c \
+              'import sys; sys.exit(0 if tuple(map(int, sys.argv[1].split(".")[:2])) >= (3, 20) else 1)' \
+              "${CMAKE_VERSION}"; then
+              cmake --version
+              exit 0
+            fi
+            echo "CMake ${CMAKE_VERSION} is older than the required version 3.20; installing the pinned fallback."
+          fi
+
+          CMAKE_VENV="${RUNNER_TEMP}/espcontrol-cmake"
+          python3 -m venv "${CMAKE_VENV}"
+          "${CMAKE_VENV}/bin/python" -m pip install --disable-pip-version-check --no-cache-dir "cmake==3.31.10"
+          echo "${CMAKE_VENV}/bin" >> "${GITHUB_PATH}"
+          "${CMAKE_VENV}/bin/cmake" --version
+
       - name: Install dependencies
         run: |
           NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
           mkdir -p "${NPM_CACHE}"
           npm ci --prefer-offline --cache "${NPM_CACHE}"
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
+
+      - name: Install browser runtime
+        run: npx playwright install --with-deps chromium
 
       - name: Run release preflight
         env:

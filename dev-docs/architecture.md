@@ -15,10 +15,10 @@ outputs. For the hard edit/rebuild/check contract, use
 
 | Area | Path | Purpose |
 |---|---|---|
-| Product profiles | `devices/catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
-| Card metadata | `common/config/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
-| Entity names | `common/config/entity_names.json` | Shared Home Assistant entity names used by firmware and the setup page. |
-| Icons | `common/assets/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
+| Product profiles | `product/v2/device_catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
+| Card metadata | `product/v2/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
+| Entity names | `product/v2/entity_names.json` | Shared Home Assistant entity names used by firmware and the setup page. |
+| Icons | `product/v2/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
 | Firmware UI | `components/espcontrol/*.h` | LVGL card grid, card renderers, modals, config parsing, Home Assistant bindings. |
 | Configuration service | `components/espcontrol/configuration_service.*` and `configuration_store.*` | One-time legacy import, compatibility dual-write, atomic two-slot storage, and generation-matched saves for browser conflict protection. It is the live production persistence path. |
 | Native panel document | `components/espcontrol/panel_config_document.h`, `panel_config_service_validator.h`, and `src/webserver/model/panel_config.ts` | Bounded, versioned `PanelConfig` binary codec shared by firmware and the browser. Its validator protects atomic service saves and loads; V1 carries current compact card strings unchanged while live storage and API migration run through the core-owned configuration service. |
@@ -88,12 +88,12 @@ also use the core-owned Home Assistant binding.
 ## Build-Time Flow
 
 ```text
-common/config/card_contract.json
+product/v2/card_contract.json
   -> src/webserver/generated/card_contract.ts
   -> components/espcontrol/button_grid_contract_generated.h
   -> docs/generated/cards/capabilities.md
 
-common/config/entity_names.json
+product/v2/entity_names.json
   -> common/config/entity_names.yaml
   -> src/webserver/generated/entity_catalog.ts
 

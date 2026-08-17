@@ -245,6 +245,11 @@ int main() {
   assert(awake_clock_bar.reserve_space);
   assert(awake_clock_bar.visible);
 
+  auto dimmed_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, espcontrol::DisplayMode::DIMMED, false);
+  assert(dimmed_clock_bar.reserve_space);
+  assert(dimmed_clock_bar.visible);
+
   auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
     true, &main_page, espcontrol::DisplayMode::CLOCK, false);
   assert(clock_screensaver_clock_bar.reserve_space);
@@ -794,7 +799,7 @@ def runtime_capability_enum_name(value: str) -> str:
 
 
 def generated_card_runtime_assertions() -> str:
-    contract = json.loads((ROOT / "common" / "config" / "card_contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "product" / "v2" / "card_contract.json").read_text(encoding="utf-8"))
     runtime = contract["runtime"]
     lines = [
         "  struct RuntimeConfig {",

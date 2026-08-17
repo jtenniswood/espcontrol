@@ -1,15 +1,47 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installConfigSensorOptionsModule(): GlobalDescriptors {
+import type { CardRegistry } from "./card_registry";
+import {
+    configOptionEnabled,
+    configOptionValue,
+    setConfigOption,
+    setConfigOptionValue,
+} from "../model/config_primitives";
+import { cardContractLargeNumbersSupported } from "../generated/card_contract";
+import { createSensorCardModeController, LOCAL_SENSOR_SOURCE } from "../features/sensor_card_mode_controller";
+import {
+    SENSOR_ACTIVE_COLOR_OPTION,
+    SENSOR_LARGE_NUMBERS_OFF_VALUE,
+    SENSOR_LARGE_NUMBERS_OPTION,
+    SENSOR_STATE_HIGH_LABEL_OPTION,
+    SENSOR_STATE_INPUT_2_OPTION,
+    SENSOR_STATE_INPUT_OPTION,
+    SENSOR_STATE_LABELS_OPTION,
+    SENSOR_STATE_LOW_LABEL_OPTION,
+    SENSOR_STATE_OUTPUT_2_OPTION,
+    SENSOR_STATE_OUTPUT_OPTION,
+    SENSOR_TIME_UNIT_OPTION,
+    cardContractOptionSupportedFor,
+    copyLargeNumbersOption,
+    largeNumbersExplicitlyDisabled,
+} from "./config_option_core";
+export function createConfigSensorOptionsFeature(cardRegistry: CardRegistry) {
+    const sensorCardLocalSource = LOCAL_SENSOR_SOURCE;
+    function sensorCardModeController(this: any) {
+        return createSensorCardModeController({
+            normalizeOptions: function (options: string, precision: string) { return normalizeSensorOptions(options, precision); },
+            localSensorSource: sensorCardLocalSource,
+        });
+    }
+    function sensorCardIsLocal(this: any, button?: any) {
+        return sensorCardModeController().isLocal(button);
+    }
     // ── Sensor Card Options ────────────────────────────────────────────
     function cardLargeNumbersSupported(this: any, b?: any) {
         if (!b)
             return false;
-        if (typeof BUTTON_TYPES !== "undefined") {
-            var typeDef: any = BUTTON_TYPES[b.type || ""];
-            var large: any = typeDef && typeDef.cardMetadata && typeDef.cardMetadata.largeNumbers;
-            if (large) {
-                return typeof large.supported === "function" ? !!large.supported(b) : large.supported !== false;
-            }
+        var typeDef: any = cardRegistry.definitions[b.type || ""];
+        var large: any = typeDef && typeDef.cardMetadata && typeDef.cardMetadata.largeNumbers;
+        if (large) {
+            return typeof large.supported === "function" ? !!large.supported(b) : large.supported !== false;
         }
         return cardContractLargeNumbersSupported(b.type, b.precision);
     }
@@ -202,36 +234,41 @@ export function installConfigSensorOptionsModule(): GlobalDescriptors {
         return out;
     }
     return {
-        "cardLargeNumbersSupported": staticGlobal(cardLargeNumbersSupported),
-        "cardLargeNumbersEnabled": staticGlobal(cardLargeNumbersEnabled),
-        "sensorLargeNumbersEnabled": staticGlobal(sensorLargeNumbersEnabled),
-        "setSensorLargeNumbersEnabled": staticGlobal(setSensorLargeNumbersEnabled),
-        "normalizeSensorTimeUnit": staticGlobal(normalizeSensorTimeUnit),
-        "sensorTimeUnit": staticGlobal(sensorTimeUnit),
-        "setSensorTimeUnit": staticGlobal(setSensorTimeUnit),
-        "sensorActiveColorEnabled": staticGlobal(sensorActiveColorEnabled),
-        "setSensorActiveColorEnabled": staticGlobal(setSensorActiveColorEnabled),
-        "sensorStateLabelsEnabled": staticGlobal(sensorStateLabelsEnabled),
-        "legacySensorStateInput": staticGlobal(legacySensorStateInput),
-        "legacySensorStateOutput": staticGlobal(legacySensorStateOutput),
-        "sensorStateInput": staticGlobal(sensorStateInput),
-        "sensorStateOutput": staticGlobal(sensorStateOutput),
-        "sensorStateInput2": staticGlobal(sensorStateInput2),
-        "sensorStateOutput2": staticGlobal(sensorStateOutput2),
-        "setSensorStateTranslation": staticGlobal(setSensorStateTranslation),
-        "setSensorStateTranslations": staticGlobal(setSensorStateTranslations),
-        "normalizeSensorOptions": staticGlobal(normalizeSensorOptions),
-        "normalizeDateTimeOptions": staticGlobal(normalizeDateTimeOptions),
-        "normalizeDoorWindowSubtype": staticGlobal(normalizeDoorWindowSubtype),
-        "doorWindowClosedIcon": staticGlobal(doorWindowClosedIcon),
-        "doorWindowOpenIcon": staticGlobal(doorWindowOpenIcon),
-        "doorWindowActiveColorEnabled": staticGlobal(doorWindowActiveColorEnabled),
-        "setDoorWindowActiveColorEnabled": staticGlobal(setDoorWindowActiveColorEnabled),
-        "normalizeDoorWindowOptions": staticGlobal(normalizeDoorWindowOptions),
-        "presenceActiveColorEnabled": staticGlobal(presenceActiveColorEnabled),
-        "setPresenceActiveColorEnabled": staticGlobal(setPresenceActiveColorEnabled),
-        "normalizePresenceOptions": staticGlobal(normalizePresenceOptions),
-        "normalizeTodoCountDisplay": staticGlobal(normalizeTodoCountDisplay),
-        "normalizeTodoOptions": staticGlobal(normalizeTodoOptions),
+        sensorCardLocalSource,
+        sensorCardModeController,
+        sensorCardIsLocal,
+        cardLargeNumbersSupported,
+        cardLargeNumbersEnabled,
+        sensorLargeNumbersEnabled,
+        setSensorLargeNumbersEnabled,
+        normalizeSensorTimeUnit,
+        sensorTimeUnit,
+        setSensorTimeUnit,
+        sensorActiveColorEnabled,
+        setSensorActiveColorEnabled,
+        sensorStateLabelsEnabled,
+        legacySensorStateInput,
+        legacySensorStateOutput,
+        sensorStateInput,
+        sensorStateOutput,
+        sensorStateInput2,
+        sensorStateOutput2,
+        setSensorStateTranslation,
+        setSensorStateTranslations,
+        normalizeSensorOptions,
+        normalizeDateTimeOptions,
+        normalizeDoorWindowSubtype,
+        doorWindowClosedIcon,
+        doorWindowOpenIcon,
+        doorWindowActiveColorEnabled,
+        setDoorWindowActiveColorEnabled,
+        normalizeDoorWindowOptions,
+        presenceActiveColorEnabled,
+        setPresenceActiveColorEnabled,
+        normalizePresenceOptions,
+        normalizeTodoCountDisplay,
+        normalizeTodoOptions,
     };
 }
+
+export type ConfigSensorOptionsFeature = ReturnType<typeof createConfigSensorOptionsFeature>;

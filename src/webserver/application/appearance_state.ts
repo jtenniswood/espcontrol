@@ -1,21 +1,35 @@
 import { state } from "../state/app_instance";
-import { staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppearanceStateModule(): GlobalDescriptors {
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+import type { UiRuntimeState } from "./state";
+
+export interface AppearanceFeature {
+    syncColorUi(): void;
+    resetColors(postChanges?: boolean): void;
+}
+
+export function createAppearanceFeature(
+    runtime: UiRuntimeState,
+    dependencies: {
+        renderPreview(): void;
+        postOnColor(value: string): void;
+    },
+): AppearanceFeature {
+    const els = runtime.els;
     // ── Appearance State ───────────────────────────────────────────────────
-    function syncColorUi(this: any) {
+    function syncColorUi() {
         if (els.setOnColor && els.setOnColor._syncColor)
             els.setOnColor._syncColor(state.onColor);
     }
-    function resetAppearanceColors(this: any, postChanges?: any) {
+    function resetColors(postChanges?: boolean) {
         state.onColor = WEB_UI_COLORS.primary;
         syncColorUi();
-        renderPreview();
+        dependencies.renderPreview();
         if (postChanges) {
-            postText(entityName("button_on_color"), state.onColor);
+            dependencies.postOnColor(state.onColor);
         }
     }
     return {
-        "syncColorUi": staticGlobal(syncColorUi),
-        "resetAppearanceColors": staticGlobal(resetAppearanceColors),
+        syncColorUi,
+        resetColors,
     };
 }

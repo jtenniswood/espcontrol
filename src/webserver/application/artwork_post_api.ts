@@ -1,5 +1,32 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installArtworkPostApiModule(): GlobalDescriptors {
+import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
+import type { EntityStateFeature } from "./entity_state";
+import type { ApplicationApiFeature } from "./api";
+export interface ArtworkPostApiFeature {
+    postPresenceSensorEntity(value?: any): any;
+    postScreensaverCameraEntity(value?: any): any;
+    postMediaPlayerSleepPrevention(on?: any): any;
+    postMediaPlayerSleepPreventionEntity(value?: any): any;
+    postCoverArtScreensaver(on?: any): any;
+    postCoverArtMediaPlayerEntity(value?: any): any;
+    postCoverArtSecondaryMediaPlayerEntity(value?: any): any;
+    postCoverArtConditions(value?: any): any;
+    coverArtHideExternalInputPostUrls(on?: any): any;
+    postCoverArtHideExternalInput(on?: any): any;
+    coverArtDelayPostUrls(value?: any): any;
+    postCoverArtDelay(value?: any): any;
+    coverArtTrackOverlayDurationPostUrls(value?: any): any;
+    postCoverArtTrackOverlayDuration(value?: any): any;
+    homeAssistantArtworkPortPostUrls(value?: any): any;
+    postHomeAssistantArtworkPort(value?: any): any;
+    postHomeAssistantArtworkProtocol(value?: any): any;
+}
+
+export function createArtworkPostApiFeature(
+    entityState: Pick<EntityStateFeature, "entityName" | "entityObjectIds" | "entityPostUrls">,
+    requestApi: Pick<ApplicationApiFeature, "post" | "postTextWithObjectIds" | "postSwitchWithObjectIds" | "postSelectWithObjectIds">,
+): ArtworkPostApiFeature {
+    const { entityName, entityObjectIds, entityPostUrls } = entityState;
+    const { post, postTextWithObjectIds, postSwitchWithObjectIds, postSelectWithObjectIds } = requestApi;
     // ── Artwork Post API ──────────────────────────────────────────────────
     function postPresenceSensorEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("presence_sensor_entity"), entityObjectIds("presence_sensor_entity"), value);
@@ -52,31 +79,23 @@ export function installArtworkPostApiModule(): GlobalDescriptors {
     function postHomeAssistantArtworkProtocol(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_protocol"), entityObjectIds("home_assistant_artwork_protocol"), normalizeHomeAssistantArtworkProtocol(value));
     }
-    function homeAssistantArtworkBaseUrlPostUrls(this: any, value?: any) {
-        return entityPostUrls("text", entityName("home_assistant_artwork_base_url"), entityObjectIds("home_assistant_artwork_base_url"), "set?value=" + encodeURIComponent(normalizeHomeAssistantArtworkBaseUrl(value)));
-    }
-    function postHomeAssistantArtworkBaseUrl(this: any, value?: any) {
-        return post(homeAssistantArtworkBaseUrlPostUrls(value));
-    }
     return {
-        "postPresenceSensorEntity": staticGlobal(postPresenceSensorEntity),
-        "postScreensaverCameraEntity": staticGlobal(postScreensaverCameraEntity),
-        "postMediaPlayerSleepPrevention": staticGlobal(postMediaPlayerSleepPrevention),
-        "postMediaPlayerSleepPreventionEntity": staticGlobal(postMediaPlayerSleepPreventionEntity),
-        "postCoverArtScreensaver": staticGlobal(postCoverArtScreensaver),
-        "postCoverArtMediaPlayerEntity": staticGlobal(postCoverArtMediaPlayerEntity),
-        "postCoverArtSecondaryMediaPlayerEntity": staticGlobal(postCoverArtSecondaryMediaPlayerEntity),
-        "postCoverArtConditions": staticGlobal(postCoverArtConditions),
-        "coverArtHideExternalInputPostUrls": staticGlobal(coverArtHideExternalInputPostUrls),
-        "postCoverArtHideExternalInput": staticGlobal(postCoverArtHideExternalInput),
-        "coverArtDelayPostUrls": staticGlobal(coverArtDelayPostUrls),
-        "postCoverArtDelay": staticGlobal(postCoverArtDelay),
-        "coverArtTrackOverlayDurationPostUrls": staticGlobal(coverArtTrackOverlayDurationPostUrls),
-        "postCoverArtTrackOverlayDuration": staticGlobal(postCoverArtTrackOverlayDuration),
-        "homeAssistantArtworkPortPostUrls": staticGlobal(homeAssistantArtworkPortPostUrls),
-        "postHomeAssistantArtworkPort": staticGlobal(postHomeAssistantArtworkPort),
-        "postHomeAssistantArtworkProtocol": staticGlobal(postHomeAssistantArtworkProtocol),
-        "homeAssistantArtworkBaseUrlPostUrls": staticGlobal(homeAssistantArtworkBaseUrlPostUrls),
-        "postHomeAssistantArtworkBaseUrl": staticGlobal(postHomeAssistantArtworkBaseUrl),
+        postPresenceSensorEntity,
+        postScreensaverCameraEntity,
+        postMediaPlayerSleepPrevention,
+        postMediaPlayerSleepPreventionEntity,
+        postCoverArtScreensaver,
+        postCoverArtMediaPlayerEntity,
+        postCoverArtSecondaryMediaPlayerEntity,
+        postCoverArtConditions,
+        coverArtHideExternalInputPostUrls,
+        postCoverArtHideExternalInput,
+        coverArtDelayPostUrls,
+        postCoverArtDelay,
+        coverArtTrackOverlayDurationPostUrls,
+        postCoverArtTrackOverlayDuration,
+        homeAssistantArtworkPortPostUrls,
+        postHomeAssistantArtworkPort,
+        postHomeAssistantArtworkProtocol,
     };
 }

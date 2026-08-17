@@ -24,8 +24,20 @@ export interface BackupWithNativeConfig {
   native_config?: PanelConfigBackupPayload;
 }
 
+export interface BackupExportController {
+  screenSizeSlug(value?: unknown): string;
+  fileDate(value: Date): string;
+  fileName(screenSize?: unknown, value?: Date): string;
+  addNativeConfig<Backup extends BackupWithNativeConfig>(
+    backup: Backup,
+    source: BackupNativeConfigSource,
+  ): Backup & { native_config: PanelConfigBackupPayload };
+}
+
 /** Owns the stable, portable pieces of the browser backup export journey. */
-export function createBackupExportController(options: BackupExportControllerOptions) {
+export function createBackupExportController(
+  options: BackupExportControllerOptions,
+): BackupExportController {
   const screenSizeSlug = (value?: unknown): string => {
     let normalized = String(value || "").trim().toLowerCase();
     if (!normalized) return "screen";

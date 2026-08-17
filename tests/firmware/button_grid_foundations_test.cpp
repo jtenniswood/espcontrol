@@ -243,6 +243,25 @@ int main() {
         espcontrol::card_runtime::CardDriverId::ACTION) {
     return EXIT_FAILURE;
   }
+  // Modal-opening cards skip the temporary pressed-card repaint. Direct
+  // actions retain it so their interaction feedback remains unchanged.
+  if (!card_runtime_main_click_opens_modal(alarm) ||
+      !card_runtime_main_click_opens_modal(climate) ||
+      !card_runtime_main_click_opens_modal(cover_modal) ||
+      !card_runtime_main_click_opens_modal(fan_control) ||
+      !card_runtime_main_click_opens_modal(fan_preset) ||
+      !card_runtime_main_click_opens_modal(image) ||
+      !card_runtime_main_click_opens_modal(light_control) ||
+      !card_runtime_main_click_opens_modal(media_control) ||
+      !card_runtime_main_click_opens_modal(media_volume) ||
+      !card_runtime_main_click_opens_modal(media_cover_art) ||
+      !card_runtime_main_click_opens_modal(option_select) ||
+      card_runtime_main_click_opens_modal(media_play_pause) ||
+      card_runtime_main_click_opens_modal(media_transport) ||
+      card_runtime_main_click_opens_modal(media_position) ||
+      card_runtime_main_click_opens_modal(slider)) {
+    return EXIT_FAILURE;
+  }
   const auto todo = card_runtime_context("todo");
   if (!todo.known || todo.family != Family::TODO || !todo.allow_in_subpage ||
       !card_runtime_has_capability(

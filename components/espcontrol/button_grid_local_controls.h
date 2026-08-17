@@ -189,17 +189,22 @@ class LocalActionHandler : public esphome::web_server_idf::AsyncWebHandler {
   }
 };
 
-inline void register_local_action_endpoint() {
+inline void register_local_action_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
+  server.addHandler(new LocalActionHandler());
+  registered = true;
+  ESP_LOGI("espcontrol", "Local action endpoint registered");
+}
+
+inline void register_local_action_endpoint() {
   auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
+  if (server == nullptr) {
     ESP_LOGW("espcontrol", "register_local_action_endpoint: server not ready");
     return;
   }
-  server->addHandler(new LocalActionHandler());
-  registered = true;
-  ESP_LOGI("espcontrol", "Local action endpoint registered");
+  register_local_action_endpoint(*server);
 }
 
 class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
@@ -255,17 +260,22 @@ class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
   }
 };
 
-inline void register_local_sensor_endpoint() {
+inline void register_local_sensor_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
+  server.addHandler(new LocalSensorHandler());
+  registered = true;
+  ESP_LOGI("sensors", "Local sensor endpoint registered");
+}
+
+inline void register_local_sensor_endpoint() {
   auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
+  if (server == nullptr) {
     ESP_LOGW("sensors", "register_local_sensor_endpoint: server not ready");
     return;
   }
-  server->addHandler(new LocalSensorHandler());
-  registered = true;
-  ESP_LOGI("sensors", "Local sensor endpoint registered");
+  register_local_sensor_endpoint(*server);
 }
 #endif  // USE_WEBSERVER
 

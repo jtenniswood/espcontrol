@@ -1,21 +1,82 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-import { createCardEditorDraftController } from "../features/card_editor_draft_controller";
-import { createCardEditorValidationController } from "../features/card_editor_validation_controller";
-import { createCardEditorSaveController } from "../features/card_editor_save_controller";
-export function installButtonSettingsModule(): GlobalDescriptors {
-    var cardEditorDraftController: any = createCardEditorDraftController({
-        "cloneCard": function (button: any) { return EspControlModel.cloneCardConfig(button); },
-        "emptyCard": function () { return EspControlModel.emptyCardConfig(); },
-    });
-    var cardEditorValidationController: any = createCardEditorValidationController();
-    var cardEditorSaveController: any = createCardEditorSaveController({
-        "emptyCard": function () { return EspControlModel.emptyCardConfig(); },
-        "copyCard": function (target: any, source: any) {
-            EspControlModel.copyCardConfig(target, source);
-            normalizeButtonConfig(target);
-        },
-    });
+import * as EspControlModel from "../model";
+import { applySpans, CARD_SIZE_SINGLE, clearSpans } from "../model/grid";
+import { iconSlug, mdiIcon, textSpan } from "./ui_primitives";
+import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
+import type { CardEditorValidationController } from "../features/card_editor_validation_controller";
+import type { CardEditorSaveController } from "../features/card_editor_save_controller";
+import type { ConfigPersistenceFeature } from "./config_post_api";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigImageOptionsFeature } from "./config_image_options";
+import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { ApplicationLayoutState } from "./application_context";
+import type { UiRuntimeState } from "./state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { GridFeature } from "./grid";
+import type { ButtonSettingsIconPickerFeature } from "./button_settings_icon_picker";
+import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+import type { PreviewRenderFeature } from "./preview_render";
+import type { PreviewInteractionsFeature } from "./preview_interactions";
+import type { ControlsFieldsFeature } from "./controls_fields";
+export interface ButtonSettingsFeature {
+    openCardSettings(...args: any[]): any;
+    renderBackButtonSettings(...args: any[]): any;
+    render(...args: any[]): any;
+}
+
+export function createButtonSettingsFeature(
+    cardEditorDraftController: CardEditorDraftController,
+    cardEditorValidationController: CardEditorValidationController,
+    cardEditorSaveController: CardEditorSaveController,
+    configPersistence: ConfigPersistenceFeature,
+    cardRegistry: CardRegistry,
+    imageOptions: ConfigImageOptionsFeature,
+    confirmationOptions: ConfigConfirmationOptionsFeature,
+    codec: ConfigCodecFeature,
+    layout: ApplicationLayoutState,
+    runtime: UiRuntimeState,
+    entityState: Pick<EntityStateFeature, "entityName" | "entityInput">,
+    shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton" | "showBanner">,
+    requestApi: Pick<ApplicationApiFeature, "postText">,
+    grid: Pick<GridFeature, "ctx" | "serializeGrid">,
+    iconPicker: ButtonSettingsIconPickerFeature,
+    selection: Pick<ButtonSettingsSelectionFeature, "closeSettings" | "hideSettingsOverlay">,
+    preview: Pick<PreviewRenderFeature, "defaultTypeForPicker" | "pickerOptions" | "registryValue" | "render">,
+    interactions: Pick<PreviewInteractionsFeature, "deleteSlot" | "emptyButtonConfig">,
+    fields: ControlsFieldsFeature,
+): ButtonSettingsFeature {
+    const { entityName, entityInput } = entityState;
+    const { isConfigLocked, createActionButton, showBanner } = shell;
+    const els = runtime.els;
+    const { ctx, serializeGrid } = grid;
+    const { closeSettings, hideSettingsOverlay } = selection;
+    const { defaultTypeForPicker: defaultButtonTypeForPicker, pickerOptions: buttonTypePickerOptionList, registryValue: buttonTypeRegistryValue, render: renderPreview } = preview;
+    const { deleteSlot, emptyButtonConfig } = interactions;
+    const {
+        applyCardMetadataFields, condField, disclosureSection, fieldLabel, fieldWithControl,
+        groupCardSettingsFields, markCardPrimaryField, renderBasicCardFields,
+        renderCardActiveColorToggle, renderCardEntityField, renderCardIconPair,
+        renderCardIconPicker, renderCardLargeNumbersToggle, renderCardModeSelector,
+        renderCardNumberField, renderCardOptionToggle, renderCardSegmentControl,
+        renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
+        textInput, toggleRow,
+    } = fields;
+    const {
+        imageSlotCapacity,
+        imageCardCountWithCandidate,
+        showImageCardLimitBanner,
+    } = imageOptions;
+    const { cardOnPattern, setCardOnPattern } = confirmationOptions;
+    const {
+        normalizeButtonConfig,
+        normalizeCardSizeForConfig,
+        serializeButtonConfig,
+        getSubpage,
+        saveSubpageConfig,
+    } = codec;
     // ── Button settings panel (unified) ────────────────────────────────────
     function openCardSettings(this: any, slot?: any) {
         if (isConfigLocked())
@@ -88,7 +149,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             hideSettingsOverlay();
             return;
         }
-        if (!forceOpen && !isSettingsOpen()) {
+        if (!forceOpen && !runtime.isSettingsOpen()) {
             hideSettingsOverlay();
             return;
         }
@@ -258,7 +319,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             else
                 c.sizes[slot] = nextSize;
             clearSpans(c.grid, c.maxSlots);
-            applySpans(c.grid, c.sizes, c.maxSlots);
+            applySpans(c.grid, c.sizes, c.maxSlots, layout.gridCols);
             return true;
         }
         function applySettingsDraft(this: any) {
@@ -282,11 +343,11 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             }
             else {
                 if (saved.saveGrid || sizeChanged)
-                    postText(entityName("button_order"), serializeGrid(state.grid));
+                    requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
                 if (saved.saveButton)
-                saveButtonConfig(slot);
+                configPersistence.saveButtonConfig(slot);
             }
-            var savedTypeDef: any = BUTTON_TYPES[savedButton.type || ""];
+            var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
             if (savedTypeDef && savedTypeDef.afterSave) {
                 savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
             }
@@ -338,7 +399,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             dropdown.className = "sp-icon-dropdown";
             picker.appendChild(dropdown);
             icf.appendChild(picker);
-            initIconPicker(picker, currentVal, onSelect);
+            iconPicker.init(picker, currentVal, onSelect);
             return icf;
         }
         function entityField(this: any, labelText?: any, inputId?: any, value?: any, placeholder?: any, domains?: any, bindName?: any, rerender?: any, requiredMessage?: any) {
@@ -405,12 +466,12 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             if (state.settingsDraft && state.settingsDraft.key === draftKey) {
                 state.settingsDraft.typeSelected = true;
             }
-            var td: any = BUTTON_TYPES[newType];
+            var td: any = cardRegistry.definitions[newType];
             if (td && td.onSelect && !keepMediaEntity)
                 td.onSelect(b);
             if (pickerType === "media_control") {
-                b.sensor = "control_modal";
-                b.label = "All Controls";
+                b.sensor = "cover_art";
+                b.label = "Cover Art";
                 b.icon = "Auto";
                 b.icon_on = "Auto";
                 b.unit = "";
@@ -561,7 +622,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             });
         }
         var isNewDraftWithoutType: any = isNewDraft && !state.settingsDraft?.typeSelected;
-        var rawTypeDef: any = isNewDraftWithoutType ? null : (BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""]);
+        var rawTypeDef: any = isNewDraftWithoutType ? null : (cardRegistry.definitions[b.type || ""] || cardRegistry.definitions[""]);
         var typeDef: any = rawTypeDef;
         {
             var selectedTypeKey: any = isNewDraftWithoutType
@@ -719,8 +780,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
         container.appendChild(panel);
     }
     return {
-        "openCardSettings": staticGlobal(openCardSettings),
-        "renderBackButtonSettings": staticGlobal(renderBackButtonSettings),
-        "renderButtonSettings": staticGlobal(renderButtonSettings),
+        openCardSettings,
+        renderBackButtonSettings,
+        render: renderButtonSettings,
     };
 }

@@ -1,6 +1,81 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installPreviewClipboardModule(): GlobalDescriptors {
+import * as EspControlModel from "../model";
+import { sizeFromToken } from "../model/grid";
+import { createClipboardEntry } from "../features/clipboard";
+import type { ConfigPersistenceFeature } from "./config_post_api";
+import type { PreviewRenderFeature } from "./preview_render";
+import type { PreviewGridPlacementFeature } from "./preview_grid_placement";
+import type { ApplicationLayoutState } from "./application_context";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigImageOptionsFeature } from "./config_image_options";
+import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
+import { ACTION_CARD_LOCAL_ACTION } from "./config_action_contract";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { GridFeature } from "./grid";
+export interface PreviewClipboardDependencies {
+    readonly configPersistence: ConfigPersistenceFeature;
+    readonly document: Document;
+    readonly layout: ApplicationLayoutState;
+    readonly cards: CardRegistry;
+    readonly imageOptions: ConfigImageOptionsFeature;
+    readonly sensorOptions: ConfigSensorOptionsFeature;
+    readonly codec: ConfigCodecFeature;
+    readonly entityState: Pick<EntityStateFeature, "entityName">;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked" | "showBanner" | "createActionButton">;
+    readonly requestApi: Pick<ApplicationApiFeature, "postText">;
+    readonly grid: Pick<GridFeature, "ctx" | "serializeGrid">;
+    readonly preview: Pick<PreviewRenderFeature, "configDisabled" | "registryValue" | "render">;
+    readonly placement: Pick<PreviewGridPlacementFeature, "findDuplicatePlacement" | "placeOrderedGridEntries" | "placeSlotAt">;
+    readonly deleteSlot: (slot: number) => void;
+    readonly deleteButtons: (slots: number[]) => void;
+    readonly emptyButtonConfig: () => any;
+}
+export interface PreviewClipboardFeature {
+    buildEntry(slot?: any): any;
+    copySlot(slot?: any): void;
+    copyButtons(slots?: any): void;
+    entriesFromTransfer(envelope?: any, targetIsSubpage?: any): any;
+    cutSlot(slot?: any): void;
+    cutButtons(slots?: any): void;
+    showCopyCode(slots?: any): void;
+    showPasteCode(position?: any, targetIsSubpage?: any): void;
+    pasteButton(position?: any): void;
+    pasteSubpageButton(position?: any): void;
+}
+
+export function createPreviewClipboardFeature(
+    dependencies: PreviewClipboardDependencies,
+): PreviewClipboardFeature {
+    const configPersistence = dependencies.configPersistence;
+    const { configDisabled: buttonConfigDisabledForDevice, registryValue: buttonTypeRegistryValue, render: renderPreview } = dependencies.preview;
+    const { findDuplicatePlacement, placeOrderedGridEntries, placeSlotAt } = dependencies.placement;
+    const { deleteSlot, deleteButtons, emptyButtonConfig } = dependencies;
+    const document = dependencies.document;
+    const { entityName } = dependencies.entityState;
+    const { isConfigLocked, showBanner, createActionButton } = dependencies.shell;
+    const { ctx, serializeGrid } = dependencies.grid;
+    const {
+        imageSlotCapacityMessage,
+        imageCardCountInClipboardEntries,
+        canAddImageCards,
+        showImageCardLimitBanner,
+    } = dependencies.imageOptions;
+    const { sensorCardLocalSource: SENSOR_CARD_LOCAL_SENSOR } = dependencies.sensorOptions;
+    const {
+        normalizeButtonConfig,
+        normalizeCardSizeForConfig,
+        serializeButtonConfig,
+        parseBackOrderToken,
+        parseSubpageConfig,
+        serializeSubpageConfig,
+        getSubpage,
+        buildSubpageGrid,
+        serializeSubpageGrid,
+        saveSubpageConfig,
+    } = dependencies.codec;
     // ── Preview Clipboard ─────────────────────────────────────────────
     // ── Cut / Paste ────────────────────────────────────────────────────────
     function buildClipboardEntry(this: any, slot?: any) {
@@ -12,7 +87,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
         if (!c.isSub && src.type === "subpage" && state.subpages[slot]) {
             subpageConfig = serializeSubpageConfig(state.subpages[slot]);
         }
-        return ClipboardFeature.createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
+        return createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
     }
     function copySlot(this: any, slot?: any) {
         var entry: any = buildClipboardEntry(slot);
@@ -62,7 +137,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
                 entries.push(cardTransferEntryFromClipboard(entry));
         });
         return EspControlModel.createCardTransferCode({
-            device: DEVICE_ID,
+            device: dependencies.layout.deviceId,
             firmware: String(state.firmwareVersion || ""),
         }, entries);
     }
@@ -72,7 +147,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
     function validateCardTransferButton(button: any, inSubpage: any, warnings: any) {
         var normalized: any = normalizeButtonConfig(EspControlModel.cloneCardConfig(button));
         var type: any = normalized.type || "";
-        var typeDef: any = BUTTON_TYPES[type];
+        var typeDef: any = dependencies.cards.definitions[type];
         if (!typeDef) {
             throw cardTransferError("This controller does not support the " +
                 cardTransferTypeLabel(type) + " card type.");
@@ -134,7 +209,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
             layoutSlots.unshift(-2);
             requestedSizes[-2] = 1;
         }
-        if (orderedSlots.length > NUM_SLOTS) {
+        if (orderedSlots.length > dependencies.layout.numSlots) {
             throw cardTransferError("A copied subpage has more cards than this controller can display.");
         }
         var targetSizes: any = {};
@@ -145,8 +220,8 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
                 : {};
             targetSizes[requestedSlot] = normalizeCardSizeForConfig(requestedButton, requestedSizes[requestedSlot]);
         }
-        var placementOrder: any = layoutSlots.length <= NUM_SLOTS ? layoutSlots : orderedSlots;
-        var targetGrid: any = placeOrderedGridEntries(placementOrder, targetSizes, NUM_SLOTS);
+        var placementOrder: any = layoutSlots.length <= dependencies.layout.numSlots ? layoutSlots : orderedSlots;
+        var targetGrid: any = placeOrderedGridEntries(placementOrder, targetSizes, dependencies.layout.numSlots);
         var placed: any = {};
         targetGrid.forEach(function (slot: any) {
             if (slot > 0 || slot === -2)
@@ -270,7 +345,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
     }
     function clipboardSubpageFits(sp: any) {
         var serialized: any = serializeSubpageConfig(sp);
-        return !!EspControlModel.splitSubpageConfigChunks(serialized, subpageEntityKeys().length, 255);
+        return !!EspControlModel.splitSubpageConfigChunks(serialized, configPersistence.subpageEntityKeys().length, 255);
     }
     function planMainClipboardPaste(entries: any, pos: any) {
         var nextGrid: any = state.grid.slice();
@@ -284,12 +359,12 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
         var slots: any = [];
         var resized: any = 0;
         for (var i: any = 0; i < entries.length; i++) {
-            var newSlot: any = firstUnusedClipboardSlot(nextGrid, NUM_SLOTS);
+            var newSlot: any = firstUnusedClipboardSlot(nextGrid, dependencies.layout.numSlots);
             if (newSlot < 0)
                 return { error: "There is not enough room to paste every card." };
             var entry: any = entries[i];
             var requestedSize: any = entry.size || 1;
-            var placement: any = findDuplicatePlacement(nextGrid, pos, requestedSize, NUM_SLOTS);
+            var placement: any = findDuplicatePlacement(nextGrid, pos, requestedSize, dependencies.layout.numSlots);
             if (placement.pos < 0)
                 return { error: "There is not enough room to paste every card." };
             if (placement.size !== requestedSize)
@@ -345,7 +420,7 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
         var resized: any = 0;
         for (var i: any = 0; i < entries.length; i++) {
             var entry: any = entries[i];
-            var typeDef: any = BUTTON_TYPES[entry.type || ""];
+            var typeDef: any = dependencies.cards.definitions[entry.type || ""];
             if (entry.subpageConfig || entry.type === "subpage") {
                 return { error: "Subpage cards can only be pasted onto the home screen." };
             }
@@ -353,11 +428,11 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
                 return { error: "The " + cardTransferTypeLabel(entry.type || "") +
                         " card type cannot be placed inside a subpage." };
             }
-            var newSlot: any = firstUnusedClipboardSlot(subpage.grid, NUM_SLOTS);
+            var newSlot: any = firstUnusedClipboardSlot(subpage.grid, dependencies.layout.numSlots);
             if (newSlot < 0)
                 return { error: "There is not enough room to paste every card." };
             var requestedSize: any = entry.size || 1;
-            var placement: any = findDuplicatePlacement(subpage.grid, pos, requestedSize, NUM_SLOTS);
+            var placement: any = findDuplicatePlacement(subpage.grid, pos, requestedSize, dependencies.layout.numSlots);
             if (placement.pos < 0)
                 return { error: "There is not enough room to paste every card." };
             if (placement.size !== requestedSize)
@@ -406,10 +481,10 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
             state.buttons = plan.buttons;
             state.subpages = plan.subpages;
             for (var i: any = 0; i < plan.slots.length; i++) {
-                saveButtonConfig(plan.slots[i]);
-                saveSubpageEntity(plan.slots[i]);
+                configPersistence.saveButtonConfig(plan.slots[i]);
+                configPersistence.saveSubpageEntity(plan.slots[i]);
             }
-            postText(entityName("button_order"), serializeGrid(state.grid));
+            dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
             state.selectedSlots = [];
         }
         renderPreview();
@@ -574,15 +649,15 @@ export function installPreviewClipboardModule(): GlobalDescriptors {
         textarea.focus();
     }
     return {
-        "buildClipboardEntry": staticGlobal(buildClipboardEntry),
-        "copySlot": staticGlobal(copySlot),
-        "copyButtons": staticGlobal(copyButtons),
-        "clipboardEntriesFromCardTransfer": staticGlobal(clipboardEntriesFromCardTransfer),
-        "cutSlot": staticGlobal(cutSlot),
-        "cutButtons": staticGlobal(cutButtons),
-        "showCopyCardCode": staticGlobal(showCopyCardCode),
-        "showPasteCardCode": staticGlobal(showPasteCardCode),
-        "pasteButton": staticGlobal(pasteButton),
-        "pasteSubpageButton": staticGlobal(pasteSubpageButton),
+        buildEntry: buildClipboardEntry,
+        copySlot,
+        copyButtons,
+        entriesFromTransfer: clipboardEntriesFromCardTransfer,
+        cutSlot,
+        cutButtons,
+        showCopyCode: showCopyCardCode,
+        showPasteCode: showPasteCardCode,
+        pasteButton,
+        pasteSubpageButton,
     };
 }

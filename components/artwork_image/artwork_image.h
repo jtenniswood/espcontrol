@@ -138,6 +138,8 @@ class ArtworkImage : public PollingComponent,
     std::function<void()> cb(std::forward<F>(callback));
     if (cb) this->download_error_callback_.add(std::move(cb));
   }
+  bool has_on_finished_callbacks() const { return this->download_finished_callback_.size() != 0; }
+  bool has_on_error_callbacks() const { return this->download_error_callback_.size() != 0; }
 
   bool is_big_endian() const { return this->is_big_endian_; }
   bool hardware_acceleration_enabled() const { return this->hardware_acceleration_enabled_; }
