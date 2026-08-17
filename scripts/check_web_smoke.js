@@ -42,6 +42,10 @@ function loadHooks() {
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
+  assert(
+    !Object.prototype.hasOwnProperty.call(sandbox, "state"),
+    "application state must remain inside the typed module boundary",
+  );
   assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups);
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
@@ -73,6 +77,15 @@ function assertGeneratedConfigValue(slug, generated, key, value) {
 
 const hooks = loadHooks();
 assert(hooks, "web test hooks were not exported");
+const previewStylesSource = fs.readFileSync(path.join(ROOT, "src", "webserver", "application", "styles.ts"), "utf8");
+const scheduleSettingsSource = fs.readFileSync(path.join(ROOT, "src", "webserver", "application", "settings_schedule_section.ts"), "utf8");
+const screensaverSettingsSource = fs.readFileSync(path.join(ROOT, "src", "webserver", "application", "settings_page.ts"), "utf8");
+assert(previewStylesSource.includes("max-height:var(--btn-label-max-height)"), "button labels wrap within the device-matched label area");
+assert(!previewStylesSource.includes("-webkit-line-clamp:var(--btn-lines);"), "button labels do not show browser ellipses when clipped");
+assert(scheduleSettingsSource.includes('entityName("screen_schedule_sensor_entity")'), "Night Schedule posts its dedicated sensor entity");
+assert(scheduleSettingsSource.includes("state.scheduleSensorEntity"), "Night Schedule input receives its dedicated sensor value");
+assert(screensaverSettingsSource.includes('entityName("presence_sensor_entity")'), "Screensaver keeps posting its existing presence entity");
+assert(!scheduleSettingsSource.includes("state.presenceEntity"), "Night Schedule input does not mirror the Screensaver sensor value");
 assert.strictEqual(
   hooks.backupExportFileName(new Date(2026, 5, 9)),
   "espcontrol-7-inch-2026-06-09.json",
@@ -80,17 +93,78 @@ assert.strictEqual(
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
 assert.deepStrictEqual(
-  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-2),
+  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-3),
   [
-    { size: 8, label: "Max wide (3x2)" },
+    { size: 8, label: "Max Wide (3x2)" },
     { size: 9, label: "Max tall (2x3)" },
+    { size: 11, label: "Massive Wide (3x4)" },
   ],
-  "camera card size menu exposes the two max shapes"
+  "landscape 7-inch camera card size menu exposes Massive Wide"
 );
 assert(
-  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9),
-  "non-camera card size menus do not expose max shapes"
+  !plain(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 10),
+  "landscape 7-inch camera card size menu hides Massive portrait"
 );
+assert(
+  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9 || option.size === 10 || option.size === 11),
+  "non-camera card size menus do not expose camera-only shapes"
+);
+assert.deepStrictEqual(
+  plain(hooks.normalizeGridOrderForLayoutChange("1l", 15, 5, 3)),
+  { order: "1", persistedOrder: "1", sizes: {} },
+  "rotating a 7-inch 4x3 card to the three-column layout persists its safe single-card size"
+);
+assert.deepStrictEqual(
+  plain(hooks.normalizeDeferredGridOrderForLayoutChange("1l", 3)),
+  { order: "1", persistedOrder: "1", sizes: {} },
+  "starting a portrait 7-inch panel with a deferred 4x3 order persists its safe single-card size"
+);
+const rotatedSubpage = plain(hooks.normalizeSubpageOrderForLayoutChange(["1l", "", "", "", "B"], 20, 5, 4));
+assert.strictEqual(rotatedSubpage.changed, true, "subpage rotation detects a relocated Back cell");
+assert.strictEqual(rotatedSubpage.order[0], "1l", "subpage rotation keeps the valid 4x3 card size");
+assert.strictEqual(rotatedSubpage.order[12], "B", "subpage rotation persists the Back cell outside the 4x3 span");
+const preservedWideCard = plain(hooks.normalizeGridOrderForLayoutChange("1l,,,,,,,,,,,,2w", 20, 4, 5));
+assert.strictEqual(preservedWideCard.sizes["2"], 3, "rotation preserves a displaced wide card's size");
+assert.strictEqual(preservedWideCard.order.split(",")[15], "2w", "rotation relocates the complete wide card span");
+const crowdedWideCard = plain(hooks.normalizeGridOrderForLayoutChange("1,2,3w,4,5,6", 6, 3, 3));
+assert.strictEqual(crowdedWideCard.order, "1,2,3,4,5,6", "a crowded grid keeps every card when a wide span cannot expand");
+assert.strictEqual(crowdedWideCard.sizes["3"], undefined, "a crowded grid safely downgrades the blocked wide span");
+const repackedPortraitCard = plain(hooks.normalizeGridOrderForLayoutChange(",2t,1p,,,,,,,,,,,,,6w", 20, 5, 4));
+assert.strictEqual(repackedPortraitCard.sizes["1"], 10, "rotation repacks the full grid before downgrading a portrait card");
+assert.strictEqual(repackedPortraitCard.sizes["2"], 5, "rotation preserves the accompanying extra-tall card");
+assert.strictEqual(repackedPortraitCard.sizes["6"], 3, "rotation preserves the accompanying wide card");
+const loadedPortraitSubpage = plain(hooks.normalizeLoadedSubpageOrderForLayout(["1l", "", "", "", "B"], 3));
+assert.strictEqual(loadedPortraitSubpage.changed, true, "a late portrait subpage detects its invalid 4x3 size");
+assert.strictEqual(loadedPortraitSubpage.order[0], "1", "a late portrait subpage persists a safe single-card size");
+const importedPortraitGrid = plain(hooks.importedButtonOrderFor("1l", {}, 3));
+assert.strictEqual(importedPortraitGrid.order, "1", "a portrait backup import posts a layout-safe main-grid order");
+assert.strictEqual(importedPortraitGrid.sizes["1"], undefined, "a portrait backup import removes the invalid main-grid 4x3 size");
+const importedPortraitSubpage = plain(hooks.planBackupImportForGridCols({
+  version: 2,
+  format: "espcontrol.backup",
+  device: "guition-esp32-p4-jc1060p470",
+  slots: 15,
+  button_order: "1",
+  buttons: Array.from({ length: 15 }, (_, index) => index === 0 ? { type: "subpage", label: "Camera" } : {}),
+  subpages: { "1": "~1l,,,,B|I,camera.front_door,Front Door,,,,image" },
+}, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, 3));
+assert.strictEqual(importedPortraitSubpage.subpages["1"].order[0], "1", "a portrait backup import normalizes a subpage 4x3 card before saving");
+assert.strictEqual(importedPortraitSubpage.subpages["1"].sizes["1"], undefined, "a portrait backup import removes the invalid subpage 4x3 size");
+const restoredLandscapeCols = hooks.backupImportGridColsFor({ screen_rotation: "0" }, "90");
+assert.strictEqual(restoredLandscapeCols, 5, "backup layout planning uses the imported landscape rotation instead of current portrait rotation");
+const restoredLandscapeGrid = plain(hooks.importedButtonOrderFor("1l", {}, restoredLandscapeCols));
+assert.strictEqual(restoredLandscapeGrid.order, "1l", "restoring landscape preserves a valid main-grid 4x3 card");
+const restoredLandscapeSubpage = plain(hooks.planBackupImportForGridCols({
+  version: 2,
+  format: "espcontrol.backup",
+  device: "guition-esp32-p4-jc1060p470",
+  slots: 15,
+  button_order: "1l",
+  buttons: Array.from({ length: 15 }, (_, index) => index === 0 ? { type: "subpage", label: "Camera" } : {}),
+  subpages: { "1": "~1l,,,,B|I,camera.front_door,Front Door,,,,image" },
+  settings: { screen_rotation: "0" },
+}, { device: "guition-esp32-p4-jc1060p470", slots: 15 }, restoredLandscapeCols));
+assert.strictEqual(restoredLandscapeSubpage.subpages["1"].order[0], "1l", "restoring landscape preserves a valid subpage 4x3 card");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"
@@ -152,7 +226,7 @@ assert.deepStrictEqual(plain(hooks.firmwareFailureStatusFor("Could not download 
 
 const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
 const freshOutput = freshWebOutputDir();
-const webOutput = path.join(freshOutput, "www.js");
+const webOutput = path.join(freshOutput, "embedded", "www.js");
 const generated = fs.readFileSync(webOutput, "utf8");
 
 const hostedSandbox = createWebSandbox();
@@ -161,6 +235,7 @@ hostedSandbox.document.currentScript = {
 };
 vm.createContext(hostedSandbox);
 vm.runInContext(generated, hostedSandbox, { filename: webOutput });
+hostedSandbox.__ESPCONTROL_START_EMBEDDED__();
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.imageSlotCapacity(),
   1,
@@ -178,9 +253,11 @@ assert.strictEqual(
 );
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.buttonTypeVisibleInPickerFor("media_cover_art", false),
-  true,
-  "S3 exposes Media Cover Art cards",
+  false,
+  "S3 exposes Cover Art only through the Media subtype list",
 );
+assertGeneratedConfigValue("guition-esp32-s3-4848s040", generated, "mediaTitleSize", 7.083333);
+assert(previewStylesSource.includes(".sp-media-now-title{font-size:var(--media-title)"), "media titles use their dedicated preview size");
 
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   assertGeneratedConfigValue(slug, generated, "slots", device.slots);
@@ -195,6 +272,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
   sandbox.__ESPCONTROL_DEVICE_PROFILE__ = slug;
   vm.createContext(sandbox);
   vm.runInContext(generated, sandbox, { filename: webOutput });
+  sandbox.__ESPCONTROL_START_EMBEDDED__();
   assert(
     sandbox.__ESPCONTROL_TEST_HOOKS__.config,
     `${slug}: generated web UI must export the same test hooks used by local checks`
@@ -411,6 +489,11 @@ for (const option of pickerOptions) {
 const switchPickerOption = pickerOptions.find((option) => option.key === "");
 assert(switchPickerOption, "switch card appears in the main card picker");
 assert.strictEqual(switchPickerOption.icon, "toggle-switch", "switch picker option uses the expected icon");
+assert(
+  fs.readFileSync(path.join(ROOT, "src", "webserver", "application", "styles.ts"), "utf8")
+    .includes(".sp-card-type-icon::before{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"),
+  "card picker icons stay centred inside their accent boxes"
+);
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
@@ -817,15 +900,30 @@ const sensorIconPreview = hooks.buttonTypePreviewFor("sensor", {
 assert(sensorIconPreview.iconHtml.includes("mdi-door"), "sensor icon preview uses the selected icon");
 assert(sensorIconPreview.labelHtml.includes("mdi-toggle-switch"), "sensor icon preview uses the icon badge");
 
-const sensorTimePreview = hooks.buttonTypePreviewFor("sensor", {
+const sensorTimeCard = {
   sensor: "sensor.ups_runtime",
   label: "UPS Runtime",
   type: "sensor",
   precision: "time",
   options: "time_unit=hours,large_numbers",
-}, { cardSize: 4 });
-assert.strictEqual(previewSensorValue(sensorTimePreview), "1h 30m", "sensor Time preview shows compact duration formatting");
+};
+const sensorTimePreview = hooks.buttonTypePreviewFor("sensor", sensorTimeCard, { cardSize: 4 });
+assert.strictEqual(previewSensorValue(sensorTimePreview), "1h 30m", "sensor Time preview shows two duration parts on multi-column cards");
 assert(!sensorTimePreview.iconHtml.includes("sp-sensor-preview-large"), "sensor Time preview remains on the normal responsive layout");
+for (const cardSize of [1, 2, 5]) {
+  assert.strictEqual(
+    previewSensorValue(hooks.buttonTypePreviewFor("sensor", sensorTimeCard, { cardSize })),
+    "1h",
+    `sensor Time preview shows one duration part on single-column card size ${cardSize}`,
+  );
+}
+for (const cardSize of [3, 4, 6, 7, 8, 9, 10]) {
+  assert.strictEqual(
+    previewSensorValue(hooks.buttonTypePreviewFor("sensor", sensorTimeCard, { cardSize })),
+    "1h 30m",
+    `sensor Time preview shows two duration parts on multi-column card size ${cardSize}`,
+  );
+}
 
 const legacyForecastPreview = hooks.buttonTypePreviewFor("weather_forecast", {
   entity: "weather.forecast_home",
@@ -1540,16 +1638,6 @@ assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", true), true);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", false), false);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("ethernet", true), true);
 assert.strictEqual(
-  hooks.firmwareUpToDateStatusFor("v1.10.0", "v1.11.1", "NO UPDATE", false),
-  false,
-  "check-only firmware must not report up to date when the public release is newer"
-);
-assert.strictEqual(
-  hooks.firmwareUpToDateStatusFor("v1.11.1", "v1.11.1", "NO UPDATE", false),
-  true,
-  "matching installed and public versions may report up to date without install controls"
-);
-assert.strictEqual(
   hooks.firmwareVersionAfterUpdateInfo("Dev", { state: "NO UPDATE", latest_version: "v1.11.1" }).version,
   "v1.11.1"
 );
@@ -1586,7 +1674,7 @@ assert.strictEqual(
 
 async function verifyLocalFirmwareProfileSelection() {
   const productionOutput = freshWebOutputDir({ testHooks: false });
-  const productionBundle = fs.readFileSync(path.join(productionOutput, "www.js"), "utf8");
+  const productionBundle = fs.readFileSync(path.join(productionOutput, "embedded", "www.js"), "utf8");
   const sandbox = createWebSandbox();
   const requested = [];
   sandbox.document.currentScript = null;
@@ -1600,8 +1688,9 @@ async function verifyLocalFirmwareProfileSelection() {
   };
   vm.createContext(sandbox);
   vm.runInContext(productionBundle, sandbox, { filename: "shared-local-www.js" });
+  sandbox.__ESPCONTROL_START_EMBEDDED__();
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepStrictEqual(requested, ["/espcontrol/version.json"]);
+  assert.deepStrictEqual(requested, ["/espcontrol/version.json", "/api/v1/capabilities"]);
   assert(
     sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded"),
     "shared local bundle starts after resolving the firmware device profile",

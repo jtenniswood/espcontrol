@@ -6,6 +6,7 @@ using esphome::artwork_image::p4_pipeline_candidate_precedes;
 using esphome::artwork_image::p4_pipeline_http_status_is_success;
 using esphome::artwork_image::p4_pipeline_result_is_current;
 using esphome::artwork_image::image_pipeline_should_requeue_interrupted_tile;
+using esphome::artwork_image::image_pipeline_completion_needs_recovery;
 using esphome::artwork_image::image_pipeline_modal_can_open;
 using esphome::artwork_image::image_pipeline_modal_cache_matches;
 using esphome::artwork_image::image_pipeline_can_start_followup_inline;
@@ -45,6 +46,13 @@ int main() {
   assert(!image_pipeline_should_requeue_interrupted_tile(false, true, true));
   assert(!image_pipeline_should_requeue_interrupted_tile(true, false, true));
   assert(!image_pipeline_should_requeue_interrupted_tile(true, true, false));
+
+  // A completed startup image is recovered only while the card has not yet
+  // applied it and the downloader still represents the card's current URL.
+  assert(image_pipeline_completion_needs_recovery(false, true, true));
+  assert(!image_pipeline_completion_needs_recovery(true, true, true));
+  assert(!image_pipeline_completion_needs_recovery(false, false, true));
+  assert(!image_pipeline_completion_needs_recovery(false, true, false));
 
   // A changed source URL invalidates an otherwise matching modal cache entry.
   assert(image_pipeline_modal_cache_matches(true, true, true, true));

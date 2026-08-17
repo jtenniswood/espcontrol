@@ -40,7 +40,7 @@ jobs:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v7
@@ -73,7 +73,7 @@ jobs:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           sparse-checkout: devices/manifest.json
           sparse-checkout-cone-mode: false
@@ -167,6 +167,14 @@ jobs:
               if [ "${HAVE_CURRENT}" = false ]; then
                 cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
                 download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
+                RECOVERY_MANIFEST="firmware/${SLUG}/recovery/manifest.json"
+                if download_asset "${RELEASE_JSON}" "${SLUG}.recovery.manifest.json" "${RECOVERY_MANIFEST}"; then
+                  if ! download_asset "${RELEASE_JSON}" "${SLUG}.recovery.bin" \
+                    "firmware/${SLUG}/recovery/${SLUG}.recovery.bin"; then
+                    echo "::error::${SLUG} recovery manifest exists but its recovery image is missing"
+                    exit 1
+                  fi
+                fi
                 HAVE_CURRENT=true
               fi
 
@@ -203,7 +211,7 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=20")
-          BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select(.prerelease)][0].assets // []')
+          BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and .prerelease)][0].assets // []')
 
           if [ "${BETA_ASSETS}" != "[]" ]; then
             download_beta_asset() {
@@ -262,7 +270,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           sparse-checkout: |
             devices/manifest.json

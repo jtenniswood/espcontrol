@@ -1,0 +1,53 @@
+{
+  "label": "Lights",
+  "allowInSubpage": true,
+  "pickerKey": "light_brightness",
+  "domains": [
+    "light"
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "keep"
+      },
+      "icon": {
+        "policy": "keep"
+      },
+      "icon_on": {
+        "policy": "keep"
+      },
+      "sensor": {
+        "policy": "clear"
+      },
+      "unit": {
+        "policy": "clear"
+      },
+      "type": {
+        "policy": "default",
+        "value": "light_switch"
+      },
+      "precision": {
+        "policy": "clear"
+      },
+      "options": {
+        "policy": "clear"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Lightbulb Outline",
+    "icon_on": "Lightbulb",
+    "sensor": "",
+    "unit": "",
+    "type": "light_switch",
+    "precision": "",
+    "options": ""
+  }
+}

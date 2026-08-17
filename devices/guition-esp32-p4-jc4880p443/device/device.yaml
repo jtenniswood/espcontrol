@@ -29,7 +29,6 @@ esp32:
       enable_idf_experimental_features: yes
       execute_from_psram: true
     sdkconfig_options:
-      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -59,7 +58,7 @@ external_components:
     refresh: 1s
 
 espcontrol:
-
+  id: espcontrol_app
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -125,8 +124,9 @@ esp32_hosted:
   d1_pin: GPIO15
   d2_pin: GPIO16
   d3_pin: GPIO17
-  # Camera snapshots benefit from the ESP-Hosted default high-speed link.
-  sdio_frequency: 40MHz
+  # Use the lower SDIO clock for reliable ESP32-C6 communication across
+  # production panels; camera transfers remain supported at this speed.
+  sdio_frequency: 20MHz
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)
@@ -210,9 +210,9 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(display_mode_controller).target_source_is(
+                return (id(espcontrol_app).display().target_source_is(
                             espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                        id(display_mode_controller).target_mode_is(
+                        id(espcontrol_app).display().target_mode_is(
                             espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
@@ -224,19 +224,16 @@ light:
               - if:
                   condition:
                     lambda: |-
-                      return id(display_mode_controller).current_mode_is(
+                      return id(espcontrol_app).display().current_mode_is(
                           espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
-        - if:
-            condition:
-              lambda: |-
-                return id(display_mode_controller).target_mode_is(
-                    espcontrol::DisplayMode::ACTIVE);
-            then:
-              - script.execute: screen_schedule_manual_sleep
+        - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
 
 # ---------------------------------------------------------------------------
 # I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)

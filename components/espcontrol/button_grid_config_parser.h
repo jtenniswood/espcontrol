@@ -43,19 +43,21 @@ constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label(
 constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
-constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
 constexpr const char *MEDIA_COVER_ART_DETAILS_OPTION = card_runtime_option_name_cover_art_details();
+constexpr const char *MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION = card_runtime_option_name_cover_art_secondary_entity();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
 constexpr const char *CLIMATE_CONTROL_TABS_OPTION = "climate_tabs";
 constexpr const char *CLIMATE_CONTROL_DEFAULT_TABS_VALUE = "temperature|mode|preset|fan|swing";
-constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
+constexpr const char *FAN_CONTROL_TABS_OPTION = card_runtime_option_name_fan_tabs();
+constexpr const char *FAN_LIGHT_ENTITY_OPTION = card_runtime_option_name_fan_light_entity();
 constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
 constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
 constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_name_speaker_group_entity();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
@@ -253,6 +255,55 @@ inline void append_large_numbers_option(std::string &out, const std::string &opt
   out += value;
 }
 
+inline void append_confirm_options(std::string &out, const std::string &options,
+                                   const std::string &default_off_message,
+                                   const std::string &default_on_message,
+                                   const std::string &default_both_message,
+                                   const std::string &requested_mode = "") {
+  std::string stored_mode;
+  if (cfg_option_token_present(options, "confirm_off") &&
+      cfg_option_token_present(options, "confirm_on")) {
+    stored_mode = "both";
+  } else if (cfg_option_token_present(options, "confirm_on")) {
+    stored_mode = "on";
+  } else if (cfg_option_token_present(options, "confirm_off")) {
+    stored_mode = "off";
+  }
+  if (stored_mode.empty()) return;
+  std::string mode = requested_mode == "on" || requested_mode == "off"
+    ? requested_mode
+    : stored_mode;
+  if (mode == "off" || mode == "both") {
+    if (!out.empty()) out += ",";
+    out += "confirm_off";
+  }
+  if (mode == "on" || mode == "both") {
+    if (!out.empty()) out += ",";
+    out += "confirm_on";
+  }
+  std::string message = cfg_option_value(options, "confirm_message");
+  std::string yes = cfg_option_value(options, "confirm_yes");
+  std::string no = cfg_option_value(options, "confirm_no");
+  std::string default_message = mode == "on" ? default_on_message
+    : mode == "both" ? default_both_message
+    : default_off_message;
+  std::string stored_default_message = stored_mode == "on" ? default_on_message
+    : stored_mode == "both" ? default_both_message
+    : default_off_message;
+  if (!message.empty() && message != default_message && message != stored_default_message) {
+    if (!out.empty()) out += ",";
+    out += "confirm_message=" + encode_compact_field(message);
+  }
+  if (!yes.empty() && yes != "Yes") {
+    if (!out.empty()) out += ",";
+    out += "confirm_yes=" + encode_compact_field(yes);
+  }
+  if (!no.empty() && no != "No") {
+    if (!out.empty()) out += ",";
+    out += "confirm_no=" + encode_compact_field(no);
+  }
+}
+
 inline int normalize_media_volume_max_percent(const std::string &value) {
   if (value.empty()) return card_runtime_media_volume_max_default();
   char *end = nullptr;
@@ -275,12 +326,35 @@ inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
     std::string out;
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      out = std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+        encode_compact_field(speaker_group_entity);
+    }
     if (cfg_option_value(options, "label_display") == "label") {
-      out = "label_display=label";
+      if (!out.empty()) out += ",";
+      out += "label_display=label";
     }
     if (cfg_option_value(options, "number_display") == "volume") {
       if (!out.empty()) out += ",";
       out += "number_display=volume";
+    }
+    int max_pct = normalize_media_volume_max_percent(
+      cfg_option_value(options, VOLUME_MAX_OPTION));
+    if (max_pct < card_runtime_media_volume_max_default()) {
+      if (!out.empty()) out += ",";
+      out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
+    }
+    return out;
+  }
+  if (mode == "speaker_group") {
+    std::string out;
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      out = std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+        encode_compact_field(speaker_group_entity);
     }
     int max_pct = normalize_media_volume_max_percent(
       cfg_option_value(options, VOLUME_MAX_OPTION));
@@ -316,12 +390,16 @@ inline std::string media_card_options_normalized(const std::string &options,
   }
   if (mode == "cover_art") {
     std::string out;
-    if (cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal") {
-      out = std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal";
-    }
     if (cfg_option_token_present(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
       if (!out.empty()) out += ",";
       out += MEDIA_COVER_ART_DETAILS_OPTION;
+    }
+    std::string secondary_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION));
+    if (!secondary_entity.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION) + "=" +
+             encode_compact_field(secondary_entity);
     }
     return out;
   }
@@ -483,7 +561,7 @@ inline std::string normalize_climate_control_tabs_value(const std::string &value
 
 inline bool fan_control_tab_token_valid(const std::string &value) {
   return value == "power" || value == "speed" || value == "preset" ||
-         value == "oscillation" || value == "direction";
+         value == "oscillation" || value == "direction" || value == "light";
 }
 
 inline std::string normalize_fan_control_tabs_value(const std::string &value) {
@@ -506,10 +584,33 @@ inline std::string normalize_fan_control_tabs_value(const std::string &value) {
 }
 
 inline std::string fan_control_card_options_normalized(const std::string &options) {
-  std::string tabs = normalize_fan_control_tabs_value(
-    cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
-  if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
-  return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  std::string light_entity = cfg_option_value(options, FAN_LIGHT_ENTITY_OPTION);
+  std::string tabs_value = cfg_option_value(options, FAN_CONTROL_TABS_OPTION);
+  std::string tabs = normalize_fan_control_tabs_value(tabs_value);
+  if (light_entity.empty()) {
+    std::vector<std::string> filtered;
+    for (const auto &tab : split_config_fields(tabs, '|')) {
+      if (tab != "light") filtered.push_back(tab);
+    }
+    tabs.clear();
+    for (const auto &tab : filtered) {
+      if (!tabs.empty()) tabs += "|";
+      tabs += tab;
+    }
+    if (tabs.empty()) tabs = "power";
+  }
+  std::string default_tabs = FAN_CONTROL_DEFAULT_TABS_VALUE;
+  if (!light_entity.empty()) default_tabs += "|light";
+  if (tabs_value.empty()) tabs = default_tabs;
+  std::string out;
+  if (!light_entity.empty()) {
+    out = std::string(FAN_LIGHT_ENTITY_OPTION) + "=" + encode_compact_field(light_entity);
+  }
+  if (tabs != default_tabs) {
+    if (!out.empty()) out += ",";
+    out += std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  }
+  return out;
 }
 
 inline bool image_card_label_enabled(const ParsedCfg &p) {
@@ -529,15 +630,12 @@ inline bool media_cover_art_enabled(const ParsedCfg &p) {
   return espcontrol::media::decode_config_v1(p).mode == espcontrol::media::Mode::COVER_ART;
 }
 
-inline std::string media_cover_art_press_action(const ParsedCfg &p) {
-  return espcontrol::media::decode_config_v1(p).cover_art_action ==
-             espcontrol::media::CoverArtAction::CONTROL_MODAL
-    ? "control_modal"
-    : "play_pause";
-}
-
 inline bool media_cover_art_details_enabled(const ParsedCfg &p) {
   return espcontrol::media::decode_config_v1(p).show_track_details;
+}
+
+inline std::string media_cover_art_secondary_entity(const ParsedCfg &p) {
+  return espcontrol::media::decode_config_v1(p).secondary_entity;
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,
@@ -816,10 +914,13 @@ inline std::string normalize_garage_label_display(const std::string &value) {
 
 inline std::string garage_card_options_normalized(const std::string &options,
                                                   const std::string &sensor) {
-  (void)sensor;
-  return normalize_garage_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
+  std::string out = normalize_garage_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
     ? std::string(LABEL_DISPLAY_OPTION) + "=status"
     : "";
+  std::string confirmation_mode = sensor == "open" ? "on" : sensor == "close" ? "off" : "";
+  append_confirm_options(out, options, "Close the garage door?", "Open the garage door?",
+                         "Open or close the garage door?", confirmation_mode);
+  return out;
 }
 
 inline std::string normalize_gate_label_display(const std::string &value) {
@@ -937,43 +1038,7 @@ inline std::string switch_card_options_normalized(const std::string &options) {
     if (!out.empty()) out += ",";
     out += "on_pattern=" + pattern;
   }
-  if (cfg_option_token_present(options, "confirm_off")) {
-    if (!out.empty()) out += ",";
-    out += "confirm_off";
-  }
-  if (cfg_option_token_present(options, "confirm_on")) {
-    if (!out.empty()) out += ",";
-    out += "confirm_on";
-  }
-  std::string mode;
-  if (cfg_option_token_present(options, "confirm_off") &&
-      cfg_option_token_present(options, "confirm_on")) {
-    mode = "both";
-  } else if (cfg_option_token_present(options, "confirm_on")) {
-    mode = "on";
-  } else if (cfg_option_token_present(options, "confirm_off")) {
-    mode = "off";
-  }
-  if (!mode.empty()) {
-    std::string message = cfg_option_value(options, "confirm_message");
-    std::string yes = cfg_option_value(options, "confirm_yes");
-    std::string no = cfg_option_value(options, "confirm_no");
-    std::string default_message = mode == "on" ? "Turn on this device?"
-      : mode == "both" ? "Toggle this device?"
-      : "Turn off this device?";
-    if (!message.empty() && message != default_message) {
-      if (!out.empty()) out += ",";
-      out += "confirm_message=" + encode_compact_field(message);
-    }
-    if (!yes.empty() && yes != "Yes") {
-      if (!out.empty()) out += ",";
-      out += "confirm_yes=" + encode_compact_field(yes);
-    }
-    if (!no.empty() && no != "No") {
-      if (!out.empty()) out += ",";
-      out += "confirm_no=" + encode_compact_field(no);
-    }
-  }
+  append_confirm_options(out, options, "Turn off this device?", "Turn on this device?", "Toggle this device?");
   return out;
 }
 
@@ -1331,9 +1396,17 @@ inline bool cfg_option_enabled(const std::string &options, const char *name) {
 }
 
 inline int media_volume_max_percent(const ParsedCfg &p) {
-  return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal")
+  return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal" ||
+                               p.sensor == "speaker_group")
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
+}
+
+inline std::string media_speaker_group_entity(const ParsedCfg &p) {
+  if (p.type != "media" || (p.sensor != "control_modal" && p.sensor != "speaker_group")) {
+    return "";
+  }
+  return trim_saved_option_value(cfg_option_value(p.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
 }
 
 inline bool media_control_card_show_status_label(const ParsedCfg &p) {
@@ -1429,6 +1502,19 @@ inline bool action_script_confirmation_enabled(const ParsedCfg &p) {
          cfg_option_enabled(p.options, "confirm_on");
 }
 
+inline bool garage_confirmation_enabled(const ParsedCfg &p) {
+  return p.type == "garage" &&
+         (cfg_option_enabled(p.options, "confirm_off") ||
+          cfg_option_enabled(p.options, "confirm_on"));
+}
+
+inline bool garage_confirmation_required(const ParsedCfg &p, bool pending_open) {
+  if (p.type != "garage") return false;
+  return pending_open
+    ? cfg_option_enabled(p.options, "confirm_on")
+    : cfg_option_enabled(p.options, "confirm_off");
+}
+
 inline std::string action_script_fields(const ParsedCfg &p) {
   return p.type == "action" && p.sensor == "script.turn_on"
     ? cfg_option_value(p.options, "script_fields")
@@ -1450,6 +1536,11 @@ inline std::string switch_confirmation_default_message(const ParsedCfg &p) {
   }
   bool confirm_off = cfg_option_enabled(p.options, "confirm_off");
   bool confirm_on = cfg_option_enabled(p.options, "confirm_on");
+  if (p.type == "garage") {
+    if (confirm_off && confirm_on) return espcontrol_i18n(std::string("Open or close the garage door?"));
+    if (confirm_on) return espcontrol_i18n(std::string("Open the garage door?"));
+    return espcontrol_i18n(std::string("Close the garage door?"));
+  }
   if (confirm_off && confirm_on) return espcontrol_i18n(std::string("Toggle this device?"));
   if (confirm_on) return espcontrol_i18n(std::string("Turn on this device?"));
   return espcontrol_i18n(std::string("Turn off this device?"));
@@ -1521,9 +1612,12 @@ inline bool duration_unit_seconds_multiplier(const std::string &raw_unit,
 }
 
 inline bool format_duration_value(char *buffer, size_t buffer_size,
-                                  double value, const std::string &input_unit) {
+                                  double value, const std::string &input_unit,
+                                  int max_components = 2) {
   if (!buffer || buffer_size == 0) return false;
   buffer[0] = '\0';
+  if (max_components < 1) return false;
+  if (max_components > 4) max_components = 4;
   double multiplier = 0.0;
   if (!std::isfinite(value) || value < 0.0 ||
       !duration_unit_seconds_multiplier(input_unit, multiplier)) return false;
@@ -1546,7 +1640,7 @@ inline bool format_duration_value(char *buffer, size_t buffer_size,
   const char *suffixes[] = {"d", "h", "m", "s"};
   size_t used = 0;
   int components = 0;
-  for (int i = 0; i < 4 && components < 2; ++i) {
+  for (int i = 0; i < 4 && components < max_components; ++i) {
     if (values[i] == 0) continue;
     const int written = std::snprintf(
       buffer + used, buffer_size - used, components == 0 ? "%llu%s" : " %llu%s",
@@ -1564,7 +1658,8 @@ inline bool format_duration_value(char *buffer, size_t buffer_size,
 inline bool format_duration_sensor_state(char *buffer, size_t buffer_size,
                                          const std::string &state, bool has_state,
                                          const std::string &auto_unit, bool has_auto_unit,
-                                         const std::string &manual_unit = "") {
+                                         const std::string &manual_unit = "",
+                                         int max_components = 2) {
   if (!buffer || buffer_size == 0) return false;
   buffer[0] = '\0';
   if (!has_state || (manual_unit.empty() && !has_auto_unit)) return false;
@@ -1574,7 +1669,8 @@ inline bool format_duration_sensor_state(char *buffer, size_t buffer_size,
   const double value = std::strtod(begin, &end);
   while (end && *end && std::isspace(static_cast<unsigned char>(*end))) ++end;
   if (end == begin || !end || *end != '\0') return false;
-  return format_duration_value(buffer, buffer_size, value, input_unit);
+  return format_duration_value(
+    buffer, buffer_size, value, input_unit, max_components);
 }
 
 inline bool is_text_sensor_card(const std::string &type, const std::string &precision) {

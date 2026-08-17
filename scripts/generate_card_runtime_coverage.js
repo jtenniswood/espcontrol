@@ -9,7 +9,7 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const INVENTORY_PATH = path.join(ROOT, "common", "config", "card_runtime_inventory.json");
-const CONTRACT_PATH = path.join(ROOT, "common", "config", "card_contract.json");
+const CONTRACT_PATH = path.join(ROOT, "product", "v2", "card_contract.json");
 const NORMALIZATION_PATH = path.join(ROOT, "common", "config", "card_runtime_baseline_card_normalization_fixtures.json");
 const SURFACE_PATH = path.join(ROOT, "compatibility", "fixtures", "card_runtime_surface_baseline.json");
 const REPORT_PATH = path.join(ROOT, "docs", "generated", "cards", "runtime-coverage.md");
@@ -60,11 +60,11 @@ function webRegistrationTypes() {
   const types = new Set();
   for (const name of fs.readdirSync(cardsDir).filter((item) => item.endsWith(".ts"))) {
     const source = fs.readFileSync(path.join(cardsDir, name), "utf8");
-    for (const match of source.matchAll(/registerButtonType\(\s*(["'])(.*?)\1\s*,/g)) {
+    for (const match of source.matchAll(/registry\.register\(\s*(["'])(.*?)\1\s*,/g)) {
       types.add(match[2]);
     }
-    if (source.includes("registerCoverLikeCardType(")) {
-      for (const match of source.matchAll(/registerCoverLikeCardType\(\s*\{[\s\S]*?\btype:\s*(["'])(.*?)\1/g)) {
+    if (source.includes("registerCard(")) {
+      for (const match of source.matchAll(/registerCard\(\s*\{[\s\S]*?\btype:\s*(["'])(.*?)\1/g)) {
         types.add(match[2]);
       }
     }
@@ -99,7 +99,9 @@ function firmwareRegistrations() {
       registrations.set(type, family);
     }
   }
-  const legacyBody = source.slice(end, source.indexOf("return context;", end));
+  const registryStart = source.indexOf("class CardRuntimeRegistryService", start);
+  const legacyStart = registryStart >= 0 ? registryStart : end;
+  const legacyBody = source.slice(legacyStart, source.indexOf("return context;", legacyStart));
   for (const match of legacyBody.matchAll(/type == "([^"]+)"\)[\s\S]*?context\.family = Family::([A-Z_]+);/g)) {
     registrations.set(match[1], match[2]);
   }
@@ -355,7 +357,7 @@ function reportMarkdown(inventory, contract, cases) {
     local: "Older local-action input; normalizes to Action with local dispatch.",
     text_sensor: "Older sensor input; normalizes to Sensor text mode.",
     todo: "Removed configurator type retained only for saved-card compatibility.",
-    media_cover_art: "Hidden web picker implementation that creates a Media cover-art configuration.",
+    media_cover_art: "Hidden compatibility registration that normalizes older Cover Art aliases to Media.",
   };
   for (const [type, spec] of Object.entries(inventory.runtimeOnlyTypes)) {
     lines.push(`| ${type} | ${spec.classification} | ${spec.canonicalType} | ${spec.surfaces.join(", ")} | ${reasons[type] || "Reviewed runtime-only type."} |`);

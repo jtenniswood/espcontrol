@@ -32,18 +32,9 @@ esphome:
       - script.execute: ha_actions_text_refresh
       - script.execute: button_setup_text_refresh
 
-# Ask Home Assistant for time once the native API has finished state setup. This
-# keeps the HA time source as a fallback without adding traffic during the
-# fragile reconnect window.
-api:
-  on_client_connected:
-    - delay: 2s
-    - lambda: |-
-        if (ha_api_state_connected()) id(homeassistant_time).update();
-    - script.execute: timezone_after_homeassistant_time_sync
-    - script.execute: backlight_recalc_sunrise_sunset
-    - script.execute: screen_schedule_check
-
+# Ask Home Assistant time is scheduled centrally by core_infra.yaml after the
+# native API handshake has completed.  Keeping it there prevents a second
+# connection hook from running work before the protocol Hello response.
 # ---------------------------------------------------------------------------
 # Timezone selector (drives sunrise/sunset calculation via sun_calc.h)
 # ---------------------------------------------------------------------------
@@ -212,8 +203,8 @@ select:
               clock_bar_should_show(
                 id(clock_bar_enabled).state,
                 id(main_page)->obj,
-                id(display_mode_controller).current_mode(),
-              id(display_mode_controller).target_schedule_inactive()),
+                id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
               id(indoor_temp_enable).state,
               id(outdoor_temp_enable).state,
               id(indoor_temp), id(outdoor_temp));
@@ -266,6 +257,7 @@ select:
       - "pt"
       - "pt-br"
       - "ro"
+      - "ru"
       - "sk"
       - "sl"
       - "sv"
@@ -451,8 +443,8 @@ script:
             clock_bar_should_show(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_mode_controller).current_mode(),
-              id(display_mode_controller).target_schedule_inactive()),
+              id(espcontrol_app).display().current_mode(),
+              id(espcontrol_app).display().target_schedule_inactive()),
             id(indoor_temp_enable).state,
             id(outdoor_temp_enable).state,
             id(indoor_temp), id(outdoor_temp));
@@ -478,7 +470,7 @@ script:
                                             id(homeassistant_time).now());
           bool use_12h = id(clock_format_12h);
           if (now.is_valid()) {
-            static char date_buf[11];
+            static char date_buf[16];
             snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
                      now.year, now.month, now.day_of_month);
             id(screen_date_sensor).publish_state(date_buf);

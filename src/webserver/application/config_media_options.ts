@@ -1,5 +1,139 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installConfigMediaOptionsModule(): GlobalDescriptors {
+import type { DeviceConfig } from "../state/types";
+import {
+    configOptionEnabled,
+    configOptionValue,
+    setConfigOption,
+    setConfigOptionValue,
+} from "../model/config_primitives";
+import { cardContractCard } from "../generated/card_contract";
+import {
+    MEDIA_COVER_ART_DETAILS_OPTION,
+    MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION,
+    MEDIA_LABEL_DISPLAY_OPTION,
+    MEDIA_NUMBER_DISPLAY_OPTION,
+    MEDIA_PLAYLIST_CONTENT_ID_OPTION,
+    MEDIA_PLAYLIST_CONTENT_TYPE_OPTION,
+    MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION,
+    MEDIA_SPEAKER_GROUP_ENTITY_OPTION,
+    MEDIA_VOLUME_MAX_OPTION,
+    cardContractOptionDefaultValue,
+    cardContractOptionSpec,
+    copyLargeNumbersOption,
+} from "./config_option_core";
+export function createConfigMediaOptionsFeature(
+    deviceProfile: Pick<DeviceConfig, "disabledCardTypes">,
+) {
+    function mediaBehaviorSpec(this: any) {
+        var card: any = cardContractCard("media");
+        return card && card.behavior && card.behavior.media || {};
+    }
+    function mediaCoverArtCardsSupported(this: any) {
+        var disabled: readonly string[] = deviceProfile.disabledCardTypes || [];
+        return disabled.indexOf("media_cover_art") === -1;
+    }
+    function mediaModeOptionValues(this: any) {
+        var spec: any = cardContractOptionSpec("media", "media_mode");
+        var values: any = spec && spec.values ? spec.values.slice() :
+            ["control_modal", "cover_art", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"];
+        return mediaCoverArtCardsSupported() ? values : values.filter(function (this: any, value?: any) {
+            return value !== "cover_art";
+        });
+    }
+    function mediaDefaultMode(this: any) {
+        return mediaBehaviorSpec().defaultMode || "play_pause";
+    }
+    function mediaEditorMode(this: any, value?: any) {
+        value = String(value || "");
+        var legacy: any = mediaBehaviorSpec().legacyModes || {};
+        value = legacy[value] || value;
+        return mediaModeOptionValues().indexOf(value) >= 0 ? value : mediaDefaultMode();
+    }
+    function mediaEditorValidMode(this: any, value?: any) {
+        return mediaEditorMode(value);
+    }
+    function mediaNowPlayingControlValues(this: any) {
+        var spec: any = cardContractOptionSpec("media", "media_now_playing_controls");
+        return spec && spec.values ? spec.values.slice() : ["", "progress", "play_pause"];
+    }
+    function mediaNowPlayingControls(this: any, button?: any) {
+        if (!button || button.sensor !== "now_playing")
+            return "";
+        return mediaNowPlayingControlValues().indexOf(button.precision || "") >= 0 ? button.precision : "";
+    }
+    function mediaStateDisplayModeSupported(this: any, mode?: any) {
+        var modes: any = mediaBehaviorSpec().stateDisplayModes || ["play_pause", "position"];
+        return modes.indexOf(mediaEditorMode(mode)) >= 0;
+    }
+    const mediaPlaylistSourceDefinitions: any = [
+        { value: "spotify", label: "Spotify", prefix: "spotify" },
+        { value: "apple_music", label: "Apple Music", prefix: "apple_music" },
+        { value: "youtube_music", label: "YouTube Music", prefix: "youtube_music" },
+        { value: "plex", label: "Plex", prefix: "plex" },
+        { value: "jellyfin", label: "Jellyfin", prefix: "jellyfin" },
+        { value: "media_source", label: "Home Assistant Media Source", prefix: "media-source" },
+        { value: "url", label: "Web URL", prefix: "" },
+        { value: "__custom", label: "Custom / full URI", prefix: "" },
+    ];
+    function mediaPlaylistSourceOptions(this: any) {
+        return mediaPlaylistSourceDefinitions.map(function (source?: any) { return [source.value, source.label]; });
+    }
+    function mediaPlaylistSourceDefinition(this: any, value?: any) {
+        value = String(value || "");
+        for (var i: any = 0; i < mediaPlaylistSourceDefinitions.length; i++) {
+            if (mediaPlaylistSourceDefinitions[i].value === value)
+                return mediaPlaylistSourceDefinitions[i];
+        }
+        return mediaPlaylistSourceDefinitions[0];
+    }
+    function mediaPlaylistContentIdPlaceholder(this: any, source?: any, contentType?: any) {
+        source = String(source || "spotify");
+        contentType = String(contentType || "playlist");
+        if (source === "spotify") return "e.g. 1LG2Lnt9EDQS1DqoE8E2uO";
+        if (source === "media_source") return "e.g. music/morning-mix";
+        if (source === "url") return "e.g. https://example.com/music/stream.mp3";
+        if (source === "__custom") return "e.g. spotify:" + contentType + ":1LG2Lnt9EDQS1DqoE8E2uO";
+        return "Enter the " + contentType + " ID";
+    }
+    function parseMediaPlaylistContentId(this: any, value?: any, contentType?: any) {
+        value = String(value || "").trim();
+        contentType = String(contentType || "playlist").trim() || "playlist";
+        if (!value) return { source: "spotify", id: "" };
+        if (/^https?:\/\//i.test(value)) return { source: "url", id: value };
+        var spotifyMatch: any = value.match(/^spotify:([^:]+):(.+)$/i);
+        if (spotifyMatch) return { source: "spotify", contentType: spotifyMatch[1], id: spotifyMatch[2] };
+        var mediaSourceMatch: any = value.match(/^media-source:\/\/(.+)$/i);
+        if (mediaSourceMatch) return { source: "media_source", id: mediaSourceMatch[1] };
+        var colonMatch: any = value.match(/^([a-z][a-z0-9_-]*):([^:]+):(.+)$/i);
+        if (colonMatch) {
+            var prefix: any = colonMatch[1].toLowerCase();
+            for (var i: any = 0; i < mediaPlaylistSourceDefinitions.length; i++) {
+                var source: any = mediaPlaylistSourceDefinitions[i];
+                if (source.prefix && source.prefix.toLowerCase() === prefix)
+                    return { source: source.value, contentType: colonMatch[2], id: colonMatch[3] };
+            }
+        }
+        return { source: "__custom", id: value };
+    }
+    function buildMediaPlaylistContentId(this: any, source?: any, contentType?: any, id?: any) {
+        source = String(source || "spotify");
+        contentType = String(contentType || "playlist").trim() || "playlist";
+        id = String(id || "").trim();
+        if (!id) return "";
+        if (source === "__custom" || source === "url") return id;
+        if (source === "media_source") return "media-source://" + id.replace(/^\/+/, "");
+        var definition: any = mediaPlaylistSourceDefinition(source);
+        return definition.prefix + ":" + contentType + ":" + id;
+    }
+    function mediaPlaylistContentTypeOptions(this: any) {
+        return [["playlist", "Playlist"], ["music", "Music"], ["album", "Album"],
+            ["artist", "Artist"], ["track", "Track"], ["channel", "Channel"],
+            ["episode", "Episode"], ["podcast", "Podcast"], ["tvshow", "TV Show"],
+            ["video", "Video"], ["movie", "Movie"], ["app", "App"], ["url", "URL"],
+            ["__custom", "Custom"]];
+    }
+    function mediaPlaylistContentTypeKnown(this: any, value?: any) {
+        return mediaPlaylistContentTypeOptions().some(function (option?: any) { return option[0] === value; });
+    }
     // ── Media Card Options ─────────────────────────────────────────────
     function normalizeMediaVolumeMax(this: any, value?: any) {
         value = String(value || "").trim();
@@ -20,6 +154,10 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         mode = mediaEditorMode(mode);
         if (mode === "control_modal") {
             var controlOut: any = "";
+            var controlGroupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+            if (controlGroupEntity) {
+                controlOut = setConfigOptionValue(controlOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, controlGroupEntity);
+            }
             var labelMode: any = normalizeMediaLabelDisplayMode(configOptionValue(options, MEDIA_LABEL_DISPLAY_OPTION));
             var numberMode: any = normalizeMediaNumberDisplayMode(configOptionValue(options, MEDIA_NUMBER_DISPLAY_OPTION));
             if (labelMode !== "status") {
@@ -33,6 +171,18 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
                 controlOut = setConfigOptionValue(controlOut, MEDIA_VOLUME_MAX_OPTION, controlMaxVolume);
             }
             return controlOut;
+        }
+        if (mode === "speaker_group") {
+            var groupOut: any = "";
+            var groupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+            if (groupEntity) {
+                groupOut = setConfigOptionValue(groupOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, groupEntity);
+            }
+            var groupMaxVolume: any = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
+            if (groupMaxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
+                groupOut = setConfigOptionValue(groupOut, MEDIA_VOLUME_MAX_OPTION, groupMaxVolume);
+            }
+            return groupOut;
         }
         if (mode === "playlist") {
             var playlistOut: any = "";
@@ -51,12 +201,12 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         }
         if (mode === "cover_art") {
             var coverArtOut: any = "";
-            var action: any = normalizeMediaCoverArtAction(configOptionValue(options, MEDIA_COVER_ART_ACTION_OPTION));
-            if (action === "control_modal") {
-                coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_COVER_ART_ACTION_OPTION, action);
-            }
             if (configOptionEnabled(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
                 coverArtOut = setConfigOption(coverArtOut, MEDIA_COVER_ART_DETAILS_OPTION, true);
+            }
+            var secondaryEntity: any = configOptionValue(options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION).trim();
+            if (secondaryEntity) {
+                coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION, secondaryEntity);
             }
             return coverArtOut;
         }
@@ -70,23 +220,6 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         out = copyLargeNumbersOption(out, options);
         return out;
     }
-    function normalizeMediaCoverArtAction(this: any, value?: any) {
-        value = String(value || "").trim();
-        var spec: any = cardContractOptionSpec("media", MEDIA_COVER_ART_ACTION_OPTION);
-        var values: any = spec && spec.values ? spec.values : ["play_pause", "control_modal"];
-        return values.indexOf(value) >= 0 ? value : "play_pause";
-    }
-    function mediaCoverArtAction(this: any, b?: any) {
-        return normalizeMediaCoverArtAction(configOptionValue(b && b.options, MEDIA_COVER_ART_ACTION_OPTION));
-    }
-    function setMediaCoverArtAction(this: any, b?: any, value?: any) {
-        if (!b)
-            return "";
-        var normalized: any = normalizeMediaCoverArtAction(value);
-        b.options = setConfigOptionValue(b.options, MEDIA_COVER_ART_ACTION_OPTION, normalized === "play_pause" ? "" : normalized);
-        b.options = normalizeMediaOptions(b.options, b.sensor);
-        return b.options;
-    }
     function mediaCoverArtDetailsEnabled(this: any, b?: any) {
         return !!(b && configOptionEnabled(b.options, MEDIA_COVER_ART_DETAILS_OPTION));
     }
@@ -94,6 +227,17 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         if (!b)
             return "";
         b.options = setConfigOption(b.options, MEDIA_COVER_ART_DETAILS_OPTION, !!enabled);
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
+    }
+    function mediaCoverArtSecondaryEntity(this: any, b?: any) {
+        return configOptionValue(b && b.options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION).trim();
+    }
+    function setMediaCoverArtSecondaryEntity(this: any, b?: any, entity?: any) {
+        if (!b)
+            return "";
+        b.options = setConfigOptionValue(
+            b.options, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION, String(entity || "").trim());
         b.options = normalizeMediaOptions(b.options, b.sensor);
         return b.options;
     }
@@ -112,6 +256,19 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
     }
     function mediaVolumeMax(this: any, b?: any) {
         return normalizeMediaVolumeMax(configOptionValue(b && b.options, MEDIA_VOLUME_MAX_OPTION));
+    }
+    function normalizeMediaSpeakerGroupEntity(this: any, value?: any) {
+        return String(value || "").trim();
+    }
+    function mediaSpeakerGroupEntity(this: any, b?: any) {
+        return normalizeMediaSpeakerGroupEntity(configOptionValue(b && b.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    }
+    function setMediaSpeakerGroupEntity(this: any, b?: any, value?: any) {
+        if (!b)
+            return "";
+        b.options = setConfigOptionValue(b.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, normalizeMediaSpeakerGroupEntity(value));
+        b.options = normalizeMediaOptions(b.options, b.sensor);
+        return b.options;
     }
     function setMediaVolumeMax(this: any, b?: any, value?: any) {
         if (!b)
@@ -177,26 +334,47 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         return b.options;
     }
     return {
-        "normalizeMediaVolumeMax": staticGlobal(normalizeMediaVolumeMax),
-        "normalizeMediaOptions": staticGlobal(normalizeMediaOptions),
-        "normalizeMediaCoverArtAction": staticGlobal(normalizeMediaCoverArtAction),
-        "mediaCoverArtAction": staticGlobal(mediaCoverArtAction),
-        "setMediaCoverArtAction": staticGlobal(setMediaCoverArtAction),
-        "mediaCoverArtDetailsEnabled": staticGlobal(mediaCoverArtDetailsEnabled),
-        "setMediaCoverArtDetailsEnabled": staticGlobal(setMediaCoverArtDetailsEnabled),
-        "normalizeMediaLabelDisplayMode": staticGlobal(normalizeMediaLabelDisplayMode),
-        "normalizeMediaNumberDisplayMode": staticGlobal(normalizeMediaNumberDisplayMode),
-        "mediaVolumeMax": staticGlobal(mediaVolumeMax),
-        "setMediaVolumeMax": staticGlobal(setMediaVolumeMax),
-        "mediaLabelDisplayMode": staticGlobal(mediaLabelDisplayMode),
-        "setMediaLabelDisplayMode": staticGlobal(setMediaLabelDisplayMode),
-        "mediaNumberDisplayMode": staticGlobal(mediaNumberDisplayMode),
-        "setMediaNumberDisplayMode": staticGlobal(setMediaNumberDisplayMode),
-        "mediaPlaylistContentId": staticGlobal(mediaPlaylistContentId),
-        "mediaPlaylistContentType": staticGlobal(mediaPlaylistContentType),
-        "setMediaPlaylistContentId": staticGlobal(setMediaPlaylistContentId),
-        "setMediaPlaylistContentType": staticGlobal(setMediaPlaylistContentType),
-        "mediaPlaylistPlayerSource": staticGlobal(mediaPlaylistPlayerSource),
-        "setMediaPlaylistPlayerSource": staticGlobal(setMediaPlaylistPlayerSource),
+        mediaBehaviorSpec,
+        mediaCoverArtCardsSupported,
+        mediaModeOptionValues,
+        mediaDefaultMode,
+        mediaEditorMode,
+        mediaEditorValidMode,
+        mediaNowPlayingControlValues,
+        mediaNowPlayingControls,
+        mediaStateDisplayModeSupported,
+        mediaPlaylistSourceDefinitions,
+        mediaPlaylistSourceOptions,
+        mediaPlaylistSourceDefinition,
+        mediaPlaylistContentIdPlaceholder,
+        parseMediaPlaylistContentId,
+        buildMediaPlaylistContentId,
+        mediaPlaylistContentTypeKnown,
+        mediaPlaylistContentTypeOptions,
+        normalizeMediaVolumeMax,
+        normalizeMediaOptions,
+        mediaCoverArtDetailsEnabled,
+        setMediaCoverArtDetailsEnabled,
+        mediaCoverArtSecondaryEntity,
+        setMediaCoverArtSecondaryEntity,
+        normalizeMediaLabelDisplayMode,
+        normalizeMediaNumberDisplayMode,
+        mediaVolumeMax,
+        setMediaVolumeMax,
+        normalizeMediaSpeakerGroupEntity,
+        mediaSpeakerGroupEntity,
+        setMediaSpeakerGroupEntity,
+        mediaLabelDisplayMode,
+        setMediaLabelDisplayMode,
+        mediaNumberDisplayMode,
+        setMediaNumberDisplayMode,
+        mediaPlaylistContentId,
+        mediaPlaylistContentType,
+        setMediaPlaylistContentId,
+        setMediaPlaylistContentType,
+        mediaPlaylistPlayerSource,
+        setMediaPlaylistPlayerSource,
     };
 }
+
+export type ConfigMediaOptionsFeature = ReturnType<typeof createConfigMediaOptionsFeature>;

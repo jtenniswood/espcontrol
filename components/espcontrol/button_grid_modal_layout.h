@@ -244,6 +244,10 @@ constexpr int shared_tab_size(const DeviceProfile &profile,
   return control_tab_size(profile, frame, tokens);
 }
 
+constexpr int tab_icon_zoom(const DeviceProfile &profile) {
+  return uses_family(profile, LayoutFamily::LARGE_SQUARE) ? 220 : 180;
+}
+
 constexpr int tab_gap(const DeviceProfile &profile, int tab_size) {
   const bool large_landscape = uses_family(profile, LayoutFamily::LARGE_LANDSCAPE);
   int gap = large_landscape ? tab_size * 2 / 5 : tab_size / 4;

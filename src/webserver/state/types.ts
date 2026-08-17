@@ -1,4 +1,6 @@
 import type { CardConfig } from "../contracts/types";
+import type { ClipboardEntry } from "../features/clipboard";
+import type { SlotSizeMap } from "../model/grid";
 
 export interface DeviceConfigFeatures {
   internalRelays?: readonly { readonly key: string; readonly label: string }[];
@@ -9,6 +11,8 @@ export interface DeviceConfigFeatures {
   screenRotationOptions?: readonly string[];
   subpageConfigChunks?: number;
   voiceServices?: boolean;
+  battery?: boolean;
+  alarmDelayAudio?: boolean;
 }
 
 export interface DeviceConfig {
@@ -75,11 +79,35 @@ export interface FirmwareVersionInfo {
   ota_md5?: string;
 }
 
+export interface RuntimeSubpage {
+  order: string[];
+  buttons: CardConfig[];
+  grid: number[];
+  sizes: SlotSizeMap;
+  backLabel?: string;
+}
+
+export interface AppClipboard {
+  buttons: ClipboardEntry[];
+}
+
+export interface SettingsDraft {
+  key: string;
+  slot: number;
+  homeSlot: number | null;
+  isSub: boolean;
+  dirty: boolean;
+  button: CardConfig;
+  isNew?: boolean;
+  pos?: number;
+  typeSelected?: boolean;
+  autoSelectedButton?: CardConfig | null;
+}
+
 export interface AppState {
   grid: number[];
   sizes: Record<string, number>;
   buttons: CardConfig[];
-  theme: string;
   onColor: string;
   selectedSlots: number[];
   lastClickedSlot: number;
@@ -98,8 +126,16 @@ export interface AppState {
   clockBarOn: boolean;
   _clockBarStateValues: Record<string, boolean>;
   clockBarTimeOn: boolean;
+  clockBarNightModeOn: boolean;
   networkStatusOn: boolean;
+  batteryStatusOn: boolean;
   voiceServicesOn: boolean;
+  alarmDelayAudioOn: boolean;
+  alarmDelayTtsOn: boolean;
+  alarmDelayEntryAnnouncement: string;
+  alarmDelayExitAnnouncement: string;
+  alarmDelayBeepVolume: number;
+  alarmDelayFinalCountdown: number;
   networkTransport: string;
   wifiStrengthPercent: number;
   temperatureDegreeSymbolOn: boolean;
@@ -109,6 +145,7 @@ export interface AppState {
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaverOn: boolean;
   coverArtMediaPlayerEntity: string;
+  coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtFilteringEnabled: boolean;
   coverArtDelay: number;
@@ -127,6 +164,8 @@ export interface AppState {
   clockBrightnessNight: number;
   clockBrightnessSplitReceived: boolean;
   screensaverDimmedBrightness: number;
+  screensaverDimmedBrightnessDay: number;
+  screensaverDimmedBrightnessNight: number;
   screensaverTimeout: number;
   screensaverTimeoutMin: number;
   screensaverTimeoutMax: number;
@@ -134,13 +173,15 @@ export interface AppState {
   homeScreenTimeout: number;
   brightnessDayVal: number;
   brightnessNightVal: number;
-  automaticBrightnessEnabled: boolean;
+  brightnessMode: string;
+  manualBrightnessVal: number;
   brightnessDawnTime: string;
   brightnessDuskTime: string;
   scheduleTrigger: string;
   _scheduleTriggerReceived: boolean;
   scheduleEnabled: boolean;
   scheduleSensorActivation: string;
+  scheduleSensorEntity: string;
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;
@@ -164,6 +205,7 @@ export interface AppState {
   screenRotationOptions: string[];
   screenRotationDeviceOptions: readonly string[] | null;
   screenRotationInitialReady: boolean;
+  screenRotationInitialFallbackActive: boolean;
   screenRotationInitialTimer: number | null;
   pendingButtonOrderRaw: string | null;
   sunrise: string;
@@ -191,6 +233,8 @@ export interface AppState {
   c6FirmwareUpdateAvailable: string;
   c6FirmwareUpdateControlsSupported: boolean;
   c6FirmwareInstallControlsSupported: boolean;
+  c6FirmwareAutoUpdateSupported: boolean;
+  c6FirmwareAutoUpdate: boolean;
   c6FirmwareChecking: boolean;
   c6FirmwareInstalling: boolean;
   autoUpdate: boolean;
@@ -202,14 +246,14 @@ export interface AppState {
   clockBarTempRestoreIndoor: boolean;
   clockBarTempRestoreOutdoor: boolean;
   clockBarTempRestoreEntities: string[];
-  subpages: Record<string, unknown>;
+  subpages: Record<string, RuntimeSubpage>;
   subpageRaw: Record<string, Record<string, string>>;
   subpageSavePending: Record<string, string>;
   editingSubpage: number | null;
   subpageSelectedSlots: number[];
   subpageLastClicked: number;
-  clipboard: unknown;
-  settingsDraft: unknown;
+  clipboard: AppClipboard | null;
+  settingsDraft: SettingsDraft | null;
   entityPostPaths: Record<string, string>;
   entityNames: Record<string, string[]>;
 }

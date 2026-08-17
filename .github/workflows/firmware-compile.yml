@@ -37,7 +37,7 @@ jobs:
             --paginate \
             --jq '.[].filename' > changed-files.txt
 
-          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_manifest|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
+          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|product/(model_v2\.json|v2/.*)|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_manifest|generate_device_slots|prepare_c6_firmware|product_model_v2)\.py|package(-lock)?\.json)$' changed-files.txt; then
             echo "compile_required=true" >> "$GITHUB_OUTPUT"
           else
             echo "compile_required=false" >> "$GITHUB_OUTPUT"
@@ -51,17 +51,29 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           sparse-checkout: |
             builds/*.yaml
             common/assets/*.yaml
             common/assets/fonts/*
-            devices/catalog.json
+            common/assets/icons.json
+            product/v2/card_contract.json
+            common/config/entity_names.json
+            common/config/strings.*.txt
+            compatibility/fixtures/product_compatibility.json
+            product/v2/device_catalog.json
             devices/manifest.json
             devices/*/device/fonts.yaml
+            product/model_v2.json
+            product/v2/icons.json
+            product/v2/entity_names.json
+            product/v2/translations/strings.*.txt
+            product/v2/product_compatibility.json
+            product/v2/**
             scripts/device_matrix.py
             scripts/device_profiles.py
+            scripts/product_model_v2.py
           sparse-checkout-cone-mode: false
 
       - name: Generate device matrix
@@ -89,7 +101,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           path: espcontrol-${{ matrix.slug }}
 
@@ -131,9 +143,10 @@ jobs:
           RUN_CACHE_ROOT="${RUNNER_TEMP}/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
           PLATFORMIO_CACHE="${RUN_CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           BUILD_CACHE="${RUN_CACHE_ROOT}/build"
+          RECOVERY_BUILD_CACHE="${RUN_CACHE_ROOT}/build-recovery"
           BUILD_INPUT_DIR=".firmware-builds"
           rm -rf "${RUN_CACHE_ROOT}"
-          mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}"
+          mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}" "${RECOVERY_BUILD_CACHE}"
           rm -rf .esphome
           rm -rf "${BUILD_INPUT_DIR}"
           mkdir -p "${BUILD_INPUT_DIR}"
@@ -141,7 +154,13 @@ jobs:
           echo "RUN_CACHE_ROOT=${RUN_CACHE_ROOT}" >> "$GITHUB_ENV"
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
+          echo "RECOVERY_BUILD_CACHE=${RECOVERY_BUILD_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_INPUT_DIR=${BUILD_INPUT_DIR}" >> "$GITHUB_ENV"
+
+      - name: Prepare verified ESP32-C6 recovery firmware
+        if: matrix.recovery
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: python3 scripts/prepare_c6_firmware.py
 
       - name: Pull ESPHome image
         working-directory: espcontrol-${{ matrix.slug }}
@@ -159,21 +178,39 @@ jobs:
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
           SOURCE_DIR="${PWD}"
-          CONTAINER=$(${DOCKER} create \
-            --user "$(id -u):$(id -g)" \
-            -e HOME=/config \
-            -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
-            -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
-            -v "${PLATFORMIO_CACHE}:/config/.esphome" \
-            -v "${BUILD_CACHE}:/config/${BUILD_INPUT_DIR}/.esphome" \
-            "${ESPHOME_IMAGE}" \
-            compile /config/${BUILD_INPUT_DIR}/${{ matrix.slug }}.factory.yaml)
-          cleanup() {
-            ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || true
+          compile_config() {
+            config_file="$1"
+            build_cache="$2"
+            container=$(${DOCKER} create \
+              --user "$(id -u):$(id -g)" \
+              -e HOME=/config \
+              -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
+              -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
+              -v "${PLATFORMIO_CACHE}:/config/.esphome" \
+              -v "${build_cache}:/config/${BUILD_INPUT_DIR}/.esphome" \
+              "${ESPHOME_IMAGE}" \
+              compile "/config/${BUILD_INPUT_DIR}/${config_file}")
+            cleanup_container() {
+              ${DOCKER} rm -f "${container}" >/dev/null 2>&1 || true
+            }
+            trap cleanup_container EXIT
+            if ! ${DOCKER} cp "${SOURCE_DIR}/." "${container}:/config"; then
+              cleanup_container
+              trap - EXIT
+              return 1
+            fi
+            set +e
+            ${DOCKER} start -a "${container}"
+            status=$?
+            set -e
+            cleanup_container
+            trap - EXIT
+            return "${status}"
           }
-          trap cleanup EXIT
-          ${DOCKER} cp "${SOURCE_DIR}/." "${CONTAINER}:/config"
-          ${DOCKER} start -a "${CONTAINER}"
+          compile_config "${{ matrix.slug }}.factory.yaml" "${BUILD_CACHE}"
+          if [ "${{ matrix.recovery }}" = "true" ]; then
+            compile_config "${{ matrix.slug }}.recovery.yaml" "${RECOVERY_BUILD_CACHE}"
+          fi
 
       - name: Clean firmware caches
         if: always()

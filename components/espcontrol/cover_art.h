@@ -3,6 +3,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -14,10 +15,49 @@ namespace espcontrol::cover_art {
 constexpr int MAX_DOWNLOAD_RETRIES = 5;
 constexpr uint32_t DEFERRED_DOWNLOAD_MS = 100;
 constexpr uint32_t CACHED_ARTWORK_DEBOUNCE_MS = 300;
+constexpr uint32_t ARTWORK_TRIGGER_DEBOUNCE_MS = 75;
 constexpr uint32_t ARTWORK_ATTRIBUTE_RETRY_MS = 1500;
 constexpr uint32_t SUBSCRIPTION_RECONCILE_MS = 5000;
 constexpr size_t MAX_ARTWORK_URL_LENGTH = 4096;
 constexpr int ACCENT_SAMPLE_GRID = 20;
+
+inline std::string normalized_media_source(std::string source) {
+  while (!source.empty() && std::isspace(static_cast<unsigned char>(source.front()))) {
+    source.erase(source.begin());
+  }
+  while (!source.empty() && std::isspace(static_cast<unsigned char>(source.back()))) {
+    source.pop_back();
+  }
+  for (char &ch : source) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return source;
+}
+
+inline bool external_media_source(const std::string &source) {
+  const std::string normalized = normalized_media_source(source);
+  return normalized == "tv" || normalized == "line-in" ||
+         normalized == "line in" || normalized.rfind("hdmi", 0) == 0;
+}
+
+inline bool media_card_artwork_suppressed(bool source_known,
+                                          bool external_source) {
+  return source_known && external_source;
+}
+
+inline bool media_entity_state_usable(const std::string &state) {
+  const std::string normalized = normalized_media_source(state);
+  return normalized == "playing" || normalized == "paused" ||
+         normalized == "buffering";
+}
+
+inline bool use_secondary_media_entity(bool primary_external,
+                                       bool secondary_configured,
+                                       bool secondary_available,
+                                       bool secondary_has_content) {
+  return primary_external && secondary_configured && secondary_available &&
+         secondary_has_content;
+}
 
 struct AccentColor {
   uint8_t red{0};
@@ -87,6 +127,7 @@ inline AccentColor darken_accent_color(AccentColor color) {
 
 struct RuntimeState {
   espcontrol::artwork::SourceCandidates sources;
+  espcontrol::artwork::RefreshBatch artwork_refresh;
   std::string source_url, effective_download_url, active_download_source_url;
   std::string loaded_url, last_good_url, retry_url, fallback_url;
   int retry_count{0};
@@ -121,6 +162,7 @@ struct RuntimeState {
   bool begin_retry() { if (!can_retry()) return false; ++retry_count; return true; }
   void clear_image() {
     sources.clear();
+    artwork_refresh.reset();
     source_url.clear(); effective_download_url.clear(); active_download_source_url.clear(); loaded_url.clear();
     last_good_url.clear();
     retry_url.clear(); fallback_url.clear(); retry_count = 0; image_available = false; refresh_needed = false;

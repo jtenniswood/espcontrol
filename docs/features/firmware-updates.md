@@ -17,6 +17,8 @@ These are configured from the **Settings** tab in the [Setup](/features/setup) u
 - **Previous firmware** — open this panel to choose and install one of the available previous stable versions.
 - **Check for Update** — press this button to check for a new version right now, regardless of the automatic schedule.
 
+When either a panel firmware update or WiFi co-processor update is available, the collapsed **Firmware** section shows an **Update available** badge so you do not need to open each update panel to check.
+
 Manual Ethernet builds can be different. If you used the advanced Ethernet setup with `disable_updates: "true"`, these built-in GitHub update controls are removed from the panel firmware. Use ESPHome OTA or USB from your ESPHome setup to update that display instead.
 
 ## What Happens During an Update
@@ -62,8 +64,15 @@ Some ESP32-P4 displays use a separate ESP32-C6 chip for WiFi. EspControl exposes
 
 These entities are separate from the main EspControl display firmware controls. The normal **Firmware: Check for Update** and **Firmware: Install Update** controls update the panel firmware. The ESP32-C6 controls check and install compatible WiFi co-processor firmware from ESPHome's hosted firmware manifest.
 
-On the panel's setup page, supported displays show these controls in the **WiFi firmware** panel under **Firmware**.
+Supported displays check for compatible WiFi firmware once a day and install new versions automatically. Automatic WiFi firmware updates are on by default, helping displays receive connectivity fixes without requiring a separate manual update. The setting is remembered after restarts.
 
-In Home Assistant, look for ESP32-C6 diagnostic entities showing the current version, latest version, and whether an update is available. When an update is available, use the ESP32-C6 check/install buttons for the co-processor, and continue using the regular EspControl firmware controls for normal panel updates.
+On the panel's setup page, open the **WiFi firmware** panel under **Firmware** to turn **Auto Update** off or back on. You can still use **Check for Update** and **Update WiFi Firmware** manually while automatic updates are off.
+
+In Home Assistant, the **WiFi Firmware: Auto Update** switch provides the same opt-out. ESP32-C6 diagnostic entities show the current version, latest version, and whether an update is available. Continue using the regular EspControl firmware controls for normal panel updates.
 
 Advanced Ethernet-only builds keep the ESP32-C6 WiFi co-processor off, so they do not expose these ESP32-C6 update controls.
+
+If unreliable WiFi prevents the online updater from working, connect the P4 panel
+to a computer and use the [C6 WiFi recovery installer](/getting-started/c6-recovery).
+The recovery image carries the matching C6 firmware and transfers it internally
+without needing a network connection.

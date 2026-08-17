@@ -310,11 +310,24 @@ inline bool screensaver_pin_keypad_submit(const std::string &code, void *) {
 
 inline void screensaver_pin_reopen_if_locked();
 
+inline bool screensaver_pin_critical_takeover_active() {
+  auto *core = espcontrol::active_espcontrol_app_core();
+  if (!core) return false;
+  const auto &takeover = core->display().current_takeover();
+  return takeover &&
+         *takeover == espcontrol::DisplayTakeoverKind::CRITICAL;
+}
+
 inline void screensaver_pin_reopen_timer_cb(lv_timer_t *timer) {
   ScreensaverPinKeypadOpenArgs &args = screensaver_pin_keypad_open_args();
   if (args.reopen_timer == timer) args.reopen_timer = nullptr;
   lv_timer_del(timer);
   if (!screensaver_pin_locked() || screensaver_pin_unlock_code().empty()) return;
+  if (screensaver_pin_critical_takeover_active()) {
+    args.reopen_timer =
+      lv_timer_create(screensaver_pin_reopen_timer_cb, 250, nullptr);
+    return;
+  }
   pin_keypad_open_modal(
     PinKeypadKind::SCREENSAVER, nullptr, args.width_compensation_percent,
     args.pin_label_font, args.key_label_font, args.icon_font, "Enter Pin",

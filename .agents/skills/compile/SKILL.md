@@ -24,7 +24,21 @@ guition-esp32-s3-4848s040
 
 ## Workflow
 
-### 1. Compile Each Device
+### 1. Resolve the ESPHome Version
+
+Use the ESPHome version pinned by the repository in `.github/esphome.env`. This
+is the same version used by CI and release builds; do not hard-code an older
+version in this skill.
+
+```bash
+ESPHOME_VERSION="$(sed -n 's/^ESPHOME_VERSION=//p' .github/esphome.env)"
+test -n "$ESPHOME_VERSION"
+ESPHOME_IMAGE="ghcr.io/esphome/esphome:${ESPHOME_VERSION}"
+```
+
+Keep these variables in the shell session used for the compile commands.
+
+### 2. Compile Each Device
 
 Run one Docker compile per device. Use `builds/<slug>.factory.yaml`, the same
 entry point CI uses, so the test matches what a release build would do.
@@ -32,7 +46,7 @@ entry point CI uses, so the test matches what a release build would do.
 ```bash
 docker run --rm \
   -v "/Users/jtenniswood/Library/CloudStorage/Dropbox/Git/espcontrol:/config" \
-  ghcr.io/esphome/esphome:2026.6.5 \
+  "$ESPHOME_IMAGE" \
   compile /config/builds/<slug>.factory.yaml
 ```
 
@@ -41,13 +55,13 @@ Run devices sequentially because each compile is resource-intensive. Use a
 stalled too early. If a compile backgrounds, poll the terminal output until it
 finishes and read the result.
 
-If `ghcr.io/esphome/esphome:2026.6.5` is missing, pull it first:
+If the pinned image is missing, pull it first:
 
 ```bash
-docker pull ghcr.io/esphome/esphome:2026.6.5
+docker pull "$ESPHOME_IMAGE"
 ```
 
-### 2. Interpret Results
+### 3. Interpret Results
 
 - Success: output ends with `Successfully compiled program` or
   `INFO Successfully compiled program.`
@@ -62,7 +76,7 @@ Common failure categories:
 - Type mismatches, such as a string where an integer is expected
 - Missing `packages:` keys
 
-### 3. Fix and Retry on Failure
+### 4. Fix and Retry on Failure
 
 When a device fails:
 
@@ -79,7 +93,7 @@ compile.
 Fixes should target files under `common/`, `devices/`, or `components/` when
 possible, not the `builds/*.yaml` wrappers because those are thin entry points.
 
-### 4. Web UI Asset Note
+### 5. Web UI Asset Note
 
 The factory YAML bundles `www.js` via `js_include`. If the referenced JavaScript
 file is missing, compile will fail. Run this first when web UI assets may be out
@@ -89,7 +103,7 @@ of date:
 python3 scripts/build.py
 ```
 
-### 5. Report
+### 6. Report
 
 After all devices pass, summarize:
 

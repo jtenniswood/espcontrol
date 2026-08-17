@@ -1,14 +1,50 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installPreviewGridPlacementModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import type { PreviewPlacementController } from "../features/preview_placement_controller";
+import { closestGridCell, swapGridCell } from "../features/preview";
+import {
+    canPlaceSlotAt as canPlaceSlotAtInGrid,
+    findDuplicatePlacement as findDuplicatePlacementInGrid,
+    findPlacementCell as findPlacementCellInGrid,
+    placeOrderedGridEntries as placeOrderedGridEntriesInGrid,
+    placeSlotAt as placeSlotAtInGrid,
+    resolveSpanPosition,
+} from "../features/preview_grid";
+import type { ApplicationLayoutState } from "./application_context";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { GridFeature } from "./grid";
+export interface PreviewGridPlacementDependencies {
+    readonly controller: PreviewPlacementController;
+    readonly layout: ApplicationLayoutState;
+    readonly codec: ConfigCodecFeature;
+    readonly grid: Pick<GridFeature, "ctx">;
+}
+export interface PreviewGridPlacementFeature {
+    resolveSpanPos(position?: any): any;
+    getCellFromEvent(event?: any, container?: any): any;
+    moveToCell(fromPosition?: any, toPosition?: any): void;
+    canPlaceSlotAt(grid?: any, position?: any, size?: any, maxSlots?: any): boolean;
+    findPlacementCell(grid?: any, start?: any, size?: any, maxSlots?: any): any;
+    findDuplicatePlacement(grid?: any, start?: any, size?: any, maxSlots?: any): any;
+    placeSlotAt(grid?: any, slot?: any, position?: any, size?: any): void;
+    placeOrderedGridEntries(entries?: any, sizes?: any, maxSlots?: any): any;
+    moveSelectedToCell(fromPosition?: any, toPosition?: any): boolean;
+}
+
+export function createPreviewGridPlacementFeature(
+    dependencies: PreviewGridPlacementDependencies,
+): PreviewGridPlacementFeature {
+    const previewPlacementController = dependencies.controller;
+    const { getSubpage } = dependencies.codec;
+    const { ctx } = dependencies.grid;
     // ── Preview Grid Placement ────────────────────────────────────────
     function resolveSpanPos(this: any, pos?: any) {
         var c: any = ctx();
-        return PreviewGridFeature.resolveSpanPosition(c.grid, c.sizes, pos, c.maxSlots, GRID_COLS);
+        return resolveSpanPosition(c.grid, c.sizes, pos, c.maxSlots, dependencies.layout.gridCols);
     }
     function getCellFromEvent(this: any, e?: any, container?: any) {
-        if (CFG.dragMode === "swap") {
+        if (dependencies.layout.config.dragMode === "swap") {
             var rect: any = container.getBoundingClientRect();
-            return resolveSpanPos(PreviewFeature.swapGridCell({ x: e.clientX, y: e.clientY }, { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }, GRID_COLS, GRID_ROWS));
+            return resolveSpanPos(swapGridCell({ x: e.clientX, y: e.clientY }, { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }, dependencies.layout.gridCols, dependencies.layout.gridRows));
         }
         var children: any = container.children;
         var cells: any = [];
@@ -19,67 +55,63 @@ export function installPreviewGridPlacementModule(): GlobalDescriptors {
                 continue;
             cells.push({ pos: pos, left: r.left, top: r.top, right: r.right, bottom: r.bottom });
         }
-        return PreviewFeature.closestGridCell({ x: e.clientX, y: e.clientY }, cells);
+        return closestGridCell({ x: e.clientX, y: e.clientY }, cells);
     }
     function moveToCell(this: any, fromPos?: any, toPos?: any) {
         var c: any = ctx();
-        toPos = resolveSpanPos(toPos);
-        if (toPos >= c.maxSlots || c.grid[toPos] === -1)
-            return;
-        var grid: any = c.grid.slice();
-        var movingSlot: any = grid[fromPos];
-        clearSpans(grid, c.maxSlots);
-        var targetSlot: any = grid[toPos];
-        grid[toPos] = movingSlot;
-        grid[fromPos] = targetSlot;
-        applySpans(grid, c.sizes, c.maxSlots);
-        if ((c.sizes[movingSlot] || 1) > 1 && !sizeFitsAt(toPos, c.sizes[movingSlot], c.maxSlots)) {
-            delete c.sizes[movingSlot];
-        }
-        if (c.isSub) {
-            getSubpage(state.editingSubpage).grid = grid;
-        }
-        else {
-            state.grid = grid;
-        }
-    }
-    function canPlaceSlotAt(this: any, grid?: any, pos?: any, size?: any, maxSlots?: any) {
-        return PreviewGridFeature.canPlaceSlotAt(grid, pos, size, maxSlots, GRID_COLS);
-    }
-    function findPlacementCell(this: any, grid?: any, start?: any, size?: any, maxSlots?: any) {
-        return PreviewGridFeature.findPlacementCell(grid, start, size, maxSlots, GRID_COLS);
-    }
-    function findDuplicatePlacement(this: any, grid?: any, start?: any, size?: any, maxSlots?: any) {
-        return PreviewGridFeature.findDuplicatePlacement(grid, start, size, maxSlots, GRID_COLS);
-    }
-    function placeSlotAt(this: any, grid?: any, slot?: any, pos?: any, size?: any) {
-        PreviewGridFeature.placeSlotAt(grid, slot, pos, size, GRID_COLS);
-    }
-    function placeOrderedGridEntries(this: any, entries?: any, sizes?: any, maxSlots?: any) {
-        return PreviewGridFeature.placeOrderedGridEntries(entries, sizes, maxSlots, GRID_COLS);
-    }
-    function moveSelectedToCell(this: any, fromPos?: any, toPos?: any) {
-        var c: any = ctx();
-        var result: any = PreviewGridFeature.moveSelectedGridEntries(c.grid, c.sizes, c.selected, fromPos, toPos, c.maxSlots, GRID_COLS);
+        var result: any = previewPlacementController.moveSingle(c, fromPos, toPos, dependencies.layout.gridCols);
         if (!result.accepted)
-            return false;
+            return;
         if (c.isSub) {
-            getSubpage(state.editingSubpage).grid = result.grid;
+            var subpage: any = getSubpage(state.editingSubpage);
+            subpage.grid = result.grid;
+            subpage.sizes = result.sizes;
         }
         else {
             state.grid = result.grid;
+            state.sizes = result.sizes;
+        }
+    }
+    function canPlaceSlotAt(this: any, grid?: any, pos?: any, size?: any, maxSlots?: any) {
+        return canPlaceSlotAtInGrid(grid, pos, size, maxSlots, dependencies.layout.gridCols);
+    }
+    function findPlacementCell(this: any, grid?: any, start?: any, size?: any, maxSlots?: any) {
+        return findPlacementCellInGrid(grid, start, size, maxSlots, dependencies.layout.gridCols);
+    }
+    function findDuplicatePlacement(this: any, grid?: any, start?: any, size?: any, maxSlots?: any) {
+        return findDuplicatePlacementInGrid(grid, start, size, maxSlots, dependencies.layout.gridCols);
+    }
+    function placeSlotAt(this: any, grid?: any, slot?: any, pos?: any, size?: any) {
+        placeSlotAtInGrid(grid, slot, pos, size, dependencies.layout.gridCols);
+    }
+    function placeOrderedGridEntries(this: any, entries?: any, sizes?: any, maxSlots?: any) {
+        return placeOrderedGridEntriesInGrid(entries, sizes, maxSlots, dependencies.layout.gridCols);
+    }
+    function moveSelectedToCell(this: any, fromPos?: any, toPos?: any) {
+        var c: any = ctx();
+        var result: any = previewPlacementController.moveSelected(c, fromPos, toPos, dependencies.layout.gridCols);
+        if (!result.accepted)
+            return false;
+        if (c.isSub) {
+            var subpage: any = getSubpage(state.editingSubpage);
+            subpage.grid = result.grid;
+            subpage.sizes = result.sizes;
+        }
+        else {
+            state.grid = result.grid;
+            state.sizes = result.sizes;
         }
         return true;
     }
     return {
-        "resolveSpanPos": staticGlobal(resolveSpanPos),
-        "getCellFromEvent": staticGlobal(getCellFromEvent),
-        "moveToCell": staticGlobal(moveToCell),
-        "canPlaceSlotAt": staticGlobal(canPlaceSlotAt),
-        "findPlacementCell": staticGlobal(findPlacementCell),
-        "findDuplicatePlacement": staticGlobal(findDuplicatePlacement),
-        "placeSlotAt": staticGlobal(placeSlotAt),
-        "placeOrderedGridEntries": staticGlobal(placeOrderedGridEntries),
-        "moveSelectedToCell": staticGlobal(moveSelectedToCell),
+        resolveSpanPos,
+        getCellFromEvent,
+        moveToCell,
+        canPlaceSlotAt,
+        findPlacementCell,
+        findDuplicatePlacement,
+        placeSlotAt,
+        placeOrderedGridEntries,
+        moveSelectedToCell,
     };
 }

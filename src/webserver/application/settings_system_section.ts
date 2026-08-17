@@ -1,15 +1,87 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installSettingsSystemSectionModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import { normalizeHomeAssistantArtworkPort, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
+import type { UiRuntimeState } from "./state";
+import {
+    firmwareInfoFromPublicManifest,
+    firmwareInfosFromPublicVersions,
+    publicFirmwareManifestUrl,
+    publicFirmwareVersionsUrl,
+} from "./firmware_metadata";
+import type { FirmwareVersionFeature } from "./firmware_version_state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { C6FirmwareFeature } from "./c6_firmware_ui";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { StateLoaderFeature } from "./state_loader_api";
+import type { FirmwareUpdatePostApiFeature } from "./firmware_update_post_api";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
+import type { PublicFirmwareInstallFeature } from "./public_firmware_install";
+import type { ControlsFieldsFeature } from "./controls_fields";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+
+export interface SettingsSystemSectionActions {
+    exportBackup(): void;
+    importBackup(): void;
+}
+
+export interface SettingsSystemSectionFeature {
+    buildSystemSettingsCards(...args: any[]): any;
+}
+
+export function createSettingsSystemSectionFeature(
+    actions: SettingsSystemSectionActions,
+    runtime: UiRuntimeState,
+    firmwareVersion: FirmwareVersionFeature,
+    firmwareUpdate: FirmwareUpdateFeature,
+    c6Firmware: C6FirmwareFeature,
+    shell: Pick<ControlsShellFeature, "createActionButton">,
+    requestApi: Pick<ApplicationApiFeature, "getJsonQuietly" | "postFirmwareAutoUpdate" | "postFirmwareUpdateFrequency" | "postC6FirmwareAutoUpdate">,
+    stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion">,
+    firmwarePostApi: FirmwareUpdatePostApiFeature,
+    artworkPostApi: Pick<ArtworkPostApiFeature, "postHomeAssistantArtworkPort" | "postHomeAssistantArtworkProtocol">,
+    publicFirmwareInstall: Pick<PublicFirmwareInstallFeature, "installPublicFirmwareViaWebOta">,
+    fields: Pick<ControlsFieldsFeature, "fieldLabel" | "makeCollapsibleCard" | "toggleRow">,
+    helpers: Pick<SettingsPageHelpersFeature, "disclosureBadge" | "inlineDisclosure" | "statusBadge">,
+): SettingsSystemSectionFeature {
+    const { fieldLabel, makeCollapsibleCard, toggleRow } = fields;
+    const { disclosureBadge, inlineDisclosure, statusBadge } = helpers;
+    const { createActionButton } = shell;
+    const els = runtime.els;
+    const { render: renderFirmwareVersion } = firmwareVersion;
+    const {
+        controlsVisible: firmwareUpdateControlsVisible,
+        latestInstallAction: latestFirmwareInstallAction,
+        latestInfo: latestFirmwareInfo,
+        renderStatus: renderFirmwareUpdateStatus,
+        clearWebOtaFallback: clearFirmwareWebOtaFallback,
+        startInstallRefresh: startFirmwareInstallRefresh,
+        scheduleWebOtaFallback: scheduleFirmwareWebOtaFallback,
+        setPublicInfo: setPublicFirmwareInfo,
+        setPublicVersions: setPublicFirmwareVersions,
+        syncUi: syncFirmwareUpdateUi,
+        syncPreviousUi: syncPreviousFirmwareUi,
+        selectedPreviousInfo: selectedPreviousFirmwareInfo,
+        syncVersionSelect: syncFirmwareVersionSelect,
+    } = firmwareUpdate;
+    const { updateKnownAvailable: c6FirmwareUpdateKnownAvailable, syncUi: syncC6FirmwareUi } = c6Firmware;
+    const {
+        postFirmwareUpdateInstall,
+        postFirmwareUpdateCheck,
+        postC6FirmwareUpdateInstall,
+        postC6FirmwareUpdateCheck,
+    } = firmwarePostApi;
+    const { postHomeAssistantArtworkPort, postHomeAssistantArtworkProtocol } = artworkPostApi;
+    const { installPublicFirmwareViaWebOta } = publicFirmwareInstall;
     // ── Settings System Section ────────────────────────────────────────
     function buildSystemSettingsCards(this: any) {
         var backupBody: any = document.createElement("div");
         var backupRow: any = document.createElement("div");
         backupRow.className = "sp-backup-btns";
         var exportBtn: any = createActionButton("sp-backup-btn", "Export", "download");
-        exportBtn.addEventListener("click", exportConfig);
+        exportBtn.addEventListener("click", actions.exportBackup);
         backupRow.appendChild(exportBtn);
         var importBtn: any = createActionButton("sp-backup-btn", "Import", "upload");
-        importBtn.addEventListener("click", importConfig);
+        importBtn.addEventListener("click", actions.importBackup);
         backupRow.appendChild(importBtn);
         backupBody.appendChild(backupRow);
         var backupCard: any = makeCollapsibleCard("Backup", backupBody, true);
@@ -42,10 +114,6 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         var fwActions: any = document.createElement("div");
         fwActions.className = "sp-fw-actions sp-fw-actions-full";
         els.fwActions = fwActions;
-        var fwInlineStatus: any = document.createElement("span");
-        fwInlineStatus.className = "sp-fw-inline-status";
-        fwActions.appendChild(fwInlineStatus);
-        els.fwInlineStatus = fwInlineStatus;
         var fwCheckBtn: any = createActionButton("sp-fw-btn", "Check for Update");
         fwCheckBtn.addEventListener("click", function (this: any) {
             if (!firmwareUpdateControlsVisible())
@@ -79,15 +147,15 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             state.firmwareChecking = true;
             renderFirmwareUpdateStatus();
             postFirmwareUpdateCheck();
-            getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
+            requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
             });
-            getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
+            requestApi.getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
                 setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
             });
             setTimeout(function (this: any) {
                 state.firmwareChecking = false;
-                refreshFirmwareVersion();
+                stateLoader.refreshFirmwareVersion();
                 renderFirmwareUpdateStatus();
             }, 10000);
         });
@@ -115,7 +183,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
                 return;
             }
             state.autoUpdate = this.checked;
-            postFirmwareAutoUpdate(state.autoUpdate);
+            requestApi.postFirmwareAutoUpdate(state.autoUpdate);
             syncFirmwareUpdateUi();
         });
         els.setAutoUpdateRow = autoUpdateToggle.row;
@@ -138,7 +206,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             if (!firmwareUpdateControlsVisible())
                 return;
             state.updateFrequency = this.value;
-            postFirmwareUpdateFrequency(state.updateFrequency);
+            requestApi.postFirmwareUpdateFrequency(state.updateFrequency);
         });
         freqWrap.appendChild(freqSelect);
         autoUpdateBody.appendChild(freqWrap);
@@ -173,6 +241,19 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         c6LatestRow.appendChild(c6LatestValue);
         wifiFirmwareBody.appendChild(c6LatestRow);
         els.c6FirmwareLatest = c6LatestValue;
+        var c6AutoUpdateToggle: any = toggleRow("Auto Update", "sp-set-c6-auto-update", state.c6FirmwareAutoUpdate);
+        c6AutoUpdateToggle.input.addEventListener("change", function (this: any) {
+            if (!state.c6FirmwareAutoUpdateSupported) {
+                syncC6FirmwareUi();
+                return;
+            }
+            state.c6FirmwareAutoUpdate = this.checked;
+            requestApi.postC6FirmwareAutoUpdate(state.c6FirmwareAutoUpdate);
+            syncC6FirmwareUi();
+        });
+        wifiFirmwareBody.appendChild(c6AutoUpdateToggle.row);
+        els.c6FirmwareAutoUpdateRow = c6AutoUpdateToggle.row;
+        els.c6FirmwareAutoUpdate = c6AutoUpdateToggle.input;
         var c6Actions: any = document.createElement("div");
         c6Actions.className = "sp-fw-actions sp-fw-actions-full";
         var c6UpdateBtn: any = createActionButton("sp-fw-btn", "Check for Update");
@@ -185,7 +266,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
                 syncC6FirmwareUi();
                 postC6FirmwareUpdateInstall();
                 setTimeout(function (this: any) {
-                    refreshFirmwareVersion();
+                    stateLoader.refreshFirmwareVersion();
                 }, 5000);
                 return;
             }
@@ -194,7 +275,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             postC6FirmwareUpdateCheck();
             setTimeout(function (this: any) {
                 state.c6FirmwareChecking = false;
-                refreshFirmwareVersion();
+                stateLoader.refreshFirmwareVersion();
                 syncC6FirmwareUi();
             }, 10000);
         });
@@ -246,11 +327,14 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         els.fwPreviousPanel = previousFirmwarePanel;
         firmwareSubpanels.appendChild(previousFirmwarePanel);
         fwBody.appendChild(firmwareSubpanels);
-        var firmwareCard: any = makeCollapsibleCard("Firmware", fwBody, true);
+        var firmwareCardBadge: any = statusBadge("Firmware update available", "Update available");
+        firmwareCardBadge.className = "sp-card-badge sp-hidden";
+        els.firmwareCardBadge = firmwareCardBadge;
+        var firmwareCard: any = makeCollapsibleCard("Firmware", fwBody, true, firmwareCardBadge);
         syncFirmwareVersionSelect();
         syncFirmwareUpdateUi();
         syncC6FirmwareUi();
-        refreshFirmwareVersion();
+        stateLoader.refreshFirmwareVersion();
         var homeAssistantSettingsBody: any = document.createElement("div");
         var haProtocolField: any = document.createElement("div");
         haProtocolField.className = "sp-field";
@@ -301,6 +385,6 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         };
     }
     return {
-        "buildSystemSettingsCards": staticGlobal(buildSystemSettingsCards),
+        buildSystemSettingsCards,
     };
 }

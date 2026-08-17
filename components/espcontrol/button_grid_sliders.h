@@ -1,6 +1,45 @@
 #pragma once
 
+#include "button_grid_slider_geometry.h"
+#include "media_volume_capability.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
+
+struct ImageCardCtx;
+inline void image_card_set_media_artwork_suppressed(ImageCardCtx *ctx,
+                                                     bool suppressed);
+inline void image_card_refresh_media_artwork_on_metadata_change(ImageCardCtx *ctx);
+
+struct CardPadding {
+  lv_coord_t left = 0;
+  lv_coord_t top = 0;
+  lv_coord_t right = 0;
+  lv_coord_t bottom = 0;
+};
+
+inline CardPadding capture_card_padding(lv_obj_t *btn) {
+  CardPadding padding;
+  if (!btn) return padding;
+  padding.left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
+  padding.top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
+  padding.right = lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
+  padding.bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
+  // Preserve an intentional local inset, such as a subpage's calculated
+  // padding. A reused slider button leaves a local zero override behind;
+  // only in that all-zero case remove the stale override and read the theme.
+  if (padding.left == 0 && padding.top == 0 &&
+      padding.right == 0 && padding.bottom == 0) {
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_LEFT, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_TOP, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_RIGHT, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(btn, LV_STYLE_PAD_BOTTOM, LV_PART_MAIN);
+    padding.left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
+    padding.top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
+    padding.right = lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
+    padding.bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
+  }
+  return padding;
+}
 
 // ── Slider widgets ───────────────────────────────────────────────────
 
@@ -28,9 +67,19 @@ struct SliderCtx {
   lv_timer_t *media_timer = nullptr;
   uint8_t media_position_refresh_remaining = 0;
   lv_obj_t *media_track_bg = nullptr;
+  lv_obj_t *geometry_parent = nullptr;
+  lv_timer_t *geometry_timer = nullptr;
   lv_obj_t *media_value_lbl = nullptr;
   lv_obj_t *media_status_lbl = nullptr;
-  lv_coord_t content_pad = 0;
+  // Button padding captured before the slider widget zeroes it, so the icon and
+  // label can be inset to match every non-slider card (see setup_slider_visual).
+  lv_coord_t label_pad_left = 0;
+  lv_coord_t label_pad_top = 0;
+  lv_coord_t label_pad_bottom = 0;
+  lv_coord_t content_pad_left = 0;
+  lv_coord_t content_pad_top = 0;
+  lv_coord_t content_pad_right = 0;
+  lv_coord_t content_pad_bottom = 0;
   bool available = true;
   bool interactive = true;
   // light_temperature fields
@@ -54,11 +103,20 @@ struct MediaNowPlayingCtx {
   ImageCardCtx *cover_art = nullptr;
   lv_obj_t *cover_overlay = nullptr;
   lv_obj_t *btn = nullptr;
+  std::string primary_entity;
+  std::string secondary_entity;
+  std::string active_entity;
+  std::string artwork_refresh_signature;
+  std::function<void()> refresh_entity_route;
   char artist[HA_STATE_TEXT_MAX_LEN + 1] = {};
+  bool source_known = false;
   bool external_source = false;
+  bool external_source_fallback = false;
+  bool show_track_details = true;
   bool play_pause_background = false;
   bool artist_below_title = false;
   lv_coord_t artist_gap = 0;
+  CardPadding content_padding;
 };
 
 struct MediaPlaylistCtx {
@@ -112,6 +170,9 @@ struct MediaVolumeCtx {
   std::function<void(int)> apply_percent;
   std::function<bool()> mic_muted;
   std::function<void(bool)> set_mic_muted;
+  espcontrol::media::VolumeControlMode volume_control_mode =
+    espcontrol::media::VolumeControlMode::ABSOLUTE;
+  bool volume_known = false;
   bool available = true;
 };
 
@@ -223,6 +284,7 @@ struct LightControlModalUi {
   lv_obj_t *power_group = nullptr;
   lv_obj_t *power_on_btn = nullptr;
   lv_obj_t *power_off_btn = nullptr;
+  ControlModalBinaryToggle power_toggle;
   lv_obj_t *slider = nullptr;
   lv_obj_t *slider_fill = nullptr;
   lv_obj_t *slider_handle = nullptr;
@@ -906,16 +968,13 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_border_width(ui.power_group, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.power_group, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.power_group, 0, LV_PART_MAIN);
-  control_modal_apply_pressed_fill(ui.power_group);
-  lv_obj_add_flag(ui.power_group, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_clear_flag(ui.power_group, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_add_event_cb(ui.power_group, [](lv_event_t *) {
-    light_control_toggle_modal_power();
-  }, LV_EVENT_CLICKED, nullptr);
   ui.power_on_btn = light_control_create_power_button(
     ui.power_group, ctx->icon_font, ctx->width_compensation_percent, true);
   ui.power_off_btn = light_control_create_power_button(
     ui.power_group, ctx->icon_font, ctx->width_compensation_percent, false);
+  ui.power_toggle.callback = light_control_toggle_modal_power;
+  control_modal_setup_binary_toggle(
+    ui.power_group, ui.power_on_btn, ui.power_off_btn, &ui.power_toggle);
 
   ui.slider = lv_slider_create(ui.panel);
   light_control_style_slider(ui.slider, ctx->accent_color);
@@ -1193,25 +1252,16 @@ inline ControlModalLayout media_volume_step_button_layout(const ControlModalLayo
   return controls_layout;
 }
 
-// Move vertical card-slider endpoints away from the screen bezel without
-// shrinking the slider's touch area or its separate full-card fill overlay.
-inline lv_coord_t slider_vertical_edge_inset(lv_coord_t height) {
-  if (height <= 0) return 0;
-
-  lv_coord_t inset = (lv_coord_t)(((int32_t)height * 8 + 50) / 100);
-  if (inset < 8) inset = 8;
-  if (inset > 24) inset = 24;
-
-  lv_coord_t small_slider_limit = height / 4;
-  if (inset > small_slider_limit) inset = small_slider_limit;
-  return inset;
-}
-
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
   if (!slider || !btn) return;
   lv_coord_t bw = lv_obj_get_width(btn);
   lv_coord_t bh = lv_obj_get_height(btn);
   if (bw <= 0 || bh <= 0) return;
+
+  // Keep LVGL's native range equal to the full object. Vertical endpoint
+  // reachability is handled by pointer mapping, not by shrinking the range.
+  lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(slider, 0, LV_PART_MAIN);
 
   if (horizontal) {
     lv_coord_t h = bh >= bw ? bw - 1 : bh;
@@ -1221,9 +1271,6 @@ inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizonta
     lv_coord_t w = bw >= bh ? bh - 1 : bw;
     if (w < 1) w = 1;
     lv_obj_set_size(slider, w, bh);
-    lv_coord_t edge_inset = slider_vertical_edge_inset(bh);
-    lv_obj_set_style_pad_top(slider, edge_inset, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(slider, edge_inset, LV_PART_MAIN);
   }
   lv_obj_align(slider, LV_ALIGN_CENTER, 0, 0);
 }
@@ -1336,17 +1383,69 @@ inline void slider_refresh_geometry(lv_obj_t *slider) {
 inline void slider_deferred_geometry_refresh_cb(lv_timer_t *timer) {
   if (!timer) return;
   lv_obj_t *slider = (lv_obj_t *)lv_timer_get_user_data(timer);
+  SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
+  if (ctx && ctx->geometry_timer == timer) ctx->geometry_timer = nullptr;
   slider_refresh_geometry(slider);
   lv_timer_del(timer);
 }
 
+inline void slider_geometry_refresh_event_cb(lv_event_t *e) {
+  if (!e) return;
+  lv_obj_t *slider = (lv_obj_t *)lv_event_get_user_data(e);
+  slider_refresh_geometry(slider);
+}
+
+inline void slider_geometry_delete_event_cb(lv_event_t *e) {
+  if (!e) return;
+  lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
+  SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
+  if (!ctx) return;
+  if (ctx->geometry_timer) {
+    lv_timer_del(ctx->geometry_timer);
+    ctx->geometry_timer = nullptr;
+  }
+  if (ctx->geometry_parent) {
+    lv_obj_remove_event_cb_with_user_data(
+        ctx->geometry_parent, slider_geometry_refresh_event_cb, slider);
+    ctx->geometry_parent = nullptr;
+  }
+}
+
 inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
   if (!btn || !slider) return;
-  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-    lv_obj_t *sl = (lv_obj_t *)lv_event_get_user_data(e);
-    slider_refresh_geometry(sl);
-  }, LV_EVENT_SIZE_CHANGED, slider);
-  lv_timer_create(slider_deferred_geometry_refresh_cb, 1, slider);
+  SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
+  if (!ctx) return;
+  ctx->geometry_parent = btn;
+  lv_obj_add_event_cb(
+      btn, slider_geometry_refresh_event_cb, LV_EVENT_SIZE_CHANGED, slider);
+  lv_obj_add_event_cb(
+      slider, slider_geometry_delete_event_cb, LV_EVENT_DELETE, nullptr);
+  ctx->geometry_timer =
+      lv_timer_create(slider_deferred_geometry_refresh_cb, 1, slider);
+}
+
+inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
+  if (!slider) return false;
+  SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
+  if (!ctx || ctx->horizontal || !ctx->interactive) return false;
+
+  lv_indev_t *indev = lv_indev_active();
+  if (!indev || lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER) return false;
+
+  lv_point_t point;
+  lv_indev_get_point(indev, &point);
+  lv_area_t slider_area;
+  lv_obj_get_coords(slider, &slider_area);
+
+  int percent = 0;
+  if (!espcontrol::slider_geometry::vertical_pointer_percent(
+        point.y, slider_area.y1, slider_area.y2, percent)) {
+    return false;
+  }
+  if (lv_slider_get_value(slider) == percent) return true;
+  lv_slider_set_value(slider, percent, LV_ANIM_OFF);
+  lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, nullptr);
+  return true;
 }
 
 // Create an invisible LVGL slider with a colored fill overlay inside a button
@@ -1460,6 +1559,7 @@ struct CoverControlCtx {
   int current_position = 0;
   int current_tilt = 0;
   bool current_position_known = false;
+  bool moving = false;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   uint32_t secondary_color = SECONDARY_GREY;
   lv_obj_t *btn = nullptr;
@@ -1506,6 +1606,8 @@ struct CoverControlModalUi {
   lv_obj_t *down_btn = nullptr;
   lv_obj_t *presets_box = nullptr;
   lv_obj_t *preset_btns[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+  int selected_preset = -1;
+  int pending_preset = -1;
   lv_obj_t *position_slider = nullptr;
   lv_obj_t *position_fill = nullptr;
   lv_obj_t *position_handle = nullptr;
@@ -1646,14 +1748,21 @@ inline void cover_control_apply_card_visual(CoverControlCtx *ctx,
                                             const std::string &state_text = "") {
   if (!ctx || !ctx->btn) return;
   cover_control_update_card_slider(ctx, state_text);
-  bool active = ctx->current_position_known
-    ? slider_clamp_pct(ctx->current_position) < 100
-    : (!state_text.empty() ? cover_toggle_state_is_active(state_text) : ctx->current_position < 100);
-  set_card_checked_state(ctx->btn, ctx->available && active);
+  // All Controls covers show position through the proportional closed-amount
+  // fill bar (docs/card-types/covers.md), not a full-tile highlight. Keep the
+  // card unchecked so the fill stays visible; otherwise the CHECKED background
+  // paints the whole tile the on-color and masks the fill at every partial
+  // position. (The Toggle interaction is the mode that lights the tile up.)
+  set_card_checked_state(ctx->btn, false);
   if (ctx->icon_lbl) {
+    // The open glyph represents the open OR partially open state; only a fully
+    // closed cover (position 0) shows the closed glyph. This matches the
+    // Slider: Position card (subscribe_slider_state uses pct > 0) and
+    // docs/card-types/covers.md. Using == 100 kept the closed glyph for every
+    // partial position, so the tile icon looked static during normal use.
     bool open_icon = ctx->current_position_known
-      ? slider_clamp_pct(ctx->current_position) == 100
-      : (!state_text.empty() ? garage_state_uses_open_icon(state_text) : ctx->current_position == 100);
+      ? slider_clamp_pct(ctx->current_position) > 0
+      : (!state_text.empty() ? garage_state_uses_open_icon(state_text) : ctx->current_position > 0);
     lv_label_set_text(ctx->icon_lbl, open_icon ? ctx->icon_open_glyph : ctx->icon_closed_glyph);
   }
   if (ctx->label_lbl) {
@@ -1743,6 +1852,7 @@ inline void cover_control_apply_tab_visibility() {
 
 inline void cover_control_layout_modal(CoverControlCtx *ctx);
 inline void cover_control_set_position_value(CoverControlCtx *ctx, int pct);
+inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx);
 
 inline lv_obj_t *cover_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                  const lv_font_t *font,
@@ -1851,11 +1961,23 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
     int pct = static_cast<int>(reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
     CoverControlModalUi &ui = cover_control_modal_ui();
     if (!ui.active || !ui.active->available || !cover_control_supports_position(ui.active)) return;
+    const bool previous_position_known = ui.active->current_position_known;
+    const int previous_position = ui.active->current_position;
     ui.active->current_position_known = true;
     ui.active->current_position = slider_clamp_pct(pct);
+    // Hold the tapped preset until Home Assistant publishes the next position;
+    // that update reconciles the highlight even when no opening/closing state exists.
+    ui.selected_preset = ui.active->current_position;
+    ui.pending_preset = ui.active->current_position;
     cover_control_set_position_value(ui.active, ui.active->current_position);
     cover_control_apply_card_visual(ui.active);
-    send_slider_action(ui.active->entity_id, ui.active->current_position, false);
+    if (!send_slider_action(ui.active->entity_id, ui.active->current_position, false)) {
+      ui.pending_preset = -1;
+      ui.active->current_position_known = previous_position_known;
+      ui.active->current_position = previous_position;
+      cover_control_set_position_value(ui.active, previous_position);
+      cover_control_apply_card_visual(ui.active);
+    }
   }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(pct)));
 
   return btn;
@@ -2138,25 +2260,20 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
     for (int i = 0; i < 5; i++) {
       lv_obj_t *btn = ui.preset_btns[i];
       if (!btn) continue;
-      int pct = static_cast<int>(reinterpret_cast<uintptr_t>(lv_obj_get_user_data(btn)));
-      bool selected = ctx->current_position_known && slider_clamp_pct(ctx->current_position) == pct;
-      uint32_t bg_color = selected ? ctx->accent_color : ctx->secondary_color;
-      uint32_t text_color = selected ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color);
       lv_obj_set_size(btn, tile_w, tile_h);
       lv_obj_set_style_radius(btn, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-      lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
       lv_obj_t *icon = lv_obj_get_child(btn, 0);
       lv_obj_t *label = lv_obj_get_child(btn, 1);
       if (icon) {
-        lv_obj_set_style_text_color(icon, lv_color_hex(text_color), LV_PART_MAIN);
         const lv_font_t *icon_font = cover_control_preset_icon_font(ctx, layout);
         if (icon_font) lv_obj_set_style_text_font(icon, icon_font, LV_PART_MAIN);
       }
-      if (label) {
-        lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
-        lv_obj_set_width(label, lv_pct(100));
-      }
+      if (label) lv_obj_set_width(label, lv_pct(100));
     }
+    // Highlight the preset matching the current position. Colours live in the
+    // shared helper so they also update on preset taps and live position
+    // changes, not just when this layout pass runs.
+    cover_control_refresh_preset_selection(ctx);
     lv_obj_scroll_to_y(ui.presets_box, 0, LV_ANIM_OFF);
   }
   if (ui.tab_row) lv_obj_move_foreground(ui.tab_row);
@@ -2187,6 +2304,45 @@ inline void cover_control_set_slider_value(lv_obj_t *slider, bool &updating,
   updating = false;
 }
 
+// Recolour the preset tiles so the highlighted one tracks the cover. While the
+// cover is moving or a tapped preset is awaiting its first position update,
+// the selection is held; once it comes to rest the
+// selection reconciles with the exact position, clearing when it sits between
+// presets. ui.selected_preset carries the choice across updates.
+inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx) {
+  CoverControlModalUi &ui = cover_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.presets_box) return;
+  if (!ctx->moving && ui.pending_preset < 0) {
+    int selected = -1;
+    if (ctx->current_position_known) {
+      int pos = slider_clamp_pct(ctx->current_position);
+      for (int i = 0; i < 5; i++) {
+        lv_obj_t *btn = ui.preset_btns[i];
+        if (!btn) continue;
+        if (static_cast<int>(reinterpret_cast<uintptr_t>(lv_obj_get_user_data(btn))) == pos) {
+          selected = pos;
+          break;
+        }
+      }
+    }
+    ui.selected_preset = selected;
+  }
+  for (int i = 0; i < 5; i++) {
+    lv_obj_t *btn = ui.preset_btns[i];
+    if (!btn) continue;
+    int pct = static_cast<int>(reinterpret_cast<uintptr_t>(lv_obj_get_user_data(btn)));
+    bool selected = pct == ui.selected_preset;
+    uint32_t bg_color = selected ? ctx->accent_color : ctx->secondary_color;
+    uint32_t text_color = selected ? DARK_TEXT_PRIMARY
+                                   : readable_text_color_for_bg(bg_color);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
+    lv_obj_t *icon = lv_obj_get_child(btn, 0);
+    lv_obj_t *label = lv_obj_get_child(btn, 1);
+    if (icon) lv_obj_set_style_text_color(icon, lv_color_hex(text_color), LV_PART_MAIN);
+    if (label) lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
+  }
+}
+
 inline void cover_control_set_position_value(CoverControlCtx *ctx, int pct) {
   CoverControlModalUi &ui = cover_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -2194,6 +2350,7 @@ inline void cover_control_set_position_value(CoverControlCtx *ctx, int pct) {
   cover_control_set_slider_value(
     ui.position_slider, ctx->updating_position, ctx->dragging_position, pct);
   cover_control_update_position_fill(pct);
+  cover_control_refresh_preset_selection(ctx);
 }
 
 inline void cover_control_set_tilt_value(CoverControlCtx *ctx, int pct) {
@@ -2489,7 +2646,12 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
       [ctx](esphome::StringRef state) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         ctx->available = !ha_state_unavailable_ref(state);
+        // Home Assistant reports opening/closing while the cover travels and a
+        // resting state once it stops. Hold the preset selection during travel;
+        // reconcile it with the exact position when the cover comes to rest.
+        ctx->moving = state_text == "opening" || state_text == "closing";
         cover_control_apply_card_visual(ctx, state_text);
+        cover_control_refresh_preset_selection(ctx);
       })
   );
   ha_subscribe_attribute(
@@ -2498,6 +2660,8 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
       [ctx](esphome::StringRef val) {
         int pct = 0;
         if (!slider_parse_pct(val, pct)) return;
+        CoverControlModalUi &ui = cover_control_modal_ui();
+        if (ui.active == ctx) ui.pending_preset = -1;
         ctx->current_position_known = true;
         ctx->current_position = pct;
         cover_control_set_position_value(ctx, pct);
@@ -2558,6 +2722,8 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   if (p.type == "cover")
     lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
 
+  const CardPadding padding = capture_card_padding(s.btn);
+
   bool horizontal = false;
   lv_obj_t *slider = setup_slider_widget(s.btn, on_color, horizontal);
   if (!slider) {
@@ -2570,9 +2736,8 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     return;
   }
   ESP_LOGI("slider", "Slider object created for %s", p.entity.c_str());
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
+  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
   lv_obj_t *fill = lv_obj_get_child(s.btn, 0);
@@ -2593,6 +2758,10 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->cover_tilt = p.type == "cover" && cover_tilt_mode(p.sensor);
   ctx->inverted = is_cover_entity(p.entity);
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
+  ctx->label_pad_left = padding.left;
+  ctx->label_pad_top = padding.top;
+  ctx->label_pad_bottom = padding.bottom;
+  ctx->interactive = interactive;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
   if (!interactive) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
@@ -2610,10 +2779,21 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   if (interactive) {
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      slider_apply_vertical_pointer_value(sl);
+    }, LV_EVENT_PRESSED, nullptr);
+
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      slider_apply_vertical_pointer_value(sl);
+    }, LV_EVENT_PRESSING, nullptr);
+
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       if (!sl) return;
       SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
       if (c && !c->entity_id.empty()) {
         if (!c->available) return;
+        slider_apply_vertical_pointer_value(sl);
         int val = lv_slider_get_value(sl);
         send_slider_action(c->entity_id, val, c->cover_tilt);
       }
@@ -2867,13 +3047,13 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   int min_k = 2000, max_k = 6500;
   parse_kelvin_range(p.unit, min_k, max_k);
   bool kcolor = (p.precision == "color");
+  const CardPadding padding = capture_card_padding(s.btn);
 
   lv_obj_t *slider = setup_slider_widget(s.btn, on_color, false);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_label_set_long_mode(s.icon_lbl, LV_LABEL_LONG_CLIP);
   lv_obj_set_width(s.icon_lbl, lv_pct(100));
-  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
   lv_obj_t *fill = lv_obj_get_child(s.btn, 0);
@@ -2885,6 +3065,9 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   ctx->cover_tilt = false;
   ctx->inverted = false;
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
+  ctx->label_pad_left = padding.left;
+  ctx->label_pad_top = padding.top;
+  ctx->label_pad_bottom = padding.bottom;
   ctx->light_temp = true;
   ctx->kelvin_min = min_k;
   ctx->kelvin_max = max_k;
@@ -2895,6 +3078,16 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
 
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    slider_apply_vertical_pointer_value(sl);
+  }, LV_EVENT_PRESSED, nullptr);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    slider_apply_vertical_pointer_value(sl);
+  }, LV_EVENT_PRESSING, nullptr);
+
   if (kcolor && fill) {
     int mid_k = min_k + (max_k - min_k) / 2;
     lv_obj_set_style_bg_color(fill, kelvin_to_fill_color(mid_k, min_k, max_k), LV_PART_MAIN);
@@ -2902,6 +3095,7 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    if (!sl) return;
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
     if (!c) return;
     int val = lv_slider_get_value(sl);
@@ -2922,6 +3116,8 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    if (!sl) return;
+    slider_apply_vertical_pointer_value(sl);
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
     if (c) {
       c->light_temp_dragging = false;
@@ -2939,6 +3135,7 @@ inline const char *media_default_icon(const std::string &mode,
                                       const std::string &icon) {
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
   if (mode == "control_modal") return find_icon("Play Pause");
+  if (mode == "speaker_group") return find_icon("Speaker Multiple");
   if (mode == "previous") return find_icon("Skip Previous");
   if (mode == "next") return find_icon("Skip Next");
   if (mode == "play_pause") return find_icon("Play Pause");
@@ -2957,6 +3154,7 @@ inline std::string media_default_label(const std::string &mode) {
   if (mode == "position") return espcontrol_i18n(std::string("Position"));
   if (mode == "play_pause") return espcontrol_i18n(std::string("Play/Pause"));
   if (mode == "control_modal") return espcontrol_i18n(std::string("All Controls"));
+  if (mode == "speaker_group") return espcontrol_i18n(std::string("Speaker Group"));
   if (mode == "cover_art") return espcontrol_i18n(std::string("Cover Art"));
   if (mode == "playlist") return espcontrol_i18n(std::string("Playlist"));
   return espcontrol_i18n(std::string("Media"));
@@ -3030,6 +3228,46 @@ inline bool media_volume_pending_active(MediaVolumeCtx *ctx) {
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct);
 
+inline espcontrol::media::VolumeControlMode media_volume_effective_control_mode(
+    MediaVolumeCtx *ctx) {
+  if (!ctx || ctx->apply_percent) {
+    return espcontrol::media::VolumeControlMode::ABSOLUTE;
+  }
+  return ctx->volume_control_mode;
+}
+
+inline void media_volume_set_button_enabled(lv_obj_t *btn, bool enabled) {
+  if (!btn) return;
+  if (enabled) {
+    lv_obj_clear_state(btn, LV_STATE_DISABLED);
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  } else {
+    lv_obj_add_state(btn, LV_STATE_DISABLED);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  }
+}
+
+inline void media_volume_refresh_controls(MediaVolumeCtx *ctx) {
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  const auto mode = media_volume_effective_control_mode(ctx);
+  const bool arc_interactive = espcontrol::media::volume_arc_interactive(mode);
+  if (ui.arc) {
+    if (arc_interactive) lv_obj_add_flag(ui.arc, LV_OBJ_FLAG_CLICKABLE);
+    else lv_obj_clear_flag(ui.arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_opa(
+      ui.arc, arc_interactive ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_KNOB);
+  }
+  media_volume_set_button_enabled(
+    ui.minus_btn,
+    espcontrol::media::volume_decrease_enabled(
+      mode, ctx->current_pct, ctx->volume_known));
+  media_volume_set_button_enabled(
+    ui.plus_btn,
+    espcontrol::media::volume_increase_enabled(
+      mode, ctx->current_pct, media_volume_max_pct(ctx)));
+}
+
 inline bool media_volume_has_mic_control(MediaVolumeCtx *ctx) {
   return ctx && ctx->mic_muted && ctx->set_mic_muted;
 }
@@ -3060,6 +3298,16 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
                                        bool from_user, bool send_action) {
   if (!ctx || !ctx->available) return;
+  const int current_pct = media_clamp_percent(ctx->current_pct);
+  const auto mode = media_volume_effective_control_mode(ctx);
+  const auto command = espcontrol::media::volume_command(
+    mode, current_pct, pct, media_volume_max_pct(ctx), ctx->volume_known);
+  if (!ctx->apply_percent &&
+      mode != espcontrol::media::VolumeControlMode::ABSOLUTE) {
+    if (send_action) send_media_volume_command(ctx->entity_id, command);
+    media_volume_refresh_controls(ctx);
+    return;
+  }
   pct = media_volume_clamp_user_percent(ctx, pct);
   ctx->current_pct = pct;
   if (from_user) {
@@ -3072,9 +3320,10 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
     if (ctx->apply_percent) {
       ctx->apply_percent(pct);
     } else {
-      send_media_volume_action(ctx->entity_id, pct);
+      send_media_volume_command(ctx->entity_id, command);
     }
   }
+  media_volume_refresh_controls(ctx);
 }
 
 inline void media_volume_hide_modal() {
@@ -3175,8 +3424,12 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
   if (!ctx || ui.active != ctx) return;
   pct = media_clamp_percent(pct);
   if (ui.arc) {
+    const int arc_max = media_volume_effective_control_mode(ctx) ==
+        espcontrol::media::VolumeControlMode::ABSOLUTE
+      ? media_volume_max_pct(ctx) : 100;
     ui.updating_arc = true;
-    lv_arc_set_value(ui.arc, pct > media_volume_max_pct(ctx) ? media_volume_max_pct(ctx) : pct);
+    lv_arc_set_range(ui.arc, 0, arc_max);
+    lv_arc_set_value(ui.arc, pct > arc_max ? arc_max : pct);
     ui.updating_arc = false;
   }
   if (ui.pct_lbl) {
@@ -3202,8 +3455,11 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   ui.arc = lv_arc_create(ui.panel);
   lv_arc_set_bg_angles(ui.arc, 135, 45);
-  lv_arc_set_range(ui.arc, 0, media_volume_max_pct(ctx));
-  lv_arc_set_value(ui.arc, media_volume_clamp_user_percent(ctx, ctx->current_pct));
+  const int arc_max = media_volume_effective_control_mode(ctx) ==
+      espcontrol::media::VolumeControlMode::ABSOLUTE
+    ? media_volume_max_pct(ctx) : 100;
+  lv_arc_set_range(ui.arc, 0, arc_max);
+  lv_arc_set_value(ui.arc, media_clamp_percent(ctx->current_pct));
   lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arc, 0, LV_PART_MAIN);
   lv_obj_set_style_arc_color(ui.arc, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
@@ -3217,6 +3473,8 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
     if (ui.updating_arc || !ui.active) return;
+    if (!espcontrol::media::volume_arc_interactive(
+          media_volume_effective_control_mode(ui.active))) return;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
     media_volume_apply_percent(ui.active, lv_arc_get_value(arc), true, true);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -3262,19 +3520,15 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
     if (ui.active) {
-      int current = ui.active->current_pct > media_volume_max_pct(ui.active)
-        ? media_volume_max_pct(ui.active)
-        : ui.active->current_pct;
-      media_volume_apply_percent(ui.active, current - 1, true, true);
+      media_volume_apply_percent(
+        ui.active, ui.active->current_pct - 1, true, true);
     }
   }, LV_EVENT_CLICKED, nullptr);
   lv_obj_add_event_cb(ui.plus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
     if (ui.active) {
-      int current = ui.active->current_pct > media_volume_max_pct(ui.active)
-        ? media_volume_max_pct(ui.active)
-        : ui.active->current_pct;
-      media_volume_apply_percent(ui.active, current + 1, true, true);
+      media_volume_apply_percent(
+        ui.active, ui.active->current_pct + 1, true, true);
     }
   }, LV_EVENT_CLICKED, nullptr);
 
@@ -3297,5 +3551,6 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   media_volume_layout_modal(ctx);
   media_volume_set_modal_value(ctx, ctx->current_pct);
+  media_volume_refresh_controls(ctx);
   lv_obj_move_foreground(ui.overlay);
 }

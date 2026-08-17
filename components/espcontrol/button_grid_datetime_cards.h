@@ -45,12 +45,32 @@ inline bool calendar_card_shows_time(const ParsedCfg &p) {
 inline void apply_calendar_card_text(const CalendarCardRef &ref,
                                      const CalendarDateState &state);
 
+inline bool calendar_card_ref_ready(const CalendarCardRef &ref) {
+  if (!ref.value_lbl || !ref.unit_lbl || !ref.label_lbl) return false;
+  return lv_obj_is_valid(ref.value_lbl) &&
+         lv_obj_is_valid(ref.unit_lbl) &&
+         lv_obj_is_valid(ref.label_lbl);
+}
+
+inline void compact_calendar_card_refs() {
+  CalendarCardRef *refs = calendar_card_refs();
+  int &count = calendar_card_count();
+  int write_index = 0;
+  for (int read_index = 0; read_index < count; read_index++) {
+    if (!calendar_card_ref_ready(refs[read_index])) continue;
+    if (write_index != read_index) refs[write_index] = refs[read_index];
+    write_index++;
+  }
+  count = write_index;
+}
+
 inline void reset_calendar_cards() {
   calendar_card_count() = 0;
 }
 
 inline void register_calendar_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                    lv_obj_t *label_lbl, bool show_time) {
+  compact_calendar_card_refs();
   int &count = calendar_card_count();
   if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) {
     ESP_LOGW("calendar", "Too many calendar cards; skipping date updates");
@@ -104,6 +124,7 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
 
 inline void refresh_calendar_cards() {
   CalendarDateState &state = calendar_date_state();
+  compact_calendar_card_refs();
   CalendarCardRef *refs = calendar_card_refs();
   int count = calendar_card_count();
   for (int i = 0; i < count; i++) {
@@ -205,6 +226,12 @@ inline std::string calendar_date_entity_or_default(const std::string &entity_id)
 inline void subscribe_calendar_date_source(const std::string &entity_id) {
   std::string source = calendar_date_entity_or_default(entity_id);
   static std::vector<std::string> subscribed;
+  static uint32_t subscribed_generation = 0;
+  const uint32_t generation = ha_subscription_generation();
+  if (subscribed_generation != generation) {
+    subscribed.clear();
+    subscribed_generation = generation;
+  }
   for (const auto &existing : subscribed) {
     if (existing == source) return;
   }
@@ -288,11 +315,31 @@ inline void apply_timezone_card_text(const TimezoneCardRef &ref,
   if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label.c_str());
 }
 
+inline bool timezone_card_ref_ready(const TimezoneCardRef &ref) {
+  if (!ref.value_lbl || !ref.unit_lbl || !ref.label_lbl) return false;
+  return lv_obj_is_valid(ref.value_lbl) &&
+         lv_obj_is_valid(ref.unit_lbl) &&
+         lv_obj_is_valid(ref.label_lbl);
+}
+
+inline void compact_timezone_card_refs() {
+  TimezoneCardRef *refs = timezone_card_refs();
+  int &count = timezone_card_count();
+  int write_index = 0;
+  for (int read_index = 0; read_index < count; read_index++) {
+    if (!timezone_card_ref_ready(refs[read_index])) continue;
+    if (write_index != read_index) refs[write_index] = refs[read_index];
+    write_index++;
+  }
+  count = write_index;
+}
+
 inline void register_timezone_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                    lv_obj_t *label_lbl,
                                    const std::string &timezone,
                                    const std::string &label,
                                    bool show_label = true) {
+  compact_timezone_card_refs();
   int &count = timezone_card_count();
   if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) {
     ESP_LOGW("timezone", "Too many timezone cards; skipping time updates");
@@ -306,6 +353,7 @@ inline void update_timezone_cards(bool valid,
                                   time_t epoch,
                                   const std::string &active_timezone,
                                   bool use_12h) {
+  compact_timezone_card_refs();
   TimezoneCardRef *refs = timezone_card_refs();
   int count = timezone_card_count();
   for (int i = 0; i < count; i++) {

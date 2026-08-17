@@ -2312,7 +2312,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "c4e0e96a5f0624df"
+          "fingerprint": "daaf65756d8cbf83"
         }
       },
       "firmware": {
@@ -2812,8 +2812,8 @@
       "web": {
         "registration": "media_cover_art",
         "picker": {
-          "main": true,
-          "subpage": true,
+          "main": false,
+          "subpage": false,
           "infoOnly": false
         },
         "preview": {

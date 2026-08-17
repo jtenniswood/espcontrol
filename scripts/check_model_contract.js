@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, "..");
 const MODEL_ENTRY = path.join(ROOT, "src", "webserver", "model", "index.ts");
 const PRIMITIVES_ENTRY = path.join(ROOT, "src", "webserver", "model", "config_primitives.ts");
 const CARD_CONTRACT_ENTRY = path.join(ROOT, "src", "webserver", "generated", "card_contract.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 
 const model = loadTypeScriptModule(MODEL_ENTRY);
 const primitives = loadTypeScriptModule(PRIMITIVES_ENTRY);
@@ -91,11 +91,13 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   mode: "playlist",
   stateDisplay: "label",
   nowPlayingControl: "none",
-  coverArtAction: "play_pause",
+  coverArtAction: "control_modal",
   showTrackDetails: false,
+  secondaryEntity: "",
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 100,
+  speakerGroupEntity: "",
   playlist: {
     contentId: "media-source://music/morning,mix=50%",
     contentType: "playlist",
@@ -109,6 +111,16 @@ assert.strictEqual(model.decodeMediaCardConfigV1({
   sensor: "cover_art",
   options: "cover_art_details",
 }).showTrackDetails, true, "Media decoder exposes optional cover-art track details");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "cover_art",
+  options: "cover_art_action=play_pause",
+}).coverArtAction, "control_modal", "Media decoder keeps the versioned cover-art action fixed to All Controls");
+assert.strictEqual(model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "cover_art",
+  options: "cover_art_secondary_entity=media_player.apple_tv",
+}).secondaryEntity, "media_player.apple_tv", "Media decoder exposes the external-source player");
 assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "controls",
@@ -122,9 +134,11 @@ assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   nowPlayingControl: "none",
   coverArtAction: "control_modal",
   showTrackDetails: false,
+  secondaryEntity: "",
   controlLabelDisplay: "status",
   controlNumberDisplay: "icon",
   maxVolumePercent: 1,
+  speakerGroupEntity: "",
   playlist: { contentId: "", contentType: "playlist", playerSource: "" },
   largeNumbers: false,
 }, "Media decoder canonicalises legacy and out-of-range values without changing storage");
@@ -167,6 +181,18 @@ assert.strictEqual(
   ),
   "1p",
   "portrait-large grid order serializes with its saved token"
+);
+assert.deepStrictEqual(plain(model.parseGridOrder("1l", 15, 5)), {
+  grid: [1, -1, -1, -1, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, 0],
+  sizes: { 1: 11 },
+}, "landscape-large grid order reserves four columns across three rows");
+assert.strictEqual(
+  model.serializeGridOrder(
+    [1, -1, -1, -1, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, 0],
+    { 1: model.CARD_SIZE_LANDSCAPE_LARGE },
+  ),
+  "1l",
+  "landscape-large grid order serializes with its saved token"
 );
 
 const transferCard = {
@@ -266,12 +292,21 @@ assert.strictEqual(
   model.CARD_SIZE_PORTRAIT_LARGE,
   "card transfer accepts the supported 3x4 card size",
 );
+const landscapeLargeTransferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [{ ...transferCard, type: "image", size: model.CARD_SIZE_LANDSCAPE_LARGE }],
+);
+assert.strictEqual(
+  model.parseCardTransferCode(landscapeLargeTransferCode).cards[0].size,
+  model.CARD_SIZE_LANDSCAPE_LARGE,
+  "card transfer accepts the supported 4x3 camera card size",
+);
 const maxWideSubpageCard = {
   ...transferSubpageCard,
   subpage: {
     ...transferSubpageCard.subpage,
     order: ["B", "1h"],
-    buttons: [{ ...model.cloneCardConfig(transferCard), type: "camera" }],
+    buttons: [{ ...model.cloneCardConfig(transferCard), type: "image" }],
   },
 };
 assert.deepStrictEqual(
@@ -281,6 +316,22 @@ assert.deepStrictEqual(
   )).cards[0]),
   plain(maxWideSubpageCard),
   "card transfer accepts a 3x2 camera card inside a subpage",
+);
+const landscapeLargeSubpageCard = {
+  ...transferSubpageCard,
+  subpage: {
+    ...transferSubpageCard.subpage,
+    order: ["B", "1l"],
+    buttons: [{ ...model.cloneCardConfig(transferCard), type: "camera" }],
+  },
+};
+assert.deepStrictEqual(
+  plain(model.parseCardTransferCode(model.createCardTransferCode(
+    { device: "panel-a", firmware: "2026.7.0" },
+    [landscapeLargeSubpageCard],
+  )).cards[0]),
+  plain(landscapeLargeSubpageCard),
+  "card transfer accepts a 4x3 camera card inside a subpage",
 );
 
 function assertTransferError(value, expected) {
@@ -297,7 +348,7 @@ assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: 
   "newer version");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
   "no cards");
-assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_PORTRAIT_LARGE + 1 }] },
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_LANDSCAPE_LARGE + 1 }] },
   "invalid size");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");
@@ -442,6 +493,10 @@ assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assi
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(0), 1, "Home Assistant artwork port clamps low values");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(70000), 65535, "Home Assistant artwork port clamps high values");
+assert.strictEqual(model.normalizeBrightnessMode("Manual"), "manual", "manual brightness mode normalizes");
+assert.strictEqual(model.normalizeBrightnessMode("Fixed times"), "fixed_times", "fixed-time brightness mode normalizes");
+assert.strictEqual(model.normalizeBrightnessMode("unexpected"), "sunrise_sunset", "brightness mode defaults to sunrise and sunset");
+assert.strictEqual(model.brightnessModeOption("fixed_times"), "Fixed times", "brightness mode maps to the firmware option");
 assert.deepStrictEqual(
   plain(model.normalizeBackupScreenSettings({
     brightness_day: "88",
@@ -460,16 +515,19 @@ assert.deepStrictEqual(
     scheduleDimmedBrightness: 12,
     scheduleClockBrightness: 40,
     scheduleClockTextColor: "ABCDEF",
+    manualBrightnessVal: 65,
   })),
   {
     brightnessDayVal: 88,
     brightnessNightVal: 55,
-    automaticBrightnessEnabled: false,
+    brightnessMode: "fixed_times",
+    manualBrightnessVal: 65,
     brightnessDawnTime: "05:30",
     brightnessDuskTime: "21:05",
     scheduleTrigger: "time",
     scheduleEnabled: true,
     scheduleSensorActivation: "on",
+    scheduleSensorEntity: "",
     scheduleOnHour: 7,
     scheduleOffHour: 22,
     scheduleMode: "clock",
@@ -482,13 +540,36 @@ assert.deepStrictEqual(
   "backup screen settings normalize with current-value fallbacks"
 );
 
+assert.strictEqual(
+  model.normalizeBackupScreenSettings({}, {}, "binary_sensor.legacy_presence").scheduleSensorEntity,
+  "binary_sensor.legacy_presence",
+  "older backups copy the legacy screensaver sensor into the schedule sensor"
+);
+assert.strictEqual(
+  model.normalizeBackupScreenSettings({ schedule_sensor_entity: "" }, {}, "binary_sensor.legacy_presence").scheduleSensorEntity,
+  "",
+  "new backups preserve an intentionally empty schedule sensor"
+);
+assert.strictEqual(
+  model.normalizeBackupScreenSettings({ schedule_sensor_entity: "binary_sensor.schedule" }, {}, "binary_sensor.legacy_presence").scheduleSensorEntity,
+  "binary_sensor.schedule",
+  "new backups keep a schedule sensor separate from the screensaver sensor"
+);
+
 const panelSettings = model.normalizeBackupPanelSettings({
   temperature_unit: "centigrade",
   outdoor_temp_enable: false,
   clock_bar_temperature_entities: "sensor.porch_temperature",
   clock_bar_time: false,
+  clock_bar_night_mode: true,
   network_status_icon: false,
   voice_services: true,
+  alarm_delay_audio: true,
+  alarm_delay_tts: false,
+  alarm_delay_entry_announcement: "  Entry warning  ",
+  alarm_delay_exit_announcement: "Exit warning",
+  alarm_delay_beep_volume: 0.7,
+  alarm_delay_final_countdown: 12,
   language: "it",
   clock_format: "24h",
   ntp_server_1: "pool.ntp.org",
@@ -502,6 +583,9 @@ const panelSettings = model.normalizeBackupPanelSettings({
   firmware_update_frequency: "Weekly",
   clock_brightness_day: 44,
   clock_brightness_night: 22,
+  screensaver_dimmed_brightness: 15,
+  screensaver_dimmed_brightness_day: 30,
+  screensaver_dimmed_brightness_night: 5,
   screen_rotation: "90",
 }, {
   timezone: "UTC (GMT+0)",
@@ -523,8 +607,15 @@ assert.strictEqual(panelSettings.temperatureUnit, "\u00B0C", "panel temperature 
 assert.strictEqual(panelSettings.outdoorTempEnable, false, "panel clock bar temperature visibility imports");
 assert.deepStrictEqual(plain(panelSettings.clockBarTemperatureEntities), ["sensor.porch_temperature"], "panel clock bar temperature entity imports");
 assert.strictEqual(panelSettings.clockBarTime, false, "panel clock bar time imports");
+assert.strictEqual(panelSettings.clockBarNightMode, true, "panel clock bar night mode icon imports");
 assert.strictEqual(panelSettings.networkStatusIcon, false, "panel clock bar network status imports");
 assert.strictEqual(panelSettings.voiceServices, true, "panel voice services imports");
+assert.strictEqual(panelSettings.alarmDelayAudio, true, "panel alarm delay audio imports");
+assert.strictEqual(panelSettings.alarmDelayTts, false, "panel alarm delay TTS imports");
+assert.strictEqual(panelSettings.alarmDelayEntryAnnouncement, "Entry warning", "panel entry announcement normalizes");
+assert.strictEqual(panelSettings.alarmDelayExitAnnouncement, "Exit warning", "panel exit announcement imports");
+assert.strictEqual(panelSettings.alarmDelayBeepVolume, 0.7, "panel alarm beep volume imports");
+assert.strictEqual(panelSettings.alarmDelayFinalCountdown, 12, "panel final countdown imports");
 assert.strictEqual(panelSettings.language, "it", "panel language imports");
 assert.strictEqual(panelSettings.clockFormat, "24h", "panel clock format validates against options");
 assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server imports");
@@ -591,8 +682,38 @@ assert.strictEqual(
   "media_player.living",
   "legacy sleep prevention media player imports into cover art media player"
 );
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({
+    cover_art_secondary_media_player_entity: "media_player.apple_tv",
+  }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h",
+    clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
+    ntpServer1: "0.pool.ntp.org", ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org",
+    coverArtHomeAssistantProtocol: "http", coverArtHomeAssistantPort: 8123,
+    autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
+    screenRotationOptions: ["0", "90", "180", "270"],
+  }).coverArtSecondaryMediaPlayerEntity,
+  "media_player.apple_tv",
+  "secondary cover art media player survives backup import"
+);
 assert.strictEqual(panelSettings.clockBrightnessDay, 44, "panel day clock brightness imports");
 assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock brightness imports");
+assert.strictEqual(panelSettings.screensaverDimmedBrightnessDay, 30, "panel day dimmed brightness imports");
+assert.strictEqual(panelSettings.screensaverDimmedBrightnessNight, 5, "panel night dimmed brightness imports");
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({ screensaver_dimmed_brightness: 18 }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h",
+    clockFormatOptions: ["12h", "24h"], ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
+    ntpServer1: "0.pool.ntp.org", ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org",
+    coverArtHomeAssistantProtocol: "http", coverArtHomeAssistantPort: 8123,
+    autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).screensaverDimmedBrightnessNight,
+  18,
+  "legacy panel backup uses its single dimmed brightness for nighttime"
+);
 assert.strictEqual(panelSettings.subpageChevron, true, "panel subpage chevron defaults on");
 assert.strictEqual(panelSettings.screenRotation, "90", "panel rotation validates against options");
 
@@ -637,7 +758,16 @@ const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
+assert.strictEqual(legacyPanelSettings.clockBarNightMode, false, "legacy panel settings default clock bar night mode icon off");
 assert.strictEqual(legacyPanelSettings.voiceServices, false, "legacy panel settings default voice services off");
+assert.strictEqual(legacyPanelSettings.alarmDelayAudio, false, "legacy panel settings default alarm audio off");
+assert.strictEqual(legacyPanelSettings.alarmDelayTts, true, "legacy panel settings default alarm TTS on");
+assert.strictEqual(legacyPanelSettings.alarmDelayEntryAnnouncement, "Please disarm the alarm", "legacy panel settings default entry announcement");
+assert.strictEqual(legacyPanelSettings.alarmDelayExitAnnouncement, "Alarm arming, please leave the house", "legacy panel settings default exit announcement");
+assert.strictEqual(legacyPanelSettings.alarmDelayBeepVolume, 0.45, "legacy panel settings default moderate beep volume");
+assert.strictEqual(legacyPanelSettings.alarmDelayFinalCountdown, 10, "legacy panel settings default final countdown");
+assert.strictEqual(model.normalizeAlarmDelayBeepVolume(5), 1, "alarm beep volume clamps high values");
+assert.strictEqual(model.normalizeAlarmDelayFinalCountdown(-4), 0, "alarm final countdown clamps low values");
 assert.strictEqual(legacyPanelSettings.coverArtHideExternalInput, true, "legacy panel settings default cover art external-input setting on");
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantProtocol, "https", "legacy panel settings keep current Home Assistant artwork protocol");
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantPort, 80, "legacy panel settings keep current Home Assistant artwork port");

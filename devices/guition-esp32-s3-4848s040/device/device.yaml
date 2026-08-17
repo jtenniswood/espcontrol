@@ -35,9 +35,9 @@ esp32:
       # and LVGL buffers are initialized.
       CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
-      # Keep RGB panel scan-out stable during flash writes and recover display
-      # timing at VSYNC when the ESP-IDF RGB driver needs to restart the panel.
-      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "y"
+      # The RGB driver already restarts after a genuine DMA underflow. Restarting
+      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
+      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
       CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
       CONFIG_SPIRAM_RODATA: "y"
@@ -55,7 +55,7 @@ external_components:
     refresh: 1s
 
 espcontrol:
-
+  id: espcontrol_app
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -240,9 +240,9 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(display_mode_controller).target_source_is(
+                return (id(espcontrol_app).display().target_source_is(
                             espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                        id(display_mode_controller).target_mode_is(
+                        id(espcontrol_app).display().target_mode_is(
                             espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
@@ -254,19 +254,16 @@ light:
               - if:
                   condition:
                     lambda: |-
-                      return id(display_mode_controller).current_mode_is(
+                      return id(espcontrol_app).display().current_mode_is(
                           espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
       then:
-        - if:
-            condition:
-              lambda: |-
-                return id(display_mode_controller).target_mode_is(
-                    espcontrol::DisplayMode::ACTIVE);
-            then:
-              - script.execute: screen_schedule_manual_sleep
+        - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
 
 # ---------------------------------------------------------------------------
 # Built-in relays (4848S040C relay variant)
@@ -443,26 +440,41 @@ script:
     then:
       - script.execute: screensaver_wake
       - script.wait: screensaver_wake
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 1.0
       - light.turn_on:
           id: display_backlight
           brightness: 100%
           transition_length: 0s
       - delay: 3s
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.6
       - light.turn_on:
           id: display_backlight
           brightness: 60%
           transition_length: 0s
       - delay: 3s
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.3
       - light.turn_on:
           id: display_backlight
           brightness: 30%
           transition_length: 0s
       - delay: 3s
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.1
       - light.turn_on:
           id: display_backlight
           brightness: 10%
           transition_length: 0s
       - delay: 3s
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 1.0
       - light.turn_on:
           id: display_backlight
           brightness: 100%

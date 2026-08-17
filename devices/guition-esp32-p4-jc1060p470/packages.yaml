@@ -85,6 +85,8 @@ substitutions:
   cover_art_text_color: "0xFFFFFF"
   cover_art_square_overlay: "false"
   cover_art_live_image_updates: "false"
+  battery_status_apply_code: ""
+  battery_status_hide_code: ""
 
 packages:
   # ---------------------------------------------------------------------------

@@ -9,6 +9,24 @@
     ]
   },
   {
+    "id": "configuration-store-checksum",
+    "patch": "configuration-store-checksum.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware --target configuration_store_test && ctest --test-dir build/tests/firmware -R configuration_store_test --output-on-failure"
+    ]
+  },
+  {
+    "id": "configuration-service-durable-first",
+    "patch": "configuration-service-durable-first.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware --target configuration_service_test && ctest --test-dir build/tests/firmware -R configuration_service_test --output-on-failure"
+    ]
+  },
+  {
     "id": "ha-duplicate-read-fanout",
     "patch": "ha-duplicate-read-fanout.patch",
     "command": [

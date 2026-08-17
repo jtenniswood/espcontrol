@@ -1,5 +1,53 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppTestHooksSettings(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import {
+    normalizeCoverArtDelay,
+    normalizeHomeAssistantArtworkPort,
+    normalizeScreensaverAction,
+    normalizeScreensaverDimmedBrightness,
+    normalizeTemperatureUnit,
+    screensaverActionOption,
+} from "../model/settings";
+import {
+    firmwareInfoFromPublicManifest,
+    firmwareInfosFromPublicVersions,
+    firmwareVersionFromMetadata,
+    firmwareVersionsSame,
+} from "../application/firmware_metadata";
+import type { AppTestHookRegistrar } from "./app_test_hooks";
+import type { EnvironmentStateFeature } from "../application/environment_state";
+import type { ScreensaverTimeoutFeature } from "../application/screensaver_timeout";
+import type { FirmwareVersionFeature } from "../application/firmware_version_state";
+import type { FirmwareUpdateFeature } from "../application/firmware_update_state";
+import type { ClockBarFeature } from "../application/clock_bar_state";
+import type { EntityStateFeature } from "../application/entity_state";
+import type { ApplicationApiFeature } from "../application/api";
+import type { AppStatusPreviewFeature } from "../application/app_status_preview";
+import type { ArtworkPostApiFeature } from "../application/artwork_post_api";
+import type { ClockBarPostApiFeature } from "../application/clock_bar_post_api";
+import type { PublicFirmwareInstallFeature } from "../application/public_firmware_install";
+export function installAppTestHooksSettings(defaultTimezoneOptions: () => string[], environment: EnvironmentStateFeature, screensaverTimeout: ScreensaverTimeoutFeature, firmwareVersion: FirmwareVersionFeature, firmwareUpdate: FirmwareUpdateFeature, clockBar: Pick<ClockBarFeature, "temperatureUnitSymbol">, entityState: Pick<EntityStateFeature, "entityLookupNames">, requestApi: Pick<ApplicationApiFeature, "entityDetailPath" | "entityDetailPaths" | "entityInitialDetail">, statusPreview: Pick<AppStatusPreviewFeature, "normalizeNetworkTransport">, artworkPostApi: Pick<ArtworkPostApiFeature, "coverArtHideExternalInputPostUrls" | "coverArtDelayPostUrls" | "coverArtTrackOverlayDurationPostUrls" | "homeAssistantArtworkPortPostUrls">, clockBarPostApi: Pick<ClockBarPostApiFeature, "voiceServicesPostUrls">, publicFirmwareInstall: Pick<PublicFirmwareInstallFeature, "failPublicFirmwareUpload">, registerEspControlTestHookGroup: AppTestHookRegistrar): void {
+    const { timezoneOptionsWithFallback, effectiveTimezoneOptionForWeb } = environment;
+    const { supported: screensaverTimeoutSupported } = screensaverTimeout;
+    const { set: setFirmwareVersion } = firmwareVersion;
+    const {
+        controlsVisible: firmwareUpdateControlsVisible,
+        setInfo: setFirmwareUpdateInfo,
+        latestInstallAvailable: latestFirmwareInstallAvailable,
+        latestInstallAction: latestFirmwareInstallAction,
+        setPublicInfo: setPublicFirmwareInfo,
+        updateAvailable: firmwareUpdateAvailable,
+        setPublicVersions: setPublicFirmwareVersions,
+        selectedPreviousInfo: selectedPreviousFirmwareInfo,
+        previousInstallAvailable: previousFirmwareInstallAvailable,
+        versionSelectorVisible: firmwareVersionSelectorVisible,
+        previousInfos: previousFirmwareInfos,
+        infoForVersion: firmwareInfoForVersion,
+    } = firmwareUpdate;
+    const { temperatureUnitSymbol } = clockBar;
+    const { entityLookupNames } = entityState;
+    const { coverArtHideExternalInputPostUrls, coverArtDelayPostUrls, coverArtTrackOverlayDurationPostUrls, homeAssistantArtworkPortPostUrls } = artworkPostApi;
+    const { voiceServicesPostUrls } = clockBarPostApi;
+    const { failPublicFirmwareUpload } = publicFirmwareInstall;
     if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         registerEspControlTestHookGroup("settings", {
             normalizeTemperatureUnit: normalizeTemperatureUnit,
@@ -14,9 +62,9 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
             firmwareVersionFromMetadata: firmwareVersionFromMetadata,
             firmwareInfoFromPublicManifest: firmwareInfoFromPublicManifest,
             firmwareInfosFromPublicVersions: firmwareInfosFromPublicVersions,
-            entityDetailPath: entityDetailPath,
-            entityDetailPaths: entityDetailPaths,
-            entityInitialDetail: entityInitialDetail,
+            entityDetailPath: requestApi.entityDetailPath,
+            entityDetailPaths: requestApi.entityDetailPaths,
+            entityInitialDetail: requestApi.entityInitialDetail,
             entityLookupNames: entityLookupNames,
             coverArtHideExternalInputPostUrls: coverArtHideExternalInputPostUrls,
             coverArtDelayPostUrls: coverArtDelayPostUrls,
@@ -26,7 +74,7 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
             firmwareUpdateControlsVisibleFor: function (this: any, transport?: any, supported?: any) {
                 var oldTransport: any = state.networkTransport;
                 var oldSupported: any = state.firmwareUpdateControlsSupported;
-                state.networkTransport = normalizeNetworkTransport(transport);
+                state.networkTransport = statusPreview.normalizeNetworkTransport(transport);
                 state.firmwareUpdateControlsSupported = supported;
                 var visible: any = firmwareUpdateControlsVisible();
                 state.networkTransport = oldTransport;
@@ -199,22 +247,6 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
                 state.firmwareVersionIndexLoaded = oldIndexLoaded;
                 return result;
             },
-            firmwareUpToDateStatusFor: function (this: any, installedVersion?: any, latestVersion?: any, updateState?: any, installSupported?: any) {
-                var oldVersion: any = state.firmwareVersion;
-                var oldLatest: any = state.firmwareLatestVersion;
-                var oldUpdateState: any = state.firmwareUpdateState;
-                var oldInstallSupported: any = state.firmwareInstallControlsSupported;
-                state.firmwareVersion = installedVersion || "";
-                state.firmwareLatestVersion = latestVersion || "";
-                state.firmwareUpdateState = updateState || "";
-                state.firmwareInstallControlsSupported = !!installSupported;
-                var result: any = firmwareUpToDateStatusAvailable();
-                state.firmwareVersion = oldVersion;
-                state.firmwareLatestVersion = oldLatest;
-                state.firmwareUpdateState = oldUpdateState;
-                state.firmwareInstallControlsSupported = oldInstallSupported;
-                return result;
-            },
             firmwareFailureStatusFor: function (this: any, message?: any) {
                 var oldError: any = state.firmwareInstallError;
                 var oldStatus: any = state.firmwareInstallStatus;
@@ -263,5 +295,4 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
             },
         });
     }
-    return {};
 }

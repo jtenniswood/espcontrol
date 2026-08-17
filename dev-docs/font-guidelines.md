@@ -107,6 +107,8 @@ When adding or changing card UI, prefer one of these existing pointers.
 Fonts only include the glyphs explicitly listed for that font.
 
 - Text fonts usually include `common/assets/text_glyphs.yaml`.
+- Text characters that Roboto does not provide use a small Noto Sans fallback
+  set from `common/assets/latin_extended_additional_glyphs.yaml`.
 - Icon fonts use Material Design Icon glyph sets such as
   `common/assets/icon_glyphs.yaml`.
 - Number fonts intentionally include only digits and a few symbols such as
@@ -119,7 +121,7 @@ In firmware, resolve an icon name to its glyph string with `find_icon("Some Name
 from `components/espcontrol/icons.h`, or embed a known codepoint directly as a
 UTF-8 escape. Only glyphs present in the compiled icon set will render.
 
-To make a new icon available, add it to `common/assets/icons.json` when it should
+To make a new icon available, add it to `product/v2/icons.json` when it should
 appear in the setup page, add the needed glyph to the relevant glyph set, and
 run:
 

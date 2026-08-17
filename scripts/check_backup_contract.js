@@ -9,7 +9,7 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 
 function loadHooks(search = "") {
   const params = new URLSearchParams(search);
@@ -95,7 +95,7 @@ const v2 = hooks.createBackupConfig({
     firmware_auto_update: false,
     firmware_update_frequency: "Weekly",
   },
-  screen: { brightness_day: 80, schedule_mode: "clock" },
+  screen: { brightness_day: 80, schedule_mode: "clock", schedule_sensor_entity: "binary_sensor.schedule" },
 });
 
 assert.strictEqual(v2.version, 2, "exports v2 backups");
@@ -128,6 +128,7 @@ assert.strictEqual(v2.settings.home_assistant_artwork_protocol, "https", "export
 assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home Assistant artwork port setting");
 assert.strictEqual(v2.settings.firmware_auto_update, false, "exports firmware auto-update setting");
 assert.strictEqual(v2.settings.firmware_update_frequency, "Weekly", "exports firmware update frequency setting");
+assert.strictEqual(v2.screen.schedule_sensor_entity, "binary_sensor.schedule", "exports the dedicated schedule sensor setting");
 
 const playlistButton = {
   entity: "media_player.kitchen",

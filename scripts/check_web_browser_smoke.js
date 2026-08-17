@@ -6,9 +6,15 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { chromium } = require("playwright");
+const { loadTypeScriptModule } = require("./load_typescript_module");
 const { freshWebOutputDir } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
+const {
+  createPanelConfigBackupPayload,
+  decodePanelConfig,
+  encodePanelConfig,
+} = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
@@ -63,17 +69,46 @@ function casesFromManifest() {
 }
 
 const CASES = casesFromManifest();
+const ACTIVE_CASES = process.env.ESPCONTROL_BROWSER_PROFILE
+  ? CASES.filter((testCase) => testCase.slug === process.env.ESPCONTROL_BROWSER_PROFILE)
+  : CASES;
+assert(
+  ACTIVE_CASES.length > 0,
+  `Unknown browser profile: ${process.env.ESPCONTROL_BROWSER_PROFILE || "(none)"}`,
+);
 
 const BUTTON_FIXTURES = [
   "light.kitchen;Kitchen;Lightbulb;Lightbulb",
   "sensor.energy;Energy;Gauge;Auto;sensor.energy;W;sensor;0",
   "climate.hall;Hall;Thermostat;Auto;;;climate;;",
-  "media_player.living;Media;Auto;Auto;play_pause;;media;;",
+  "media_player.living;Living Artwork;Auto;Auto;cover_art;;media;;cover_art_details",
   "cover.office_blind;Blind;Blinds Open;Blinds;modal;;cover;;cover_tabs=controls%7Cposition%7Ctilt",
   "alarm_control_panel.house;Alarm;Security;Auto;;;alarm;;",
 ];
 
-function htmlFor(slug) {
+function nativeConfigState(slug) {
+  const buttons = {};
+  BUTTON_FIXTURES.forEach((value, index) => { buttons[index + 1] = value; });
+  return {
+    document: {
+      deviceProfile: slug,
+      buttons,
+      subpages: {},
+      settings: { button_order: "1,2,3w,4,5,6" },
+    },
+    generation: 1,
+    puts: [],
+    requests: [],
+  };
+}
+
+function htmlFor(slug, embeddedFallback = false) {
+  const scripts = embeddedFallback
+    ? [
+        `<script src="/webserver/embedded/www.js?device=${slug}"></script>`,
+        `<script src="/webserver/www.js?device=${slug}&v=v2.8.0"></script>`,
+      ]
+    : [`<script src="/webserver/www.js?device=${slug}"></script>`];
   return [
     "<!doctype html>",
     '<html lang="en">',
@@ -83,7 +118,7 @@ function htmlFor(slug) {
     "</head>",
     "<body>",
     "<esp-app></esp-app>",
-    `<script src="/webserver/www.js?device=${slug}"></script>`,
+    ...scripts,
     "</body>",
     "</html>",
   ].join("");
@@ -128,15 +163,93 @@ function publicFirmwareVersions(slug) {
   };
 }
 
-async function installRoutes(context, slug) {
+async function installRoutes(context, slug, options = {}) {
+  const nativeState = options.nativeState || null;
+  const offlineFallback = options.offlineFallback === true;
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
+  const webAssetManifestPath = path.join(WEB_OUTPUT_DIR, "web-assets.json");
   assert(
     fs.existsSync(scriptPath),
     `${slug}: generated web UI does not exist at ${scriptPath}`,
   );
+  const webAssetManifest = JSON.parse(fs.readFileSync(webAssetManifestPath, "utf8"));
+  const immutableBundlePath = path.join(
+    WEB_OUTPUT_DIR,
+    webAssetManifest.bundles[0].path,
+  );
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
+      const suppliedGeneration = route.request().headers()["if-match"];
+      nativeState.requests.push(
+        `${route.request().method()} ${requestUrl.pathname}` +
+        (suppliedGeneration ? ` if-match=${suppliedGeneration}` : ""),
+      );
+    }
+    if (
+      nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/capabilities"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configuration: { read: true, write: true, document_versions: [1] },
+          web_assets: { versions: [1] },
+        }),
+      });
+      return;
+    }
+    if (
+      !nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/capabilities"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configuration: { read: false, write: false, document_versions: [] },
+        }),
+      });
+      return;
+    }
+    if (
+      nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/config"
+    ) {
+      if (route.request().method() === "PUT") {
+        const expected = `"${nativeState.generation}"`;
+        const supplied = route.request().headers()["if-match"];
+        if (supplied !== expected) {
+          await route.fulfill({ status: 409, body: "generation conflict" });
+          return;
+        }
+        const body = route.request().postDataBuffer();
+        assert(body, `${slug}: native configuration PUT has a binary body`);
+        nativeState.document = decodePanelConfig(new Uint8Array(body));
+        nativeState.generation += 1;
+        nativeState.puts.push({
+          generation: nativeState.generation,
+          document: JSON.parse(JSON.stringify(nativeState.document)),
+        });
+        await route.fulfill({
+          status: 204,
+          headers: { ETag: `"${nativeState.generation}"` },
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/vnd.espcontrol.panel-config",
+        headers: { ETag: `"${nativeState.generation}"` },
+        body: Buffer.from(encodePanelConfig(nativeState.document)),
+      });
+      return;
+    }
     if (
       requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname === `/${slug}`
@@ -144,7 +257,7 @@ async function installRoutes(context, slug) {
       await route.fulfill({
         status: 200,
         contentType: "text/html",
-        body: htmlFor(slug),
+        body: htmlFor(slug, offlineFallback),
       });
       return;
     }
@@ -156,6 +269,43 @@ async function installRoutes(context, slug) {
         status: 200,
         contentType: "application/javascript",
         body: fs.readFileSync(scriptPath, "utf8"),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/webserver/embedded/www.js"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/javascript",
+        body: fs.readFileSync(path.join(WEB_OUTPUT_DIR, "embedded", "www.js"), "utf8"),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/webserver/web-assets.json"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(webAssetManifest),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === `/webserver/${webAssetManifest.bundles[0].path}`
+    ) {
+      if (offlineFallback) {
+        await route.abort("failed");
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/javascript",
+        body: fs.readFileSync(immutableBundlePath, "utf8"),
       });
       return;
     }
@@ -195,10 +345,17 @@ async function installFakeEventSource(page) {
     window.__seedEspState = function (events) {
       if (!window.__eventSources.length)
         throw new Error("No EventSource instance was created");
-      var source = window.__eventSources[0];
+      var source = window.__eventSources[window.__eventSources.length - 1];
       events.forEach(function (event) {
         source.dispatch("state", { data: JSON.stringify(event) });
       });
+    };
+    window.__disconnectEsp = function () {
+      if (!window.__eventSources.length)
+        throw new Error("No EventSource instance was created");
+      var source = window.__eventSources[window.__eventSources.length - 1];
+      source.readyState = 2;
+      source.dispatch("error", {});
     };
     window.__seedEspPing = function (payload) {
       if (!window.__eventSources.length)
@@ -313,6 +470,21 @@ function seededEvents() {
   ];
   BUTTON_FIXTURES.forEach((state, index) => {
     events.push({ id: `text-button_${index + 1}_config`, state });
+  });
+  return events;
+}
+
+function nativeDocumentEvents(document) {
+  const events = seededEvents().filter((event) =>
+    event.id !== "text-button_order" &&
+    !/^text-button_\d+_config$/.test(event.id),
+  );
+  events.push({
+    id: "text-button_order",
+    state: document.settings.button_order || "",
+  });
+  Object.entries(document.buttons).forEach(([slot, state]) => {
+    events.push({ id: `text-button_${slot}_config`, state });
   });
   return events;
 }
@@ -700,6 +872,10 @@ async function assertRotationStartupOrdering(browser) {
   });
   await installRoutes(fallbackContext, slug);
   const fallbackPage = await fallbackContext.newPage();
+  const fallbackPosts = [];
+  fallbackPage.on("request", (request) => {
+    if (request.method() === "POST") fallbackPosts.push(request.url());
+  });
   await installFakeEventSource(fallbackPage);
   try {
     await fallbackPage.goto(`http://espcontrol.test/${slug}?events=1`, {
@@ -711,8 +887,8 @@ async function assertRotationStartupOrdering(browser) {
     );
     await fallbackPage.evaluate(
       (events) => window.__seedEspState(events),
-      [{ id: "text-button_order", state: "1,2,3w,4,5" }].concat(
-        rotationStartupBaseEvents(false, 5),
+      [{ id: "text-button_order", state: "1p,,,,,,,,,,,,2,3,4" }].concat(
+        rotationStartupBaseEvents(false, 4),
       ),
     );
     let layout = await measureRotationStartupLayout(fallbackPage);
@@ -743,15 +919,40 @@ async function assertRotationStartupOrdering(browser) {
       "rotation fallback: grid should be visible after fallback timeout",
     );
     assert(
-      layout.visibleCards >= 5,
+      layout.visibleCards >= 4,
       "rotation fallback: saved cards should render after fallback timeout",
+    );
+
+    await fallbackPage.evaluate(() =>
+      window.__seedEspState([
+        {
+          id: "select-screen__rotation",
+          state: "90",
+          value: "90",
+          option: ["0", "90", "180", "270"],
+        },
+      ]),
+    );
+    await fallbackPage.waitForFunction(() => {
+      var main = document.querySelector(".sp-main");
+      return main && getComputedStyle(main).gridTemplateColumns.split(" ").length === 3;
+    });
+    assertPortraitGridLayout(
+      await measureRotationStartupLayout(fallbackPage),
+      "rotation after fallback",
+      { minVisibleCards: 4 },
+    );
+    assert.deepStrictEqual(
+      fallbackPosts.filter((url) => /\/text\/button_order\//.test(url)),
+      [],
+      "rotation fallback: an unconfirmed startup orientation must not overwrite the saved layout",
     );
   } finally {
     await fallbackContext.close();
   }
 }
 
-async function assertSettingsPage(page, label, options = {}) {
+async function assertSettingsPage(page, label, options = {}, posts = []) {
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   const settingsVisible = await page.locator("#sp-settings").isVisible();
@@ -774,9 +975,51 @@ async function assertSettingsPage(page, label, options = {}) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    ["Display", "Sleep & Schedule", "Preferences", "System"],
+    options.slug === "esp32-p4-86"
+      ? ["Display", "Voice & Sounds", "Sleep & Schedule", "Preferences", "System"]
+      : ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
+  const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
+    let section = "";
+    const placement = {};
+    Array.from(config.children).forEach((child, index) => {
+      if (child.classList.contains("sp-settings-status-header")) {
+        section = child.querySelector(".sp-settings-status-title")?.textContent || "";
+        return;
+      }
+      const title = child.querySelector(":scope > .card-header h3")?.textContent || "";
+      if (title) placement[title] = { section, index };
+    });
+    return placement;
+  });
+  assert.strictEqual(
+    settingsPlacement["Cover Art Screen Saver"]?.section,
+    "Sleep & Schedule",
+    `${label}: cover art settings should be grouped with sleep and schedule controls`,
+  );
+  assert.strictEqual(
+    settingsPlacement.Idle?.section,
+    "Display",
+    `${label}: idle settings should be grouped with display controls`,
+  );
+  assert.strictEqual(
+    settingsPlacement.Idle?.index,
+    settingsPlacement.Backlight?.index + 1,
+    `${label}: idle settings should appear immediately below Backlight`,
+  );
+  if (options.slug === "guition-esp32-p4-jc8012p4a1") {
+    assert.strictEqual(
+      settingsPlacement.Battery?.section,
+      "System",
+      `${label}: battery settings should be grouped with system controls`,
+    );
+    assert.strictEqual(
+      await page.locator("label[for='sp-set-battery-status']").textContent(),
+      "Enable battery support",
+      `${label}: battery support should use its stable settings label`,
+    );
+  }
   const firmwareCard = page
     .locator("#sp-settings .card")
     .filter({
@@ -895,6 +1138,7 @@ async function assertSettingsPage(page, label, options = {}) {
     await page.evaluate(() => window.__seedEspState([
       { id: "text_sensor-esp32_c6__current_firmware", state: "2.12.8" },
       { id: "text_sensor-esp32_c6__latest_firmware", state: "2.12.9" },
+      { id: "switch-wifi_firmware__auto_update", state: "ON", value: true },
       { id: "button-firmware_esp32_c6__install_update", state: "" },
     ]));
     const wifiPanel = page.locator("#sp-fw-wifi-panel");
@@ -915,6 +1159,11 @@ async function assertSettingsPage(page, label, options = {}) {
       ),
       ["2.12.8", "2.12.9"],
       `${label}: WiFi panel should show current and available versions`,
+    );
+    assert.strictEqual(
+      await wifiPanel.locator("#sp-set-c6-auto-update").isChecked(),
+      true,
+      `${label}: WiFi automatic updates should be enabled by default`,
     );
     assert.strictEqual(
       await firmwareCard
@@ -951,10 +1200,66 @@ async function assertSettingsPage(page, label, options = {}) {
       has: page.locator(".card-header h3", { hasText: /^Voice Services$/ }),
     })
     .first();
+  const alarmDelayAudioCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Alarm Audio$/ }),
+    })
+    .first();
   if (options.slug === "esp32-p4-86") {
+    assert.strictEqual(
+      settingsPlacement["Voice Services"]?.section,
+      "Voice & Sounds",
+      `${label}: voice services should be grouped with voice and sound controls`,
+    );
+    assert.strictEqual(
+      settingsPlacement["Alarm Audio"]?.section,
+      "Voice & Sounds",
+      `${label}: alarm audio should be grouped with voice and sound controls`,
+    );
+    assert.strictEqual(
+      settingsPlacement["Alarm Audio"]?.index,
+      settingsPlacement["Voice Services"]?.index + 1,
+      `${label}: alarm audio should appear immediately below voice services`,
+    );
     assert(
       await voiceServicesCard.isVisible(),
       `${label}: voice services settings card is available for the voice-capable panel`,
+    );
+    assert(
+      await alarmDelayAudioCard.isVisible(),
+      `${label}: alarm delay audio settings are available for the speaker panel`,
+    );
+    await alarmDelayAudioCard.locator(".card-header").click();
+    const alarmDelayAudioToggle = alarmDelayAudioCard.locator("#sp-set-alarm-delay-audio");
+    async function setAlarmDelayAudioEnabled(enabled) {
+      await alarmDelayAudioToggle.evaluate((input, checked) => {
+        input.checked = checked;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }, enabled);
+    }
+    await setAlarmDelayAudioEnabled(true);
+    const entryAnnouncement = alarmDelayAudioCard.locator("#sp-set-alarm-delay-entry-announcement");
+    const exitAnnouncement = alarmDelayAudioCard.locator("#sp-set-alarm-delay-exit-announcement");
+    async function changeAnnouncement(input, value) {
+      await input.evaluate((element, nextValue) => {
+        element.value = nextValue;
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+      }, value);
+    }
+    await changeAnnouncement(entryAnnouncement, "Updated entry announcement");
+    await changeAnnouncement(exitAnnouncement, "Updated exit announcement");
+    await setAlarmDelayAudioEnabled(false);
+    await setAlarmDelayAudioEnabled(true);
+    assert.strictEqual(
+      await entryAnnouncement.inputValue(),
+      "Updated entry announcement",
+      `${label}: entry announcement state survives settings UI synchronization`,
+    );
+    assert.strictEqual(
+      await exitAnnouncement.inputValue(),
+      "Updated exit announcement",
+      `${label}: exit announcement state survives settings UI synchronization`,
     );
   } else {
     assert(
@@ -966,6 +1271,11 @@ async function assertSettingsPage(page, label, options = {}) {
       0,
       `${label}: voice services settings card is hidden on panels without local voice`,
     );
+    assert.strictEqual(
+      await alarmDelayAudioCard.count(),
+      0,
+      `${label}: alarm delay audio settings are hidden on panels without speaker support`,
+    );
   }
   const nightScheduleCard = page
     .locator("#sp-settings .card")
@@ -973,6 +1283,51 @@ async function assertSettingsPage(page, label, options = {}) {
       has: page.locator(".card-header h3", { hasText: /^Night Schedule$/ }),
     })
     .first();
+  const brightnessCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Backlight$/ }),
+    })
+    .first();
+  const screensaverCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }),
+    })
+    .first();
+  assert(await brightnessCard.isVisible(), `${label}: backlight settings should render`);
+  assert(await screensaverCard.isVisible(), `${label}: screensaver settings should render`);
+  await brightnessCard.locator(".card-header").click();
+  await screensaverCard.locator(".card-header").click();
+  await screensaverCard.getByRole("button", { name: "Timer", exact: true }).click();
+  const dimmedAction = screensaverCard.locator("#sp-set-clock-mode");
+  await dimmedAction.selectOption("dim");
+  const manualDimmedBrightness = screensaverCard.locator("#sp-set-dimmed-brightness");
+  const daytimeDimmedBrightness = screensaverCard.locator("#sp-set-daytime-dimmed-brightness");
+  const nighttimeDimmedBrightness = screensaverCard.locator("#sp-set-nighttime-dimmed-brightness");
+  await brightnessCard.getByRole("button", { name: "Manual", exact: true }).click();
+  assert(await manualDimmedBrightness.isVisible(), `${label}: Manual mode shows one dimmed-screen brightness`);
+  assert.strictEqual(await daytimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides daytime dimmed brightness`);
+  assert.strictEqual(await nighttimeDimmedBrightness.isVisible(), false, `${label}: Manual mode hides nighttime dimmed brightness`);
+  await brightnessCard.getByRole("button", { name: "Automatic", exact: true }).click();
+  assert.strictEqual(await manualDimmedBrightness.isVisible(), false, `${label}: Automatic mode hides the manual dimmed brightness`);
+  assert(await daytimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows daytime dimmed brightness`);
+  assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Automatic mode shows nighttime dimmed brightness`);
+  const dimmedBrightnessPostStart = posts.length;
+  await daytimeDimmedBrightness.evaluate((input) => {
+    input.value = "30";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitForPost(
+    posts,
+    { domain: "number", name: "screen_saver__daytime_dimmed_brightness", action: "set", value: "30" },
+    `${label}: Automatic mode posts daytime dimmed brightness`,
+    dimmedBrightnessPostStart,
+  );
+  await brightnessCard.getByRole("button", { name: "Timed", exact: true }).click();
+  assert(await daytimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps daytime dimmed brightness visible`);
+  assert(await nighttimeDimmedBrightness.isVisible(), `${label}: Timed mode keeps nighttime dimmed brightness visible`);
   assert(
     await nightScheduleCard.isVisible(),
     `${label}: night schedule settings card should render`,
@@ -1006,7 +1361,7 @@ async function assertSettingsPage(page, label, options = {}) {
   const coverArtCard = page
     .locator("#sp-settings .card")
     .filter({
-      has: page.locator(".card-header h3", { hasText: /^Cover Art$/ }),
+      has: page.locator(".card-header h3", { hasText: /^Cover Art Screen Saver$/ }),
     })
     .first();
   assert(
@@ -1049,15 +1404,56 @@ async function assertSettingsPage(page, label, options = {}) {
       .getByText("Keep Screen Awake During Playback", { exact: true })
       .isVisible(),
     false,
-    `${label}: keep-screen-awake option should remain inside collapsed advanced options`,
+    `${label}: keep-screen-awake option should remain inside collapsed screensaver settings`,
   );
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
     `${label}: media player entity field should render when cover art is enabled`,
   );
+  const screensaverSettings = coverArtCard
+    .getByRole("button", { name: "Screensaver Settings", exact: true })
+    .locator("..");
+  const externalSources = coverArtCard
+    .getByRole("button", { name: "External sources", exact: true })
+    .locator("..");
+  assert(await screensaverSettings.isVisible(), `${label}: cover art screensaver settings panel should render`);
+  assert(await externalSources.isVisible(), `${label}: cover art external sources panel should render`);
+  assert(
+    !(await screensaverSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: cover art screensaver settings should start collapsed`,
+  );
+  assert(
+    !(await externalSources.getAttribute("class")).includes("sp-open"),
+    `${label}: cover art external sources should start collapsed`,
+  );
+  assert.strictEqual(
+    await screensaverSettings.locator("#sp-set-ss-media-sleep-prevention").count(),
+    1,
+    `${label}: keep-screen-awake should belong to screensaver settings`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-player").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: cover art primary entity should remain outside collapsible panels`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+    false,
+    `${label}: cover art show-after field should begin inside collapsed screensaver settings`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-secondary-player").isVisible(),
+    false,
+    `${label}: cover art secondary entity should begin inside its collapsed panel`,
+  );
+  await screensaverSettings.locator("> .sp-disclosure-button").click();
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
-    `${label}: cover art show-after field should render when cover art is enabled`,
+    `${label}: cover art show-after field should render inside screensaver settings`,
+  );
+  assert(
+    await coverArtCard.getByText("Keep Screen Awake During Playback", { exact: true }).isVisible(),
+    `${label}: keep-screen-awake should render inside screensaver settings`,
   );
   assert.deepStrictEqual(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay option").evaluateAll(
@@ -1071,6 +1467,79 @@ async function assertSettingsPage(page, label, options = {}) {
     options.coverArtSquareOverlay ? 1 : 0,
     `${label}: track overlay duration visibility should match square cover art layout`,
   );
+  if (options.coverArtSquareOverlay) {
+    assert(
+      await coverArtCard.locator("#sp-set-ss-track-overlay").isVisible(),
+      `${label}: track overlay duration should render inside screensaver settings`,
+    );
+  }
+  await externalSources.locator("> .sp-disclosure-button").click();
+  const coverArtSecondaryInfo = coverArtCard.locator("#sp-set-ss-cover-art-secondary-player-info");
+  assert(await coverArtSecondaryInfo.isVisible(), `${label}: cover art secondary player explanation should render`);
+  assert.strictEqual(
+    await coverArtSecondaryInfo.textContent(),
+    "Enable if you use an external media player connected to your speakers Line In, TV, or HDMI source. If you add a second media player, cover art, track details, and progress be displayed when the external source is used.",
+    `${label}: cover art secondary player explanation should match`,
+  );
+  assert.strictEqual(
+    await coverArtSecondaryInfo.getAttribute("role"),
+    "note",
+    `${label}: cover art secondary player explanation should be announced as a note`,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-secondary-player").isVisible(),
+    false,
+    `${label}: cover art secondary entity should remain hidden until external sources are enabled`,
+  );
+  const showExternalInputToggle = coverArtCard.locator("#sp-set-ss-cover-art-show-external-input");
+  assert(
+    await coverArtCard.getByText("Show external sources", { exact: true }).isVisible(),
+    `${label}: external sources should contain the positive show toggle`,
+  );
+  assert.strictEqual(
+    await coverArtCard.getByText("Hide for external source inputs", { exact: true }).count(),
+    0,
+    `${label}: the inverted hide label should no longer render`,
+  );
+  assert.strictEqual(
+    await showExternalInputToggle.isChecked(),
+    false,
+    `${label}: show-for-external-inputs should invert the default enabled hide setting`,
+  );
+  var beforeShowExternalInput = posts.length;
+  await coverArtCard.locator("#sp-set-ss-cover-art-show-external-input + .sp-toggle-track").click();
+  await waitForPost(
+    posts,
+    {
+      domain: "switch",
+      name: "screen_saver__hide_cover_art_on_external_input",
+      action: "turn_off",
+    },
+    `${label}: enabling show-for-external-inputs disables the saved hide setting`,
+    beforeShowExternalInput,
+  );
+  assert(await showExternalInputToggle.isChecked(), `${label}: show-for-external-inputs should become enabled`);
+  assert(
+    await coverArtCard.locator("#sp-set-ss-cover-art-secondary-player").isVisible(),
+    `${label}: enabling external sources should reveal the secondary entity`,
+  );
+  var beforeHideExternalInput = posts.length;
+  await coverArtCard.locator("#sp-set-ss-cover-art-show-external-input + .sp-toggle-track").click();
+  await waitForPost(
+    posts,
+    {
+      domain: "switch",
+      name: "screen_saver__hide_cover_art_on_external_input",
+      action: "turn_on",
+    },
+    `${label}: disabling show-for-external-inputs restores the saved hide setting`,
+    beforeHideExternalInput,
+  );
+  assert.strictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-secondary-player").isVisible(),
+    false,
+    `${label}: disabling external sources should hide the secondary entity`,
+  );
   assert(
     await coverArtCard
       .getByText("Advanced Options", { exact: true })
@@ -1083,18 +1552,6 @@ async function assertSettingsPage(page, label, options = {}) {
     `${label}: cover art conditions field should be hidden until advanced filtering is enabled`,
   );
   await coverArtCard.getByText("Advanced Options", { exact: true }).click();
-  assert(
-    await coverArtCard
-      .getByText("Keep Screen Awake During Playback", { exact: true })
-      .isVisible(),
-    `${label}: keep-screen-awake option should render inside advanced options`,
-  );
-  assert(
-    await coverArtCard
-      .getByText("Hide for external source inputs", { exact: true })
-      .isVisible(),
-    `${label}: external source input option should render inside advanced options`,
-  );
   assert(
     await coverArtCard
       .getByText("Advanced Filtering", { exact: true })
@@ -1182,6 +1639,11 @@ async function assertSettingsPage(page, label, options = {}) {
       .locator("#sp-set-ha-artwork-port.sp-input--no-stepper")
       .count()) === 1,
     `${label}: Home Assistant port field should hide browser stepper controls`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-base-url").count(),
+    0,
+    `${label}: unsupported artwork base URL field should not render`,
   );
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -1289,6 +1751,7 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     var screen = document.querySelector(".sp-screen").getBoundingClientRect();
     return {
       tab: document.querySelector("#sp-app").getAttribute("data-active-tab"),
+      supportDismissControl: !!document.querySelector(".sp-support-dismiss"),
       viewportMeta:
         document.querySelector('meta[name="viewport"]') &&
         document.querySelector('meta[name="viewport"]').getAttribute("content"),
@@ -1311,6 +1774,11 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     mobile.viewportMeta,
     "width=device-width,initial-scale=1",
     `${label}: web app should provide mobile viewport metadata`,
+  );
+  assert.strictEqual(
+    mobile.supportDismissControl,
+    false,
+    `${label}: support button should not have a dismiss control`,
   );
   assert(
     mobile.supportVisible,
@@ -1432,10 +1900,9 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     "settings",
     `${label}: settings tab is marked active on mobile`,
   );
-  assert.strictEqual(
+  assert(
     mobile.supportVisible,
-    false,
-    `${label}: support button should not cover mobile settings`,
+    `${label}: support button remains visible on the settings tab`,
   );
   assert(
     mobile.activeCardVisible,
@@ -1514,10 +1981,9 @@ async function assertMobileDeviceViewport(browser, testCase) {
       mobile.documentScrollWidth <= mobile.windowWidth + 1,
       `${testCase.name}: mobile device settings tab has horizontal overflow`,
     );
-    assert.strictEqual(
+    assert(
       mobile.supportVisible,
-      false,
-      `${testCase.name}: support button should not cover settings on mobile devices`,
+      `${testCase.name}: support button remains visible on settings on mobile devices`,
     );
   } catch (error) {
     fs.mkdirSync(FAILURE_DIR, { recursive: true });
@@ -1686,11 +2152,54 @@ async function assertEmptyCellSettings(page, posts, label) {
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   await page.getByRole("button", { name: "Action card type" }).click();
   await page.locator("#sp-inp-type").waitFor({ state: "visible" });
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   await page.locator("#sp-inp-label").fill("Keep this label");
   await page.locator("#sp-inp-entity").fill("switch.keep_this_entity");
   await page.locator("#sp-inp-action").selectOption({ label: "Run Script" });
   await page.locator("#sp-inp-type").selectOption({ label: "Switch" });
   await page.locator("#sp-inp-entity").waitFor({ state: "visible" });
+  const switchCardSettings = page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first();
+  assert(
+    await switchCardSettings.isVisible(),
+    `${label}: Switch should show a Card Settings panel`,
+  );
+  assert(
+    !(await switchCardSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: Switch Card Settings should start collapsed`,
+  );
+  assert.strictEqual(
+    await page
+      .locator("#sp-inp-entity")
+      .evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: Switch entity should sit outside Card Settings`,
+  );
+  for (const [selector, fieldLabel] of [
+    ["#sp-inp-label", "Label"],
+    ["#sp-inp-icon", "Off Icon"],
+    ["#sp-inp-icon_on", "On Icon"],
+    ["#sp-inp-sensor-when-on-toggle", "Active Display"],
+    ["#sp-inp-confirm-toggle", "Confirmation Required"],
+  ]) {
+    assert.strictEqual(
+      await page.locator(selector).evaluate((el) => !!el.closest(".sp-disclosure")),
+      true,
+      `${label}: Switch ${fieldLabel} should sit inside Card Settings`,
+    );
+  }
+  await switchCardSettings.locator(".sp-disclosure-button").click();
+  assert(
+    await page.locator("#sp-inp-label").isVisible(),
+    `${label}: opening Switch Card Settings should reveal its controls`,
+  );
   assert.strictEqual(
     await page.locator("#sp-inp-label").inputValue(),
     "Keep this label",
@@ -1721,6 +2230,12 @@ async function assertEmptyCellSettings(page, posts, label) {
     `${label}: unsaved new card keeps Delete hidden after type selection`,
   );
   await page.locator("#sp-inp-type").selectOption({ label: "Sensor" });
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   const sensorTypeOptions = await page.locator("#sp-inp-sensor-type option").allTextContents();
   assert.deepStrictEqual(
     sensorTypeOptions,
@@ -1743,6 +2258,14 @@ async function assertEmptyCellSettings(page, posts, label) {
   assert(
     await page.locator("#sp-inp-time-unit").isVisible(),
     `${label}: Time type shows the input unit dropdown`,
+  );
+  assert(
+    await page.getByText("Incoming Value Unit", { exact: true }).isVisible(),
+    `${label}: Time input unit uses the clearer incoming-value label`,
+  );
+  assert(
+    await page.getByText("Auto uses the unit reported by Home Assistant. A manual choice overrides it.", { exact: true }).isVisible(),
+    `${label}: Time input unit explains Auto and manual override behaviour`,
   );
   assert.strictEqual(
     await page.locator("#sp-inp-time-unit").inputValue(),
@@ -1768,6 +2291,12 @@ async function assertEmptyCellSettings(page, posts, label) {
     `${label}: switching away from Time clears its manual input unit`,
   );
   await page.getByRole("button", { name: "Local Sensor", exact: true }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   assert.strictEqual(
     await page.locator("#sp-inp-sensor-type").count(),
     0,
@@ -1796,6 +2325,12 @@ async function assertEmptyCellSettings(page, posts, label) {
   await page.locator(`.sp-main [data-pos="${pos}"]`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   await page.getByRole("button", { name: "Switch card type" }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   await page.locator("#sp-inp-label").fill("New Card");
   await page.locator("#sp-inp-entity").fill("switch.new_card");
   await page.getByRole("button", { name: "Save" }).click();
@@ -1819,6 +2354,463 @@ async function assertEmptyCellSettings(page, posts, label) {
     ],
     `${label}: saving new card posts card config`,
     before,
+  );
+}
+
+async function assertNewMediaCardDefaults(page, posts, label) {
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+
+  const before = posts.length;
+  const pos = await emptyCell.getAttribute("data-pos");
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Media card type" }).click();
+  await page.locator("#sp-inp-media-mode").waitFor({ state: "visible" });
+
+  assert.strictEqual(
+    await page.locator("#sp-inp-media-mode").inputValue(),
+    "cover_art",
+    `${label}: a new Media card should default to Cover Art`,
+  );
+  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Play/Pause",
+    `${label}: leaving Cover Art should refresh the generated label`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+
+  await page.locator(`.sp-main [data-pos="${pos}"].sp-empty-cell`).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Action card type" }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
+  await page.locator("#sp-inp-label").fill("Custom media label");
+  await page.locator("#sp-inp-type").selectOption("media");
+  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Custom media label",
+    `${label}: changing a labelled card to Media preserves its custom label`,
+  );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: checking new Media card defaults should not post a card`,
+  );
+}
+
+async function assertAllCardSettingsGrouped(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+  const before = posts.length;
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Switch card type" }).click();
+
+  async function assertGrouped(context) {
+    const result = await page.evaluate(() => {
+      const panel = document.querySelector(".sp-settings-modal .sp-panel");
+      if (!panel) return null;
+      const direct = Array.from(panel.children).filter(
+        (child) => !child.classList.contains("sp-btn-row"),
+      );
+      const ungrouped = direct
+        .filter(
+          (child) =>
+            !child.classList.contains("sp-disclosure") &&
+            !child.hasAttribute("data-sp-card-primary"),
+        )
+        .map((child) => ({
+          className: child.className,
+          text: String(child.textContent || "").trim().slice(0, 80),
+        }));
+      const primaryKinds = direct
+        .map((child) => child.getAttribute("data-sp-card-primary"))
+        .filter(Boolean);
+      const cardSettings = direct.find((child) => {
+        if (!child.classList.contains("sp-disclosure")) return false;
+        const button = child.querySelector(".sp-disclosure-button");
+        const heading = button && button.firstElementChild;
+        return String((heading && heading.textContent) || "").trim() === "Card Settings";
+      });
+      return {
+        ungrouped,
+        primaryKinds,
+        cardSettingsOpen:
+          !!cardSettings && cardSettings.classList.contains("sp-open"),
+      };
+    });
+    assert(result, `${label}: ${context} should render a settings panel`);
+    assert.deepStrictEqual(
+      result.ungrouped,
+      [],
+      `${label}: ${context} should not leave controls outside a group`,
+    );
+    assert.strictEqual(
+      result.primaryKinds.filter((kind) => kind === "card").length,
+      1,
+      `${label}: ${context} should keep exactly one Card field outside groups`,
+    );
+    assert(
+      result.primaryKinds.every((kind) =>
+        ["card", "type", "entity"].includes(kind),
+      ),
+      `${label}: ${context} should only expose Card, Type, and Entity primary fields`,
+    );
+    for (const kind of ["type", "entity"]) {
+      assert(
+        result.primaryKinds.filter((value) => value === kind).length <= 1,
+        `${label}: ${context} should expose at most one ${kind} field outside groups`,
+      );
+    }
+    assert.strictEqual(
+      result.cardSettingsOpen,
+      false,
+      `${label}: ${context} Card Settings should start collapsed`,
+    );
+  }
+
+  const cardOptions = await page
+    .locator("#sp-inp-type option:not([disabled])")
+    .evaluateAll((options) =>
+      options.map((option) => ({ value: option.value, label: option.textContent })),
+    );
+  for (const cardOption of cardOptions) {
+    await page.locator("#sp-inp-type").selectOption(cardOption.value);
+    await assertGrouped(cardOption.label);
+
+    if (cardOption.value === "screen_lock") {
+      assert.strictEqual(
+        await page.locator("#sp-inp-entity").count(),
+        0,
+        `${label}: Screen Lock should not show an unused Entity field`,
+      );
+      assert.strictEqual(
+        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        0,
+        `${label}: Screen Lock should not show unused generic Card Settings`,
+      );
+    }
+
+    if (cardOption.value === "weather") {
+      assert.strictEqual(
+        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        0,
+        `${label}: Weather current conditions should not show empty Card Settings`,
+      );
+    }
+
+    const typeSelect = page.locator(
+      '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
+    );
+    if ((await typeSelect.count()) > 0) {
+      if (cardOption.value === "fan_speed") {
+        assert.deepStrictEqual(
+          await typeSelect.locator("option").evaluateAll((options) =>
+            options.map((option) => option.textContent),
+          ),
+          ["All Controls", "Switch", "Speed", "Oscillation", "Direction", "Preset"],
+          `${label}: Fans should label the complete fan modal All Controls`,
+        );
+      }
+      const typeOptions = await typeSelect
+        .locator("option:not([disabled])")
+        .evaluateAll((options) => options.map((option) => option.value));
+      for (const typeValue of typeOptions) {
+        await typeSelect.selectOption(typeValue);
+        await assertGrouped(`${cardOption.label} / ${typeValue || "default"}`);
+        if (cardOption.value === "weather" && typeValue) {
+          assert.strictEqual(
+            await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+            1,
+            `${label}: Weather forecasts should group their extra settings`,
+          );
+        }
+      }
+    }
+
+    const typeButtons = page.locator(
+      '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] button',
+    );
+    const typeButtonCount = await typeButtons.count();
+    for (let index = 0; index < typeButtonCount; index += 1) {
+      await typeButtons.nth(index).click();
+      await assertGrouped(`${cardOption.label} / type button ${index + 1}`);
+    }
+  }
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: grouping audit should not save a card`,
+  );
+}
+
+async function assertFanOptionalLightSettings(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Switch card type" }).click();
+  await page.locator("#sp-inp-type").selectOption("fan_speed");
+  const fanType = page.locator(
+    '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
+  );
+  await fanType.selectOption("fan_control");
+  await page.getByRole("button", { name: "Modal Settings" }).click();
+
+  const lightTab = page.locator("#sp-inp-fan-tab-light");
+  assert.strictEqual(
+    await lightTab.isDisabled(),
+    true,
+    `${label}: Light tab should wait for an optional light entity`,
+  );
+
+  await page.getByRole("button", { name: "Optional Light" }).click();
+  const lightEntity = page.locator("#sp-inp-fan-light-entity");
+  await lightEntity.evaluate((input) => {
+    input.value = "light.bedroom_fan";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForFunction(() => {
+    const input = document.querySelector("#sp-inp-fan-tab-light");
+    return input instanceof HTMLInputElement && !input.disabled;
+  });
+  assert.strictEqual(
+    await lightTab.isChecked(),
+    true,
+    `${label}: configuring a light should enable its tab automatically`,
+  );
+  assert.strictEqual(
+    await lightTab.isDisabled(),
+    false,
+    `${label}: configured light tab should be editable`,
+  );
+
+  await page.getByRole("button", { name: "Move Light up" }).click();
+  const orderedTabs = await page
+    .locator(".sp-settings-modal .sp-light-tab-row")
+    .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-tab")));
+  assert(
+    orderedTabs.indexOf("light") < orderedTabs.indexOf("direction"),
+    `${label}: Light tab should be movable with the other fan tabs`,
+  );
+
+  await page
+    .locator('.sp-light-tab-row[data-tab="light"] .sp-toggle-track')
+    .click();
+  assert.strictEqual(
+    await page.locator("#sp-inp-fan-tab-light").isChecked(),
+    false,
+    `${label}: configured Light tab should be disableable without clearing its entity`,
+  );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
+async function assertInternalControlsPanel(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+  const before = posts.length;
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Switch card type" }).click();
+
+  const internalOption = page.locator(
+    '#sp-inp-type option[value="internal"]:not([disabled])',
+  );
+  if ((await internalOption.count()) > 0) {
+    await page.locator("#sp-inp-type").selectOption("internal");
+    const controlsButton = page.getByRole("button", {
+      name: "Controls",
+      exact: true,
+    });
+    const controlsPanel = controlsButton.locator("..");
+    assert(
+      await controlsButton.isVisible(),
+      `${label}: Internal card should show a Controls panel`,
+    );
+    assert.strictEqual(
+      await controlsButton.getAttribute("aria-expanded"),
+      "false",
+      `${label}: Internal Controls should start collapsed`,
+    );
+    assert.deepStrictEqual(
+      await page
+        .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
+        .evaluateAll((headings) => headings.map((heading) => heading.textContent)),
+      ["Controls", "Card Settings"],
+      `${label}: Internal groups should show Controls before Card Settings`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-inp-internal-relay").evaluate((element) => {
+        const disclosure = element.closest(".sp-disclosure");
+        const heading = disclosure && disclosure.querySelector(".sp-disclosure-button > span:first-child");
+        return heading && heading.textContent;
+      }),
+      "Controls",
+      `${label}: Internal Relay should be inside Controls`,
+    );
+    await controlsButton.click();
+    assert(
+      await page.locator("#sp-inp-internal-relay").isVisible(),
+      `${label}: expanding Internal Controls should reveal the relay`,
+    );
+    assert.strictEqual(
+      await controlsPanel.getByRole("button", { name: "Switch", exact: true }).count(),
+      1,
+      `${label}: Internal Type should be inside Controls`,
+    );
+    const pushButton = controlsPanel.getByRole("button", {
+      name: "Push Button",
+      exact: true,
+    });
+    await pushButton.click();
+    assert(
+      (await pushButton.getAttribute("class")).includes("active"),
+      `${label}: Internal Type should remain interactive inside Controls`,
+    );
+  }
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: Internal Controls audit should not save a card`,
+  );
+}
+
+async function assertWebhookSettingsPanel(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+  const before = posts.length;
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Switch card type" }).click();
+  await page.locator("#sp-inp-type").selectOption("webhook");
+
+  const webhookSettingsButton = page.getByRole("button", {
+    name: "Webhook Settings",
+    exact: true,
+  });
+  assert(
+    await webhookSettingsButton.isVisible(),
+    `${label}: Webhook card should show a Webhook Settings panel`,
+  );
+  assert.strictEqual(
+    await webhookSettingsButton.getAttribute("aria-expanded"),
+    "false",
+    `${label}: Webhook Settings should start collapsed`,
+  );
+  assert.deepStrictEqual(
+    await page
+      .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
+      .evaluateAll((headings) => headings.map((heading) => heading.textContent)),
+    ["Webhook Settings", "Card Settings"],
+    `${label}: Webhook groups should show Webhook Settings before Card Settings`,
+  );
+  for (const fieldId of ["#sp-inp-webhook-method", "#sp-inp-webhook-url"]) {
+    assert.strictEqual(
+      await page.locator(fieldId).evaluate((element) => {
+        const disclosure = element.closest(".sp-disclosure");
+        const heading = disclosure && disclosure.querySelector(".sp-disclosure-button > span:first-child");
+        return heading && heading.textContent;
+      }),
+      "Webhook Settings",
+      `${label}: ${fieldId} should be inside Webhook Settings`,
+    );
+  }
+
+  await webhookSettingsButton.click();
+  assert(
+    await page.locator("#sp-inp-webhook-headers").isVisible(),
+    `${label}: Webhook Settings should contain Headers`,
+  );
+  await page.locator("#sp-inp-webhook-method").selectOption("POST");
+  assert.strictEqual(
+    await webhookSettingsButton.getAttribute("aria-expanded"),
+    "false",
+    `${label}: rerendered Webhook Settings should start collapsed`,
+  );
+  await webhookSettingsButton.click();
+  assert(
+    await page.locator("#sp-inp-webhook-body").isVisible(),
+    `${label}: POST Body should remain inside Webhook Settings`,
+  );
+  assert(
+    await page.locator("#sp-inp-webhook-headers").isVisible(),
+    `${label}: POST Headers should remain inside Webhook Settings`,
+  );
+
+  await webhookSettingsButton.click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  assert.strictEqual(
+    await webhookSettingsButton.getAttribute("aria-expanded"),
+    "true",
+    `${label}: missing URL validation should open Webhook Settings`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-webhook-url").getAttribute("aria-invalid"),
+    "true",
+    `${label}: missing webhook URL should remain visibly invalid`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: Webhook Settings audit should not save a card`,
   );
 }
 
@@ -1873,6 +2865,106 @@ async function assertCoverSettingsPanels(page, label) {
   });
 }
 
+async function assertMediaCoverArtSettingsPanels(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  assert.strictEqual(
+    await page.locator('#sp-inp-type option[value="media_cover_art"]').count(),
+    0,
+    `${label}: Cover Art should not appear as a top-level card type`,
+  );
+  assert.strictEqual(await page.locator("#sp-inp-type").inputValue(), "media", `${label}: existing Cover Art card should open as Media`);
+  assert.strictEqual(await page.locator("#sp-inp-media-mode").inputValue(), "cover_art", `${label}: existing Cover Art card should retain its subtype`);
+  assert.strictEqual(await page.locator("#sp-inp-entity").inputValue(), "media_player.living", `${label}: existing Cover Art card should retain its entity`);
+  assert.deepStrictEqual(
+    await page.locator("#sp-inp-media-mode option").evaluateAll((options) => options.slice(0, 3).map((option) => option.value)),
+    ["control_modal", "cover_art", "playlist"],
+    `${label}: Media Type should place Track, Album or Playlist below Cover Art`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-media-mode").locator('option[value="cover_art"]').textContent(),
+    "Cover Art",
+    `${label}: Media should offer Cover Art in its Type selector`,
+  );
+  assert.deepStrictEqual(
+    await page
+      .locator("#sp-inp-media-mode option")
+      .evaluateAll((options) => options
+        .filter((option) => ["play_pause", "previous", "next", "volume"].includes(option.value))
+        .map((option) => option.textContent)),
+    ["Play/Pause", "Previous", "Next", "Volume"],
+    `${label}: Media action types should use their concise names`,
+  );
+
+  const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-cover-art-card-settings"),
+  });
+  const externalSources = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-cover-art-secondary-player"),
+  });
+  assert(await cardSettings.isVisible(), `${label}: Cover Art card settings panel should render`);
+  assert(await externalSources.isVisible(), `${label}: Cover Art external sources panel should render`);
+  assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: Cover Art card settings should start collapsed`);
+  assert(!(await externalSources.getAttribute("class")).includes("sp-open"), `${label}: Cover Art external sources should start collapsed`);
+  assert(
+    await externalSources.getByText("External Sources", { exact: true }).isVisible(),
+    `${label}: Cover Art external sources panel should use the shared title`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-entity").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: Cover Art primary entity should remain outside collapsible panels`,
+  );
+  assert.strictEqual(
+    await cardSettings.locator(".sp-field").filter({ hasText: "Press Action" }).count(),
+    0,
+    `${label}: Cover Art should not offer a configurable press action`,
+  );
+  assert.strictEqual(
+    await cardSettings.locator("#sp-inp-media-cover-art-details").count(),
+    1,
+    `${label}: Cover Art track details toggle should be inside Card Settings`,
+  );
+  assert.strictEqual(
+    await externalSources.locator("#sp-inp-media-cover-art-secondary-entity").count(),
+    1,
+    `${label}: Cover Art secondary entity should be inside External Sources`,
+  );
+
+  await cardSettings.locator("> .sp-disclosure-button").click();
+  assert(await page.locator("#sp-inp-media-cover-art-details").isChecked(), `${label}: existing Cover Art details setting should be retained`);
+  assert(
+    await cardSettings.getByText("Show Track Details", { exact: true }).isVisible(),
+    `${label}: Cover Art Card Settings should reveal Show Track Details`,
+  );
+  assert.strictEqual(
+    await cardSettings.locator("> .sp-disclosure-body").evaluate((el) => getComputedStyle(el).padding),
+    "14px",
+    `${label}: Cover Art Card Settings should keep compact spacing around its single toggle`,
+  );
+  await externalSources.locator("> .sp-disclosure-button").click();
+  const info = externalSources.locator("#sp-inp-media-cover-art-secondary-player-info");
+  assert(await info.isVisible(), `${label}: Cover Art secondary media player explanation should be visible`);
+  assert.strictEqual(await info.getAttribute("role"), "note", `${label}: Cover Art secondary explanation should be announced as a note`);
+  assert(
+    (await info.textContent()).includes("Line In, TV, or HDMI"),
+    `${label}: Cover Art secondary explanation should describe external sources`,
+  );
+  assert(
+    await externalSources.getByText("External Source Media Entity", { exact: true }).isVisible(),
+    `${label}: Cover Art secondary entity picker should be visible`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
 async function assertAlarmSettingsPanels(page, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -1886,6 +2978,11 @@ async function assertAlarmSettingsPanels(page, label) {
   assert(await modalSettings.isVisible(), `${label}: alarm modal settings panel should render`);
   assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm card settings panel should start collapsed`);
   assert(!(await modalSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm modal settings panel should start collapsed`);
+  assert.strictEqual(
+    await page.locator("#sp-inp-alarm-card-type option:checked").textContent(),
+    "All Controls",
+    `${label}: alarm combined mode should be labelled All Controls`,
+  );
   assert.strictEqual(
     await page.locator("#sp-inp-alarm-card-type").evaluate((el) => !!el.closest(".sp-disclosure")),
     false,
@@ -1965,17 +3062,27 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   await page.locator("#sp-inp-media-mode").selectOption("playlist");
-  await page.waitForSelector("#sp-inp-playlist-content-id");
+  await page.waitForSelector("#sp-inp-playlist-content-id", { state: "attached" });
 
   const sourceSettings = page
     .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Source" })
-    .first();
+    .filter({ has: page.locator("#sp-inp-playlist-source-settings") });
+  const cardSettings = page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ has: page.locator("#sp-inp-playlist-card-settings") });
   assert(await sourceSettings.isVisible(), `${label}: playlist source panel should render`);
+  assert(await cardSettings.isVisible(), `${label}: playlist card settings panel should render`);
+  assert(
+    !(await sourceSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: playlist source panel should start collapsed`,
+  );
+  assert(
+    !(await cardSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: playlist card settings panel should start collapsed`,
+  );
+  await sourceSettings.locator("> .sp-disclosure-button").click();
   await page.locator("#sp-inp-playlist-content-id").fill("");
-  if ((await sourceSettings.getAttribute("class")).includes("sp-open")) {
-    await sourceSettings.locator("> .sp-disclosure-button").click();
-  }
+  await sourceSettings.locator("> .sp-disclosure-button").click();
   assert(
     !(await sourceSettings.getAttribute("class")).includes("sp-open"),
     `${label}: playlist source panel should be collapsed before validation`,
@@ -1993,6 +3100,62 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
   );
 
   await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
+async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.locator("#sp-inp-media-mode").selectOption("next");
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator("> .sp-disclosure-button")
+    .click();
+  await page.locator("#sp-inp-label").fill("Whole House");
+  await page.locator("#sp-inp-icon").fill("Home");
+  const before = posts.length;
+  await page.locator("#sp-inp-media-mode").selectOption("speaker_group");
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator("> .sp-disclosure-button")
+    .click();
+  const helper = page.locator("#sp-inp-speaker-group-entity");
+  await helper.waitFor({ state: "visible" });
+  assert(await page.getByText("Speaker Discovery Entity (optional)", { exact: true }).isVisible(), `${label}: speaker discovery field should render`);
+  await page.waitForSelector('.sp-main [data-slot="4"].sp-media-group-active');
+  assert(await page.locator('.sp-main [data-slot="4"].sp-media-group-active').count(), `${label}: speaker group preview should use active styling`);
+  assert.strictEqual(await page.locator('.sp-main [data-slot="4"] .sp-media-group-count').count(), 0, `${label}: speaker group preview should not invent a member count`);
+  assert.strictEqual(await page.locator("#sp-inp-label").inputValue(), "Whole House", `${label}: speaker group should expose its preserved custom label`);
+  await page.locator("#sp-inp-icon").fill("Home");
+  await page.locator("#sp-inp-icon").press("Enter");
+  await page.waitForSelector('.sp-main [data-slot="4"] .mdi-home', { state: "attached" });
+  assert(await page.locator('.sp-main [data-slot="4"] .mdi-home').count(), `${label}: speaker group preview should use its selected icon`);
+  await helper.fill("");
+  await page.getByRole("button", { name: "Save" }).click();
+  await waitForPost(
+    posts,
+    { domain: "text", name: "button_4_config", action: "set" },
+    `${label}: speaker group save`,
+    before,
+  );
+  const saved = posts.slice(before).find((post) =>
+    postMatches(post, { domain: "text", name: "button_4_config", action: "set" })
+  );
+  assert.strictEqual(
+    String(saved && saved.value || "").split(";")[2],
+    "Home",
+    `${label}: speaker group should save the selected icon`,
+  );
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
@@ -2126,6 +3289,8 @@ function backupFixture(device, slots) {
       clock_brightness_day: 44,
       clock_brightness_night: 22,
       screensaver_dimmed_brightness: 15,
+      screensaver_dimmed_brightness_day: 30,
+      screensaver_dimmed_brightness_night: 5,
       screensaver_timeout: 60,
       home_screen_timeout: 120,
       screen_rotation: "90",
@@ -2133,9 +3298,11 @@ function backupFixture(device, slots) {
     screen: {
       brightness_day: 88,
       brightness_night: 55,
-      automatic_brightness: false,
+      brightness_mode: "fixed_times",
+      manual_brightness: 62,
       schedule_enabled: true,
       schedule_sensor_activation: "on",
+      schedule_sensor_entity: "binary_sensor.night_schedule",
       schedule_on_hour: 7,
       schedule_off_hour: 22,
       schedule_mode: "clock",
@@ -2425,6 +3592,24 @@ async function assertBackupImportSmoke(page, posts, testCase) {
       "backup dimmed screensaver brightness import",
     ],
     [
+      {
+        domain: "number",
+        name: "screen_saver__daytime_dimmed_brightness",
+        action: "set",
+        value: "30",
+      },
+      "backup daytime dimmed screensaver brightness import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__nighttime_dimmed_brightness",
+        action: "set",
+        value: "5",
+      },
+      "backup nighttime dimmed screensaver brightness import",
+    ],
+    [
       { domain: "number", name: "screensaver_timeout", action: "set", value: "60" },
       "backup screensaver timeout import",
     ],
@@ -2436,6 +3621,17 @@ async function assertBackupImportSmoke(page, posts, testCase) {
   for (const [expected, label] of screensaverImportPosts) {
     await waitForPost(posts, expected, label, before);
   }
+  await waitForPost(
+    posts,
+    {
+      domain: "text",
+      name: "screen_schedule_sensor_entity",
+      action: "set",
+      value: "binary_sensor.night_schedule",
+    },
+    "backup Night Schedule sensor import",
+    before,
+  );
   await waitForPost(
     posts,
     {
@@ -2549,6 +3745,12 @@ async function assertEditSmoke(page, posts, errors) {
     !switchSuggestions.includes("media_player.living"),
     "switch card suggestions exclude recently used media players",
   );
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   await page.locator("#sp-inp-label").fill("Kitchen Main");
   await page.locator("#sp-inp-entity").fill("switch.kitchen_main");
   await page.getByRole("button", { name: "Save" }).click();
@@ -2566,6 +3768,12 @@ async function assertEditSmoke(page, posts, errors) {
 
   await page.locator('.sp-main [data-slot="2"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   await page.locator("#sp-inp-label").fill("Energy Usage");
   await page.getByRole("button", { name: "Save" }).click();
   await waitForPost(
@@ -2582,6 +3790,12 @@ async function assertEditSmoke(page, posts, errors) {
 
   await page.locator('.sp-main [data-slot="4"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
   await page.locator("#sp-inp-label").fill("Living Media");
   await page.getByRole("button", { name: "Save" }).click();
   await waitForPost(
@@ -3333,7 +4547,6 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const disabledButton = card.getByRole("button", { name: "Disabled", exact: true });
   const timeFields = card.locator("#sp-set-schedule-on-hour");
   const sensorField = card.locator("#sp-set-schedule-presence");
-  const sensorSection = card.locator(".sp-schedule-sensor");
   const sensorFieldLabel = card.getByText("Sensor Entity", { exact: true });
   const sensorActivation = card.locator("#sp-set-schedule-sensor-activation");
   const actions = card.locator("#sp-set-schedule-actions");
@@ -3342,6 +4555,16 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   const dimmedBrightness = card.locator("#sp-set-schedule-dimmed-brightness");
   const clockBrightness = card.locator("#sp-set-schedule-clock-brightness");
   const clockTextColor = card.locator("#sp-set-schedule-clock-text-color");
+  async function actionGroupGap() {
+    return actions.evaluate((element) => {
+      let previous = element.previousElementSibling;
+      while (previous && getComputedStyle(previous).display === "none") {
+        previous = previous.previousElementSibling;
+      }
+      if (!previous) return 0;
+      return element.getBoundingClientRect().top - previous.getBoundingClientRect().bottom;
+    });
+  }
 
   let before = posts.length;
   await timeButton.click();
@@ -3368,6 +4591,10 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     `${label}: Time mode should hide the sensor activation field`,
   );
   assert(await actions.isVisible(), `${label}: Time mode should show night action controls`);
+  assert(
+    (await actionGroupGap()) >= 22,
+    `${label}: Time mode should leave space before the night action controls`,
+  );
   assert(await wakeTimeout.isVisible(), `${label}: Screen Off should show wake controls`);
   assert.strictEqual(
     await dimmedBrightness.isVisible(),
@@ -3421,10 +4648,6 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   );
   assert(await sensorField.isVisible(), `${label}: Sensor mode should show the sensor entity`);
   assert(await sensorFieldLabel.isVisible(), `${label}: Sensor mode should label the sensor entity clearly`);
-  assert(
-    Number.parseFloat(await sensorSection.evaluate((element) => getComputedStyle(element).marginBottom)) >= 22,
-    `${label}: Sensor mode should leave space below the sensor entity field`,
-  );
   assert.strictEqual(
     await sensorField.getAttribute("placeholder"),
     "Sensor Entity",
@@ -3437,6 +4660,10 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     `${label}: Sensor mode should default to activating when the sensor is off`,
   );
   assert(await actions.isVisible(), `${label}: Sensor mode should show night action controls`);
+  assert(
+    (await actionGroupGap()) >= 22,
+    `${label}: Sensor mode should leave space before the night action controls`,
+  );
   assert.strictEqual(
     await actionSelect.inputValue(),
     "clock",
@@ -3478,11 +4705,11 @@ async function assertNightScheduleSensorControls(page, posts, label) {
     posts,
     {
       domain: "text",
-      name: "presence_sensor_entity",
+      name: "screen_schedule_sensor_entity",
       action: "set",
       value: "binary_sensor.all_lights_on",
     },
-    `${label}: Sensor mode posts the sensor entity`,
+    `${label}: Sensor mode posts the dedicated sensor entity`,
     before,
   );
   await waitForPost(
@@ -3556,12 +4783,264 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
 }
 
+function panelConfigLabel(document, slot) {
+  return String(document.buttons[slot] || "").split(";")[1] || "";
+}
+
+async function waitForNativeState(nativeState, predicate, label, timeoutMs = 10000) {
+  const deadline = Date.now() + timeoutMs;
+  let stableSince = 0;
+  let stablePutCount = -1;
+  while (Date.now() < deadline) {
+    const putCount = nativeState.puts.length;
+    if (predicate()) {
+      if (stablePutCount !== putCount) {
+        stablePutCount = putCount;
+        stableSince = Date.now();
+      } else if (Date.now() - stableSince >= 250) {
+        return;
+      }
+    } else {
+      stableSince = 0;
+      stablePutCount = -1;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.fail(`${label}: native state did not settle (${nativeState.requests.join(", ")})`);
+}
+
+async function seedNativeDocument(page, nativeState) {
+  await page.evaluate(
+    (events) => window.__seedEspState(events),
+    nativeDocumentEvents(nativeState.document),
+  );
+  await page.waitForSelector('.sp-main [data-slot="2"]');
+}
+
+async function assertNativeProfileJourney(browser, testCase) {
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+
+    const sensor = page.locator('.sp-main [data-slot="2"]');
+    assert(
+      (await sensor.textContent()).includes("Energy"),
+      `${testCase.name}: sensor preview renders before editing`,
+    );
+    await sensor.click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    const cardSettings = page
+      .locator(".sp-settings-modal .sp-disclosure")
+      .filter({ hasText: "Card Settings" })
+      .first();
+    if (!(await page.locator("#sp-inp-label").isVisible())) {
+      await cardSettings.locator(".sp-disclosure-button").click();
+    }
+    const editedLabel = `Accepted ${testCase.slug}`;
+    await page.locator("#sp-inp-label").fill(editedLabel);
+    const beforeSave = nativeState.puts.length;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(
+      (label) => document.querySelector('.sp-main [data-slot="2"]')?.textContent?.includes(label),
+      editedLabel,
+    );
+    await waitForNativeState(
+      nativeState,
+      () => nativeState.puts.length > beforeSave &&
+        panelConfigLabel(nativeState.document, 2) === editedLabel,
+      `${testCase.name}: native sensor save`,
+    );
+    assert.strictEqual(
+      panelConfigLabel(nativeState.document, 2),
+      editedLabel,
+      `${testCase.name}: sensor edit saves through native PanelConfig ` +
+        `(PUT labels: ${nativeState.puts.map((put) => panelConfigLabel(put.document, 2)).join(" -> ")})`,
+    );
+
+    const sourceCount = await page.evaluate(() => window.__eventSources.length);
+    await page.evaluate(() => window.__disconnectEsp());
+    await page.waitForFunction(
+      (count) => window.__eventSources.length > count,
+      sourceCount,
+      { timeout: 7000 },
+    );
+    await seedNativeDocument(page, nativeState);
+    assert(
+      (await page.locator('.sp-main [data-slot="2"]').textContent()).includes(editedLabel),
+      `${testCase.name}: reconnect reloads the saved sensor card`,
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+    assert(
+      (await page.locator('.sp-main [data-slot="2"]').textContent()).includes(editedLabel),
+      `${testCase.name}: reload retains the native sensor edit`,
+    );
+
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    assert(downloadPath, `${testCase.name}: backup export creates a file`);
+    const backup = JSON.parse(fs.readFileSync(downloadPath, "utf8"));
+    assert.strictEqual(backup.version, 2, `${testCase.name}: backup export uses v2`);
+    assert.strictEqual(
+      backup.native_config.device_profile,
+      testCase.slug,
+      `${testCase.name}: backup includes the native device profile`,
+    );
+
+    const restoredLabel = `Restored ${testCase.slug}`;
+    const restoredDocument = JSON.parse(JSON.stringify(nativeState.document));
+    const restoredFields = restoredDocument.buttons[2].split(";");
+    restoredFields[1] = restoredLabel;
+    restoredDocument.buttons[2] = restoredFields.join(";");
+    restoredDocument.settings.future_native_setting = `native-${testCase.slug}`;
+    backup.buttons[1].label = `Readable ${testCase.slug}`;
+    backup.native_config = createPanelConfigBackupPayload(
+      encodePanelConfig(restoredDocument),
+    );
+    const beforeRestore = nativeState.puts.length;
+    await importBackup(page, backup, `native-restore-${testCase.slug}`);
+    await page.waitForSelector(".sp-banner.sp-success", { timeout: 10000 });
+    await waitForNativeState(
+      nativeState,
+      () => nativeState.puts.length > beforeRestore &&
+        panelConfigLabel(nativeState.document, 2) === restoredLabel,
+      `${testCase.name}: native backup restore`,
+    );
+    assert.strictEqual(
+      panelConfigLabel(nativeState.document, 2),
+      restoredLabel,
+      `${testCase.name}: backup restore writes the native document`,
+    );
+    assert.strictEqual(
+      nativeState.document.settings.future_native_setting,
+      `native-${testCase.slug}`,
+      `${testCase.name}: backup restore retains native-only settings`,
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+    assert(
+      (await page.locator('.sp-main [data-slot="2"]').textContent()).includes(restoredLabel),
+      `${testCase.name}: restored backup survives a reload`,
+    );
+    assert.deepStrictEqual(errors, [], `${testCase.name}: native journey has no browser errors`);
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertLegacyProfileFallback(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug);
+  const page = await context.newPage();
+  const posts = [];
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (request.method() === "POST" && requestUrl.hostname === "espcontrol.test") {
+      posts.push(postRecord(request.url()));
+    }
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await page.evaluate((events) => window.__seedEspState(events), seededEvents());
+    await page.waitForSelector('.sp-main [data-slot="2"]');
+    await page.locator('.sp-main [data-slot="2"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    const cardSettings = page
+      .locator(".sp-settings-modal .sp-disclosure")
+      .filter({ hasText: "Card Settings" })
+      .first();
+    if (!(await page.locator("#sp-inp-label").isVisible())) {
+      await cardSettings.locator(".sp-disclosure-button").click();
+    }
+    await page.locator("#sp-inp-label").fill(`Legacy ${testCase.slug}`);
+    const before = posts.length;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForAnyPost(
+      posts,
+      [
+        { domain: "text", name: "button_2_config", action: "set" },
+        { domain: "text", name: "Button 2 Config", action: "set" },
+      ],
+      `${testCase.name}: unsupported native API falls back to legacy save`,
+      before,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertOfflineProfileFallback(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { offlineFallback: true });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app", { timeout: 5000 });
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await page.evaluate((events) => window.__seedEspState(events), seededEvents());
+    await page.waitForSelector(".sp-main > .sp-btn");
+    assert.strictEqual(
+      await page.evaluate(() => globalThis.__ESPCONTROL_USING_EMBEDDED__),
+      true,
+      `${testCase.name}: failed remote bundle starts the embedded editor`,
+    );
+    assert.deepStrictEqual(
+      errors,
+      [],
+      `${testCase.name}: embedded offline fallback has no browser errors`,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
   const page = await context.newPage();
   const errors = [];
   const posts = [];
+  const thirdPartyAssetRequests = [];
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
@@ -3570,6 +5049,13 @@ async function runCase(browser, testCase) {
   });
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());
+    if (
+      ["cdn.jsdelivr.net", "fonts.googleapis.com", "cdn.buymeacoffee.com"].includes(
+        requestUrl.hostname,
+      )
+    ) {
+      thirdPartyAssetRequests.push(requestUrl.href);
+    }
     if (
       request.method() === "POST" &&
       requestUrl.hostname === "espcontrol.test"
@@ -3599,12 +5085,34 @@ async function runCase(browser, testCase) {
       [],
       `${testCase.name}: browser errors were reported`,
     );
+    assert.deepStrictEqual(
+      thirdPartyAssetRequests,
+      [],
+      `${testCase.name}: the editor should not need third-party CDN assets`,
+    );
+    const iconStyle = await page.evaluate(() => {
+      const style = document.getElementById("espcontrol-local-web-assets");
+      return style ? style.textContent || "" : "";
+    });
+    assert(
+      iconStyle.includes(".mdi-cog::before{content:'\\F0493'}"),
+      `${testCase.name}: the local icon stylesheet should use a CSS codepoint escape`,
+    );
+    assert(
+      iconStyle.includes("@font-face{font-family:'Inter'"),
+      `${testCase.name}: the local stylesheet should embed the interface font`,
+    );
+    assert.strictEqual(
+      await page.locator(".sp-support-link").textContent(),
+      "Buy me a coffee",
+      `${testCase.name}: the support button should retain its recognised label`,
+    );
     assertNoLayoutBreaks(
       await measureCoreLayout(page),
       testCase.name,
       testCase,
     );
-    await assertSettingsPage(page, testCase.name, testCase);
+    await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
     }
@@ -3614,12 +5122,19 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCoverSettingsPanels(page, testCase.name);
+    await assertMediaCoverArtSettingsPanels(page, testCase.name);
     await assertAlarmSettingsPanels(page, testCase.name);
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
+    await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
+      await assertAllCardSettingsGrouped(page, posts, testCase.name);
+      await assertFanOptionalLightSettings(page, testCase.name);
+      await assertWebhookSettingsPanel(page, posts, testCase.name);
     }
+    await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);
+    await assertNewMediaCardDefaults(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);
@@ -3648,18 +5163,24 @@ async function runCase(browser, testCase) {
 
 (async function main() {
   const browser = await chromium.launch();
+  const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
-    await assertPageTitleEvents(browser);
-    await assertRotationStartupOrdering(browser);
-    for (const testCase of CASES) {
-      await runCase(browser, testCase);
-      await assertMobileDeviceViewport(browser, testCase);
+    if (!acceptanceOnly) {
+      await assertPageTitleEvents(browser);
+      await assertRotationStartupOrdering(browser);
+    }
+    for (const testCase of ACTIVE_CASES) {
+      if (!acceptanceOnly) await runCase(browser, testCase);
+      await assertNativeProfileJourney(browser, testCase);
+      await assertLegacyProfileFallback(browser, testCase);
+      await assertOfflineProfileFallback(browser, testCase);
+      if (!acceptanceOnly) await assertMobileDeviceViewport(browser, testCase);
     }
   } finally {
     await browser.close();
   }
   console.log(
-    `Browser web smoke checks passed for ${CASES.length} generated layouts.`,
+    `Browser web smoke checks passed for ${ACTIVE_CASES.length} generated layouts.`,
   );
 })().catch((error) => {
   console.error(error && error.stack ? error.stack : error);

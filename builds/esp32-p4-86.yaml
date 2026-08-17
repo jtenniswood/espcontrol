@@ -14,9 +14,33 @@ substitutions:
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
   voice_stt_failure_chime_file: "../devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
+  alarm_delay_entry_beep_file: "../devices/esp32-p4-86/device/alarm_delay_entry_beep.flac"
+  alarm_delay_exit_beep_file: "../devices/esp32-p4-86/device/alarm_delay_exit_beep.flac"
+
+esp32:
+  partitions: "../common/device/partitions_32mb_card_images.csv"
 
 esphome:
   name_add_mac_suffix: true
+  on_boot:
+    - priority: 800
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(factory_wifi_reset_done);'
+            then:
+              - lambda: |-
+                  if (wifi::global_wifi_component != nullptr) {
+                    wifi::global_wifi_component->clear_sta();
+                  }
+                  id(factory_wifi_reset_done) = true;
+                  global_preferences->sync();
+
+globals:
+  - id: factory_wifi_reset_done
+    type: bool
+    restore_value: true
+    initial_value: 'false'
 
 packages:
   espcontrol: !include ../devices/esp32-p4-86/packages.yaml
@@ -29,4 +53,4 @@ captive_portal:
 
 web_server:
   js_url: ""
-  js_include: "../docs/public/webserver/www.js"
+  js_include: "../docs/public/webserver/embedded/www.js"

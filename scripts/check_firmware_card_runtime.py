@@ -56,6 +56,7 @@ CLEANING_HEADER = "button_grid_cleaning_driver.h"
 ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
 COVER_MODAL_DRIVER_HEADER = "button_grid_cover_modal_driver.h"
 MEDIA_DRIVER_HEADER = "button_grid_media_driver.h"
+SUBPAGES_HEADER = "button_grid_subpages.h"
 LEGACY_COMPATIBILITY_DRIVER_HEADER = "button_grid_legacy_compatibility_driver.h"
 NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
 IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
@@ -64,6 +65,7 @@ FAN_CONTROL_DRIVER_HEADER = "button_grid_fan_control_driver.h"
 CLIMATE_CONTROL_DRIVER_HEADER = "button_grid_climate_control_driver.h"
 ALARM_DRIVER_HEADER = "button_grid_alarm_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
+SLIDERS_HEADER = "button_grid_sliders.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -203,7 +205,7 @@ def check_root(root: Path) -> list[str]:
             or "date_time_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "date_time_driver_bind_data(s, p, context)" not in compact_grid
             or "sensor_driver_setup_visual( s, p, context, palette)" not in compact_grid
-            or "sensor_driver_bind_data( s, p, context, palette)" not in compact_grid
+            or "sensor_driver_bind_data( s, p, context, palette, col_span)" not in compact_grid
             or "weather_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
             or "weather_driver_bind_data(s, p, context)" not in compact_grid
             or "basic_action_driver_setup_visual(s, p, context)" not in compact_grid
@@ -245,8 +247,8 @@ def check_root(root: Path) -> list[str]:
             or "alarm_driver_setup_visual(s, p, context)" not in compact_grid
             or "alarm_driver_bind_main( s, p, context, alarm_environment)" not in compact_grid
             or "alarm_driver_bind_subpage( sub_slot, sb_cfg, context, alarm_environment)" not in compact_grid
-            or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
-            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
+            or "bind_basic_sensor_card(s, p, context, palette, col_span)" not in compact_grid
+            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette, cs)" not in compact_grid
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage migrated cards through shared drivers"
@@ -393,6 +395,78 @@ def check_root(root: Path) -> list[str]:
                     failures.append(
                         f"components/espcontrol/{ACTION_HEADER}: broad legacy action fallback must remain retired ({retired_fallback})"
                     )
+    sliders_header = root / "components" / "espcontrol" / SLIDERS_HEADER
+    if sliders_header.exists():
+        text = sliders_header.read_text(encoding="utf-8")
+        pointer_body = function_body(text, "slider_apply_vertical_pointer_value") or ""
+        pointer_required = (
+            "lv_indev_active()",
+            "LV_INDEV_TYPE_POINTER",
+            "lv_indev_get_point",
+            "lv_obj_get_coords",
+            "vertical_pointer_percent",
+            "LV_EVENT_VALUE_CHANGED",
+        )
+        if any(needle not in pointer_body for needle in pointer_required):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: map direct vertical slider pointer input through the safe endpoint track"
+            )
+
+        setup_body = function_body(text, "setup_slider_visual") or ""
+        if (
+            "LV_EVENT_PRESSED" not in setup_body
+            or "LV_EVENT_PRESSING" not in setup_body
+            or setup_body.count("slider_apply_vertical_pointer_value") < 3
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: apply direct vertical slider endpoint mapping on press, drag, and release"
+            )
+        final_map = setup_body.rfind("slider_apply_vertical_pointer_value")
+        send_action = setup_body.rfind("send_slider_action")
+        if final_map < 0 or send_action < 0 or final_map > send_action:
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: map the final direct slider value before sending its Home Assistant action"
+            )
+
+        light_temp_body = function_body(text, "setup_light_temp_visual") or ""
+        if (
+            "LV_EVENT_PRESSED" not in light_temp_body
+            or "LV_EVENT_PRESSING" not in light_temp_body
+            or "LV_EVENT_RELEASED" not in light_temp_body
+            or light_temp_body.count("slider_apply_vertical_pointer_value") < 3
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: apply light-temperature endpoint mapping on press, drag, and release"
+            )
+        light_temp_release_event = light_temp_body.rfind("LV_EVENT_RELEASED")
+        light_temp_release_callback = light_temp_body.rfind(
+            "lv_obj_add_event_cb", 0, light_temp_release_event
+        )
+        light_temp_final_map = light_temp_body.rfind(
+            "slider_apply_vertical_pointer_value", 0, light_temp_release_event
+        )
+        light_temp_send_action = light_temp_body.rfind(
+            "send_light_temp_action", 0, light_temp_release_event
+        )
+        if (
+            light_temp_release_callback < 0
+            or light_temp_final_map < light_temp_release_callback
+            or light_temp_send_action < 0
+            or light_temp_final_map > light_temp_send_action
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: map the final light-temperature value before sending its Home Assistant action"
+            )
+
+        if (
+            "lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN)" not in text
+            or "lv_obj_set_style_pad_bottom(slider, 0, LV_PART_MAIN)" not in text
+            or "lv_obj_set_style_pad_top(slider, edge_inset" in text
+            or "lv_obj_set_style_pad_bottom(slider, edge_inset" in text
+        ):
+            failures.append(
+                f"components/espcontrol/{SLIDERS_HEADER}: keep LVGL's direct slider range unpadded"
+            )
     image_header = root / "components" / "espcontrol" / IMAGE_HEADER
     if image_header.exists():
         text = image_header.read_text(encoding="utf-8")
@@ -400,6 +474,17 @@ def check_root(root: Path) -> list[str]:
         if reset_body is None or "for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++)" not in reset_body:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
+            )
+        callback_body = function_body(text, "image_card_bind_callbacks")
+        callback_guards = (
+            "callbacks_bound_image != bound_image",
+            "has_on_finished_callbacks()",
+            "has_on_error_callbacks()",
+            "ctx->image == bound_image",
+        )
+        if callback_body is None or any(guard not in callback_body for guard in callback_guards):
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: rebind image completion callbacks after image-card lifecycle changes"
             )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
@@ -454,6 +539,40 @@ def check_root(root: Path) -> list[str]:
             if legacy_setup in text:
                 failures.append(
                     f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: keep {legacy_setup} inside the shared date-time driver"
+                )
+        for guard, compact, refresh, register in (
+            (
+                "calendar_card_ref_ready",
+                "compact_calendar_card_refs",
+                "refresh_calendar_cards",
+                "register_calendar_card",
+            ),
+            (
+                "timezone_card_ref_ready",
+                "compact_timezone_card_refs",
+                "update_timezone_cards",
+                "register_timezone_card",
+            ),
+        ):
+            guard_body = function_body(text, guard)
+            compact_body = function_body(text, compact)
+            refresh_body = function_body(text, refresh)
+            register_body = function_body(text, register)
+            if guard_body is None or "lv_obj_is_valid" not in guard_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {guard} must reject deleted LVGL labels"
+                )
+            if compact_body is None or guard not in compact_body or "count = write_index;" not in compact_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {compact} must remove deleted LVGL label references"
+                )
+            if refresh_body is None or compact not in refresh_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {refresh} must compact deleted LVGL label references"
+                )
+            if register_body is None or compact not in register_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {register} must reclaim deleted LVGL label references before registration"
                 )
     sensor_header = root / "components" / "espcontrol" / SENSOR_HEADER
     if sensor_header.exists():
@@ -687,10 +806,57 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media lifecycle guard {needle}"
                 )
+        route_body = function_body(text, "media_driver_bind_cover_art_route") or ""
+        if route_body:
+            if "now_playing->secondary_entity != now_playing->primary_entity" not in route_body:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: treat a matching secondary cover-art entity as unconfigured"
+                )
+            if "subscribe_image_card_access_token" in route_body:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: avoid duplicate access-token subscriptions on cover-art route switches"
+                )
+            unchanged_route_return = route_body.find(
+                "if (!entity_changed && !presentation_changed) return;"
+            )
+            control_subscription = route_body.find(
+                "subscribe_media_control_state(control);"
+            )
+            if (
+                unchanged_route_return < 0
+                or control_subscription < 0
+                or control_subscription > unchanged_route_return
+            ):
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: subscribe reused cover-art control modals before the unchanged-route return"
+                )
+            clear_route = route_body.find("now_playing->refresh_entity_route = nullptr")
+            attach_primary = route_body.find("media_playback_attach_now_playing(primary, now_playing)")
+            if clear_route < 0 or attach_primary < 0 or clear_route > attach_primary:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: clear the stale cover-art route before attaching cached playback state"
+                )
+        bind_body = function_body(text, "media_driver_bind_data") or ""
+        if bind_body:
+            clear_route = bind_body.find("now_playing->refresh_entity_route = nullptr")
+            attach_source = bind_body.find("subscribe_media_cover_art_source_state")
+            if clear_route < 0 or attach_source < 0 or clear_route > attach_source:
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: clear the stale cover-art route before attaching source state"
+                )
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"
         )
+    subpages_header = root / "components" / "espcontrol" / SUBPAGES_HEADER
+    if subpages_header.exists():
+        normalize_subpage = function_body(
+            subpages_header.read_text(encoding="utf-8"), "normalize_subpage_btn"
+        ) or ""
+        if 'b.sensor != "speaker_group"' not in normalize_subpage:
+            failures.append(
+                f"components/espcontrol/{SUBPAGES_HEADER}: preserve speaker-group media cards on subpages"
+            )
     compatibility_driver_header = (
         root / "components" / "espcontrol" / LEGACY_COMPATIBILITY_DRIVER_HEADER
     )
@@ -904,7 +1070,87 @@ def check_root(root: Path) -> list[str]:
 
 
 def run_self_test() -> None:
+    valid_slider_runtime = """
+inline bool slider_apply_vertical_pointer_value() {
+  lv_indev_active();
+  LV_INDEV_TYPE_POINTER;
+  lv_indev_get_point();
+  lv_obj_get_coords();
+  vertical_pointer_percent();
+  LV_EVENT_VALUE_CHANGED;
+}
+inline void slider_fit_to_button() {
+  lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(slider, 0, LV_PART_MAIN);
+}
+inline void setup_slider_visual() {
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSED;
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSING;
+  slider_apply_vertical_pointer_value();
+  send_slider_action();
+}
+inline void setup_light_temp_visual() {
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSED;
+  slider_apply_vertical_pointer_value();
+  LV_EVENT_PRESSING;
+  lv_obj_add_event_cb();
+  slider_apply_vertical_pointer_value();
+  send_light_temp_action();
+  LV_EVENT_RELEASED;
+}
+"""
     cases: tuple[tuple[dict[str, str], tuple[str, ...]], ...] = (
+        (
+            {"button_grid_sliders.h": valid_slider_runtime},
+            (),
+        ),
+        (
+            {"button_grid_sliders.h": valid_slider_runtime.replace("lv_indev_get_point();", "")},
+            ("map direct vertical slider pointer input",),
+        ),
+        (
+            {"button_grid_sliders.h": valid_slider_runtime.replace("LV_EVENT_PRESSING;", "")},
+            ("apply direct vertical slider endpoint mapping",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "inline void setup_light_temp_visual() {\n  slider_apply_vertical_pointer_value();\n  LV_EVENT_PRESSED;\n",
+                    "inline void setup_light_temp_visual() {\n  slider_apply_vertical_pointer_value();\n",
+                )
+            },
+            ("apply light-temperature endpoint mapping",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "  slider_apply_vertical_pointer_value();\n  send_light_temp_action();",
+                    "  send_light_temp_action();\n  slider_apply_vertical_pointer_value();",
+                )
+            },
+            ("map the final light-temperature value",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "  lv_obj_add_event_cb();\n  slider_apply_vertical_pointer_value();\n  send_light_temp_action();",
+                    "  slider_apply_vertical_pointer_value();\n  lv_obj_add_event_cb();\n  send_light_temp_action();",
+                )
+            },
+            ("map the final light-temperature value",),
+        ),
+        (
+            {
+                "button_grid_sliders.h": valid_slider_runtime.replace(
+                    "lv_obj_set_style_pad_top(slider, 0, LV_PART_MAIN);",
+                    "lv_obj_set_style_pad_top(slider, edge_inset, LV_PART_MAIN);",
+                )
+            },
+            ("keep LVGL's direct slider range unpadded",),
+        ),
         (
             {"button_grid_actions.h": "return card_contract_media_mode_valid(mode);\n"},
             ("access generated card contract through button_grid_card_runtime.h",),
@@ -1041,6 +1287,30 @@ def run_self_test() -> None:
         ),
         (
             {
+                "button_grid_datetime_cards.h": (
+                    "inline bool calendar_card_ref_ready() { return true; }\n"
+                    "inline void compact_calendar_card_refs() {}\n"
+                    "inline void refresh_calendar_cards() {}\n"
+                    "inline void register_calendar_card() {}\n"
+                    "inline bool timezone_card_ref_ready() { return true; }\n"
+                    "inline void compact_timezone_card_refs() {}\n"
+                    "inline void update_timezone_cards() {}\n"
+                    "inline void register_timezone_card() {}\n"
+                )
+            },
+            (
+                "calendar_card_ref_ready must reject deleted LVGL labels",
+                "compact_calendar_card_refs must remove deleted LVGL label references",
+                "refresh_calendar_cards must compact deleted LVGL label references",
+                "register_calendar_card must reclaim deleted LVGL label references before registration",
+                "timezone_card_ref_ready must reject deleted LVGL labels",
+                "compact_timezone_card_refs must remove deleted LVGL label references",
+                "update_timezone_cards must compact deleted LVGL label references",
+                "register_timezone_card must reclaim deleted LVGL label references before registration",
+            ),
+        ),
+        (
+            {
                 "button_grid_sensor_driver.h": (
                     "inline bool sensor_driver_setup_visual() {}\n"
                     "inline bool sensor_driver_bind_data() {}\n"
@@ -1164,6 +1434,24 @@ def run_self_test() -> None:
         (
             {
                 "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("rebind image completion callbacks after image-card lifecycle changes",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void image_card_bind_callbacks(ImageCardCtx *ctx) {\n"
+                    "  auto *bound_image = ctx->image;\n"
+                    "  bool changed = ctx->callbacks_bound_image != bound_image;\n"
+                    "  if (changed || !bound_image->has_on_finished_callbacks()) {\n"
+                    "    if (ctx->image == bound_image) {}\n"
+                    "  }\n"
+                    "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
+                    "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"

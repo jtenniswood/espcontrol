@@ -1,0 +1,20 @@
+{
+  "label": "Screensaver",
+  "allowInSubpage": true,
+  "domains": [],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "clear" }, "label": { "policy": "keep" },
+      "icon": { "policy": "alias", "aliases": { "": "Power", "Auto": "Power" } },
+      "icon_on": { "policy": "default", "value": "Auto" },
+      "sensor": { "policy": "clear" }, "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "screensaver" },
+      "precision": { "policy": "clear" }, "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop", "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Power", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "screensaver", "precision": "", "options": ""
+  }
+}

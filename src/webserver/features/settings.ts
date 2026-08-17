@@ -19,7 +19,7 @@ export interface SettingsUiFeature {
   settingsStatusHeader(title: string): HTMLElement;
   appendSettingsSection(parent: HTMLElement, title: string, cards: readonly (HTMLElement | null | undefined)[]): void;
   infoPanel(id: string, text: string): HTMLElement;
-  statusBadge(label: string): HTMLElement;
+  statusBadge(label: string, text?: string): HTMLElement;
   disclosureBadge(text: string, label?: string): HTMLElement;
   inlineDisclosure(title: string, bodyElement: HTMLElement, defaultOpen: boolean, badgeElement?: HTMLElement): HTMLElement;
 }
@@ -83,11 +83,11 @@ export function createSettingsUiFeature(dependencies: SettingsUiDependencies): S
       panel.appendChild(message);
       return panel;
     },
-    statusBadge(label) {
+    statusBadge(label, text = "ON") {
       const badge = document.createElement("span");
       badge.setAttribute("aria-label", label);
       badge.appendChild(textSpan("", "sp-card-badge-dot"));
-      badge.appendChild(textSpan("ON"));
+      badge.appendChild(textSpan(text));
       return badge;
     },
     disclosureBadge(text, label) {

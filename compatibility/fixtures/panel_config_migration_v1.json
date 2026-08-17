@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "description": "Phase 3 compatibility scenarios for the PanelConfig migration.",
+  "scenarios": {
+    "backup_restore": {
+      "backup": {
+        "version": 2,
+        "format": "espcontrol.backup",
+        "device": "guition-esp32-p4-jc1060p470",
+        "source": { "device": "guition-esp32-p4-jc1060p470", "slots": 2 },
+        "exported_at": "2026-08-09T00:00:00.000Z",
+        "button_order": "1,2",
+        "button_on_color": "FF8800",
+        "buttons": [
+          { "entity": "light.kitchen", "label": "Kitchen", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" },
+          { "entity": "switch.fan", "label": "Fan", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" }
+        ],
+        "subpages": {},
+        "subpage_objects": {
+          "1": {
+            "order": ["1", "B"],
+            "backLabel": "Home",
+            "buttons": [{ "entity": "scene.movie", "label": "Movie", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" }]
+          }
+        },
+        "settings": {},
+        "screen": {},
+        "native_config": {
+          "document_version": 1,
+          "device_profile": "guition-esp32-p4-jc1060p470",
+          "payload": "RVBDRgEAEAC3AAAABgAAAAEbAGd1aXRpb24tZXNwMzItcDQtamMxMDYwcDQ3MAIlAAFsaWdodC5raXRjaGVuO0tpdGNoZW47QXV0bztBdXRvOzs7OzsCHgACc3dpdGNoLmZhbjtGYW47QXV0bztBdXRvOzs7OzsDIQABc2NlbmUubW92aWU7TW92aWU7QXV0bztBdXRvOzs7OzsEFgAPYnV0dG9uX29uX2NvbG9yRkY4ODAwBBAADGJ1dHRvbl9vcmRlcjEsMg=="
+        }
+      },
+      "target": { "device": "guition-esp32-p4-jc1060p470", "slots": 15 },
+      "expected": {
+        "warning_count": 1,
+        "button_order": "1,2",
+        "button_on_color": "FF8800",
+        "button_entities": ["light.kitchen", "switch.fan"],
+        "subpage_slots": ["1"]
+      }
+    },
+    "downgrade": {
+      "native_document": {
+        "deviceProfile": "guition-esp32-p4-jc1060p470",
+        "buttons": { "1": "light.kitchen;Kitchen" },
+        "subpages": { "1": "scene.movie;Movie" },
+        "settings": { "button_on_color": "0088FF", "button_order": "1" }
+      },
+      "legacy_entities": {
+        "button_config_1": "light.kitchen;Kitchen",
+        "button_subpage_config_1": "scene.movie;Movie",
+        "button_on_color": "0088FF",
+        "button_order": "1"
+      }
+    },
+    "partial_migration": {
+      "native_document": {
+        "deviceProfile": "guition-esp32-p4-jc1060p470",
+        "buttons": { "1": "old-button", "2": "preserved-button" },
+        "subpages": { "2": "preserved-subpage" },
+        "settings": { "button_order": "1,2", "future_setting": "preserved" }
+      },
+      "legacy_entity_update": { "collection": "buttons", "key": 1, "value": "new-button" },
+      "expected_document": {
+        "deviceProfile": "guition-esp32-p4-jc1060p470",
+        "buttons": { "1": "new-button", "2": "preserved-button" },
+        "subpages": { "2": "preserved-subpage" },
+        "settings": { "button_order": "1,2", "future_setting": "preserved" }
+      }
+    },
+    "failed_legacy_mirror": {
+      "document": {
+        "deviceProfile": "guition-esp32-p4-jc1060p470",
+        "buttons": { "1": "light.kitchen;Kitchen" },
+        "subpages": {},
+        "settings": { "button_order": "1" }
+      },
+      "expected_result": "mirror-failed"
+    }
+  }
+}

@@ -40,6 +40,14 @@ constexpr bool image_pipeline_should_requeue_interrupted_tile(bool was_active_or
   return was_active_or_queued && context_active && has_source_url;
 }
 
+// A startup download can finish before its card callback is attached. The
+// periodic card loop may recover only the completed buffer for the current URL.
+constexpr bool image_pipeline_completion_needs_recovery(bool image_ready,
+                                                        bool image_available,
+                                                        bool current_url) {
+  return !image_ready && image_available && current_url;
+}
+
 // A modal-quality image is reusable only while every part of its cache key
 // still matches. Camera and image entities can keep the same entity ID while
 // publishing a new source URL.

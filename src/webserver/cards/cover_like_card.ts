@@ -1,5 +1,28 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerCoverLikeCardHelpers(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ButtonSettingsRenderQueueFeature } from "../application/button_settings_render_queue";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+import {
+    SWITCH_CONFIRM_DEFAULT_NO,
+    SWITCH_CONFIRM_DEFAULT_YES,
+    cardContractOptionSpec,
+} from "../application/config_option_core";
+
+export interface CoverLikeCardRegistration {
+    register(config: any): void;
+}
+
+export function createCoverLikeCardRegistration(registry: CardRegistry, renderQueue: ButtonSettingsRenderQueueFeature, fields: ControlsFieldsFeature, cardUi: CardUiServices): CoverLikeCardRegistration {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgePreview, condField } = fields;
     function coverLikeModeValues(this: any, cardType?: any, optionName?: any, fallbackModes?: any) {
         var spec: any = cardContractOptionSpec(cardType, optionName);
         return spec && spec.values ? spec.values.slice() : fallbackModes.map(function (this: any, entry?: any) { return entry[0]; });
@@ -8,7 +31,60 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
         mode = String(mode || "");
         return values.indexOf(mode) >= 0 ? mode : "";
     }
-    function registerCoverLikeCardType(this: any, config?: any) {
+    function renderCoverLikeConfirmationSettings(this: any, panel?: any, b?: any, helpers?: any, confirmConfig?: any, isCommandMode?: any, commandDirection?: any) {
+        var metadata: any = confirmConfig.metadata;
+        var confirmOn: any = confirmConfig.enabled(b);
+        var confirmMode: any = isCommandMode ? commandDirection : (confirmConfig.mode(b) || "off");
+        var confirmToggle: any = helpers.renderCardOptionToggle(panel, b, helpers, metadata.confirmationToggle);
+        var confirmSection: any = condField();
+        if (confirmOn)
+            confirmSection.classList.add("sp-visible");
+        if (!isCommandMode) {
+            helpers.renderCardSegmentControl(confirmSection, b, helpers, Object.assign({}, metadata.confirmationMode, {
+                value: function (this: any) { return confirmMode; },
+                onSelect: function (this: any, b?: any, helpers?: any, value?: any) {
+                    var previousDefault: any = confirmConfig.defaultMessageForMode(confirmMode);
+                    confirmMode = value;
+                    if (!messageInput.value || messageInput.value === previousDefault) {
+                        messageInput.value = confirmConfig.defaultMessageForMode(confirmMode);
+                    }
+                    saveConfirmationOptions();
+                },
+            }));
+        }
+        var messageField: any = helpers.renderCardTextField(confirmSection, b, helpers, metadata.confirmationMessage);
+        var messageInput: any = messageField.input;
+        messageInput.maxLength = 72;
+        var yesField: any = helpers.renderCardTextField(confirmSection, b, helpers, metadata.confirmationYes);
+        var yesInput: any = yesField.input;
+        yesInput.maxLength = 20;
+        var noField: any = helpers.renderCardTextField(confirmSection, b, helpers, metadata.confirmationNo);
+        var noInput: any = noField.input;
+        noInput.maxLength = 20;
+        panel.appendChild(confirmSection);
+        function saveConfirmationOptions(this: any) {
+            confirmConfig.setOptions(b, confirmToggle.input.checked ? confirmMode : "", messageInput.value || confirmConfig.defaultMessageForMode(confirmMode), yesInput.value || SWITCH_CONFIRM_DEFAULT_YES, noInput.value || SWITCH_CONFIRM_DEFAULT_NO);
+            helpers.saveField("options", b.options);
+        }
+        confirmToggle.input.addEventListener("change", function (this: any) {
+            confirmSection.classList.toggle("sp-visible", this.checked);
+            if (this.checked) {
+                if (!messageInput.value)
+                    messageInput.value = confirmConfig.defaultMessageForMode(confirmMode);
+                if (!yesInput.value)
+                    yesInput.value = SWITCH_CONFIRM_DEFAULT_YES;
+                if (!noInput.value)
+                    noInput.value = SWITCH_CONFIRM_DEFAULT_NO;
+            }
+            saveConfirmationOptions();
+        });
+        [messageInput, yesInput, noInput].forEach(function (this: any, input?: any) {
+            input.addEventListener("input", saveConfirmationOptions);
+            input.addEventListener("change", saveConfirmationOptions);
+            input.addEventListener("blur", saveConfirmationOptions);
+        });
+    }
+    function registerCardDefinition(this: any, config?: any) {
         var metadata: any = config.metadata;
         function normalizeMode(this: any, mode?: any) {
             return normalizeCoverLikeMode(mode, coverLikeModeValues(config.type, config.optionName, metadata.mode.options));
@@ -36,7 +112,7 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
                 helpers.saveField("icon_on", config.openIcon);
             }
         }
-        registerButtonType(config.type, {
+        registry.register(config.type, {
             label: function (this: any) { return cardContractCardLabel(config.type); },
             allowInSubpage: function (this: any) { return cardContractAllowInSubpage(config.type); },
             pickerKey: function (this: any) { return cardContractPickerKey(config.type); },
@@ -101,7 +177,7 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
                             config.setLabelDisplayMode(button, value);
                             cardHelpers.saveField("options", button.options);
                             setLabelVisible(value);
-                            scheduleRender();
+                            renderQueue.schedule();
                         },
                     }),
                 });
@@ -137,6 +213,9 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
                         label: "Open Icon",
                     });
                 }
+                if (config.confirmation) {
+                    renderCoverLikeConfirmationSettings(panel, b, helpers, config.confirmation, commandMode(mode), mode === "open" ? "on" : "off");
+                }
             },
             renderPreview: function (this: any, b?: any, helpers?: any) {
                 var mode: any = normalizeMode(b.sensor);
@@ -152,8 +231,6 @@ export function registerCoverLikeCardHelpers(): GlobalDescriptors {
         });
     }
     return {
-        "coverLikeModeValues": staticGlobal(coverLikeModeValues),
-        "normalizeCoverLikeMode": staticGlobal(normalizeCoverLikeMode),
-        "registerCoverLikeCardType": staticGlobal(registerCoverLikeCardType),
+        register: (config: any) => registerCardDefinition(config),
     };
 }

@@ -137,6 +137,19 @@ int main() {
   CHECK(decision_is(manual_sleep, DisplayMode::CLOCK,
                     DisplayRequestSource::SCREEN_SCHEDULE));
 
+  // Home Assistant backlight OFF is manual sleep even while an absent room is
+  // showing the presence-owned clock. Clearing it restores the live sensor mode.
+  DisplayModeController presence_manual_sleep;
+  CHECK(presence_manual_sleep.request(DisplayRequestSource::PRESENCE_SENSOR,
+                                      DisplayMode::CLOCK));
+  CHECK(presence_manual_sleep.request(DisplayRequestSource::MANUAL_SLEEP,
+                                      DisplayMode::DISPLAY_OFF));
+  CHECK(decision_is(presence_manual_sleep, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::MANUAL_SLEEP));
+  CHECK(presence_manual_sleep.clear(DisplayRequestSource::MANUAL_SLEEP));
+  CHECK(decision_is(presence_manual_sleep, DisplayMode::CLOCK,
+                    DisplayRequestSource::PRESENCE_SENSOR));
+
   // Every request source accepts its documented mode and returns to default
   // after its clear path when tested independently.
   struct SourceMode { DisplayRequestSource source; DisplayMode mode; };

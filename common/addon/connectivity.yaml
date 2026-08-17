@@ -68,10 +68,6 @@ wifi:
         then:
           - script.execute: wifi_reconnect_flow
 
-api:
-  on_client_connected:
-    - script.execute: ha_restore_after_api
-
 script:
   - id: ha_restore_after_api
     mode: restart
@@ -111,7 +107,7 @@ script:
     then:
       - lvgl.resume:
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
@@ -123,6 +119,9 @@ script:
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("WiFi Setup"));
           lv_label_set_text(id(wifi_setup_instructions), msg.c_str());
       - lvgl.page.show: wifi_setup_page
+      - script.execute:
+          id: backlight_note_internal_brightness
+          brightness: 0.9
       - light.turn_on:
           id: display_backlight
           brightness: 90%
@@ -155,6 +154,11 @@ script:
           condition:
             lambda: 'return !id(button_order).state.empty();'
           then:
+            - wait_until:
+                condition:
+                  lambda: |-
+                    return id(espcontrol_app).display().target_mode_is(
+                        espcontrol::DisplayMode::ACTIVE);
             - lvgl.page.show: main_page
             - script.execute: clock_bar_apply
             - script.execute: screensaver_idle_check

@@ -1,16 +1,12 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installIdleStateModule(): GlobalDescriptors {
-    // ── Idle State ─────────────────────────────────────────────────────────
-    function syncIdleUi(this: any) {
-        state.homeScreenTimeout = parseFloat(state.homeScreenTimeout) || 0;
+import { state } from "../state/app_instance";
+import type { UiRuntimeState } from "./state";
+export function syncIdleUi(runtime: UiRuntimeState) {
+    const els = runtime.els;
+        state.homeScreenTimeout = Number(state.homeScreenTimeout) || 0;
         if (els.setHSTimeout)
             els.setHSTimeout.value = String(state.homeScreenTimeout);
         if (els.setIdleBadge) {
             els.setIdleBadge.className = "sp-card-badge" +
                 (state.homeScreenTimeout > 0 ? "" : " sp-hidden");
         }
-    }
-    return {
-        "syncIdleUi": staticGlobal(syncIdleUi),
-    };
 }

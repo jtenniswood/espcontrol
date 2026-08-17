@@ -241,6 +241,7 @@ class AsyncWebServer {
   static esp_err_t request_handler(httpd_req_t *r);
   static esp_err_t request_post_handler(httpd_req_t *r);
   esp_err_t request_handler_(AsyncWebServerRequest *request) const;
+  esp_err_t handle_raw_body_(httpd_req_t *r, const char *content_type);
   static void safe_close_with_shutdown(httpd_handle_t hd, int sockfd);
 #ifdef USE_WEBSERVER_OTA
   esp_err_t handle_multipart_upload_(httpd_req_t *r, const char *content_type);
@@ -261,6 +262,8 @@ class AsyncWebHandler {
                             size_t len, bool final) {}
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {}
+  virtual size_t maximumBodySize() const { return SIZE_MAX; }
+  virtual bool canReceiveBody(AsyncWebServerRequest *request) { return true; }
   // NOLINTNEXTLINE(readability-identifier-naming)
   virtual bool isRequestHandlerTrivial() const { return true; }
 };

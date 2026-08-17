@@ -31,6 +31,7 @@
 #include "i18n_generated.h"
 #include "icons.h"
 #include "backlight.h"
+#include "alarm_delay_audio.h"
 
 // Public compatibility include. Device YAML includes this file, while the
 // implementation is split into focused headers below for easier review.
@@ -49,6 +50,7 @@
 #include "button_grid_vacuum.h"
 #include "button_grid_lawn_mower.h"
 #include "button_grid_actions.h"
+#include "button_grid_media_group.h"
 #include "button_grid_sliders.h"
 #include "button_grid_fan.h"
 #include "button_grid_climate.h"
@@ -56,6 +58,7 @@
 #include "button_grid_option_select.h"
 #include "button_grid_todo.h"
 #include "network_status.h"
+#include "battery_status.h"
 #include "button_grid_media.h"
 #include "button_grid_subpages.h"
 #include "button_grid_alarm.h"

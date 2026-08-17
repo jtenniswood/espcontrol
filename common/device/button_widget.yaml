@@ -71,7 +71,7 @@ button:
           - if:
               condition:
                 lambda: |-
-                  return id(display_mode_controller).target_mode_is(
+                  return id(espcontrol_app).display().target_mode_is(
                       espcontrol::DisplayMode::ACTIVE);
               then:
                 - lambda: 'handle_button_press(id(button_${num}_config).state, ${num}, id(button_${num}));'
@@ -89,7 +89,7 @@ button:
           - if:
               condition:
                 lambda: |-
-                  return !id(display_mode_controller).target_mode_is(
+                  return !id(espcontrol_app).display().target_mode_is(
                       espcontrol::DisplayMode::ACTIVE);
               then:
                 - script.execute: screensaver_wake
@@ -109,7 +109,7 @@ button:
           - if:
               condition:
                 lambda: |-
-                  return !id(display_mode_controller).target_mode_is(
+                  return !id(espcontrol_app).display().target_mode_is(
                       espcontrol::DisplayMode::ACTIVE);
               then:
                 - script.execute: screensaver_wake

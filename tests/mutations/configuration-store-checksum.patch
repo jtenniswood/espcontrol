@@ -1,0 +1,9 @@
+diff --git a/components/espcontrol/configuration_store.cpp b/components/espcontrol/configuration_store.cpp
+--- a/components/espcontrol/configuration_store.cpp
++++ b/components/espcontrol/configuration_store.cpp
+@@ -124,4 +124,3 @@ ConfigurationStore::SlotMetadata ConfigurationStore::inspect_slot(
+   }
+-  if (actual_checksum != metadata.checksum) return metadata;
+-
++  (void) actual_checksum;
+   metadata.state = SlotState::VALID;

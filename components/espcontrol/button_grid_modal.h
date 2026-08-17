@@ -4,6 +4,9 @@
 
 // Shared control modal helpers.
 
+#include "control_modal_service.h"
+#include "espcontrol_app_core.h"
+
 constexpr lv_coord_t CONTROL_MODAL_REFERENCE_SIDE_PX = DISPLAY_MODAL_REFERENCE_SIDE_PX;
 constexpr lv_coord_t CONTROL_MODAL_ARC_STROKE_REF_PX = DISPLAY_MODAL_ARC_STROKE_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_BACK_BUTTON_REF_PX = DISPLAY_MODAL_BACK_BUTTON_REF_PX;
@@ -12,32 +15,6 @@ constexpr lv_coord_t CONTROL_MODAL_INSET_REF_PX = DISPLAY_MODAL_INSET_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_CONTROLS_GAP_REF_PX = DISPLAY_MODAL_CONTROLS_GAP_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_DOWN_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
-
-enum class ControlModalKind {
-  NONE,
-  MEDIA_VOLUME,
-  CLIMATE,
-  SWITCH_CONFIRMATION,
-  OPTION_SELECT,
-  FAN_PRESET,
-  FAN_CONTROL,
-  NETWORK_STATUS,
-  ALARM_PIN,
-  SCREENSAVER_PIN,
-  ALARM_CONTROL,
-  IMAGE_CARD,
-  TODO_LIST,
-  COVER_CONTROL,
-  LIGHT_CONTROL,
-  MEDIA_CONTROL,
-};
-
-using ControlModalCloseCallback = void (*)();
-
-enum class ControlModalDismissPolicy {
-  DISMISS,
-  PRESERVE_DURING_DISPLAY_TAKEOVER,
-};
 
 enum class ControlModalPresentation {
   ARC_CONTROL,
@@ -50,7 +27,6 @@ enum class ControlModalPresentation {
 };
 
 enum class ControlModalChrome {
-  NONE,
   BACK,
   CLOSE,
 };
@@ -104,27 +80,31 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
   return {};
 }
 
-struct ControlModalActive {
-  ControlModalKind kind = ControlModalKind::NONE;
-  lv_obj_t *overlay = nullptr;
-  ControlModalCloseCallback close_callback = nullptr;
-  ControlModalDismissPolicy dismiss_policy = ControlModalDismissPolicy::DISMISS;
-  uint32_t close_guard_until_ms = 0;
-  bool closing = false;
-};
+using ControlModalActive = ControlModalActiveState<lv_obj_t>;
+using ControlModalNestedActive = ControlModalNestedActiveState<lv_obj_t>;
+using ButtonGridModalService = ControlModalStateService<lv_obj_t>;
+
+inline ButtonGridModalService &control_modal_service() {
+  if (auto *core = espcontrol::active_espcontrol_app_core()) {
+    return core->modal_state_service<ButtonGridModalService>();
+  }
+  // A component can request modal cleanup while ESPHome is still bringing the
+  // application core online.  Treat that transition as an empty modal state;
+  // aborting here turns a harmless startup callback into a boot loop.
+  static ButtonGridModalService service;
+  return service;
+}
 
 inline ControlModalActive &control_modal_active() {
-  static ControlModalActive active;
-  return active;
+  return control_modal_service().active();
 }
 
 inline void control_modal_reset_active() {
-  control_modal_active() = ControlModalActive();
+  control_modal_service().reset_active();
 }
 
 inline void control_modal_clear_active(ControlModalKind kind) {
-  ControlModalActive &active = control_modal_active();
-  if (active.kind == kind) control_modal_reset_active();
+  control_modal_service().clear_active(kind);
 }
 
 inline void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t *&overlay) {
@@ -137,13 +117,7 @@ inline void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t *&overl
 inline void control_modal_set_active(ControlModalKind kind, lv_obj_t *overlay,
                                      ControlModalCloseCallback close_callback,
                                      ControlModalDismissPolicy dismiss_policy) {
-  ControlModalActive &active = control_modal_active();
-  active.kind = kind;
-  active.overlay = overlay;
-  active.close_callback = close_callback;
-  active.dismiss_policy = dismiss_policy;
-  active.close_guard_until_ms = 0;
-  active.closing = false;
+  control_modal_service().set_active(kind, overlay, close_callback, dismiss_policy);
 }
 
 inline bool control_modal_close_guard_active(const ControlModalActive &active) {
@@ -152,19 +126,16 @@ inline bool control_modal_close_guard_active(const ControlModalActive &active) {
 }
 
 inline void control_modal_block_close_for(uint32_t delay_ms) {
-  ControlModalActive &active = control_modal_active();
-  if (active.kind == ControlModalKind::NONE || delay_ms == 0) return;
-  active.close_guard_until_ms = lv_tick_get() + delay_ms;
+  control_modal_service().block_close_for(lv_tick_get(), delay_ms);
 }
 
 inline void control_modal_close_active_internal(bool honor_close_guard) {
-  ControlModalActive &active = control_modal_active();
-  if (active.kind == ControlModalKind::NONE || active.closing) return;
-  if (honor_close_guard && control_modal_close_guard_active(active)) return;
-
-  ControlModalKind closing_kind = active.kind;
-  void (*close_callback)() = active.close_callback;
-  active.closing = true;
+  ControlModalKind closing_kind = ControlModalKind::NONE;
+  ControlModalCloseCallback close_callback = nullptr;
+  if (!control_modal_service().begin_active_close(
+          lv_tick_get(), honor_close_guard, &closing_kind, &close_callback)) {
+    return;
+  }
   if (close_callback) close_callback();
   if (control_modal_active().kind == closing_kind) control_modal_reset_active();
 }
@@ -272,28 +243,20 @@ struct ControlModalNestedShell {
   lv_obj_t *panel = nullptr;
 };
 
-struct ControlModalNestedActive {
-  lv_obj_t *overlay = nullptr;
-  ControlModalCloseCallback close_callback = nullptr;
-  bool closing = false;
-};
-
 struct ControlModalToastShell {
   lv_obj_t *box = nullptr;
 };
 
 inline ControlModalNestedActive &control_modal_nested_active() {
-  static ControlModalNestedActive active;
-  return active;
+  return control_modal_service().nested_active();
 }
 
 inline void control_modal_reset_nested_menu() {
-  control_modal_nested_active() = ControlModalNestedActive();
+  control_modal_service().reset_nested_menu();
 }
 
 inline void control_modal_clear_nested_menu(lv_obj_t *overlay) {
-  ControlModalNestedActive &active = control_modal_nested_active();
-  if (active.overlay == overlay) control_modal_reset_nested_menu();
+  control_modal_service().clear_nested_menu(overlay);
 }
 
 inline void control_modal_delete_nested_overlay(lv_obj_t *&overlay) {
@@ -304,12 +267,11 @@ inline void control_modal_delete_nested_overlay(lv_obj_t *&overlay) {
 }
 
 inline void control_modal_close_nested_menu() {
-  ControlModalNestedActive &active = control_modal_nested_active();
-  if (!active.overlay || active.closing) return;
-
-  lv_obj_t *closing_overlay = active.overlay;
-  ControlModalCloseCallback close_callback = active.close_callback;
-  active.closing = true;
+  lv_obj_t *closing_overlay = nullptr;
+  ControlModalCloseCallback close_callback = nullptr;
+  if (!control_modal_service().begin_nested_close(&closing_overlay, &close_callback)) {
+    return;
+  }
   if (close_callback) close_callback();
   else if (closing_overlay) lv_obj_del(closing_overlay);
   if (control_modal_nested_active().overlay == closing_overlay) control_modal_reset_nested_menu();
@@ -482,8 +444,7 @@ inline void control_modal_center_tab_icon(lv_obj_t *label) {
 }
 
 inline uint16_t control_modal_tab_icon_zoom(const ControlModalLayout &layout) {
-  return (control_modal_uses_compact_portrait_tuning(layout) ||
-          control_modal_uses_large_square_tuning(layout)) ? 220 : 180;
+  return espcontrol::modal::tab_icon_zoom(layout.profile);
 }
 
 inline void control_modal_layout_tab_button(lv_obj_t *tab_btn,
@@ -658,6 +619,30 @@ inline void control_modal_apply_pressed_fill(lv_obj_t *btn) {
   apply_push_button_transition(btn);
 }
 
+using ControlModalBinaryToggleCallback = void (*)();
+
+struct ControlModalBinaryToggle {
+  ControlModalBinaryToggleCallback callback = nullptr;
+};
+
+// Make a two-state modal control behave as one large toggle target.  The two
+// child buttons remain visual state indicators, so either half always toggles.
+inline void control_modal_setup_binary_toggle(
+    lv_obj_t *group, lv_obj_t *first_option, lv_obj_t *second_option,
+    ControlModalBinaryToggle *toggle) {
+  if (!group || !toggle) return;
+  control_modal_apply_pressed_fill(group);
+  lv_obj_add_flag(group, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(group, LV_OBJ_FLAG_SCROLLABLE);
+  if (first_option) lv_obj_clear_flag(first_option, LV_OBJ_FLAG_CLICKABLE);
+  if (second_option) lv_obj_clear_flag(second_option, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(group, [](lv_event_t *e) {
+    ControlModalBinaryToggle *toggle = static_cast<ControlModalBinaryToggle *>(
+      lv_event_get_user_data(e));
+    if (toggle && toggle->callback) toggle->callback();
+  }, LV_EVENT_CLICKED, toggle);
+}
+
 inline void control_modal_apply_pressed_fill_color(lv_obj_t *btn,
                                                    uint32_t pressed_color) {
   if (!btn) return;
@@ -762,9 +747,7 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
   control_modal_close_active();
   const ControlModalDefinition definition = control_modal_definition(kind);
   const bool button_top_right = definition.chrome == ControlModalChrome::CLOSE;
-  const char *button_text = definition.chrome == ControlModalChrome::NONE
-    ? nullptr
-    : (button_top_right ? "\U000F0156" : "\U000F0141");
+  const char *button_text = button_top_right ? "\U000F0156" : "\U000F0141";
 
   ControlModalShell shell;
   shell.layout = control_modal_calc_layout(width_compensation_percent);

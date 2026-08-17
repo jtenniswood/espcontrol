@@ -204,6 +204,8 @@ int main() {
   assert(row_span == 1 && col_span == 3);
   grid_token_spans('p', row_span, col_span);
   assert(row_span == 4 && col_span == 3);
+  grid_token_spans('l', row_span, col_span);
+  assert(row_span == 3 && col_span == 4);
   grid_token_spans('q', row_span, col_span);
   assert(row_span == 3 && col_span == 3);
   grid_token_spans('h', row_span, col_span);
@@ -213,6 +215,8 @@ int main() {
   assert(grid_token_has_span_suffix('q'));
   assert(grid_token_has_span_suffix('h'));
   assert(grid_token_has_span_suffix('v'));
+  assert(grid_token_has_span_suffix('p'));
+  assert(grid_token_has_span_suffix('l'));
 
   assert(clock_bar_equal_fr_track_size(434, 3, 0) == 145);
   assert(clock_bar_equal_fr_track_size(434, 3, 1) == 145);
@@ -240,6 +244,11 @@ int main() {
     true, &main_page, espcontrol::DisplayMode::ACTIVE, false);
   assert(awake_clock_bar.reserve_space);
   assert(awake_clock_bar.visible);
+
+  auto dimmed_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, espcontrol::DisplayMode::DIMMED, false);
+  assert(dimmed_clock_bar.reserve_space);
+  assert(dimmed_clock_bar.visible);
 
   auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
     true, &main_page, espcontrol::DisplayMode::CLOCK, false);
@@ -282,6 +291,40 @@ int main() {
   assert(lv_obj_has_flag(&display_time, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_has_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN));
   set_clock_bar_temperature_value_count(0);
+
+  // Right-side icons pack leftwards by glyph edges, so each visible icon sits
+  // one gap from its neighbour regardless of the surrounding tap-target width.
+  auto right_icons = clock_bar_right_icons_begin(4, 8);
+  assert(!right_icons.has_glyph);
+  clock_bar_right_icons_seed(right_icons, 48, 26);
+  assert(right_icons.has_glyph);
+  assert(right_icons.cursor == 41);
+  // Box right edge sits 11px inside the glyph it centres, so -38 puts the glyph
+  // exactly 8px left of the network glyph.
+  assert(clock_bar_right_icons_next_x(right_icons, 48, 26) == -38);
+  assert(right_icons.cursor == 75);
+  // A second icon packs against the first rather than skipping a slot.
+  assert(clock_bar_right_icons_next_x(right_icons, 48, 26) == -72);
+  // With no network anchor, the first visible optional icon takes the normal
+  // rightmost position and the next icon packs against it.
+  auto no_network_icons = clock_bar_right_icons_begin(4, 8);
+  assert(!no_network_icons.has_glyph);
+  assert(no_network_icons.cursor == 0);
+  assert(clock_bar_right_icons_next_x(no_network_icons, 48, 26) == -4);
+  assert(no_network_icons.has_glyph);
+  assert(no_network_icons.cursor == 41);
+  assert(clock_bar_right_icons_next_x(no_network_icons, 48, 26) == -38);
+  // Hidden optional icons do not call next_x and therefore consume no space.
+  auto hidden_optional_icons = clock_bar_right_icons_begin(6, 8);
+  assert(!hidden_optional_icons.has_glyph);
+  assert(hidden_optional_icons.cursor == 0);
+  // A glyph as wide as its box needs no lead.
+  auto flush_icons = clock_bar_right_icons_begin(8, 6);
+  clock_bar_right_icons_seed(flush_icons, 40, 40);
+  assert(flush_icons.cursor == 48);
+  assert(clock_bar_right_icons_next_x(flush_icons, 40, 40) == -54);
+  // A missing label falls back to the tap-target width rather than crowding.
+  assert(clock_bar_glyph_width(nullptr, 38) == 38);
 
   assert(cfg_field("light.kitchen;Kitchen;Auto;Lightbulb", 0) == "light.kitchen");
   assert(cfg_field("light.kitchen;Kitchen;Auto;Lightbulb", 3) == "Lightbulb");
@@ -416,6 +459,18 @@ int main() {
   assert(cover_bad_tabs.options == "cover_tabs=position");
   auto cover_non_modal_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;toggle;;cover;;cover_tabs=controls%7Cposition");
   assert(cover_non_modal_tabs.options == "");
+  auto garage_open_from_close_confirmation = parse_cfg("cover.garage_door;Open;Garage;Auto;open;;garage;;confirm_off,confirm_message=Close%20the%20garage%20door%3F");
+  assert(garage_open_from_close_confirmation.options == "confirm_on");
+  assert(garage_confirmation_required(garage_open_from_close_confirmation, true));
+  assert(!garage_confirmation_required(garage_open_from_close_confirmation, false));
+  assert(switch_confirmation_message(garage_open_from_close_confirmation) == "Open the garage door?");
+  auto garage_close_from_open_confirmation = parse_cfg("cover.garage_door;Close;Garage;Auto;close;;garage;;confirm_on,confirm_message=Check%20the%20driveway,confirm_yes=Proceed,confirm_no=Wait");
+  assert(garage_close_from_open_confirmation.options == "confirm_off,confirm_message=Check the driveway,confirm_yes=Proceed,confirm_no=Wait");
+  assert(!garage_confirmation_required(garage_close_from_open_confirmation, true));
+  assert(garage_confirmation_required(garage_close_from_open_confirmation, false));
+  assert(switch_confirmation_message(garage_close_from_open_confirmation) == "Check the driveway");
+  assert(switch_confirmation_yes_text(garage_close_from_open_confirmation) == "Proceed");
+  assert(switch_confirmation_no_text(garage_close_from_open_confirmation) == "Wait");
 
   set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
@@ -459,11 +514,10 @@ int main() {
   assert(cover_art.precision == "");
   assert(cover_art.options == "");
   assert(media_cover_art_enabled(cover_art));
-  auto cover_art_details = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;cover_art_action=control_modal,cover_art_details");
+  auto cover_art_details = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;cover_art_action=play_pause,cover_art_details");
   assert(media_cover_art_enabled(cover_art_details));
   assert(media_cover_art_details_enabled(cover_art_details));
-  assert(media_cover_art_press_action(cover_art_details) == "control_modal");
-  assert(cover_art_details.options == "cover_art_action=control_modal,cover_art_details");
+  assert(cover_art_details.options == "cover_art_details");
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");
@@ -619,6 +673,18 @@ int main() {
   int rise_m = 0;
   int set_h = 0;
   int set_m = 0;
+  assert(normalize_brightness_mode("Manual") == "Manual");
+  assert(normalize_brightness_mode("fixed_times") == "Fixed times");
+  assert(normalize_brightness_mode("unexpected") == "Sunrise and sunset");
+  assert(brightness_mode_manual("Manual"));
+  assert(!brightness_mode_manual("Fixed times"));
+  assert(brightness_mode_uses_fixed_times("Fixed times"));
+  assert(brightness_mode_uses_sun("Sunrise and sunset"));
+  assert(brightness_schedule_times("Sunrise and sunset", true, 7, 15, 20, 45, "06:00", "18:00", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 7 && rise_m == 15 && set_h == 20 && set_m == 45);
+  assert(brightness_schedule_times("Fixed times", true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 6 && rise_m == 30 && set_h == 21 && set_m == 5);
+  assert(!brightness_schedule_times("Manual", true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
   assert(brightness_schedule_times(true, true, 7, 15, 20, 45, "06:00", "18:00", rise_h, rise_m, set_h, set_m));
   assert(rise_h == 7 && rise_m == 15 && set_h == 20 && set_m == 45);
   assert(brightness_schedule_times(false, true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
@@ -633,7 +699,7 @@ int main() {
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;
-  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,99", 9, parsed);
+  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,99", 10, parsed);
   assert(parsed.positions[0] == 1);
   assert(parsed.positions[1] == 2);
   assert(parsed.row_span[1] == 2 && parsed.col_span[1] == 1);
@@ -643,6 +709,7 @@ int main() {
   assert(parsed.row_span[5] == 1 && parsed.col_span[5] == 3);
   assert(parsed.row_span[6] == 2 && parsed.col_span[6] == 3);
   assert(parsed.row_span[7] == 3 && parsed.col_span[7] == 2);
+  assert(parsed.row_span[8] == 3 && parsed.col_span[8] == 4);
 
   OrderResult overlap;
   parse_order_string("1b,2,3,4,5,6", 9, overlap);
@@ -732,7 +799,7 @@ def runtime_capability_enum_name(value: str) -> str:
 
 
 def generated_card_runtime_assertions() -> str:
-    contract = json.loads((ROOT / "common" / "config" / "card_contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "product" / "v2" / "card_contract.json").read_text(encoding="utf-8"))
     runtime = contract["runtime"]
     lines = [
         "  struct RuntimeConfig {",
@@ -871,6 +938,7 @@ def main() -> int:
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "check_firmware_media_group.py")], check=True)
     return 0
 
 

@@ -11,6 +11,23 @@ export {
 } from "./backup";
 
 export {
+  PANEL_CONFIG_DOCUMENT_VERSION,
+  PANEL_CONFIG_HEADER_SIZE,
+  PANEL_CONFIG_MAX_DEVICE_PROFILE_BYTES,
+  PANEL_CONFIG_MAX_RECORD_BODY_BYTES,
+  PANEL_CONFIG_MAX_RECORD_COUNT,
+  PANEL_CONFIG_MAX_SETTING_KEY_BYTES,
+  PANEL_CONFIG_MAX_SLOT_COUNT,
+  PanelConfigError,
+  createPanelConfigBackupPayload,
+  decodePanelConfigBackupPayload,
+  decodePanelConfig,
+  encodePanelConfig,
+} from "./panel_config";
+
+export type { PanelConfigBackupPayload, PanelConfigDocument } from "./panel_config";
+
+export {
   CARD_CONFIG_FIELDS,
   cardConfigChanged,
   cloneCardConfig,
@@ -45,6 +62,7 @@ export {
   CARD_SIZE_EXTRA_LARGE,
   CARD_SIZE_EXTRA_TALL,
   CARD_SIZE_EXTRA_WIDE,
+  CARD_SIZE_LANDSCAPE_LARGE,
   CARD_SIZE_LARGE,
   CARD_SIZE_MAX_TALL,
   CARD_SIZE_MAX_WIDE,
@@ -89,14 +107,21 @@ export {
 } from "./subpage";
 
 export {
+  DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT,
+  DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT,
   normalizeBackupPanelSettings,
   normalizeBackupScreenSettings,
   normalizeClockBrightness,
   normalizeCoverArtDelay,
+  normalizeAlarmDelayAnnouncement,
+  normalizeAlarmDelayBeepVolume,
+  normalizeAlarmDelayFinalCountdown,
+  brightnessModeOption,
   normalizeHexColor,
   normalizeHour,
   normalizeHomeAssistantArtworkPort,
   normalizeHomeAssistantArtworkProtocol,
+  normalizeBrightnessMode,
   normalizeLanguage,
   normalizeNtpServer,
   normalizeScheduleClockBrightness,
@@ -143,9 +168,9 @@ export {
 export type {
   MediaCardConfigV1,
   MediaCardMode,
+  MediaCoverArtAction,
   MediaControlLabelDisplay,
   MediaControlNumberDisplay,
-  MediaCoverArtAction,
   MediaNowPlayingControl,
   MediaStateDisplay,
 } from "./media_card";

@@ -3,7 +3,3 @@ export const WEB_UI_COLORS = {
   secondary: "313131",
   tertiary: "212121",
 } as const;
-
-export function defaultTheme(): "Dark" {
-  return "Dark";
-}

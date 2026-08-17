@@ -1,12 +1,126 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppStateEventHandlersModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import { FALLBACK_TIMEZONE_OPTION, NTP_SERVER_DEFAULTS } from "../state/app_state";
+import { applyClockBarStateValue } from "../state/event_state";
+import {
+    DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT,
+    DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT,
+    normalizeAlarmDelayAnnouncement,
+    normalizeAlarmDelayBeepVolume,
+    normalizeAlarmDelayFinalCountdown,
+    normalizeBrightnessMode,
+    normalizeClockBrightness,
+    normalizeCoverArtDelay,
+    normalizeHexColor,
+    normalizeHomeAssistantArtworkPort,
+    normalizeHomeAssistantArtworkProtocol,
+    normalizeHour,
+    normalizeLanguage,
+    normalizeNtpServer,
+    normalizeScheduleClockBrightness,
+    normalizeScheduleDimmedBrightness,
+    normalizeScheduleMode,
+    normalizeScheduleSensorActivation,
+    normalizeScheduleTrigger,
+    normalizeScheduleWakeBrightness,
+    normalizeScheduleWakeTimeout,
+    normalizeScreensaverAction,
+    normalizeScreensaverDimmedBrightness,
+    normalizeTemperatureUnit,
+    normalizeTimeOfDay,
+} from "../model/settings";
+import type { UiRuntimeState } from "./state";
+import type { CoreFeature } from "./core";
+import { languageOptionsWithFallback, syncLanguageSelect } from "./language_state";
+import { hasCustomNtpServers, syncNtpServerUi } from "./ntp_state";
+import { syncIdleUi } from "./idle_state";
+import { getActiveScreensaverMode, normalizePin } from "./screensaver_state";
+import type { EnvironmentStateFeature } from "./environment_state";
+import type { ScreenScheduleStateFeature } from "./screen_schedule_state";
+import type { ScreensaverTimeoutFeature } from "./screensaver_timeout";
+import type { ScreenRotationFeature } from "./screen_rotation_state";
+import type { AppearanceFeature } from "./appearance_state";
+import type { FirmwareVersionFeature } from "./firmware_version_state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { C6FirmwareFeature } from "./c6_firmware_ui";
+import type { ClockBarFeature } from "./clock_bar_state";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { GridFeature } from "./grid";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+import type { PreviewRenderFeature } from "./preview_render";
+
+export type SseStateHandler = (value?: any, data?: any, key?: any) => void;
+export type SseHandlerFactory = () => Record<string, SseStateHandler>;
+
+export interface AppStateEventHandlersFeature {
+    createHandlers: SseHandlerFactory;
+}
+
+export function createAppStateEventHandlersFeature(
+    runtime: UiRuntimeState,
+    core: Pick<CoreFeature, "syncPreviewOrientation">,
+    environment: EnvironmentStateFeature,
+    schedule: ScreenScheduleStateFeature,
+    screensaverTimeout: ScreensaverTimeoutFeature,
+    screenRotation: ScreenRotationFeature,
+    appearance: AppearanceFeature,
+    firmwareVersion: FirmwareVersionFeature,
+    firmwareUpdate: FirmwareUpdateFeature,
+    c6Firmware: C6FirmwareFeature,
+    clockBar: ClockBarFeature,
+    statusPreview: Pick<AppStatusPreviewFeature, "appendTimezoneOption" | "normalizeNetworkTransport" | "normalizeWifiStrengthPercent" | "syncInput" | "updateClock" | "updateClockBarItemUi" | "updateNetworkPreview" | "updateSunInfo" | "updateTempPreview">,
+    grid: Pick<GridFeature, "applyButtonOrderValue">,
+    settingsHelpers: Pick<SettingsPageHelpersFeature, "syncAlarmDelayAudioUi" | "syncClockScreensaverControls" | "syncScreensaverPinUi" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">,
+    preview: Pick<PreviewRenderFeature, "render">,
+): AppStateEventHandlersFeature {
+    const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncScreensaverPinUi, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = settingsHelpers;
+    const { render: renderPreview } = preview;
+    const { syncPreviewOrientation } = core;
+    const els = runtime.els;
+    const { timezoneOptionsWithFallback, isHomeAssistantAutoTimezone } = environment;
+    const { syncUi: syncScreenScheduleUi } = schedule;
+    const { applyState: applyScreensaverTimeoutState } = screensaverTimeout;
+    const {
+        gridPreviewBlocked: gridPreviewBlockedByRotationStartup,
+        normalize: normalizeScreenRotation,
+        syncSelect: syncScreenRotationSelect,
+        resolveInitialCheck: resolveInitialScreenRotationCheck,
+    } = screenRotation;
+    const { syncColorUi } = appearance;
+    const { set: setFirmwareVersion } = firmwareVersion;
+    const { syncUi: syncFirmwareUpdateUi, setInfo: setFirmwareUpdateInfo } = firmwareUpdate;
+    const {
+        setCurrentVersion: setC6FirmwareCurrentVersion,
+        setLatestVersion: setC6FirmwareLatestVersion,
+        setUpdateAvailable: setC6FirmwareUpdateAvailable,
+        syncUi: syncC6FirmwareUi,
+    } = c6Firmware;
+    const {
+        applyTemperatureEntities: applyClockBarTemperatureEntities,
+        normalizeTemperatureEntities: normalizeClockBarTemperatureEntities,
+        syncUi: syncClockBarUi,
+        syncTemperatureUi,
+    } = clockBar;
+    const {
+        appendTimezoneOption,
+        normalizeNetworkTransport,
+        normalizeWifiStrengthPercent,
+        syncInput,
+        updateClock,
+        updateClockBarItemUi,
+        updateNetworkPreview,
+        updateSunInfo,
+        updateTempPreview,
+    } = statusPreview;
+    const { applyButtonOrderValue } = grid;
     // ── State Event Handlers ──────────────────────────────────────────
-    function createSseHandlers(this: any) {
+    const createSseHandlers: SseHandlerFactory = () => {
         return {
             "text-button_order": function (this: any, val?: any) {
-                if (gridPreviewBlockedByRotationStartup()) {
-                    orderReceived = !!(val && val.trim());
+                if (gridPreviewBlockedByRotationStartup() || state.screenRotationInitialFallbackActive) {
+                    runtime.orderReceived = !!(val && val.trim());
                     state.pendingButtonOrderRaw = val;
+                    if (state.screenRotationInitialFallbackActive)
+                        applyButtonOrderValue(val);
                     return;
                 }
                 applyButtonOrderValue(val);
@@ -43,13 +157,45 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.clockBarTimeOn = d.value === true || val === "ON";
                 syncClockBarUi();
             },
+            "switch-screen__clock_bar_night_mode_icon": function (this: any, val?: any, d?: any) {
+                state.clockBarNightModeOn = d.value === true || val === "ON";
+                syncClockBarUi();
+            },
             "switch-screen__network_status_icon": function (this: any, val?: any, d?: any) {
                 state.networkStatusOn = d.value === true || val === "ON";
+                syncClockBarUi();
+            },
+            "switch-screen__battery_status": function (this: any, val?: any, d?: any) {
+                state.batteryStatusOn = d.value === true || val === "ON";
                 syncClockBarUi();
             },
             "switch-voice_services": function (this: any, val?: any, d?: any) {
                 state.voiceServicesOn = d.value === true || val === "ON";
                 syncClockBarUi();
+            },
+            "switch-alarm_delay__audio": function (this: any, val?: any, d?: any) {
+                state.alarmDelayAudioOn = d.value === true || val === "ON";
+                syncAlarmDelayAudioUi();
+            },
+            "switch-alarm_delay__tts": function (this: any, val?: any, d?: any) {
+                state.alarmDelayTtsOn = d.value === true || val === "ON";
+                syncAlarmDelayAudioUi();
+            },
+            "text-alarm_delay__entry_announcement": function (this: any, val?: any) {
+                state.alarmDelayEntryAnnouncement = normalizeAlarmDelayAnnouncement(val, DEFAULT_ALARM_DELAY_ENTRY_ANNOUNCEMENT);
+                syncAlarmDelayAudioUi();
+            },
+            "text-alarm_delay__exit_announcement": function (this: any, val?: any) {
+                state.alarmDelayExitAnnouncement = normalizeAlarmDelayAnnouncement(val, DEFAULT_ALARM_DELAY_EXIT_ANNOUNCEMENT);
+                syncAlarmDelayAudioUi();
+            },
+            "number-alarm_delay__beep_volume": function (this: any, val?: any) {
+                state.alarmDelayBeepVolume = normalizeAlarmDelayBeepVolume(val);
+                syncAlarmDelayAudioUi();
+            },
+            "number-alarm_delay__final_countdown": function (this: any, val?: any) {
+                state.alarmDelayFinalCountdown = normalizeAlarmDelayFinalCountdown(val);
+                syncAlarmDelayAudioUi();
             },
             "switch-screen__temperature_degree_symbol": function (this: any, val?: any, d?: any) {
                 state.temperatureDegreeSymbolOn = d.value === true || val === "ON";
@@ -90,7 +236,7 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
             },
             "number-home_screen_timeout": function (this: any, val?: any) {
                 state.homeScreenTimeout = parseFloat(val) || 0;
-                syncIdleUi();
+                syncIdleUi(runtime);
             },
             "switch-screen_saver__clock": function (this: any, val?: any, d?: any) {
                 state.clockScreensaverOn = d.value === true || val === "ON";
@@ -147,14 +293,25 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 state.screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(val);
                 syncClockScreensaverControls();
             },
+            "number-screen_saver__daytime_dimmed_brightness": function (this: any, val?: any) {
+                state.screensaverDimmedBrightnessDay = normalizeScreensaverDimmedBrightness(val);
+                syncClockScreensaverControls();
+            },
+            "number-screen_saver__nighttime_dimmed_brightness": function (this: any, val?: any) {
+                state.screensaverDimmedBrightnessNight = normalizeScreensaverDimmedBrightness(val);
+                syncClockScreensaverControls();
+            },
             "text-presence_sensor_entity": function (this: any, val?: any) {
                 state.presenceEntity = val;
                 syncInput(els.setPresence, val);
-                syncInput(els.setSchedulePresence, val);
                 if (state.screensaverMode === "") {
                     if (els.setSsMode)
                         els.setSsMode(getActiveScreensaverMode());
                 }
+            },
+            "text-screen_schedule_sensor_entity": function (this: any, val?: any) {
+                state.scheduleSensorEntity = val;
+                syncInput(els.setSchedulePresence, val);
             },
             "text-media_player_sleep_prevention_entity": function (this: any, val?: any) {
                 state.mediaPlayerSleepPreventionEntity = val;
@@ -168,6 +325,10 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 if (!state.mediaPlayerSleepPreventionEntity)
                     state.mediaPlayerSleepPreventionEntity = val;
                 syncInput(els.setCoverArtMediaPlayer, val);
+            },
+            "text-screen_saver__external_source_media_entity": function (this: any, val?: any) {
+                state.coverArtSecondaryMediaPlayerEntity = val;
+                syncInput(els.setCoverArtSecondaryMediaPlayer, val);
             },
             "text-screen_saver__cover_art_conditions": function (this: any, val?: any) {
                 state.coverArtAttributeConditions = val;
@@ -209,9 +370,19 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                     els.setNightBrightnessVal.textContent = Math.round(state.brightnessNightVal) + "%";
                 }
             },
-            "switch-screen__automatic_brightness": function (this: any, val?: any, d?: any) {
-                state.automaticBrightnessEnabled = d.value === true || val === "ON";
+            "select-screen__brightness_mode": function (this: any, val?: any, d?: any) {
+                state.brightnessMode = normalizeBrightnessMode(d.value || val);
                 syncScreenScheduleUi();
+            },
+            "light-display_backlight": function (this: any, val?: any, d?: any) {
+                var brightness: any = parseFloat(d && d.brightness);
+                if (isFinite(brightness)) {
+                    state.manualBrightnessVal = Math.max(1, Math.min(100, Math.round(brightness / 2.55)));
+                    if (els.setManualBrightness) {
+                        els.setManualBrightness.value = state.manualBrightnessVal;
+                        els.setManualBrightnessVal.textContent = state.manualBrightnessVal + "%";
+                    }
+                }
             },
             "text-screen__brightness_dawn_time": function (this: any, val?: any) {
                 state.brightnessDawnTime = normalizeTimeOfDay(val, "06:00");
@@ -303,7 +474,7 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 if (d.option && Array.isArray(d.option)) {
                     state.languageOptions = languageOptionsWithFallback(d.option, state.language);
                 }
-                syncLanguageSelect();
+                syncLanguageSelect(runtime);
                 renderPreview();
             },
             "select-screen__clock_format": function (this: any, val?: any, d?: any) {
@@ -327,17 +498,17 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
             "text-screen__ntp_server_1": function (this: any, val?: any) {
                 state.ntpServer1 = normalizeNtpServer(val, NTP_SERVER_DEFAULTS[0]);
                 state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
-                syncNtpServerUi();
+                syncNtpServerUi(runtime, syncInput);
             },
             "text-screen__ntp_server_2": function (this: any, val?: any) {
                 state.ntpServer2 = normalizeNtpServer(val, NTP_SERVER_DEFAULTS[1]);
                 state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
-                syncNtpServerUi();
+                syncNtpServerUi(runtime, syncInput);
             },
             "text-screen__ntp_server_3": function (this: any, val?: any) {
                 state.ntpServer3 = normalizeNtpServer(val, NTP_SERVER_DEFAULTS[2]);
                 state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
-                syncNtpServerUi();
+                syncNtpServerUi(runtime, syncInput);
             },
             "select-screen__rotation": function (this: any, val?: any, d?: any) {
                 state.screenRotation = normalizeScreenRotation(d.value || val || state.screenRotation);
@@ -346,7 +517,9 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                     state.screenRotationOptions = d.option;
                 }
                 syncScreenRotationSelect();
-                syncPreviewOrientation();
+                var preservePendingGrid: any = state.screenRotationInitialFallbackActive ||
+                    state.pendingButtonOrderRaw !== null;
+                syncPreviewOrientation(preservePendingGrid);
                 resolveInitialScreenRotationCheck();
                 renderPreview();
             },
@@ -395,6 +568,12 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 }
                 syncFirmwareUpdateUi();
             },
+            "switch-wifi_firmware__auto_update": function (this: any, val?: any, d?: any) {
+                state.c6FirmwareUpdateControlsSupported = true;
+                state.c6FirmwareAutoUpdateSupported = true;
+                state.c6FirmwareAutoUpdate = d.value === true || val === "ON";
+                syncC6FirmwareUi();
+            },
             "text_sensor-esp32_c6__current_firmware": function (this: any, val?: any) {
                 setC6FirmwareCurrentVersion(val);
             },
@@ -423,8 +602,6 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 syncC6FirmwareUi();
             },
         };
-    }
-    return {
-        "createSseHandlers": staticGlobal(createSseHandlers),
     };
+    return { createHandlers: createSseHandlers };
 }

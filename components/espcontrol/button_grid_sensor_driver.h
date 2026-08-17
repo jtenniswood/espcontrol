@@ -91,12 +91,21 @@ inline bool sensor_driver_refresh_layout(
       sensor_driver_is_text(config, context) || config.precision == "icon") {
     return true;
   }
-  if (large_number_square_card_layout(row_span, col_span) &&
-      card_large_numbers_active_for_layout(config, row_span, col_span) &&
-      display_large_sensor_font(display)) {
+  const bool use_large_font =
+    large_number_square_card_layout(row_span, col_span) &&
+    card_large_numbers_active_for_layout(config, row_span, col_span) &&
+    display_large_sensor_font(display);
+  if (use_large_font) {
     apply_large_sensor_number_style(
       slot, display_large_sensor_font(display),
       display_large_sensor_unit_offset_percent(display));
+  } else {
+    if (slot.sensor_lbl && display_sensor_font(display)) {
+      lv_obj_set_style_text_font(slot.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
+    }
+    if (slot.unit_lbl) {
+      lv_obj_set_style_translate_y(slot.unit_lbl, 0, LV_PART_MAIN);
+    }
   }
   return true;
 }
@@ -118,35 +127,32 @@ inline void sensor_driver_register_local_value(
   control.precision = 0;
   control.sensor_lbl = is_text ? nullptr : slot.sensor_lbl;
   control.text_lbl = is_text ? slot.text_lbl : nullptr;
+  control.owner = slot.btn;
   if (!is_text && !config.precision.empty()) {
     control.precision = atoi(config.precision.c_str());
   }
 
   auto &registry = local_sensor_registry();
-  bool found = false;
-  for (auto &existing : registry) {
-    if (existing.key != control.key) continue;
-    existing = control;
-    found = true;
-    break;
+  size_t write_index = 0;
+  for (size_t read_index = 0; read_index < registry.size(); read_index++) {
+    if (registry[read_index].owner == control.owner) continue;
+    if (write_index != read_index) registry[write_index] = registry[read_index];
+    write_index++;
   }
-  if (!found) registry.push_back(control);
+  registry.resize(write_index);
+  registry.push_back(control);
 
 #ifdef USE_SENSOR
   if (!is_text) {
     for (auto *esp_sensor : esphome::App.get_sensors()) {
       char object_id[128];
       if (std::string(esp_sensor->get_object_id_to(object_id).c_str()) != control.key) continue;
-      auto *label = control.sensor_lbl;
-      const int precision = control.precision;
-      esp_sensor->add_on_state_callback([label, precision](float value) {
-        if (!label || std::isnan(value)) return;
-        char buffer[32];
-        if (precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
-        else if (precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
-        else snprintf(buffer, sizeof(buffer), "%.0f", value);
-        lv_label_set_text(label, buffer);
-      });
+      if (!local_sensor_callback_registered(control.key, false)) {
+        const std::string key = control.key;
+        esp_sensor->add_on_state_callback([key](float value) {
+          local_sensor_apply_value(key, value);
+        });
+      }
       if (!std::isnan(esp_sensor->state) && control.sensor_lbl) {
         char buffer[32];
         if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", esp_sensor->state);
@@ -163,10 +169,12 @@ inline void sensor_driver_register_local_value(
     for (auto *esp_text_sensor : esphome::App.get_text_sensors()) {
       char object_id[128];
       if (std::string(esp_text_sensor->get_object_id_to(object_id).c_str()) != control.key) continue;
-      auto *label = control.text_lbl;
-      esp_text_sensor->add_on_state_callback([label](std::string value) {
-        if (label) set_wrapped_button_label_text(label, value);
-      });
+      if (!local_sensor_callback_registered(control.key, true)) {
+        const std::string key = control.key;
+        esp_text_sensor->add_on_state_callback([key](std::string value) {
+          local_sensor_apply_text(key, value);
+        });
+      }
       if (!esp_text_sensor->state.empty() && control.text_lbl) {
         set_wrapped_button_label_text(control.text_lbl, esp_text_sensor->state);
       }
@@ -178,7 +186,7 @@ inline void sensor_driver_register_local_value(
 
 inline bool sensor_driver_bind_data(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
-    const CardPalette &palette) {
+    const CardPalette &palette, int col_span = 1) {
   if (!sensor_driver_matches(context)) return false;
 
   if (sensor_driver_is_local(config, context)) {
@@ -205,7 +213,8 @@ inline bool sensor_driver_bind_data(
       time->unit_lbl = slot.unit_lbl;
       subscribe_time_sensor_value(
         time, config.sensor,
-        cfg_option_value(config.options, SENSOR_TIME_UNIT_OPTION));
+        cfg_option_value(config.options, SENSOR_TIME_UNIT_OPTION),
+        col_span > 1 ? 2 : 1);
     } else {
       subscribe_sensor_value(
         slot.sensor_lbl, config.sensor, parse_precision(config.precision),

@@ -1,5 +1,32 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerSubpageCardTypes(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import { setConfigOptionValue } from "../model/config_primitives";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigCodecFeature } from "../application/config_codec";
+import type { CoreFeature } from "../application/core";
+import type { ButtonSettingsSelectionFeature } from "../application/button_settings_selection";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+import { SUBPAGE_KIND_OPTION } from "../application/config_option_core";
+import {
+    applySubpagePresetConfig,
+    normalizeSubpageKind,
+    normalizeSubpageOptions,
+    subpageKind,
+    subpageKindOptions,
+    subpagePresetDefaults,
+} from "../application/config_subpage_options";
+export function registerSubpageCardTypes(
+    registry: CardRegistry,
+    codec: ConfigCodecFeature,
+    core: Pick<CoreFeature, "subpageStateDisplayMode">,
+    selection: Pick<ButtonSettingsSelectionFeature, "closeSettings">,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardSensorPreviewHtml, condField } = fields;
+    const { enterSubpage } = codec;
+    const { subpageStateDisplayMode } = core;
     // Navigation folder: tap opens a nested grid screen with its own button layout
     var SUBPAGE_CARD_METADATA: any = {
         kind: {
@@ -93,7 +120,7 @@ export function registerSubpageCardTypes(): GlobalDescriptors {
             badge: "chevron-right",
         },
     };
-    registerButtonType("subpage", {
+    registry.register("subpage", {
         label: "Subpage",
         allowInSubpage: false,
         hideLabel: true,
@@ -340,12 +367,7 @@ export function registerSubpageCardTypes(): GlobalDescriptors {
         var configBtn: any = document.createElement("button");
         configBtn.className = "sp-action-btn sp-edit-subpage-btn";
         configBtn.textContent = "Edit Subpage";
-        configBtn.addEventListener("click", function (this: any) { closeSettings(); enterSubpage(slot); });
+        configBtn.addEventListener("click", function (this: any) { selection.closeSettings(); enterSubpage(slot); });
         panel.appendChild(configBtn);
     }
-    return {
-        "SUBPAGE_CARD_METADATA": liveGlobal(() => SUBPAGE_CARD_METADATA, (value?: any) => { SUBPAGE_CARD_METADATA = value; }),
-        "subpageBadgeLabelHtml": staticGlobal(subpageBadgeLabelHtml),
-        "appendEditSubpageButton": staticGlobal(appendEditSubpageButton),
-    };
 }

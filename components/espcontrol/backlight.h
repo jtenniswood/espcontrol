@@ -47,8 +47,8 @@ inline void backlight_close_modals_for_display_takeover() {
 struct SunCalcResult {
   int rise_h, rise_m, set_h, set_m;
   bool valid;
-  char sunrise_str[16];
-  char sunset_str[16];
+  char sunrise_str[32];
+  char sunset_str[32];
 };
 
 inline SunCalcResult recalc_sunrise_sunset(
@@ -139,12 +139,32 @@ inline bool parse_time_of_day(const std::string &value, int &hour, int &minute) 
   return true;
 }
 
+inline bool brightness_mode_manual(const std::string &mode) {
+  return mode == "Manual" || mode == "manual";
+}
+
+inline bool brightness_mode_uses_fixed_times(const std::string &mode) {
+  return mode == "Fixed times" || mode == "fixed_times" || mode == "fixed";
+}
+
+inline bool brightness_mode_uses_sun(const std::string &mode) {
+  return !brightness_mode_manual(mode) && !brightness_mode_uses_fixed_times(mode);
+}
+
+inline std::string normalize_brightness_mode(const std::string &mode) {
+  if (brightness_mode_manual(mode)) return "Manual";
+  if (brightness_mode_uses_fixed_times(mode)) return "Fixed times";
+  return "Sunrise and sunset";
+}
+
 inline bool brightness_schedule_times(
-    bool automatic_times_enabled,
+    const std::string &brightness_mode,
     bool sunrise_valid, int sunrise_h, int sunrise_m, int sunset_h, int sunset_m,
     const std::string &manual_dawn, const std::string &manual_dusk,
     int &rise_h, int &rise_m, int &set_h, int &set_m) {
-  if (automatic_times_enabled) {
+  if (brightness_mode_manual(brightness_mode)) return false;
+
+  if (brightness_mode_uses_sun(brightness_mode)) {
     rise_h = sunrise_h;
     rise_m = sunrise_m;
     set_h = sunset_h;
@@ -163,6 +183,28 @@ inline bool brightness_schedule_times(
   set_h = dusk_h;
   set_m = dusk_m;
   return dawn_valid && dusk_valid;
+}
+
+inline bool brightness_schedule_times(
+    const char *brightness_mode,
+    bool sunrise_valid, int sunrise_h, int sunrise_m, int sunset_h, int sunset_m,
+    const std::string &manual_dawn, const std::string &manual_dusk,
+    int &rise_h, int &rise_m, int &set_h, int &set_m) {
+  return brightness_schedule_times(
+      std::string(brightness_mode ? brightness_mode : ""),
+      sunrise_valid, sunrise_h, sunrise_m, sunset_h, sunset_m,
+      manual_dawn, manual_dusk, rise_h, rise_m, set_h, set_m);
+}
+
+inline bool brightness_schedule_times(
+    bool automatic_times_enabled,
+    bool sunrise_valid, int sunrise_h, int sunrise_m, int sunset_h, int sunset_m,
+    const std::string &manual_dawn, const std::string &manual_dusk,
+    int &rise_h, int &rise_m, int &set_h, int &set_m) {
+  return brightness_schedule_times(
+      std::string(automatic_times_enabled ? "Sunrise and sunset" : "Fixed times"),
+      sunrise_valid, sunrise_h, sunrise_m, sunset_h, sunset_m,
+      manual_dawn, manual_dusk, rise_h, rise_m, set_h, set_m);
 }
 
 // ── Screen schedule helpers ───────────────────────────────────────────

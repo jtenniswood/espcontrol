@@ -1,31 +1,33 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerLockCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigLockOptionsFeature } from "../application/config_lock_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+
+export function registerLockCardTypes(
+    registry: CardRegistry,
+    lockOptions: ConfigLockOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgePreview } = fields;
+    const {
+        lockCommandMode,
+        lockModeDefaultIcon,
+        lockModeDefaultLabel,
+        lockUsesDefaultIcon,
+        normalizeLockMode,
+    } = lockOptions;
     // Lock card: lock/unlock toggle with safe default-to-lock behavior and state display.
-    function lockCommandMode(this: any, mode?: any) {
-        return mode === "lock" || mode === "unlock";
-    }
-    function lockModeOptionValues(this: any) {
-        var spec: any = cardContractOptionSpec("lock", "lock_mode");
-        return spec && spec.values ? spec.values.slice() : [];
-    }
-    function normalizeLockMode(this: any, mode?: any) {
-        mode = String(mode || "");
-        return lockModeOptionValues().indexOf(mode) >= 0 ? mode : "";
-    }
-    function lockModeDefaultIcon(this: any, mode?: any) {
-        return mode === "unlock" ? "Lock Open" : "Lock";
-    }
-    function lockModeDefaultLabel(this: any, mode?: any) {
-        if (mode === "lock")
-            return "Lock";
-        if (mode === "unlock")
-            return "Unlock";
-        return "Lock";
-    }
-    function lockUsesDefaultIcon(this: any, icon?: any) {
-        return !icon || icon === "Auto" || icon === "Lock" || icon === "Lock Open";
-    }
-    var LOCK_CARD_METADATA: any = {
+    const LOCK_CARD_METADATA: any = {
         mode: {
             label: "Type",
             idSuffix: "lock-type",
@@ -57,7 +59,7 @@ export function registerLockCardTypes(): GlobalDescriptors {
             badge: "lock",
         },
     };
-    registerButtonType("lock", {
+    registry.register("lock", {
         label: function (this: any) { return cardContractCardLabel("lock"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("lock"); },
         pickerKey: function (this: any) { return cardContractPickerKey("lock"); },
@@ -161,13 +163,4 @@ export function registerLockCardTypes(): GlobalDescriptors {
             });
         },
     });
-    return {
-        "lockCommandMode": staticGlobal(lockCommandMode),
-        "lockModeOptionValues": staticGlobal(lockModeOptionValues),
-        "normalizeLockMode": staticGlobal(normalizeLockMode),
-        "lockModeDefaultIcon": staticGlobal(lockModeDefaultIcon),
-        "lockModeDefaultLabel": staticGlobal(lockModeDefaultLabel),
-        "lockUsesDefaultIcon": staticGlobal(lockUsesDefaultIcon),
-        "LOCK_CARD_METADATA": liveGlobal(() => LOCK_CARD_METADATA, (value?: any) => { LOCK_CARD_METADATA = value; }),
-    };
 }

@@ -1,47 +1,33 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerInternalCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { iconSlug } from "../application/ui_primitives";
+import type { CardRegistry } from "../application/card_registry";
+import type { ConfigInternalRelayOptionsFeature } from "../application/config_internal_relay_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+
+export function registerInternalCardTypes(
+    registry: CardRegistry,
+    internalRelayOptionsFeature: ConfigInternalRelayOptionsFeature,
+    documentService: Document,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardBadgeLabelHtml, condField } = fields;
+    const {
+        internalRelayDefaultIcon,
+        internalRelayDefaultOnIcon,
+        internalRelayLabelFor,
+        internalRelayMode,
+        internalRelayOptions,
+        internalRelayUsesDefaultIcon,
+        internalRelayUsesDefaultOnIcon,
+    } = internalRelayOptionsFeature;
     // Internal relay card: controls built-in relay hardware locally on the device.
-    function internalRelayOptions(this: any) {
-        return (CFG.features && CFG.features.internalRelays) || [];
-    }
-    function internalRelaySpec(this: any) {
-        var card: any = cardContractCard("internal");
-        return card && card.behavior && card.behavior.internalRelay || {};
-    }
-    function internalRelayModeOptionValues(this: any) {
-        var spec: any = cardContractOptionSpec("internal", "internal_mode");
-        return spec && spec.values ? spec.values.slice() : ["switch", "push"];
-    }
-    function normalizeInternalRelayMode(this: any, mode?: any) {
-        mode = String(mode || "");
-        return internalRelayModeOptionValues().indexOf(mode) >= 0 ? mode : "switch";
-    }
-    function internalRelayDefaultIcon(this: any, mode?: any) {
-        var icons: any = internalRelaySpec().defaultIcons || {};
-        return icons[normalizeInternalRelayMode(mode)] || (mode === "push" ? "Gesture Tap" : "Lightbulb Outline");
-    }
-    function internalRelayDefaultOnIcon(this: any) {
-        return internalRelaySpec().defaultIconOn || "Lightbulb";
-    }
-    function internalRelayUsesDefaultIcon(this: any, mode?: any, icon?: any) {
-        if (!icon || icon === "Auto" || icon === internalRelayDefaultIcon(mode))
-            return true;
-        return mode === "switch" && icon === "Power Plug";
-    }
-    function internalRelayUsesDefaultOnIcon(this: any, icon?: any) {
-        return !icon || icon === "Auto" || icon === internalRelayDefaultOnIcon() || icon === "Power";
-    }
-    function internalRelayMode(this: any, b?: any) {
-        return normalizeInternalRelayMode(b && b.sensor === "push" ? "push" : "switch");
-    }
-    function internalRelayLabelFor(this: any, key?: any) {
-        var relays: any = internalRelayOptions();
-        for (var i: any = 0; i < relays.length; i++) {
-            if (relays[i].key === key)
-                return relays[i].label;
-        }
-        return key ? key.replace(/_/g, " ").replace(/\b\w/g, function (this: any, ch?: any) { return ch.toUpperCase(); }) : "Relay";
-    }
     function ensureInternalRelaySelection(this: any, b?: any) {
         var relays: any = internalRelayOptions();
         if (!relays.length)
@@ -66,9 +52,9 @@ export function registerInternalCardTypes(): GlobalDescriptors {
         });
         panel.appendChild(relayField.field);
     }
-    var INTERNAL_CARD_METADATA: any = {
+    const INTERNAL_CARD_METADATA: any = {
         mode: {
-            label: "Mode",
+            label: "Type",
             inputId: "internal-mode",
             options: [
                 ["switch", "Switch"],
@@ -88,7 +74,7 @@ export function registerInternalCardTypes(): GlobalDescriptors {
             pushBadge: "gesture-tap",
         },
     };
-    registerButtonType("internal", {
+    registry.register("internal", {
         label: function (this: any) { return cardContractCardLabel("internal"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("internal"); },
         pickerKey: function (this: any) { return cardContractPickerKey("internal"); },
@@ -106,17 +92,23 @@ export function registerInternalCardTypes(): GlobalDescriptors {
             ensureInternalRelaySelection(b);
         },
         renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
-            renderInternalRelayField(panel, b, helpers);
+            var controlsDisclosure: any = helpers.disclosureSection("Controls", helpers.idPrefix + "internal-controls", false);
+            renderInternalRelayField(controlsDisclosure.section, b, helpers);
+            panel.appendChild(controlsDisclosure.panel);
+            var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "internal-card-settings", false);
+            panel.appendChild(cardSettingsDisclosure.panel);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             ensureInternalRelaySelection(b);
+            var controlsButton: any = panel.querySelector("#" + helpers.idPrefix + "internal-controls");
+            var controls: any = controlsButton && controlsButton.nextElementSibling || panel;
             var mode: any = internalRelayMode(b);
             if (internalRelayUsesDefaultIcon(mode, b.icon))
                 b.icon = internalRelayDefaultIcon(mode);
             if (mode === "switch" && internalRelayUsesDefaultOnIcon(b.icon_on)) {
                 b.icon_on = internalRelayDefaultOnIcon();
             }
-            var modeControl: any = helpers.renderCardSegmentControl(panel, b, helpers, {
+            var modeControl: any = helpers.renderCardSegmentControl(controls, b, helpers, {
                 segment: Object.assign({}, INTERNAL_CARD_METADATA.mode, {
                     inputId: helpers.idPrefix + "internal-mode",
                     value: function (this: any) { return mode; },
@@ -127,7 +119,7 @@ export function registerInternalCardTypes(): GlobalDescriptors {
             var pushBtn: any = modeControl.buttons.push;
             helpers.renderCardTextField(panel, b, helpers, INTERNAL_CARD_METADATA.labelField);
             function makeLabeledIconPicker(this: any, label?: any, inputSuffix?: any, pickerSuffix?: any, value?: any, onSelect?: any) {
-                var section: any = helpers.renderCardIconPicker(document.createElement("div"), b, helpers, {
+                var section: any = helpers.renderCardIconPicker(documentService.createElement("div"), b, helpers, {
                     pickerIdSuffix: pickerSuffix,
                     idSuffix: inputSuffix,
                     field: inputSuffix === "icon-on" ? "icon_on" : "icon",
@@ -216,19 +208,4 @@ export function registerInternalCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "internalRelayOptions": staticGlobal(internalRelayOptions),
-        "internalRelaySpec": staticGlobal(internalRelaySpec),
-        "internalRelayModeOptionValues": staticGlobal(internalRelayModeOptionValues),
-        "normalizeInternalRelayMode": staticGlobal(normalizeInternalRelayMode),
-        "internalRelayDefaultIcon": staticGlobal(internalRelayDefaultIcon),
-        "internalRelayDefaultOnIcon": staticGlobal(internalRelayDefaultOnIcon),
-        "internalRelayUsesDefaultIcon": staticGlobal(internalRelayUsesDefaultIcon),
-        "internalRelayUsesDefaultOnIcon": staticGlobal(internalRelayUsesDefaultOnIcon),
-        "internalRelayMode": staticGlobal(internalRelayMode),
-        "internalRelayLabelFor": staticGlobal(internalRelayLabelFor),
-        "ensureInternalRelaySelection": staticGlobal(ensureInternalRelaySelection),
-        "renderInternalRelayField": staticGlobal(renderInternalRelayField),
-        "INTERNAL_CARD_METADATA": liveGlobal(() => INTERNAL_CARD_METADATA, (value?: any) => { INTERNAL_CARD_METADATA = value; }),
-    };
 }

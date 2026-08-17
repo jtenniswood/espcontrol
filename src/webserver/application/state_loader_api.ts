@@ -1,5 +1,59 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installStateLoaderApiModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import { ENTITY_CATALOG } from "../generated/entity_catalog";
+import type { UiRuntimeState } from "./state";
+import type { ApplicationLayoutState } from "./application_context";
+import {
+    FIRMWARE_VERSION_METADATA_PATH,
+    firmwareInfoFromPublicManifest,
+    firmwareInfosFromPublicVersions,
+    firmwareVersionFromMetadata,
+    publicFirmwareManifestUrl,
+    publicFirmwareVersionsUrl,
+} from "./firmware_metadata";
+import type { ScreensaverTimeoutFeature } from "./screensaver_timeout";
+import type { FirmwareVersionFeature } from "./firmware_version_state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { C6FirmwareFeature } from "./c6_firmware_ui";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { GridMigrationFeature } from "./grid_migration";
+export interface StateLoaderDependencies {
+    readonly subpageEntityKeys: () => string[];
+    readonly connectEvents: () => void;
+}
+
+export interface StateLoaderFeature {
+    eventStreamEnabled(): boolean;
+    cardStateEntities(): any[];
+    settingsStateEntities(): any[];
+    subpageStateEntities(): any[];
+    loadStateItems(items?: any[], handleState?: (state: any) => void, concurrency?: number): Promise<number>;
+    loadInitialState(handleState?: (state: any) => void, onLoaded?: () => void): void;
+    refreshFirmwareVersion(): void;
+    refreshScreensaverTimeout(): void;
+    waitForReboot(): void;
+}
+
+export function createStateLoaderFeature(runtime: UiRuntimeState, layout: ApplicationLayoutState, screensaverTimeout: ScreensaverTimeoutFeature, firmwareVersion: FirmwareVersionFeature, firmwareUpdate: FirmwareUpdateFeature, c6Firmware: C6FirmwareFeature, entityState: Pick<EntityStateFeature, "entityStateItems" | "entityStateItemsForSlots" | "entityLookupNames" | "rememberEntityPostPath" | "entityName" | "entityObjectIds">, shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">, requestApi: Pick<ApplicationApiFeature, "getJsonQuietly" | "getJsonFirst" | "entityDetailPath" | "entityDetailPaths" | "entityInitialDetail">, gridMigration: Pick<GridMigrationFeature, "schedule">, dependencies: StateLoaderDependencies): StateLoaderFeature {
+    const { entityStateItems, entityStateItemsForSlots, entityLookupNames, rememberEntityPostPath, entityName, entityObjectIds } = entityState;
+    const { setConfigLocked, showBanner } = shell;
+    const { getJsonQuietly, getJsonFirst, entityDetailPath, entityDetailPaths, entityInitialDetail } = requestApi;
+    const { applyState: applyScreensaverTimeoutState } = screensaverTimeout;
+    const { render: renderFirmwareVersion, set: setFirmwareVersion } = firmwareVersion;
+    const {
+        setPublicInfo: setPublicFirmwareInfo,
+        setPublicVersions: setPublicFirmwareVersions,
+        setInfo: setFirmwareUpdateInfo,
+        syncUi: syncFirmwareUpdateUi,
+        renderStatus: renderFirmwareUpdateStatus,
+    } = firmwareUpdate;
+    const {
+        setCurrentVersion: setC6FirmwareCurrentVersion,
+        setLatestVersion: setC6FirmwareLatestVersion,
+        setUpdateAvailable: setC6FirmwareUpdateAvailable,
+        syncUi: syncC6FirmwareUi,
+    } = c6Firmware;
     // ── State Loader API ──────────────────────────────────────────────────
     function eventStreamEnabled(this: any) {
         try {
@@ -15,23 +69,29 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
     }
     function settingsStateEntities(this: any) {
         var items: any = entityStateItems(ENTITY_CATALOG.groups.settings);
-        if (CFG.features && CFG.features.screenRotation) {
+        if (layout.config.features && layout.config.features.screenRotation) {
             items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_optional));
         }
-        if (CFG.features && CFG.features.voiceServices) {
+        if (layout.config.features && layout.config.features.voiceServices) {
             items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_voice));
+        }
+        if (layout.config.features && layout.config.features.battery) {
+            items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_battery));
+        }
+        if (layout.config.features && layout.config.features.alarmDelayAudio) {
+            items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_alarm_audio));
         }
         return items;
     }
     function subpageStateEntities(this: any) {
-        return entityStateItemsForSlots(subpageEntityKeys());
+        return entityStateItemsForSlots(dependencies.subpageEntityKeys());
     }
     function loadStateItems(this: any, items?: any, handleState?: any, concurrency?: any) {
         var index: any = 0;
         var active: any = 0;
         var loadedCount: any = 0;
         var limit: any = Math.max(1, concurrency || 1);
-        return new Promise(function (this: any, resolve?: any) {
+        return new Promise<number>(function (this: any, resolve?: any) {
             function done(this: any) {
                 active--;
                 run();
@@ -60,22 +120,22 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
             if (loadedCount === 0) {
                 setConfigLocked(true, "Reconnecting to device\u2026");
                 showBanner("Reconnecting to device\u2026", "offline");
-                setTimeout(connectEvents, 5000);
+                setTimeout(dependencies.connectEvents, 5000);
                 return;
             }
             if (onLoaded)
                 onLoaded();
-            clearTimeout(migrationTimer);
-            migrationTimer = setTimeout(scheduleMigration, 5000);
-            clearTimeout(sliderMigrationTimer);
-            pendingSliderSubpageMigrations = {};
+            clearTimeout(runtime.migrationTimer as any);
+            runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
+            clearTimeout(runtime.sliderMigrationTimer as any);
+            runtime.pendingSliderSubpageMigrations = {};
             loadStateItems(settingsStateEntities(), handleState, 2).then(function (this: any) {
                 loadStateItems(subpageStateEntities(), handleState, 2);
             });
         });
     }
     function refreshFirmwareVersion(this: any) {
-        var pending: any = 12;
+        var pending: any = 13;
         if (!state.firmwareVersion) {
             state.firmwareVersionRefreshPending = true;
             renderFirmwareVersion();
@@ -145,35 +205,42 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
             state.c6FirmwareUpdateControlsSupported = true;
             syncC6FirmwareUi();
         }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+        getJsonFirst(entityDetailPaths("switch", entityLookupNames("esp32_c6_auto_update")), function (this: any, d?: any) {
+            rememberEntityPostPath(d);
+            state.c6FirmwareUpdateControlsSupported = true;
+            state.c6FirmwareAutoUpdateSupported = true;
+            state.c6FirmwareAutoUpdate = d.value === true || d.state === "ON";
+            syncC6FirmwareUi();
+        }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
     }
     function refreshScreensaverTimeout(this: any) {
         getJsonQuietly("/number/" + encodeURIComponent(entityName("screensaver_timeout")) + "?detail=all", applyScreensaverTimeoutState)
             .then(function (this: any, data?: any) {
             if (!data) {
-                getJsonQuietly("/number/" + encodeURIComponent(entityObjectIds("screensaver_timeout")[0]) + "?detail=all", applyScreensaverTimeoutState);
+                getJsonQuietly("/number/" + encodeURIComponent(entityObjectIds("screensaver_timeout")[0]!) + "?detail=all", applyScreensaverTimeoutState);
             }
         });
     }
     function waitForReboot(this: any) {
-        if (_eventSource) {
-            _eventSource.close();
-            _eventSource = null;
+        if (runtime.eventSource) {
+            runtime.eventSource.close();
+            runtime.eventSource = null;
         }
         setConfigLocked(true, "Restarting device\u2026");
         showBanner("Restarting device\u2026", "offline");
         setTimeout(function (this: any) {
-            connectEvents();
+            dependencies.connectEvents();
         }, 15000);
     }
     return {
-        "eventStreamEnabled": staticGlobal(eventStreamEnabled),
-        "cardStateEntities": staticGlobal(cardStateEntities),
-        "settingsStateEntities": staticGlobal(settingsStateEntities),
-        "subpageStateEntities": staticGlobal(subpageStateEntities),
-        "loadStateItems": staticGlobal(loadStateItems),
-        "loadInitialState": staticGlobal(loadInitialState),
-        "refreshFirmwareVersion": staticGlobal(refreshFirmwareVersion),
-        "refreshScreensaverTimeout": staticGlobal(refreshScreensaverTimeout),
-        "waitForReboot": staticGlobal(waitForReboot),
+        eventStreamEnabled,
+        cardStateEntities,
+        settingsStateEntities,
+        subpageStateEntities,
+        loadStateItems,
+        loadInitialState,
+        refreshFirmwareVersion,
+        refreshScreensaverTimeout,
+        waitForReboot,
     };
 }

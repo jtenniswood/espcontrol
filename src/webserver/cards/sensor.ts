@@ -1,12 +1,43 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerSensorCardTypes(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import { CARD_SIZE_SINGLE, sizeColSpan } from "../model/grid";
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigSensorOptionsFeature } from "../application/config_sensor_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerSensorCardTypes(
+    registry: CardRegistry,
+    sensorOptions: ConfigSensorOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField, toggleRow } = fields;
+    const {
+        sensorCardLocalSource: SENSOR_CARD_LOCAL_SENSOR,
+        sensorCardModeController,
+        sensorCardIsLocal,
+        normalizeSensorOptions,
+        sensorActiveColorEnabled,
+        sensorTimeUnit,
+        setSensorTimeUnit,
+        setSensorActiveColorEnabled,
+        sensorStateLabelsEnabled,
+        sensorStateInput,
+        sensorStateOutput,
+        sensorStateInput2,
+        sensorStateOutput2,
+        setSensorStateTranslations,
+    } = sensorOptions;
     // Read-only sensor card: displays either numeric data or a text state.
-    var SENSOR_CARD_LOCAL_SENSOR: any = "local";
-    function sensorCardIsLocal(this: any, b?: any) {
-        if (!b)
-            return false;
-        return b.type === "local_sensor" || (b.type === "sensor" && b.sensor === SENSOR_CARD_LOCAL_SENSOR);
-    }
     var SENSOR_CARD_METADATA: any = {
         source: {
             label: "Source",
@@ -62,7 +93,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             textBadge: "format-text",
         },
     };
-    registerButtonType("sensor", {
+    registry.register("sensor", {
         label: function (this: any) { return cardContractCardLabel("sensor"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("sensor"); },
         pickerKey: function (this: any) { return cardContractPickerKey("sensor"); },
@@ -91,34 +122,17 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             sourceButtons.ha.classList.toggle("active", !sensorCardIsLocal(b));
             sourceButtons[SENSOR_CARD_LOCAL_SENSOR].classList.toggle("active", sensorCardIsLocal(b));
             function setSource(this: any, value?: any) {
-                var local: any = value === SENSOR_CARD_LOCAL_SENSOR;
-                if (local === sensorCardIsLocal(b))
+                var fields: any = sensorCardModeController().selectSource(b, value);
+                if (!fields.length)
                     return;
-                b.type = "sensor";
-                b.entity = "";
-                b.label = "";
-                b.sensor = local ? SENSOR_CARD_LOCAL_SENSOR : "";
-                b.unit = "";
-                b.icon = "Auto";
-                b.icon_on = "Auto";
-                b.precision = "";
-                b.options = "";
-                helpers.saveField("type", "sensor");
-                helpers.saveField("entity", "");
-                helpers.saveField("label", "");
-                helpers.saveField("sensor", b.sensor);
-                helpers.saveField("unit", "");
-                helpers.saveField("icon", "Auto");
-                helpers.saveField("icon_on", "Auto");
-                helpers.saveField("precision", "");
-                helpers.saveField("options", "");
+                fields.forEach(function (field: any) { helpers.saveField(field, b[field]); });
                 renderButtonSettings();
             }
             if (sensorCardIsLocal(b)) {
                 renderSensorLocalSettings(panel, b, slot, helpers);
                 return;
             }
-            var displayMode: any = b.precision === "icon" || b.precision === "text" || b.precision === "time" ? b.precision : "numeric";
+            var displayMode: any = sensorCardModeController().displayMode(b);
             var isTextMode: any = displayMode === "text";
             var modeField: any = helpers.renderCardModeSelector(panel, b, helpers, {
                 mode: Object.assign({}, SENSOR_CARD_METADATA.mode, {
@@ -163,7 +177,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 placeholder: "e.g. UPS Runtime",
                 rerender: true,
             });
-            var timeUnitField: any = helpers.selectField("Input Unit", helpers.idPrefix + "time-unit", [
+            var timeUnitField: any = helpers.selectField("Incoming Value Unit", helpers.idPrefix + "time-unit", [
                 ["", "Auto"],
                 ["seconds", "Seconds"],
                 ["minutes", "Minutes"],
@@ -173,6 +187,10 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 setSensorTimeUnit(b, this.value);
                 helpers.saveField("options", b.options);
             });
+            var timeUnitNote: any = document.createElement("div");
+            timeUnitNote.className = "sp-apply-note";
+            timeUnitNote.textContent = "Auto uses the unit reported by Home Assistant. A manual choice overrides it.";
+            timeUnitField.field.appendChild(timeUnitNote);
             timeSection.appendChild(timeUnitField.field);
             panel.appendChild(timeSection);
             var textSection: any = condField();
@@ -273,18 +291,9 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                     timeUnitField.select.value = sensorTimeUnit(b);
                 if (!persist)
                     return;
+                var transition: any = sensorCardModeController().selectDisplayMode(b, displayMode);
                 if (displayMode === "time") {
-                    b.precision = "time";
-                    b.unit = "";
-                    b.icon = "Auto";
-                    b.icon_on = "Auto";
-                    b.options = normalizeSensorOptions(b.options, "time");
                     unitInp.value = "";
-                    helpers.saveField("precision", "time");
-                    helpers.saveField("unit", "");
-                    helpers.saveField("icon", "Auto");
-                    helpers.saveField("icon_on", "Auto");
-                    helpers.saveField("options", b.options);
                     advancedToggle.input.checked = false;
                     advanced.classList.remove("sp-visible");
                     inputTextInp.value = "";
@@ -296,28 +305,12 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                     resetIconPicker(onIconPicker, "Auto", "cog");
                 }
                 else if (isTextMode) {
-                    b.precision = "text";
-                    b.label = "";
-                    b.unit = "";
-                    b.icon_on = "Auto";
-                    b.options = normalizeSensorOptions(b.options, "text");
                     labelInp.value = "";
                     unitInp.value = "";
-                    helpers.saveField("precision", "text");
-                    helpers.saveField("label", "");
-                    helpers.saveField("unit", "");
-                    helpers.saveField("icon_on", "Auto");
-                    helpers.saveField("options", b.options);
                     resetIconPicker(onIconPicker, "Auto", "cog");
                 }
                 else if (displayMode === "icon") {
-                    b.precision = "icon";
-                    b.unit = "";
-                    b.options = normalizeSensorOptions(b.options, "icon");
                     unitInp.value = "";
-                    helpers.saveField("precision", "icon");
-                    helpers.saveField("unit", "");
-                    helpers.saveField("options", b.options);
                     advancedToggle.input.checked = false;
                     advanced.classList.remove("sp-visible");
                     inputTextInp.value = "";
@@ -326,14 +319,6 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                     outputText2Inp.value = "";
                 }
                 else {
-                    b.precision = "";
-                    b.icon = "Auto";
-                    b.icon_on = "Auto";
-                    b.options = normalizeSensorOptions(b.options, "");
-                    helpers.saveField("precision", "");
-                    helpers.saveField("icon", "Auto");
-                    helpers.saveField("icon_on", "Auto");
-                    helpers.saveField("options", b.options);
                     advancedToggle.input.checked = false;
                     advanced.classList.remove("sp-visible");
                     inputTextInp.value = "";
@@ -345,6 +330,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                     resetIconPicker(onIconPicker, "Auto", "cog");
                     precisionSelect.value = "0";
                 }
+                transition.fields.forEach(function (field: any) { helpers.saveField(field, b[field]); });
                 activeColorToggle.input.checked = sensorActiveColorEnabled(b);
             }
             setMode(displayMode, false);
@@ -367,8 +353,11 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 };
             }
             if (b.precision === "time") {
+                var timeValue: any = sizeColSpan((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) > 1
+                    ? "1h 30m"
+                    : "1h";
                 return {
-                    iconHtml: cardSensorPreviewHtml(b, helpers, "1h 30m", ""),
+                    iconHtml: cardSensorPreviewHtml(b, helpers, timeValue, ""),
                     labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge),
                 };
             }
@@ -607,11 +596,4 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             labelHtml: cardBadgeLabelHtml(helpers, label, SENSOR_CARD_METADATA.preview.numericBadge),
         };
     }
-    return {
-        "SENSOR_CARD_LOCAL_SENSOR": liveGlobal(() => SENSOR_CARD_LOCAL_SENSOR, (value?: any) => { SENSOR_CARD_LOCAL_SENSOR = value; }),
-        "sensorCardIsLocal": staticGlobal(sensorCardIsLocal),
-        "SENSOR_CARD_METADATA": liveGlobal(() => SENSOR_CARD_METADATA, (value?: any) => { SENSOR_CARD_METADATA = value; }),
-        "renderSensorLocalSettings": staticGlobal(renderSensorLocalSettings),
-        "sensorLocalPreview": staticGlobal(sensorLocalPreview),
-    };
 }

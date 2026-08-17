@@ -14,6 +14,11 @@ substitutions:
   voice_wake_chime_file: "device/voice_wake_chime.flac"
   voice_timer_alert_file: "device/voice_timer_alert.flac"
   voice_stt_failure_chime_file: "device/voice_stt_failure_chime.flac"
+  alarm_delay_entry_beep_file: "device/alarm_delay_entry_beep.flac"
+  alarm_delay_exit_beep_file: "device/alarm_delay_exit_beep.flac"
+
+esp32:
+  partitions: "../../common/device/partitions_32mb_card_images.csv"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -24,4 +29,4 @@ packages:
 
 web_server:
   js_url: ""
-  js_include: "../../docs/public/webserver/www.js"
+  js_include: "../../docs/public/webserver/embedded/www.js"

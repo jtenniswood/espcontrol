@@ -1209,9 +1209,13 @@ def self_test() -> None:
         raise AssertionError("check:parallel does not use the fast graph with four workers")
 
     public_aliases = {
-        name: command for name, command in package_scripts.items()
-        if name.startswith("check:") and not name.endswith(":legacy")
+        name: command for name, command in package_scripts.items() if name.startswith("check:")
     }
+    legacy_aliases = sorted(name for name in public_aliases if name.endswith(":legacy"))
+    if legacy_aliases:
+        raise AssertionError(
+            "obsolete legacy check aliases remain: " + ", ".join(legacy_aliases)
+        )
     for alias, command in public_aliases.items():
         if alias in profile_aliases or alias == "check:parallel":
             continue
@@ -1221,14 +1225,6 @@ def self_test() -> None:
         expected_command = f"python3 scripts/check_tasks.py run-task {task_id}"
         if command != expected_command:
             raise AssertionError(f"{alias} does not route through run-task {task_id}")
-    missing_legacy = sorted(
-        alias
-        for alias in public_aliases
-        if alias != "check:parallel" and f"{alias}:legacy" not in package_scripts
-    )
-    if missing_legacy:
-        raise AssertionError(f"public check aliases are missing temporary legacy commands: {missing_legacy}")
-
     never_parallel = {
         "local-artifacts",
         "local-esphome",
@@ -1271,7 +1267,7 @@ def self_test() -> None:
         if not {"scripts/web_source.js", "scripts/build_web_bundle.js"} <= set(registry[task_id].inputs):
             raise AssertionError(f"{task_id} cache keys omit shared web-source helpers")
     for task_id in ("config", "model-contract"):
-        if "compatibility/fixtures/product_compatibility.json" not in registry[task_id].inputs:
+        if "product/v2/product_compatibility.json" not in registry[task_id].inputs:
             raise AssertionError(f"{task_id} cache keys omit compatibility fixtures")
     if not {
         "common/**",
@@ -1975,6 +1971,10 @@ def self_test() -> None:
                 f"saved configuration input {saved_config_input} does not select compiled firmware tests"
             )
 
+    config_store_selected, _, _ = changed_plan(["components/espcontrol/configuration_store.cpp"])
+    if "mutations" not in task_ids(config_store_selected):
+        raise AssertionError("configuration store changes do not select mutation checks")
+
     generated_selected, _, generated_fallback = changed_plan(["components/espcontrol/i18n_generated.h"])
     if generated_fallback is not None or "generated" not in task_ids(generated_selected):
         raise AssertionError("generated inputs do not select their validation task")
@@ -2045,7 +2045,7 @@ def self_test() -> None:
             "docs/staged-then-reverted.md": "initial\n",
             "src/webserver/old.js": "initial\n",
             "components/espcontrol/example.h": "initial\n",
-            "devices/catalog.json": "{}\n",
+            "product/v2/device_catalog.json": "{}\n",
         }
         for relative, content in initial.items():
             destination = repo / relative
@@ -2071,8 +2071,8 @@ def self_test() -> None:
         run_git("restore", "--source=main", "--staged", "--worktree", "docs/guide.md")
         run_git("mv", "src/webserver/old.js", "src/webserver/new.js")
         (repo / "components/espcontrol/example.h").unlink()
-        (repo / "devices/catalog.json").write_text('{"changed": true}\n')
-        run_git("add", "devices/catalog.json")
+        (repo / "product/v2/device_catalog.json").write_text('{"changed": true}\n')
+        run_git("add", "product/v2/device_catalog.json")
         staged_then_reverted = repo / "docs/staged-then-reverted.md"
         staged_then_reverted.write_text("staged\n")
         run_git("add", "docs/staged-then-reverted.md")
@@ -2087,7 +2087,7 @@ def self_test() -> None:
             "src/webserver/old.js",
             "src/webserver/new.js",
             "components/espcontrol/example.h",
-            "devices/catalog.json",
+            "product/v2/device_catalog.json",
             "untracked.txt",
         }
         if not expected_paths <= discovered:

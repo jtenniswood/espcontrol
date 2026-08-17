@@ -39,18 +39,23 @@
     },
     "panelNormalized": {
       "indoorTempEnable": false, "outdoorTempEnable": false, "indoorTempEntity": "", "outdoorTempEntity": "",
-      "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "networkStatusIcon": true,
-      "voiceServices": false, "temperatureDegreeSymbol": true, "subpageChevron": true,
+      "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "clockBarNightMode": false, "networkStatusIcon": true,
+      "voiceServices": false, "alarmDelayAudio": false, "alarmDelayTts": true,
+      "alarmDelayEntryAnnouncement": "Please disarm the alarm",
+      "alarmDelayExitAnnouncement": "Alarm arming, please leave the house",
+      "alarmDelayBeepVolume": 0.45, "alarmDelayFinalCountdown": 10,
+      "temperatureDegreeSymbol": true, "subpageChevron": true,
       "timezone": "Europe/London (GMT+0)", "temperatureUnit": "°F", "language": "en", "clockFormat": "12h",
       "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
       "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
       "screensaverMode": "disabled", "presenceSensorEntity": "", "mediaPlayerSleepPrevention": true,
       "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
+      "coverArtSecondaryMediaPlayerEntity": "",
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
       "coverArtHideExternalInput": true, "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
-      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "screensaverPinRequired": false,
-      "clockScreensaver": false,
+      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "screensaverPinRequired": false, "clockScreensaver": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
+      "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
       "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
     },
     "screenInput": {
@@ -64,9 +69,10 @@
       "schedule_wake_timeout": 30
     },
     "screenNormalized": {
-      "brightnessDayVal": 80, "brightnessNightVal": 20, "automaticBrightnessEnabled": true,
+      "brightnessDayVal": 80, "brightnessNightVal": 20,
+      "brightnessMode": "sunrise_sunset", "manualBrightnessVal": 100,
       "brightnessDawnTime": "06:00", "brightnessDuskTime": "18:00", "scheduleTrigger": "time",
-      "scheduleEnabled": true, "scheduleSensorActivation": "on", "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
+      "scheduleEnabled": true, "scheduleSensorActivation": "on", "scheduleSensorEntity": "", "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
       "scheduleWakeTimeout": 30, "scheduleWakeBrightness": 10, "scheduleDimmedBrightness": 10,
       "scheduleClockBrightness": 10, "scheduleClockTextColor": "FFFFFF"
     }
@@ -101,5 +107,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 627075, "gzip": 148917 }
+  "bundleSize": { "minified": 2559675, "gzip": 1079679, "gzipTolerance": 9216 }
 }

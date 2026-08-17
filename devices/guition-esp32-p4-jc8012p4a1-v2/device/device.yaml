@@ -34,7 +34,6 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -69,7 +68,7 @@ external_components:
     refresh: 1s
 
 espcontrol:
-
+  id: espcontrol_app
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -239,9 +238,9 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(display_mode_controller).target_source_is(
+                return (id(espcontrol_app).display().target_source_is(
                             espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                        id(display_mode_controller).target_mode_is(
+                        id(espcontrol_app).display().target_mode_is(
                             espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
@@ -253,7 +252,7 @@ light:
               - if:
                   condition:
                     lambda: |-
-                      return id(display_mode_controller).current_mode_is(
+                      return id(espcontrol_app).display().current_mode_is(
                           espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
@@ -262,22 +261,19 @@ light:
         - if:
             condition:
               lambda: |-
-                return id(display_mode_controller).takeover_active(
+                return id(espcontrol_app).display().takeover_active(
                            espcontrol::DisplayTakeoverKind::INTERACTIVE) ||
-                       id(display_mode_controller).takeover_active(
+                       id(espcontrol_app).display().takeover_active(
                            espcontrol::DisplayTakeoverKind::CRITICAL);
             then:
               - lambda: 'ESP_LOGD("backlight", "Restoring backlight after OFF event during display takeover");'
               - delay: 10ms
               - script.execute: backlight_apply_brightness
             else:
-              - if:
-                  condition:
-                    lambda: |-
-                      return id(display_mode_controller).target_mode_is(
-                          espcontrol::DisplayMode::ACTIVE);
-                  then:
-                    - script.execute: screen_schedule_manual_sleep
+              - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
 
 # ---------------------------------------------------------------------------
 # I2C bus and touchscreen (GSL3680 capacitive, wakes screensaver on touch)
@@ -295,6 +291,9 @@ touchscreen:
     id: my_touchscreen
     reset_pin: GPIO22
     interrupt_pin: GPIO21
+    # The controller signals a press reliably but may not interrupt again when
+    # the finger lifts. Poll briefly to deliver LVGL's release/click event.
+    touch_timeout: 50ms
     transform:
       swap_xy: false
       mirror_x: true

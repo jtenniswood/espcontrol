@@ -166,6 +166,19 @@ inline void clock_bar_clear_responsive_grid_cards(lv_obj_t *page) {
       cards.end());
 }
 
+// A card that has been reduced to one grid cell must no longer keep the
+// explicit width or height that was applied while it spanned multiple cells.
+inline void clock_bar_unregister_responsive_grid_card(lv_obj_t *card) {
+  if (!card) return;
+  std::vector<ClockBarResponsiveGridCard> &cards = clock_bar_responsive_grid_cards();
+  cards.erase(
+      std::remove_if(cards.begin(), cards.end(),
+                     [card](const ClockBarResponsiveGridCard &entry) {
+                       return entry.card == card;
+                     }),
+      cards.end());
+}
+
 inline void clock_bar_refresh_responsive_grid_cards(lv_obj_t *page = nullptr) {
   std::vector<ClockBarResponsiveGridCard> &cards = clock_bar_responsive_grid_cards();
   for (const ClockBarResponsiveGridCard &entry : cards) {
@@ -226,6 +239,13 @@ inline void clock_bar_register_button_grid_page(lv_obj_t *page) {
   }
 }
 
+inline void clock_bar_unregister_button_grid_page(lv_obj_t *page) {
+  if (!page) return;
+  clock_bar_clear_responsive_grid_cards(page);
+  std::vector<lv_obj_t *> &pages = clock_bar_button_grid_pages();
+  pages.erase(std::remove(pages.begin(), pages.end(), page), pages.end());
+}
+
 inline void clock_bar_set_button_grid_pages_pad_top(lv_obj_t *main_page_obj,
                                                     lv_coord_t pad_top) {
   if (main_page_obj) {
@@ -255,11 +275,14 @@ inline ClockBarVisibility clock_bar_resolve_visibility(
     espcontrol::DisplayMode display_mode,
     bool schedule_inactive) {
   ClockBarVisibility result;
-  // Full-screen screensavers hide the clock bar, but the grid should keep the
-  // same top padding so waking does not briefly resize the cards.
+  // Full-screen screensavers hide the clock bar, but the dimmed screensaver
+  // keeps the normal UI visible and should preserve its complete clock bar.
+  // Keep the same top padding in hidden modes so waking does not briefly
+  // resize the cards.
   result.reserve_space = enabled && !schedule_inactive;
   result.visible = result.reserve_space &&
-      display_mode == espcontrol::DisplayMode::ACTIVE &&
+      (display_mode == espcontrol::DisplayMode::ACTIVE ||
+       display_mode == espcontrol::DisplayMode::DIMMED) &&
       clock_bar_active_on_button_grid_page(main_page_obj);
   return result;
 }
@@ -469,6 +492,63 @@ inline lv_coord_t clock_bar_current_screen_height(lv_coord_t fallback) {
   lv_disp_t *disp = lv_disp_get_default();
   lv_coord_t height = disp ? lv_disp_get_ver_res(disp) : 0;
   return height > 0 ? height : fallback;
+}
+
+// Right-side status icons (network, battery, voice mute, night mode) pack
+// leftwards by glyph edge. Each one is a wide tap target around a narrow centred
+// glyph, so the spacing a user sees depends only on which icons are actually
+// shown and no fixed-width slot is left empty when an icon is hidden.
+struct ClockBarRightIcons {
+  // Distance from the screen's right edge to the left edge of the last placed
+  // glyph, and the glyph-to-glyph gap to keep between neighbours.
+  int cursor = 0;
+  int gap = 8;
+  int right_x = 0;
+  bool has_glyph = false;
+};
+
+// Width of an icon's glyph, falling back to the tap target when the label has
+// not been laid out yet (which only costs a little extra spacing).
+inline int clock_bar_glyph_width(lv_obj_t *label, int fallback) {
+  if (!label) return fallback;
+  const int width = lv_obj_get_width(label);
+  return width > 0 ? width : fallback;
+}
+
+// Begin an empty right-side icon row. If no fixed anchor is seeded, the first
+// visible optional icon occupies the normal rightmost icon position.
+inline ClockBarRightIcons clock_bar_right_icons_begin(int right_x, int gap) {
+  ClockBarRightIcons icons;
+  icons.right_x = right_x > 0 ? right_x : 0;
+  icons.gap = gap > 0 ? gap : 0;
+  return icons;
+}
+
+// Seed a visible glyph that is already aligned at the row's right margin, such
+// as the network icon. Hidden anchors must not call this function.
+inline void clock_bar_right_icons_seed(ClockBarRightIcons &icons,
+                                       int box_width,
+                                       int glyph_width) {
+  if (box_width < glyph_width) box_width = glyph_width;
+  icons.cursor = icons.right_x + (box_width + glyph_width) / 2;
+  icons.has_glyph = true;
+}
+
+// LV_ALIGN_TOP_RIGHT x offset for the next icon, advancing the cursor past its
+// glyph so the following icon packs against it.
+inline int clock_bar_right_icons_next_x(ClockBarRightIcons &icons,
+                                        int box_width,
+                                        int glyph_width) {
+  if (box_width < glyph_width) box_width = glyph_width;
+  if (!icons.has_glyph) {
+    clock_bar_right_icons_seed(icons, box_width, glyph_width);
+    return -icons.right_x;
+  }
+  const int lead = (box_width - glyph_width) / 2;
+  int box_offset = icons.cursor + icons.gap - lead;
+  if (box_offset < 0) box_offset = 0;
+  icons.cursor += icons.gap + glyph_width;
+  return -box_offset;
 }
 
 inline void clock_bar_prepare_text_label(lv_obj_t *obj, int width,

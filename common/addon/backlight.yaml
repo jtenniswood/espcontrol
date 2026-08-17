@@ -18,7 +18,7 @@ button:
   - platform: template
     id: screen_wake
     name: "${entity_screen_wake}"
-    icon: "mdi:monitor-arrow-up"
+    icon: "mdi:monitor-shimmer"
     disabled_by_default: false
     on_press:
       - script.execute: cover_art_pause_after_touch
@@ -44,6 +44,9 @@ globals:
   - id: presence_detected
     type: bool
     initial_value: 'false'
+  - id: schedule_presence_detected
+    type: bool
+    initial_value: 'false'
   - id: media_player_playing
     type: bool
     initial_value: 'false'
@@ -59,6 +62,10 @@ globals:
   - id: screensaver_dimmed_target_level
     type: float
     initial_value: '0.10'
+  - id: dimmed_brightness_migrated
+    type: bool
+    restore_value: true
+    initial_value: 'false'
   - id: clock_brightness_migrated
     type: bool
     restore_value: true
@@ -79,8 +86,6 @@ globals:
   - id: screensaver_action_dimmed
     type: bool
     initial_value: 'false'
-  - id: display_mode_controller
-    type: espcontrol::DisplayModeController
   # Connectivity setup must remain visible even when a restored time-based
   # schedule would otherwise keep the panel dark while time is unavailable.
   - id: connectivity_setup_display_active
@@ -145,6 +150,26 @@ esphome:
             id(clock_brightness_migrated) = true;
             global_preferences->sync();
           }
+
+          if (!id(dimmed_brightness_migrated)) {
+            float legacy_dimmed_pct = id(screensaver_dimmed_brightness).state;
+            if (std::isnan(legacy_dimmed_pct) || legacy_dimmed_pct <= 0.0f) {
+              legacy_dimmed_pct = 10.0f;
+            }
+            if (legacy_dimmed_pct < 1.0f) legacy_dimmed_pct = 1.0f;
+            if (legacy_dimmed_pct > 100.0f) legacy_dimmed_pct = 100.0f;
+
+            auto day_call = id(screensaver_dimmed_brightness_day).make_call();
+            day_call.set_value(legacy_dimmed_pct);
+            day_call.perform();
+
+            auto night_call = id(screensaver_dimmed_brightness_night).make_call();
+            night_call.set_value(legacy_dimmed_pct);
+            night_call.perform();
+
+            id(dimmed_brightness_migrated) = true;
+            global_preferences->sync();
+          }
       - delay: 10s
       - lambda: 'id(clock_brightness_legacy_sync_ready) = true;'
 
@@ -161,12 +186,12 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(display_mode_controller).transition_is_current(
+              return id(espcontrol_app).display().transition_is_current(
                   static_cast<uint32_t>(generation),
                   static_cast<espcontrol::DisplayMode>(target_mode));
           then:
             - lambda: |-
-                const auto transition = id(display_mode_controller).resolve();
+                const auto transition = id(espcontrol_app).display().resolve();
                 const bool schedule_owned = transition.winning_source.has_value() &&
                     (*transition.winning_source == espcontrol::DisplayRequestSource::BOOT_GUARD ||
                      *transition.winning_source == espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
@@ -194,11 +219,11 @@ script:
                   - if:
                       condition:
                         lambda: |-
-                              return id(display_mode_controller).transition_is_current(
+                              return id(espcontrol_app).display().transition_is_current(
                                   static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE);
                       then:
                         - lambda: |-
-                            id(display_mode_controller).complete_transition(
+                            id(espcontrol_app).display().complete_transition(
                                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE);
                 else:
                   - if:
@@ -210,7 +235,7 @@ script:
                             generation: !lambda 'return generation;'
                         - script.wait: display_mode_effect_setup_dimmed
                         - lambda: |-
-                            id(display_mode_controller).complete_transition(
+                            id(espcontrol_app).display().complete_transition(
                                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::SETUP_DIMMED);
                       else:
                         - if:
@@ -222,7 +247,7 @@ script:
                               - if:
                                   condition:
                                     lambda: |-
-                                      return id(display_mode_controller).transition_is_current(
+                                      return id(espcontrol_app).display().transition_is_current(
                                           static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED);
                                   then:
                                     - script.execute:
@@ -230,7 +255,7 @@ script:
                                         generation: !lambda 'return generation;'
                                     - script.wait: show_dimmed_view
                                     - lambda: |-
-                                        id(display_mode_controller).complete_transition(
+                                        id(espcontrol_app).display().complete_transition(
                                             static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED);
                             else:
                               - if:
@@ -242,7 +267,7 @@ script:
                                     - if:
                                         condition:
                                           lambda: |-
-                                            return id(display_mode_controller).transition_is_current(
+                                            return id(espcontrol_app).display().transition_is_current(
                                                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK);
                                         then:
                                           - script.execute:
@@ -250,7 +275,7 @@ script:
                                               generation: !lambda 'return generation;'
                                           - script.wait: show_clock_view
                                           - lambda: |-
-                                              id(display_mode_controller).complete_transition(
+                                              id(espcontrol_app).display().complete_transition(
                                                   static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK);
                                   else:
                                     - if:
@@ -262,7 +287,7 @@ script:
                                               generation: !lambda 'return generation;'
                                           - script.wait: display_mode_effect_off
                                           - lambda: |-
-                                              id(display_mode_controller).complete_transition(
+                                              id(espcontrol_app).display().complete_transition(
                                                   static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF);
                                         else:
                                           - if:
@@ -277,7 +302,7 @@ script:
                                                     generation: !lambda 'return generation;'
                                                 - script.wait: display_mode_effect_cover_art
                                                 - lambda: |-
-                                                    id(display_mode_controller).complete_transition(
+                                                    id(espcontrol_app).display().complete_transition(
                                                         static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART);
 
   - id: display_mode_effect_active
@@ -301,30 +326,42 @@ script:
             - script.execute: backlight_apply_brightness
             - delay: 300ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
                   id(display_mode_effect_active).stop();
                 }
             - script.execute: hide_clock_view
           else:
             - script.execute: hide_clock_view
-            - delay: 100ms
-            - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
-                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
-                  id(display_mode_effect_active).stop();
-                }
+            # The cover-art overlay is already hidden before this effect runs.
+            # Do not hold the controls screen for the clock-screen settling
+            # delay: the large artwork has just triggered a full redraw and a
+            # direct hand-off makes the dismissal feel substantially quicker.
+            - if:
+                condition:
+                  lambda: 'return previous_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - delay: 100ms
+                  - lambda: |-
+                      if (!id(espcontrol_app).display().transition_is_current(
+                            static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
+                        id(display_mode_effect_active).stop();
+                      }
             - if:
                 condition:
                   lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
                 then:
                   - script.execute: navigate_after_api
-            - delay: 50ms
-            - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
-                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
-                  id(display_mode_effect_active).stop();
-                }
+            - if:
+                condition:
+                  lambda: 'return previous_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - delay: 50ms
+                  - lambda: |-
+                      if (!id(espcontrol_app).display().transition_is_current(
+                            static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
+                        id(display_mode_effect_active).stop();
+                      }
             - script.execute: clock_bar_apply
             - script.execute: backlight_apply_brightness
 
@@ -336,9 +373,12 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(display_mode_controller).transition_is_current(
+              return id(espcontrol_app).display().transition_is_current(
                   static_cast<uint32_t>(generation), espcontrol::DisplayMode::SETUP_DIMMED);
           then:
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: 0.5
             - light.turn_on:
                 id: display_backlight
                 brightness: 50%
@@ -351,7 +391,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          auto &controller = id(display_mode_controller);
+          auto &controller = id(espcontrol_app).display();
           auto set_request = [&controller](espcontrol::DisplayRequestSource source,
                                            bool active,
                                            espcontrol::DisplayMode mode) {
@@ -366,7 +406,7 @@ script:
           const bool schedule_night = !connectivity_setup && screen_schedule_night_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
-              id(presence_detected),
+              id(schedule_presence_detected),
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
@@ -398,6 +438,14 @@ script:
 
           } else {
             controller.clear(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
+          }
+
+          // The clock bar's optional moon tracks the night schedule. Re-lay the
+          // bar out only on a change so the every-minute schedule check does not
+          // repeat the work.
+          if (schedule_night != id(clock_bar_night_mode_active)) {
+            id(clock_bar_night_mode_active) = schedule_night;
+            id(clock_bar_apply).execute();
           }
 
           // Playback that began while the night schedule was blocking the
@@ -441,7 +489,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).request(
+          id(espcontrol_app).display().request(
               espcontrol::DisplayRequestSource::MEDIA_PLAYBACK,
               espcontrol::DisplayMode::COVER_ART);
       - script.execute: display_mode_reconcile
@@ -452,7 +500,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_reconcile
@@ -464,7 +512,7 @@ script:
       target_mode: int
     then:
       - lambda: |-
-          auto &controller = id(display_mode_controller);
+          auto &controller = id(espcontrol_app).display();
           const auto source = id(screensaver_sensor_sleep_pending)
               ? espcontrol::DisplayRequestSource::PRESENCE_SENSOR
               : espcontrol::DisplayRequestSource::IDLE_TIMER;
@@ -479,15 +527,15 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
-          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
+          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
+          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
       - script.execute: display_mode_reconcile
 
   - id: display_mode_request_setup_dimmed
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).request(
+          id(espcontrol_app).display().request(
               espcontrol::DisplayRequestSource::SETUP_TIMEOUT,
               espcontrol::DisplayMode::SETUP_DIMMED);
       - script.execute: display_mode_reconcile
@@ -496,7 +544,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
       - script.execute: display_mode_reconcile
 
@@ -509,7 +557,7 @@ script:
       takeover_kind: int
     then:
       - lambda: |-
-          id(display_mode_controller).begin_takeover(
+          id(espcontrol_app).display().begin_takeover(
               static_cast<espcontrol::DisplayTakeoverKind>(takeover_kind));
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
@@ -520,7 +568,7 @@ script:
       takeover_kind: int
     then:
       - lambda: |-
-          id(display_mode_controller).end_takeover(
+          id(espcontrol_app).display().end_takeover(
               static_cast<espcontrol::DisplayTakeoverKind>(takeover_kind));
       - script.execute: display_mode_reconcile
 
@@ -535,7 +583,7 @@ script:
               if (screen_schedule_night_active(
                     id(screen_schedule_trigger).state,
                     id(schedule_enabled).state,
-                    id(presence_detected),
+                    id(schedule_presence_detected),
                     now.is_valid(),
                     now.is_valid() ? now.hour : 0,
                     (int) id(schedule_on_hour).state,
@@ -554,7 +602,7 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    return id(display_mode_controller).target_mode_is(
+                    return id(espcontrol_app).display().target_mode_is(
                                espcontrol::DisplayMode::COVER_ART) ||
                            alarm_display_takeover_active() ||
                            (id(cover_art_screensaver_enabled).state &&
@@ -579,7 +627,7 @@ script:
           condition:
             lambda: |-
               const std::string &state = id(cover_art_last_playback_state);
-              return id(display_mode_controller).target_mode_is(
+              return id(espcontrol_app).display().target_mode_is(
                          espcontrol::DisplayMode::COVER_ART) ||
                      (id(cover_art_media_playing) &&
                       state != "playing" && state != "buffering" && state != "paused");
@@ -587,7 +635,7 @@ script:
             - script.execute: screensaver_idle_check
           else:
             - lambda: |-
-                const auto &controller = id(display_mode_controller);
+                const auto &controller = id(espcontrol_app).display();
                 if (!controller.takeover_active(espcontrol::DisplayTakeoverKind::INTERACTIVE) &&
                     !controller.takeover_active(espcontrol::DisplayTakeoverKind::CRITICAL)) {
                   navigation_return_home(id(main_page)->obj);
@@ -640,26 +688,20 @@ script:
           value: 'true'
       - script.execute: screensaver_sleep_timer
 
-  # Presence sensor mode is lower priority than the screen schedule. This keeps
-  # motion/presence from waking the panel during scheduled off or clock hours.
+  # Screensaver presence remains independent from the Night Schedule sensor.
   - id: screensaver_presence_wake
     mode: restart
     then:
-      - script.execute: screen_schedule_check
-      - script.wait: screen_schedule_check
       - if:
           condition:
-            lambda: |-
-              return id(screensaver_mode).state == "sensor" &&
-                     !screen_schedule_sensor_trigger(
-                         id(screen_schedule_trigger).state);
+            lambda: 'return id(screensaver_mode).state == "sensor";'
           then:
             - globals.set: { id: screensaver_sensor_sleep_pending, value: 'false' }
             - if:
                 condition:
                   lambda: |-
                     return espcontrol::presence_can_wake_display(
-                        id(display_mode_controller).resolve());
+                        id(espcontrol_app).display().resolve());
                 then:
                   - script.execute: screensaver_wake
                 else:
@@ -670,14 +712,9 @@ script:
   - id: screensaver_presence_sleep
     mode: restart
     then:
-      - script.execute: screen_schedule_check
-      - script.wait: screen_schedule_check
       - if:
           condition:
-            lambda: |-
-              return id(screensaver_mode).state == "sensor" &&
-                     !screen_schedule_sensor_trigger(
-                         id(screen_schedule_trigger).state);
+            lambda: 'return id(screensaver_mode).state == "sensor";'
           then:
             - script.execute: screensaver_sleep_sensor
 
@@ -716,7 +753,7 @@ script:
             - script.execute: backlight_force_display_off
             - delay: 100ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF)) {
                   id(backlight_pause_display_off).stop();
                 }
@@ -741,7 +778,7 @@ script:
       target_mode: int
     then:
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -755,7 +792,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.85f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -764,7 +801,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.70f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -773,7 +810,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.55f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -782,7 +819,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.40f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -791,7 +828,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.25f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -800,7 +837,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.12f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -809,7 +846,7 @@ script:
           level: !lambda 'return id(screensaver_fade_start_level) * 0.04f;'
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
             id(backlight_fade_current_ui_to_black).stop();
           }
@@ -824,14 +861,14 @@ script:
       generation: int
     then:
       - lambda: |-
-          const auto transition = id(display_mode_controller).resolve();
+          const auto transition = id(espcontrol_app).display().resolve();
           const bool immediate = transition.winning_source.has_value() &&
               (*transition.winning_source == espcontrol::DisplayRequestSource::BOOT_GUARD ||
                *transition.winning_source == espcontrol::DisplayRequestSource::SCREEN_SCHEDULE ||
                *transition.winning_source == espcontrol::DisplayRequestSource::MANUAL_SLEEP);
           if (immediate) backlight_close_modals_for_display_takeover();
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF)) {
             id(display_mode_effect_off).stop();
           }
@@ -842,11 +879,11 @@ script:
       - script.execute: clock_bar_hide
       - script.wait: clock_bar_hide
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF)) {
             id(display_mode_effect_off).stop();
           }
-          const auto transition = id(display_mode_controller).resolve();
+          const auto transition = id(espcontrol_app).display().resolve();
           const bool automatic = transition.winning_source.has_value() &&
               (*transition.winning_source == espcontrol::DisplayRequestSource::IDLE_TIMER ||
                *transition.winning_source == espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
@@ -858,7 +895,7 @@ script:
           }
       - script.wait: backlight_fade_current_ui_to_black
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF)) {
             id(display_mode_effect_off).stop();
           }
@@ -868,7 +905,7 @@ script:
       - script.execute: clock_bar_hide
       - delay: 50ms
       - lambda: |-
-          if (!id(display_mode_controller).transition_is_current(
+          if (!id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF)) {
             id(display_mode_effect_off).stop();
           }
@@ -887,6 +924,25 @@ script:
     then:
       - script.execute: display_mode_reconcile
 
+  # Home Assistant exposes the physical backlight as a light entity. Treat an
+  # OFF command as persistent manual sleep whenever another visible display
+  # mode is active. Ignore restored OFF state during component setup: it is not
+  # a user command and can otherwise put the controller into MANUAL_SLEEP while
+  # the boot sequence turns the physical backlight back on. Internal automatic
+  # and scheduled OFF transitions already target DISPLAY_OFF, so they must not
+  # create a manual-sleep request.
+  - id: display_backlight_handle_off
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return App.is_setup_complete() &&
+                     !id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::DISPLAY_OFF);
+          then:
+            - script.execute: screen_schedule_manual_sleep
+
   # Touchscreen long-press sleep. This is stronger than the automatic schedule;
   # the next tap wakes it.
   - id: screen_schedule_manual_sleep
@@ -897,7 +953,7 @@ script:
           id: manual_wake_ms
           value: '0'
       - lambda: |-
-          id(display_mode_controller).request(
+          id(espcontrol_app).display().request(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP,
               espcontrol::DisplayMode::DISPLAY_OFF);
       - script.execute: display_mode_reconcile
@@ -917,9 +973,9 @@ script:
       - if:
           condition:
             lambda: |-
-              return (id(display_mode_controller).target_source_is(
+              return (id(espcontrol_app).display().target_source_is(
                           espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                      id(display_mode_controller).target_mode_is(
+                      id(espcontrol_app).display().target_mode_is(
                           espcontrol::DisplayMode::DISPLAY_OFF)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
@@ -991,12 +1047,12 @@ script:
       - script.stop: cover_art_show_track_overlay
       - lambda: |-
           id(screensaver_wake_restore_pending) =
-              !id(display_mode_controller).target_mode_is(
+              !id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::ACTIVE);
           id(screensaver_wake_touch_guard_skip_once) =
-              id(display_mode_controller).target_mode_is(
+              id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::COVER_ART) ||
-              id(display_mode_controller).target_mode_is(
+              id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::DISPLAY_OFF);
       - if:
           condition:
@@ -1010,17 +1066,17 @@ script:
             - lambda: 'lv_obj_move_foreground(id(screensaver_wake_touch_guard));'
             - script.execute: screensaver_wake_touch_block
       - lambda: |-
-          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
-          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
-          id(display_mode_controller).clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
+          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
+          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
           if (id(schedule_enabled).state) {
             auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
             bool schedule_night = screen_schedule_night_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
-              id(presence_detected),
+              id(schedule_presence_detected),
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
@@ -1042,7 +1098,7 @@ script:
               const bool restore_pending = id(screensaver_wake_restore_pending);
               id(screensaver_wake_restore_pending) = false;
               return restore_pending ||
-                  !id(display_mode_controller).current_mode_is(
+                  !id(espcontrol_app).display().current_mode_is(
                       espcontrol::DisplayMode::ACTIVE);
           then:
             - script.stop: screensaver_idle_check
@@ -1150,7 +1206,38 @@ script:
     mode: restart
     then:
       - lambda: |-
+          std::string mode = normalize_brightness_mode(
+              id(brightness_mode).current_option());
           float pct = id(screensaver_dimmed_brightness).state;
+          if (!brightness_mode_manual(mode)) {
+            float day_pct = id(screensaver_dimmed_brightness_day).state;
+            if (std::isnan(day_pct) || day_pct <= 0.0f) day_pct = 10.0f;
+            if (day_pct < 1.0f) day_pct = 1.0f;
+            if (day_pct > 100.0f) day_pct = 100.0f;
+
+            float night_pct = id(screensaver_dimmed_brightness_night).state;
+            if (std::isnan(night_pct) || night_pct <= 0.0f) night_pct = day_pct;
+            if (night_pct < 1.0f) night_pct = 1.0f;
+            if (night_pct > 100.0f) night_pct = 100.0f;
+
+            auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+            bool is_day = id(last_is_daytime);
+            int rise_h = id(sunrise_hour);
+            int rise_m = id(sunrise_minute);
+            int set_h = id(sunset_hour);
+            int set_m = id(sunset_minute);
+            bool times_valid = brightness_schedule_times(
+              mode,
+              id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
+              id(sunset_hour), id(sunset_minute),
+              id(brightness_dawn_time).state, id(brightness_dusk_time).state,
+              rise_h, rise_m, set_h, set_m);
+            pct = calc_brightness_pct(
+              times_valid, rise_h, rise_m, set_h, set_m,
+              now.is_valid() ? now.hour : 12, now.is_valid() ? now.minute : 0,
+              &is_day, day_pct, night_pct);
+            id(last_is_daytime) = is_day;
+          }
           if (std::isnan(pct) || pct <= 0.0f) pct = 10.0f;
           if (pct < 1.0f) pct = 1.0f;
           if (pct > 100.0f) pct = 100.0f;
@@ -1162,9 +1249,12 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(display_mode_controller).current_mode_is(
+              return id(espcontrol_app).display().current_mode_is(
                   espcontrol::DisplayMode::DIMMED);
           then:
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_dimmed_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_dimmed_target_level);'
@@ -1179,16 +1269,14 @@ script:
       - if:
           condition:
             lambda: |-
-              return !id(display_mode_controller).takeover_active(
+              return !id(espcontrol_app).display().takeover_active(
                          espcontrol::DisplayTakeoverKind::INTERACTIVE) &&
-                  id(display_mode_controller).transition_is_current(
+                  id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED);
           then:
             - lvgl.resume:
-            - script.execute: clock_bar_hide
-            - script.wait: clock_bar_hide
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED)) {
                   id(show_dimmed_view).stop();
                 }
@@ -1196,6 +1284,10 @@ script:
             - lambda: 'refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));'
             - lvgl.widget.show: dim_screensaver_touch_guard
             - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'
+            - script.execute: clock_bar_apply
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_dimmed_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_dimmed_target_level);'
@@ -1211,9 +1303,9 @@ script:
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
 
           float pct = ${screen_saver_clock_default_brightness}.0f;
-          if (id(display_mode_controller).target_source_is(
+          if (id(espcontrol_app).display().target_source_is(
                   espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-              id(display_mode_controller).target_mode_is(
+              id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::CLOCK)) {
             pct = id(schedule_clock_brightness).state;
             if (std::isnan(pct) || pct <= 0.0f) {
@@ -1245,8 +1337,14 @@ script:
             int rise_m = id(sunrise_minute);
             int set_h = id(sunset_hour);
             int set_m = id(sunset_minute);
+            std::string timing_mode = normalize_brightness_mode(
+                id(brightness_mode).current_option());
+            if (brightness_mode_manual(timing_mode)) {
+              timing_mode = id(brightness_last_automatic_uses_sun)
+                  ? "Sunrise and sunset" : "Fixed times";
+            }
             bool times_valid = brightness_schedule_times(
-              id(automatic_brightness_enabled).state,
+              timing_mode,
               id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
               id(sunset_hour), id(sunset_minute),
               id(brightness_dawn_time).state, id(brightness_dusk_time).state,
@@ -1265,9 +1363,12 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(display_mode_controller).current_mode_is(
+              return id(espcontrol_app).display().current_mode_is(
                   espcontrol::DisplayMode::CLOCK);
           then:
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_clock_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_clock_target_level);'
@@ -1282,9 +1383,9 @@ script:
       - if:
           condition:
             lambda: |-
-              return !id(display_mode_controller).takeover_active(
+              return !id(espcontrol_app).display().takeover_active(
                          espcontrol::DisplayTakeoverKind::INTERACTIVE) &&
-                  id(display_mode_controller).transition_is_current(
+                  id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK);
           then:
             - lambda: 'navigation_return_home(id(main_page)->obj);'
@@ -1303,7 +1404,7 @@ script:
             - script.execute: clock_bar_hide
             - script.wait: clock_bar_hide
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1313,7 +1414,7 @@ script:
                 target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CLOCK);'
             - script.wait: backlight_fade_current_ui_to_black
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1333,7 +1434,7 @@ script:
                 level: 0%
             - delay: 50ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1342,7 +1443,7 @@ script:
                 level: !lambda 'return id(screensaver_clock_target_level) * 0.20f;'
             - delay: 50ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1351,7 +1452,7 @@ script:
                 level: !lambda 'return id(screensaver_clock_target_level) * 0.40f;'
             - delay: 50ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1360,7 +1461,7 @@ script:
                 level: !lambda 'return id(screensaver_clock_target_level) * 0.60f;'
             - delay: 50ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1369,7 +1470,7 @@ script:
                 level: !lambda 'return id(screensaver_clock_target_level) * 0.80f;'
             - delay: 50ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
@@ -1378,10 +1479,13 @@ script:
                 level: !lambda 'return id(screensaver_clock_target_level);'
             - delay: 50ms
             - lambda: |-
-                if (!id(display_mode_controller).transition_is_current(
+                if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::CLOCK)) {
                   id(show_clock_view).stop();
                 }
+            - script.execute:
+                id: backlight_note_internal_brightness
+                brightness: !lambda 'return id(screensaver_clock_target_level);'
             - light.turn_on:
                 id: display_backlight
                 brightness: !lambda 'return id(screensaver_clock_target_level);'
@@ -1402,7 +1506,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (!id(display_mode_controller).current_mode_is(
+          if (!id(espcontrol_app).display().current_mode_is(
                 espcontrol::DisplayMode::CLOCK)) return;
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
@@ -1427,12 +1531,12 @@ interval:
       - if:
           condition:
             lambda: |-
-              return id(display_mode_controller).current_mode_is(
+              return id(espcontrol_app).display().current_mode_is(
                   espcontrol::DisplayMode::CLOCK);
           then:
             - script.execute: clock_screensaver_refresh_brightness
       - lambda: |-
-          if (!id(display_mode_controller).current_mode_is(
+          if (!id(espcontrol_app).display().current_mode_is(
                 espcontrol::DisplayMode::CLOCK)) return;
           apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
           auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());

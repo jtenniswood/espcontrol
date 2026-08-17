@@ -3,16 +3,16 @@
   "generatedBy": "scripts/check_product_snapshot.py --update",
   "sources": {
     "deviceProfiles": "devices/manifest.json",
-    "cardContract": "common/config/card_contract.json",
-    "entityNames": "common/config/entity_names.json",
-    "icons": "common/assets/icons.json",
-    "compatibilityFixtures": "compatibility/fixtures/product_compatibility.json"
+    "cardContract": "product/v2/card_contract.json",
+    "entityNames": "product/v2/entity_names.json",
+    "icons": "product/v2/icons.json",
+    "compatibilityFixtures": "product/v2/product_compatibility.json"
   },
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 41,
-    "entityNames": 86,
-    "icons": 320,
+    "entityNames": 101,
+    "icons": 334,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
   },
@@ -129,6 +129,7 @@
           },
           "wrapTallLabels": true,
           "volumeWidthCompensationPercent": 95,
+          "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,
           "coverArt": {
             "cover_art_size": "600",
@@ -510,9 +511,9 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "refreshRebuildsSubpages": true,
           "modal": {
             "layoutFamily": "large-landscape",
             "density": "spacious",
@@ -590,7 +591,10 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
-          "esp32C6FirmwareUpdate": true
+          "esp32C6FirmwareUpdate": true,
+          "extraPackages": {
+            "battery": "!include device/battery.yaml"
+          }
         }
       },
       "settings": {
@@ -604,7 +608,7 @@
         "imageSlots": 6
       },
       "public": {
-        "name": "Guition JC8012P4A1 new panel (2624+)",
+        "name": "Guition JC8012P4A1 new panel (2628+)",
         "docsPath": "/screens/jc8012p4a1-v2",
         "screenSize": "10.1 inches",
         "resolution": "1280 x 800",
@@ -701,9 +705,9 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "refreshRebuildsSubpages": true,
           "modal": {
             "layoutFamily": "large-landscape",
             "density": "spacious",
@@ -898,6 +902,7 @@
             "baseTouchTarget": 69
           },
           "wrapTallLabels": false,
+          "refreshRebuildsSubpages": true,
           "coverArt": {
             "cover_art_size": "720",
             "cover_art_decode_size": "720",
@@ -969,11 +974,14 @@
             "screen_schedule_clock_default_brightness": "\"10\"",
             "voice_wake_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac\"",
             "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\"",
-            "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\""
+            "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\"",
+            "alarm_delay_entry_beep_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/30ea813b1e2d4008b019c30862dce478d238a697/devices/esp32-p4-86/device/alarm_delay_entry_beep.flac\"",
+            "alarm_delay_exit_beep_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/30ea813b1e2d4008b019c30862dce478d238a697/devices/esp32-p4-86/device/alarm_delay_exit_beep.flac\""
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
           "localVoiceServices": true,
+          "alarmDelayAudio": true,
           "networkCoprocessor": true,
           "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
@@ -1064,7 +1072,8 @@
           "radius": 1.67,
           "padding": 2.92,
           "iconSize": 9.58,
-          "labelSize": 3.96,
+          "labelSize": 4.583333,
+          "mediaTitleSize": 7.083333,
           "coverArtTitleSize": 14.583333,
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
@@ -1111,6 +1120,7 @@
             "baseTouchTarget": 46
           },
           "wrapTallLabels": false,
+          "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96,
@@ -1266,6 +1276,7 @@
         "light_control",
         "media",
         "media_control",
+        "media_group",
         "media_play_pause",
         "media_transport",
         "media_volume",
@@ -1643,6 +1654,7 @@
           "defaultDriver": "media_play_pause",
           "modes": {
             "control_modal": "media_control",
+            "speaker_group": "media_group",
             "play_pause": "media_play_pause",
             "previous": "media_transport",
             "next": "media_transport",
@@ -3493,9 +3505,23 @@
         ],
         "options": [
           {
+            "name": "fan_light_entity",
+            "label": "Light Entity",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
             "name": "fan_tabs",
             "label": "Visible Tabs",
             "kind": "text",
+            "values": [
+              "power",
+              "speed",
+              "preset",
+              "oscillation",
+              "direction",
+              "light"
+            ],
             "defaultValue": "power|speed|preset|oscillation|direction",
             "omitDefault": true
           }
@@ -3536,6 +3562,7 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "fan_light_entity",
             "fan_tabs"
           ],
           "optionHook": "normalize_fan_options"
@@ -3637,6 +3664,49 @@
             ],
             "defaultValue": "label",
             "omitDefault": true
+          },
+          {
+            "name": "confirmation_mode",
+            "label": "Confirmation Required",
+            "kind": "choice",
+            "values": [
+              "",
+              "off",
+              "on",
+              "both"
+            ],
+            "defaultValue": "",
+            "omitDefault": true,
+            "storage": [
+              "confirm_off",
+              "confirm_on"
+            ]
+          },
+          {
+            "name": "confirm_message",
+            "label": "Message",
+            "kind": "text",
+            "defaultValue": "Close the garage door?",
+            "omitDefault": true,
+            "defaultValueByMode": {
+              "off": "Close the garage door?",
+              "on": "Open the garage door?",
+              "both": "Open or close the garage door?"
+            }
+          },
+          {
+            "name": "confirm_yes",
+            "label": "Confirm Button",
+            "kind": "text",
+            "defaultValue": "Yes",
+            "omitDefault": true
+          },
+          {
+            "name": "confirm_no",
+            "label": "Cancel Button",
+            "kind": "text",
+            "defaultValue": "No",
+            "omitDefault": true
           }
         ],
         "normalization": {
@@ -3675,7 +3745,12 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
-            "label_display"
+            "label_display",
+            "confirm_off",
+            "confirm_on",
+            "confirm_message",
+            "confirm_yes",
+            "confirm_no"
           ],
           "optionHook": "normalize_access_options"
         },
@@ -4186,6 +4261,7 @@
             "kind": "choice",
             "values": [
               "control_modal",
+              "speaker_group",
               "play_pause",
               "previous",
               "next",
@@ -4247,14 +4323,9 @@
             ]
           },
           {
-            "name": "cover_art_action",
-            "label": "Press Action",
-            "kind": "choice",
-            "values": [
-              "play_pause",
-              "control_modal"
-            ],
-            "defaultValue": "play_pause",
+            "name": "cover_art_details",
+            "label": "Show Track Details",
+            "kind": "flag",
             "omitDefault": true,
             "applicability": [
               {
@@ -4266,9 +4337,9 @@
             ]
           },
           {
-            "name": "cover_art_details",
-            "label": "Show Track Details",
-            "kind": "flag",
+            "name": "cover_art_secondary_entity",
+            "label": "External Source Media Entity",
+            "kind": "text",
             "omitDefault": true,
             "applicability": [
               {
@@ -4295,7 +4366,25 @@
                 "operator": "in",
                 "value": [
                   "control_modal",
+                  "speaker_group",
                   "volume"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "speaker_group_entity",
+            "label": "Speaker Discovery Entity",
+            "kind": "text",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "in",
+                "value": [
+                  "control_modal",
+                  "speaker_group"
                 ]
               }
             ]
@@ -4441,8 +4530,9 @@
           "canonicalOptionOrder": [
             "label_display",
             "number_display",
-            "cover_art_action",
             "cover_art_details",
+            "cover_art_secondary_entity",
+            "speaker_group_entity",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",
@@ -4767,7 +4857,7 @@
           },
           {
             "name": "time_unit",
-            "label": "Input Unit",
+            "label": "Incoming Value Unit",
             "kind": "choice",
             "values": [
               "",
@@ -5876,6 +5966,40 @@
         ]
       },
       {
+        "key": "screen_clock_bar_night_mode",
+        "domain": "switch",
+        "name": "Screen: Clock Bar Night Mode Icon",
+        "objectIds": [
+          "screen__clock_bar_night_mode_icon",
+          "screen_clock_bar_night_mode_icon",
+          "clock_bar_night_mode_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_battery_status",
+        "domain": "switch",
+        "name": "Screen: Battery Status Icon",
+        "objectIds": [
+          "screen__battery_status",
+          "screen_battery_status",
+          "battery_status_enabled"
+        ],
+        "groups": [
+          "settings_battery"
+        ]
+      },
+      {
+        "key": "battery_percent",
+        "domain": "sensor",
+        "name": "Battery",
+        "groups": [
+          "settings_battery"
+        ]
+      },
+      {
         "key": "voice_services",
         "domain": "switch",
         "name": "Voice Services",
@@ -5885,6 +6009,81 @@
         ],
         "groups": [
           "settings_voice"
+        ]
+      },
+      {
+        "key": "alarm_delay_audio",
+        "domain": "switch",
+        "name": "Alarm Delay: Audio",
+        "objectIds": [
+          "alarm_delay__audio",
+          "alarm_delay_audio",
+          "alarm_delay_audio_enabled"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_tts",
+        "domain": "switch",
+        "name": "Alarm Delay: TTS",
+        "objectIds": [
+          "alarm_delay__tts",
+          "alarm_delay_tts",
+          "alarm_delay_tts_enabled"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_entry_announcement",
+        "domain": "text",
+        "name": "Alarm Delay: Entry Announcement",
+        "objectIds": [
+          "alarm_delay__entry_announcement",
+          "alarm_delay_entry_announcement"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_exit_announcement",
+        "domain": "text",
+        "name": "Alarm Delay: Exit Announcement",
+        "objectIds": [
+          "alarm_delay__exit_announcement",
+          "alarm_delay_exit_announcement"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_beep_volume",
+        "domain": "number",
+        "name": "Alarm Delay: Beep Volume",
+        "objectIds": [
+          "alarm_delay__beep_volume",
+          "alarm_delay_beep_volume"
+        ],
+        "groups": [
+          "settings_alarm_audio"
+        ]
+      },
+      {
+        "key": "alarm_delay_final_countdown",
+        "domain": "number",
+        "name": "Alarm Delay: Final Countdown",
+        "objectIds": [
+          "alarm_delay__final_countdown",
+          "alarm_delay_final_countdown",
+          "alarm_delay_final_countdown_seconds"
+        ],
+        "groups": [
+          "settings_alarm_audio"
         ]
       },
       {
@@ -5998,6 +6197,17 @@
         ]
       },
       {
+        "key": "screen_schedule_sensor_entity",
+        "domain": "text",
+        "name": "Screen Schedule Sensor Entity",
+        "objectIds": [
+          "screen_schedule_sensor_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "screen_saver_media_player_sleep_prevention",
         "domain": "switch",
         "name": "Screen Saver: Media Player Sleep Prevention",
@@ -6042,6 +6252,19 @@
           "screen_saver__cover_art_entity",
           "screen_saver_cover_art_entity",
           "cover_art_media_player_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_cover_art_secondary_entity",
+        "domain": "text",
+        "name": "Screen Saver: External Source Media Entity",
+        "objectIds": [
+          "screen_saver__external_source_media_entity",
+          "screen_saver_cover_art_secondary_entity",
+          "cover_art_secondary_media_player_entity"
         ],
         "groups": [
           "settings"
@@ -6153,6 +6376,28 @@
         "key": "screen_saver_clock_brightness",
         "domain": "number",
         "name": "Screen Saver: Clock Brightness",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_daytime_dimmed_brightness",
+        "domain": "number",
+        "name": "Screen Saver: Daytime Dimmed Brightness",
+        "objectIds": [
+          "screen_saver__daytime_dimmed_brightness"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_nighttime_dimmed_brightness",
+        "domain": "number",
+        "name": "Screen Saver: Nighttime Dimmed Brightness",
+        "objectIds": [
+          "screen_saver__nighttime_dimmed_brightness"
+        ],
         "groups": [
           "settings"
         ]
@@ -6298,11 +6543,24 @@
         ]
       },
       {
-        "key": "screen_automatic_brightness",
-        "domain": "switch",
-        "name": "Screen: Automatic Brightness",
+        "key": "display_backlight",
+        "domain": "light",
+        "name": "Display Backlight",
         "objectIds": [
-          "screen__automatic_brightness"
+          "display_backlight"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_brightness_mode",
+        "domain": "select",
+        "name": "Screen: Brightness Mode",
+        "objectIds": [
+          "screen__brightness_mode",
+          "screen_brightness_mode",
+          "brightness_mode"
         ],
         "groups": [
           "settings"
@@ -6555,6 +6813,19 @@
           "firmware__update_frequency",
           "firmware_update_frequency",
           "update_frequency_select"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "esp32_c6_auto_update",
+        "domain": "switch",
+        "name": "WiFi Firmware: Auto Update",
+        "objectIds": [
+          "wifi_firmware__auto_update",
+          "wifi_firmware_auto_update",
+          "c6_auto_update_switch"
         ],
         "groups": [
           "settings"
@@ -6914,6 +7185,11 @@
         "mdi": "bathtub"
       },
       {
+        "name": "Bathtub Outline",
+        "codepoint": "F1819",
+        "mdi": "bathtub-outline"
+      },
+      {
         "name": "Bed",
         "codepoint": "F02E3",
         "mdi": "bed"
@@ -7009,6 +7285,11 @@
         "mdi": "ceiling-light-multiple"
       },
       {
+        "name": "Ceiling Light Multiple Outline",
+        "codepoint": "F18DE",
+        "mdi": "ceiling-light-multiple-outline"
+      },
+      {
         "name": "Chandelier",
         "codepoint": "F1793",
         "mdi": "chandelier"
@@ -7092,6 +7373,16 @@
         "name": "Desk Lamp",
         "codepoint": "F095F",
         "mdi": "desk-lamp"
+      },
+      {
+        "name": "Desk Lamp Off",
+        "codepoint": "F1B1F",
+        "mdi": "desk-lamp-off"
+      },
+      {
+        "name": "Desk Lamp On",
+        "codepoint": "F1B20",
+        "mdi": "desk-lamp-on"
       },
       {
         "name": "Dishwasher",
@@ -7319,6 +7610,16 @@
         "mdi": "home"
       },
       {
+        "name": "Home Lightbulb",
+        "codepoint": "F1251",
+        "mdi": "home-lightbulb"
+      },
+      {
+        "name": "Home Lightbulb Outline",
+        "codepoint": "F1252",
+        "mdi": "home-lightbulb-outline"
+      },
+      {
         "name": "Heat Pump",
         "codepoint": "F1A43",
         "mdi": "heat-pump"
@@ -7437,6 +7738,16 @@
         "name": "Lightbulb",
         "codepoint": "F0335",
         "mdi": "lightbulb"
+      },
+      {
+        "name": "Lightbulb Auto",
+        "codepoint": "F1800",
+        "mdi": "lightbulb-auto"
+      },
+      {
+        "name": "Lightbulb Auto Outline",
+        "codepoint": "F1801",
+        "mdi": "lightbulb-auto-outline"
       },
       {
         "name": "Lightbulb Group",
@@ -7909,6 +8220,21 @@
         "mdi": "speaker"
       },
       {
+        "name": "Speaker Multiple",
+        "codepoint": "F0D38",
+        "mdi": "speaker-multiple"
+      },
+      {
+        "name": "Speaker Wireless",
+        "codepoint": "F071F",
+        "mdi": "speaker-wireless"
+      },
+      {
+        "name": "Speaker Off",
+        "codepoint": "F04C4",
+        "mdi": "speaker-off"
+      },
+      {
         "name": "Speaker Pause",
         "codepoint": "F1B73",
         "mdi": "speaker-pause"
@@ -7932,6 +8258,11 @@
         "name": "Sprinkler",
         "codepoint": "F105F",
         "mdi": "sprinkler"
+      },
+      {
+        "name": "Sprinkler Variant",
+        "codepoint": "F1060",
+        "mdi": "sprinkler-variant"
       },
       {
         "name": "Stop",
@@ -8062,6 +8393,16 @@
         "name": "Toilet",
         "codepoint": "F09AB",
         "mdi": "toilet"
+      },
+      {
+        "name": "Track Light",
+        "codepoint": "F0914",
+        "mdi": "track-light"
+      },
+      {
+        "name": "Track Light Off",
+        "codepoint": "F1B01",
+        "mdi": "track-light-off"
       },
       {
         "name": "Transmission Tower",

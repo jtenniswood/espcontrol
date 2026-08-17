@@ -73,5 +73,65 @@
       "precision": "",
       "options": "label_display=status"
     }
+  },
+  {
+    "name": "close confirmation omits default text",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;;;garage;;confirm_off,confirm_message=Close%20the%20garage%20door?,confirm_yes=Yes,confirm_no=No,ignored=1",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": "confirm_off"
+    }
+  },
+  {
+    "name": "both confirmation preserves custom text alongside label display",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;;;garage;;label_display=status,confirm_off,confirm_on,confirm_message=Check%20first?,confirm_yes=Do%20it,confirm_no=Nope,ignored=1",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": "label_display=status,confirm_off,confirm_on,confirm_message=Check first?,confirm_yes=Do it,confirm_no=Nope"
+    }
+  },
+  {
+    "name": "disabled confirmation drops confirm text",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;;;garage;;confirm_message=Check%20first?,confirm_yes=Do%20it,confirm_no=Nope",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "open command confirmation omits default text",
+    "input": "cover.garage;Open;Garage Open;Auto;open;;garage;;confirm_on,confirm_message=Open%20the%20garage%20door?",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Open",
+      "icon": "Garage Open",
+      "icon_on": "Auto",
+      "sensor": "open",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": "confirm_on"
+    }
   }
 ]

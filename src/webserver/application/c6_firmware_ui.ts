@@ -1,5 +1,18 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installC6FirmwareUiModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import type { UiRuntimeState } from "./state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+
+export interface C6FirmwareFeature {
+    updateKnownAvailable(): boolean;
+    syncUi(): void;
+    setCurrentVersion(version?: any): void;
+    setLatestVersion(version?: any): void;
+    setUpdateAvailable(value?: any): void;
+}
+
+export function createC6FirmwareFeature(runtime: UiRuntimeState, firmwareUpdate: FirmwareUpdateFeature): C6FirmwareFeature {
+    const els = runtime.els;
+    const { syncCardBadge: syncFirmwareCardBadge } = firmwareUpdate;
     // WiFi co-processor firmware update UI helpers.
     function displayC6FirmwareVersion(this: any, version?: any) {
         version = String(version == null ? "" : version).trim();
@@ -23,11 +36,18 @@ export function installC6FirmwareUiModule(): GlobalDescriptors {
         if (els.c6FirmwareBadge) {
             els.c6FirmwareBadge.classList.toggle("sp-hidden", !c6FirmwareUpdateKnownAvailable());
         }
+        syncFirmwareCardBadge();
         if (els.c6FirmwareCurrent) {
             els.c6FirmwareCurrent.textContent = displayC6FirmwareVersion(state.c6FirmwareCurrentVersion);
         }
         if (els.c6FirmwareLatest) {
             els.c6FirmwareLatest.textContent = displayC6FirmwareVersion(state.c6FirmwareLatestVersion);
+        }
+        if (els.c6FirmwareAutoUpdateRow) {
+            els.c6FirmwareAutoUpdateRow.style.display = show && state.c6FirmwareAutoUpdateSupported ? "" : "none";
+        }
+        if (els.c6FirmwareAutoUpdate) {
+            els.c6FirmwareAutoUpdate.checked = state.c6FirmwareAutoUpdate;
         }
         if (els.c6FirmwareStatus) {
             var cls: any = "sp-fw-status";
@@ -87,12 +107,10 @@ export function installC6FirmwareUiModule(): GlobalDescriptors {
         syncC6FirmwareUi();
     }
     return {
-        "displayC6FirmwareVersion": staticGlobal(displayC6FirmwareVersion),
-        "c6FirmwareVersionLooksKnown": staticGlobal(c6FirmwareVersionLooksKnown),
-        "c6FirmwareUpdateKnownAvailable": staticGlobal(c6FirmwareUpdateKnownAvailable),
-        "syncC6FirmwareUi": staticGlobal(syncC6FirmwareUi),
-        "setC6FirmwareCurrentVersion": staticGlobal(setC6FirmwareCurrentVersion),
-        "setC6FirmwareLatestVersion": staticGlobal(setC6FirmwareLatestVersion),
-        "setC6FirmwareUpdateAvailable": staticGlobal(setC6FirmwareUpdateAvailable),
+        updateKnownAvailable: c6FirmwareUpdateKnownAvailable,
+        syncUi: syncC6FirmwareUi,
+        setCurrentVersion: setC6FirmwareCurrentVersion,
+        setLatestVersion: setC6FirmwareLatestVersion,
+        setUpdateAvailable: setC6FirmwareUpdateAvailable,
     };
 }

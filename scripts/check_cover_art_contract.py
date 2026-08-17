@@ -11,6 +11,23 @@ SOURCE = r'''
 #include "cover_art.h"
 using namespace espcontrol::cover_art;
 int main() {
+  assert(external_media_source("TV"));
+  assert(external_media_source(" line-in "));
+  assert(external_media_source("Line In"));
+  assert(external_media_source("HDMI"));
+  assert(external_media_source("hdmi 1"));
+  assert(!external_media_source("Spotify"));
+  assert(media_entity_state_usable("playing"));
+  assert(media_entity_state_usable("paused"));
+  assert(media_entity_state_usable(" BUFFERING "));
+  assert(!media_entity_state_usable("idle"));
+  assert(!media_entity_state_usable("off"));
+  assert(!media_entity_state_usable(" unavailable "));
+  assert(!use_secondary_media_entity(false, true, true, true));
+  assert(!use_secondary_media_entity(true, false, true, true));
+  assert(!use_secondary_media_entity(true, true, false, true));
+  assert(!use_secondary_media_entity(true, true, true, false));
+  assert(use_secondary_media_entity(true, true, true, true));
   PolicyInput p; assert(!policy_allows_display(p));
   p.enabled = p.media_playing = p.entity_configured = true; assert(policy_allows_display(p));
   p.external_input_active = p.hide_external_input = true;
@@ -142,6 +159,49 @@ for required in (
         raise SystemExit("P4 JPEG workspace must be released after image buffer allocation failure")
 
 image_cards = (ROOT / "components" / "espcontrol" / "button_grid_image.h").read_text(encoding="utf-8")
+for required in (
+    "RefreshBatch media_artwork_refresh",
+    "RefreshTrigger media_artwork_trigger",
+    "IMAGE_CARD_MEDIA_ARTWORK_TRIGGER_DEBOUNCE_MS = 75",
+    "IMAGE_CARD_MEDIA_ARTWORK_RESPONSE_DEBOUNCE_MS = 300",
+    "if (ctx->media_artwork_refresh.active())",
+    "media_artwork_refresh.begin(",
+    "media_artwork_refresh.complete()",
+    "Ignoring stale media artwork response",
+):
+    if required not in image_cards:
+        raise SystemExit(f"Media artwork refresh-batch contract missing: {required}")
+image_grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+if "image_card_schedule_media_artwork_refresh(art)" not in image_grid:
+    raise SystemExit("Media artwork subscriptions must use the trigger scheduler")
+screen_cover_art = (ROOT / "common" / "device" / "screen_cover_art.yaml").read_text(encoding="utf-8")
+for required in (
+    "artwork_refresh.begin(",
+    "artwork_refresh.receive(",
+    "artwork_refresh.finish();",
+    "cover_art_request_paired_artwork",
+    "cover_art_schedule_paired_artwork",
+    "ARTWORK_TRIGGER_DEBOUNCE_MS",
+    "cover_art_artwork_trigger).schedule(force_refresh)",
+    "cover_art_artwork_trigger).consume()",
+    "Ignoring stale %s artwork response",
+):
+    if required not in screen_cover_art:
+        raise SystemExit(f"Cover-art screensaver refresh-batch contract missing: {required}")
+deferred_retry_start = screen_cover_art.index("  - id: cover_art_deferred_request_artwork")
+trigger_scheduler_start = screen_cover_art.index("  - id: cover_art_schedule_paired_artwork")
+deferred_retry = screen_cover_art[deferred_retry_start:trigger_scheduler_start]
+if "script.execute: cover_art_request_paired_artwork" not in deferred_retry:
+    raise SystemExit("Cover-art failed reads must retry the paired request immediately")
+if "id: cover_art_schedule_paired_artwork" in deferred_retry:
+    raise SystemExit("Cover-art failed reads must not use the trigger debounce")
+image_decoder = (ROOT / "components" / "artwork_image" / "image_decoder.cpp").read_text(encoding="utf-8")
+for required in (
+    "if (!this->buffer_ || offset > this->size_)",
+    "return nullptr;",
+):
+    if required not in image_decoder:
+        raise SystemExit(f"Artwork download-buffer null-safety contract missing: {required}")
 overlay_tint_start = image_cards.find("inline void image_card_apply_media_overlay_tint(")
 overlay_tint_end = image_cards.find("\ninline void image_card_apply_downloaded", overlay_tint_start)
 if overlay_tint_start < 0 or overlay_tint_end < 0:
@@ -155,8 +215,8 @@ if ".sp-media-cover-tint{position:absolute;inset:-2px;background:rgba(49,49,49,.
     raise SystemExit("Web preview media cover tint must use the 60% standard card grey")
 for required in (
     ".sp-btn-big .sp-media-cover-details-title{font-size:var(--media-cover-artist)}",
+    ".sp-btn-big.sp-media-cover-control-fonts .sp-media-cover-details-title{font-size:calc(var(--btn-label)*1.75)}",
     ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}",
-    ".sp-btn-big .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--btn-label)}",
     ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist,.sp-btn-portrait-large .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--media-cover-artist)}",
     ".sp-btn-big.sp-media-cover-details-card,.sp-btn-extra-large.sp-media-cover-details-card,.sp-btn-portrait-large.sp-media-cover-details-card{justify-content:flex-start}",
     ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}",
@@ -164,6 +224,13 @@ for required in (
 ):
     if required not in web_styles:
         raise SystemExit(f"Large cover art web font-selection contract missing: {required}")
+web_media = (ROOT / "src" / "webserver" / "cards" / "media.ts").read_text(encoding="utf-8")
+for required in (
+    'deviceId === "guition-esp32-p4-jc4880p443"',
+    '" sp-media-cover-control-fonts"',
+):
+    if required not in web_media:
+        raise SystemExit(f"4.3-inch P4 cover art preview font contract missing: {required}")
 for required in (
     "image_card_uses_background_pipeline(next->image, next->source_url)",
 ):
@@ -214,8 +281,37 @@ resubscribe_end = cover_art.find("\n  - id:", resubscribe_start + 1)
 if resubscribe_start < 0 or resubscribe_end < 0:
     raise SystemExit("Cover art subscription lifecycle contract missing")
 resubscribe = cover_art[resubscribe_start:resubscribe_end]
-if "ha_get_" in resubscribe:
-    raise SystemExit("Cover art must use live subscriptions instead of retained one-shot reads")
+if "cover_art_request_paired_artwork" not in cover_art:
+    raise SystemExit("Cover art must retain paired artwork refresh requests")
+cover_art_subscription_order = []
+for handler, attribute in (
+    ("handle_media_content_type", "media_content_type"),
+    ("handle_media_content_id", "media_content_id"),
+    ("handle_media_title", "media_title"),
+    ("handle_media_artist", "media_artist"),
+    ("handle_media_album", "media_album_name"),
+):
+    handler_start = resubscribe.find(handler)
+    subscription_start = resubscribe.find(
+        f'std::string("{attribute}")', handler_start
+    )
+    if handler_start < 0 or subscription_start < 0:
+        raise SystemExit(f"Cover art metadata policy subscription missing: {attribute}")
+    cover_art_subscription_order.append(subscription_start)
+if cover_art_subscription_order != sorted(cover_art_subscription_order):
+    raise SystemExit(
+        "Cover art must subscribe to content kind before title, artist, and album"
+    )
+for required in (
+    "media_metadata_clear_decision(",
+    "media_content_identity_fingerprint(",
+    "should_replace_media_metadata_identity(next)",
+    "id(cover_art_content_fingerprint) = 0;",
+    "id(cover_art_content_type).clear();",
+    "id(cover_art_content_kind) = static_cast<uint8_t>(",
+):
+    if required not in resubscribe:
+        raise SystemExit(f"Cover art metadata reset contract missing: {required}")
 proxy_404_start = cover_art.find("last_error_was_ha_media_proxy_not_found()")
 proxy_404_end = cover_art.find("- script.execute: cover_art_retry_download", proxy_404_start)
 if proxy_404_start < 0 or proxy_404_end < 0:
@@ -240,8 +336,64 @@ if metadata_start < 0 or metadata_end < 0:
 metadata = media[metadata_start:metadata_end]
 if 'state->entity_id, std::string("media_artist")' in metadata:
     raise SystemExit("Media track changes must not retain duplicate one-shot metadata reads")
-if "state->artist.clear()" in metadata:
+artist_subscription = metadata.find('std::string("media_artist")')
+if artist_subscription < 0:
+    raise SystemExit("Media artist subscription contract missing")
+if "state->artist.clear()" in metadata[:artist_subscription]:
     raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
+content_start = media.find(
+    "inline void media_playback_subscribe_content(MediaPlaybackState *state) {"
+)
+content_end = media.find(
+    "inline void media_playback_subscribe_friendly_name", content_start
+)
+if content_start < 0 or content_end < 0:
+    raise SystemExit("Media content subscription contract missing")
+content = media[content_start:content_end]
+content_type_subscription = content.find('std::string("media_content_type")')
+content_id_subscription = content.find('std::string("media_content_id")')
+if not 0 <= content_type_subscription < content_id_subscription:
+    raise SystemExit("Media content type must be subscribed before the content ID")
+for required in (
+    "media_metadata_clear_decision(",
+    "media_content_identity_fingerprint(",
+    "should_replace_media_metadata_identity(",
+    "if (decision.clear_title) state->title.clear();",
+    "if (decision.clear_grouping) state->artist.clear();",
+):
+    if required not in content:
+        raise SystemExit(f"Media item-change policy contract missing: {required}")
+for subscription_helper in (
+    "subscribe_media_control_state",
+    "subscribe_media_now_playing_state",
+):
+    helper_start = media.find(f"inline void {subscription_helper}")
+    if helper_start < 0:
+        raise SystemExit(f"Media subscription helper missing: {subscription_helper}")
+    helper_end = media.find("\n}", helper_start)
+    helper = media[helper_start:helper_end]
+    content_call = helper.find("media_playback_subscribe_content(state)")
+    metadata_call = helper.find("media_playback_subscribe_metadata(state)")
+    if not 0 <= content_call < metadata_call:
+        raise SystemExit(
+            f"{subscription_helper} must subscribe to content before metadata"
+        )
+
+media_driver = (
+    ROOT / "components" / "espcontrol" / "button_grid_media_driver.h"
+).read_text(encoding="utf-8")
+route_start = media_driver.find("inline void media_driver_bind_cover_art_route(")
+route_end = media_driver.find("\ninline ", route_start + 1)
+if route_start < 0 or route_end < 0:
+    raise SystemExit("Media cover-art route subscription contract missing")
+route = media_driver[route_start:route_end]
+for state_name in ("primary", "secondary"):
+    content_call = route.find(f"media_playback_subscribe_content({state_name})")
+    metadata_call = route.find(f"media_playback_subscribe_metadata({state_name})")
+    if not 0 <= content_call < metadata_call:
+        raise SystemExit(
+            f"Media cover-art {state_name} content must be subscribed before metadata"
+        )
 for required in (
     "inline bool media_cover_art_uses_screensaver_fonts(int row_span, int col_span)",
     "return row_span >= 2 && col_span >= 2;",
@@ -279,7 +431,9 @@ if "ctx->artist_lbl = s.text_lbl;" in cover_details:
 
 for required in (
     "bool highlight_playing = true;",
-    "ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);",
+    "set_card_checked_state(ctx->btn, ctx->available &&",
+    "ctx->group_only ? media_control_group_size(ctx) > 1",
+    ": ctx->highlight_playing && ctx->playing));",
 ):
     if required not in media:
         raise SystemExit(f"Media control playing-highlight contract missing: {required}")
@@ -287,11 +441,25 @@ for required in (
 media_driver = (ROOT / "components" / "espcontrol" / "button_grid_media_driver.h").read_text(encoding="utf-8")
 if "if (control) control->highlight_playing = false;" not in media_driver:
     raise SystemExit("Cover art control modals must not highlight their parent card while playing")
+for required in (
+    "display.modal.layout_family == DisplayModalLayoutFamily::COMPACT_PORTRAIT",
+    "compact_portrait_cover_art\n      ? display_media_control_title_font(display)",
+    "compact_portrait_cover_art\n      ? display_media_control_artist_font(display, label_font)",
+):
+    if required not in media_driver:
+        raise SystemExit(f"2x2 cover art must reuse All Controls fonts: {required}")
 
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
 if "media_cover_art_limits_title_to_two_lines(row_span, col_span)" not in grid:
     raise SystemExit("Cover art layout refresh must keep track titles limited to two lines")
-if "if (ha_api_state_connected()) refresh_image_cards();" not in grid:
+for required in (
+    "display.modal.layout_family == DisplayModalLayoutFamily::COMPACT_PORTRAIT",
+    "compact_portrait\n        ? display_media_control_title_font(display)",
+    "compact_portrait\n        ? display_media_control_artist_font(display, label_font)",
+):
+    if required not in grid:
+        raise SystemExit(f"2x2 cover art refresh must reuse All Controls fonts: {required}")
+if "if (ha_api_state_connected()) {" not in grid or "refresh_image_cards();" not in grid:
     raise SystemExit("Grid startup must refresh bound cover artwork after Home Assistant state is ready")
 for required in (
     "lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);",
@@ -308,7 +476,7 @@ media_art = grid[media_art_start:media_art_end]
 for required in (
     'std::string("entity_picture")',
     'std::string("entity_picture_local")',
-    "image_card_request_media_artwork(art)",
+    "image_card_schedule_media_artwork_refresh(art)",
 ):
     if required not in media_art:
         raise SystemExit(f"Media card cover art subscription contract missing: {required}")

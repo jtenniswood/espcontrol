@@ -31,6 +31,34 @@ globals:
   - id: schedule_mode_clock
     type: bool
     initial_value: 'false'
+  - id: screen_schedule_sensor_entity_migrated
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: brightness_mode_migrated
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: manual_brightness_pct
+    type: float
+    restore_value: true
+    initial_value: '100.0'
+  - id: brightness_last_automatic_uses_sun
+    type: bool
+    restore_value: true
+    initial_value: 'true'
+  - id: brightness_mode_runtime_ready
+    type: bool
+    initial_value: 'false'
+  - id: brightness_mode_last_observed
+    type: std::string
+    initial_value: '"Sunrise and sunset"'
+  - id: backlight_expected_internal_level
+    type: float
+    initial_value: '1.0'
+  - id: backlight_expected_internal_level_valid
+    type: bool
+    initial_value: 'false'
 
 # =============================================================================
 # SUNRISE / SUNSET DISPLAY
@@ -62,6 +90,34 @@ esphome:
     priority: -190
     then:
       - lambda: |-
+          if (!id(screen_schedule_sensor_entity_migrated)) {
+            auto call = id(screen_schedule_sensor_entity).make_call();
+            call.set_value(id(presence_sensor_entity).state);
+            call.perform();
+            id(screen_schedule_sensor_entity_migrated) = true;
+            global_preferences->sync();
+          }
+      - lambda: |-
+          if (!id(brightness_mode_migrated)) {
+            const char *migrated_mode = id(automatic_brightness_legacy).state
+                ? "Sunrise and sunset" : "Fixed times";
+            auto mode_call = id(brightness_mode).make_call();
+            mode_call.set_option(migrated_mode);
+            mode_call.perform();
+            id(brightness_last_automatic_uses_sun) =
+                id(automatic_brightness_legacy).state;
+            id(brightness_mode_migrated) = true;
+            global_preferences->sync();
+          }
+          std::string mode = normalize_brightness_mode(
+              id(brightness_mode).current_option());
+          id(brightness_mode_last_observed) = mode;
+          if (!brightness_mode_manual(mode)) {
+            id(brightness_last_automatic_uses_sun) =
+                brightness_mode_uses_sun(mode);
+          }
+          id(brightness_mode_runtime_ready) = true;
+      - lambda: |-
           std::string mode = id(schedule_mode).current_option();
           id(schedule_mode_always_on) = screen_schedule_always_on_mode(mode);
           id(schedule_mode_clock) = screen_schedule_clock_mode(mode);
@@ -80,7 +136,7 @@ esphome:
           const bool schedule_night = screen_schedule_night_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
-              id(presence_detected),
+              id(schedule_presence_detected),
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
@@ -93,17 +149,14 @@ esphome:
 # =============================================================================
 
 switch:
+  # One-release migration shim. It retains the previous preference key but is
+  # internal, so the obsolete Home Assistant switch disappears immediately.
   - platform: template
-    name: "${entity_screen_automatic_brightness}"
-    id: automatic_brightness_enabled
+    name: "Screen: Automatic Brightness"
+    id: automatic_brightness_legacy
+    internal: true
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
-    entity_category: config
-    icon: "mdi:brightness-auto"
-    web_server:
-      sorting_group_id: sg_brightness
-    on_turn_on:
-      - script.execute: backlight_apply_brightness
 
   - platform: template
     name: "${entity_screen_schedule_enabled}"
@@ -136,7 +189,7 @@ switch:
                 call.set_value("disabled");
                 call.perform();
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set:
           id: manual_wake_ms
@@ -144,7 +197,7 @@ switch:
       - if:
           condition:
             lambda: |-
-              const auto transition = id(display_mode_controller).resolve();
+              const auto transition = id(espcontrol_app).display().resolve();
               return transition.target_mode != espcontrol::DisplayMode::ACTIVE &&
                   (transition.winning_source == espcontrol::DisplayRequestSource::BOOT_GUARD ||
                    transition.winning_source == espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
@@ -154,6 +207,49 @@ switch:
             - script.execute: backlight_apply_brightness
 
 select:
+  - platform: template
+    name: "${entity_screen_brightness_mode}"
+    id: brightness_mode
+    entity_category: config
+    icon: "mdi:brightness-auto"
+    optimistic: true
+    restore_value: true
+    initial_option: "Sunrise and sunset"
+    options:
+      - "Manual"
+      - "Sunrise and sunset"
+      - "Fixed times"
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - lambda: |-
+            std::string mode = normalize_brightness_mode(x);
+            if (id(brightness_mode_runtime_ready) &&
+                brightness_mode_manual(mode) &&
+                !brightness_mode_manual(id(brightness_mode_last_observed))) {
+              float current = id(display_backlight).remote_values.get_brightness();
+              if (std::isnan(current) || current <= 0.0f) {
+                current = id(display_backlight).current_values.get_brightness();
+              }
+              if (!std::isnan(current) && current > 0.0f) {
+                if (current > 1.0f) current = 1.0f;
+                id(manual_brightness_pct) = current * 100.0f;
+              }
+            } else if (!brightness_mode_manual(mode)) {
+              id(brightness_last_automatic_uses_sun) =
+                  brightness_mode_uses_sun(mode);
+            }
+            id(brightness_mode_last_observed) = mode;
+        - script.execute: backlight_apply_brightness
+        - if:
+            condition:
+              lambda: |-
+                return id(espcontrol_app).display().current_mode_is(
+                    espcontrol::DisplayMode::DIMMED);
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
+
   - platform: template
     name: "${entity_screen_schedule_sensor_activation}"
     internal: true
@@ -197,6 +293,27 @@ select:
         - script.execute: screen_schedule_check
 
 text:
+  # Kept separate from the screensaver presence entity so sensor-driven night
+  # schedules can follow a different Home Assistant sensor.
+  - platform: template
+    name: "${entity_screen_schedule_sensor_entity}"
+    internal: true
+    id: screen_schedule_sensor_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:calendar-sync"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - script.execute: refresh_button_grid
+
   - platform: template
     name: "${entity_screen_schedule_trigger}"
     internal: true
@@ -243,7 +360,7 @@ text:
         - if:
             condition:
               lambda: |-
-                return id(display_mode_controller).current_mode_is(
+                return id(espcontrol_app).display().current_mode_is(
                     espcontrol::DisplayMode::CLOCK);
             then:
               - lambda: 'apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);'
@@ -389,13 +506,13 @@ number:
         - if:
             condition:
               lambda: |-
-                if (!id(display_mode_controller).current_mode_is(
+                if (!id(espcontrol_app).display().current_mode_is(
                       espcontrol::DisplayMode::ACTIVE)) return false;
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
                 return screen_schedule_night_active(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
-                         id(presence_detected),
+                         id(schedule_presence_detected),
                          now.is_valid(),
                          now.is_valid() ? now.hour : 0,
                          (int) id(schedule_on_hour).state,
@@ -425,7 +542,7 @@ number:
         - if:
             condition:
               lambda: |-
-                return id(display_mode_controller).current_mode_is(
+                return id(espcontrol_app).display().current_mode_is(
                     espcontrol::DisplayMode::CLOCK);
             then:
               - script.execute: clock_screensaver_refresh_brightness
@@ -473,6 +590,49 @@ number:
 # =============================================================================
 
 script:
+  # Record the brightness expected from a firmware-owned light call. The
+  # Display Backlight state callback uses this to distinguish internal display
+  # transitions from a user changing brightness in Home Assistant.
+  - id: backlight_note_internal_brightness
+    mode: restart
+    parameters:
+      brightness: float
+    then:
+      - lambda: |-
+          if (std::isnan(brightness)) return;
+          if (brightness < 0.0f) brightness = 0.0f;
+          if (brightness > 1.0f) brightness = 1.0f;
+          id(backlight_expected_internal_level) = brightness;
+          id(backlight_expected_internal_level_valid) = true;
+
+  # A genuine external brightness change is an implicit request for Manual
+  # mode. Plain on/off commands keep their existing wake/sleep behaviour.
+  - id: display_backlight_handle_state
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(display_backlight).remote_values.is_on()) return;
+          float requested = id(display_backlight).remote_values.get_brightness();
+          if (std::isnan(requested) || requested <= 0.0f) return;
+          if (requested > 1.0f) requested = 1.0f;
+
+          if (id(backlight_expected_internal_level_valid) &&
+              std::fabs(requested - id(backlight_expected_internal_level)) < 0.005f) {
+            id(backlight_expected_internal_level_valid) = false;
+            return;
+          }
+
+          id(manual_brightness_pct) = requested * 100.0f;
+          std::string mode = normalize_brightness_mode(
+              id(brightness_mode).current_option());
+          if (brightness_mode_manual(mode)) return;
+
+          id(brightness_last_automatic_uses_sun) = brightness_mode_uses_sun(mode);
+          id(brightness_mode_last_observed) = "Manual";
+          auto mode_call = id(brightness_mode).make_call();
+          mode_call.set_option("Manual");
+          mode_call.perform();
+
   # ---------------------------------------------------------------------------
   # Keep the backlight dark after reboot until valid time confirms the schedule.
   # ---------------------------------------------------------------------------
@@ -480,7 +640,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
@@ -492,7 +652,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
@@ -505,7 +665,7 @@ script:
     then:
       - script.stop: screen_schedule_wake_timeout_check
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
@@ -521,7 +681,7 @@ script:
     then:
       - script.stop: screen_schedule_wake_timeout_check
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
@@ -538,7 +698,7 @@ script:
       - script.stop: home_screen_idle_check
       - script.stop: screen_schedule_wake_timeout_check
       - lambda: |-
-          id(display_mode_controller).clear(
+          id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
@@ -555,7 +715,7 @@ script:
           const bool normal_active = screen_schedule_normal_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
-              id(presence_detected),
+              id(schedule_presence_detected),
               now.is_valid(),
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
@@ -591,7 +751,7 @@ script:
           return (int) (timeout_s * 1000.0f);
       - lambda: |-
           if (!id(schedule_enabled).state || id(manual_wake_ms) == 0 ||
-              id(display_mode_controller).request_active(
+              id(espcontrol_app).display().request_active(
                   espcontrol::DisplayRequestSource::MANUAL_SLEEP)) {
             return;
           }
@@ -600,7 +760,7 @@ script:
           if (screen_schedule_normal_active(
                 id(screen_schedule_trigger).state,
                 id(schedule_enabled).state,
-                id(presence_detected),
+                id(schedule_presence_detected),
                 now.is_valid(),
                 now.is_valid() ? now.hour : 0,
                 (int) id(schedule_on_hour).state,
@@ -629,16 +789,16 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (!id(display_mode_controller).target_mode_is(
+          if (!id(espcontrol_app).display().target_mode_is(
                 espcontrol::DisplayMode::ACTIVE) &&
-              !id(display_mode_controller).target_mode_is(
+              !id(espcontrol_app).display().target_mode_is(
                 espcontrol::DisplayMode::COVER_ART)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          if (id(display_mode_controller).target_source_is(
+          if (id(espcontrol_app).display().target_source_is(
                 espcontrol::DisplayRequestSource::SCREEN_SCHEDULE)) {
-            if (id(display_mode_controller).target_mode_is(
+            if (id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::CLOCK)) return;
-            if (id(display_mode_controller).target_mode_is(
+            if (id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::DISPLAY_OFF)) {
               id(backlight_force_display_off).execute();
               return;
@@ -660,7 +820,7 @@ script:
           } else if (screen_schedule_night_active(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,
-                       id(presence_detected),
+                       id(schedule_presence_detected),
                        now.is_valid(),
                        now.is_valid() ? now.hour : 0,
                        (int) id(schedule_on_hour).state,
@@ -672,22 +832,31 @@ script:
             if (pct < 1) pct = 1;
             if (pct > 100) pct = 100;
           } else {
-            bool is_day = id(last_is_daytime);
-            int rise_h = id(sunrise_hour);
-            int rise_m = id(sunrise_minute);
-            int set_h = id(sunset_hour);
-            int set_m = id(sunset_minute);
-            bool times_valid = brightness_schedule_times(
-              id(automatic_brightness_enabled).state,
-              id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
-              id(sunset_hour), id(sunset_minute),
-              id(brightness_dawn_time).state, id(brightness_dusk_time).state,
-              rise_h, rise_m, set_h, set_m);
-            pct = calc_brightness_pct(
-              times_valid, rise_h, rise_m, set_h, set_m,
-              now.is_valid() ? now.hour : 12, now.is_valid() ? now.minute : 0,
-              &is_day, id(brightness_day).state, id(brightness_night).state);
-            id(last_is_daytime) = is_day;
+            std::string mode = normalize_brightness_mode(
+                id(brightness_mode).current_option());
+            if (brightness_mode_manual(mode)) {
+              pct = id(manual_brightness_pct);
+              if (std::isnan(pct) || pct <= 0.0f) pct = 100.0f;
+              if (pct < 1.0f) pct = 1.0f;
+              if (pct > 100.0f) pct = 100.0f;
+            } else {
+              bool is_day = id(last_is_daytime);
+              int rise_h = id(sunrise_hour);
+              int rise_m = id(sunrise_minute);
+              int set_h = id(sunset_hour);
+              int set_m = id(sunset_minute);
+              bool times_valid = brightness_schedule_times(
+                mode,
+                id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
+                id(sunset_hour), id(sunset_minute),
+                id(brightness_dawn_time).state, id(brightness_dusk_time).state,
+                rise_h, rise_m, set_h, set_m);
+              pct = calc_brightness_pct(
+                times_valid, rise_h, rise_m, set_h, set_m,
+                now.is_valid() ? now.hour : 12, now.is_valid() ? now.minute : 0,
+                &is_day, id(brightness_day).state, id(brightness_night).state);
+              id(last_is_daytime) = is_day;
+            }
           }
           float target = pct / 100.0f;
           if (target < 0.01f) target = 0.01f;
@@ -699,6 +868,8 @@ script:
               std::fabs(current - target) < 0.005f) {
             return;
           }
+          id(backlight_expected_internal_level) = target;
+          id(backlight_expected_internal_level_valid) = true;
           auto call = id(display_backlight).turn_on();
           call.set_brightness(target);
           call.set_transition_length(400);
@@ -739,9 +910,9 @@ interval:
       - if:
           condition:
             lambda: |-
-              return (id(display_mode_controller).target_source_is(
+              return (id(espcontrol_app).display().target_source_is(
                           espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                      id(display_mode_controller).target_mode_is(
+                      id(espcontrol_app).display().target_mode_is(
                           espcontrol::DisplayMode::DISPLAY_OFF)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
@@ -758,12 +929,15 @@ interval:
             lambda: |-
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               if (!now.is_valid()) return false;
+              std::string mode = normalize_brightness_mode(
+                  id(brightness_mode).current_option());
+              if (brightness_mode_manual(mode)) return false;
               int rise_h = id(sunrise_hour);
               int rise_m = id(sunrise_minute);
               int set_h = id(sunset_hour);
               int set_m = id(sunset_minute);
               bool times_valid = brightness_schedule_times(
-                id(automatic_brightness_enabled).state,
+                mode,
                 id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
                 id(sunset_hour), id(sunset_minute),
                 id(brightness_dawn_time).state, id(brightness_dusk_time).state,
@@ -775,6 +949,13 @@ interval:
               return changed;
           then:
             - script.execute: backlight_apply_brightness
+            - if:
+                condition:
+                  lambda: |-
+                    return id(espcontrol_app).display().current_mode_is(
+                        espcontrol::DisplayMode::DIMMED);
+                then:
+                  - script.execute: screensaver_dimmed_refresh_brightness
       - if:
           condition:
             lambda: |-

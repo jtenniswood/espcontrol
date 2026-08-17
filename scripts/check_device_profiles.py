@@ -16,10 +16,34 @@ import check_public_firmware
 WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
-COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
+COMPAT_FIXTURES = ROOT / "product" / "v2" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
 BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_weather_driver.h"
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
+LEGACY_OTA_PARTITION_LAYOUTS = {
+    "esp32-p4-86": "partitions_32mb_card_images.csv",
+    "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc4880p443": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1-v2": "partitions_16mb_card_images.csv",
+    "guition-esp32-s3-4848s040": "partitions_16mb_card_images.csv",
+}
+LEGACY_OTA_PARTITION_ROWS = {
+    "partitions_16mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0x6f0000,",
+        "app1,          app,  ota_1,   0x710000,  0x6f0000,",
+        "card_images,   data, 0x40,    0xe00000,  0x200000,",
+    ),
+    "partitions_32mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0xef0000,",
+        "app1,          app,  ota_1,   0xf10000,  0xef0000,",
+        "card_images,   data, 0x40,    0x1e00000, 0x200000,",
+    ),
+}
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -99,33 +123,17 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
             assert "[Subpage](/features/subpages)" in grid, f"{stem}: grid snippet missing subpage support"
         else:
             assert "Touch subpages are not available" in grid, f"{stem}: grid snippet missing no-subpage note"
-        assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
-        assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
-        assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
-        image_card_types = capability.get("imageCardTypes", [])
-        if capability["imageSlots"] == 0 or not image_card_types:
-            image_capacity_text = "Not supported"
-        elif image_card_types == ["media_cover_art"]:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} Media Cover Art card' +
-                ("" if capability["imageSlots"] == 1 else "s")
-            )
-        else:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
-            )
-        assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
-        assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
-        relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
-        assert relay_text in grid, f"{stem}: grid snippet missing relay availability"
-        ethernet_text = "Yes, manual ESPHome install only" if capability["ethernetManualInstall"] else "No"
-        assert ethernet_text in grid, f"{stem}: grid snippet missing Ethernet support"
+        assert "| Capability | Value |" not in grid, f"{stem}: grid snippet must not include a device specs table"
         assert f'slug="{capability["installSlug"]}"' in install, f"{stem}: install snippet missing slug"
 
 
 def test_generated_web(profiles: dict[str, dict]) -> None:
-    path = WEB_OUTPUT_DIR / "www.js"
-    assert path.is_file(), "shared generated web bundle is missing"
+    bridge_path = WEB_OUTPUT_DIR / "www.js"
+    path = WEB_OUTPUT_DIR / "embedded" / "www.js"
+    assert bridge_path.is_file(), "shared generated web bridge is missing"
+    assert path.is_file(), "embedded generated web bundle is missing"
+    bridge = bridge_path.read_text(encoding="utf-8")
+    assert "web-assets.json" in bridge, "shared hosted web URL does not use the asset manifest"
     text = path.read_text(encoding="utf-8")
 
     for slug, profile in profiles.items():
@@ -149,9 +157,17 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
         "firmware metadata endpoint does not expose the shared web profile"
     )
     for slug in profiles:
+        dev = (ROOT / "devices" / slug / "dev.yaml").read_text(encoding="utf-8")
+        assert 'js_include: "../../docs/public/webserver/embedded/www.js"' in dev, (
+            f"{slug}: local development firmware does not embed its offline editor"
+        )
         for suffix in (".yaml", ".factory.yaml"):
             build = (ROOT / "builds" / f"{slug}{suffix}").read_text(encoding="utf-8")
-            assert 'docs/public/webserver/www.js"' in build, f"{slug}{suffix}: firmware does not embed shared web bundle"
+            assert 'docs/public/webserver/embedded/www.js"' in build, f"{slug}{suffix}: firmware does not embed its offline editor"
+        factory = (ROOT / "builds" / f"{slug}.factory.yaml").read_text(encoding="utf-8")
+        assert "webserver/www.js?device=${device_slug}&v=${firmware_version}" in factory, (
+            f"{slug}.factory.yaml: release firmware does not request its compatible hosted editor"
+        )
 
 
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
@@ -165,6 +181,14 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        label_lines = profile["web"]["btn"]["labelLines"]
+        label_lines_tall = profile["web"]["btn"]["labelLinesDouble"]
+        assert f"cfg.label_lines = {label_lines};" in sensors, (
+            f"{slug}: sensors.yaml must use the web preview's one-high label line limit"
+        )
+        assert f"cfg.label_lines_tall = {label_lines_tall};" in sensors, (
+            f"{slug}: sensors.yaml must use the web preview's tall-card label line limit"
+        )
         capacity = image_slot_capacity(profile)
         if capacity > 0:
             package_name = "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"
@@ -185,6 +209,41 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
+
+
+def test_ota_preserves_deployed_partition_layouts() -> None:
+    for slug, table_name in LEGACY_OTA_PARTITION_LAYOUTS.items():
+        device_path = ROOT / "devices" / slug / "device" / "device.yaml"
+        dev_path = ROOT / "devices" / slug / "dev.yaml"
+        public_config_path = ROOT / "devices" / slug / "esphome.yaml"
+        build_path = ROOT / "builds" / f"{slug}.yaml"
+        factory_path = ROOT / "builds" / f"{slug}.factory.yaml"
+        device = device_path.read_text(encoding="utf-8")
+        dev = dev_path.read_text(encoding="utf-8")
+        public_config = public_config_path.read_text(encoding="utf-8")
+        build = build_path.read_text(encoding="utf-8")
+        factory = factory_path.read_text(encoding="utf-8")
+        assert "partitions:" not in device, (
+            f"{slug}: device package must not require a local partition table from remote installs"
+        )
+        assert f'partitions: "../../common/device/{table_name}"' in dev, (
+            f"{slug}: local development builds must retain the deployed {table_name} flash layout"
+        )
+        assert "partition_table:" not in public_config, (
+            f"{slug}: published remote configuration must not reference a local partition table"
+        )
+        assert f'partitions: "../common/device/{table_name}"' in build, (
+            f"{slug}: copied firmware builds must retain the deployed {table_name} flash layout"
+        )
+        assert (
+            f'partitions: "../common/device/{table_name}"' in factory
+            or f"!include {slug}.yaml" in factory
+        ), f"{slug}: factory builds must retain the deployed {table_name} flash layout"
+
+    for table_name, rows in LEGACY_OTA_PARTITION_ROWS.items():
+        table = (ROOT / "common" / "device" / table_name).read_text(encoding="utf-8")
+        for row in rows:
+            assert row in table, f"{table_name}: missing deployed partition row {row}"
 
 
 def test_upgrades_do_not_reset_saved_panel_config() -> None:
@@ -229,11 +288,12 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
     device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
     assert (
-        "grid_refresh_layout(slots, cfg,\n"
+        "grid_rebuild_all(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, nullptr, nullptr, nullptr, nullptr,\n"
         "            id(button_order).state,\n"
+        "            id(button_on_color).state,\n"
         "            id(main_page)->obj);\n"
         "      - script.execute: clock_bar_apply"
-    ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
+    ) in sensors, "S3 grid refresh must rebuild safely and reapply the fixed clock bar"
     assert (
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
         "              id(button_order).state,\n"
@@ -251,22 +311,51 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     ) in device, "S3 rotation changes must reapply the fixed clock bar"
 
 
-def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
-    slug = "guition-esp32-p4-jc4880p443"
-    sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
-    assert (
-        "grid_refresh_layout(slots, cfg,\n"
-        "            id(button_order).state,\n"
-        "            id(main_page)->obj);\n"
-        "          navigation_return_home(id(main_page)->obj);"
-    ) in sensors, (
-        "4.3-inch P4 rotation refresh must refresh the home grid before rebuilding subpages"
+def test_rotation_refresh_rebuilds_subpages() -> None:
+    slugs = (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
+        "esp32-p4-86",
+        "guition-esp32-s3-4848s040",
     )
-    assert "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7," in sensors, (
-        "4.3-inch P4 rotation refresh must rebuild subpage grids with the current column count"
+    for slug in slugs:
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        refresh_script = sensors.split("  - id: refresh_button_grid", 1)[1].split(
+            "  - id: refresh_subpage_grid", 1)[0]
+        assert "grid_rebuild_all(slots, cfg," in refresh_script, (
+            f"{slug}: rotation refresh must rebuild secondary cards safely"
+        )
+
+
+def test_subpage_config_changes_schedule_live_refresh() -> None:
+    templates = {
+        "common/config/button_template.yaml": 8,
+        "common/config/button_template_4chunk.yaml": 4,
+    }
+    for relative_path, subpage_config_count in templates.items():
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert text.count("- script.execute: refresh_subpage_grid") == subpage_config_count + 1, (
+            f"{relative_path}: the parent and every subpage config chunk must refresh the secondary page"
+        )
+
+    for sensors_path in sorted((ROOT / "devices").glob("*/device/sensors.yaml")):
+        sensors = sensors_path.read_text(encoding="utf-8")
+        assert "  - id: refresh_subpage_grid" in sensors, (
+            f"{sensors_path}: missing secondary-page refresh script"
+        )
+        refresh_script = sensors.split("  - id: refresh_subpage_grid", 1)[1].split("\nesphome:", 1)[0]
+        assert "grid_rebuild_all(slots, cfg," in refresh_script, (
+            f"{sensors_path}: secondary-page refresh must rebuild card subscriptions"
+        )
+
+    grid_runtime = (ROOT / "components/espcontrol/button_grid_grid.h").read_text(encoding="utf-8")
+    assert "inline bool grid_rebuild_all(" in grid_runtime, (
+        "secondary-page refresh must use the full runtime cleanup path"
     )
-    assert "id(button_on_color).state" in sensors and "id(button_off_color).state" not in sensors, (
-        "4.3-inch P4 subpage rebuild must keep the configured primary color only"
+    assert "navigation_active_subpage_slot()" in grid_runtime, (
+        "secondary-page refresh must restore the page that was active before rebuilding"
     )
 
 
@@ -547,6 +636,22 @@ def test_grid_phase2_uses_cleaned_spanned_layout() -> None:
     )
 
 
+def test_card_label_line_clamp_matches_preview_on_subpages() -> None:
+    grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+    assert "lv_obj_set_height(label, LV_SIZE_CONTENT);" in grid, (
+        "short card labels must retain their natural height and bottom alignment"
+    )
+    assert "lv_obj_set_style_max_height(label, max_height, LV_PART_MAIN);" in grid, (
+        "card labels must clip only after reaching the configured line limit"
+    )
+    assert "apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);" in grid, (
+        "subpage back labels must follow the configured line limit"
+    )
+    assert "apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);" in grid, (
+        "subpage card labels must follow the configured line limit"
+    )
+
+
 def test_spanned_cards_refresh_after_clock_bar_padding_changes() -> None:
     clock_bar = (ROOT / "components" / "espcontrol" / "clock_bar.h").read_text(encoding="utf-8")
     layout = (ROOT / "components" / "espcontrol" / "button_grid_layout.h").read_text(encoding="utf-8")
@@ -633,16 +738,19 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
-    test_p4_43_rotation_refresh_rebuilds_subpages()
+    test_rotation_refresh_rebuilds_subpages()
+    test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_weather_card_mode_visibility_reset()
     test_grid_phase2_uses_cleaned_spanned_layout()
+    test_card_label_line_clamp_matches_preview_on_subpages()
     test_spanned_cards_refresh_after_clock_bar_padding_changes()
     test_temperature_unit_changes_refresh_weather_cards()
     test_current_weather_state_keeps_normal_card_visuals()

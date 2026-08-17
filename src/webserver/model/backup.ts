@@ -1,6 +1,12 @@
 import type { CardConfig } from "../contracts/types";
 import { cloneCardConfig, emptyCardConfig } from "./card";
 import {
+  PANEL_CONFIG_DOCUMENT_VERSION,
+  createPanelConfigBackupPayload,
+  decodePanelConfigBackupPayload,
+  type PanelConfigBackupPayload,
+} from "./panel_config";
+import {
   markSpannedCells,
   serializeGridOrder,
   sizeFitsAt,
@@ -37,6 +43,7 @@ export interface NormalizedBackupEnvelope {
   subpage_objects: Record<string, StructuredSubpageConfig>;
   settings: Record<string, unknown> | null;
   screen: Record<string, unknown> | null;
+  native_config?: PanelConfigBackupPayload;
 }
 
 export interface BackupSnapshotEnvelope {
@@ -47,6 +54,7 @@ export interface BackupSnapshotEnvelope {
   button_on_color?: string;
   settings?: Record<string, unknown>;
   screen?: Record<string, unknown>;
+  native_config?: PanelConfigBackupPayload | null;
 }
 
 export interface BackupUsedSlot {
@@ -77,6 +85,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+function normalizeNativeBackup(value: unknown): PanelConfigBackupPayload | undefined {
+  // Readable backup fields remain usable on panels that do not understand a
+  // newer native document. The native section is optional by design.
+  if (isRecord(value) && typeof value.document_version === "number" &&
+      value.document_version > PANEL_CONFIG_DOCUMENT_VERSION) {
+    return undefined;
+  }
+  return createPanelConfigBackupPayload(decodePanelConfigBackupPayload(value));
+}
+
 export function validateBackupEnvelope(data: unknown): Record<string, unknown> {
   if (!isRecord(data)) {
     throw backupConfigError("Invalid config file - backup must be a JSON object");
@@ -94,6 +112,13 @@ export function validateBackupEnvelope(data: unknown): Record<string, unknown> {
   }
   if (!Array.isArray(data.buttons)) {
     throw backupConfigError("Invalid config file - missing required fields");
+  }
+  if (data.native_config !== undefined && data.native_config !== null) {
+    try {
+      normalizeNativeBackup(data.native_config);
+    } catch (error) {
+      throw backupConfigError((error as Error).message || "Invalid native configuration backup");
+    }
   }
 
   return data;
@@ -115,6 +140,9 @@ export function createBackupEnvelope(
   const device = snapshot.device || "";
   const settings = { ...(snapshot.settings || {}) };
   delete settings.screensaver_pin;
+  const nativeConfig = snapshot.native_config
+    ? normalizeNativeBackup(snapshot.native_config)
+    : undefined;
   return {
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
@@ -131,6 +159,9 @@ export function createBackupEnvelope(
     subpage_objects: outputs.subpage_objects || {},
     settings,
     screen: snapshot.screen || {},
+    ...(nativeConfig
+      ? { native_config: nativeConfig }
+      : {}),
   };
 }
 
@@ -138,6 +169,9 @@ export function normalizeBackupEnvelope(
   data: Record<string, unknown>,
   outputs: BackupEnvelopeOutputs,
 ): NormalizedBackupEnvelope {
+  const nativeConfig = data.native_config
+    ? normalizeNativeBackup(data.native_config)
+    : undefined;
   return {
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
@@ -153,6 +187,9 @@ export function normalizeBackupEnvelope(
     screen: isRecord(data.screen)
       ? data.screen
       : (isRecord(data.settings) && isRecord(data.settings.screen) ? data.settings.screen : null),
+    ...(nativeConfig
+      ? { native_config: nativeConfig }
+      : {}),
   };
 }
 

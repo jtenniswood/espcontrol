@@ -28,8 +28,18 @@ inline bool climate_control_driver_attach_interaction(
 }
 
 inline bool climate_control_driver_refresh_layout(
-    BtnSlot &, const ParsedCfg &, const Context &context) {
-  return climate_control_driver_matches(context);
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    const DisplayProfile &display, int row_span, int col_span) {
+  if (!climate_control_driver_matches(context)) return false;
+  if (card_large_numbers_active_for_layout(config, row_span, col_span) &&
+      display_large_sensor_font(display)) {
+    apply_large_sensor_number_style(
+      slot, display_large_sensor_font(display),
+      display_large_sensor_unit_offset_percent(display));
+  } else {
+    apply_standard_sensor_number_style(slot, display);
+  }
+  return true;
 }
 
 inline bool climate_control_driver_cleanup(
@@ -51,6 +61,7 @@ struct ClimateControlDriverEnvironment {
   uint32_t secondary_color = SECONDARY_GREY;
   uint32_t tertiary_color = TERTIARY_GREY;
   const lv_font_t *number_font = nullptr;
+  const lv_font_t *range_number_font = nullptr;
   const lv_font_t *unit_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *option_title_font = nullptr;
@@ -72,6 +83,7 @@ inline ClimateControlDriverEnvironment climate_control_driver_environment(
   environment.tertiary_color = palette.has_sensor_color
     ? palette.sensor_val : TERTIARY_GREY;
   environment.number_font = display_volume_number_font(display);
+  environment.range_number_font = display_media_control_title_font(display);
   environment.unit_font = display_volume_label_font(display)
     ? display_volume_label_font(display)
     : lv_obj_get_style_text_font(slot.unit_lbl, LV_PART_MAIN);
@@ -106,6 +118,7 @@ inline ClimateControlCtx *climate_control_driver_bind_data(
       slot.btn, slot.icon_lbl, slot.text_lbl, config,
       environment.accent_color, environment.secondary_color,
       environment.tertiary_color, environment.number_font,
+      environment.range_number_font,
       environment.unit_font, environment.label_font,
       environment.option_title_font, environment.option_value_font,
       environment.option_menu_font, environment.card_icon_font,

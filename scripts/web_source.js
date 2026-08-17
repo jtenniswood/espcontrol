@@ -27,7 +27,9 @@ function freshWebOutputDir(options = {}) {
 }
 
 function loadBuiltWebSource() {
-  return fs.readFileSync(path.join(freshWebOutputDir(), "www.js"), "utf8");
+  const outputDir = freshWebOutputDir();
+  const manifest = JSON.parse(fs.readFileSync(path.join(outputDir, "web-assets.json"), "utf8"));
+  return fs.readFileSync(path.join(outputDir, manifest.bundles[0].path), "utf8");
 }
 
 module.exports = { freshWebOutputDir, loadBuiltWebSource };

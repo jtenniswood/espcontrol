@@ -1,12 +1,33 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installEntityStateModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import { ENTITY_CATALOG } from "../generated/entity_catalog";
+import { entityStateKeys } from "../state/event_state";
+import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
+
+type EntityDefinition = {
+    readonly domain?: string;
+    readonly name?: string;
+    readonly template?: string;
+    readonly objectIds?: readonly string[];
+};
+
+const entityDefinitions = ENTITY_CATALOG.entities as unknown as Readonly<Record<string, EntityDefinition>>;
+
+export interface EntityStateDependencies {
+    readonly actionCardStateEntity: ConfigConfirmationOptionsFeature["actionCardStateEntity"];
+    readonly totalSlots: () => number;
+    readonly clockBarTemperatureEntities: () => any[];
+    readonly textInput: (id: any, value: any, placeholder: any) => any;
+}
+
+export function createEntityStateFeature(dependencies: EntityStateDependencies) {
+    const { actionCardStateEntity, clockBarTemperatureEntities } = dependencies;
     // ── Entity State Helpers ───────────────────────────────────────────────
     function uniquePush(this: any, list?: any, value?: any) {
         if (value && list.indexOf(value) === -1)
             list.push(value);
     }
     function entityDef(this: any, key?: any) {
-        return ENTITY_CATALOG.entities[key] || {};
+        return entityDefinitions[String(key)] || {};
     }
     function entityName(this: any, key?: any) {
         return entityDef(key).name || "";
@@ -32,7 +53,7 @@ export function installEntityStateModule(): GlobalDescriptors {
     }
     function entityStateItemsForSlots(this: any, keys?: any) {
         var items: any = [];
-        for (var i: any = 1; i <= TOTAL_SLOTS; i++) {
+        for (var i: any = 1; i <= dependencies.totalSlots(); i++) {
             keys.forEach(function (this: any, key?: any) {
                 items.push([entityDef(key).domain, entityNameForSlot(key, i)]);
             });
@@ -134,6 +155,7 @@ export function installEntityStateModule(): GlobalDescriptors {
         });
         rememberEntityName(state.presenceEntity, "Presence Sensor");
         rememberEntityName(state.coverArtMediaPlayerEntity, "Media Player");
+        rememberEntityName(state.coverArtSecondaryMediaPlayerEntity, "External Source Media Player");
     }
     function optionLabelForEntity(this: any, entityId?: any) {
         var names: any = state.entityNames[entityId] || [];
@@ -240,7 +262,7 @@ export function installEntityStateModule(): GlobalDescriptors {
         return input;
     }
     function entityInput(this: any, id?: any, value?: any, placeholder?: any, domains?: any) {
-        var el: any = textInput(id, value, placeholder);
+        var el: any = dependencies.textInput(id, value, placeholder);
         return attachEntitySuggestions(el, domains);
     }
     function rememberEntityPostPath(this: any, data?: any) {
@@ -293,32 +315,34 @@ export function installEntityStateModule(): GlobalDescriptors {
         return urls;
     }
     return {
-        "uniquePush": staticGlobal(uniquePush),
-        "entityDef": staticGlobal(entityDef),
-        "entityName": staticGlobal(entityName),
-        "entityNameForSlot": staticGlobal(entityNameForSlot),
-        "entityObjectIds": staticGlobal(entityObjectIds),
-        "entityLookupNames": staticGlobal(entityLookupNames),
-        "entityStateItem": staticGlobal(entityStateItem),
-        "entityStateItems": staticGlobal(entityStateItems),
-        "entityStateItemsForSlots": staticGlobal(entityStateItemsForSlots),
-        "esphomeObjectId": staticGlobal(esphomeObjectId),
-        "parseEntityId": staticGlobal(parseEntityId),
-        "parseHomeAssistantEntity": staticGlobal(parseHomeAssistantEntity),
-        "titleFromEntityId": staticGlobal(titleFromEntityId),
-        "rememberEntityName": staticGlobal(rememberEntityName),
-        "rememberConfiguredButtonEntities": staticGlobal(rememberConfiguredButtonEntities),
-        "rememberConfiguredEntities": staticGlobal(rememberConfiguredEntities),
-        "optionLabelForEntity": staticGlobal(optionLabelForEntity),
-        "entitySuggestions": staticGlobal(entitySuggestions),
-        "ensureEntityDropdown": staticGlobal(ensureEntityDropdown),
-        "closeEntityDropdown": staticGlobal(closeEntityDropdown),
-        "refreshEntityDatalist": staticGlobal(refreshEntityDatalist),
-        "attachEntitySuggestions": staticGlobal(attachEntitySuggestions),
-        "entityInput": staticGlobal(entityInput),
-        "rememberEntityPostPath": staticGlobal(rememberEntityPostPath),
-        "rememberedPostUrls": staticGlobal(rememberedPostUrls),
-        "hasRememberedPostPath": staticGlobal(hasRememberedPostPath),
-        "entityPostUrls": staticGlobal(entityPostUrls),
+        uniquePush,
+        entityDef,
+        entityName,
+        entityNameForSlot,
+        entityObjectIds,
+        entityLookupNames,
+        entityStateItem,
+        entityStateItems,
+        entityStateItemsForSlots,
+        esphomeObjectId,
+        parseEntityId,
+        parseHomeAssistantEntity,
+        titleFromEntityId,
+        rememberEntityName,
+        rememberConfiguredButtonEntities,
+        rememberConfiguredEntities,
+        optionLabelForEntity,
+        entitySuggestions,
+        ensureEntityDropdown,
+        closeEntityDropdown,
+        refreshEntityDatalist,
+        attachEntitySuggestions,
+        entityInput,
+        rememberEntityPostPath,
+        rememberedPostUrls,
+        hasRememberedPostPath,
+        entityPostUrls,
     };
 }
+
+export type EntityStateFeature = ReturnType<typeof createEntityStateFeature>;

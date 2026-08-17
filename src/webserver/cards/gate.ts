@@ -1,5 +1,17 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerGateCardTypes(): GlobalDescriptors {
+import { cardContractDomains } from "../generated/card_contract";
+import type { CoverLikeCardRegistration } from "./cover_like_card";
+import type { ConfigAccessClimateAlarmOptionsFeature } from "../application/config_access_climate_alarm_options";
+export function registerGateCardTypes(
+    registerCard: CoverLikeCardRegistration["register"],
+    accessOptions: ConfigAccessClimateAlarmOptionsFeature,
+): void {
+    const {
+        normalizeGateOptions,
+        gateModeOptionValues,
+        normalizeGateMode,
+        gateLabelDisplayMode,
+        setGateLabelDisplayMode,
+    } = accessOptions;
     // Gate card: cover toggle or one-tap open/close/stop commands.
     var GATE_MODE_OPTIONS: any = [
         ["", "Toggle"],
@@ -9,12 +21,6 @@ export function registerGateCardTypes(): GlobalDescriptors {
     ];
     function gateCommandMode(this: any, mode?: any) {
         return mode === "open" || mode === "close" || mode === "stop";
-    }
-    function gateModeOptionValues(this: any) {
-        return coverLikeModeValues("gate", "gate_mode", GATE_MODE_OPTIONS);
-    }
-    function normalizeGateMode(this: any, mode?: any) {
-        return normalizeCoverLikeMode(mode, gateModeOptionValues());
     }
     function gateModeDefaultIcon(this: any, mode?: any) {
         if (mode === "open")
@@ -37,7 +43,7 @@ export function registerGateCardTypes(): GlobalDescriptors {
     }
     var GATE_CARD_METADATA: any = {
         mode: {
-            label: "Interaction",
+            label: "Type",
             idSuffix: "gate-interaction",
             options: GATE_MODE_OPTIONS,
             value: function (this: any, b?: any) {
@@ -70,7 +76,7 @@ export function registerGateCardTypes(): GlobalDescriptors {
             badge: "gate",
         },
     };
-    registerCoverLikeCardType({
+    registerCard({
         type: "gate",
         optionName: "gate_mode",
         metadata: GATE_CARD_METADATA,
@@ -87,14 +93,4 @@ export function registerGateCardTypes(): GlobalDescriptors {
         labelDisplayMode: gateLabelDisplayMode,
         setLabelDisplayMode: setGateLabelDisplayMode,
     });
-    return {
-        "GATE_MODE_OPTIONS": liveGlobal(() => GATE_MODE_OPTIONS, (value?: any) => { GATE_MODE_OPTIONS = value; }),
-        "gateCommandMode": staticGlobal(gateCommandMode),
-        "gateModeOptionValues": staticGlobal(gateModeOptionValues),
-        "normalizeGateMode": staticGlobal(normalizeGateMode),
-        "gateModeDefaultIcon": staticGlobal(gateModeDefaultIcon),
-        "gateModeDefaultLabel": staticGlobal(gateModeDefaultLabel),
-        "gateUsesDefaultIcon": staticGlobal(gateUsesDefaultIcon),
-        "GATE_CARD_METADATA": liveGlobal(() => GATE_CARD_METADATA, (value?: any) => { GATE_CARD_METADATA = value; }),
-    };
 }

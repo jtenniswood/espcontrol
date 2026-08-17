@@ -7,11 +7,15 @@ and when to raise confidence beyond the minimum route.
 Use the smallest check that covers the change while developing, then run the
 broader checks before merging or publishing.
 
-The public npm check commands are now compatibility entry points for the
-dependency-aware task graph. Focused commands include their declared prerequisites
-automatically, while the product, fast, CI, all, and release commands run complete
-assurance profiles. Temporary `:legacy` aliases preserve the previous command
-chains for one release cycle while the migration is observed.
+The public npm check commands are entry points for the dependency-aware task
+graph. Focused commands include their declared prerequisites automatically,
+while the product, fast, CI, all, and release commands run complete assurance
+profiles. The task graph is the only supported check route, so it provides one
+auditable definition of release coverage. Its release profile includes firmware
+host-service tests, cross-language saved-configuration parity, browser journeys,
+device-matrix validation, generated outputs, docs, and release manifests. The
+release workflow then compiles every supported firmware target from that same
+source revision before publishing.
 
 Use `python3 scripts/check_tasks.py list` to see registered tasks or
 `python3 scripts/check_tasks.py plan fast --explain` to preview a profile without
@@ -128,10 +132,10 @@ leak into the public site.
 
 Run `python3 scripts/build.py` after changing:
 
-- `common/config/card_contract.json`
-- `common/config/entity_names.json`
-- `common/assets/icons.json`
-- firmware translation strings under `common/config/strings.*.txt`
+- `product/v2/card_contract.json`
+- `product/v2/entity_names.json`
+- `product/v2/icons.json`
+- firmware translation strings under `product/v2/translations/strings.*.txt`
 - `devices/manifest.json`
 - `src/webserver/`
 
@@ -169,7 +173,7 @@ Treat these as release-facing:
 - `docs/public/webserver/*/www.js`
 - `docs/generated/screens/*.md`
 - `docs/generated/cards/capabilities.md`
-- `compatibility/fixtures/product_compatibility.json`
+- `product/v2/product_compatibility.json`
 
 Changes here usually deserve `npm run check:product` at minimum.
 
@@ -196,6 +200,25 @@ publishing.
 The ESPHome Docker image version used by firmware compile, nightly firmware, and
 release firmware workflows is set in `.github/esphome.env`. Update that one file
 when moving to a new ESPHome release.
+
+## Atomic Firmware Releases
+
+Firmware releases begin as GitHub drafts. The `Build Release` workflow is
+manually dispatched with that draft tag and checks out the same immutable tag
+in every job. Each device build writes only publishable files into
+`dist/firmware/`; generated source files and build caches are not release
+assets.
+
+After all device jobs finish, the workflow assembles one distribution and
+checks every manifest, embedded version, checksum, expected filename, and byte
+size. Assets are uploaded while the GitHub release is still private. The
+release becomes public only after the remote asset inventory exactly matches
+the verified local distribution. Any build, upload, or verification failure
+leaves the release as a draft.
+
+The repository release skill documents the operator flow. Do not publish a
+draft manually to work around a failed workflow; fix or rerun the failed build
+so the verification barrier remains intact.
 
 The `Firmware Compile` GitHub workflow is manual-only. Start it with
 `workflow_dispatch` when a PR needs a full firmware compile, especially for

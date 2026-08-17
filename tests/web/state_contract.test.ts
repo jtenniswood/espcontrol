@@ -48,6 +48,9 @@ export function runStateContractTests(): void {
   equal(first.screenRotation, "180", "startup uses the device rotation default");
   equal(first.screenRotationInitialReady, false, "rotation-capable devices wait for the initial event");
   equal(first.timezoneOptions.length, 2, "startup copies embedded timezone options");
+  equal(first.alarmDelayAudioOn, false, "alarm delay audio defaults off");
+  equal(first.alarmDelayTtsOn, true, "alarm delay TTS defaults on");
+  equal(first.alarmDelayFinalCountdown, 10, "alarm delay final countdown defaults to ten seconds");
   first.grid[0] = 9;
   first.buttons[0]!.label = "Changed";
   equal(second.grid[0], 0, "state factories do not share grid arrays");
@@ -89,9 +92,17 @@ export function runStateContractTests(): void {
   const canonicals: Readonly<Record<keyof typeof SSE_ALIAS_GROUPS, string>> = {
     clockBar: "switch-screen__clock_bar",
     clockBarTime: "switch-screen__clock_bar_time",
+    clockBarNightMode: "switch-screen__clock_bar_night_mode_icon",
     clockBarTemperatureEntities: "text-clock_bar_temperature_entities",
     networkStatus: "switch-screen__network_status_icon",
+    batteryStatus: "switch-screen__battery_status",
     voiceServices: "switch-voice_services",
+    alarmDelayAudio: "switch-alarm_delay__audio",
+    alarmDelayTts: "switch-alarm_delay__tts",
+    alarmDelayEntryAnnouncement: "text-alarm_delay__entry_announcement",
+    alarmDelayExitAnnouncement: "text-alarm_delay__exit_announcement",
+    alarmDelayBeepVolume: "number-alarm_delay__beep_volume",
+    alarmDelayFinalCountdown: "number-alarm_delay__final_countdown",
     temperatureDegreeSymbol: "switch-screen__temperature_degree_symbol",
     subpageChevron: "switch-screen__subpage_chevron",
     screensaverTimeout: "number-screensaver_timeout",
@@ -102,6 +113,7 @@ export function runStateContractTests(): void {
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
     coverArtEntity: "text-screen_saver__cover_art_entity",
+    coverArtSecondaryEntity: "text-screen_saver__external_source_media_entity",
     coverArtConditions: "text-screen_saver__cover_art_conditions",
     coverArtDelay: "number-screen_saver__cover_art_delay",
     trackOverlayDuration: "number-screen_saver__track_overlay_duration",
@@ -122,6 +134,7 @@ export function runStateContractTests(): void {
     ntpServer3: "text-screen__ntp_server_3",
     firmwareAutoUpdate: "switch-firmware__auto_update",
     firmwareUpdateFrequency: "select-firmware__update_frequency",
+    c6FirmwareAutoUpdate: "switch-wifi_firmware__auto_update",
   };
   for (const [group, canonical] of Object.entries(canonicals)) {
     handlers[canonical] = () => calls.push(group);

@@ -5,6 +5,7 @@ export const MEDIA_CARD_CONFIG_VERSION = 1 as const;
 
 export type MediaCardMode =
   | "control_modal"
+  | "speaker_group"
   | "play_pause"
   | "previous"
   | "next"
@@ -16,7 +17,7 @@ export type MediaCardMode =
 
 export type MediaStateDisplay = "label" | "state";
 export type MediaNowPlayingControl = "none" | "progress" | "play_pause";
-export type MediaCoverArtAction = "play_pause" | "control_modal";
+export type MediaCoverArtAction = "control_modal";
 export type MediaControlLabelDisplay = "label" | "status";
 export type MediaControlNumberDisplay = "icon" | "volume";
 
@@ -28,9 +29,11 @@ export interface MediaCardConfigV1 {
   nowPlayingControl: MediaNowPlayingControl;
   coverArtAction: MediaCoverArtAction;
   showTrackDetails: boolean;
+  secondaryEntity: string;
   controlLabelDisplay: MediaControlLabelDisplay;
   controlNumberDisplay: MediaControlNumberDisplay;
   maxVolumePercent: number;
+  speakerGroupEntity: string;
   playlist: {
     contentId: string;
     contentType: string;
@@ -41,6 +44,7 @@ export interface MediaCardConfigV1 {
 
 const MEDIA_CARD_MODES: readonly MediaCardMode[] = [
   "control_modal",
+  "speaker_group",
   "play_pause",
   "previous",
   "next",
@@ -88,16 +92,15 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
       mode === "now_playing" && (precision === "progress" || precision === "play_pause")
         ? precision
         : "none",
-    coverArtAction:
-      configOptionValue(options, "cover_art_action") === "control_modal"
-        ? "control_modal"
-        : "play_pause",
+    coverArtAction: "control_modal",
     showTrackDetails: configOptionEnabled(options, "cover_art_details"),
+    secondaryEntity: configOptionValue(options, "cover_art_secondary_entity").trim(),
     controlLabelDisplay:
       configOptionValue(options, "label_display") === "label" ? "label" : "status",
     controlNumberDisplay:
       configOptionValue(options, "number_display") === "volume" ? "volume" : "icon",
     maxVolumePercent: boundedVolumePercent(configOptionValue(options, "volume_max")),
+    speakerGroupEntity: configOptionValue(options, "speaker_group_entity").trim(),
     playlist: {
       contentId: configOptionValue(options, "playlist_content_id").trim(),
       contentType: configOptionValue(options, "playlist_content_type").trim() || "playlist",

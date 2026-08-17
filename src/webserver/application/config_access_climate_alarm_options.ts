@@ -1,5 +1,42 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installConfigAccessClimateAlarmOptionsModule(): GlobalDescriptors {
+import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
+import { cardContractCard } from "../generated/card_contract";
+import {
+    ALARM_ACTIONS_OPTION,
+    ALARM_ICON_DISPLAY_OPTION,
+    ALARM_LABEL_DISPLAY_OPTION,
+    ALARM_PIN_ARM_OPTION,
+    ALARM_PIN_DISARM_OPTION,
+    CLIMATE_CONTROL_TABS_OPTION,
+    CLIMATE_LABEL_DISPLAY_OPTION,
+    CLIMATE_NUMBER_DISPLAY_OPTION,
+    CLIMATE_TEMPERATURE_STEP_OPTION,
+    GARAGE_LABEL_DISPLAY_OPTION,
+    GATE_LABEL_DISPLAY_OPTION,
+    cardContractOptionDefaultValue,
+    cardContractOptionSpec,
+    copyLargeNumbersOption,
+} from "./config_option_core";
+import type { ConfigModalTabOptionsFeature } from "./config_modal_tab_options";
+export function createConfigAccessClimateAlarmOptionsFeature(
+    modalTabs: ConfigModalTabOptionsFeature,
+) {
+    const {
+        normalizeClimateControlTabs,
+        climateControlTabsAreDefault,
+    } = modalTabs;
+    let normalizeGarageConfirmation: (
+        out: any,
+        options: any,
+        requestedMode: any,
+    ) => any = (out) => out;
+    function connectGarageConfirmationNormalizer(
+        normalizer: (out: any, options: any, requestedMode: any) => any,
+    ) {
+        normalizeGarageConfirmation = normalizer;
+    }
+    function isClimateCardType(type?: any) {
+        return type === "climate" || type === "climate_control";
+    }
     // ── Access, Climate, and Alarm Card Options ───────────────────────
     function alarmBehaviorSpec(this: any) {
         var card: any = cardContractCard("alarm");
@@ -34,11 +71,21 @@ export function installConfigAccessClimateAlarmOptionsModule(): GlobalDescriptor
         var fallback: any = cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label");
         return values.indexOf(value) >= 0 ? value : fallback;
     }
+    function garageModeOptionValues(this: any) {
+        var spec: any = cardContractOptionSpec("garage", "garage_mode");
+        return spec && spec.values ? spec.values.slice() : ["", "open", "close"];
+    }
+    function normalizeGarageMode(this: any, mode?: any) {
+        mode = String(mode || "");
+        return garageModeOptionValues().indexOf(mode) >= 0 ? mode : "";
+    }
     function normalizeGarageOptions(this: any, options?: any, mode?: any) {
         var labelMode: any = normalizeGarageLabelDisplayMode(configOptionValue(options, GARAGE_LABEL_DISPLAY_OPTION));
-        return labelMode !== cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label")
+        var out: any = labelMode !== cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label")
             ? setConfigOptionValue("", GARAGE_LABEL_DISPLAY_OPTION, labelMode)
             : "";
+        var confirmationMode: any = mode === "open" ? "on" : mode === "close" ? "off" : "";
+        return normalizeGarageConfirmation(out, options, confirmationMode);
     }
     function garageLabelDisplayMode(this: any, b?: any) {
         return normalizeGarageLabelDisplayMode(configOptionValue(b && b.options, GARAGE_LABEL_DISPLAY_OPTION));
@@ -56,6 +103,14 @@ export function installConfigAccessClimateAlarmOptionsModule(): GlobalDescriptor
         var values: any = spec && spec.values ? spec.values : [];
         var fallback: any = cardContractOptionDefaultValue("gate", GATE_LABEL_DISPLAY_OPTION, "label");
         return values.indexOf(value) >= 0 ? value : fallback;
+    }
+    function gateModeOptionValues(this: any) {
+        var spec: any = cardContractOptionSpec("gate", "gate_mode");
+        return spec && spec.values ? spec.values.slice() : ["", "open", "close", "stop"];
+    }
+    function normalizeGateMode(this: any, mode?: any) {
+        mode = String(mode || "");
+        return gateModeOptionValues().indexOf(mode) >= 0 ? mode : "";
     }
     function normalizeGateOptions(this: any, options?: any, mode?: any) {
         var labelMode: any = normalizeGateLabelDisplayMode(configOptionValue(options, GATE_LABEL_DISPLAY_OPTION));
@@ -326,54 +381,65 @@ export function installConfigAccessClimateAlarmOptionsModule(): GlobalDescriptor
         var parsed: any = parseClimatePrecisionConfig(value);
         return climatePrecisionConfig(parsed.precision, parsed.min, parsed.max);
     }
+    modalTabs.connectClimateOptionsNormalizer((options, includeControlTabs) =>
+        normalizeClimateOptions(options, includeControlTabs));
     return {
-        "alarmBehaviorSpec": staticGlobal(alarmBehaviorSpec),
-        "alarmActionSpecs": staticGlobal(alarmActionSpecs),
-        "alarmDefaultActions": staticGlobal(alarmDefaultActions),
-        "alarmMaxVisibleActions": staticGlobal(alarmMaxVisibleActions),
-        "alarmActionLegacyIcon": staticGlobal(alarmActionLegacyIcon),
-        "alarmActionIconIsGenerated": staticGlobal(alarmActionIconIsGenerated),
-        "normalizeGarageLabelDisplayMode": staticGlobal(normalizeGarageLabelDisplayMode),
-        "normalizeGarageOptions": staticGlobal(normalizeGarageOptions),
-        "garageLabelDisplayMode": staticGlobal(garageLabelDisplayMode),
-        "setGarageLabelDisplayMode": staticGlobal(setGarageLabelDisplayMode),
-        "normalizeGateLabelDisplayMode": staticGlobal(normalizeGateLabelDisplayMode),
-        "normalizeGateOptions": staticGlobal(normalizeGateOptions),
-        "gateLabelDisplayMode": staticGlobal(gateLabelDisplayMode),
-        "setGateLabelDisplayMode": staticGlobal(setGateLabelDisplayMode),
-        "normalizeClimateLabelDisplayMode": staticGlobal(normalizeClimateLabelDisplayMode),
-        "normalizeClimateNumberDisplayMode": staticGlobal(normalizeClimateNumberDisplayMode),
-        "normalizeClimateTemperatureStep": staticGlobal(normalizeClimateTemperatureStep),
-        "normalizeClimateOptions": staticGlobal(normalizeClimateOptions),
-        "climateLabelDisplayMode": staticGlobal(climateLabelDisplayMode),
-        "setClimateLabelDisplayMode": staticGlobal(setClimateLabelDisplayMode),
-        "climateNumberDisplayMode": staticGlobal(climateNumberDisplayMode),
-        "setClimateNumberDisplayMode": staticGlobal(setClimateNumberDisplayMode),
-        "climateTemperatureStep": staticGlobal(climateTemperatureStep),
-        "setClimateTemperatureStep": staticGlobal(setClimateTemperatureStep),
-        "alarmActionInfo": staticGlobal(alarmActionInfo),
-        "alarmActionValues": staticGlobal(alarmActionValues),
-        "alarmPinRequired": staticGlobal(alarmPinRequired),
-        "setAlarmPinRequired": staticGlobal(setAlarmPinRequired),
-        "normalizeAlarmActionList": staticGlobal(normalizeAlarmActionList),
-        "alarmVisibleActions": staticGlobal(alarmVisibleActions),
-        "alarmActionsAreDefault": staticGlobal(alarmActionsAreDefault),
-        "setAlarmVisibleActions": staticGlobal(setAlarmVisibleActions),
-        "normalizeAlarmIconDisplayMode": staticGlobal(normalizeAlarmIconDisplayMode),
-        "normalizeAlarmLabelDisplayMode": staticGlobal(normalizeAlarmLabelDisplayMode),
-        "alarmIconDisplayMode": staticGlobal(alarmIconDisplayMode),
-        "setAlarmIconDisplayMode": staticGlobal(setAlarmIconDisplayMode),
-        "alarmLabelDisplayMode": staticGlobal(alarmLabelDisplayMode),
-        "setAlarmLabelDisplayMode": staticGlobal(setAlarmLabelDisplayMode),
-        "normalizeAlarmOptions": staticGlobal(normalizeAlarmOptions),
-        "parseClimatePrecisionConfig": staticGlobal(parseClimatePrecisionConfig),
-        "sanitizeClimateRangeValue": staticGlobal(sanitizeClimateRangeValue),
-        "climatePrecisionConfig": staticGlobal(climatePrecisionConfig),
-        "climatePrecisionValues": staticGlobal(climatePrecisionValues),
-        "climateBehaviorSpec": staticGlobal(climateBehaviorSpec),
-        "climateDefaultLabelDisplayMode": staticGlobal(climateDefaultLabelDisplayMode),
-        "climateDefaultNumberDisplayMode": staticGlobal(climateDefaultNumberDisplayMode),
-        "climateDefaultTemperatureStep": staticGlobal(climateDefaultTemperatureStep),
-        "normalizeClimatePrecisionConfig": staticGlobal(normalizeClimatePrecisionConfig),
+        connectGarageConfirmationNormalizer,
+        alarmBehaviorSpec,
+        alarmActionSpecs,
+        alarmDefaultActions,
+        alarmMaxVisibleActions,
+        alarmActionLegacyIcon,
+        alarmActionIconIsGenerated,
+        normalizeGarageLabelDisplayMode,
+        garageModeOptionValues,
+        normalizeGarageMode,
+        normalizeGarageOptions,
+        garageLabelDisplayMode,
+        setGarageLabelDisplayMode,
+        normalizeGateLabelDisplayMode,
+        gateModeOptionValues,
+        normalizeGateMode,
+        normalizeGateOptions,
+        gateLabelDisplayMode,
+        setGateLabelDisplayMode,
+        normalizeClimateLabelDisplayMode,
+        normalizeClimateNumberDisplayMode,
+        normalizeClimateTemperatureStep,
+        normalizeClimateOptions,
+        climateLabelDisplayMode,
+        setClimateLabelDisplayMode,
+        climateNumberDisplayMode,
+        setClimateNumberDisplayMode,
+        climateTemperatureStep,
+        setClimateTemperatureStep,
+        alarmActionInfo,
+        alarmActionValues,
+        alarmPinRequired,
+        setAlarmPinRequired,
+        normalizeAlarmActionList,
+        alarmVisibleActions,
+        alarmActionsAreDefault,
+        setAlarmVisibleActions,
+        normalizeAlarmIconDisplayMode,
+        normalizeAlarmLabelDisplayMode,
+        alarmIconDisplayMode,
+        setAlarmIconDisplayMode,
+        alarmLabelDisplayMode,
+        setAlarmLabelDisplayMode,
+        normalizeAlarmOptions,
+        parseClimatePrecisionConfig,
+        sanitizeClimateRangeValue,
+        climatePrecisionConfig,
+        climatePrecisionValues,
+        climateBehaviorSpec,
+        climateDefaultLabelDisplayMode,
+        climateDefaultNumberDisplayMode,
+        climateDefaultTemperatureStep,
+        normalizeClimatePrecisionConfig,
     };
 }
+
+export type ConfigAccessClimateAlarmOptionsFeature = ReturnType<
+    typeof createConfigAccessClimateAlarmOptionsFeature
+>;

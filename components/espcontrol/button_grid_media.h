@@ -2,13 +2,22 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+#include "cover_art.h"
+#include "media_power_capability.h"
+#include "media_metadata_policy.h"
+
 enum class MediaControlTab : uint8_t {
   CONTROLS = 0,
   PROGRESS = 1,
   VOLUME = 2,
+  SPEAKERS = 3,
+  POWER = 4,
 };
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
+constexpr int MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT = 80;
+constexpr int MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM = 200;
+constexpr lv_opa_t MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 
 struct MediaControlCtx {
   std::string entity_id;
@@ -17,6 +26,12 @@ struct MediaControlCtx {
   std::string state_text = "unknown";
   std::string title;
   std::string artist;
+  std::string speaker_group_entity;
+  std::vector<std::string> group_members;
+  std::vector<std::string> speaker_helper_members;
+  std::vector<MediaGroupDiscoveryItem> speaker_discovery;
+  std::vector<MediaGroupVolumeState> group_volume_states;
+  bool speaker_discovery_available = false;
   float duration = 0.0f;
   float position_seconds = 0.0f;
   uint32_t position_updated_ms = 0;
@@ -45,6 +60,7 @@ struct MediaControlCtx {
   const lv_font_t *icon_font = nullptr;
   int width_compensation_percent = 100;
   bool available = true;
+  bool state_known = false;
   bool playing = false;
   bool highlight_playing = true;
   bool volume_known = false;
@@ -52,6 +68,34 @@ struct MediaControlCtx {
   bool top_shows_volume = false;
   bool dragging_progress = false;
   bool dragging_volume = false;
+  bool supported_features_known = false;
+  int supported_features = 0;
+  espcontrol::media::VolumeControlMode volume_control_mode =
+    espcontrol::media::VolumeControlMode::ABSOLUTE;
+  bool grouping_supported = false;
+  bool group_only = false;
+};
+
+struct MediaSpeakerRowState {
+  std::string entity_id;
+  std::string friendly_name;
+  int volume_pct = 0;
+  bool volume_known = false;
+  bool available = false;
+  bool selected = false;
+  bool pending = false;
+  bool previous_selected = false;
+  uint32_t call_id = 0;
+  uint32_t pending_until_ms = 0;
+  lv_obj_t *row = nullptr;
+  lv_obj_t *content_box = nullptr;
+  lv_obj_t *text_box = nullptr;
+  lv_obj_t *name_label = nullptr;
+  lv_obj_t *speaker_icon = nullptr;
+  lv_obj_t *volume_label = nullptr;
+  lv_obj_t *volume_controls = nullptr;
+  lv_obj_t *volume_minus_btn = nullptr;
+  lv_obj_t *volume_plus_btn = nullptr;
 };
 
 struct MediaControlModalUi {
@@ -62,6 +106,8 @@ struct MediaControlModalUi {
   lv_obj_t *controls_tab = nullptr;
   lv_obj_t *progress_tab = nullptr;
   lv_obj_t *volume_tab = nullptr;
+  lv_obj_t *speakers_tab = nullptr;
+  lv_obj_t *power_tab = nullptr;
   lv_obj_t *content_box = nullptr;
   lv_obj_t *controls_box = nullptr;
   lv_obj_t *progress_box = nullptr;
@@ -77,24 +123,54 @@ struct MediaControlModalUi {
   lv_obj_t *play_icon_lbl = nullptr;
   lv_obj_t *next_btn = nullptr;
   lv_obj_t *volume_arc = nullptr;
+  lv_obj_t *volume_group_lbl = nullptr;
   lv_obj_t *volume_pct_lbl = nullptr;
   lv_obj_t *volume_minus_btn = nullptr;
   lv_obj_t *volume_plus_btn = nullptr;
+  lv_obj_t *speakers_box = nullptr;
+  lv_obj_t *speakers_status_lbl = nullptr;
+  lv_obj_t *speaker_list = nullptr;
+  lv_timer_t *speaker_action_timer = nullptr;
+  std::vector<MediaSpeakerRowState *> speaker_rows;
+  lv_obj_t *power_btn = nullptr;
+  lv_obj_t *power_icon_lbl = nullptr;
+  lv_obj_t *power_status_lbl = nullptr;
   MediaControlCtx *active = nullptr;
   MediaControlTab tab = MediaControlTab::CONTROLS;
   bool updating_progress = false;
   bool updating_volume = false;
   bool progress_layout_ready = false;
   bool progress_refresh_pending = false;
+  uint32_t speaker_generation = 0;
+  uint32_t speaker_last_scroll_ms = 0;
 };
+
+constexpr uint32_t MEDIA_GROUP_ACTION_TIMEOUT_MS = 12000;
 
 inline MediaControlModalUi &media_control_modal_ui() {
   static MediaControlModalUi ui;
   return ui;
 }
 
+inline void media_control_store_group_volume(MediaControlCtx *ctx,
+                                              const std::string &entity_id,
+                                              int volume_pct,
+                                              bool volume_known,
+                                              bool available) {
+  if (!ctx || entity_id.empty()) return;
+  for (MediaGroupVolumeState &member : ctx->group_volume_states) {
+    if (member.entity_id != entity_id) continue;
+    member.volume_pct = volume_pct;
+    member.volume_known = volume_known;
+    member.available = available;
+    return;
+  }
+  ctx->group_volume_states.push_back(
+    {entity_id, volume_pct, volume_known, available});
+}
+
 inline bool media_control_modal_mode(const std::string &mode) {
-  return mode == "control_modal";
+  return mode == "control_modal" || mode == "speaker_group";
 }
 
 struct MediaPlaybackState;
@@ -129,8 +205,31 @@ inline bool media_control_progress_supported(MediaControlCtx *ctx) {
 #endif
 }
 
+inline bool media_control_power_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::power_toggle_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
+inline espcontrol::media::PowerCommand media_control_power_command(
+    MediaControlCtx *ctx) {
+  if (!ctx) return espcontrol::media::PowerCommand::NONE;
+  return espcontrol::media::power_command(
+    ctx->supported_features_known, ctx->supported_features,
+    ctx->state_known, ctx->available, ctx->state_text);
+}
+
+inline void media_control_send_power_action(MediaControlCtx *ctx) {
+  const auto command = media_control_power_command(ctx);
+  if (command == espcontrol::media::PowerCommand::TURN_ON) {
+    send_media_player_action(ctx->entity_id, "media_player.turn_on");
+  } else if (command == espcontrol::media::PowerCommand::TURN_OFF) {
+    send_media_player_action(ctx->entity_id, "media_player.turn_off");
+  }
+}
+
 inline std::string media_metadata_text(esphome::StringRef value, const char *fallback) {
-  std::string text = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+  std::string text = decode_html_entities(
+    string_ref_limited(value, HA_STATE_TEXT_MAX_LEN));
   if (text.empty() || text == "unknown" || text == "unavailable")
     text = fallback ? fallback : "--";
   return text;
@@ -144,10 +243,7 @@ inline void media_set_metadata_text(lv_obj_t *label, esphome::StringRef value,
 }
 
 inline bool media_external_source_input(std::string source) {
-  for (char &ch : source) {
-    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-  }
-  return source == "tv" || source == "line-in" || source == "line in";
+  return espcontrol::cover_art::external_media_source(source);
 }
 
 inline void media_apply_now_playing_artist_text(MediaNowPlayingCtx *ctx) {
@@ -175,21 +271,6 @@ inline void media_set_now_playing_artist(MediaNowPlayingCtx *ctx,
   ctx->artist[sizeof(ctx->artist) - 1] = '\0';
 }
 
-inline void media_refresh_artist_text(MediaNowPlayingCtx *ctx,
-                                      const std::string &entity_id) {
-  if (!ctx || entity_id.empty()) return;
-  ctx->artist[0] = '\0';
-  media_apply_now_playing_artist_text(ctx);
-  ha_get_attribute(
-    entity_id, std::string("media_artist"),
-    std::function<void(esphome::StringRef)>(
-      [ctx](esphome::StringRef artist) {
-        media_set_now_playing_artist(ctx, artist);
-        media_apply_now_playing_artist_text(ctx);
-      })
-  );
-}
-
 inline bool media_position_timestamp_ms(esphome::StringRef value, uint32_t &updated_ms);
 inline bool media_control_seek_pending_active(MediaControlCtx *ctx);
 inline bool media_control_track_position_reset_active(MediaControlCtx *ctx);
@@ -199,9 +280,19 @@ inline void media_control_layout_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
+inline void media_control_refresh_group_volume(MediaControlCtx *ctx);
+inline void media_control_speaker_action_timer_cb(lv_timer_t *timer);
+inline void media_control_refresh_power(MediaControlCtx *ctx);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
+inline void media_control_refresh_speakers(MediaControlCtx *ctx);
+inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx);
+inline size_t media_control_group_size(MediaControlCtx *ctx);
+inline bool media_control_group_volume_percent(MediaControlCtx *ctx, int *pct);
+inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int pct,
+                                                      bool send_action = true);
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct);
+inline int media_control_volume_max_pct(MediaControlCtx *ctx);
 inline int media_control_clamp_volume(MediaControlCtx *ctx, int pct);
 inline float media_control_current_position_seconds(MediaControlCtx *ctx);
 inline void media_playlist_refresh_checked(MediaPlaylistCtx *ctx);
@@ -215,12 +306,17 @@ inline void media_playback_detach_now_playing(MediaNowPlayingCtx *ctx);
 inline void media_playback_detach_slider(SliderCtx *ctx);
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
+inline void media_playback_subscribe_content(MediaPlaybackState *state);
 inline void media_playback_subscribe_metadata(MediaPlaybackState *state);
+inline void media_playback_subscribe_source(MediaPlaybackState *state);
 inline void media_playback_subscribe_progress(
   MediaPlaybackState *state,
   uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT);
 inline void media_playback_subscribe_volume(MediaPlaybackState *state);
 inline void media_playback_subscribe_friendly_name(MediaPlaybackState *state);
+inline void media_playback_subscribe_grouping(MediaPlaybackState *state);
+inline void media_playback_subscribe_speaker_discovery(
+  MediaPlaybackState *state, const std::string &entity_id);
 inline void media_playback_refresh_progress_timer(MediaPlaybackState *state);
 inline void media_playback_apply_metadata_consumers(MediaPlaybackState *state);
 inline void media_playback_apply_progress_consumers(MediaPlaybackState *state);
@@ -266,7 +362,11 @@ inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
   if (ctx->top_shows_volume && ctx->volume_value_lbl) {
     if (ctx->volume_known) {
       char buf[8];
-      snprintf(buf, sizeof(buf), "%d", media_control_clamp_volume(ctx, ctx->current_pct));
+      snprintf(
+        buf, sizeof(buf), "%d",
+        espcontrol::media::volume_display_value(
+          ctx->volume_control_mode, ctx->current_pct,
+          media_control_volume_max_pct(ctx)));
       lv_label_set_text(ctx->volume_value_lbl, buf);
     } else {
       lv_label_set_text(ctx->volume_value_lbl, "--");
@@ -281,8 +381,13 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   if (!state) return;
   media_playback_attach_control(state, ctx);
   media_playback_subscribe_playback_state(state);
+  media_playback_subscribe_content(state);
   media_playback_subscribe_metadata(state);
   media_playback_subscribe_volume(state);
+  if (!ctx->speaker_group_entity.empty()) {
+    media_playback_subscribe_grouping(state);
+    media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);
+  }
 #ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
   media_playback_subscribe_progress(state);
   media_playback_subscribe_friendly_name(state);
@@ -449,26 +554,43 @@ struct MediaPlaybackButtonRef {
   lv_obj_t *status_lbl = nullptr;
 };
 
+struct MediaSpeakerDiscoveryState {
+  std::string entity_id;
+  std::vector<std::string> members;
+  std::vector<MediaGroupDiscoveryItem> items;
+  bool available = false;
+};
+
 struct MediaPlaybackState {
   bool used = false;
   bool state_subscribed = false;
   bool metadata_subscribed = false;
+  bool source_subscribed = false;
   bool progress_subscribed = false;
   uint32_t progress_subscription_scope = 0;
   bool volume_subscribed = false;
+  bool capabilities_subscribed = false;
   bool content_subscribed = false;
   bool friendly_name_subscribed = false;
+  bool grouping_subscribed = false;
   uint32_t generation = 0;
   std::string entity_id;
   std::string state_text = "unknown";
   std::string title;
   std::string artist;
+  std::string source;
   std::string friendly_name;
   std::string current_content_id;
+  uint64_t current_content_fingerprint = 0;
   std::string current_content_type;
+  espcontrol::media::MediaItemKind current_content_kind =
+    espcontrol::media::MediaItemKind::UNKNOWN;
+  std::vector<std::string> group_members;
+  std::vector<MediaSpeakerDiscoveryState> speaker_discoveries;
   bool has_state = false;
   bool available = true;
   bool playing = false;
+  bool source_known = false;
   bool external_source = false;
   bool has_duration = false;
   bool has_position = false;
@@ -480,8 +602,13 @@ struct MediaPlaybackState {
   uint32_t position_updated_at_ms = 0;
   bool volume_known = false;
   int volume_pct = 0;
+  bool supported_features_known = false;
+  int supported_features = 0;
+  espcontrol::media::VolumeControlMode volume_control_mode =
+    espcontrol::media::VolumeControlMode::ABSOLUTE;
   bool has_current_content_id = false;
   bool has_current_content_type = false;
+  uint8_t artwork_content_mask = 0;
   lv_timer_t *progress_timer = nullptr;
   std::vector<SliderCtx *> sliders;
   std::vector<MediaControlCtx *> controls;
@@ -600,22 +727,31 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->used = true;
   state->state_subscribed = false;
   state->metadata_subscribed = false;
+  state->source_subscribed = false;
   state->progress_subscribed = false;
   state->progress_subscription_scope = 0;
   state->volume_subscribed = false;
+  state->capabilities_subscribed = false;
   state->content_subscribed = false;
   state->friendly_name_subscribed = false;
+  state->grouping_subscribed = false;
   state->generation = ha_subscription_generation();
   state->entity_id = entity_id;
   state->state_text = "unknown";
   state->title.clear();
   state->artist.clear();
+  state->source.clear();
   state->friendly_name.clear();
   state->current_content_id.clear();
+  state->current_content_fingerprint = 0;
   state->current_content_type.clear();
+  state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
+  std::vector<std::string>().swap(state->group_members);
+  std::vector<MediaSpeakerDiscoveryState>().swap(state->speaker_discoveries);
   state->has_state = false;
   state->available = true;
   state->playing = false;
+  state->source_known = false;
   state->external_source = false;
   state->has_duration = false;
   state->has_position = false;
@@ -627,8 +763,12 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->position_updated_at_ms = 0;
   state->volume_known = false;
   state->volume_pct = 0;
+  state->supported_features_known = false;
+  state->supported_features = 0;
+  state->volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
   state->has_current_content_id = false;
   state->has_current_content_type = false;
+  state->artwork_content_mask = 0;
   std::vector<SliderCtx *>().swap(state->sliders);
   std::vector<MediaControlCtx *>().swap(state->controls);
   std::vector<MediaVolumeCtx *>().swap(state->volumes);
@@ -696,7 +836,7 @@ inline bool media_playback_generation_valid(MediaPlaybackState *state,
 
 inline std::string media_playback_metadata_value(esphome::StringRef value,
                                                  size_t max_len) {
-  std::string text = string_ref_limited(value, max_len);
+  std::string text = decode_html_entities(string_ref_limited(value, max_len));
   if (text == "unknown" || text == "unavailable") text.clear();
   return text;
 }
@@ -802,23 +942,84 @@ inline void media_playback_apply_state_to_buttons(MediaPlaybackState *state) {
   }
 }
 
-inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state,
-                                                      MediaNowPlayingCtx *ctx) {
+inline std::string media_playback_artwork_refresh_signature(
+    const MediaPlaybackState *state) {
+  if (!state) return {};
+  if (!state->current_content_id.empty()) {
+    return std::string("content:") + state->current_content_id;
+  }
+  if (!state->title.empty() || !state->artist.empty()) {
+    return std::string("metadata:") + state->title + "\x1f" + state->artist;
+  }
+  return state->has_state ? std::string("state:") + state->state_text : std::string();
+}
+
+inline void media_playback_refresh_stable_artwork(MediaPlaybackState *state,
+                                                  MediaNowPlayingCtx *ctx) {
+  if (!state || !ctx || !ctx->cover_art) return;
+  const std::string signature = media_playback_artwork_refresh_signature(state);
+  if (signature.empty() || signature == ctx->artwork_refresh_signature) return;
+  ctx->artwork_refresh_signature = signature;
+  image_card_refresh_media_artwork_on_metadata_change(ctx->cover_art);
+}
+
+inline void media_playback_apply_state_to_now_playing_snapshot(
+    MediaPlaybackState *state, MediaNowPlayingCtx *ctx) {
   if (!state || !ctx) return;
+  ctx->source_known = state->source_known;
+  ctx->external_source = state->external_source;
+  if (ctx->cover_art) {
+    image_card_set_media_artwork_suppressed(
+      ctx->cover_art, espcontrol::cover_art::media_card_artwork_suppressed(
+        ctx->source_known, ctx->external_source));
+  }
   if (ctx->title_lbl) {
-    const std::string title = state->title.empty() ? std::string("--") : state->title;
+    const std::string title =
+      ctx->external_source_fallback && state->external_source && !state->source.empty()
+        ? state->source
+        : state->title.empty() ? std::string("--") : state->title;
     lv_label_set_text(ctx->title_lbl, title.c_str());
+    if (ctx->show_track_details || ctx->external_source_fallback) {
+      lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
   }
   if (ctx->artist_lbl) {
     std::strncpy(ctx->artist, state->artist.c_str(), sizeof(ctx->artist) - 1);
     ctx->artist[sizeof(ctx->artist) - 1] = '\0';
-    ctx->external_source = state->external_source;
     media_apply_now_playing_artist_text(ctx);
+    if (ctx->show_track_details || ctx->external_source_fallback) {
+      lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
   }
   media_position_now_playing_artist(ctx);
   if (ctx->play_pause_background && ctx->btn) {
     set_card_checked_state(ctx->btn, state->available && state->playing);
   }
+}
+
+inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state,
+                                                      MediaNowPlayingCtx *ctx) {
+  if (!state || !ctx) return;
+  if (ctx->refresh_entity_route) ctx->refresh_entity_route();
+  if (!ctx->active_entity.empty() && state->entity_id != ctx->active_entity) {
+    MediaPlaybackState *active = media_playback_find_state(ctx->active_entity);
+    if (active) media_playback_apply_state_to_now_playing_snapshot(active, ctx);
+    return;
+  }
+  media_playback_refresh_stable_artwork(state, ctx);
+  media_playback_apply_state_to_now_playing_snapshot(state, ctx);
+}
+
+inline bool media_playback_has_current_content(const MediaPlaybackState *state) {
+  if (!state || !state->has_state || !state->available ||
+      !espcontrol::cover_art::media_entity_state_usable(state->state_text)) return false;
+  return !state->title.empty() || !state->artist.empty() ||
+         state->has_current_content_id || state->has_current_content_type ||
+         state->artwork_content_mask != 0;
 }
 
 inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state) {
@@ -851,6 +1052,16 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
                                                  MediaVolumeCtx *ctx) {
   if (!state || !ctx) return;
   ctx->available = state->available;
+  ctx->volume_known = state->volume_known;
+  const auto previous_volume_control_mode = ctx->volume_control_mode;
+  ctx->volume_control_mode = state->volume_control_mode;
+  if (previous_volume_control_mode != ctx->volume_control_mode &&
+      ctx->volume_control_mode !=
+        espcontrol::media::VolumeControlMode::ABSOLUTE) {
+    ctx->pending_pct = -1;
+    ctx->pending_until_ms = 0;
+  }
+  media_volume_refresh_controls(ctx);
   if (!ctx->available) media_volume_hide_modal();
   if (!state->volume_known) {
     if (ctx->pct_lbl) lv_label_set_text(ctx->pct_lbl, "--");
@@ -858,7 +1069,10 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
     return;
   }
 
-  int pct = media_volume_clamp_user_percent(ctx, state->volume_pct);
+  const auto mode = media_volume_effective_control_mode(ctx);
+  int pct = mode == espcontrol::media::VolumeControlMode::ABSOLUTE
+    ? media_volume_clamp_user_percent(ctx, state->volume_pct)
+    : media_clamp_percent(state->volume_pct);
   if (media_volume_pending_active(ctx)) {
     if (pct != ctx->pending_pct) {
       media_volume_set_modal_value(ctx, ctx->pending_pct);
@@ -873,6 +1087,7 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
   ctx->current_pct = pct;
   media_volume_set_card_value(ctx, pct);
   media_volume_set_modal_value(ctx, pct);
+  media_volume_refresh_controls(ctx);
 }
 
 inline void media_playback_apply_state_to_volumes(MediaPlaybackState *state) {
@@ -885,16 +1100,60 @@ inline void media_playback_apply_state_to_volumes(MediaPlaybackState *state) {
 inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
                                                   MediaControlCtx *ctx) {
   if (!state || !ctx) return;
+  const bool previous_power_supported = espcontrol::media::power_toggle_supported(
+    ctx->supported_features_known, ctx->supported_features);
   bool metadata_changed = ctx->title != state->title ||
                           ctx->artist != state->artist ||
                           ctx->friendly_name != state->friendly_name;
   ctx->state_text = state->has_state ? state->state_text : std::string("unknown");
   ctx->available = state->available;
+  ctx->state_known = state->has_state;
   ctx->playing = state->playing;
   ctx->title = state->title;
   ctx->artist = state->artist;
   ctx->friendly_name = state->friendly_name;
+  MediaSpeakerDiscoveryState *discovery = nullptr;
+  for (MediaSpeakerDiscoveryState &candidate : state->speaker_discoveries) {
+    if (candidate.entity_id == ctx->speaker_group_entity) {
+      discovery = &candidate;
+      break;
+    }
+  }
+  const bool discovery_changed = discovery
+    ? (ctx->speaker_helper_members != discovery->members ||
+       ctx->speaker_discovery_available != discovery->available)
+    : (!ctx->speaker_helper_members.empty() ||
+       !ctx->speaker_discovery.empty() ||
+       ctx->speaker_discovery_available);
+  bool grouping_changed = ctx->grouping_supported != media_grouping_supported(state->supported_features) ||
+                          ctx->group_members != state->group_members ||
+                          discovery_changed;
+  ctx->grouping_supported = media_grouping_supported(state->supported_features);
+  ctx->group_members = state->group_members;
+  if (discovery) {
+    ctx->speaker_helper_members = discovery->members;
+    ctx->speaker_discovery = discovery->items;
+    ctx->speaker_discovery_available = discovery->available;
+  } else {
+    ctx->speaker_helper_members.clear();
+    ctx->speaker_discovery.clear();
+    ctx->speaker_discovery_available = false;
+  }
   ctx->duration = state->duration;
+  ctx->volume_known = state->volume_known;
+  ctx->supported_features_known = state->supported_features_known;
+  ctx->supported_features = state->supported_features;
+  const bool power_supported = espcontrol::media::power_toggle_supported(
+    ctx->supported_features_known, ctx->supported_features);
+  const auto previous_volume_control_mode = ctx->volume_control_mode;
+  ctx->volume_control_mode = state->volume_control_mode;
+  if (previous_volume_control_mode != ctx->volume_control_mode &&
+      ctx->volume_control_mode !=
+        espcontrol::media::VolumeControlMode::ABSOLUTE) {
+    ctx->pending_pct = -1;
+    ctx->pending_until_ms = 0;
+    ctx->dragging_volume = false;
+  }
 
   if (state->has_position) {
     bool copy_position = true;
@@ -927,7 +1186,10 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   }
 
   if (state->volume_known) {
-    int pct = media_control_clamp_volume(ctx, state->volume_pct);
+    int pct = ctx->volume_control_mode ==
+        espcontrol::media::VolumeControlMode::ABSOLUTE
+      ? media_control_clamp_volume(ctx, state->volume_pct)
+      : media_clamp_percent(state->volume_pct);
     if (media_control_volume_pending_active(ctx)) {
       if (pct != ctx->pending_pct) {
         media_control_refresh_volume(ctx);
@@ -944,21 +1206,30 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
       media_control_set_volume_value(ctx, pct);
     }
   }
+  media_control_store_group_volume(
+    ctx, ctx->entity_id, state->volume_pct,
+    state->volume_known, state->available);
+  media_control_refresh_group_member_volumes(ctx);
 
-  set_card_checked_state(
-    ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);
+  set_card_checked_state(ctx->btn, ctx->available &&
+    (ctx->group_only ? media_control_group_size(ctx) > 1
+                     : ctx->highlight_playing && ctx->playing));
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();
   if (ui.active == ctx && !ctx->available) {
     media_control_hide_modal();
   } else if (ui.active == ctx) {
-    bool layout_needed = metadata_changed;
+    bool layout_needed = metadata_changed || grouping_changed ||
+                         previous_power_supported != power_supported;
 #ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
     if (media_control_progress_supported(ctx) && !ui.progress_tab) layout_needed = true;
     if (!media_control_progress_supported(ctx) && ui.tab == MediaControlTab::PROGRESS) {
       layout_needed = true;
     }
 #endif
+    if (!power_supported && ui.tab == MediaControlTab::POWER) {
+      layout_needed = true;
+    }
     if (layout_needed) media_control_layout_modal(ctx);
     else media_control_refresh_modal(ctx);
   }
@@ -1177,21 +1448,37 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef value) {
         media_playback_set_artist(state, generation, value);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
 
+  media_playback_subscribe_source(state);
+}
+
+inline void media_playback_subscribe_source(MediaPlaybackState *state) {
+  if (!state || state->source_subscribed || state->entity_id.empty()) return;
+  state->source_subscribed = true;
+  const std::string entity_id = state->entity_id;
+  const uint32_t generation = state->generation;
   auto handle_media_source = [state, generation](esphome::StringRef source) {
     if (!media_playback_generation_valid(state, generation)) return;
-    bool external = media_external_source_input(media_metadata_text(source, ""));
-    if (external == state->external_source) return;
+    const std::string next = media_playback_metadata_value(source, HA_STATE_TEXT_MAX_LEN);
+    bool external = media_external_source_input(next);
+    bool changed = !state->source_known || next != state->source ||
+                   external != state->external_source;
+    state->source = next;
+    state->source_known = true;
     state->external_source = external;
-    media_playback_apply_metadata_consumers(state);
+    if (changed) media_playback_apply_metadata_consumers(state);
   };
   ha_subscribe_attribute(
     entity_id, std::string("source"),
-    std::function<void(esphome::StringRef)>(handle_media_source)
+    std::function<void(esphome::StringRef)>(handle_media_source),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
-  ha_get_attribute(entity_id, std::string("source"), handle_media_source);
+  ha_read_retained_attribute(entity_id, std::string("source"), handle_media_source);
 }
 
 inline void media_playback_subscribe_progress(MediaPlaybackState *state,
@@ -1270,9 +1557,36 @@ inline void media_playback_subscribe_volume(MediaPlaybackState *state) {
       [state, generation](esphome::StringRef val) {
         if (!media_playback_generation_valid(state, generation)) return;
         float level = 0.0f;
-        if (!parse_float_ref(val, level)) return;
+        if (!parse_float_ref(val, level) || !std::isfinite(level)) {
+          state->volume_known = false;
+          media_playback_apply_volume_consumers(state);
+          return;
+        }
         state->volume_known = true;
         state->volume_pct = media_clamp_percent((int)(level * 100.0f + 0.5f));
+        media_playback_apply_volume_consumers(state);
+      })
+  );
+
+  if (state->capabilities_subscribed) return;
+  state->capabilities_subscribed = true;
+  ha_subscribe_attribute(
+    entity_id, std::string("supported_features"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation](esphome::StringRef val) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        std::string value = normalized_state_text(val);
+        char *end = nullptr;
+        long features = std::strtol(value.c_str(), &end, 10);
+        state->supported_features_known =
+          !value.empty() && value != "none" && value != "null" &&
+          value != "unknown" && value != "unavailable" &&
+          end != value.c_str();
+        state->supported_features = state->supported_features_known
+          ? static_cast<int>(features) : 0;
+        state->volume_control_mode = espcontrol::media::volume_control_mode(
+          state->supported_features_known,
+          state->supported_features);
         media_playback_apply_volume_consumers(state);
       })
   );
@@ -1284,30 +1598,53 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
   ha_subscribe_attribute(
-    entity_id, std::string("media_content_id"),
-    std::function<void(esphome::StringRef)>(
-      [state, generation](esphome::StringRef value) {
-        if (!media_playback_generation_valid(state, generation)) return;
-        state->current_content_id = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
-        state->has_current_content_id =
-          !state->current_content_id.empty() &&
-          state->current_content_id != "unknown" &&
-          state->current_content_id != "unavailable";
-        media_playback_apply_state_to_playlists(state);
-      })
-  );
-
-  ha_subscribe_attribute(
     entity_id, std::string("media_content_type"),
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef value) {
         if (!media_playback_generation_valid(state, generation)) return;
-        state->current_content_type = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
-        state->has_current_content_type =
-          !state->current_content_type.empty() &&
-          state->current_content_type != "unknown" &&
-          state->current_content_type != "unavailable";
+        state->current_content_type = media_playback_metadata_value(
+          value, HA_SHORT_STATE_MAX_LEN);
+        state->has_current_content_type = !state->current_content_type.empty();
         media_playback_apply_state_to_playlists(state);
+        media_playback_apply_state_to_now_playing(state);
+      })
+  );
+
+  ha_subscribe_attribute(
+    entity_id, std::string("media_content_id"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        const std::string next_content_id = media_playback_metadata_value(
+          value, HA_STATE_TEXT_MAX_LEN);
+        const uint64_t next_content_fingerprint = next_content_id.empty()
+          ? 0
+          : espcontrol::media::media_content_identity_fingerprint(
+              value.c_str(), value.size());
+        const espcontrol::media::MediaItemKind next_kind =
+          espcontrol::media::media_item_kind(
+            next_content_id, state->current_content_type);
+        const espcontrol::media::MediaMetadataClearDecision decision =
+          espcontrol::media::media_metadata_clear_decision(
+            state->current_content_fingerprint, state->current_content_kind,
+            next_content_fingerprint, next_kind);
+
+        state->has_current_content_id = !next_content_id.empty();
+        if (espcontrol::media::should_replace_media_metadata_identity(
+              next_content_id)) {
+          state->current_content_id = next_content_id;
+          state->current_content_fingerprint = next_content_fingerprint;
+          state->current_content_kind = next_kind;
+        }
+        if (decision.clear_title) state->title.clear();
+        if (decision.clear_grouping) state->artist.clear();
+
+        media_playback_apply_state_to_playlists(state);
+        if (decision.item_changed) {
+          media_playback_apply_metadata_consumers(state);
+        } else {
+          media_playback_apply_state_to_now_playing(state);
+        }
       })
   );
 }
@@ -1326,6 +1663,77 @@ inline void media_playback_subscribe_friendly_name(MediaPlaybackState *state) {
         if (state->friendly_name == "unknown" || state->friendly_name == "unavailable") {
           state->friendly_name.clear();
         }
+        media_playback_apply_state_to_controls(state);
+      })
+  );
+}
+
+inline void media_playback_subscribe_grouping(MediaPlaybackState *state) {
+  if (!state || state->grouping_subscribed || state->entity_id.empty()) return;
+  state->grouping_subscribed = true;
+  const std::string entity_id = state->entity_id;
+  const uint32_t generation = state->generation;
+  ha_subscribe_attribute(
+    entity_id, std::string("supported_features"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        state->supported_features = media_group_parse_supported_features(
+          string_ref_limited(value, HA_SHORT_STATE_MAX_LEN));
+        media_playback_apply_state_to_controls(state);
+      })
+  );
+  ha_subscribe_attribute(
+    entity_id, std::string("group_members"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        state->group_members = media_group_parse_entity_list(value.c_str(), value.size());
+        if (state->group_members.empty()) media_group_append_unique(state->group_members, state->entity_id);
+        media_playback_apply_state_to_controls(state);
+      })
+  );
+}
+
+inline void media_playback_subscribe_speaker_discovery(
+    MediaPlaybackState *state, const std::string &entity_id) {
+  if (!state || entity_id.empty()) return;
+  for (const MediaSpeakerDiscoveryState &discovery : state->speaker_discoveries) {
+    if (discovery.entity_id == entity_id) return;
+  }
+  state->speaker_discoveries.push_back({});
+  state->speaker_discoveries.back().entity_id = entity_id;
+  const uint32_t generation = state->generation;
+  const std::string attribute = media_group_discovery_attribute(entity_id);
+  ESP_LOGI("media_group", "Registering speaker discovery %s attribute %s for %s",
+           entity_id.c_str(), attribute.c_str(), state->entity_id.c_str());
+  ha_subscribe_attribute(
+    entity_id, attribute,
+    std::function<void(esphome::StringRef)>(
+      [state, generation, entity_id](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        MediaSpeakerDiscoveryState *discovery = nullptr;
+        for (MediaSpeakerDiscoveryState &candidate : state->speaker_discoveries) {
+          if (candidate.entity_id == entity_id) {
+            discovery = &candidate;
+            break;
+          }
+        }
+        if (!discovery) return;
+        std::string raw(value.c_str(), value.size());
+        if (std::string(media_group_discovery_attribute(entity_id)) == "data") {
+          discovery->items = media_group_parse_discovery_items(raw);
+          discovery->members.clear();
+          for (const MediaGroupDiscoveryItem &item : discovery->items) {
+            media_group_append_unique(discovery->members, item.entity_id);
+          }
+        } else {
+          discovery->items.clear();
+          discovery->members = media_group_parse_entity_list(raw);
+        }
+        discovery->available = media_group_discovery_available(discovery->members);
+        ESP_LOGI("media_group", "Discovered %u compatible speakers from %s",
+                 (unsigned) discovery->members.size(), entity_id.c_str());
         media_playback_apply_state_to_controls(state);
       })
   );
@@ -1418,17 +1826,17 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            lv_obj_t *title_lbl,
                                            lv_obj_t *artist_lbl,
                                            const lv_font_t *title_font,
-                                           lv_coord_t pad,
+                                           const CardPadding &padding,
                                            bool limit_title_lines,
                                            bool tappable,
                                            lv_coord_t content_inset = 0,
                                            bool reset_text = true) {
   constexpr lv_coord_t TITLE_LINE_SPACE = -1;
-  lv_coord_t text_inset = content_inset > 0 ? content_inset : 0;
+  lv_coord_t text_inset = content_inset > 0 ? content_inset : padding.left;
   lv_coord_t text_width = lv_pct(100);
   if (btn && text_inset > 0) {
     lv_obj_update_layout(btn);
-    lv_coord_t available_width = lv_obj_get_width(btn) - text_inset * 2;
+    lv_coord_t available_width = lv_obj_get_width(btn) - padding.left - padding.right;
     if (available_width > 1) text_width = available_width;
   }
   if (tappable) {
@@ -1456,7 +1864,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
       lv_obj_set_width(title_lbl, text_width);
       lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);
     }
-    lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, text_inset, text_inset);
+    lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
     if (reset_text) lv_label_set_text(title_lbl, "--");
     lv_obj_move_foreground(title_lbl);
   }
@@ -1466,7 +1874,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     lv_label_set_long_mode(artist_lbl, LV_LABEL_LONG_DOT);
     if (font && font->line_height > 0) lv_obj_set_size(artist_lbl, text_width, font->line_height);
     else lv_obj_set_width(artist_lbl, text_width);
-    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, text_inset, -text_inset);
+    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
     lv_obj_move_foreground(artist_lbl);
   }
 }
@@ -1481,6 +1889,7 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
     static_cast<lv_style_selector_t>(LV_PART_MAIN) |
       static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
 
+  const CardPadding padding = capture_card_padding(btn);
   lv_obj_t *slider = setup_slider_widget(btn, progress_color, true);
   lv_obj_t *fill = lv_obj_get_child(btn, 0);
 
@@ -1491,6 +1900,13 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   ctx->cover_tilt = false;
   ctx->inverted = false;
   ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
+  ctx->label_pad_left = padding.left;
+  ctx->label_pad_top = padding.top;
+  ctx->label_pad_bottom = padding.bottom;
+  ctx->content_pad_left = padding.left;
+  ctx->content_pad_top = padding.top;
+  ctx->content_pad_right = padding.right;
+  ctx->content_pad_bottom = padding.bottom;
   ctx->media_position = true;
   ctx->media_slider = slider;
   lv_obj_set_user_data(slider, (void *)ctx);
@@ -1550,7 +1966,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            const ParsedCfg &p,
                                            uint32_t on_color,
                                            uint32_t /*track_color*/,
-                                           lv_coord_t pad) {
+                                           const CardPadding &padding) {
   std::string mode = media_card_mode(p.sensor);
   bool position = mode == "position";
   bool horizontal = true;
@@ -1564,7 +1980,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (text_lbl) {
       lv_obj_clear_flag(text_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(text_lbl, media_position_show_state(p) ? espcontrol_i18n("Paused") : media_action_label(p, mode).c_str());
-      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
     }
@@ -1572,12 +1988,12 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (icon_lbl) {
       lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
-      lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+      lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
       lv_obj_move_foreground(icon_lbl);
     }
     if (text_lbl) {
       lv_label_set_text(text_lbl, media_label(p).c_str());
-      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
     }
@@ -1598,12 +2014,18 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   ctx->cover_tilt = false;
   ctx->inverted = false;
   ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
+  ctx->label_pad_left = padding.left;
+  ctx->label_pad_top = padding.top;
+  ctx->label_pad_bottom = padding.bottom;
+  ctx->content_pad_left = padding.left;
+  ctx->content_pad_top = padding.top;
+  ctx->content_pad_right = padding.right;
+  ctx->content_pad_bottom = padding.bottom;
   ctx->media_position = position;
   ctx->media_slider = slider;
   ctx->media_track_bg = track;
   ctx->media_value_lbl = value_lbl;
   ctx->media_status_lbl = position && media_position_show_state(p) ? text_lbl : nullptr;
-  ctx->content_pad = pad;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
   if (position) {
@@ -1647,25 +2069,28 @@ inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                              uint32_t background_color,
                                              const lv_font_t *value_font,
                                              lv_color_t text_color,
-                                             lv_coord_t pad,
+                                             const CardPadding &padding,
                                              int width_compensation_percent = 100) {
   lv_obj_t *value_lbl = lv_label_create(btn);
   if (value_font) lv_obj_set_style_text_font(value_lbl, value_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(value_lbl, text_color, LV_PART_MAIN);
   apply_width_compensation(value_lbl, width_compensation_percent);
   lv_label_set_text(value_lbl, "0:00");
-  lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+  lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
   lv_obj_set_style_bg_color(
     btn, lv_color_hex(background_color),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) |
       static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
   return setup_media_slider_layout(
-    btn, icon_lbl, text_lbl, value_lbl, p, progress_color, background_color, pad);
+    btn, icon_lbl, text_lbl, value_lbl, p, progress_color, background_color, padding);
 }
 
 inline std::string media_control_card_label(const ParsedCfg &p) {
-  return p.label.empty() ? espcontrol_i18n(std::string("Media Control")) : p.label;
+  if (!p.label.empty()) return p.label;
+  return media_card_mode(p.sensor) == "speaker_group"
+    ? espcontrol_i18n(std::string("Speaker Group"))
+    : espcontrol_i18n(std::string("Media Control"));
 }
 
 inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
@@ -1686,7 +2111,7 @@ inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (unit_lbl) lv_label_set_text(unit_lbl, "");
   } else if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(icon_lbl, media_default_icon("control_modal", p.icon));
+    lv_label_set_text(icon_lbl, media_default_icon(media_card_mode(p.sensor), p.icon));
     lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     if (sensor_container) lv_obj_add_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
@@ -1911,10 +2336,54 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
   ui.progress_refresh_pending = false;
 }
 
+inline void media_control_refresh_volume_controls(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  int group_pct = 0;
+  const bool grouped = media_control_group_size(ctx) > 1;
+  const bool group_known = grouped && media_control_group_volume_percent(ctx, &group_pct);
+  const bool arc_interactive = grouped ? group_known :
+    espcontrol::media::volume_arc_interactive(ctx->volume_control_mode);
+  if (ui.volume_arc) {
+    if (arc_interactive) lv_obj_add_flag(ui.volume_arc, LV_OBJ_FLAG_CLICKABLE);
+    else lv_obj_clear_flag(ui.volume_arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_opa(
+      ui.volume_arc,
+      arc_interactive ? LV_OPA_COVER : LV_OPA_TRANSP,
+      LV_PART_KNOB);
+  }
+  media_volume_set_button_enabled(
+    ui.volume_minus_btn,
+    grouped ? group_known && group_pct > 0 :
+    espcontrol::media::volume_decrease_enabled(
+      ctx->volume_control_mode, ctx->current_pct, ctx->volume_known));
+  media_volume_set_button_enabled(
+    ui.volume_plus_btn,
+    grouped ? group_known && group_pct < media_control_volume_max_pct(ctx) :
+    espcontrol::media::volume_increase_enabled(
+      ctx->volume_control_mode, ctx->current_pct,
+      media_control_volume_max_pct(ctx)));
+}
+
 inline void media_control_refresh_volume(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-  int pct = media_control_clamp_volume(ctx, ctx->current_pct);
+  const bool absolute = ctx->volume_control_mode ==
+    espcontrol::media::VolumeControlMode::ABSOLUTE;
+  const bool grouped = media_control_group_size(ctx) > 1;
+  int group_pct = 0;
+  const bool group_known = grouped && media_control_group_volume_percent(ctx, &group_pct);
+  int pct = group_known ? group_pct :
+    (absolute ? media_control_clamp_volume(ctx, ctx->current_pct)
+              : media_clamp_percent(ctx->current_pct));
+  if (ui.volume_group_lbl) {
+    if (grouped) {
+      lv_label_set_text(ui.volume_group_lbl, espcontrol_i18n("Group"));
+      lv_obj_clear_flag(ui.volume_group_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(ui.volume_group_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
   if (ui.volume_pct_lbl) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", pct);
@@ -1922,10 +2391,38 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx) {
   }
   if (ui.volume_arc && !ctx->dragging_volume) {
     ui.updating_volume = true;
-    lv_arc_set_range(ui.volume_arc, 0, media_control_volume_max_pct(ctx));
+    lv_arc_set_range(
+      ui.volume_arc, 0, absolute ? media_control_volume_max_pct(ctx) : 100);
     lv_arc_set_value(ui.volume_arc, pct);
     ui.updating_volume = false;
   }
+  media_control_refresh_volume_controls(ctx);
+}
+
+inline void media_control_refresh_power(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.power_btn) return;
+  const auto command = media_control_power_command(ctx);
+  const bool interactive = command != espcontrol::media::PowerCommand::NONE;
+  const bool on = ctx->state_known && ctx->available && ctx->state_text != "off" &&
+                  ctx->state_text != "unknown" && ctx->state_text != "unavailable";
+  lv_obj_set_style_bg_color(
+    ui.power_btn,
+    lv_color_hex(on ? ctx->accent_color : SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.power_btn, LV_OPA_COVER, LV_PART_MAIN);
+  if (ui.power_icon_lbl) {
+    lv_label_set_text(ui.power_icon_lbl, find_icon("Power"));
+    lv_obj_set_style_text_color(
+      ui.power_icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
+  if (ui.power_status_lbl) {
+    const std::string status = !ctx->state_known
+      ? espcontrol_i18n(std::string("Unknown"))
+      : (on ? espcontrol_i18n(std::string("On"))
+            : espcontrol_i18n(std::string("Off")));
+    lv_label_set_text(ui.power_status_lbl, status.c_str());
+  }
+  media_control_apply_availability(ui.power_btn, ui.power_btn, interactive);
 }
 
 inline void media_control_refresh_modal(MediaControlCtx *ctx) {
@@ -1938,17 +2435,35 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
   media_control_refresh_volume(ctx);
+  media_control_refresh_speakers(ctx);
+  media_control_refresh_power(ctx);
 }
 
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct) {
   if (!ctx) return;
-  ctx->current_pct = media_control_clamp_volume(ctx, pct);
+  ctx->current_pct = ctx->volume_control_mode ==
+      espcontrol::media::VolumeControlMode::ABSOLUTE
+    ? media_control_clamp_volume(ctx, pct) : media_clamp_percent(pct);
   media_control_refresh_volume(ctx);
 }
 
 inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
                                                bool from_user, bool send_action) {
   if (!ctx || !ctx->available) return;
+  if (media_control_group_size(ctx) > 1) {
+    media_control_apply_group_volume_percent(ctx, pct, send_action);
+    return;
+  }
+  const int current_pct = media_clamp_percent(ctx->current_pct);
+  const auto command = espcontrol::media::volume_command(
+    ctx->volume_control_mode, current_pct, pct,
+    media_control_volume_max_pct(ctx), ctx->volume_known);
+  if (ctx->volume_control_mode !=
+      espcontrol::media::VolumeControlMode::ABSOLUTE) {
+    if (send_action) send_media_volume_command(ctx->entity_id, command);
+    media_control_refresh_volume_controls(ctx);
+    return;
+  }
   pct = media_control_clamp_volume(ctx, pct);
   ctx->current_pct = pct;
   if (from_user) {
@@ -1958,7 +2473,7 @@ inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
   }
   media_control_refresh_volume(ctx);
   media_control_refresh_parent_card(ctx);
-  if (send_action) send_media_volume_action(ctx->entity_id, pct);
+  if (send_action) send_media_volume_command(ctx->entity_id, command);
 }
 
 inline void media_control_style_tab(lv_obj_t *btn, bool active) {
@@ -1977,16 +2492,32 @@ inline void media_control_style_tab(lv_obj_t *btn, bool active) {
 inline void media_control_apply_tab_visibility() {
   MediaControlModalUi &ui = media_control_modal_ui();
   bool progress_supported = media_control_progress_supported(ui.active);
+  bool speakers_supported = ui.active && media_group_speaker_tab_available(
+    ui.active->grouping_supported, ui.active->speaker_discovery_available,
+    media_control_group_size(ui.active) > 1);
+  bool power_supported = media_control_power_supported(ui.active);
   bool show_controls = ui.tab == MediaControlTab::CONTROLS;
   bool show_progress = progress_supported && ui.tab == MediaControlTab::PROGRESS;
   bool show_volume = ui.tab == MediaControlTab::VOLUME;
+  bool show_speakers = ui.tab == MediaControlTab::SPEAKERS;
+  bool show_power = power_supported && ui.tab == MediaControlTab::POWER;
   if (ui.progress_tab) {
     if (progress_supported) lv_obj_clear_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
   }
+  if (ui.speakers_tab) {
+    if (speakers_supported) lv_obj_clear_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (ui.power_tab) {
+    if (power_supported) lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+  }
   media_control_style_tab(ui.controls_tab, show_controls);
   media_control_style_tab(ui.progress_tab, show_progress);
   media_control_style_tab(ui.volume_tab, show_volume);
+  media_control_style_tab(ui.speakers_tab, show_speakers);
+  media_control_style_tab(ui.power_tab, show_power);
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx);
@@ -2008,7 +2539,14 @@ inline lv_obj_t *media_control_create_tab_button(lv_obj_t *parent, const char *i
         !media_control_progress_supported(ui.active)) {
       return;
     }
+    if (tab == MediaControlTab::POWER &&
+        !media_control_power_supported(ui.active)) {
+      return;
+    }
     if (ui.tab == tab) return;
+    if (ui.tab == MediaControlTab::SPEAKERS) {
+      ui.speaker_generation++;
+    }
     media_control_clear_tab_content();
     ui.tab = tab;
     media_control_ensure_tab_content(ui.active);
@@ -2020,7 +2558,9 @@ inline lv_obj_t *media_control_create_tab_button(lv_obj_t *parent, const char *i
 
 inline bool media_control_ensure_progress_tab_button(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.tab_row) return false;
+  if (!ctx || ui.active != ctx) return false;
+  if (ctx->group_only) return true;
+  if (!ui.tab_row) return false;
   if (!media_control_progress_supported(ctx)) {
     if (ui.progress_tab) lv_obj_add_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
     return true;
@@ -2032,6 +2572,51 @@ inline bool media_control_ensure_progress_tab_button(MediaControlCtx *ctx) {
   }
   if (!ui.progress_tab) return false;
   lv_obj_clear_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
+  return true;
+}
+
+inline bool media_control_ensure_speakers_tab_button(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return false;
+  if (ctx->group_only) return true;
+  bool supported = media_group_speaker_tab_available(
+    ctx->grouping_supported, ctx->speaker_discovery_available,
+    media_control_group_size(ctx) > 1);
+  if (!supported) {
+    if (ui.speakers_tab) lv_obj_add_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
+    if (ui.tab == MediaControlTab::SPEAKERS) {
+      ui.speaker_generation++;
+      media_control_clear_tab_content();
+      ui.tab = MediaControlTab::CONTROLS;
+    }
+    return true;
+  }
+  if (!ui.speakers_tab) {
+    ui.speakers_tab = media_control_create_tab_button(
+      ui.tab_row, find_icon("Speaker Multiple"), ctx->icon_font,
+      MediaControlTab::SPEAKERS, ctx->width_compensation_percent);
+  }
+  if (!ui.speakers_tab) return false;
+  lv_obj_clear_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
+  return true;
+}
+
+inline bool media_control_ensure_power_tab_button(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return false;
+  if (ctx->group_only) return true;
+  if (!ui.tab_row) return false;
+  if (!media_control_power_supported(ctx)) {
+    if (ui.power_tab) lv_obj_add_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+    return true;
+  }
+  if (!ui.power_tab) {
+    ui.power_tab = media_control_create_tab_button(
+      ui.tab_row, find_icon("Power"), ctx->icon_font,
+      MediaControlTab::POWER, ctx->width_compensation_percent);
+  }
+  if (!ui.power_tab) return false;
+  lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
   return true;
 }
 
@@ -2199,12 +2784,22 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
 inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || !ui.content_box || ui.volume_arc) return;
+  if (!ui.speaker_action_timer) {
+    ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
+  }
+  media_control_refresh_group_member_volumes(ctx);
 
   ui.volume_arc = lv_arc_create(ui.content_box);
   if (!ui.volume_arc) return;
   lv_arc_set_bg_angles(ui.volume_arc, 135, 45);
-  lv_arc_set_range(ui.volume_arc, 0, media_control_volume_max_pct(ctx));
-  lv_arc_set_value(ui.volume_arc, media_control_clamp_volume(ctx, ctx->current_pct));
+  const bool absolute = ctx->volume_control_mode ==
+    espcontrol::media::VolumeControlMode::ABSOLUTE;
+  lv_arc_set_range(
+    ui.volume_arc, 0, absolute ? media_control_volume_max_pct(ctx) : 100);
+  lv_arc_set_value(
+    ui.volume_arc,
+    absolute ? media_control_clamp_volume(ctx, ctx->current_pct)
+             : media_clamp_percent(ctx->current_pct));
   lv_obj_set_style_bg_opa(ui.volume_arc, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.volume_arc, 0, LV_PART_MAIN);
   lv_obj_set_style_arc_color(ui.volume_arc, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
@@ -2218,9 +2813,15 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   lv_obj_add_event_cb(ui.volume_arc, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_volume) return;
+    if (media_control_group_size(ui.active) < 2 &&
+        !espcontrol::media::volume_arc_interactive(
+          ui.active->volume_control_mode)) return;
     ui.active->dragging_volume = true;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    media_control_apply_volume_percent(ui.active, lv_arc_get_value(arc), true, true);
+    const bool grouped = media_group_defer_volume_actions(
+      media_control_group_size(ui.active));
+    media_control_apply_volume_percent(
+      ui.active, lv_arc_get_value(arc), true, !grouped);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.volume_arc, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
@@ -2229,6 +2830,10 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   lv_obj_add_event_cb(ui.volume_arc, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active) return;
+    if (media_control_group_size(ui.active) > 1 && ui.volume_arc) {
+      media_control_apply_volume_percent(
+        ui.active, lv_arc_get_value(ui.volume_arc), true, true);
+    }
     ui.active->dragging_volume = false;
     media_control_refresh_volume(ui.active);
   }, LV_EVENT_RELEASED, nullptr);
@@ -2239,6 +2844,16 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
       media_control_refresh_volume(ui.active);
     }
   }, LV_EVENT_PRESS_LOST, nullptr);
+
+  ui.volume_group_lbl = lv_label_create(ui.content_box);
+  if (ui.volume_group_lbl) {
+    lv_label_set_text(ui.volume_group_lbl, espcontrol_i18n("Group"));
+    lv_obj_set_style_text_color(ui.volume_group_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.volume_group_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(ui.volume_group_lbl, ctx->label_font, LV_PART_MAIN);
+    apply_width_compensation(ui.volume_group_lbl, ctx->width_compensation_percent);
+    lv_obj_add_flag(ui.volume_group_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
 
   ui.volume_pct_lbl = lv_label_create(ui.content_box);
   if (ui.volume_pct_lbl) {
@@ -2261,21 +2876,795 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
     lv_obj_add_event_cb(ui.volume_minus_btn, [](lv_event_t *) {
       MediaControlModalUi &ui = media_control_modal_ui();
       if (!ui.active) return;
-      media_control_apply_volume_percent(ui.active, ui.active->current_pct - 1, true, true);
+      int pct = ui.active->current_pct;
+      media_control_group_volume_percent(ui.active, &pct);
+      media_control_apply_volume_percent(ui.active, pct - 1, true, true);
     }, LV_EVENT_CLICKED, nullptr);
   }
   if (ui.volume_plus_btn) {
     lv_obj_add_event_cb(ui.volume_plus_btn, [](lv_event_t *) {
       MediaControlModalUi &ui = media_control_modal_ui();
       if (!ui.active) return;
-      media_control_apply_volume_percent(ui.active, ui.active->current_pct + 1, true, true);
+      int pct = ui.active->current_pct;
+      media_control_group_volume_percent(ui.active, &pct);
+      media_control_apply_volume_percent(ui.active, pct + 1, true, true);
     }, LV_EVENT_CLICKED, nullptr);
   }
+  media_control_refresh_volume_controls(ctx);
+}
+
+inline MediaSpeakerRowState *media_control_find_speaker_row(const std::string &entity_id) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  for (MediaSpeakerRowState *row : ui.speaker_rows) {
+    if (row && row->entity_id == entity_id) return row;
+  }
+  return nullptr;
+}
+
+inline void media_control_cancel_speaker_action(MediaSpeakerRowState *row,
+                                                const char *reason) {
+  if (!row || row->call_id == 0) return;
+  uint32_t call_id = row->call_id;
+  row->pending = false;
+  row->call_id = 0;
+  row->pending_until_ms = 0;
+  ha_cancel_action_response_callback(call_id, reason);
+}
+
+inline bool media_control_group_contains(MediaControlCtx *ctx, const std::string &entity_id) {
+  if (!ctx) return false;
+  if (entity_id == ctx->entity_id) return true;
+  return std::find(ctx->group_members.begin(), ctx->group_members.end(), entity_id) !=
+    ctx->group_members.end();
+}
+
+inline size_t media_control_group_size(MediaControlCtx *ctx) {
+  if (!ctx) return 0;
+  std::vector<std::string> current;
+  media_group_append_unique(current, ctx->entity_id);
+  for (const std::string &member : ctx->group_members) media_group_append_unique(current, member);
+  return current.size();
+}
+
+inline void media_control_set_speaker_status(const char *text, bool error = false,
+                                             bool show = false) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ui.speakers_status_lbl) return;
+  if (!error && !show) {
+    lv_obj_add_flag(ui.speakers_status_lbl, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+  lv_obj_clear_flag(ui.speakers_status_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_label_set_text(ui.speakers_status_lbl, text ? text : "");
+  lv_obj_set_style_text_color(
+    ui.speakers_status_lbl,
+    lv_color_hex(error ? 0xFF6B6B : DARK_TEXT_MUTED), LV_PART_MAIN);
+}
+
+inline std::string media_control_speaker_fallback_name(const std::string &entity_id) {
+  size_t dot = entity_id.find('.');
+  std::string name = dot == std::string::npos ? entity_id : entity_id.substr(dot + 1);
+  for (char &ch : name) if (ch == '_') ch = ' ';
+  return sentence_cap_text(name);
+}
+
+inline bool media_control_speaker_row_shows_volume(MediaControlCtx *ctx,
+                                                   MediaSpeakerRowState *row) {
+  if (!ctx || !row || !row->selected) return false;
+  return media_control_group_size(ctx) > 1 || row->entity_id == ctx->entity_id;
+}
+
+inline lv_coord_t media_control_speaker_row_height(MediaControlCtx *ctx,
+                                                   MediaSpeakerRowState *row,
+                                                   lv_coord_t short_side) {
+  lv_coord_t height = control_modal_scaled_px(80, short_side);
+  const lv_coord_t minimum = 76;
+  if (height < minimum) height = minimum;
+
+  // Selected speakers show both their name and volume. On compact portrait
+  // panels, those two text lines plus the row padding need more room than the
+  // historical fixed-height card allowed, which made the lines overlap.
+  if (!media_control_speaker_row_shows_volume(ctx, row)) return height;
+  const lv_font_t *label_font = ctx ? ctx->label_font : nullptr;
+  const lv_coord_t text_line_h = label_font && label_font->line_height > 0
+    ? label_font->line_height : 24;
+  const lv_coord_t vertical_padding = control_modal_scaled_px(12, short_side);
+  const lv_coord_t text_height = text_line_h * 2 + vertical_padding * 2;
+  return text_height > height ? text_height : height;
+}
+
+inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
+                                              MediaSpeakerRowState *row) {
+  if (!ctx || !row) return;
+  if (!row->pending) row->selected = media_control_group_contains(ctx, row->entity_id);
+  const bool show_volume = media_control_speaker_row_shows_volume(ctx, row);
+  const bool visible = true;
+  const uint32_t bg_color = row->selected ? ctx->accent_color : ctx->secondary_color;
+  const uint32_t text_color = row->selected
+    ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color);
+  if (row->row) {
+    if (visible) lv_obj_clear_flag(row->row, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(row->row, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_color(row->row, lv_color_hex(bg_color), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(row->row, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row->row, 0, LV_PART_MAIN);
+    const bool clickable = row->available && !row->pending &&
+      (!row->selected || row->entity_id != ctx->entity_id);
+    if (clickable) lv_obj_add_flag(row->row, LV_OBJ_FLAG_CLICKABLE);
+    else lv_obj_clear_flag(row->row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_opa(row->row, row->available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+    if (media_control_modal_ui().active == ctx) {
+      ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+      const lv_coord_t height = media_control_speaker_row_height(ctx, row, layout.short_side);
+      if (lv_obj_get_height(row->row) != height) lv_obj_set_height(row->row, height);
+    }
+  }
+  if (row->name_label) {
+    std::string name = row->friendly_name.empty()
+      ? media_control_speaker_fallback_name(row->entity_id) : row->friendly_name;
+    lv_label_set_text(row->name_label, name.c_str());
+    lv_obj_set_style_text_color(row->name_label, lv_color_hex(text_color), LV_PART_MAIN);
+#ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
+    lv_obj_set_style_translate_y(
+      row->name_label,
+      show_volume ? -(lv_obj_get_height(row->name_label) / 2) : 0,
+      LV_PART_MAIN);
+#endif
+  }
+  if (row->speaker_icon) {
+    lv_label_set_text(
+      row->speaker_icon,
+      find_icon(row->selected ? "Speaker Wireless" : "Speaker Off"));
+    lv_obj_clear_flag(row->speaker_icon, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_text_color(row->speaker_icon, lv_color_hex(text_color), LV_PART_MAIN);
+  }
+  if (row->volume_controls) {
+    if (show_volume) lv_obj_clear_flag(row->volume_controls, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(row->volume_controls, LV_OBJ_FLAG_HIDDEN);
+  }
+#ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
+  // Compact rows place the volume buttons directly on the card instead of in
+  // a nested container, so their visibility is managed individually.
+  if (row->volume_minus_btn) {
+    if (show_volume) lv_obj_clear_flag(row->volume_minus_btn, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(row->volume_minus_btn, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (row->volume_plus_btn) {
+    if (show_volume) lv_obj_clear_flag(row->volume_plus_btn, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(row->volume_plus_btn, LV_OBJ_FLAG_HIDDEN);
+  }
+#endif
+  const bool volume_enabled = show_volume && row->available && row->volume_known;
+  media_volume_set_button_enabled(row->volume_minus_btn, volume_enabled && row->volume_pct > 0);
+  media_volume_set_button_enabled(
+    row->volume_plus_btn,
+    volume_enabled && row->volume_pct < media_control_volume_max_pct(ctx));
+  if (row->volume_label) {
+    if (show_volume) lv_obj_clear_flag(row->volume_label, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(row->volume_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_text_color(row->volume_label, lv_color_hex(text_color), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(
+      row->volume_label, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA, LV_PART_MAIN);
+    char value[8];
+    if (row->volume_known) snprintf(value, sizeof(value), "%d%%", row->volume_pct);
+    else std::strncpy(value, "--", sizeof(value));
+    value[sizeof(value) - 1] = '\0';
+    lv_label_set_text(row->volume_label, value);
+#ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
+    lv_obj_set_style_translate_y(
+      row->volume_label, lv_obj_get_height(row->volume_label) / 2, LV_PART_MAIN);
+#endif
+  }
+}
+
+inline void media_control_speaker_action_timer_cb(lv_timer_t *) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  MediaControlCtx *ctx = ui.active;
+  if (!ctx) return;
+  uint32_t now = esphome::millis();
+  bool expired = false;
+  for (MediaSpeakerRowState *row : ui.speaker_rows) {
+    if (!row || !row->pending || row->pending_until_ms == 0 ||
+        (int32_t)(now - row->pending_until_ms) < 0) {
+      continue;
+    }
+    uint32_t call_id = row->call_id;
+    row->pending = false;
+    row->call_id = 0;
+    row->pending_until_ms = 0;
+    row->selected = media_control_group_contains(ctx, row->entity_id);
+    if (call_id != 0) ha_cancel_action_response_callback(call_id, "grouping timeout");
+    media_control_refresh_speaker_row(ctx, row);
+    expired = true;
+  }
+  if (expired) {
+    media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
+    media_control_refresh_group_volume(ctx);
+  }
+}
+
+inline std::vector<MediaGroupVolumeState> media_control_current_group_volumes(
+    MediaControlCtx *ctx) {
+  std::vector<MediaGroupVolumeState> volumes;
+  if (!ctx) return volumes;
+  std::vector<std::string> current;
+  media_group_append_unique(current, ctx->entity_id);
+  for (const std::string &entity_id : ctx->group_members) media_group_append_unique(current, entity_id);
+  for (const std::string &entity_id : current) {
+    MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
+    MediaGroupVolumeState state;
+    state.entity_id = entity_id;
+    if (row) {
+      state.volume_pct = row->volume_pct;
+      state.volume_known = row->volume_known;
+      state.available = row->available;
+    } else {
+      for (const MediaGroupVolumeState &known : ctx->group_volume_states) {
+        if (known.entity_id == entity_id) {
+          state = known;
+          break;
+        }
+      }
+    }
+    volumes.push_back(state);
+  }
+  return volumes;
+}
+
+inline void media_control_refresh_group_member_volumes(MediaControlCtx *ctx) {
+  if (!ctx) return;
+  std::vector<std::string> members;
+  media_group_append_unique(members, ctx->entity_id);
+  for (const std::string &entity_id : ctx->group_members) {
+    media_group_append_unique(members, entity_id);
+  }
+  ctx->group_volume_states.erase(
+    std::remove_if(ctx->group_volume_states.begin(), ctx->group_volume_states.end(),
+      [&members](const MediaGroupVolumeState &known) {
+        return std::find(members.begin(), members.end(), known.entity_id) == members.end();
+      }),
+    ctx->group_volume_states.end());
+  for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
+    if (std::find(members.begin(), members.end(), item.entity_id) == members.end()) continue;
+    media_control_store_group_volume(
+      ctx, item.entity_id, item.volume_pct, item.volume_known, item.available);
+  }
+}
+
+inline bool media_control_group_volume_percent(MediaControlCtx *ctx, int *pct) {
+  if (!ctx || !pct || media_control_group_size(ctx) < 2) return false;
+  return media_group_mean_volume(media_control_current_group_volumes(ctx), pct);
+}
+
+inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int pct,
+                                                      bool send_action) {
+  if (!ctx || media_control_group_size(ctx) < 2) return;
+  std::vector<MediaGroupVolumeState> members = media_control_current_group_volumes(ctx);
+  std::vector<int> volumes = media_group_delta_volumes(
+    members, pct, media_control_volume_max_pct(ctx));
+  if (volumes.size() != members.size()) return;
+  if (!send_action) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (ui.active == ctx && ui.volume_pct_lbl) {
+      char value[8];
+      snprintf(value, sizeof(value), "%d", media_control_clamp_volume(ctx, pct));
+      lv_label_set_text(ui.volume_pct_lbl, value);
+    }
+    return;
+  }
+  for (size_t i = 0; i < members.size(); i++) {
+    if (!members[i].available) continue;
+    if (send_action) send_media_volume_action(members[i].entity_id, volumes[i]);
+    if (members[i].entity_id == ctx->entity_id) {
+      ctx->current_pct = volumes[i];
+      ctx->volume_known = true;
+    }
+    MediaSpeakerRowState *row = media_control_find_speaker_row(members[i].entity_id);
+    if (row) {
+      row->volume_pct = volumes[i];
+      row->volume_known = true;
+    }
+    bool stored = false;
+    for (MediaGroupVolumeState &known : ctx->group_volume_states) {
+      if (known.entity_id != members[i].entity_id) continue;
+      known.volume_pct = volumes[i];
+      known.volume_known = true;
+      stored = true;
+      break;
+    }
+    if (!stored) {
+      ctx->group_volume_states.push_back(
+        {members[i].entity_id, volumes[i], true, members[i].available});
+    }
+  }
+  media_control_refresh_speakers(ctx);
+  media_control_refresh_volume(ctx);
+}
+
+inline void media_control_refresh_group_volume(MediaControlCtx *ctx) {
+  if (!ctx || media_control_modal_ui().active != ctx) return;
+  media_control_refresh_volume(ctx);
+}
+
+inline void media_control_group_action_result(
+    MediaControlCtx *ctx, const std::string &entity_id, uint32_t call_id,
+    const esphome::api::ActionResponse &response) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  MediaSpeakerRowState *row = media_control_find_speaker_row(entity_id);
+  if (!row || row->call_id != call_id) return;
+  row->pending = false;
+  row->call_id = 0;
+  row->pending_until_ms = 0;
+  if (!response.is_success()) {
+    row->selected = row->previous_selected;
+    media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
+    ESP_LOGW("media", "Speaker grouping failed for %s: %s", entity_id.c_str(),
+             response.get_error_message().c_str());
+  } else {
+    if (row->selected) {
+      media_group_append_unique(ctx->group_members, row->entity_id);
+    } else {
+      ctx->group_members.erase(
+        std::remove(ctx->group_members.begin(), ctx->group_members.end(), row->entity_id),
+        ctx->group_members.end());
+    }
+    media_control_set_speaker_status(espcontrol_i18n("Speakers updated"));
+  }
+  media_control_refresh_speaker_row(ctx, row);
+  media_control_refresh_speakers(ctx);
+  media_control_refresh_volume(ctx);
+}
+
+inline void media_control_toggle_speaker(MediaControlCtx *ctx,
+                                         MediaSpeakerRowState *row,
+                                         bool selected) {
+  if (!ctx || !row || row->entity_id == ctx->entity_id || row->pending) return;
+  row->previous_selected = media_control_group_contains(ctx, row->entity_id);
+  row->selected = selected;
+  row->pending = true;
+  row->pending_until_ms = esphome::millis() + MEDIA_GROUP_ACTION_TIMEOUT_MS;
+  media_control_set_speaker_status(nullptr);
+  media_control_refresh_speaker_row(ctx, row);
+  auto call_id = std::make_shared<uint32_t>(0);
+  auto callback = [ctx, entity_id = row->entity_id, call_id](
+      const esphome::api::ActionResponse &response) {
+    media_control_group_action_result(ctx, entity_id, *call_id, response);
+  };
+  bool sent = false;
+  if (selected) {
+    std::vector<std::string> selected_members;
+    media_group_append_unique(selected_members, ctx->entity_id);
+    for (MediaSpeakerRowState *candidate : media_control_modal_ui().speaker_rows) {
+      if (candidate && candidate->selected) media_group_append_unique(selected_members, candidate->entity_id);
+    }
+    sent = send_media_group_join_action(ctx->entity_id, selected_members, callback, call_id.get());
+  } else {
+    sent = send_media_group_unjoin_action(row->entity_id, callback, call_id.get());
+  }
+  row->call_id = *call_id;
+  if (!sent) {
+    row->pending = false;
+    row->pending_until_ms = 0;
+    row->selected = row->previous_selected;
+    media_control_set_speaker_status(espcontrol_i18n("Grouping failed"), true);
+    media_control_refresh_speaker_row(ctx, row);
+  }
+}
+
+inline lv_obj_t *media_control_create_speaker_volume_button(
+    MediaControlCtx *ctx, MediaSpeakerRowState *row, lv_obj_t *parent,
+    lv_coord_t size, const char *icon, bool increase) {
+  if (!ctx || !row || !parent) return nullptr;
+  lv_obj_t *btn = lv_btn_create(parent);
+  lv_obj_set_size(btn, size, size);
+  lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_t *label = lv_label_create(btn);
+  lv_label_set_text(label, icon);
+  if (ctx->icon_font) lv_obj_set_style_text_font(label, ctx->icon_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(label, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+  lv_obj_center(label);
+  lv_obj_set_user_data(btn, row);
+  lv_obj_add_event_cb(btn, [](lv_event_t *event) {
+    MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
+      lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_target(event))));
+    if (!row || !row->available || !row->volume_known) return;
+    const bool increase = reinterpret_cast<uintptr_t>(lv_event_get_user_data(event)) != 0;
+    MediaControlCtx *ctx = media_control_modal_ui().active;
+    if (!ctx) return;
+    row->volume_pct = media_group_step_volume(
+      row->volume_pct, increase, media_control_volume_max_pct(ctx));
+    bool stored = false;
+    for (MediaGroupVolumeState &known : ctx->group_volume_states) {
+      if (known.entity_id != row->entity_id) continue;
+      known.volume_pct = row->volume_pct;
+      known.volume_known = true;
+      known.available = row->available;
+      stored = true;
+      break;
+    }
+    if (!stored) {
+      ctx->group_volume_states.push_back(
+        {row->entity_id, row->volume_pct, true, row->available});
+    }
+    send_media_volume_action(row->entity_id, row->volume_pct);
+    media_control_refresh_speaker_row(ctx, row);
+    media_control_refresh_group_volume(ctx);
+  }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(increase)));
+  return btn;
+}
+
+inline bool media_control_speaker_event_from_volume_controls(
+    MediaSpeakerRowState *row, lv_obj_t *target) {
+  if (!row || !target) return false;
+  for (lv_obj_t *obj = target; obj && obj != row->row; obj = lv_obj_get_parent(obj)) {
+    if (obj == row->volume_controls ||
+        obj == row->volume_minus_btn ||
+        obj == row->volume_plus_btn) {
+      return true;
+    }
+  }
+  return false;
+}
+
+inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
+                                                const std::string &entity_id) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || !ui.speaker_list || !media_group_valid_entity_id(entity_id) ||
+      media_control_find_speaker_row(entity_id)) return;
+  MediaSpeakerRowState *row = new MediaSpeakerRowState();
+  row->entity_id = entity_id;
+  row->selected = media_control_group_contains(ctx, entity_id);
+  if (entity_id == ctx->entity_id) row->available = ctx->available;
+  bool discovery_item_found = false;
+  for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
+    if (item.entity_id != entity_id) continue;
+    discovery_item_found = true;
+    row->friendly_name = item.friendly_name;
+    row->volume_pct = item.volume_pct;
+    row->volume_known = item.volume_known;
+    if (entity_id != ctx->entity_id) row->available = item.available;
+    break;
+  }
+  const bool listed_by_helper =
+    std::find(ctx->speaker_helper_members.begin(),
+              ctx->speaker_helper_members.end(), entity_id) !=
+      ctx->speaker_helper_members.end();
+  if (!discovery_item_found && entity_id != ctx->entity_id &&
+      (listed_by_helper || row->selected)) {
+    row->available = true;
+  }
+  row->row = lv_btn_create(ui.speaker_list);
+  lv_obj_set_size(row->row, lv_obj_get_width(ui.speaker_list), 118);
+  lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
+  lv_obj_set_style_border_width(row->row, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(row->row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row->row, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(row->row, LV_OBJ_FLAG_SCROLLABLE);
+  control_modal_apply_pressed_fill(row->row);
+  lv_obj_set_user_data(row->row, row);
+  lv_obj_add_event_cb(row->row, [](lv_event_t *event) {
+    lv_obj_t *row_obj = static_cast<lv_obj_t *>(lv_event_get_current_target(event));
+    MediaSpeakerRowState *row = static_cast<MediaSpeakerRowState *>(
+      lv_obj_get_user_data(row_obj));
+    // Decorative children can become the event target on some LVGL/device
+    // combinations. Accept those taps as a row press, but keep the nested
+    // volume controls from also changing group membership.
+    if (media_control_speaker_event_from_volume_controls(
+          row, static_cast<lv_obj_t *>(lv_event_get_target(event)))) return;
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (esphome::millis() - ui.speaker_last_scroll_ms < 250) return;
+    MediaControlCtx *ctx = ui.active;
+    if (!ctx || !row || !row->available || row->pending ||
+        row->entity_id == ctx->entity_id) return;
+    media_control_toggle_speaker(ctx, row, !row->selected);
+  }, LV_EVENT_CLICKED, nullptr);
+
+  ControlModalLayout speaker_layout = control_modal_calc_layout(ctx->width_compensation_percent);
+#ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
+  // Keep the original speaker-card design and controls on the S3 while making
+  // its LVGL tree flat. This avoids three nested flex containers per row without
+  // removing the icon, name, volume, or per-speaker volume buttons.
+  const lv_coord_t compact_pad_x = control_modal_scaled_px(14, speaker_layout.short_side);
+  const lv_coord_t compact_gap = control_modal_scaled_px(10, speaker_layout.short_side);
+
+  row->speaker_icon = lv_label_create(row->row);
+  lv_coord_t icon_column_w = control_modal_scaled_px(32, speaker_layout.short_side);
+  if (icon_column_w < 32) icon_column_w = 32;
+  lv_obj_set_width(row->speaker_icon, icon_column_w);
+  lv_label_set_text(row->speaker_icon, find_icon("Speaker"));
+  lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
+  lv_obj_set_style_transform_zoom(
+    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM, LV_PART_MAIN);
+  lv_obj_align(row->speaker_icon, LV_ALIGN_LEFT_MID, compact_pad_x, 0);
+
+  row->name_label = lv_label_create(row->row);
+  lv_coord_t volume_button_size = control_modal_scaled_px(46, speaker_layout.short_side);
+  if (volume_button_size < 46) volume_button_size = 46;
+  lv_coord_t volume_button_gap = control_modal_scaled_px(7, speaker_layout.short_side);
+  if (volume_button_gap < 7) volume_button_gap = 7;
+  const lv_coord_t text_x = compact_pad_x + icon_column_w + compact_gap;
+  lv_coord_t text_width = lv_obj_get_width(ui.speaker_list) - text_x - compact_pad_x -
+    compact_gap - volume_button_size * 2 - volume_button_gap;
+  if (text_width < 80) text_width = 80;
+  lv_obj_set_width(row->name_label, text_width);
+  lv_label_set_long_mode(row->name_label, LV_LABEL_LONG_DOT);
+  lv_obj_set_style_text_align(row->name_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(row->name_label, ctx->label_font, LV_PART_MAIN);
+  const lv_coord_t speaker_text_h = ctx->label_font && ctx->label_font->line_height > 0
+    ? ctx->label_font->line_height : 24;
+  lv_obj_set_height(row->name_label, speaker_text_h);
+  lv_obj_align(row->name_label, LV_ALIGN_LEFT_MID, text_x, 0);
+
+  row->volume_label = lv_label_create(row->row);
+  lv_obj_set_width(row->volume_label, text_width);
+  lv_obj_set_height(row->volume_label, speaker_text_h);
+  lv_obj_set_style_text_align(row->volume_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(row->volume_label, ctx->label_font, LV_PART_MAIN);
+  lv_obj_align(row->volume_label, LV_ALIGN_LEFT_MID, text_x, 0);
+
+  row->volume_plus_btn = media_control_create_speaker_volume_button(
+    ctx, row, row->row, volume_button_size, find_icon("Plus"), true);
+  lv_obj_align(row->volume_plus_btn, LV_ALIGN_RIGHT_MID, -compact_pad_x, 0);
+  row->volume_minus_btn = media_control_create_speaker_volume_button(
+    ctx, row, row->row, volume_button_size, find_icon("Minus"), false);
+  lv_obj_align(
+    row->volume_minus_btn, LV_ALIGN_RIGHT_MID,
+    -(compact_pad_x + volume_button_size + volume_button_gap), 0);
+#else
+  row->content_box = lv_obj_create(row->row);
+  lv_obj_set_size(row->content_box, LV_PCT(100), LV_PCT(100));
+  lv_obj_align(row->content_box, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_bg_opa(row->content_box, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row->content_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(row->content_box, 0, LV_PART_MAIN);
+  const lv_coord_t card_pad_y = control_modal_scaled_px(12, speaker_layout.short_side);
+  const lv_coord_t card_pad_x = control_modal_scaled_px(18, speaker_layout.short_side);
+  const lv_coord_t content_gap = control_modal_scaled_px(12, speaker_layout.short_side);
+  lv_obj_set_style_pad_top(row->content_box, card_pad_y, LV_PART_MAIN);
+  lv_obj_set_style_pad_left(row->content_box, card_pad_x, LV_PART_MAIN);
+  lv_obj_set_style_pad_right(row->content_box, card_pad_x, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(row->content_box, card_pad_y, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(row->content_box, content_gap, LV_PART_MAIN);
+  lv_obj_set_layout(row->content_box, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(row->content_box, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row->content_box, LV_FLEX_ALIGN_START, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(row->content_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_track_place(row->content_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(row->content_box, LV_OBJ_FLAG_SCROLLABLE);
+
+  row->speaker_icon = lv_label_create(row->content_box);
+  lv_coord_t icon_column_w = control_modal_scaled_px(36, speaker_layout.short_side);
+  if (icon_column_w < 36) icon_column_w = 36;
+  lv_obj_set_width(row->speaker_icon, icon_column_w);
+  lv_label_set_text(row->speaker_icon, find_icon("Speaker"));
+  lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
+  lv_obj_set_style_transform_zoom(
+    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM, LV_PART_MAIN);
+
+  row->text_box = lv_obj_create(row->content_box);
+  lv_obj_set_size(row->text_box, 0, LV_SIZE_CONTENT);
+  lv_obj_set_flex_grow(row->text_box, 1);
+  lv_obj_set_style_bg_opa(row->text_box, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(row->text_box, 0, LV_PART_MAIN);
+  lv_obj_set_layout(row->text_box, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(row->text_box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row->text_box, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(row->text_box, LV_FLEX_ALIGN_START, LV_PART_MAIN);
+  lv_obj_clear_flag(row->text_box, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(row->text_box, LV_OBJ_FLAG_SCROLLABLE);
+
+  row->name_label = lv_label_create(row->text_box);
+  lv_obj_set_width(row->name_label, LV_PCT(100));
+  const lv_coord_t speaker_text_h = ctx->label_font && ctx->label_font->line_height > 0
+    ? ctx->label_font->line_height : 24;
+  lv_obj_set_height(row->name_label, speaker_text_h);
+  lv_label_set_long_mode(row->name_label, LV_LABEL_LONG_DOT);
+  lv_obj_set_style_text_align(row->name_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  lv_obj_set_style_text_color(row->name_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(row->name_label, ctx->label_font, LV_PART_MAIN);
+
+  row->volume_label = lv_label_create(row->text_box);
+  lv_obj_set_width(row->volume_label, LV_PCT(100));
+  lv_obj_set_height(row->volume_label, speaker_text_h);
+  lv_obj_set_style_text_align(row->volume_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(row->volume_label, ctx->label_font, LV_PART_MAIN);
+
+  row->volume_controls = lv_obj_create(row->content_box);
+  lv_coord_t volume_button_size = control_modal_scaled_px(46, speaker_layout.short_side);
+  if (volume_button_size < 46) volume_button_size = 46;
+  lv_coord_t volume_button_gap = control_modal_scaled_px(7, speaker_layout.short_side);
+  if (volume_button_gap < 7) volume_button_gap = 7;
+  lv_obj_set_size(
+    row->volume_controls,
+    volume_button_size * 2 + volume_button_gap,
+    volume_button_size);
+  lv_obj_set_style_radius(row->volume_controls, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(row->volume_controls, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row->volume_controls, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(row->volume_controls, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row->volume_controls, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(row->volume_controls, volume_button_gap, LV_PART_MAIN);
+  lv_obj_set_layout(row->volume_controls, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(row->volume_controls, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row->volume_controls, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(row->volume_controls, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_clear_flag(row->volume_controls, LV_OBJ_FLAG_SCROLLABLE);
+
+  row->volume_minus_btn = media_control_create_speaker_volume_button(
+    ctx, row, row->volume_controls, volume_button_size, find_icon("Minus"), false);
+  row->volume_plus_btn = media_control_create_speaker_volume_button(
+    ctx, row, row->volume_controls, volume_button_size, find_icon("Plus"), true);
+#endif
+  ui.speaker_rows.push_back(row);
+  media_control_refresh_speaker_row(ctx, row);
+  // Discovery already supplies the initial name and volume. Do not issue
+  // cached Home Assistant reads while LVGL is still constructing the list:
+  // those callbacks can run immediately and re-enter the partially-built UI.
+  // The speakers-tab builder performs the first live refresh after the
+  // complete list exists; the modal timer handles later refreshes.
+}
+
+inline void media_control_sync_speaker_candidates(
+    MediaControlCtx *ctx, const std::vector<std::string> &candidates) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || !ui.speaker_list) return;
+  for (auto it = ui.speaker_rows.begin(); it != ui.speaker_rows.end();) {
+    MediaSpeakerRowState *row = *it;
+    bool keep = row && std::find(candidates.begin(), candidates.end(), row->entity_id) !=
+      candidates.end();
+    if (keep) {
+      ++it;
+      continue;
+    }
+    if (row) {
+      media_control_cancel_speaker_action(row, "speaker removed");
+      if (row->row) lv_obj_del(row->row);
+      delete row;
+    }
+    it = ui.speaker_rows.erase(it);
+  }
+  for (const std::string &entity_id : candidates) {
+    media_control_add_speaker_candidate(ctx, entity_id);
+  }
+}
+
+inline void media_control_refresh_speakers(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.speakers_box) return;
+  std::vector<std::string> candidates = media_group_merge_candidates(
+    ctx->entity_id, ctx->speaker_helper_members, ctx->group_members);
+  media_control_sync_speaker_candidates(ctx, candidates);
+  for (MediaSpeakerRowState *row : ui.speaker_rows) {
+    if (!row) continue;
+    for (const MediaGroupDiscoveryItem &item : ctx->speaker_discovery) {
+      if (item.entity_id != row->entity_id) continue;
+      if (!item.friendly_name.empty()) row->friendly_name = item.friendly_name;
+      row->volume_known = item.volume_known;
+      if (item.volume_known) {
+        row->volume_pct = item.volume_pct;
+      }
+      if (row->entity_id != ctx->entity_id) row->available = item.available;
+      break;
+    }
+    media_control_store_group_volume(
+      ctx, row->entity_id, row->volume_pct, row->volume_known, row->available);
+    media_control_refresh_speaker_row(ctx, row);
+  }
+  if (ui.speaker_rows.empty()) {
+    media_control_set_speaker_status(espcontrol_i18n("No Speakers"), false, true);
+  } else {
+    media_control_set_speaker_status(nullptr);
+  }
+  media_control_refresh_group_volume(ctx);
+}
+
+inline void media_control_create_speakers_tab_content(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || !ui.content_box || ui.speakers_box) return;
+#ifdef ESP_PLATFORM
+  ESP_LOGI("media_group", "Opening speaker controls: candidates=%u internal_free=%u largest=%u",
+           (unsigned) ctx->speaker_helper_members.size(),
+           (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL),
+           (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL));
+#endif
+  ui.speakers_box = ui.content_box;
+  lv_obj_set_flex_flow(ui.speakers_box, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(ui.speakers_box, 8, LV_PART_MAIN);
+  ui.speakers_status_lbl = lv_label_create(ui.speakers_box);
+  lv_obj_set_width(ui.speakers_status_lbl, LV_PCT(100));
+  lv_obj_set_style_text_align(ui.speakers_status_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_text_color(ui.speakers_status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_add_flag(ui.speakers_status_lbl, LV_OBJ_FLAG_HIDDEN);
+  ui.speaker_list = lv_obj_create(ui.speakers_box);
+  lv_obj_set_width(ui.speaker_list, LV_PCT(100));
+  lv_obj_set_flex_grow(ui.speaker_list, 1);
+  lv_obj_set_flex_flow(ui.speaker_list, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_flex_main_place(ui.speaker_list, LV_FLEX_ALIGN_START, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(ui.speaker_list, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.speaker_list, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.speaker_list, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.speaker_list, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(ui.speaker_list, 8, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
+  lv_obj_add_flag(ui.speaker_list, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scroll_dir(ui.speaker_list, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(ui.speaker_list, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_event_cb(ui.speaker_list, [](lv_event_t *) {
+    media_control_modal_ui().speaker_last_scroll_ms = esphome::millis();
+  }, LV_EVENT_SCROLL, nullptr);
+  ui.speaker_action_timer = lv_timer_create(media_control_speaker_action_timer_cb, 500, nullptr);
+
+  // The flat S3 rows calculate the space left between the speaker icon and
+  // volume buttons. Resolve the flex layout before creating those rows so the
+  // calculation uses the real modal width instead of LVGL's initial 100 px
+  // object width (which truncated names such as "Play Room" to "Play R...").
+  lv_obj_update_layout(ui.speaker_list);
+  media_control_refresh_speakers(ctx);
+#ifdef ESP_PLATFORM
+  ESP_LOGI("media_group", "Speaker controls ready: rows=%u internal_free=%u largest=%u",
+           (unsigned) ui.speaker_rows.size(),
+           (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL),
+           (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL));
+#endif
+}
+
+inline void media_control_create_power_tab_content(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || !ui.content_box || ui.power_btn) return;
+
+  ui.power_btn = media_control_create_icon_button(
+    ui.content_box, find_icon("Power"), ctx->icon_font, ctx->accent_color);
+  ui.power_icon_lbl = ui.power_btn ? control_modal_icon_label(ui.power_btn) : nullptr;
+  if (ui.power_btn) {
+    lv_obj_add_event_cb(ui.power_btn, [](lv_event_t *) {
+      MediaControlModalUi &ui = media_control_modal_ui();
+      media_control_send_power_action(ui.active);
+    }, LV_EVENT_CLICKED, nullptr);
+  }
+
+  ui.power_status_lbl = lv_label_create(ui.content_box);
+  if (ui.power_status_lbl) {
+    lv_label_set_text(ui.power_status_lbl, espcontrol_i18n("Unknown"));
+    lv_obj_set_style_text_color(
+      ui.power_status_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.power_status_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (ctx->label_font) {
+      lv_obj_set_style_text_font(ui.power_status_lbl, ctx->label_font, LV_PART_MAIN);
+    }
+    apply_width_compensation(ui.power_status_lbl, ctx->width_compensation_percent);
+  }
+  media_control_refresh_power(ctx);
 }
 
 inline void media_control_clear_tab_content() {
   MediaControlModalUi &ui = media_control_modal_ui();
-  if (ui.content_box) lv_obj_clean(ui.content_box);
+  if (ui.speaker_action_timer) {
+    lv_timer_del(ui.speaker_action_timer);
+    ui.speaker_action_timer = nullptr;
+  }
+  for (MediaSpeakerRowState *row : ui.speaker_rows) {
+    media_control_cancel_speaker_action(row, "speaker view closed");
+    delete row;
+  }
+  std::vector<MediaSpeakerRowState *>().swap(ui.speaker_rows);
+  if (ui.content_box) {
+    lv_obj_clean(ui.content_box);
+    lv_obj_set_layout(ui.content_box, LV_LAYOUT_NONE);
+    lv_obj_set_style_pad_row(ui.content_box, 0, LV_PART_MAIN);
+  }
   ui.controls_box = nullptr;
   ui.progress_box = nullptr;
   ui.volume_box = nullptr;
@@ -2290,19 +3679,31 @@ inline void media_control_clear_tab_content() {
   ui.play_icon_lbl = nullptr;
   ui.next_btn = nullptr;
   ui.volume_arc = nullptr;
+  ui.volume_group_lbl = nullptr;
   ui.volume_pct_lbl = nullptr;
   ui.volume_minus_btn = nullptr;
   ui.volume_plus_btn = nullptr;
+  ui.speakers_box = nullptr;
+  ui.speakers_status_lbl = nullptr;
+  ui.speaker_list = nullptr;
+  ui.power_btn = nullptr;
+  ui.power_icon_lbl = nullptr;
+  ui.power_status_lbl = nullptr;
   ui.updating_progress = false;
   ui.updating_volume = false;
   ui.progress_layout_ready = false;
   ui.progress_refresh_pending = false;
+  ui.speaker_last_scroll_ms = 0;
 }
 
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   if (ui.tab == MediaControlTab::PROGRESS && !media_control_progress_supported(ctx)) {
+    media_control_clear_tab_content();
+    ui.tab = MediaControlTab::CONTROLS;
+  }
+  if (ui.tab == MediaControlTab::POWER && !media_control_power_supported(ctx)) {
     media_control_clear_tab_content();
     ui.tab = MediaControlTab::CONTROLS;
   }
@@ -2318,46 +3719,98 @@ inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
     ui.volume_box = ui.content_box;
     media_control_create_volume_tab_content(ctx);
   }
+  else if (ui.tab == MediaControlTab::SPEAKERS) {
+    media_control_create_speakers_tab_content(ctx);
+  }
+  else if (ui.tab == MediaControlTab::POWER) {
+    media_control_create_power_tab_content(ctx);
+  }
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || !ui.overlay || !ui.panel) return;
   if (!media_control_ensure_progress_tab_button(ctx)) return;
+  if (!media_control_ensure_speakers_tab_button(ctx)) return;
+  if (!media_control_ensure_power_tab_button(ctx)) return;
   media_control_ensure_tab_content(ctx);
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
   const bool progress_supported = media_control_progress_supported(ctx);
-  const int MEDIA_CONTROL_TAB_COUNT = progress_supported ? 3 : 2;
-  ControlModalTabLayout tabs_layout =
-    control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true);
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  const bool speakers_supported = media_group_speaker_tab_available(
+    ctx->grouping_supported, ctx->speaker_discovery_available,
+    media_control_group_size(ctx) > 1);
+  const bool power_supported = media_control_power_supported(ctx);
+  const bool show_tabs = !ctx->group_only;
+  const int media_control_tab_count = show_tabs
+    ? espcontrol::media::media_control_tab_count(
+        progress_supported, power_supported, speakers_supported)
+    : 0;
+  ControlModalTabLayout tabs_layout = {};
+  if (show_tabs) {
+    tabs_layout = control_modal_calc_tab_layout(layout, media_control_tab_count, true);
+    control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  }
 
   struct MediaControlTabLayout {
     lv_obj_t *btn;
     MediaControlTab tab;
   };
-  MediaControlTabLayout tabs[3] = {};
+  MediaControlTabLayout tabs[5] = {};
   int tab_count = 0;
   tabs[tab_count++] = {ui.controls_tab, MediaControlTab::CONTROLS};
   if (progress_supported) tabs[tab_count++] = {ui.progress_tab, MediaControlTab::PROGRESS};
   tabs[tab_count++] = {ui.volume_tab, MediaControlTab::VOLUME};
+  if (speakers_supported) tabs[tab_count++] = {ui.speakers_tab, MediaControlTab::SPEAKERS};
+  if (power_supported) tabs[tab_count++] = {ui.power_tab, MediaControlTab::POWER};
   for (int i = 0; i < tab_count; i++) {
     if (!tabs[i].btn) continue;
     bool active = tabs[i].tab == ui.tab;
     control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);
+    if (tabs[i].tab == MediaControlTab::SPEAKERS) {
+      lv_obj_t *label = control_modal_icon_label(tabs[i].btn);
+      if (label) {
+        lv_obj_set_style_transform_zoom(
+          label,
+          control_modal_tab_icon_zoom(layout) *
+            MEDIA_CONTROL_SPEAKERS_TAB_ICON_SCALE_PERCENT / 100,
+          LV_PART_MAIN);
+        control_modal_center_tab_icon(label);
+      }
+    }
   }
 
+  // A standalone Speaker Group has no tab bar, so its list would otherwise
+  // start behind the Back control. Keep the first row below that touch target.
+  lv_coord_t content_safe_top = 0;
+  if (!show_tabs) {
+    content_safe_top = layout.back_inset_y + layout.back_size +
+      control_modal_scaled_px(12, layout.short_side);
+  }
   const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
-    layout, tabs_layout, true, 180);
+    layout, tabs_layout, show_tabs, 180, content_safe_top);
   lv_coord_t content_top = content.top;
   lv_coord_t content_w = content.width;
   lv_coord_t content_h = content.height;
   if (ui.content_box) {
     lv_obj_set_size(ui.content_box, content_w, content_h);
     lv_obj_align(ui.content_box, LV_ALIGN_TOP_MID, 0, content_top);
+  }
+  if (ui.speaker_list) {
+    lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
+      layout.short_side);
+    if (row_gap < 8) row_gap = 8;
+    lv_obj_set_style_pad_row(ui.speaker_list, row_gap, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(ui.speaker_list, 0, LV_PART_MAIN);
+    for (MediaSpeakerRowState *row : ui.speaker_rows) {
+      if (!row || !row->row) continue;
+      lv_obj_set_size(
+        row->row, content_w,
+        media_control_speaker_row_height(ctx, row, layout.short_side));
+      lv_obj_set_style_radius(row->row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
+    }
   }
   if (ui.title_lbl) {
     std::string title = media_control_title_text(ctx);
@@ -2512,7 +3965,41 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
         volume_layout.arc_center_y +
         control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX, volume_layout.short_side));
     }
+    if (ui.volume_group_lbl && ui.volume_pct_lbl) {
+      apply_width_compensation(ui.volume_group_lbl, ctx->width_compensation_percent);
+      lv_obj_align_to(ui.volume_group_lbl, ui.volume_pct_lbl,
+        LV_ALIGN_OUT_TOP_MID, 0, -control_modal_scaled_px(4, volume_layout.short_side));
+    }
     lv_obj_update_layout(ui.content_box);
+  }
+
+  if (ui.power_btn) {
+    lv_coord_t power_size = content_h * 58 / 100;
+    lv_coord_t max_power_size = control_modal_scaled_px(144, layout.short_side);
+    if (power_size > max_power_size) power_size = max_power_size;
+    if (power_size > content_w * 2 / 3) power_size = content_w * 2 / 3;
+    if (power_size < 88) power_size = 88;
+    lv_coord_t status_h = ctx->label_font && ctx->label_font->line_height > 0
+      ? ctx->label_font->line_height
+      : control_modal_scaled_px(24, layout.short_side);
+    lv_coord_t status_gap = control_modal_scaled_px(12, layout.short_side);
+    if (status_gap < 8) status_gap = 8;
+    lv_coord_t total_h = power_size + status_gap + status_h;
+    lv_coord_t power_top = (content_h - total_h) / 2;
+    if (power_top < 0) power_top = 0;
+    lv_obj_set_size(ui.power_btn, power_size, power_size);
+    lv_obj_set_style_radius(ui.power_btn, power_size / 2, LV_PART_MAIN);
+    lv_obj_align(ui.power_btn, LV_ALIGN_TOP_MID, 0, power_top);
+    if (ui.power_icon_lbl) {
+      lv_obj_set_style_transform_zoom(ui.power_icon_lbl, 260, LV_PART_MAIN);
+      light_control_center_icon_label(ui.power_icon_lbl);
+    }
+    if (ui.power_status_lbl) {
+      lv_obj_set_size(ui.power_status_lbl, content_w * 3 / 4, status_h);
+      lv_obj_align(
+        ui.power_status_lbl, LV_ALIGN_TOP_MID, 0,
+        power_top + power_size + status_gap);
+    }
   }
 
   media_control_apply_tab_visibility();
@@ -2522,6 +4009,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
 
 inline void media_control_hide_modal() {
   MediaControlModalUi &ui = media_control_modal_ui();
+  media_control_clear_tab_content();
   lv_obj_t *overlay = ui.overlay;
   ui = MediaControlModalUi();
   control_modal_delete_overlay(ControlModalKind::MEDIA_CONTROL, overlay);
@@ -2542,6 +4030,8 @@ inline MediaControlCtx *create_media_control_context(
   ctx->entity_id = p.entity;
   ctx->label = media_control_card_label(p);
   ctx->max_pct = media_volume_max_percent(p);
+  ctx->speaker_group_entity = media_group_discovery_entity(media_speaker_group_entity(p));
+  ctx->group_only = media_card_mode(p.sensor) == "speaker_group";
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;
@@ -2563,7 +4053,7 @@ inline MediaControlCtx *create_media_control_context(
 }
 
 inline void media_control_open_modal(MediaControlCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!ctx || !ctx->available || (ctx->group_only && !ctx->grouping_supported)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_CONTROL, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, media_control_hide_modal);
@@ -2572,24 +4062,33 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
-  ui.tab = MediaControlTab::CONTROLS;
+  static uint32_t speaker_generation = 1;
+  ui.speaker_generation = speaker_generation++;
+  ui.tab = ctx->group_only ? MediaControlTab::SPEAKERS : MediaControlTab::CONTROLS;
   if (!ui.panel) return;
 
-  ui.tab_row = control_modal_create_tab_row(ui.panel);
-  if (!ui.tab_row) {
-    media_control_hide_modal();
-    return;
+  bool progress_tab_ready = true;
+  bool power_tab_ready = true;
+  if (!ctx->group_only) {
+    ui.tab_row = control_modal_create_tab_row(ui.panel);
+    if (!ui.tab_row) {
+      media_control_hide_modal();
+      return;
+    }
+    ui.controls_tab = media_control_create_tab_button(
+      ui.tab_row, find_icon("Speaker"), ctx->icon_font,
+      MediaControlTab::CONTROLS, ctx->width_compensation_percent);
+    ui.volume_tab = media_control_create_tab_button(
+      ui.tab_row, find_icon("Volume High"), ctx->icon_font,
+      MediaControlTab::VOLUME, ctx->width_compensation_percent);
+    progress_tab_ready = media_control_ensure_progress_tab_button(ctx);
+    media_control_ensure_speakers_tab_button(ctx);
+    power_tab_ready = media_control_ensure_power_tab_button(ctx);
   }
-  ui.controls_tab = media_control_create_tab_button(
-    ui.tab_row, find_icon("Speaker"), ctx->icon_font,
-    MediaControlTab::CONTROLS, ctx->width_compensation_percent);
-  ui.volume_tab = media_control_create_tab_button(
-    ui.tab_row, find_icon("Volume High"), ctx->icon_font,
-    MediaControlTab::VOLUME, ctx->width_compensation_percent);
-  bool progress_tab_ready = media_control_ensure_progress_tab_button(ctx);
 
   ui.content_box = media_control_create_box(ui.panel);
-  if (!ui.controls_tab || !progress_tab_ready || !ui.volume_tab || !ui.content_box) {
+  if ((!ctx->group_only && (!ui.controls_tab || !ui.volume_tab)) ||
+      !progress_tab_ready || !power_tab_ready || !ui.content_box) {
     media_control_hide_modal();
     return;
   }
@@ -2622,7 +4121,6 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              int row_span = 1,
                              int col_span = 1) {
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
   std::string mode = media_card_mode(p.sensor);
   if (mode == "playlist") {
     setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
@@ -2643,26 +4141,23 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     return;
   }
   if (mode == "now_playing" || mode == "cover_art") {
+    const CardPadding padding = capture_card_padding(s.btn);
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
     ctx->btn = s.btn;
+    ctx->content_padding = padding;
+    ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
       ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
     }
+    const CardPadding layout_padding = ctx->progress_slider ? padding : CardPadding{};
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     if (mode == "cover_art") {
       if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
       if (s.sensor_lbl) lv_obj_add_flag(s.sensor_lbl, LV_OBJ_FLAG_HIDDEN);
       if (s.unit_lbl) lv_obj_add_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
-      if (!media_cover_art_details_enabled(p)) {
-        if (s.text_lbl) {
-          lv_label_set_text(s.text_lbl, "");
-          lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
-        }
-        return;
-      }
       lv_obj_t *title_lbl = lv_label_create(s.btn);
       lv_obj_set_style_text_color(title_lbl, lv_color_white(), LV_PART_MAIN);
       apply_width_compensation(title_lbl, width_compensation_percent);
@@ -2678,12 +4173,16 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       }
       ctx->title_lbl = title_lbl;
       ctx->artist_lbl = artist_lbl;
+      if (!ctx->show_track_details) {
+        lv_obj_add_flag(title_lbl, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(artist_lbl, LV_OBJ_FLAG_HIDDEN);
+      }
       ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(
         row_span, col_span);
-      ctx->artist_gap = pad > 1 ? pad / 2 : 0;
+      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-        media_title_font, pad,
+        media_title_font, layout_padding,
         media_cover_art_limits_title_to_two_lines(row_span, col_span),
         true, 0);
       media_position_now_playing_artist(ctx);
@@ -2696,22 +4195,24 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
     setup_media_now_playing_layout(
-      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,
+      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, layout_padding,
       row_span == 1, ctx->play_pause_background,
-      mode == "now_playing" && media_now_playing_progress_enabled(p) ? pad : 0);
+      mode == "now_playing" && media_now_playing_progress_enabled(p)
+        ? layout_padding.left : 0);
     return;
   }
   if (mode == "position") {
-    lv_coord_t position_pad = lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+    const CardPadding padding = capture_card_padding(s.btn);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     lv_obj_t *slider = setup_media_position_layout(
       s.btn, s.icon_lbl, s.text_lbl, p, secondary_color, tertiary_color,
-      sensor_font, text_color, position_pad, width_compensation_percent);
+      sensor_font, text_color, padding, width_compensation_percent);
     lv_obj_set_user_data(s.sensor_container, (void *)slider);
     return;
   }
+  const CardPadding padding = capture_card_padding(s.btn);
   lv_obj_t *slider = setup_media_slider_layout(s.btn, s.icon_lbl, s.text_lbl,
-    nullptr, p, on_color, tertiary_color, pad);
+    nullptr, p, on_color, tertiary_color, padding);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 }
 
@@ -2836,6 +4337,7 @@ inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
   MediaPlaybackState *state = media_playback_ensure_state(entity_id);
   if (!state) return;
   if (ctx) media_playback_attach_now_playing(state, ctx);
+  media_playback_subscribe_content(state);
   media_playback_subscribe_metadata(state);
   if (ctx && ctx->progress_slider) {
     subscribe_media_slider_state(lv_obj_get_parent(ctx->progress_slider), ctx->progress_slider, entity_id);
@@ -2844,6 +4346,17 @@ inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
     media_playback_attach_button(state, ctx->btn, nullptr);
     media_playback_subscribe_playback_state(state);
   }
+}
+
+inline void subscribe_media_cover_art_source_state(
+    MediaNowPlayingCtx *ctx, const std::string &entity_id) {
+  if (!ctx || entity_id.empty()) return;
+  MediaPlaybackState *state = media_playback_ensure_state(entity_id);
+  if (!state) return;
+  media_playback_attach_now_playing(state, ctx);
+  media_playback_subscribe_content(state);
+  media_playback_subscribe_metadata(state);
+  media_playback_subscribe_source(state);
 }
 
 inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
@@ -2931,6 +4444,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   ctx->label = espcontrol_i18n(std::string("Device Volume"));
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
+  ctx->volume_known = true;
   ctx->pending_pct = -1;
   ctx->pending_until_ms = 0;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);

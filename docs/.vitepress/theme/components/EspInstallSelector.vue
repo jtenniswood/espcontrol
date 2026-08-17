@@ -73,7 +73,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc8012p4a1',
     name: 'JC8012P4A1 original panel',
-    revision: 'Rear case 2620 or lower',
+    revision: 'Rear case 2627 or lower',
     size: '10.1 in',
     resolution: '1280 x 800',
     orientation: 'Landscape',
@@ -86,7 +86,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc8012p4a1-v2',
     name: 'JC8012P4A1 new panel',
-    revision: 'Rear case 2624 or higher',
+    revision: 'Rear case 2628 or higher',
     size: '10.1 in',
     resolution: '1280 x 800',
     orientation: 'Landscape',

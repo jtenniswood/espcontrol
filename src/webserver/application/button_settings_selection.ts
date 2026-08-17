@@ -1,5 +1,48 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installButtonSettingsSelectionModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import type { UiRuntimeState } from "./state";
+import type { ClockBarFeature } from "./clock_bar_state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { GridFeature } from "./grid";
+import type { ButtonSettingsRenderQueueFeature } from "./button_settings_render_queue";
+import type { ControlsFieldsFeature } from "./controls_fields";
+
+export interface ButtonSettingsSelectionFeature {
+    hideSettingsOverlay(): void;
+    updatePreviewHint(context?: any): void;
+    renderSelectionBar(context?: any): void;
+    closeSettings(): void;
+    clearCardSelection(): void;
+    isSelectionControlTarget(target?: any): boolean;
+    handleDocumentSelectionMouseDown(event?: any): void;
+    openSelectedCardSettings(): void;
+    selectClockBarItem(item?: any): void;
+    openClockBarTemperatureSettings(): void;
+}
+
+export interface ButtonSettingsSelectionDependencies {
+    readonly document: Document;
+    readonly fields: Pick<ControlsFieldsFeature, "fieldLabel" | "toggleRow">;
+    readonly renderPreview: () => void;
+    readonly renderButtonSettings: (force?: boolean) => void;
+    readonly showSelectionMenu: (event?: any) => void;
+    readonly contextMenuContains: (target?: any) => boolean;
+    readonly openVoiceServicesSettings: () => void;
+}
+
+export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, clockBar: ClockBarFeature, entityState: Pick<EntityStateFeature, "entityInput">, shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton">, statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">, grid: Pick<GridFeature, "ctx">, renderQueue: ButtonSettingsRenderQueueFeature, dependencies: ButtonSettingsSelectionDependencies): ButtonSettingsSelectionFeature {
+    const { document, fields: { fieldLabel, toggleRow }, renderPreview, renderButtonSettings, showSelectionMenu, openVoiceServicesSettings } = dependencies;
+    const { entityInput } = entityState;
+    const { isConfigLocked, createActionButton } = shell;
+    const els = runtime.els;
+    const { clockBarItemActive, clockBarItemLabel, clockBarItems, isClockBarTemperatureItem, updateClockBarItemUi } = statusPreview;
+    const { ctx } = grid;
+    const {
+        primaryTemperatureEntity: primaryClockBarTemperatureEntity,
+        saveTemperatureSettings: saveClockBarTemperatureSettings,
+        setItemVisible: setClockBarItemVisible,
+    } = clockBar;
     // ── Button Settings Selection ─────────────────────────────────────
     function hideSettingsOverlay(this: any) {
         if (els.settingsOverlay)
@@ -105,7 +148,7 @@ export function installButtonSettingsSelectionModule(): GlobalDescriptors {
     }
     function closeSettings(this: any) {
         hideSettingsOverlay();
-        _settingsDeferred = false;
+        renderQueue.clearDeferred();
         state.settingsDraft = null;
         ctx().setSelected([]);
         state.clockBarSelectedItem = "";
@@ -129,7 +172,7 @@ export function installButtonSettingsSelectionModule(): GlobalDescriptors {
             (els.topbar && els.topbar.contains(target)) ||
             (els.selectionBar && els.selectionBar.contains(target)) ||
             (els.settingsOverlay && els.settingsOverlay.contains(target)) ||
-            (ctxMenu && ctxMenu.contains(target)) ||
+            dependencies.contextMenuContains(target) ||
             (target.closest && target.closest(".sp-ctx-menu")));
     }
     function handleDocumentSelectionMouseDown(this: any, e?: any) {
@@ -210,16 +253,15 @@ export function installButtonSettingsSelectionModule(): GlobalDescriptors {
         entityInp.focus();
     }
     return {
-        "hideSettingsOverlay": staticGlobal(hideSettingsOverlay),
-        "updatePreviewHint": staticGlobal(updatePreviewHint),
-        "renderClockBarSelectionBar": staticGlobal(renderClockBarSelectionBar),
-        "renderSelectionBar": staticGlobal(renderSelectionBar),
-        "closeSettings": staticGlobal(closeSettings),
-        "clearCardSelection": staticGlobal(clearCardSelection),
-        "isSelectionControlTarget": staticGlobal(isSelectionControlTarget),
-        "handleDocumentSelectionMouseDown": staticGlobal(handleDocumentSelectionMouseDown),
-        "openSelectedCardSettings": staticGlobal(openSelectedCardSettings),
-        "selectClockBarItem": staticGlobal(selectClockBarItem),
-        "openClockBarTemperatureSettings": staticGlobal(openClockBarTemperatureSettings),
+        hideSettingsOverlay,
+        updatePreviewHint,
+        renderSelectionBar,
+        closeSettings,
+        clearCardSelection,
+        isSelectionControlTarget,
+        handleDocumentSelectionMouseDown,
+        openSelectedCardSettings,
+        selectClockBarItem,
+        openClockBarTemperatureSettings,
     };
 }

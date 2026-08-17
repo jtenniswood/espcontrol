@@ -1,102 +1,154 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installScreenRotationStateModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import * as EspControlModel from "../model";
+import { uniqueOptions } from "./ui_primitives";
+import type { UiRuntimeState } from "./state";
+import type { ApplicationLayoutState } from "./application_context";
+
+export interface ScreenRotationFeature {
+    normalize(value?: any): string;
+    activeOptions(): any[];
+    allOptions(): any[];
+    syncSelect(): void;
+    display(value?: any): any;
+    sortValue(value?: any): number;
+    sortOptions(options?: any): any[];
+    appendOption(select?: any, option?: any): void;
+    startupRequired(): boolean;
+    gridPreviewBlocked(): boolean;
+    clearInitialTimer(): void;
+    startInitialCheck(): void;
+    applyDeferredButtonOrder(rawOrder?: any, onNormalized?: any): any;
+    resolveInitialCheck(preservePendingButtonOrder?: any): void;
+}
+
+export function createScreenRotationFeature(
+    runtime: UiRuntimeState,
+    layout: ApplicationLayoutState,
+    dependencies: {
+        applyButtonOrder(value: string, skipSpanNormalization: boolean): void;
+        postNormalizedOrder(value: string): void;
+        renderPreview(): void;
+    },
+): ScreenRotationFeature {
+    const els = runtime.els;
     // ── Screen Rotation State ──────────────────────────────────────────────
-    var SCREEN_ROTATION_STARTUP_FALLBACK_MS: any = 1200;
-    function normalizeScreenRotation(this: any, value?: any) {
+    const startupFallbackMs = 1200;
+    function normalize(value?: any) {
         value = String(value == null ? "" : value);
-        return allScreenRotationOptions().indexOf(value) !== -1 ? value : "0";
+        return allOptions().indexOf(value) !== -1 ? value : "0";
     }
-    function activeScreenRotationOptions(this: any) {
-        return sortScreenRotationOptions(uniqueOptions(state.screenRotationOptions || []));
+    function activeOptions() {
+        return sortOptions(uniqueOptions(state.screenRotationOptions || []));
     }
-    function allScreenRotationOptions(this: any) {
+    function allOptions() {
         return uniqueOptions((state.screenRotationOptions || [])
             .concat(state.screenRotationDeviceOptions || []));
     }
-    function syncScreenRotationSelect(this: any) {
+    function syncSelect() {
         if (!els.setScreenRotation)
             return;
         els.setScreenRotation.innerHTML = "";
-        activeScreenRotationOptions().forEach(function (this: any, opt?: any) {
-            appendScreenRotationOption(els.setScreenRotation, opt);
+        activeOptions().forEach(function (this: any, opt?: any) {
+            appendOption(els.setScreenRotation, opt);
         });
         els.setScreenRotation.value = state.screenRotation;
     }
-    function displayScreenRotation(this: any, value?: any) {
-        var labels: any = CFG.features && CFG.features.screenRotationDisplayLabels;
+    function display(value?: any) {
+        var labels: any = layout.config.features && layout.config.features.screenRotationDisplayLabels;
         value = String(value == null ? "" : value);
         if (labels && Object.prototype.hasOwnProperty.call(labels, value))
             return labels[value];
-        var offset: any = (CFG.features && parseInt(CFG.features.screenRotationDisplayOffset, 10)) || 0;
+        var offset: any = (layout.config.features && parseInt(String(layout.config.features.screenRotationDisplayOffset || 0), 10)) || 0;
         var n: any = parseInt(value, 10);
         if (!isFinite(n))
             return value;
         return String((n + offset + 360) % 360);
     }
-    function screenRotationSortValue(this: any, value?: any) {
-        var displayed: any = parseInt(displayScreenRotation(value), 10);
+    function sortValue(value?: any) {
+        var displayed: any = parseInt(display(value), 10);
         if (isFinite(displayed))
             return (displayed + 360) % 360;
         var raw: any = parseInt(value, 10);
         return isFinite(raw) ? (raw + 360) % 360 : 999;
     }
-    function sortScreenRotationOptions(this: any, options?: any) {
+    function sortOptions(options?: any) {
         return (options || []).slice().sort(function (this: any, a?: any, b?: any) {
-            return screenRotationSortValue(a) - screenRotationSortValue(b);
+            return sortValue(a) - sortValue(b);
         });
     }
-    function appendScreenRotationOption(this: any, select?: any, opt?: any) {
+    function appendOption(select?: any, opt?: any) {
         var o: any = document.createElement("option");
         o.value = opt;
-        o.textContent = displayScreenRotation(opt) + " deg";
+        o.textContent = display(opt) + " deg";
         select.appendChild(o);
     }
-    function screenRotationStartupRequired(this: any) {
-        return !!(CFG.features && CFG.features.screenRotation);
+    function startupRequired() {
+        return !!(layout.config.features && layout.config.features.screenRotation);
     }
-    function gridPreviewBlockedByRotationStartup(this: any) {
-        return screenRotationStartupRequired() && !state.screenRotationInitialReady;
+    function gridPreviewBlocked() {
+        return startupRequired() && !state.screenRotationInitialReady;
     }
-    function clearInitialScreenRotationTimer(this: any) {
+    function clearInitialTimer() {
         if (!state.screenRotationInitialTimer)
             return;
         clearTimeout(state.screenRotationInitialTimer);
         state.screenRotationInitialTimer = null;
     }
-    function startInitialScreenRotationCheck(this: any) {
-        clearInitialScreenRotationTimer();
+    function startInitialCheck() {
+        clearInitialTimer();
         state.pendingButtonOrderRaw = null;
-        state.screenRotationInitialReady = !screenRotationStartupRequired();
+        state.screenRotationInitialFallbackActive = false;
+        state.screenRotationInitialReady = !startupRequired();
         if (!state.screenRotationInitialReady) {
-            state.screenRotationInitialTimer = setTimeout(resolveInitialScreenRotationCheck, SCREEN_ROTATION_STARTUP_FALLBACK_MS);
+            state.screenRotationInitialTimer = setTimeout(function (this: any) {
+                resolveInitialCheck(true);
+            }, startupFallbackMs);
         }
     }
-    function resolveInitialScreenRotationCheck(this: any) {
-        if (state.screenRotationInitialReady)
+    function applyDeferredButtonOrder(rawOrder?: any, onNormalized?: any) {
+        var receivedOrder: any = String(rawOrder || "").trim();
+        dependencies.applyButtonOrder(receivedOrder, true);
+        var normalizedOrder: any = EspControlModel.serializeGridOrder(state.grid, state.sizes);
+        if (normalizedOrder !== receivedOrder && typeof onNormalized === "function")
+            onNormalized(normalizedOrder);
+        return normalizedOrder;
+    }
+    function resolveInitialCheck(preservePendingButtonOrder?: any) {
+        if (state.screenRotationInitialReady && state.pendingButtonOrderRaw === null &&
+            !state.screenRotationInitialFallbackActive)
             return;
-        clearInitialScreenRotationTimer();
+        clearInitialTimer();
         state.screenRotationInitialReady = true;
         if (state.pendingButtonOrderRaw !== null) {
-            applyButtonOrderValue(state.pendingButtonOrderRaw, true);
-            state.pendingButtonOrderRaw = null;
+            if (preservePendingButtonOrder) {
+                dependencies.applyButtonOrder(state.pendingButtonOrderRaw, true);
+            }
+            else {
+                applyDeferredButtonOrder(state.pendingButtonOrderRaw, function (this: any, normalizedOrder?: any) {
+                    if (runtime.orderReceived)
+                        dependencies.postNormalizedOrder(normalizedOrder);
+                });
+                state.pendingButtonOrderRaw = null;
+            }
         }
+        state.screenRotationInitialFallbackActive = !!preservePendingButtonOrder;
         if (els.previewMain)
-            renderPreview();
+            dependencies.renderPreview();
     }
     return {
-        "SCREEN_ROTATION_STARTUP_FALLBACK_MS": liveGlobal(() => SCREEN_ROTATION_STARTUP_FALLBACK_MS, (value?: any) => { SCREEN_ROTATION_STARTUP_FALLBACK_MS = value; }),
-        "normalizeScreenRotation": staticGlobal(normalizeScreenRotation),
-        "activeScreenRotationOptions": staticGlobal(activeScreenRotationOptions),
-        "allScreenRotationOptions": staticGlobal(allScreenRotationOptions),
-        "syncScreenRotationSelect": staticGlobal(syncScreenRotationSelect),
-        "displayScreenRotation": staticGlobal(displayScreenRotation),
-        "screenRotationSortValue": staticGlobal(screenRotationSortValue),
-        "sortScreenRotationOptions": staticGlobal(sortScreenRotationOptions),
-        "appendScreenRotationOption": staticGlobal(appendScreenRotationOption),
-        "screenRotationStartupRequired": staticGlobal(screenRotationStartupRequired),
-        "gridPreviewBlockedByRotationStartup": staticGlobal(gridPreviewBlockedByRotationStartup),
-        "clearInitialScreenRotationTimer": staticGlobal(clearInitialScreenRotationTimer),
-        "startInitialScreenRotationCheck": staticGlobal(startInitialScreenRotationCheck),
-        "resolveInitialScreenRotationCheck": staticGlobal(resolveInitialScreenRotationCheck),
+        normalize,
+        activeOptions,
+        allOptions,
+        syncSelect,
+        display,
+        sortValue,
+        sortOptions,
+        appendOption,
+        startupRequired,
+        gridPreviewBlocked,
+        clearInitialTimer,
+        startInitialCheck,
+        applyDeferredButtonOrder,
+        resolveInitialCheck,
     };
 }

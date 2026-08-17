@@ -1,8 +1,9 @@
 # =============================================================================
 # ESP32-C6 CO-PROCESSOR FIRMWARE UPDATE
 # =============================================================================
-# Adds Home Assistant entities for checking and installing ESP32-C6 hosted
-# firmware updates on ESP32-P4 devices that use an ESP32-C6 Wi-Fi co-processor.
+# Adds automatic and manual ESP32-C6 hosted firmware updates on ESP32-P4
+# devices that use an ESP32-C6 Wi-Fi co-processor. Automatic installation is
+# enabled by default and can be disabled from the setup page or Home Assistant.
 # =============================================================================
 
 update:
@@ -12,6 +13,29 @@ update:
     http_request_id: http_req
     source: https://esphome.github.io/esp-hosted-firmware/manifest/esp32c6.json
     update_interval: 24h
+    on_update_available:
+      then:
+        - if:
+            condition:
+              switch.is_on: c6_auto_update_switch
+            then:
+              - logger.log:
+                  level: WARN
+                  format: "Automatically installing ESP32-C6 firmware update..."
+              - update.perform:
+                  id: esp32_c6_update
+
+switch:
+  - platform: template
+    name: "${entity_esp32_c6_auto_update}"
+    id: c6_auto_update_switch
+    entity_category: CONFIG
+    icon: mdi:update
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - update.check:
+          id: esp32_c6_update
 
 text_sensor:
   - platform: template

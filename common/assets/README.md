@@ -104,7 +104,7 @@ Browse [Material Design Icons](https://materialdesignicons.com/) and note three 
 
 ## 2. Add the entry to `icons.json`
 
-Open `common/assets/icons.json` and add an object to the `"icons"` array:
+Open `product/v2/icons.json` and add an object to the `"icons"` array:
 
 ```json
 { "name": "Ceiling Fan", "codepoint": "F1797", "mdi": "ceiling-fan" }

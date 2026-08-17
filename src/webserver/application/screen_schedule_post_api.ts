@@ -1,18 +1,66 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installScreenSchedulePostApiModule(): GlobalDescriptors {
+import { state } from "../state/app_instance";
+import {
+    brightnessModeOption,
+    normalizeScheduleTrigger,
+    normalizeTimeOfDay,
+    scheduleModeOption,
+    scheduleSensorActivationOption,
+} from "../model/settings";
+import type { EntityStateFeature } from "./entity_state";
+import type { ApplicationApiFeature } from "./api";
+export interface ScreenSchedulePostApiFeature {
+    postBrightnessMode(value?: any): void;
+    postDisplayBacklightBrightness(value?: any): void;
+    postBrightnessDawnTime(value?: any): void;
+    postBrightnessDuskTime(value?: any): void;
+    postScreenScheduleEnabled(on?: any): void;
+    postScreenScheduleTrigger(value?: any): void;
+    postScreenScheduleSensorActivation(value?: any): void;
+    postScreenScheduleSensorEntity(value?: any): any;
+    postScreenScheduleOnHour(value?: any): void;
+    postScreenScheduleOffHour(value?: any): void;
+    postScreenScheduleMode(value?: any): void;
+    postScreenScheduleWakeTimeout(value?: any): void;
+    postScreenScheduleWakeBrightness(value?: any): void;
+    postScreenScheduleDimmedBrightness(value?: any): void;
+    postScreenScheduleClockBrightness(value?: any): void;
+}
+
+export function createScreenSchedulePostApiFeature(
+    entityState: Pick<EntityStateFeature, "entityName" | "entityObjectIds">,
+    requestApi: Pick<ApplicationApiFeature, "postWithObjectIds" | "postTextWithObjectIds" | "postNumberWithObjectIds" | "postSelectWithObjectIds" | "postSwitchWithObjectIds">,
+): ScreenSchedulePostApiFeature {
+    const { entityName, entityObjectIds } = entityState;
+    const {
+        postWithObjectIds,
+        postTextWithObjectIds,
+        postNumberWithObjectIds,
+        postSelectWithObjectIds,
+        postSwitchWithObjectIds,
+    } = requestApi;
     // ── Screen Schedule Post API ──────────────────────────────────────────
     var SCREEN_SCHEDULE_UNAVAILABLE: any = "Screen schedule is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_TRIGGER_UNAVAILABLE: any = "The schedule trigger setting is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE: any = "The schedule sensor activation setting is not available on this firmware. Update the device firmware, then reload this page.";
+    var SCREEN_SCHEDULE_SENSOR_ENTITY_UNAVAILABLE: any = "The schedule sensor setting is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_WAKE_TIMEOUT_UNAVAILABLE: any = "The schedule wake timeout setting is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_WAKE_BRIGHTNESS_UNAVAILABLE: any = "The schedule wake brightness setting is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_MODE_UNAVAILABLE: any = "The schedule mode setting is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_DIMMED_BRIGHTNESS_UNAVAILABLE: any = "The schedule dimmed brightness setting is not available on this firmware. Update the device firmware, then reload this page.";
     var SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE: any = "The schedule clock brightness setting is not available on this firmware. Update the device firmware, then reload this page.";
-    var AUTOMATIC_BRIGHTNESS_UNAVAILABLE: any = "Automatic brightness control is not available on this firmware. Update the device firmware, then reload this page.";
+    var BRIGHTNESS_MODE_UNAVAILABLE: any = "Brightness modes are not available on this firmware. Update the device firmware, then reload this page.";
+    var DISPLAY_BACKLIGHT_UNAVAILABLE: any = "Manual backlight control is not available on this firmware. Update the device firmware, then reload this page.";
     var BRIGHTNESS_TIME_UNAVAILABLE: any = "Manual brightness times are not available on this firmware. Update the device firmware, then reload this page.";
-    function postAutomaticBrightnessEnabled(this: any, on?: any) {
-        postSwitchWithObjectIds(entityName("screen_automatic_brightness"), entityObjectIds("screen_automatic_brightness"), on, AUTOMATIC_BRIGHTNESS_UNAVAILABLE);
+    function postBrightnessMode(this: any, value?: any) {
+        postSelectWithObjectIds(entityName("screen_brightness_mode"), entityObjectIds("screen_brightness_mode"), brightnessModeOption(value), BRIGHTNESS_MODE_UNAVAILABLE);
+    }
+    function postDisplayBacklightBrightness(this: any, value?: any) {
+        var percent: any = parseFloat(value);
+        if (!isFinite(percent))
+            percent = 100;
+        percent = Math.max(1, Math.min(100, percent));
+        var brightness255: any = Math.round(percent * 2.55);
+        postWithObjectIds("light", entityName("display_backlight"), entityObjectIds("display_backlight"), "turn_on?brightness=" + brightness255, DISPLAY_BACKLIGHT_UNAVAILABLE);
     }
     function postBrightnessDawnTime(this: any, value?: any) {
         postTextWithObjectIds(entityName("screen_brightness_dawn_time"), entityObjectIds("screen_brightness_dawn_time"), normalizeTimeOfDay(value, state.brightnessDawnTime || "06:00"), BRIGHTNESS_TIME_UNAVAILABLE);
@@ -28,6 +76,9 @@ export function installScreenSchedulePostApiModule(): GlobalDescriptors {
     }
     function postScreenScheduleSensorActivation(this: any, value?: any) {
         postSelectWithObjectIds(entityName("screen_schedule_sensor_activation"), entityObjectIds("screen_schedule_sensor_activation"), scheduleSensorActivationOption(value), SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE);
+    }
+    function postScreenScheduleSensorEntity(this: any, value?: any) {
+        return postTextWithObjectIds(entityName("screen_schedule_sensor_entity"), entityObjectIds("screen_schedule_sensor_entity"), value, SCREEN_SCHEDULE_SENSOR_ENTITY_UNAVAILABLE);
     }
     function postScreenScheduleOnHour(this: any, value?: any) {
         postNumberWithObjectIds(entityName("screen_schedule_on_hour"), entityObjectIds("screen_schedule_on_hour"), value, SCREEN_SCHEDULE_UNAVAILABLE);
@@ -51,28 +102,20 @@ export function installScreenSchedulePostApiModule(): GlobalDescriptors {
         postNumberWithObjectIds(entityName("screen_schedule_clock_brightness"), entityObjectIds("screen_schedule_clock_brightness"), value, SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE);
     }
     return {
-        "SCREEN_SCHEDULE_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_TRIGGER_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_TRIGGER_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_TRIGGER_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_SENSOR_ACTIVATION_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_WAKE_TIMEOUT_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_WAKE_TIMEOUT_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_WAKE_TIMEOUT_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_WAKE_BRIGHTNESS_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_WAKE_BRIGHTNESS_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_WAKE_BRIGHTNESS_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_MODE_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_MODE_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_MODE_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_DIMMED_BRIGHTNESS_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_DIMMED_BRIGHTNESS_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_DIMMED_BRIGHTNESS_UNAVAILABLE = value; }),
-        "SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE": liveGlobal(() => SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE, (value?: any) => { SCREEN_SCHEDULE_CLOCK_BRIGHTNESS_UNAVAILABLE = value; }),
-        "AUTOMATIC_BRIGHTNESS_UNAVAILABLE": liveGlobal(() => AUTOMATIC_BRIGHTNESS_UNAVAILABLE, (value?: any) => { AUTOMATIC_BRIGHTNESS_UNAVAILABLE = value; }),
-        "BRIGHTNESS_TIME_UNAVAILABLE": liveGlobal(() => BRIGHTNESS_TIME_UNAVAILABLE, (value?: any) => { BRIGHTNESS_TIME_UNAVAILABLE = value; }),
-        "postAutomaticBrightnessEnabled": staticGlobal(postAutomaticBrightnessEnabled),
-        "postBrightnessDawnTime": staticGlobal(postBrightnessDawnTime),
-        "postBrightnessDuskTime": staticGlobal(postBrightnessDuskTime),
-        "postScreenScheduleEnabled": staticGlobal(postScreenScheduleEnabled),
-        "postScreenScheduleTrigger": staticGlobal(postScreenScheduleTrigger),
-        "postScreenScheduleSensorActivation": staticGlobal(postScreenScheduleSensorActivation),
-        "postScreenScheduleOnHour": staticGlobal(postScreenScheduleOnHour),
-        "postScreenScheduleOffHour": staticGlobal(postScreenScheduleOffHour),
-        "postScreenScheduleMode": staticGlobal(postScreenScheduleMode),
-        "postScreenScheduleWakeTimeout": staticGlobal(postScreenScheduleWakeTimeout),
-        "postScreenScheduleWakeBrightness": staticGlobal(postScreenScheduleWakeBrightness),
-        "postScreenScheduleDimmedBrightness": staticGlobal(postScreenScheduleDimmedBrightness),
-        "postScreenScheduleClockBrightness": staticGlobal(postScreenScheduleClockBrightness),
+        postBrightnessMode,
+        postDisplayBacklightBrightness,
+        postBrightnessDawnTime,
+        postBrightnessDuskTime,
+        postScreenScheduleEnabled,
+        postScreenScheduleTrigger,
+        postScreenScheduleSensorActivation,
+        postScreenScheduleSensorEntity,
+        postScreenScheduleOnHour,
+        postScreenScheduleOffHour,
+        postScreenScheduleMode,
+        postScreenScheduleWakeTimeout,
+        postScreenScheduleWakeBrightness,
+        postScreenScheduleDimmedBrightness,
+        postScreenScheduleClockBrightness,
     };
 }
