@@ -75,7 +75,7 @@ jobs:
           set -euo pipefail
           docker_root="$(docker info --format '{{.DockerRootDir}}')"
           fs_type="$(docker run --rm -v "${docker_root}:/probe:ro" alpine:3.22 stat -f -c %T /probe)"
-          size_bytes="$(docker run --rm -v "${docker_root}:/probe:ro" alpine:3.22 df -B1 --output=size /probe | tail -1 | tr -d ' ')"
+          size_bytes="$(docker run --rm -v "${docker_root}:/probe:ro" alpine:3.22 sh -c "set -- \$(stat -f -c '%S %b' /probe); echo \$((\$1 * \$2))")"
           printf 'docker_root=%s filesystem=%s size_bytes=%s\n' "$docker_root" "$fs_type" "$size_bytes"
           test "$docker_root" = /var/lib/docker
           test "$fs_type" = ext2/ext3
