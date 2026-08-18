@@ -672,7 +672,7 @@ export function createConfigCodecFeature(
             wifiButton.options = options;
             wifiButton.label = label;
             wifiButton.icon = icon;
-            normalizeWifiQrConfig(wifiButton);
+            normalizeWithRegisteredCardType(wifiButton);
             label = wifiButton.label;
             icon = wifiButton.icon;
             options = wifiButton.options;
