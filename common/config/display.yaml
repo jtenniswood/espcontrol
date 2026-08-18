@@ -185,9 +185,7 @@ script:
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
-                                    visible &&
-                                      id(espcontrol_app).display().target_mode_is(
-                                          espcontrol::DisplayMode::ACTIVE),
+                                    visible,
                                     id(indoor_temp_enable).state,
                                     id(outdoor_temp_enable).state,
                                     id(indoor_temp), id(outdoor_temp));

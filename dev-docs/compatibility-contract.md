@@ -8,8 +8,8 @@ explicit migration path, compatibility fixture, release note, and rollback plan.
 | Surface | Promise | Protected by |
 |---|---|---|
 | Saved card strings | Existing `Button N Config` and subpage config strings keep parsing after firmware or web updates. | `npm run check:firmware-parser`, `npm run check:web-smoke`, `npm run check:backup-contract` |
-| Backup import/export | Backups created by older supported releases import without users recreating layouts by hand. | `compatibility/fixtures/product_compatibility.json`, `npm run check:backup-contract` |
-| Card type names and aliases | Saved card `type` values keep their meaning, including hidden and legacy types. | `common/config/card_contract.json`, `npm run check:card-contract-outputs` |
+| Backup import/export | Backups created by older supported releases import without users recreating layouts by hand. | `product/v2/product_compatibility.json`, `npm run check:backup-contract` |
+| Card type names and aliases | Saved card `type` values keep their meaning, including hidden and legacy types. | `product/v2/card_contract.json`, `npm run check:card-contract-outputs` |
 | Option values | Existing option keys and values either keep working or have a fallback parser. | `src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h` |
 | Device slugs | Published device slugs remain valid for firmware bundles, web bundles, docs, manifests, and release assets. | `devices/manifest.json`, `npm run check:device-profiles`, `npm run check:firmware-release` |
 | Public firmware URLs | Installed panels can still find update manifests and OTA assets at the expected public paths. | `npm run check:firmware-release`, `npm run check:public-firmware-script` |
@@ -41,6 +41,10 @@ release, change both declarations to `read-import-only`: new native saves stop
 mirroring legacy text entities, while an older panel's text configuration can
 still be imported once. Retire legacy reads only after that read/import-only
 release has shipped and its upgrade coverage has been confirmed.
+
+Live grid application uses a separate native runtime adapter. The legacy
+adapter is limited to one-time import and release-controlled downgrade
+mirroring, so disabling legacy writes cannot disable live card updates.
 
 ## Required Migration Shape
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "common" / "config" / "strings.en.txt"
+OUTPUT = ROOT / "product" / "v2" / "translations" / "strings.en.txt"
 SOURCE_GLOBS = ("components/espcontrol/**/*.h",)
 SKIP_FILES = {"sun_calc.h"}
 

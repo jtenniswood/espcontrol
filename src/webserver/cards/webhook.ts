@@ -1,45 +1,33 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerWebhookCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigWebhookOptionsFeature } from "../application/config_webhook_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+
+export function registerWebhookCardTypes(
+    registry: CardRegistry,
+    webhookOptions: ConfigWebhookOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgePreview } = fields;
+    const {
+        methods,
+        normalizeWebhookConfig,
+        setWebhookHeaders,
+        webhookHeaders,
+        webhookMethod,
+    } = webhookOptions;
     // Webhook card: sends a direct HTTP request from the panel.
-    var WEBHOOK_HEADERS_OPTION: any = "webhook_headers";
-    var WEBHOOK_METHODS: any = [
-        ["GET", "GET"],
-        ["POST", "POST"],
-        ["PUT", "PUT"],
-        ["PATCH", "PATCH"],
-        ["DELETE", "DELETE"],
-    ];
-    function webhookMethod(this: any, value?: any) {
-        value = String(value || "").trim().toUpperCase();
-        for (var i: any = 0; i < WEBHOOK_METHODS.length; i++) {
-            if (WEBHOOK_METHODS[i][0] === value)
-                return value;
-        }
-        return "GET";
-    }
-    function webhookHeaders(this: any, b?: any) {
-        return configOptionValue(b && b.options, WEBHOOK_HEADERS_OPTION);
-    }
-    function setWebhookHeaders(this: any, b?: any, value?: any) {
-        if (!b)
-            return "";
-        b.options = setConfigOptionValue(b.options, WEBHOOK_HEADERS_OPTION, value || "");
-        return b.options;
-    }
-    function normalizeWebhookConfig(this: any, b?: any) {
-        if (!b)
-            return;
-        b.sensor = webhookMethod(b.sensor);
-        b.icon_on = "Auto";
-        b.precision = "";
-        if (b.sensor === "GET" || b.sensor === "DELETE")
-            b.unit = "";
-        if (!b.icon)
-            b.icon = "Auto";
-        var headers: any = webhookHeaders(b);
-        b.options = headers ? setConfigOptionValue("", WEBHOOK_HEADERS_OPTION, headers) : "";
-    }
-    var WEBHOOK_CARD_METADATA: any = {
+    const WEBHOOK_CARD_METADATA: any = {
         url: {
             label: "URL",
             idSuffix: "webhook-url",
@@ -48,7 +36,7 @@ export function registerWebhookCardTypes(): GlobalDescriptors {
         method: {
             label: "Type",
             idSuffix: "webhook-method",
-            options: WEBHOOK_METHODS,
+            options: methods,
         },
         icon: {
             pickerIdSuffix: "webhook-icon-picker",
@@ -60,7 +48,7 @@ export function registerWebhookCardTypes(): GlobalDescriptors {
             badge: "webhook",
         },
     };
-    registerButtonType("webhook", {
+    registry.register("webhook", {
         label: function (this: any) { return cardContractCardLabel("webhook"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("webhook"); },
         pickerKey: function (this: any) { return cardContractPickerKey("webhook"); },
@@ -132,13 +120,4 @@ export function registerWebhookCardTypes(): GlobalDescriptors {
             });
         },
     });
-    return {
-        "WEBHOOK_HEADERS_OPTION": liveGlobal(() => WEBHOOK_HEADERS_OPTION, (value?: any) => { WEBHOOK_HEADERS_OPTION = value; }),
-        "WEBHOOK_METHODS": liveGlobal(() => WEBHOOK_METHODS, (value?: any) => { WEBHOOK_METHODS = value; }),
-        "webhookMethod": staticGlobal(webhookMethod),
-        "webhookHeaders": staticGlobal(webhookHeaders),
-        "setWebhookHeaders": staticGlobal(setWebhookHeaders),
-        "normalizeWebhookConfig": staticGlobal(normalizeWebhookConfig),
-        "WEBHOOK_CARD_METADATA": liveGlobal(() => WEBHOOK_CARD_METADATA, (value?: any) => { WEBHOOK_CARD_METADATA = value; }),
-    };
 }

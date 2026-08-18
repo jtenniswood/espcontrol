@@ -13,18 +13,13 @@
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_document.h"
 #include "panel_config_http_etag.h"
+#include "panel_config_http_context.h"
 
 namespace espcontrol::configuration {
 
 class PanelConfigWriteHandler final
     : public esphome::web_server_idf::AsyncWebHandler {
  public:
-  PanelConfigWriteHandler(ConfigurationService &service, uint8_t *document,
-                          size_t document_capacity, const char *username,
-                          const char *password)
-      : service_(service), document_(document), document_capacity_(document_capacity),
-        username_(username), password_(password) {}
-
   bool canHandle(
       esphome::web_server_idf::AsyncWebServerRequest *request) const override {
     if (request->method() != HTTP_PUT) return false;
@@ -33,10 +28,24 @@ class PanelConfigWriteHandler final
     const esphome::StringRef url = request->url_to(url_buffer);
     return std::strcmp(url.c_str(), "/api/v1/config") == 0;
   }
-  size_t maximumBodySize() const override { return document_capacity_; }
+  size_t maximumBodySize() const override {
+    return panel_config_http_context_ready()
+               ? panel_config_http_context().document_capacity
+               : 0;
+  }
   bool canReceiveBody(esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    if (!panel_config_http_context_ready()) {
+      // AsyncWebServer stops processing when this returns false, so reply here
+      // rather than relying on handleRequest() to report the startup state.
+      httpd_req_t *raw_request = *request;
+      send_status(raw_request, "503 Service Unavailable",
+                  "Native configuration is starting");
+      reset_upload();
+      return false;
+    }
+    PanelConfigHttpContext &context = panel_config_http_context();
 #ifdef USE_WEBSERVER_AUTH
-    if (!request->authenticate(username_, password_)) {
+    if (!request->authenticate(context.username, context.password)) {
       request->requestAuthentication();
       return false;
     }
@@ -46,24 +55,34 @@ class PanelConfigWriteHandler final
 
   void handleBody(esphome::web_server_idf::AsyncWebServerRequest *, uint8_t *data,
                   size_t len, size_t index, size_t total) override {
+    PanelConfigHttpContext &context = panel_config_http_context();
     if (index == 0) {
       received_size_ = 0;
       expected_size_ = total;
-      body_valid_ = total > 0 && total <= document_capacity_;
+      body_valid_ = panel_config_http_context_ready() && total > 0 &&
+                    total <= context.document_capacity;
     }
     if (!body_valid_ || data == nullptr || index != received_size_ ||
-        len > document_capacity_ - received_size_) {
+        len > context.document_capacity - received_size_) {
       body_valid_ = false;
       return;
     }
-    std::memcpy(document_ + received_size_, data, len);
+    std::memcpy(context.document + received_size_, data, len);
     received_size_ += len;
   }
 
   void handleRequest(
       esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    PanelConfigHttpContext &context = panel_config_http_context();
+    if (!panel_config_http_context_ready()) {
+      httpd_req_t *raw_request = *request;
+      send_status(raw_request, "503 Service Unavailable",
+                  "Native configuration is starting");
+      reset_upload();
+      return;
+    }
 #ifdef USE_WEBSERVER_AUTH
-    if (!request->authenticate(username_, password_)) {
+    if (!request->authenticate(context.username, context.password)) {
       request->requestAuthentication();
       reset_upload();
       return;
@@ -95,11 +114,17 @@ class PanelConfigWriteHandler final
       return;
     }
 
-    const ServiceSaveResult saved = service_.save_if_generation(
-        expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, document_, received_size_);
+    const ServiceSaveResult saved = context.service->save_if_generation(
+        expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, context.document,
+        received_size_);
     reset_upload();
+    // ESP-IDF retains header value pointers until httpd_resp_send(). Keep these
+    // buffers in handleRequest() so they remain valid through every send below.
+    char generation_text[16]{};
+    char etag[20]{};
     if (saved.status == ServiceStatus::GENERATION_CONFLICT) {
-      set_generation_headers(raw_request, saved.generation);
+      set_generation_headers(raw_request, saved.generation, generation_text,
+                             etag);
       send_status(raw_request, "409 Conflict",
                   "Panel configuration changed on the device");
       return;
@@ -116,7 +141,8 @@ class PanelConfigWriteHandler final
                           "Panel configuration could not be saved");
       return;
     }
-    set_generation_headers(raw_request, saved.generation);
+    set_generation_headers(raw_request, saved.generation, generation_text,
+                           etag);
     if (saved.status == ServiceStatus::LEGACY_MIRROR_FAILED) {
       httpd_resp_set_hdr(raw_request, "X-Panel-Config-Legacy-Mirror", "failed");
       httpd_resp_set_status(raw_request, "202 Accepted");
@@ -140,9 +166,9 @@ class PanelConfigWriteHandler final
     body_valid_ = false;
   }
 
-  static void set_generation_headers(httpd_req_t *request, uint32_t generation) {
-    char generation_text[16]{};
-    char etag[20]{};
+  static void set_generation_headers(httpd_req_t *request, uint32_t generation,
+                                     char (&generation_text)[16],
+                                     char (&etag)[20]) {
     std::snprintf(generation_text, sizeof(generation_text), "%lu",
                   static_cast<unsigned long>(generation));
     std::snprintf(etag, sizeof(etag), "\"%lu\"",
@@ -152,27 +178,16 @@ class PanelConfigWriteHandler final
     httpd_resp_set_hdr(request, "X-Panel-Config-Version", "1");
   }
 
-  ConfigurationService &service_;
-  uint8_t *document_;
-  size_t document_capacity_;
-  const char *username_;
-  const char *password_;
   size_t received_size_{0};
   size_t expected_size_{0};
   bool body_valid_{false};
 };
 
 inline bool register_panel_config_write_endpoint(
-    ConfigurationService &service, uint8_t *document, size_t document_capacity,
-    const char *username, const char *password) {
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return true;
-  if (document == nullptr || document_capacity == 0) return false;
-  auto *server = esphome::web_server_idf::global_async_web_server();
-  if (server == nullptr) return false;
-  server->addHandler(new PanelConfigWriteHandler(service, document,
-                                                  document_capacity, username,
-                                                  password));
+  server.addHandler(new PanelConfigWriteHandler());
   registered = true;
   return true;
 }
@@ -181,8 +196,7 @@ inline bool register_panel_config_write_endpoint(
 #else
 namespace espcontrol::configuration {
 class ConfigurationService;
-inline bool register_panel_config_write_endpoint(ConfigurationService &, uint8_t *,
-                                                size_t, const char *, const char *) {
+inline bool register_panel_config_write_endpoint(...) {
   return true;
 }
 }  // namespace espcontrol::configuration

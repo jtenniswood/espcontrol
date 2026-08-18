@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <vector>
 
 #include "configuration_store.h"
@@ -131,6 +132,11 @@ class ConfigurationService {
         legacy_mode_(legacy_mode) {}
 
   ServiceLoadResult load(uint8_t *output, size_t output_capacity);
+  // Restores the durable document and publishes it to the live panel as one
+  // operation. This prevents an HTTP save from landing between a boot read
+  // and its corresponding live apply.
+  ServiceLoadResult load_and_apply_runtime(uint8_t *output,
+                                           size_t output_capacity);
   // During compatibility releases the text entities remain authoritative.
   // Refresh the native shadow on boot so editor changes made through the
   // legacy API survive a later native-only firmware upgrade.
@@ -161,6 +167,15 @@ class ConfigurationService {
   }
 
  private:
+  ServiceLoadResult load_unlocked(uint8_t *output, size_t output_capacity);
+  ServiceLoadResult refresh_legacy_shadow_unlocked(uint8_t *output,
+                                                   size_t output_capacity);
+  ServiceSaveResult save_unlocked(uint16_t document_version,
+                                  const uint8_t *document,
+                                  size_t document_size);
+  ServiceSaveResult save_if_generation_unlocked(
+      uint32_t expected_generation, uint16_t document_version,
+      const uint8_t *document, size_t document_size);
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
                                size_t document_size);
@@ -181,6 +196,9 @@ class ConfigurationService {
   size_t scratch_capacity_{0};
   ConfigurationRuntimeAdapter *runtime_{nullptr};
   LegacyConfigurationMode legacy_mode_{LegacyConfigurationMode::DUAL_WRITE};
+  // The service scratch buffer is shared by load and commit paths. Keep the
+  // complete operations mutually exclusive across ESPHome and HTTP tasks.
+  std::mutex operation_mutex_{};
 };
 
 }  // namespace espcontrol::configuration

@@ -20,12 +20,48 @@ export async function runBackupRestoreControllerTests(): Promise<void> {
   equal(controller.restore({}, { device: "panel" }, () => events.push("apply")), true, "valid backups start a restore");
   equal(
     events.join(","),
-    "warning:Different device,throttle:75,reset,apply,throttle:0",
+    "warning:Different device,throttle:75,reset,apply",
     "restore preserves warning and queued-write ordering",
   );
   resolveIdle?.();
   await Promise.resolve();
+  await Promise.resolve();
   equal(events.at(-1), "success:Configuration imported successfully", "successful queue completion is reported");
+
+  const delayedEvents: string[] = [];
+  let finishApply: (() => void) | undefined;
+  let finishDelayedQueue: (() => void) | undefined;
+  const delayed = createBackupRestoreController<{}, undefined>({
+    plan: () => ({}),
+    warnings: () => [],
+    showBanner: (message, kind) => delayedEvents.push(`${kind}:${message}`),
+    setPostThrottle: (milliseconds) => delayedEvents.push(`throttle:${milliseconds}`),
+    resetPostQueueError: () => delayedEvents.push("reset"),
+    postQueueIdle: () => {
+      delayedEvents.push("capture-queue");
+      return new Promise<void>((resolve) => { finishDelayedQueue = resolve; });
+    },
+    postQueueHadError: () => false,
+  });
+  equal(delayed.restore({}, undefined, () => new Promise<void>((resolve) => {
+    delayedEvents.push("apply-pending");
+    finishApply = resolve;
+  })), true, "asynchronous backup application starts a restore");
+  equal(delayedEvents.join(","), "throttle:75,reset,apply-pending",
+    "restore retains its throttle and does not capture the queue while native discovery is pending");
+  finishApply?.();
+  await Promise.resolve();
+  await Promise.resolve();
+  equal(delayedEvents.join(","), "throttle:75,reset,apply-pending,capture-queue",
+    "restore captures delayed legacy posts while retaining the device-stability throttle");
+  finishDelayedQueue?.();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  equal(delayedEvents.at(-1), "success:Configuration imported successfully",
+    "delayed fallback posts finish before restore success is reported");
+  equal(delayedEvents.includes("throttle:0"), true,
+    "restore resets the device-stability throttle after delayed fallback posts finish");
 
   const rejected = createBackupRestoreController<never, undefined>({
     plan: () => { throw Object.assign(new Error("invalid"), { backupMessage: "Backup is too new" }); },

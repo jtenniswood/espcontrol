@@ -1,15 +1,15 @@
 {
   "modelVersion": 2,
-  "stage": "legacy-adapter",
-  "description": "The Product Model v2 ownership boundary while existing authored files remain in place.",
+  "stage": "generated-source",
+  "description": "The Product Model v2 ownership boundary, with every supported card-contract entry and device profile authored under product/.",
   "sources": {
     "cardContract": {
-      "path": "common/config/card_contract.json",
+      "path": "product/v2/card_contract.json",
       "kind": "file",
       "role": "authored"
     },
     "deviceCatalog": {
-      "path": "devices/catalog.json",
+      "path": "product/v2/device_catalog.json",
       "kind": "file",
       "role": "authored"
     },
@@ -19,28 +19,81 @@
       "role": "generated-legacy-adapter"
     },
     "entityNames": {
-      "path": "common/config/entity_names.json",
+      "path": "product/v2/entity_names.json",
       "kind": "file",
       "role": "authored"
     },
     "icons": {
-      "path": "common/assets/icons.json",
+      "path": "product/v2/icons.json",
       "kind": "file",
       "role": "authored"
     },
     "translations": {
-      "path": "common/config/strings.*.txt",
+      "path": "product/v2/translations/strings.*.txt",
       "kind": "glob",
       "role": "authored"
     },
     "compatibilityFixtures": {
-      "path": "compatibility/fixtures/product_compatibility.json",
+      "path": "product/v2/product_compatibility.json",
       "kind": "file",
       "role": "authored"
     }
   },
   "equivalenceSamples": {
-    "cardType": "",
-    "deviceSlug": "esp32-p4-86"
+    "cardType": "sensor",
+    "deviceSlug": "guition-esp32-p4-jc8012p4a1"
+  },
+  "pilots": {
+    "cards": {
+      "sensor": "product/v2/cards/sensor.json",
+      "media": "product/v2/cards/media.json",
+      "image": "product/v2/cards/image.json",
+      "light_switch": "product/v2/cards/light_switch.json",
+      "light_brightness": "product/v2/cards/light_brightness.json",
+      "light_control": "product/v2/cards/light_control.json",
+      "light_temperature": "product/v2/cards/light_temperature.json",
+      "fan_switch": "product/v2/cards/fan_switch.json",
+      "fan_speed": "product/v2/cards/fan_speed.json",
+      "fan_direction": "product/v2/cards/fan_direction.json",
+      "fan_oscillate": "product/v2/cards/fan_oscillate.json",
+      "fan_preset": "product/v2/cards/fan_preset.json",
+      "fan_control": "product/v2/cards/fan_control.json",
+      "clock": "product/v2/cards/clock.json",
+      "calendar": "product/v2/cards/calendar.json",
+      "timezone": "product/v2/cards/timezone.json",
+      "weather": "product/v2/cards/weather.json",
+      "weather_forecast": "product/v2/cards/weather_forecast.json",
+      "internal": "product/v2/cards/internal.json",
+      "local_sensor": "product/v2/cards/local_sensor.json",
+      "screen_lock": "product/v2/cards/screen_lock.json",
+      "cover": "product/v2/cards/cover.json",
+      "door_window": "product/v2/cards/door_window.json",
+      "garage": "product/v2/cards/garage.json",
+      "gate": "product/v2/cards/gate.json",
+      "lock": "product/v2/cards/lock.json",
+      "action": "product/v2/cards/action.json",
+      "option_select": "product/v2/cards/option_select.json",
+      "push": "product/v2/cards/push.json",
+      "slider": "product/v2/cards/slider.json",
+      "subpage": "product/v2/cards/subpage.json",
+      "climate": "product/v2/cards/climate.json",
+      "climate_control": "product/v2/cards/climate_control.json",
+      "alarm": "product/v2/cards/alarm.json",
+      "alarm_action": "product/v2/cards/alarm_action.json",
+      "presence": "product/v2/cards/presence.json",
+      "lawn_mower": "product/v2/cards/lawn_mower.json",
+      "vacuum": "product/v2/cards/vacuum.json",
+      "wifi_qr": "product/v2/cards/wifi_qr.json",
+      "webhook": "product/v2/cards/webhook.json",
+      "": "product/v2/cards/default_switch.json"
+    },
+    "devices": {
+      "guition-esp32-p4-jc8012p4a1": "product/v2/devices/guition-esp32-p4-jc8012p4a1.json",
+      "guition-esp32-p4-jc8012p4a1-v2": "product/v2/devices/guition-esp32-p4-jc8012p4a1-v2.json",
+      "guition-esp32-p4-jc1060p470": "product/v2/devices/guition-esp32-p4-jc1060p470.json",
+      "guition-esp32-p4-jc4880p443": "product/v2/devices/guition-esp32-p4-jc4880p443.json",
+      "esp32-p4-86": "product/v2/devices/esp32-p4-86.json",
+      "guition-esp32-s3-4848s040": "product/v2/devices/guition-esp32-s3-4848s040.json"
+    }
   }
 }

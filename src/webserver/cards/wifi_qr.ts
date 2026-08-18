@@ -1,12 +1,25 @@
-import { staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import {
+    cardContractAllowInSubpage,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+} from "../generated/card_contract";
+import {
+    configOptionEnabled,
+    configOptionValue,
+    setConfigOption,
+    setConfigOptionValue,
+} from "../model/config_primitives";
+import type { CardRegistry } from "../application/card_registry";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
 
 // Credentials are encoded only to keep the compact card format unambiguous.
 // This is deliberately not encryption: exported backups contain the password.
-export function registerWifiQrCardTypes(): GlobalDescriptors {
+export function registerWifiQrCardTypes(registry: CardRegistry, fields: ControlsFieldsFeature): void {
     const SSID_OPTION = "ssid64";
     const SECURITY_OPTION = "security";
     const PASSWORD_OPTION = "pass64";
     const HIDDEN_OPTION = "hidden";
+    const { cardBadgePreview } = fields;
     const WIFI_QR_CARD_METADATA: any = {
         labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Guest Wi-Fi", bindName: "label", rerender: true },
         icon: { pickerIdSuffix: "wifi-icon-picker", idSuffix: "wifi-icon", field: "icon", fallback: "Wifi" },
@@ -62,9 +75,10 @@ export function registerWifiQrCardTypes(): GlobalDescriptors {
         if (hidden) b.options = setConfigOption(b.options, HIDDEN_OPTION, true);
         normalizeWifiQrConfig(b);
     }
-    registerButtonType("wifi_qr", {
+    registry.register("wifi_qr", {
         label: function (this: any) { return cardContractCardLabel("wifi_qr"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("wifi_qr"); },
+        hideLabel: true,
         defaultConfig: function (this: any) { return cardContractDefaultConfig("wifi_qr"); },
         cardMetadata: WIFI_QR_CARD_METADATA,
         normalizeConfig: normalizeWifiQrConfig,
@@ -79,7 +93,9 @@ export function registerWifiQrCardTypes(): GlobalDescriptors {
             var hidden: any = helpers.toggleRow("Hidden network", helpers.idPrefix + "wifi-hidden", wifiQrHidden(b));
             panel.appendChild(ssidField.field); panel.appendChild(securityField.field); panel.appendChild(passwordField.field);
             panel.appendChild(reveal.row); panel.appendChild(hidden.row);
-            helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
+            helpers.requireField(ssidField.input, "Add a network name before saving.");
+            helpers.requireField(passwordField.input, "Add a Wi-Fi password before saving.", function () { return securityField.select.value === "wpa"; });
+            helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false, label: false });
             function save(this: any) {
                 var ssid: any = ssidField.input.value;
                 var security: any = securityField.select.value;
@@ -103,5 +119,4 @@ export function registerWifiQrCardTypes(): GlobalDescriptors {
             return cardBadgePreview(b, helpers, { label: b.label || "Guest Wi-Fi", iconFallback: "Wifi", badge: "Wi-Fi Share" });
         },
     });
-    return { "WIFI_QR_CARD_METADATA": staticGlobal(WIFI_QR_CARD_METADATA), "normalizeWifiQrConfig": staticGlobal(normalizeWifiQrConfig), "wifiQrSsid": staticGlobal(wifiQrSsid), "wifiQrPassword": staticGlobal(wifiQrPassword), "wifiQrSecurity": staticGlobal(wifiQrSecurity), "wifiQrHidden": staticGlobal(wifiQrHidden), "validWifiQrPassword": staticGlobal(validWifiQrPassword) };
 }

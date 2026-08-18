@@ -1,0 +1,44 @@
+{
+  "label": "Gate",
+  "allowInSubpage": true,
+  "domains": ["cover"],
+  "options": [
+    {
+      "name": "gate_mode",
+      "label": "Interaction",
+      "kind": "choice",
+      "values": ["", "open", "close", "stop"],
+      "defaultValue": "",
+      "storageField": "sensor",
+      "omitDefault": false
+    },
+    {
+      "name": "label_display",
+      "label": "Display",
+      "kind": "choice",
+      "values": ["label", "status"],
+      "defaultValue": "label",
+      "omitDefault": true
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "keep" },
+      "icon": { "policy": "keep" },
+      "icon_on": { "policy": "hook", "hook": "normalize_access_fields" },
+      "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+      "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "gate" },
+      "precision": { "policy": "clear" },
+      "options": { "policy": "hook", "hook": "normalize_access_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["label_display"],
+    "optionHook": "normalize_access_options"
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Gate", "icon_on": "Gate Open",
+    "sensor": "", "unit": "", "type": "gate", "precision": "", "options": ""
+  }
+}

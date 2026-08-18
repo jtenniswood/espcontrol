@@ -3,15 +3,15 @@
   "generatedBy": "scripts/check_product_snapshot.py --update",
   "sources": {
     "deviceProfiles": "devices/manifest.json",
-    "cardContract": "common/config/card_contract.json",
-    "entityNames": "common/config/entity_names.json",
-    "icons": "common/assets/icons.json",
-    "compatibilityFixtures": "compatibility/fixtures/product_compatibility.json"
+    "cardContract": "product/v2/card_contract.json",
+    "entityNames": "product/v2/entity_names.json",
+    "icons": "product/v2/icons.json",
+    "compatibilityFixtures": "product/v2/product_compatibility.json"
   },
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 100,
+    "entityNames": 99,
     "icons": 334,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -6250,18 +6250,6 @@
         "name": "Home Assistant Artwork Port",
         "objectIds": [
           "home_assistant_artwork_port"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "home_assistant_artwork_base_url",
-        "domain": "text",
-        "name": "Home Assistant Artwork Base URL",
-        "objectIds": [
-          "home_assistant_artwork_base_url",
-          "cover_art_home_assistant_artwork_base_url_override"
         ],
         "groups": [
           "settings"

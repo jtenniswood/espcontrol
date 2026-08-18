@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the expanded compatibility manifest from devices/catalog.json."""
+"""Generate the expanded compatibility manifest from product/v2/device_catalog.json."""
 
 from __future__ import annotations
 

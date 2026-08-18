@@ -1,0 +1,44 @@
+{
+  "label": "Alarm",
+  "allowInSubpage": true,
+  "domains": ["alarm_control_panel"],
+  "options": [
+    { "name": "alarm_card_type", "label": "Type", "kind": "choice", "values": ["control_panel", "away", "home", "night", "vacation", "disarm"], "defaultValue": "control_panel", "storageField": "type", "omitDefault": false },
+    { "name": "pin_arm", "label": "PIN required for arming", "kind": "flag", "defaultValue": "1", "omitDefault": true },
+    { "name": "pin_disarm", "label": "PIN required for disarming", "kind": "flag", "defaultValue": "1", "omitDefault": true },
+    { "name": "actions", "label": "Visible Actions", "kind": "choice", "values": ["away", "home", "night", "vacation", "disarm"], "defaultValue": "away|home|disarm", "omitDefault": true },
+    { "name": "icon_display", "label": "Icon Display", "kind": "choice", "values": ["static", "status"], "defaultValue": "status", "omitDefault": true },
+    { "name": "label_display", "label": "Label Display", "kind": "choice", "values": ["name", "status"], "defaultValue": "status", "omitDefault": true }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" }, "label": { "policy": "keep" },
+      "icon": { "policy": "hook", "hook": "normalize_security_fields" },
+      "icon_on": { "policy": "default", "value": "Auto" },
+      "sensor": { "policy": "clear" }, "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "alarm" }, "precision": { "policy": "clear" },
+      "options": { "policy": "hook", "hook": "normalize_security_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["pin_arm", "pin_disarm", "actions", "icon_display", "label_display"],
+    "optionHook": "normalize_security_options"
+  },
+  "behavior": {
+    "alarm": {
+      "controlPanelValue": "control_panel",
+      "defaultActions": ["away", "home", "disarm"],
+      "maxVisibleActions": 3,
+      "actions": [
+        { "value": "away", "label": "Arm Away", "service": "alarm_control_panel.alarm_arm_away", "icon": "Shield Lock", "legacyIcon": "Security" },
+        { "value": "home", "label": "Arm Home", "service": "alarm_control_panel.alarm_arm_home", "icon": "Shield Home", "legacyIcon": "Home" },
+        { "value": "night", "label": "Arm Night", "service": "alarm_control_panel.alarm_arm_night", "icon": "Weather Night", "legacyIcon": "Weather Night" },
+        { "value": "vacation", "label": "Arm Vacation", "service": "alarm_control_panel.alarm_arm_vacation", "icon": "Airplane", "legacyIcon": "Airplane" },
+        { "value": "disarm", "label": "Disarm", "service": "alarm_control_panel.alarm_disarm", "icon": "Shield Off", "legacyIcon": "Lock Open" }
+      ]
+    }
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Security", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "alarm", "precision": "", "options": ""
+  }
+}

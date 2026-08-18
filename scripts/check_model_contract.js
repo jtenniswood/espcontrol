@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, "..");
 const MODEL_ENTRY = path.join(ROOT, "src", "webserver", "model", "index.ts");
 const PRIMITIVES_ENTRY = path.join(ROOT, "src", "webserver", "model", "config_primitives.ts");
 const CARD_CONTRACT_ENTRY = path.join(ROOT, "src", "webserver", "generated", "card_contract.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 
 const model = loadTypeScriptModule(MODEL_ENTRY);
 const primitives = loadTypeScriptModule(PRIMITIVES_ENTRY);
@@ -493,11 +493,6 @@ assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assi
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(0), 1, "Home Assistant artwork port clamps low values");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(70000), 65535, "Home Assistant artwork port clamps high values");
-assert.strictEqual(model.normalizeHomeAssistantArtworkBaseUrl(" https://ha.example.com/ha/ "), "https://ha.example.com/ha", "Home Assistant artwork base URL trims whitespace and trailing slashes");
-assert.strictEqual(model.normalizeHomeAssistantArtworkBaseUrl("HTTPS://ha.example.com"), "https://ha.example.com", "Home Assistant artwork base URL canonicalizes its scheme");
-assert.strictEqual(model.normalizeHomeAssistantArtworkBaseUrl("https://ha.example.com:0"), "", "Home Assistant artwork base URL rejects port zero");
-assert.strictEqual(model.normalizeHomeAssistantArtworkBaseUrl("https://ha.example.com/?token=secret"), "", "Home Assistant artwork base URL rejects query strings");
-assert.strictEqual(model.normalizeHomeAssistantArtworkBaseUrl("ha.example.com"), "", "Home Assistant artwork base URL requires a protocol");
 assert.strictEqual(model.normalizeBrightnessMode("Manual"), "manual", "manual brightness mode normalizes");
 assert.strictEqual(model.normalizeBrightnessMode("Fixed times"), "fixed_times", "fixed-time brightness mode normalizes");
 assert.strictEqual(model.normalizeBrightnessMode("unexpected"), "sunrise_sunset", "brightness mode defaults to sunrise and sunset");
@@ -583,7 +578,6 @@ const panelSettings = model.normalizeBackupPanelSettings({
   cover_art_hide_external_input: true,
   home_assistant_artwork_protocol: "https",
   home_assistant_artwork_port: "80",
-  home_assistant_artwork_base_url: "https://ha.example.com/proxy/",
   firmware_auto_update: false,
   firmware_update_frequency: "Weekly",
   clock_brightness_day: 44,
@@ -603,7 +597,6 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntpServer3: "2.pool.ntp.org",
   coverArtHomeAssistantProtocol: "http",
   coverArtHomeAssistantPort: 8123,
-  coverArtHomeAssistantBaseUrl: "",
   autoUpdate: true,
   updateFrequency: "Daily",
   updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
@@ -630,7 +623,6 @@ assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver ac
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantProtocol, "https", "panel Home Assistant artwork protocol imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");
-assert.strictEqual(panelSettings.coverArtHomeAssistantBaseUrl, "https://ha.example.com/proxy", "panel Home Assistant artwork base URL imports");
 assert.strictEqual(panelSettings.autoUpdate, false, "panel firmware auto-update imports");
 assert.strictEqual(panelSettings.updateFrequency, "Weekly", "panel firmware update frequency imports");
 assert.strictEqual(
@@ -714,7 +706,7 @@ assert.strictEqual(
     clockFormatOptions: ["12h", "24h"], ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
     ntpServer1: "0.pool.ntp.org", ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org",
     coverArtHomeAssistantProtocol: "http", coverArtHomeAssistantPort: 8123,
-    coverArtHomeAssistantBaseUrl: "", autoUpdate: true, updateFrequency: "Daily",
+    autoUpdate: true, updateFrequency: "Daily",
     updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
   }).screensaverDimmedBrightnessNight,
   18,

@@ -125,13 +125,31 @@ bool failed_sync_keeps_the_pending_slot_for_retry() {
   return backend.sync() && blobs.save_calls() == 2 && blobs.sync_calls() == 2;
 }
 
+bool withdrawing_a_slot_discards_stale_header_bytes() {
+  FakeBlobStorage blobs;
+  BufferedBlobStorageBackend<kSlotCapacity> backend(blobs);
+  std::array<uint8_t, kSlotCapacity * 2> memory{};
+  if (!backend.begin(memory.data(), memory.size())) return false;
+  const std::array<uint8_t, 4> stale{{1, 2, 3, 4}};
+  const std::array<uint8_t, 4> withdrawn{};
+  if (!backend.write(0, 4, stale.data(), stale.size()) || !backend.sync() ||
+      !backend.write(0, 0, withdrawn.data(), withdrawn.size()) ||
+      !backend.sync() || blobs.stored_size(0) != withdrawn.size()) {
+    return false;
+  }
+  std::array<uint8_t, stale.size()> retained{};
+  return backend.read(0, 4, retained.data(), retained.size()) &&
+         retained == std::array<uint8_t, stale.size()>{{0xFF, 0xFF, 0xFF, 0xFF}};
+}
+
 }  // namespace
 
 int main() {
   return missing_slots_behave_like_an_empty_store() &&
                  commits_are_buffered_until_the_store_sync_boundary() &&
                  persisted_blobs_are_compact_but_remain_readable() &&
-                 failed_sync_keeps_the_pending_slot_for_retry()
+                 failed_sync_keeps_the_pending_slot_for_retry() &&
+                 withdrawing_a_slot_discards_stale_header_bytes()
              ? 0
              : 1;
 }

@@ -7,7 +7,7 @@ const { loadTypescriptTest } = require("./helpers/load_typescript_test");
 
 const ROOT = path.resolve(__dirname, "../../..");
 const fixtures = JSON.parse(fs.readFileSync(
-  path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json"),
+  path.join(ROOT, "product", "v2", "product_compatibility.json"),
   "utf8",
 ));
 const migrationFixture = JSON.parse(fs.readFileSync(

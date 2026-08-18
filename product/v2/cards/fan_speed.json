@@ -1,0 +1,54 @@
+{
+  "label": "Fans",
+  "allowInSubpage": true,
+  "domains": [
+    "fan"
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "keep"
+      },
+      "icon": {
+        "policy": "hook",
+        "hook": "normalize_fan_fields"
+      },
+      "icon_on": {
+        "policy": "hook",
+        "hook": "normalize_fan_fields"
+      },
+      "sensor": {
+        "policy": "clear"
+      },
+      "unit": {
+        "policy": "clear"
+      },
+      "type": {
+        "policy": "default",
+        "value": "fan_speed"
+      },
+      "precision": {
+        "policy": "clear"
+      },
+      "options": {
+        "policy": "clear"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Fan Speed 2",
+    "icon_on": "Auto",
+    "sensor": "",
+    "unit": "",
+    "type": "fan_speed",
+    "precision": "",
+    "options": ""
+  }
+}

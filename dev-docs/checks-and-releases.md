@@ -132,10 +132,10 @@ leak into the public site.
 
 Run `python3 scripts/build.py` after changing:
 
-- `common/config/card_contract.json`
-- `common/config/entity_names.json`
-- `common/assets/icons.json`
-- firmware translation strings under `common/config/strings.*.txt`
+- `product/v2/card_contract.json`
+- `product/v2/entity_names.json`
+- `product/v2/icons.json`
+- firmware translation strings under `product/v2/translations/strings.*.txt`
 - `devices/manifest.json`
 - `src/webserver/`
 
@@ -173,7 +173,7 @@ Treat these as release-facing:
 - `docs/public/webserver/*/www.js`
 - `docs/generated/screens/*.md`
 - `docs/generated/cards/capabilities.md`
-- `compatibility/fixtures/product_compatibility.json`
+- `product/v2/product_compatibility.json`
 
 Changes here usually deserve `npm run check:product` at minimum.
 

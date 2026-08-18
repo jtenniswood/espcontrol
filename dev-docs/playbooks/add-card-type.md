@@ -5,7 +5,7 @@ configured, rendered, previewed, or saved.
 
 ## Edit First
 
-- `common/config/card_contract.json`
+- `product/v2/card_contract.json`
 - `src/webserver/cards/<type>.ts`
 - `components/espcontrol/button_grid_<type>.h`
 
@@ -21,7 +21,7 @@ and firmware behavior show the real shape of the change.
 
 ## Checklist
 
-- [ ] Add or update the card entry in `common/config/card_contract.json`.
+- [ ] Add or update the card entry in `product/v2/card_contract.json`.
 - [ ] Add or update its `runtime.specs` entry with a permitted driver and every
       capability flag. Add an exhaustive mode mapping when a saved field selects
       different behaviour.
@@ -37,7 +37,7 @@ and firmware behavior show the real shape of the change.
 - [ ] If firmware parsing needs new fields or options, update
       `components/espcontrol/button_grid_config.h`.
 - [ ] Add or update compatibility fixtures when the saved shape changes:
-      `compatibility/fixtures/product_compatibility.json`.
+      `product/v2/product_compatibility.json`.
 - [ ] Add every meaningful mode to `common/config/card_runtime_inventory.json`,
       including expected subscriptions, actions, and modal ownership.
 - [ ] Cover normalisation, picker visibility, preview, reload persistence,

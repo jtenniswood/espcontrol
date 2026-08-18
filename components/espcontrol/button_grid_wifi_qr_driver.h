@@ -12,7 +12,7 @@ inline bool wifi_qr_driver_setup_visual(BtnSlot &slot, const ParsedCfg &config, 
 }
 inline bool wifi_qr_driver_cleanup(BtnSlot &, const ParsedCfg &, const Context &) { return false; }
 inline bool wifi_qr_driver_refresh_layout(BtnSlot &, const ParsedCfg &, const Context &) { return false; }
-inline bool wifi_qr_driver_bind_main(BtnSlot &, const ParsedCfg &, const Context &) { return false; }
+inline bool wifi_qr_driver_bind_main(BtnSlot &, const ParsedCfg &, const Context &context) { return wifi_qr_driver_matches(context); }
 inline bool wifi_qr_driver_bind_subpage(BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!wifi_qr_driver_matches(context)) return false;
   ParsedCfg *stored = grid_delete_with_owner(slot.btn, new ParsedCfg(config));

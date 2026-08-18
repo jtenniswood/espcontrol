@@ -1,11 +1,22 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerWeatherForecastCardTypes(): GlobalDescriptors {
+import type { CardRegistry } from "../application/card_registry";
+import type { WeatherCardRegistration } from "./weather";
+import type { ClockBarFeature } from "../application/clock_bar_state";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+
+export function registerWeatherForecastCardTypes(
+    registry: CardRegistry,
+    weather: WeatherCardRegistration,
+    clockBar: Pick<ClockBarFeature, "temperatureUnitSymbol">,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml } = fields;
+    const { temperatureUnitSymbol } = clockBar;
     // Legacy read-only forecast card: displays tomorrow's high / low temperature.
-    var WEATHER_FORECAST_CARD_METADATA: any = {
-        entity: WEATHER_CARD_METADATA.entity,
-        preview: WEATHER_CARD_METADATA.preview,
+    const WEATHER_FORECAST_CARD_METADATA: any = {
+        entity: weather.entityMetadata,
+        preview: weather.previewMetadata,
     };
-    registerButtonType("weather_forecast", {
+    registry.register("weather_forecast", {
         label: "Weather Forecast",
         allowInSubpage: true,
         hideLabel: true,
@@ -31,7 +42,4 @@ export function registerWeatherForecastCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "WEATHER_FORECAST_CARD_METADATA": liveGlobal(() => WEATHER_FORECAST_CARD_METADATA, (value?: any) => { WEATHER_FORECAST_CARD_METADATA = value; }),
-    };
 }

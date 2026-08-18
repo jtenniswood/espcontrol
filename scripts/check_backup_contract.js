@@ -9,7 +9,7 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 
 function loadHooks(search = "") {
   const params = new URLSearchParams(search);
@@ -90,7 +90,6 @@ const v2 = hooks.createBackupConfig({
     cover_art_hide_external_input: true,
     home_assistant_artwork_protocol: "https",
     home_assistant_artwork_port: 80,
-    home_assistant_artwork_base_url: "https://ha.example.com/",
     firmware_auto_update: false,
     firmware_update_frequency: "Weekly",
   },
@@ -123,7 +122,6 @@ assert.strictEqual(v2.buttons[1].precision, "tomorrow", "exports migrated card d
 assert.strictEqual(v2.settings.cover_art_hide_external_input, true, "exports cover art external-input setting");
 assert.strictEqual(v2.settings.home_assistant_artwork_protocol, "https", "exports Home Assistant artwork protocol setting");
 assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home Assistant artwork port setting");
-assert.strictEqual(v2.settings.home_assistant_artwork_base_url, "https://ha.example.com/", "exports Home Assistant artwork base URL setting");
 assert.strictEqual(v2.settings.firmware_auto_update, false, "exports firmware auto-update setting");
 assert.strictEqual(v2.settings.firmware_update_frequency, "Weekly", "exports firmware update frequency setting");
 assert.strictEqual(v2.screen.schedule_sensor_entity, "binary_sensor.schedule", "exports the dedicated schedule sensor setting");

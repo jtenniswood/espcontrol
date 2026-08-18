@@ -1,12 +1,24 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerScreenLockCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry } from "../application/card_registry";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+const SCREEN_LOCK_CARD_METADATA: any = {
+    preview: {
+        badge: "lock",
+    },
+};
+
+export function registerScreenLockCardTypes(registry: CardRegistry, fields: ControlsFieldsFeature): void {
+    const { cardBadgePreview } = fields;
     // Local display card: toggles screen lock on the device without Home Assistant.
-    var SCREEN_LOCK_CARD_METADATA: any = {
-        preview: {
-            badge: "lock",
-        },
-    };
-    registerButtonType("screen_lock", {
+    registry.register("screen_lock", {
         label: function (this: any) { return cardContractCardLabel("screen_lock"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("screen_lock"); },
         pickerKey: function (this: any) { return cardContractPickerKey("screen_lock"); },
@@ -30,7 +42,4 @@ export function registerScreenLockCardTypes(): GlobalDescriptors {
             });
         },
     });
-    return {
-        "SCREEN_LOCK_CARD_METADATA": liveGlobal(() => SCREEN_LOCK_CARD_METADATA, (value?: any) => { SCREEN_LOCK_CARD_METADATA = value; }),
-    };
 }

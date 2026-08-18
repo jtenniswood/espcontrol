@@ -181,11 +181,11 @@ def test_device_matrix_sparse_checkouts_include_product_model() -> None:
     required_paths = (
         "product/model_v2.json",
         "scripts/product_model_v2.py",
-        "common/assets/icons.json",
-        "common/config/card_contract.json",
-        "common/config/entity_names.json",
-        "common/config/strings.*.txt",
-        "compatibility/fixtures/product_compatibility.json",
+        "product/v2/icons.json",
+        "product/v2/card_contract.json",
+        "product/v2/entity_names.json",
+        "product/v2/translations/strings.*.txt",
+        "product/v2/product_compatibility.json",
     )
     for workflow_path in (FIRMWARE_COMPILE_WORKFLOW, NIGHTLY_FIRMWARE_WORKFLOW):
         workflow = workflow_path.read_text(encoding="utf-8")

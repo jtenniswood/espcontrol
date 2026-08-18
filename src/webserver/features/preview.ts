@@ -22,9 +22,9 @@ export interface MenuPosition {
 export interface CardTypeDefinition {
   readonly key?: string;
   readonly label?: string | (() => string);
-  readonly pickerKey?: string | (() => string);
+  readonly pickerKey?: string | null | (() => string | null);
   readonly allowInSubpage?: boolean | (() => boolean);
-  readonly isAvailable?: (context: { isSub: boolean }) => boolean;
+  readonly isAvailable?: ((context: { isSub: boolean }) => boolean) | null;
 }
 
 export interface CardPickerOption {
@@ -98,6 +98,18 @@ export function registryValue<T>(definition: Record<string, unknown> | null | un
   const candidate = definition[key];
   const value = typeof candidate === "function" ? (candidate as () => unknown)() : candidate;
   return value == null ? fallback : value as T;
+}
+
+export function buttonConfigDisabledForDevice(
+  definitions: Readonly<Record<string, CardTypeDefinition>>,
+  disabledCardTypes: readonly string[],
+  button: { readonly type?: string | null } | null | undefined,
+): boolean {
+  const type = button?.type || "";
+  if (disabledCardTypes.includes(type)) return true;
+  const definition = definitions[type] as Record<string, unknown> | undefined;
+  const pickerKey = registryValue(definition, "pickerKey", "");
+  return !!pickerKey && disabledCardTypes.includes(pickerKey);
 }
 
 export function infoOnlyCardVisible(key: string, infoOnly: boolean): boolean {

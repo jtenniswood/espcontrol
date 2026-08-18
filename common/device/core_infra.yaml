@@ -31,53 +31,73 @@ api:
   reboot_timeout: 0s
   homeassistant_states: true
   homeassistant_services: true
+  # Keep ESPHome's platform default connection pool.  The panel can have a
+  # browser event stream open while Home Assistant reconnects, and diagnostic
+  # clients may overlap that reconnect.  Restricting the native API itself to
+  # three clients causes Home Assistant to be rejected outright. Individual
+  # constrained devices may still override this in their profile.
+  max_send_queue: 12
   on_client_connected:
-    - lambda: |-
-        register_local_sensor_endpoint();
-        ESP_LOGI("api", "API client connected: %s", client_info.c_str());
-        bool is_home_assistant = client_info.find("Home Assistant") != std::string::npos;
-        if (is_home_assistant && ha_api_connected()) {
-          id(ha_restore_after_api).execute();
-          if (!client_address.empty()) {
-            id(cover_art_home_assistant_client_address) = client_address;
-          }
-          id(cover_art_resolve_home_assistant_base_url).execute();
-          if (ha_api_state_connected()) {
-            refresh_weather_forecast_cards();
-            ha_flush_deferred_state_requests();
-          }
-        }
-        register_local_action_endpoint();
-    - delay: 2s
-    - lambda: |-
-        if (ha_api_connected()) refresh_image_cards();
-        if (ha_api_state_connected()) {
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
-    - delay: 8s
-    - lambda: |-
-        if (ha_api_connected()) refresh_image_cards();
-        if (ha_api_state_connected()) {
-          refresh_weather_forecast_cards();
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
-    - delay: 20s
-    - lambda: |-
-        if (ha_api_connected()) refresh_image_cards();
-        if (ha_api_state_connected()) {
-          refresh_weather_forecast_cards();
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
-    - delay: 25s
-    - lambda: |-
-        if (ha_api_state_connected()) {
-          refresh_weather_forecast_cards();
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
+    # ESPHome invokes this hook while it is completing the protocol handshake,
+    # before the Hello response is written.  Yield once before doing any panel
+    # work so a Home Assistant reconnect (or a diagnostic client) cannot delay
+    # or starve that response.
+    - delay: 1s
+    - if:
+        condition:
+          lambda: |-
+            bool is_home_assistant =
+                client_info.find("Home Assistant") != std::string::npos;
+            return is_home_assistant && ha_api_connected();
+        then:
+          - lambda: |-
+              ESP_LOGI("api", "Home Assistant connected: %s", client_info.c_str());
+              id(ha_restore_after_api).execute();
+              if (!client_address.empty()) {
+                id(cover_art_home_assistant_client_address) = client_address;
+              }
+              id(cover_art_api_wait_logged) = false;
+              id(cover_art_resolve_home_assistant_base_url).execute();
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_log_subscription_diagnostics("client-connected");
+                ha_flush_deferred_state_requests();
+              }
+          - delay: 2s
+          - lambda: |-
+              if (ha_api_connected()) refresh_image_cards();
+              if (ha_api_state_connected()) {
+                id(homeassistant_time).update();
+                ha_flush_deferred_state_requests();
+              }
+          - script.execute: cover_art_resubscribe
+          - script.execute: timezone_after_homeassistant_time_sync
+          - script.execute: backlight_recalc_sunrise_sunset
+          - script.execute: screen_schedule_check
+          - lambda: 'todo_reload_active_modal();'
+          - delay: 8s
+          - lambda: |-
+              if (ha_api_connected()) refresh_image_cards();
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_flush_deferred_state_requests();
+              }
+          - lambda: 'todo_reload_active_modal();'
+          - delay: 20s
+          - lambda: |-
+              if (ha_api_connected()) refresh_image_cards();
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_flush_deferred_state_requests();
+              }
+          - lambda: 'todo_reload_active_modal();'
+          - delay: 25s
+          - lambda: |-
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_flush_deferred_state_requests();
+              }
+          - lambda: 'todo_reload_active_modal();'
   on_client_disconnected:
     - lambda: |-
         ESP_LOGW("api", "API client disconnected: %s", client_info.c_str());
@@ -85,10 +105,10 @@ api:
         if (!is_home_assistant && ha_api_state_connected()) {
           return;
         }
+        ha_invalidate_retained_state();
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
-
 interval:
   - interval: 5s
     then:
@@ -117,7 +137,6 @@ web_server:
   version: 3
   include_internal: true
   js_url: https://jtenniswood.github.io/espcontrol/webserver/www.js?device=${device_slug}&v=${firmware_version}&ui=20260714-shared
-  js_include: ../../docs/public/webserver/embedded/www.js
   sorting_groups:
     - id: sg_button
       name: "Button Configuration"
@@ -154,26 +173,6 @@ button:
         - lambda: |-
             global_preferences->sync();
             App.safe_reboot();
-
-text:
-  - platform: template
-    name: "${entity_home_assistant_artwork_base_url}"
-    internal: true
-    id: cover_art_home_assistant_artwork_base_url_override
-    entity_category: config
-    icon: "mdi:web"
-    optimistic: true
-    restore_value: true
-    initial_value: ""
-    min_length: 0
-    max_length: 255
-    mode: text
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_connectivity
-    on_value:
-      then:
-        - script.execute: cover_art_resolve_home_assistant_base_url
 
 select:
   - platform: template

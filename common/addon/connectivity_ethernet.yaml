@@ -46,10 +46,6 @@ ethernet:
           - lvgl.page.show: ethernet_setup_page
           - script.execute: setup_screen_dim
 
-api:
-  on_client_connected:
-    - script.execute: ha_restore_after_api
-
 script:
   - id: ha_restore_after_api
     mode: restart
@@ -80,6 +76,11 @@ script:
           condition:
             lambda: 'return !id(button_order).state.empty();'
           then:
+            - wait_until:
+                condition:
+                  lambda: |-
+                    return id(espcontrol_app).display().target_mode_is(
+                        espcontrol::DisplayMode::ACTIVE);
             - lvgl.page.show: main_page
             - script.execute: clock_bar_apply
             - script.execute: screensaver_idle_check

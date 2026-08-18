@@ -1020,7 +1020,13 @@ void ArtworkImage::loop() {
     }
 
     size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
-    auto len = this->downloader_->read(this->download_buffer_.append(), available);
+    uint8_t *target = this->download_buffer_.append();
+    if (target == nullptr || available == 0) {
+      ESP_LOGE(TAG, "Artwork download buffer became unavailable before format detection");
+      this->fail_download_();
+      return;
+    }
+    auto len = this->downloader_->read(target, available);
     bool transfer_complete = false;
     if (len > 0) {
       this->download_buffer_.write(len);
@@ -1103,7 +1109,13 @@ void ArtworkImage::loop() {
   }
 
   size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
-  auto len = this->downloader_->read(this->download_buffer_.append(), available);
+  uint8_t *target = this->download_buffer_.append();
+  if (target == nullptr || available == 0) {
+    ESP_LOGE(TAG, "Artwork download buffer became unavailable before reading image data");
+    this->fail_download_();
+    return;
+  }
+  auto len = this->downloader_->read(target, available);
   if (len > 0) {
     this->download_buffer_.write(len);
     this->last_data_millis_ = millis();

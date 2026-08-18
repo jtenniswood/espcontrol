@@ -83,6 +83,12 @@ class BufferedBlobStorageBackend final : public StorageBackend {
     if (offset == 0 && size == sizeof(uint32_t) &&
         std::all_of(data, data + size,
                     [](uint8_t value) { return value == 0; })) {
+      // A full-blob binding may need to rewrite an erased flash slot during
+      // the following sync boundaries.  Do not retain stale header bytes in
+      // the in-memory image after ConfigurationStore withdraws publication.
+      // Besides keeping compact NVS writes compact, this makes the next
+      // payload and metadata writes safe for a raw-flash implementation.
+      std::memset(slots_[slot], 0xFF, SlotCapacity);
       stored_sizes_[slot] = 0;
     }
     if (size > 0) std::memcpy(slots_[slot] + offset, data, size);

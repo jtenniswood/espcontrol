@@ -1,16 +1,86 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-import { createCardEditorDraftController } from "../features/card_editor_draft_controller";
-export function installPreviewInteractionsModule(): GlobalDescriptors {
-    var cardEditorDraftController: any = createCardEditorDraftController({
-        "cloneCard": function (button: any) { return EspControlModel.cloneCardConfig(button); },
-        "emptyCard": function () { return EspControlModel.emptyCardConfig(); },
-    });
+import * as EspControlModel from "../model";
+import { coveredCells } from "../model/grid";
+import type { CardEditorDraftController } from "../features/card_editor_draft_controller";
+import type { ConfigPersistenceFeature } from "./config_post_api";
+import type { ApplicationLayoutState } from "./application_context";
+import type { ConfigImageOptionsFeature } from "./config_image_options";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { GridFeature } from "./grid";
+import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+import type { PreviewGridPlacementFeature } from "./preview_grid_placement";
+import type { PreviewContextMenuFeature } from "./preview_context_menu";
+export interface PreviewInteractionsDependencies {
+    readonly cardEditorDraft: CardEditorDraftController;
+    readonly configPersistence: ConfigPersistenceFeature;
+    readonly layout: ApplicationLayoutState;
+    readonly window: Window;
+    readonly imageOptions: ConfigImageOptionsFeature;
+    readonly codec: ConfigCodecFeature;
+    readonly runtime: UiRuntimeState;
+    readonly entityState: Pick<EntityStateFeature, "entityName">;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
+    readonly requestApi: Pick<ApplicationApiFeature, "postText">;
+    readonly grid: Pick<GridFeature, "ctx" | "serializeGrid">;
+    readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "selectClockBarItem">;
+    readonly placement: Pick<PreviewGridPlacementFeature, "findDuplicatePlacement" | "getCellFromEvent" | "moveSelectedToCell" | "moveToCell" | "placeSlotAt">;
+    readonly contextMenu: PreviewContextMenuFeature;
+    readonly renderPreview: () => void;
+    readonly renderButtonSettings: (force?: boolean) => void;
+}
+export interface PreviewInteractionsFeature {
+    clearPlaceholder(): void;
+    setup(): void;
+    addSlot(position?: any): void;
+    addSubpageSlot(position?: any): void;
+    duplicateButton(slot?: any): void;
+    duplicateSubpageButton(slot?: any): void;
+    deleteSlot(slot?: any): void;
+    deleteButtons(slots?: any): void;
+    emptyButtonConfig(): any;
+}
+
+export function createPreviewInteractionsFeature(
+    dependencies: PreviewInteractionsDependencies,
+): PreviewInteractionsFeature {
+    const cardEditorDraftController = dependencies.cardEditorDraft;
+    const configPersistence = dependencies.configPersistence;
+    const window = dependencies.window;
+    const runtime = dependencies.runtime;
+    const { entityName } = dependencies.entityState;
+    const { isConfigLocked } = dependencies.shell;
+    const { ctx, serializeGrid } = dependencies.grid;
+    const { hideSettingsOverlay, selectClockBarItem } = dependencies.selection;
+    const { findDuplicatePlacement, getCellFromEvent, moveSelectedToCell, moveToCell, placeSlotAt } = dependencies.placement;
+    const { renderPreview, renderButtonSettings } = dependencies;
+    const { showClockBar, showEmpty, showCard, showBack } = dependencies.contextMenu;
+    const els = runtime.els;
+    const {
+        isImageCard,
+        imageCardCountInSubpage,
+        canAddImageCards,
+        showImageCardLimitBanner,
+    } = dependencies.imageOptions;
+    const {
+        parseSubpageConfig,
+        serializeSubpageConfig,
+        getSubpage,
+        buildSubpageGrid,
+        serializeSubpageGrid,
+        enterSubpage,
+        exitSubpage,
+        saveSubpageConfig,
+        subpageFirstFreeSlot,
+    } = dependencies.codec;
     // ── Preview event delegation & drag ────────────────────────────────────
     function clearPlaceholder(this: any) {
-        if (previewPlaceholder) {
-            previewPlaceholder.classList.remove("sp-drop-placeholder");
-            previewPlaceholder = null;
+        if (runtime.previewPlaceholder) {
+            runtime.previewPlaceholder.classList.remove("sp-drop-placeholder");
+            runtime.previewPlaceholder = null;
         }
     }
     function clearTextSelection(this: any) {
@@ -55,7 +125,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
                     return;
                 e.preventDefault();
                 e.stopPropagation();
-                showClockBarContextMenu(e, target.getAttribute("data-clockbar-item"));
+                showClockBar(e, target.getAttribute("data-clockbar-item"));
             });
         }
         function isBackExitTarget(this: any, e?: any, target?: any) {
@@ -102,8 +172,8 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
                 handleBtnClick(e, slot, pos);
             }
             else if (slot === -2) {
-                if (didDrag) {
-                    didDrag = false;
+                if (runtime.didDrag) {
+                    runtime.didDrag = false;
                     return;
                 }
                 if (isBackExitTarget(e, target)) {
@@ -117,7 +187,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
                 if (state.clipboard) {
                     e.preventDefault();
                     e.stopPropagation();
-                    showEmptySlotMenu(e, pos);
+                    showEmpty(e, pos);
                 }
                 else {
                     addSlot(pos);
@@ -138,13 +208,13 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             var c: any = ctx();
             var slot: any = c.grid[pos];
             if (slot > 0) {
-                showContextMenu(e, slot);
+                showCard(e, slot);
             }
             else if (slot === -2) {
-                showBackContextMenu(e);
+                showBack(e);
             }
             else if (slot === 0) {
-                showEmptySlotMenu(e, pos);
+                showEmpty(e, pos);
             }
         });
         // Drag delegation
@@ -157,66 +227,64 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             if (!target)
                 return;
             var pos: any = parseInt(target.getAttribute("data-pos"), 10);
-            dragSrcPos = pos;
-            if (CFG.dragAnimation)
-                dragSrcEl = target;
-            dragIsSubpage = !!state.editingSubpage;
-            didDrag = true;
-            dragEnterCount = 0;
+            runtime.dragSrcPos = pos;
+            if (dependencies.layout.config.dragAnimation)
+                runtime.dragSrcEl = target;
+            runtime.didDrag = true;
+            runtime.dragEnterCount = 0;
             container.classList.add("sp-drag-active");
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", String(pos));
-            if (CFG.dragAnimation) {
+            if (dependencies.layout.config.dragAnimation) {
                 requestAnimationFrame(function (this: any) { target.classList.add("sp-dragging"); });
             }
         });
         container.addEventListener("dragend", function (this: any) {
-            dragSrcPos = -1;
-            previewDropIdx = -1;
-            dragIsSubpage = false;
-            dragEnterCount = 0;
+            runtime.dragSrcPos = -1;
+            runtime.previewDropIdx = -1;
+            runtime.dragEnterCount = 0;
             clearPlaceholder();
-            if (dragSrcEl) {
-                dragSrcEl.classList.remove("sp-dragging");
-                dragSrcEl = null;
+            if (runtime.dragSrcEl) {
+                runtime.dragSrcEl.classList.remove("sp-dragging");
+                runtime.dragSrcEl = null;
             }
             setTimeout(function (this: any) { container.classList.remove("sp-drag-active"); }, 50);
         });
         // Drop zone
         function updatePlaceholder(this: any, cellIdx?: any) {
-            if (cellIdx === previewDropIdx)
+            if (cellIdx === runtime.previewDropIdx)
                 return;
-            previewDropIdx = cellIdx;
+            runtime.previewDropIdx = cellIdx;
             clearPlaceholder();
             var target: any = container.querySelector('[data-pos="' + cellIdx + '"]');
             if (target) {
-                previewPlaceholder = target;
-                previewPlaceholder.classList.add("sp-drop-placeholder");
+                runtime.previewPlaceholder = target;
+                runtime.previewPlaceholder.classList.add("sp-drop-placeholder");
             }
         }
         container.addEventListener("dragenter", function (this: any, e?: any) {
             if (isConfigLocked())
                 return;
-            if (dragSrcPos < 0)
+            if (runtime.dragSrcPos < 0)
                 return;
             e.preventDefault();
-            dragEnterCount++;
+            runtime.dragEnterCount++;
         });
         container.addEventListener("dragover", function (this: any, e?: any) {
             if (isConfigLocked())
                 return;
-            if (dragSrcPos < 0)
+            if (runtime.dragSrcPos < 0)
                 return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
-            if (CFG.dragAnimation) {
+            if (dependencies.layout.config.dragAnimation) {
                 pendingCellIdx = getCellFromEvent(e, container);
-                if (dragRafPending)
+                if (runtime.dragRafPending)
                     return;
-                dragRafPending = true;
+                runtime.dragRafPending = true;
                 requestAnimationFrame(function (this: any) {
-                    dragRafPending = false;
-                    if (dragSrcPos < 0)
+                    runtime.dragRafPending = false;
+                    if (runtime.dragSrcPos < 0)
                         return;
                     updatePlaceholder(pendingCellIdx);
                 });
@@ -226,10 +294,10 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             }
         });
         container.addEventListener("dragleave", function (this: any) {
-            dragEnterCount--;
-            if (dragEnterCount <= 0) {
-                dragEnterCount = 0;
-                previewDropIdx = -1;
+            runtime.dragEnterCount--;
+            if (runtime.dragEnterCount <= 0) {
+                runtime.dragEnterCount = 0;
+                runtime.previewDropIdx = -1;
                 clearPlaceholder();
             }
         });
@@ -239,39 +307,36 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
                 return;
             }
             e.preventDefault();
-            dragEnterCount = 0;
-            var toPos: any = previewDropIdx;
-            previewDropIdx = -1;
+            runtime.dragEnterCount = 0;
+            var toPos: any = runtime.previewDropIdx;
+            runtime.previewDropIdx = -1;
             clearPlaceholder();
-            if (dragSrcEl) {
-                dragSrcEl.classList.remove("sp-dragging");
-                dragSrcEl = null;
+            if (runtime.dragSrcEl) {
+                runtime.dragSrcEl.classList.remove("sp-dragging");
+                runtime.dragSrcEl = null;
             }
             var c: any = ctx();
-            if (dragSrcPos < 0 || toPos < 0 || toPos >= c.maxSlots) {
-                dragSrcPos = -1;
-                dragIsSubpage = false;
+            if (runtime.dragSrcPos < 0 || toPos < 0 || toPos >= c.maxSlots) {
+                runtime.dragSrcPos = -1;
                 return;
             }
-            if (dragSrcPos === toPos) {
-                dragSrcPos = -1;
-                dragIsSubpage = false;
+            if (runtime.dragSrcPos === toPos) {
+                runtime.dragSrcPos = -1;
                 return;
             }
-            if (!moveSelectedToCell(dragSrcPos, toPos))
-                moveToCell(dragSrcPos, toPos);
+            if (!moveSelectedToCell(runtime.dragSrcPos, toPos))
+                moveToCell(runtime.dragSrcPos, toPos);
             renderPreview();
             renderButtonSettings();
             c.save();
-            dragSrcPos = -1;
-            dragIsSubpage = false;
+            runtime.dragSrcPos = -1;
         });
     }
     function handleBtnClick(this: any, e?: any, slot?: any, pos?: any) {
         if (isConfigLocked())
             return;
-        if (didDrag) {
-            didDrag = false;
+        if (runtime.didDrag) {
+            runtime.didDrag = false;
             return;
         }
         state.clockBarSelectedItem = "";
@@ -353,7 +418,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             if (s > 0)
                 used[s] = true;
         });
-        for (var i: any = 1; i <= NUM_SLOTS; i++) {
+        for (var i: any = 1; i <= dependencies.layout.numSlots; i++) {
             if (!used[i])
                 return i;
         }
@@ -361,8 +426,8 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
     }
     function firstFreeCell(this: any, afterPos?: any) {
         var start: any = afterPos != null ? afterPos : 0;
-        for (var i: any = 0; i < NUM_SLOTS; i++) {
-            var candidate: any = (start + i) % NUM_SLOTS;
+        for (var i: any = 0; i < dependencies.layout.numSlots; i++) {
+            var candidate: any = (start + i) % dependencies.layout.numSlots;
             if (state.grid[candidate] === 0)
                 return candidate;
         }
@@ -420,9 +485,9 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
         state.grid[pos] = slot;
         state.subpages[slot] = { order: [], buttons: [], grid: [], sizes: {} };
         buildSubpageGrid(state.subpages[slot]);
-        postText(entityName("button_order"), serializeGrid(state.grid));
-        saveButtonConfig(slot);
-        saveSubpageEntity(slot);
+        dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
+        configPersistence.saveButtonConfig(slot);
+        configPersistence.saveSubpageEntity(slot);
         selectButton(slot);
     }
     function duplicateButton(this: any, srcSlot?: any) {
@@ -433,7 +498,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             return;
         var srcSz: any = state.sizes[srcSlot] || 1;
         var srcPos: any = state.grid.indexOf(srcSlot);
-        var placement: any = findDuplicatePlacement(state.grid, srcPos + 1, srcSz, NUM_SLOTS);
+        var placement: any = findDuplicatePlacement(state.grid, srcPos + 1, srcSz, dependencies.layout.numSlots);
         if (placement.pos < 0)
             return;
         var src: any = state.buttons[srcSlot - 1];
@@ -462,9 +527,9 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             buildSubpageGrid(spCopy);
             state.subpages[newSlot] = spCopy;
         }
-        postText(entityName("button_order"), serializeGrid(state.grid));
-        saveButtonConfig(newSlot);
-        saveSubpageEntity(newSlot);
+        dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
+        configPersistence.saveButtonConfig(newSlot);
+        configPersistence.saveSubpageEntity(newSlot);
         state.selectedSlots = [newSlot];
         state.lastClickedSlot = newSlot;
         renderPreview();
@@ -480,7 +545,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
         }
         var srcSz: any = sp.sizes[srcSlot] || 1;
         var srcPos: any = sp.grid.indexOf(srcSlot);
-        var placement: any = findDuplicatePlacement(sp.grid, srcPos + 1, srcSz, NUM_SLOTS);
+        var placement: any = findDuplicatePlacement(sp.grid, srcPos + 1, srcSz, dependencies.layout.numSlots);
         if (placement.pos < 0)
             return;
         var src: any = sp.buttons[srcSlot - 1];
@@ -512,7 +577,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
         for (var i: any = 0; i < c.maxSlots; i++) {
             if (c.grid[i] === slot) {
                 c.grid[i] = 0;
-                var cells: any = coveredCells(i, c.sizes[slot] || 1, c.maxSlots, false);
+                var cells: any = coveredCells(i, c.sizes[slot] || 1, c.maxSlots, dependencies.layout.gridCols, false);
                 for (var ci: any = 0; ci < cells.length; ci++) {
                     if (c.grid[cells[ci]] === -1)
                         c.grid[cells[ci]] = 0;
@@ -534,11 +599,11 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             saveSubpageConfig(state.editingSubpage);
         }
         else {
-            postText(entityName("button_order"), serializeGrid(state.grid));
+            dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
             state.buttons[slot - 1] = emptyButtonConfig();
             delete state.subpages[slot];
-            saveButtonConfig(slot);
-            saveSubpageEntity(slot);
+            configPersistence.saveButtonConfig(slot);
+            configPersistence.saveSubpageEntity(slot);
         }
         renderPreview();
         renderButtonSettings();
@@ -549,7 +614,7 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
         var c: any = ctx();
         for (var i: any = 0; i < c.maxSlots; i++) {
             if (slots.indexOf(c.grid[i]) !== -1) {
-                var cells: any = coveredCells(i, c.sizes[c.grid[i]] || 1, c.maxSlots, false);
+                var cells: any = coveredCells(i, c.sizes[c.grid[i]] || 1, c.maxSlots, dependencies.layout.gridCols, false);
                 for (var ci: any = 0; ci < cells.length; ci++) {
                     if (c.grid[cells[ci]] === -1)
                         c.grid[cells[ci]] = 0;
@@ -574,30 +639,23 @@ export function installPreviewInteractionsModule(): GlobalDescriptors {
             slots.forEach(function (this: any, slot?: any) {
                 state.buttons[slot - 1] = emptyButtonConfig();
                 delete state.subpages[slot];
-                saveButtonConfig(slot);
-                saveSubpageEntity(slot);
+                configPersistence.saveButtonConfig(slot);
+                configPersistence.saveSubpageEntity(slot);
             });
-            postText(entityName("button_order"), serializeGrid(state.grid));
+            dependencies.requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
         }
         renderPreview();
         renderButtonSettings();
     }
     return {
-        "clearPlaceholder": staticGlobal(clearPlaceholder),
-        "clearTextSelection": staticGlobal(clearTextSelection),
-        "setupPreviewEvents": staticGlobal(setupPreviewEvents),
-        "handleBtnClick": staticGlobal(handleBtnClick),
-        "selectButton": staticGlobal(selectButton),
-        "firstFreeSlot": staticGlobal(firstFreeSlot),
-        "firstFreeCell": staticGlobal(firstFreeCell),
-        "emptyButtonConfig": staticGlobal(emptyButtonConfig),
-        "newCardDraftKey": staticGlobal(newCardDraftKey),
-        "beginNewCardDraft": staticGlobal(beginNewCardDraft),
-        "addSlot": staticGlobal(addSlot),
-        "addSubpageSlot": staticGlobal(addSubpageSlot),
-        "duplicateButton": staticGlobal(duplicateButton),
-        "duplicateSubpageButton": staticGlobal(duplicateSubpageButton),
-        "deleteSlot": staticGlobal(deleteSlot),
-        "deleteButtons": staticGlobal(deleteButtons),
+        clearPlaceholder,
+        setup: setupPreviewEvents,
+        addSlot,
+        addSubpageSlot,
+        duplicateButton,
+        duplicateSubpageButton,
+        deleteSlot,
+        deleteButtons,
+        emptyButtonConfig,
     };
 }

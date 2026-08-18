@@ -1,6 +1,43 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installSettingsScheduleSectionModule(): GlobalDescriptors {
+import { normalizeHexColor } from "../model/settings";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { ScreenScheduleStateFeature } from "./screen_schedule_state";
+import type { EntityStateFeature } from "./entity_state";
+import type { ApplicationApiFeature } from "./api";
+import type { ScreenSchedulePostApiFeature } from "./screen_schedule_post_api";
+import type { ControlsFieldsFeature } from "./controls_fields";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+
+export interface SettingsScheduleSectionFeature {
+    buildScreenScheduleSettingsCard(...args: any[]): any;
+}
+
+export function createSettingsScheduleSectionFeature(codec: Pick<ConfigCodecFeature, "bindTextPost">, runtime: UiRuntimeState, schedule: ScreenScheduleStateFeature, entityState: Pick<EntityStateFeature, "entityName" | "entityInput">, requestApi: Pick<ApplicationApiFeature, "postText">, schedulePostApi: ScreenSchedulePostApiFeature, fields: Pick<ControlsFieldsFeature, "colorField" | "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "segmentControl" | "selectField">, helpers: Pick<SettingsPageHelpersFeature, "createHourSelect" | "infoPanel" | "statusBadge">): SettingsScheduleSectionFeature {
+    const { createHourSelect, infoPanel, statusBadge } = helpers;
+    const { colorField, condField, createRangeSlider, fieldLabel, makeCollapsibleCard, segmentControl, selectField } = fields;
+    const { entityName, entityInput } = entityState;
+    const { bindTextPost } = codec;
+    const els = runtime.els;
+    const {
+        postScreenScheduleEnabled,
+        postScreenScheduleTrigger,
+        postScreenScheduleSensorActivation,
+        postScreenScheduleSensorEntity,
+        postScreenScheduleOnHour,
+        postScreenScheduleOffHour,
+        postScreenScheduleMode,
+        postScreenScheduleWakeTimeout,
+        postScreenScheduleWakeBrightness,
+        postScreenScheduleDimmedBrightness,
+        postScreenScheduleClockBrightness,
+    } = schedulePostApi;
+    const {
+        controller: _screenScheduleController,
+        controllerState: screenScheduleControllerState,
+        applyControllerState: applyScreenScheduleControllerState,
+        syncUi: syncScreenScheduleUi,
+    } = schedule;
     // ── Settings Schedule Section ──────────────────────────────────────
     function buildScreenScheduleSettingsCard(this: any) {
         var scheduleBody: any = document.createElement("div");
@@ -133,7 +170,7 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
         clockOptions.appendChild(fieldLabel("Clock Text Colour"));
         var clockTextColor: any = colorField("sp-set-schedule-clock-text-color", state.scheduleClockTextColor, function (this: any, hex?: any) {
             state.scheduleClockTextColor = normalizeHexColor(hex, "FFFFFF");
-            postText(entityName("screen_schedule_clock_text_color"), state.scheduleClockTextColor);
+            requestApi.postText(entityName("screen_schedule_clock_text_color"), state.scheduleClockTextColor);
         });
         clockOptions.appendChild(clockTextColor);
         scheduleActions.appendChild(clockOptions);
@@ -157,6 +194,6 @@ export function installSettingsScheduleSectionModule(): GlobalDescriptors {
         return scheduleCard;
     }
     return {
-        "buildScreenScheduleSettingsCard": staticGlobal(buildScreenScheduleSettingsCard),
+        buildScreenScheduleSettingsCard,
     };
 }

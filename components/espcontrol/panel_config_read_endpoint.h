@@ -12,18 +12,13 @@
 
 #include "configuration_service.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
+#include "panel_config_http_context.h"
 
 namespace espcontrol::configuration {
 
 class PanelConfigReadHandler final
     : public esphome::web_server_idf::AsyncWebHandler {
  public:
-  PanelConfigReadHandler(ConfigurationService &service, uint8_t *document,
-                         size_t document_capacity, const char *username,
-                         const char *password)
-      : service_(service), document_(document), document_capacity_(document_capacity),
-        username_(username), password_(password) {}
-
   bool canHandle(
       esphome::web_server_idf::AsyncWebServerRequest *request) const override {
     if (request->method() != HTTP_GET) return false;
@@ -35,15 +30,24 @@ class PanelConfigReadHandler final
 
   void handleRequest(
       esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    PanelConfigHttpContext &context = panel_config_http_context();
+    if (!panel_config_http_context_ready()) {
+      httpd_req_t *raw_request = *request;
+      httpd_resp_set_status(raw_request, "503 Service Unavailable");
+      httpd_resp_set_type(raw_request, "text/plain");
+      httpd_resp_send(raw_request, "Native configuration is starting",
+                      HTTPD_RESP_USE_STRLEN);
+      return;
+    }
 #ifdef USE_WEBSERVER_AUTH
-    if (!request->authenticate(username_, password_)) {
+    if (!request->authenticate(context.username, context.password)) {
       request->requestAuthentication();
       return;
     }
 #endif
     httpd_req_t *raw_request = *request;
     const ServiceLoadResult loaded =
-        service_.load(document_, document_capacity_);
+        context.service->load(context.document, context.document_capacity);
     if (loaded.status == ServiceStatus::EMPTY) {
       httpd_resp_send_err(raw_request, HTTPD_404_NOT_FOUND,
                           "No native configuration is stored");
@@ -71,29 +75,16 @@ class PanelConfigReadHandler final
     httpd_resp_set_hdr(raw_request, "ETag", etag);
     httpd_resp_set_hdr(raw_request, "X-Panel-Config-Generation", generation);
     httpd_resp_set_hdr(raw_request, "X-Panel-Config-Version", version);
-    httpd_resp_send(raw_request, reinterpret_cast<const char *>(document_),
+    httpd_resp_send(raw_request, reinterpret_cast<const char *>(context.document),
                     loaded.document_size);
   }
-
- private:
-  ConfigurationService &service_;
-  uint8_t *document_;
-  size_t document_capacity_;
-  const char *username_;
-  const char *password_;
 };
 
 inline bool register_panel_config_read_endpoint(
-    ConfigurationService &service, uint8_t *document, size_t document_capacity,
-    const char *username, const char *password) {
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return true;
-  if (document == nullptr || document_capacity == 0) return false;
-  auto *server = esphome::web_server_idf::global_async_web_server();
-  if (server == nullptr) return false;
-  server->addHandler(
-      new PanelConfigReadHandler(service, document, document_capacity, username,
-                                 password));
+  server.addHandler(new PanelConfigReadHandler());
   registered = true;
   return true;
 }
@@ -102,8 +93,7 @@ inline bool register_panel_config_read_endpoint(
 #else
 namespace espcontrol::configuration {
 class ConfigurationService;
-inline bool register_panel_config_read_endpoint(ConfigurationService &, uint8_t *,
-                                               size_t, const char *, const char *) {
+inline bool register_panel_config_read_endpoint(...) {
   return true;
 }
 }  // namespace espcontrol::configuration

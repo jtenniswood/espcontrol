@@ -95,8 +95,8 @@ src/webserver/cards/example.ts
 The usual registration shape is:
 
 ```js
-export function registerExampleCardTypes(): void {
-  registerButtonType("example", {
+export function registerExampleCardTypes(registry: CardRegistry): void {
+  registry.register("example", {
     label: function () { return cardContractCardLabel("example"); },
     defaultConfig: function () { return cardContractDefaultConfig("example"); },
     renderPreview: function (b, helpers) { /* return preview pieces */ },
@@ -108,7 +108,8 @@ export function registerExampleCardTypes(): void {
 
 Prefer contract helpers for labels, defaults, picker behavior, and visibility so
 the setup page stays aligned with firmware metadata. Import and call the new
-registration function in the deliberate card order in `entry.ts`.
+registration function with `context.cards` in the deliberate card order in
+`entry.ts`.
 
 ## Preview and Persistence Rules
 
