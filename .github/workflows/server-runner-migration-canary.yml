@@ -1,0 +1,83 @@
+name: SERVER Runner Migration Canary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-docker:
+    name: Verify SERVER runner and isolated Docker runtime
+    runs-on: [self-hosted, Linux, X64, server, espcontrol]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify SERVER placement and architecture
+        shell: bash
+        env:
+          ACTUAL_RUNNER_NAME: ${{ runner.name }}
+          ACTUAL_RUNNER_ARCH: ${{ runner.arch }}
+          ACTUAL_RUNNER_OS: ${{ runner.os }}
+        run: |
+          set -euo pipefail
+          printf 'runner=%s os=%s arch=%s kernel_arch=%s\n' "$ACTUAL_RUNNER_NAME" "$ACTUAL_RUNNER_OS" "$ACTUAL_RUNNER_ARCH" "$(uname -m)"
+          [[ "$ACTUAL_RUNNER_NAME" == *-server ]]
+          test "$ACTUAL_RUNNER_OS" = Linux
+          test "$ACTUAL_RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+          test "${RUNNER_LABELS:-}" = "espcontrol,server"
+
+      - name: Verify disk-backed capped workspace and cleanup hook
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_CLEANUP_WORKSPACE:-}" = false
+          test "${RUNNER_CLEANUP_TMP:-}" = true
+          test "${RUNNER_CLEANUP_DOCKER:-}" = false
+          test -f "${ACTIONS_RUNNER_HOOK_JOB_COMPLETED}"
+          test -x "${ACTIONS_RUNNER_HOOK_JOB_COMPLETED}"
+          fstype="$(findmnt -T "$GITHUB_WORKSPACE" -n -o FSTYPE)"
+          source="$(findmnt -T "$GITHUB_WORKSPACE" -n -o SOURCE)"
+          size_bytes="$(findmnt -T "$GITHUB_WORKSPACE" -n -b -o SIZE)"
+          printf 'workspace_source=%s fstype=%s size_bytes=%s\n' "$source" "$fstype" "$size_bytes"
+          test "$fstype" = ext4
+          [[ "$source" == /dev/loop* ]]
+          test "$size_bytes" -le 21474836480
+          test "$size_bytes" -ge 20000000000
+
+      - name: Verify isolated DinD connectivity and production socket denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${DOCKER_HOST:-}" = "tcp://github-runner-docker:2375"
+          test ! -e /var/run/docker.sock
+          test ! -S /var/run/docker.sock
+          ! grep -Fq '/var/run/docker.sock' /proc/self/mountinfo
+          docker info --format 'docker_server={{.ServerVersion}} driver={{.Driver}} root={{.DockerRootDir}}'
+
+      - name: Build and run a disposable image on isolated DinD
+        shell: bash
+        run: |
+          set -euo pipefail
+          context="${RUNNER_TEMP}/server-canary-build-${GITHUB_RUN_ID}"
+          image="server-runner-canary:${GITHUB_RUN_ID}"
+          mkdir -p "$context"
+          trap 'docker image rm -f "$image" >/dev/null 2>&1 || true; rm -rf "$context"' EXIT
+          printf '%s\n' 'FROM alpine:3.22' 'RUN printf "canary-build-ok\\n" >/proof' 'CMD ["cat", "/proof"]' > "$context/Dockerfile"
+          docker build --pull -t "$image" "$context"
+          test "$(docker run --rm "$image")" = canary-build-ok
+
+      - name: Verify disk-backed Docker storage cap
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker_root="$(docker info --format '{{.DockerRootDir}}')"
+          fs_type="$(docker run --rm -v "${docker_root}:/probe:ro" alpine:3.22 stat -f -c %T /probe)"
+          size_bytes="$(docker run --rm -v "${docker_root}:/probe:ro" alpine:3.22 sh -c "set -- \$(stat -f -c '%S %b' /probe); echo \$((\$1 * \$2))")"
+          printf 'docker_root=%s filesystem=%s size_bytes=%s\n' "$docker_root" "$fs_type" "$size_bytes"
+          test "$docker_root" = /var/lib/docker
+          test "$fs_type" = ext2/ext3
+          test "$size_bytes" -le 21474836480
+          test "$size_bytes" -ge 20000000000
