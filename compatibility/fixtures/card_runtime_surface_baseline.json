@@ -2646,6 +2646,37 @@
       }
     },
     {
+      "name": "wifi_qr: share",
+      "sourceKind": "contract",
+      "sourceType": "wifi_qr",
+      "mode": "share",
+      "canonicalType": "wifi_qr",
+      "web": {
+        "registration": "wifi_qr",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "bff8dfc326fa4bda"
+        }
+      },
+      "firmware": {
+        "family": "WIFI_QR"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "wifi_qr"
+      }
+    },
+    {
       "name": "weather_forecast: legacy_forecast",
       "sourceKind": "contract",
       "sourceType": "weather_forecast",

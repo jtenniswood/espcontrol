@@ -16,6 +16,15 @@ inline WifiQrModalUi &wifi_qr_modal_ui() {
   return ui;
 }
 
+inline const lv_font_t *&wifi_qr_icon_font_ref() {
+  static const lv_font_t *font = nullptr;
+  return font;
+}
+
+inline void set_wifi_qr_icon_font(const lv_font_t *font) {
+  wifi_qr_icon_font_ref() = font;
+}
+
 inline bool wifi_qr_payload_from_config(const ParsedCfg &config, std::string *payload,
                                         std::string *ssid) {
   return wifi_qr_build_payload(cfg_option_value(config.options, "ssid64"),
@@ -36,7 +45,7 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     return;
   }
   ControlModalShell shell = control_modal_open_shell(
-    ControlModalKind::WIFI_QR, owner, 100, nullptr, wifi_qr_hide_modal);
+    ControlModalKind::WIFI_QR, owner, 100, wifi_qr_icon_font_ref(), wifi_qr_hide_modal);
   if (!shell.overlay || !shell.panel || !shell.close_btn) return;
   WifiQrModalUi &ui = wifi_qr_modal_ui();
   ui.overlay = shell.overlay;

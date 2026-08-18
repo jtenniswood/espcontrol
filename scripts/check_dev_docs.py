@@ -171,6 +171,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "timezone": "docs/card-types/timezones.md",
     "vacuum": "docs/card-types/vacuum.md",
     "lawn_mower": "docs/card-types/lawn-mower.md",
+    "wifi_qr": "docs/card-types/wifi-share.md",
     "weather": "docs/card-types/weather.md",
     "image": "docs/card-types/cameras.md",
     "weather_forecast": "docs/card-types/weather-forecast.md",

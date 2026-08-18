@@ -1260,6 +1260,21 @@
     }
   },
   {
+    "name": "wifi_qr: share",
+    "input": "~,Guest%20Wi-Fi,Wifi,Auto,,,wifi_qr,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
+    "expected": {
+      "entity": "",
+      "label": "Guest Wi-Fi",
+      "icon": "Wifi",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "wifi_qr",
+      "precision": "",
+      "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ"
+    }
+  },
+  {
     "name": "weather_forecast: legacy_forecast",
     "input": "~weather.example,,Auto,Auto,,,weather_forecast,tomorrow,",
     "expected": {
