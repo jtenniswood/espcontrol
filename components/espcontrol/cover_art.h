@@ -51,6 +51,32 @@ inline bool media_entity_state_usable(const std::string &state) {
          normalized == "buffering";
 }
 
+inline bool playback_state_active(const std::string &state) {
+  const std::string normalized = normalized_media_source(state);
+  return normalized == "playing" || normalized == "buffering";
+}
+
+inline bool playback_state_paused(const std::string &state) {
+  return normalized_media_source(state) == "paused";
+}
+
+inline bool playback_state_stopped(const std::string &state) {
+  return !playback_state_active(state) && !playback_state_paused(state);
+}
+
+inline uint32_t advance_playback_generation(uint32_t generation) {
+  generation++;
+  return generation == 0 ? 1 : generation;
+}
+
+inline bool playback_stop_generation_current(uint32_t expected_generation,
+                                             uint32_t current_generation,
+                                             const std::string &state) {
+  return expected_generation != 0 &&
+         expected_generation == current_generation &&
+         playback_state_stopped(state);
+}
+
 inline bool use_secondary_media_entity(bool primary_external,
                                        bool secondary_configured,
                                        bool secondary_available,

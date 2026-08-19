@@ -9,6 +9,9 @@ globals:
   - id: cover_art_delay_interrupted_by_transition
     type: bool
     initial_value: 'false'
+  - id: cover_art_playback_generation
+    type: uint32_t
+    initial_value: '0'
   - id: cover_art_transition_generation
     type: uint32_t
     initial_value: '0'
@@ -776,6 +779,7 @@ script:
     mode: restart
     then:
       - script.stop: cover_art_delay_timer
+      - script.stop: cover_art_delayed_playback_stopped
       - script.stop: cover_art_show_track_overlay
       - script.stop: cover_art_download
       - script.stop: cover_art_deferred_download
@@ -792,6 +796,9 @@ script:
           id: cover_art_manual_pause_until_ms
           value: '0'
       - lambda: |-
+          id(cover_art_playback_generation) =
+            espcontrol::cover_art::advance_playback_generation(
+              id(cover_art_playback_generation));
           id(cover_art_runtime).clear_image();
           id(cover_art_artwork_trigger).reset();
           id(cover_art_artwork_retry_mask) = 0;
@@ -2243,9 +2250,17 @@ script:
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_active_media_player_entity)) return;
               std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-              bool playing = state_text == "playing" || state_text == "buffering";
+              bool playing = espcontrol::cover_art::playback_state_active(state_text);
+              bool paused = espcontrol::cover_art::playback_state_paused(state_text);
               if (state_text == id(cover_art_last_playback_state) &&
                   id(cover_art_media_playing) == playing) {
+                return;
+              }
+              if (!playing && !paused &&
+                  id(cover_art_delayed_playback_stopped).is_running()) {
+                // Music Assistant can publish repeated state_changed events
+                // while remaining idle. Keep the original grace deadline.
+                id(cover_art_last_playback_state) = state_text;
                 return;
               }
               id(cover_art_last_playback_state) = state_text;
@@ -2257,6 +2272,9 @@ script:
               if (playing) {
                 bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);
                 id(cover_art_delay_interrupted_by_transition) = false;
+                id(cover_art_playback_generation) =
+                  espcontrol::cover_art::advance_playback_generation(
+                    id(cover_art_playback_generation));
                 id(cover_art_delayed_playback_stopped).stop();
                 bool was_playing = id(cover_art_media_playing);
                 id(cover_art_media_playing) = true;
@@ -2267,8 +2285,11 @@ script:
                 return;
               }
 
-              if (state_text == "paused") {
+              if (paused) {
                 id(cover_art_delay_interrupted_by_transition) = false;
+                id(cover_art_playback_generation) =
+                  espcontrol::cover_art::advance_playback_generation(
+                    id(cover_art_playback_generation));
                 id(cover_art_delayed_playback_stopped).stop();
                 if (id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) id(cover_art_refresh_progress).execute();
                 id(cover_art_media_playing) = false;
@@ -2286,8 +2307,11 @@ script:
               id(cover_art_delay_interrupted_by_transition) =
                 id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();
               id(cover_art_delay_timer).stop();
+              id(cover_art_playback_generation) =
+                espcontrol::cover_art::advance_playback_generation(
+                  id(cover_art_playback_generation));
               id(cover_art_delayed_playback_stopped).execute(
-                  static_cast<int32_t>(id(espcontrol_app).display().generation()));
+                  static_cast<int32_t>(id(cover_art_playback_generation)));
             };
           if (!already_subscribed) {
             bool state_subscribed = ha_subscribe_state(
@@ -2703,51 +2727,18 @@ script:
                   - script.execute: screensaver_idle_check
 
   - id: cover_art_delayed_playback_stopped
-    mode: restart
+    mode: single
     parameters:
-      generation: int
+      playback_generation: int
     then:
       - delay: 2s
       - if:
           condition:
             lambda: |-
-              return !id(espcontrol_app).display().generation_is_current(
-                  static_cast<uint32_t>(generation));
-          then:
-            - if:
-                condition:
-                  lambda: |-
-                    const std::string &state = id(cover_art_last_playback_state);
-                    return state != "playing" && state != "buffering" && state != "paused";
-                then:
-                  # The obsolete callback may retire its old request from live
-                  # playback state, but it must not touch presentation widgets.
-                  # Reset the non-visual playback state first so later schedule
-                  # and wake checks cannot reopen cover art for stopped media.
-                  - globals.set:
-                      id: cover_art_delay_interrupted_by_transition
-                      value: 'false'
-                  - globals.set:
-                      id: cover_art_media_playing
-                      value: 'false'
-                  - globals.set:
-                      id: cover_art_manual_pause_until_ms
-                      value: '0'
-                  - lambda: |-
-                      id(cover_art_media_position) = 0.0f;
-                      id(cover_art_position_anchor) = 0.0f;
-                      id(cover_art_media_duration) = 0.0f;
-                      id(cover_art_position_anchor_epoch) = 0;
-                      id(cover_art_last_position_timestamp) = 0;
-                      id(cover_art_last_progress_percent) = -1;
-                  - script.execute: display_mode_clear_cover_art
-                  - script.wait: display_mode_clear_cover_art
-            - script.stop: cover_art_delayed_playback_stopped
-      - if:
-          condition:
-            lambda: |-
-              const std::string &state = id(cover_art_last_playback_state);
-              return state != "playing" && state != "buffering" && state != "paused";
+              return espcontrol::cover_art::playback_stop_generation_current(
+                  static_cast<uint32_t>(playback_generation),
+                  id(cover_art_playback_generation),
+                  id(cover_art_last_playback_state));
           then:
             - script.execute: cover_art_playback_stopped
 
@@ -2755,6 +2746,10 @@ script:
     mode: restart
     then:
       - script.stop: cover_art_delayed_playback_stopped
+      - lambda: |-
+          id(cover_art_playback_generation) =
+            espcontrol::cover_art::advance_playback_generation(
+              id(cover_art_playback_generation));
       - globals.set:
           id: cover_art_delay_interrupted_by_transition
           value: 'false'

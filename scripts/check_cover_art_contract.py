@@ -23,6 +23,18 @@ int main() {
   assert(!media_entity_state_usable("idle"));
   assert(!media_entity_state_usable("off"));
   assert(!media_entity_state_usable(" unavailable "));
+  assert(playback_state_active("playing"));
+  assert(playback_state_active(" BUFFERING "));
+  assert(!playback_state_active("paused"));
+  assert(playback_state_paused(" paused "));
+  assert(playback_state_stopped("idle"));
+  assert(playback_state_stopped("off"));
+  assert(!playback_state_stopped("playing"));
+  assert(advance_playback_generation(0) == 1);
+  assert(advance_playback_generation(std::numeric_limits<uint32_t>::max()) == 1);
+  assert(playback_stop_generation_current(3, 3, "idle"));
+  assert(!playback_stop_generation_current(3, 4, "idle"));
+  assert(!playback_stop_generation_current(3, 3, "playing"));
   assert(!use_secondary_media_entity(false, true, true, true));
   assert(!use_secondary_media_entity(true, false, true, true));
   assert(!use_secondary_media_entity(true, true, false, true));

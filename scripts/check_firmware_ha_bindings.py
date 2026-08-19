@@ -1104,28 +1104,39 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
     if not delayed_body:
         errors.append(f"{rel}: buffer brief non-playing states between tracks")
     else:
+        if "mode: single" not in delayed_body:
+            errors.append(f"{rel}: keep repeated inactive updates from restarting playback grace")
         if "delay: 2s" not in delayed_body:
             errors.append(f"{rel}: keep the cover art stop grace period at two seconds")
         if "script.execute: cover_art_playback_stopped" not in delayed_body:
             errors.append(f"{rel}: apply a sustained playback stop after the grace period")
-        if (
-            'state != "playing"' not in delayed_body
-            or 'state != "buffering"' not in delayed_body
-            or 'state != "paused"' not in delayed_body
-        ):
+        if "playback_stop_generation_current(" not in delayed_body:
             errors.append(f"{rel}: recheck playback before applying a delayed stop")
+        if "playback_generation: int" not in delayed_body:
+            errors.append(f"{rel}: bind delayed playback cleanup to its playback generation")
 
     if "id(cover_art_delayed_playback_stopped).execute(" not in text:
         errors.append(f"{rel}: delay non-playing playback transitions")
+    grace_markers = (
+        "id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running()",
+        "id(cover_art_delay_timer).stop();",
+        "advance_playback_generation(",
+        "id(cover_art_delayed_playback_stopped).execute(",
+        "id(cover_art_playback_generation)",
+    )
+    if any(marker not in text for marker in grace_markers):
+        errors.append(f"{rel}: remember and cancel a pending cover art opening when playback stops")
+    if (
+        "id: cover_art_playback_generation" not in text
+        or "playback_stop_generation_current(" not in text
+    ):
+        errors.append(f"{rel}: track playback stop validity independently of display transitions")
     if not re.search(
-        r"id\(cover_art_delay_interrupted_by_transition\)\s*=\s*"
-        r"id\(cover_art_delay_interrupted_by_transition\)\s*\|\|\s*"
-        r"id\(cover_art_delay_timer\)\.is_running\(\);\s+"
-        r"id\(cover_art_delay_timer\)\.stop\(\);\s+"
-        r"id\(cover_art_delayed_playback_stopped\)\.execute\([^;]*\);",
+        r"if\s*\(!playing\s*&&\s*!paused\s*&&\s*"
+        r"id\(cover_art_delayed_playback_stopped\)\.is_running\(\)\)\s*\{",
         text,
     ):
-        errors.append(f"{rel}: remember and cancel a pending cover art opening when playback stops")
+        errors.append(f"{rel}: ignore repeated inactive updates during playback grace")
     if (
         "bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);" not in text
         or "if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();" not in text
@@ -1139,6 +1150,8 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
     stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
     if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
         errors.append(f"{rel}: cancel pending playback grace during an immediate stop")
+    elif "advance_playback_generation(" not in stopped_body:
+        errors.append(f"{rel}: invalidate delayed playback cleanup after a completed stop")
     return errors
 
 
@@ -1251,22 +1264,11 @@ def firmware_cover_art_lifecycle_controller_errors(
         "cover_art_deferred_download": "transition_is_current(",
         "cover_art_retry_download": "cover_art_download_generation",
         "cover_art_refresh_progress": "transition_is_current(",
-        "cover_art_delayed_playback_stopped": "generation_is_current(",
     }
     for script_id, marker in guarded_scripts.items():
         body = yaml_script_body(cover_art_text, script_id) or ""
         if marker not in body:
             errors.append(f"{cover_art_rel}: guard {script_id} against obsolete display generations")
-    stopped_body = yaml_script_body(cover_art_text, "cover_art_delayed_playback_stopped") or ""
-    if (
-        "id: cover_art_media_playing" not in stopped_body
-        or "id: cover_art_delay_interrupted_by_transition" not in stopped_body
-        or "script.execute: display_mode_clear_cover_art" not in stopped_body
-        or "script.wait: display_mode_clear_cover_art" not in stopped_body
-    ):
-        errors.append(
-            f"{cover_art_rel}: retire stopped playback state before clearing an obsolete cover art request"
-        )
     return errors
 
 
@@ -5587,6 +5589,8 @@ def run_self_test() -> int:
             "buffer brief non-playing states between tracks",
             "delay non-playing playback transitions",
             "remember and cancel a pending cover art opening when playback stops",
+            "track playback stop validity independently of display transitions",
+            "ignore repeated inactive updates during playback grace",
             "restart an interrupted cover art opening when playback resumes",
             "cancel a pending stop when playback resumes or pauses",
             "keep cached artwork when Home Assistant clears it during a brief playback transition",
@@ -5595,6 +5599,8 @@ def run_self_test() -> int:
     )
     expect_cover_art_playback_grace_errors(
         "cover art playback grace present",
+        "globals:\n"
+        "  - id: cover_art_playback_generation\n"
         "script:\n"
         "  - id: cover_art_resubscribe\n"
         "    then:\n"
@@ -5603,24 +5609,30 @@ def run_self_test() -> int:
         "          if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();\n"
         "          id(cover_art_delayed_playback_stopped).stop();\n"
         "          id(cover_art_delayed_playback_stopped).stop();\n"
-        "          id(cover_art_delay_interrupted_by_transition) =\n"
-        "            id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();\n"
+        "          id(cover_art_delay_interrupted_by_transition) = id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();\n"
         "          id(cover_art_delay_timer).stop();\n"
-        "          id(cover_art_delayed_playback_stopped).execute();\n"
+        "          id(cover_art_playback_generation) = advance_playback_generation(id(cover_art_playback_generation));\n"
+        "          id(cover_art_delayed_playback_stopped).execute(id(cover_art_playback_generation));\n"
+        "          if (!playing && !paused && id(cover_art_delayed_playback_stopped).is_running()) {\n"
+        "            return;\n"
+        "          }\n"
         "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
         "  - id: cover_art_delayed_playback_stopped\n"
-        "    mode: restart\n"
+        "    mode: single\n"
+        "    parameters:\n"
+        "      playback_generation: int\n"
         "    then:\n"
         "      - delay: 2s\n"
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              return state != \"playing\" && state != \"buffering\" && state != \"paused\";\n"
+        "              return playback_stop_generation_current(playback_generation, id(cover_art_playback_generation), state);\n"
         "          then:\n"
         "            - script.execute: cover_art_playback_stopped\n"
         "  - id: cover_art_playback_stopped\n"
         "    then:\n"
-        "      - script.stop: cover_art_delayed_playback_stopped\n",
+        "      - script.stop: cover_art_delayed_playback_stopped\n"
+        "      - lambda: id(cover_art_playback_generation) = advance_playback_generation(id(cover_art_playback_generation));\n",
         (),
     )
     expect_cover_art_disable_errors(
