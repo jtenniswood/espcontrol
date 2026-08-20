@@ -1035,6 +1035,21 @@
     }
   },
   {
+    "name": "screensaver: activate",
+    "input": "~,,Power,Auto,,,screensaver,,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Power",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "screensaver",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "webhook: get",
     "input": "~https%3A%2F%2Fexample.invalid%2Fhook,,Auto,Auto,GET,,webhook,,",
     "expected": {

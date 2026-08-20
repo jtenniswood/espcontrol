@@ -62,6 +62,9 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
     case ControlModalKind::ALARM_PIN:
       return {ControlModalPresentation::KEYPAD, ControlModalChrome::BACK,
               ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::SCREENSAVER_PIN:
+      return {ControlModalPresentation::KEYPAD, ControlModalChrome::NONE,
+              ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::ALARM_CONTROL:
       return {ControlModalPresentation::TABBED_CONTROL, ControlModalChrome::BACK,
               ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER};

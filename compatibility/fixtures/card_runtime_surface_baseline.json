@@ -2174,6 +2174,37 @@
       }
     },
     {
+      "name": "screensaver: activate",
+      "sourceKind": "contract",
+      "sourceType": "screensaver",
+      "mode": "activate",
+      "canonicalType": "screensaver",
+      "web": {
+        "registration": "screensaver",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "a97608163ecda368"
+        }
+      },
+      "firmware": {
+        "family": "SCREENSAVER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "webhook: get",
       "sourceKind": "contract",
       "sourceType": "webhook",

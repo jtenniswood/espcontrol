@@ -14,6 +14,17 @@ const SCREEN_LOCK_CARD_METADATA: any = {
         badge: "lock",
     },
 };
+const SCREENSAVER_CARD_METADATA: any = {
+    icon: {
+        pickerIdSuffix: "icon-picker",
+        idSuffix: "icon",
+        field: "icon",
+        fallback: "Power",
+    },
+    preview: {
+        badge: "local",
+    },
+};
 
 export function registerScreenLockCardTypes(registry: CardRegistry, fields: ControlsFieldsFeature): void {
     const { cardBadgePreview } = fields;
@@ -39,6 +50,28 @@ export function registerScreenLockCardTypes(registry: CardRegistry, fields: Cont
                 label: "Screen Unlocked",
                 iconFallback: "Lock Open",
                 badge: SCREEN_LOCK_CARD_METADATA.preview.badge,
+            });
+        },
+    });
+    registry.register("screensaver", {
+        label: function (this: any) { return cardContractCardLabel("screensaver"); },
+        allowInSubpage: function (this: any) { return cardContractAllowInSubpage("screensaver"); },
+        pickerKey: function (this: any) { return cardContractPickerKey("screensaver"); },
+        hidden: function (this: any) { return cardContractHidden("screensaver"); },
+        labelPlaceholder: "e.g. Screen Off",
+        defaultConfig: function (this: any) { return cardContractDefaultConfig("screensaver"); },
+        cardMetadata: SCREENSAVER_CARD_METADATA,
+        onSelect: function (this: any, b?: any) {
+            var defaults: any = cardContractDefaultConfig("screensaver");
+            Object.keys(defaults).forEach(function (this: any, key?: any) { b[key] = defaults[key]; });
+        },
+        renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
+            helpers.renderBasicCardFields(panel, b, helpers, SCREENSAVER_CARD_METADATA);
+        },
+        renderPreview: function (this: any, b?: any, helpers?: any) {
+            return cardBadgePreview(b, helpers, {
+                label: b.label || "Screensaver", iconFallback: "Power",
+                badge: SCREENSAVER_CARD_METADATA.preview.badge,
             });
         },
     });

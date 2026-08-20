@@ -354,6 +354,7 @@ export interface BackupPanelSettingsState {
   autoUpdate: boolean;
   updateFrequency: string;
   screensaverAction: string;
+  screensaverPinRequired: boolean;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
   clockBrightnessNight: number;
@@ -508,6 +509,7 @@ export function normalizeBackupPanelSettings(
       )
       : current.updateFrequency,
     screensaverAction,
+    screensaverPinRequired: !!settings.screensaver_pin_required,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,
     clockBrightnessNight,

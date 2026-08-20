@@ -6,3 +6,7 @@ export function getActiveScreensaverMode() {
             return "timer";
         return "disabled";
 }
+
+export function normalizePin(value?: unknown): string {
+    return String(value == null ? "" : value).replace(/\D+/g, "").slice(0, 16);
+}

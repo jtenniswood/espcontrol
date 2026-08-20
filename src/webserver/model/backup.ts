@@ -138,6 +138,8 @@ export function createBackupEnvelope(
 ): NormalizedBackupEnvelope {
   const slots = parseInt(String(snapshot.slots), 10) || outputs.buttons.length;
   const device = snapshot.device || "";
+  const settings = { ...(snapshot.settings || {}) };
+  delete settings.screensaver_pin;
   const nativeConfig = snapshot.native_config
     ? normalizeNativeBackup(snapshot.native_config)
     : undefined;
@@ -155,7 +157,7 @@ export function createBackupEnvelope(
     buttons: outputs.buttons,
     subpages: outputs.subpages,
     subpage_objects: outputs.subpage_objects || {},
-    settings: snapshot.settings || {},
+    settings,
     screen: snapshot.screen || {},
     ...(nativeConfig
       ? { native_config: nativeConfig }

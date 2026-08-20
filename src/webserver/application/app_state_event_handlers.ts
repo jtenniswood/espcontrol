@@ -33,7 +33,7 @@ import type { CoreFeature } from "./core";
 import { languageOptionsWithFallback, syncLanguageSelect } from "./language_state";
 import { hasCustomNtpServers, syncNtpServerUi } from "./ntp_state";
 import { syncIdleUi } from "./idle_state";
-import { getActiveScreensaverMode } from "./screensaver_state";
+import { getActiveScreensaverMode, normalizePin } from "./screensaver_state";
 import type { EnvironmentStateFeature } from "./environment_state";
 import type { ScreenScheduleStateFeature } from "./screen_schedule_state";
 import type { ScreensaverTimeoutFeature } from "./screensaver_timeout";
@@ -69,10 +69,10 @@ export function createAppStateEventHandlersFeature(
     clockBar: ClockBarFeature,
     statusPreview: Pick<AppStatusPreviewFeature, "appendTimezoneOption" | "normalizeNetworkTransport" | "normalizeWifiStrengthPercent" | "syncInput" | "updateClock" | "updateClockBarItemUi" | "updateNetworkPreview" | "updateSunInfo" | "updateTempPreview">,
     grid: Pick<GridFeature, "applyButtonOrderValue">,
-    settingsHelpers: Pick<SettingsPageHelpersFeature, "syncAlarmDelayAudioUi" | "syncClockScreensaverControls" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">,
+    settingsHelpers: Pick<SettingsPageHelpersFeature, "syncAlarmDelayAudioUi" | "syncClockScreensaverControls" | "syncScreensaverPinUi" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">,
     preview: Pick<PreviewRenderFeature, "render">,
 ): AppStateEventHandlersFeature {
-    const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = settingsHelpers;
+    const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncScreensaverPinUi, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = settingsHelpers;
     const { render: renderPreview } = preview;
     const { syncPreviewOrientation } = core;
     const els = runtime.els;
@@ -280,6 +280,14 @@ export function createAppStateEventHandlersFeature(
                 state.screensaverAction = normalizeScreensaverAction(d.value || val);
                 state.clockScreensaverOn = state.screensaverAction === "clock";
                 syncClockScreensaverControls();
+            },
+            "switch-screensaver__require_pin_after_wake": function (this: any, val?: any, d?: any) {
+                state.screensaverPinRequired = d.value === true || val === "ON";
+                syncScreensaverPinUi();
+            },
+            "text-screensaver__pin": function (this: any, val?: any) {
+                state.screensaverPinSet = normalizePin(val).length > 0;
+                syncScreensaverPinUi();
             },
             "number-screen_saver__dimmed_brightness": function (this: any, val?: any) {
                 state.screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(val);

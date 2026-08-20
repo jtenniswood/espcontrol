@@ -76,6 +76,18 @@ inline void setup_screen_lock_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
+inline void setup_screensaver_card(BtnSlot &s, const ParsedCfg &p) {
+  const char *icon = (p.icon.empty() || p.icon == "Auto")
+    ? find_icon("Power")
+    : find_icon(p.icon.c_str());
+  lv_label_set_text(s.icon_lbl, icon);
+  std::string label = p.label.empty()
+    ? espcontrol_i18n(std::string("Screensaver"))
+    : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
+  apply_push_button_transition(s.btn);
+}
+
 inline void apply_push_button_transition(lv_obj_t *btn) {
   if (!btn) return;
   static const lv_style_prop_t push_props[] = {LV_STYLE_BG_COLOR, LV_STYLE_PROP_INV};

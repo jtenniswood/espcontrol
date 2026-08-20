@@ -53,6 +53,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Climate](/card-types/climate)** | Controls a Home Assistant thermostat or HVAC entity. | Yes, as a climate entity |
 | **[Internal Switches](/card-types/internal-relays)** | Controls a built-in relay locally on panels that have relay hardware. | Choose a relay |
 | **[Screen Lock](/card-types/screen-lock)** | Locks and unlocks local touchscreen controls on the panel. | No |
+| **[Screensaver](/card-types/screensaver)** | Starts the configured Display Off, Screen Dimmed, or Clock screensaver action locally. | No |
 | **[Subpage](/features/subpages)** | Opens a folder-like page of extra cards. | No |
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.

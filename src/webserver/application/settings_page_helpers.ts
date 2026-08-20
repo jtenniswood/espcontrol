@@ -61,6 +61,7 @@ export interface SettingsPageHelpersFeature {
     disclosureBadge(...args: any[]): any;
     inlineDisclosure(...args: any[]): any;
     syncClockScreensaverControls(...args: any[]): any;
+    syncScreensaverPinUi(...args: any[]): any;
     syncMediaPlayerSleepPreventionUi(...args: any[]): any;
     syncCoverArtScreensaverUi(...args: any[]): any;
     syncOptionalClockBrightness(...args: any[]): any;
@@ -403,6 +404,19 @@ export function createSettingsPageHelpersFeature(
             els.setSensorClockBrightnessNightVal.textContent = controlState.nightBrightnessLabel;
         }
     }
+    function syncScreensaverPinUi(this: any) {
+        if (els.setScreensaverPinRequired) {
+            els.setScreensaverPinRequired.checked = !!state.screensaverPinRequired;
+        }
+        if (els.setScreensaverPin) {
+            if (document.activeElement !== els.setScreensaverPin) {
+                els.setScreensaverPin.value = "";
+            }
+            els.setScreensaverPin.placeholder = state.screensaverPinSet
+                ? "PIN set"
+                : "Enter numeric PIN";
+        }
+    }
     function syncMediaPlayerSleepPreventionUi(this: any) {
         var uiState: any = _mediaPlaybackController.uiState(mediaPlaybackState());
         if (els.setMediaPlayerSleepPreventionToggle) {
@@ -617,7 +631,7 @@ export function createSettingsPageHelpersFeature(
         appendSettingsSection, openVoiceServicesSettings, syncAlarmDelayAudioUi,
         buildAlarmDelayAudioSettingsCard, coverArtTrackOverlayDurationSupported,
         infoPanel, statusBadge, disclosureBadge, inlineDisclosure,
-        syncClockScreensaverControls, syncMediaPlayerSleepPreventionUi,
+        syncClockScreensaverControls, syncScreensaverPinUi, syncMediaPlayerSleepPreventionUi,
         syncCoverArtScreensaverUi, syncOptionalClockBrightness,
         createScreensaverThenControls, createHourSelect, createTimeInput,
         createEntityToggleSection,

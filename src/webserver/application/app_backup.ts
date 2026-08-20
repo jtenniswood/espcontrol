@@ -77,7 +77,7 @@ export interface AppBackupControllers {
     readonly artworkPostApi: ArtworkPostApiFeature;
     readonly schedulePostApi: ScreenSchedulePostApiFeature;
     readonly clockBarPostApi: ClockBarPostApiFeature;
-    readonly settingsHelpers: Pick<SettingsPageHelpersFeature, "syncAlarmDelayAudioUi" | "syncClockScreensaverControls" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">;
+    readonly settingsHelpers: Pick<SettingsPageHelpersFeature, "syncAlarmDelayAudioUi" | "syncClockScreensaverControls" | "syncScreensaverPinUi" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">;
     readonly preview: Pick<PreviewRenderFeature, "render">;
     readonly buttonSettings: Pick<ButtonSettingsFeature, "render">;
 }
@@ -91,7 +91,7 @@ export interface AppBackupFeature {
 }
 
 export function createAppBackupFeature(controllers: AppBackupControllers): AppBackupFeature {
-    const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = controllers.settingsHelpers;
+    const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncScreensaverPinUi, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = controllers.settingsHelpers;
     const { render: renderPreview } = controllers.preview;
     const { render: renderButtonSettings } = controllers.buttonSettings;
     const { saveButtonConfig, saveSubpageEntity } = controllers.configPersistence;
@@ -264,6 +264,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 firmware_auto_update: !!state.autoUpdate,
                 firmware_update_frequency: state.updateFrequency,
                 screensaver_action: normalizeScreensaverAction(state.screensaverAction),
+                screensaver_pin_required: !!state.screensaverPinRequired,
                 clock_screensaver: state.clockScreensaverOn,
                 clock_brightness: state.clockBrightnessDay,
                 clock_brightness_day: state.clockBrightnessDay,
@@ -457,6 +458,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedClockBrightnessNight: any = importedSettings.clockBrightnessNight;
                     postScreensaverAction(importedScreensaverAction);
                     postClockScreensaver(importedScreensaverAction === "clock");
+                    postText(entityName("screensaver_pin"), "");
+                    postSwitch(entityName("screensaver_pin_required"), importedSettings.screensaverPinRequired);
                     postClockBrightnessDay(importedClockBrightnessDay);
                     postClockBrightnessNight(importedClockBrightnessNight);
                     postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
@@ -511,6 +514,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.autoUpdate = importedSettings.autoUpdate;
                     state.updateFrequency = importedSettings.updateFrequency;
                     state.screensaverAction = importedScreensaverAction;
+                    state.screensaverPinRequired = importedSettings.screensaverPinRequired;
+                    state.screensaverPinSet = false;
                     state._screensaverActionReceived = true;
                     state.clockScreensaverOn = importedScreensaverAction === "clock";
                     state.clockBrightnessDay = importedClockBrightnessDay;
@@ -545,6 +550,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         els.setClockFormat.value = state.clockFormat;
                     syncNtpServerUi(controllers.runtime, syncInput);
                     syncClockScreensaverControls();
+                    syncScreensaverPinUi();
                     syncScreensaverTimeoutUi();
                     syncIdleUi(controllers.runtime);
                     if (els.setScreenRotation)
