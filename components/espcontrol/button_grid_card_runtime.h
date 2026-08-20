@@ -51,6 +51,7 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::GATE:
     case Type::LOCK: return Family::ACCESS;
     case Type::IMAGE: return Family::IMAGE;
+    case Type::WIFI_QR: return Family::WIFI_QR;
     case Type::INTERNAL: return Family::INTERNAL;
     case Type::LIGHT_CONTROL: return Family::LIGHT_CONTROL;
     case Type::LIGHT_TEMPERATURE: return Family::LIGHT_TEMPERATURE;
@@ -191,6 +192,7 @@ inline bool card_runtime_main_click_opens_modal(
     case Driver::COVER_MODAL:
     case Driver::FAN_CONTROL:
     case Driver::IMAGE:
+    case Driver::WIFI_QR:
     case Driver::LIGHT_CONTROL:
     case Driver::MEDIA_CONTROL:
     case Driver::MEDIA_GROUP:

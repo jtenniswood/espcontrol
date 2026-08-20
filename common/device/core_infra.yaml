@@ -12,6 +12,21 @@ esphome:
     - "-DLV_USE_BIDI=1"
     - '-DESPCONTROL_DEVICE_SLUG=\"${device_slug}\"'
 
+# This invisible widget enables LVGL's QR-code component in the configuration
+# ESPHome generates for every display. Build flags cannot enable LVGL features
+# because ESPHome's generated lv_conf.h deliberately overrides them.
+lvgl:
+  top_layer:
+    widgets:
+      - qrcode:
+          id: wifi_qr_feature_probe
+          # LVGL requires a non-empty payload and enough pixels to render its
+          # smallest QR matrix. The hidden widget only enables QR support for
+          # the cards that create their own QR code on demand.
+          text: "EspControl"
+          size: 64
+          hidden: true
+
 api:
   reboot_timeout: 0s
   homeassistant_states: true

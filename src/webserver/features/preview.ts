@@ -66,6 +66,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   garage: { icon: "garage", description: "Show and control a garage door." },
   gate: { icon: "gate", description: "Show and control a gate." },
   image: { icon: "image", description: "Display an image card where supported." },
+  wifi_qr: { icon: "wifi", description: "Show a QR code for separately configured guest Wi-Fi." },
   internal: { icon: "power-plug", description: "Control built-in device relays." },
   light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
   lawn_mower: { icon: "robot-mower", description: "Show or control a robotic lawn mower." },

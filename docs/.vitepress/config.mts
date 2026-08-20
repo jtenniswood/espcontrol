@@ -447,6 +447,7 @@ export default defineConfig({
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Weather', link: '/card-types/weather' },
           { text: 'Webhook', link: '/card-types/webhooks' },
+          { text: 'Wi-Fi Share', link: '/card-types/wifi-share' },
           { text: 'World Clock', link: '/card-types/timezones' },
         ],
       },

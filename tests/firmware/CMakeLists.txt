@@ -39,6 +39,12 @@ target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
 
+add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
+target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)
+target_compile_options(wifi_qr_codec_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(wifi_qr_codec_test PRIVATE ../../components/espcontrol)
+add_test(NAME wifi_qr_codec_test COMMAND wifi_qr_codec_test)
+
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
 target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)

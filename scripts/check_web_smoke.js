@@ -495,6 +495,10 @@ assert(
   "card picker icons stay centred inside their accent boxes"
 );
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
+const wifiSharePickerOption = pickerOptions.find((option) => option.key === "wifi_qr");
+assert(wifiSharePickerOption, "Wi-Fi Share appears in the main card picker");
+assert.strictEqual(wifiSharePickerOption.icon, "wifi", "Wi-Fi Share uses the expected picker icon");
+assert(/guest Wi-Fi/.test(wifiSharePickerOption.description), "Wi-Fi Share picker option includes concise help text");
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"

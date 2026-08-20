@@ -263,6 +263,14 @@ export function createButtonSettingsFeature(
                 }
                 showFieldError(rule.input, rule.message);
             }
+            for (var j: any = 0; j < requiredFields.length; j++) {
+                var validityRule: any = requiredFields[j];
+                if (validityRule.isActive && !validityRule.isActive()) continue;
+                if (validityRule.input.checkValidity && !validityRule.input.checkValidity()) {
+                    showFieldError(validityRule.input, validityRule.input.validationMessage);
+                    if (!firstInvalid) firstInvalid = validityRule.input;
+                }
+            }
             if (!firstInvalid)
                 return true;
             openDisclosureForField(firstInvalid);
