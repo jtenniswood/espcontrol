@@ -1,4 +1,4 @@
-name: SERVER Runner Migration Canary
+name: Dev Runner Migration Canary
 
 on:
   workflow_dispatch:
@@ -8,13 +8,13 @@ permissions:
 
 jobs:
   isolated-docker:
-    name: Verify SERVER runner and isolated Docker runtime
-    runs-on: [self-hosted, Linux, X64, server, espcontrol]
+    name: Verify Dev runner and isolated Docker runtime
+    runs-on: [self-hosted, Linux, X64, server, dev, espcontrol]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
-      - name: Verify SERVER placement and architecture
+      - name: Verify Dev placement and architecture
         shell: bash
         env:
           ACTUAL_RUNNER_NAME: ${{ runner.name }}
@@ -23,17 +23,17 @@ jobs:
         run: |
           set -euo pipefail
           printf 'runner=%s os=%s arch=%s kernel_arch=%s\n' "$ACTUAL_RUNNER_NAME" "$ACTUAL_RUNNER_OS" "$ACTUAL_RUNNER_ARCH" "$(uname -m)"
-          [[ "$ACTUAL_RUNNER_NAME" == *-server ]]
+          [[ "$ACTUAL_RUNNER_NAME" == *-dev ]]
           test "$ACTUAL_RUNNER_OS" = Linux
           test "$ACTUAL_RUNNER_ARCH" = X64
           test "$(uname -m)" = x86_64
-          test "${RUNNER_LABELS:-}" = "espcontrol,server"
+          test "${RUNNER_LABELS:-}" = "espcontrol,server,dev"
 
       - name: Verify disk-backed capped workspace and cleanup hook
         shell: bash
         run: |
           set -euo pipefail
-          test "${RUNNER_CLEANUP_WORKSPACE:-}" = false
+          test "${RUNNER_CLEANUP_WORKSPACE:-}" = true
           test "${RUNNER_CLEANUP_TMP:-}" = true
           test "${RUNNER_CLEANUP_DOCKER:-}" = false
           test -f "${ACTIONS_RUNNER_HOOK_JOB_COMPLETED}"
