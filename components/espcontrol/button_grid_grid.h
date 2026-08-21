@@ -462,7 +462,8 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
           if (present) playback->artwork_content_mask |= 1u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~1u);
           clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
-            playback->has_state, playback->available, playback->state_text);
+            playback->has_state, playback->available, playback->state_text,
+            media_playback_has_current_content(playback));
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
@@ -492,7 +493,8 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
           if (present) playback->artwork_content_mask |= 2u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~2u);
           clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
-            playback->has_state, playback->available, playback->state_text);
+            playback->has_state, playback->available, playback->state_text,
+            media_playback_has_current_content(playback));
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;

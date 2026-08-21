@@ -954,11 +954,21 @@ inline std::string media_playback_artwork_refresh_signature(
   return state->has_state ? std::string("state:") + state->state_text : std::string();
 }
 
+inline bool media_playback_has_current_content(const MediaPlaybackState *state) {
+  if (!state) return false;
+  const bool has_content = !state->title.empty() || !state->artist.empty() ||
+                           state->has_current_content_id ||
+                           state->artwork_content_mask != 0;
+  return espcontrol::cover_art::media_entity_content_available(
+    state->has_state, state->available, has_content);
+}
+
 inline void media_playback_refresh_stable_artwork(MediaPlaybackState *state,
                                                   MediaNowPlayingCtx *ctx) {
   if (!state || !ctx || !ctx->cover_art) return;
+  const bool has_content = media_playback_has_current_content(state);
   if (espcontrol::cover_art::media_card_artwork_should_clear(
-        state->has_state, state->available, state->state_text)) {
+        state->has_state, state->available, state->state_text, has_content)) {
     ctx->artwork_refresh_signature.clear();
     image_card_clear_media_artwork(ctx->cover_art);
     return;
@@ -975,8 +985,9 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
   ctx->source_known = state->source_known;
   ctx->external_source = state->external_source;
   if (ctx->cover_art) {
+    const bool has_content = media_playback_has_current_content(state);
     if (espcontrol::cover_art::media_card_artwork_should_clear(
-          state->has_state, state->available, state->state_text)) {
+          state->has_state, state->available, state->state_text, has_content)) {
       image_card_clear_media_artwork(ctx->cover_art);
     } else {
       image_card_set_media_artwork_suppressed(
@@ -1023,14 +1034,6 @@ inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state,
   }
   media_playback_refresh_stable_artwork(state, ctx);
   media_playback_apply_state_to_now_playing_snapshot(state, ctx);
-}
-
-inline bool media_playback_has_current_content(const MediaPlaybackState *state) {
-  if (!state || !state->has_state || !state->available ||
-      !espcontrol::cover_art::media_entity_state_usable(state->state_text)) return false;
-  return !state->title.empty() || !state->artist.empty() ||
-         state->has_current_content_id || state->has_current_content_type ||
-         state->artwork_content_mask != 0;
 }
 
 inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state) {
