@@ -2867,6 +2867,24 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     f"{schedule_rel}: publish the live fail-dark schedule before the loading screen can light the panel"
                 )
 
+            if brightness_body is None or (
+                "const bool onboarding" not in brightness_body
+                or "DisplayRequestSource::ONBOARDING" not in brightness_body
+                or "if (!onboarding && screen_schedule_waiting_for_time(" not in brightness_body
+                or "if (onboarding) {" not in brightness_body
+                or "pct = 90;" not in brightness_body
+            ):
+                errors.append(
+                    f"{schedule_rel}: keep onboarding visible at full setup brightness despite restored schedule policy"
+                )
+            if (
+                "return !id(espcontrol_app).display().target_source_is(\n"
+                "                         espcontrol::DisplayRequestSource::ONBOARDING)" not in schedule_text
+            ):
+                errors.append(
+                    f"{schedule_rel}: bypass the periodic fail-dark check while onboarding owns the display"
+                )
+
             loading_path = backlight_path.parent.parent / "device" / "screen_loading.yaml"
             if loading_path.exists():
                 loading_rel = loading_path.relative_to(root)
@@ -2906,6 +2924,8 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                 if reconcile_body is None or (
                     "id(connectivity_setup_display_active)" not in reconcile_body
                     or "id(button_order).state.empty()" not in reconcile_body
+                    or "setup_page_active" not in reconcile_body
+                    or "(id(button_order).state.empty() && setup_page_active)" not in reconcile_body
                     or "!onboarding" not in reconcile_body
                     or "DisplayRequestSource::ONBOARDING" not in reconcile_body
                     or "controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT)" not in reconcile_body
@@ -2913,6 +2933,18 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     errors.append(
                         f"{rel}: keep first-time onboarding fully visible over dimming, boot guard, and scheduled night requests"
                     )
+
+                button_order_path = root / "common" / "config" / "button_order.yaml"
+                if button_order_path.exists():
+                    button_order_text = button_order_path.read_text(encoding="utf-8")
+                    if (
+                        "lv_scr_act() == id(button_setup_page)->obj" not in button_order_text
+                        or "script.wait: refresh_button_grid" not in button_order_text
+                        or "script.execute: navigate_after_api" not in button_order_text
+                    ):
+                        errors.append(
+                            f"{button_order_path.relative_to(root)}: show the completed grid after the first tile is configured"
+                        )
         sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
         if sleep_body is None:
             errors.append(f"{schedule_rel}: missing screen_schedule_sleep script")

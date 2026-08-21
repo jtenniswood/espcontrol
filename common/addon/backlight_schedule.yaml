@@ -800,6 +800,8 @@ script:
                 espcontrol::DisplayMode::ACTIVE) &&
               !id(espcontrol_app).display().target_mode_is(
                 espcontrol::DisplayMode::COVER_ART)) return;
+          const bool onboarding = id(espcontrol_app).display().target_source_is(
+              espcontrol::DisplayRequestSource::ONBOARDING);
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (id(espcontrol_app).display().target_source_is(
                 espcontrol::DisplayRequestSource::SCREEN_SCHEDULE)) {
@@ -811,7 +813,7 @@ script:
               return;
             }
           }
-          if (screen_schedule_waiting_for_time(
+          if (!onboarding && screen_schedule_waiting_for_time(
                 id(screen_schedule_trigger).state,
                 id(schedule_enabled).state,
                 now.is_valid())) {
@@ -819,7 +821,9 @@ script:
             return;
           }
           float pct;
-          if (id(manual_wake_ms) != 0) {
+          if (onboarding) {
+            pct = 90;
+          } else if (id(manual_wake_ms) != 0) {
             pct = id(schedule_wake_brightness).state;
             if (std::isnan(pct) || pct <= 0) pct = 10;
             if (pct < 10) pct = 10;
@@ -917,14 +921,16 @@ interval:
       - if:
           condition:
             lambda: |-
-              return (id(espcontrol_app).display().target_source_is(
+              return !id(espcontrol_app).display().target_source_is(
+                         espcontrol::DisplayRequestSource::ONBOARDING) &&
+                     ((id(espcontrol_app).display().target_source_is(
                           espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
                       id(espcontrol_app).display().target_mode_is(
                           espcontrol::DisplayMode::DISPLAY_OFF)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,
-                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid()));
           then:
             - script.execute: backlight_force_display_off
 

@@ -203,6 +203,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Spouštění";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Připojte ethernetový kabel\na počkejte na síťovou adresu";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Připojte se k nastavovacímu hotspotu\na otevřete 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Připojte se k";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Připojte se k WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Připojeno";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Připojování k Ethernetu";
@@ -230,6 +231,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aktualizace dokončena";
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojena";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "a nastavte síť";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Nastavení WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorů";
   if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
@@ -422,6 +424,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Starter";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Tilslut et Ethernet-kabel\nog vent på en netværksadresse";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Opret forbindelse til opsætningshotspottet\nog åbn 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Opret forbindelse til";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Opret forbindelse til WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Forbundet";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Opretter forbindelse til Ethernet";
@@ -449,6 +452,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Opdatering fuldført";
   if (std::strcmp(text, "Update failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi afbrudt";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "for at konfigurere dine netværksindstillinger";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-opsætning";
   if (std::strcmp(text, "Speaker Group") == 0) return "Højttalergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Højttalere";
@@ -639,6 +643,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Startet";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Schließen Sie ein Ethernet-Kabel an\nund warten Sie auf eine Netzwerkadresse";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Verbinden Sie sich mit dem Einrichtungs-Hotspot\nund öffnen Sie 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Verbinde dich mit";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Mit WiFi verbinden";
   if (std::strcmp(text, "Connected") == 0) return "Verbunden";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Verbindung mit Ethernet wird hergestellt";
@@ -666,6 +671,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Update abgeschlossen";
   if (std::strcmp(text, "Update failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi getrennt";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "um deine Netzwerkeinstellungen zu konfigurieren";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-Einrichtung";
   if (std::strcmp(text, "Speaker Group") == 0) return "Lautsprechergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Lautsprecher";
@@ -863,6 +869,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Arrancando";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Conecta un cable Ethernet\ny espera una dirección de red";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Conéctate al punto de acceso de configuración\ny abre 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Conéctate a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Conéctate a WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Conectado";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Conectando a Ethernet";
@@ -890,6 +897,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Actualización completa";
   if (std::strcmp(text, "Update failed") == 0) return "Error en la actualización";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "para configurar los ajustes de red";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuración WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de altavoces";
   if (std::strcmp(text, "Speakers") == 0) return "Altavoces";
@@ -1097,6 +1105,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Käynnistetään";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Liitä Ethernet-kaapeli\nja odota verkko-osoitetta";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Yhdistä määrityshotspotiin\nja avaa 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Yhdistä verkkoon";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Yhdistä WiFi-verkkoon";
   if (std::strcmp(text, "Connected") == 0) return "Yhdistetty";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Yhdistetään Ethernetiin";
@@ -1124,6 +1133,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Päivitys valmis";
   if (std::strcmp(text, "Update failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi katkaistu";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "määrittääksesi verkkoasetukset";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-asennus";
   if (std::strcmp(text, "Speaker Group") == 0) return "Kaiutinryhmä";
   if (std::strcmp(text, "Speakers") == 0) return "Kaiuttimet";
@@ -1314,6 +1324,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Démarrage";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Branchez un câble Ethernet\net attendez une adresse réseau";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Connectez-vous au point d’accès de configuration\npuis ouvrez 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Connectez-vous à";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Connectez-vous au WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Connecté";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Connexion à Ethernet";
@@ -1341,6 +1352,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Mise à jour terminée";
   if (std::strcmp(text, "Update failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi déconnecté";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "pour configurer vos paramètres réseau";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuration WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Groupe d’enceintes";
   if (std::strcmp(text, "Speakers") == 0) return "Enceintes";
@@ -1556,6 +1568,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "אתחול";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "חברו כבל רשת\nוהמתינו לכתובת רשת";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "התחברו לרשת ההגדרה\nופתחו את 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "התחבר אל";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "התחברות ל-WiFi";
   if (std::strcmp(text, "Connected") == 0) return "מחובר";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "מתחבר לרשת קווית";
@@ -1583,6 +1596,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "העדכון הושלם";
   if (std::strcmp(text, "Update failed") == 0) return "העדכון נכשל";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi מנותק";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "כדי להגדיר את הגדרות הרשת";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "הגדרת WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "קבוצת רמקולים";
   if (std::strcmp(text, "Speakers") == 0) return "רמקולים";
@@ -1790,6 +1804,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Indítás";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Csatlakoztasson egy Ethernet-kábelt,\nés várjon hálózati címre";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Csatlakozzon a beállítási hotspothoz,\nmajd nyissa meg: 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Csatlakozzon ehhez:";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Csatlakozás WiFi-hez";
   if (std::strcmp(text, "Connected") == 0) return "Csatlakoztatva";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Csatlakozás Ethernethez";
@@ -1817,6 +1832,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Frissítés kész";
   if (std::strcmp(text, "Update failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi megszakadt";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "a hálózati beállítások konfigurálásához";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi beállítás";
   if (std::strcmp(text, "Speaker Group") == 0) return "Hangszórócsoport";
   if (std::strcmp(text, "Speakers") == 0) return "Hangszórók";
@@ -2016,6 +2032,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Avvio";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Collega un cavo Ethernet\ne attendi un indirizzo di rete";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Connettiti all’hotspot di configurazione\ne apri 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Connettiti a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Connettiti al WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Connesso";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Connessione a Ethernet";
@@ -2043,6 +2060,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aggiornamento completato";
   if (std::strcmp(text, "Update failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi disconnesso";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "per configurare le impostazioni di rete";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Configurazione WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Gruppo di altoparlanti";
   if (std::strcmp(text, "Speakers") == 0) return "Altoparlanti";
@@ -2238,6 +2256,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Starter";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Koble til en Ethernet-kabel\nog vent på en nettverksadresse";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Koble til oppsett-hotspoten\nog åpne 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Koble til";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Koble til WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Tilkoblet";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Kobler til Ethernet";
@@ -2265,6 +2284,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Oppdatering fullført";
   if (std::strcmp(text, "Update failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frakoblet";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "for å konfigurere nettverksinnstillingene";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-oppsett";
   if (std::strcmp(text, "Speaker Group") == 0) return "Høyttalergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Høyttalere";
@@ -2462,6 +2482,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Opstarten";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Sluit een Ethernet-kabel aan\nen wacht op een netwerkadres";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Maak verbinding met de installatiehotspot\nen open 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Maak verbinding met";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Verbinden met WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Verbonden";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Verbinden met Ethernet";
@@ -2488,6 +2509,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Update voltooid";
   if (std::strcmp(text, "Update failed") == 0) return "Update mislukt";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi verbroken";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "om je netwerkinstellingen te configureren";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-installatie";
   if (std::strcmp(text, "Speaker Group") == 0) return "Luidsprekergroep";
   if (std::strcmp(text, "Speakers") == 0) return "Luidsprekers";
@@ -2683,6 +2705,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Uruchamianie";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Podłącz kabel Ethernet\ni poczekaj na adres sieciowy";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Połącz się z hotspotem konfiguracji\ni otwórz 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Połącz się z";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Połącz z WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Połączono";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Łączenie z Ethernetem";
@@ -2710,6 +2733,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aktualizacja ukończona";
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi rozłączone";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "aby skonfigurować ustawienia sieci";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Konfiguracja WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupa głośników";
   if (std::strcmp(text, "Speakers") == 0) return "Głośniki";
@@ -2907,6 +2931,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Inicializando";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Conecte um cabo Ethernet\ne aguarde um endereço de rede";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Conecte-se ao hotspot de configuração\ne abra 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Conecte-se a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Conectar ao WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Conectado";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Conectando à Ethernet";
@@ -2934,6 +2959,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Atualização concluída";
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "para configurar suas definições de rede";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuração WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de alto-falantes";
   if (std::strcmp(text, "Speakers") == 0) return "Alto-falantes";
@@ -3132,6 +3158,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "A arrancar";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Ligue um cabo Ethernet\ne aguarde um endereço de rede";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Ligue-se ao hotspot de configuração\ne abra 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Ligue-se a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Ligar ao WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Ligado";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "A ligar à Ethernet";
@@ -3159,6 +3186,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Atualização concluída";
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desligado";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "para configurar as definições de rede";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuração WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de colunas";
   if (std::strcmp(text, "Speakers") == 0) return "Colunas";
@@ -3366,6 +3394,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Pornire";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Conectați un cablu Ethernet\nși așteptați o adresă de rețea";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Conectați-vă la hotspotul de configurare\nși deschideți 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Conectați-vă la";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Conectare la WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Conectat";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Se conectează la Ethernet";
@@ -3393,6 +3422,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Actualizare finalizată";
   if (std::strcmp(text, "Update failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi deconectat";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "pentru a configura setările de rețea";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Configurare WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grup de difuzoare";
   if (std::strcmp(text, "Speakers") == 0) return "Difuzoare";
@@ -3607,6 +3637,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Загрузка";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Подключите кабель Ethernet\nи дождитесь сетевого адреса";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Подключитесь к точке доступа настройки,\nзатем откройте 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Подключитесь к";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Подключиться к WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Подключено";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Подключение к Ethernet";
@@ -3634,6 +3665,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Обновление завершено";
   if (std::strcmp(text, "Update failed") == 0) return "Ошибка обновления";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi отключён";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "чтобы настроить параметры сети";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Настройка WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Группа динамиков";
   if (std::strcmp(text, "Speakers") == 0) return "Динамики";
@@ -3833,6 +3865,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Spúšťanie";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Pripojte ethernetový kábel\na počkajte na sieťovú adresu";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Pripojte sa k nastavovaciemu hotspotu\na otvorte 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Pripojte sa k";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Pripojte sa k WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Pripojené";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Pripájanie k Ethernetu";
@@ -3860,6 +3893,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aktualizácia dokončená";
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojené";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "a nastavte sieť";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Nastavenie WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorov";
   if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
@@ -4063,6 +4097,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Zaganjanje";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Priključite ethernetni kabel\nin počakajte na omrežni naslov";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Povežite se z nastavitveno dostopno točko\nin odprite 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Povežite se z";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Povežite se z WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Povezano";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Povezovanje z Ethernetom";
@@ -4090,6 +4125,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Posodobitev končana";
   if (std::strcmp(text, "Update failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi prekinjen";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "za konfiguracijo omrežnih nastavitev";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Nastavitev WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina zvočnikov";
   if (std::strcmp(text, "Speakers") == 0) return "Zvočniki";
@@ -4285,6 +4321,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Startar";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Anslut en Ethernet-kabel\noch vänta på en nätverksadress";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Anslut till installationshotspoten\noch öppna 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Anslut till";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Anslut till WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Ansluten";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Ansluter till Ethernet";
@@ -4312,6 +4349,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Uppdatering slutförd";
   if (std::strcmp(text, "Update failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frånkopplat";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "för att konfigurera nätverksinställningarna";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-installation";
   if (std::strcmp(text, "Speaker Group") == 0) return "Högtalargrupp";
   if (std::strcmp(text, "Speakers") == 0) return "Högtalare";
@@ -4519,6 +4557,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Önyükleniyor";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Bir Ethernet kablosu bağlayın\nve ağ adresini bekleyin";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Kurulum etkin noktasına bağlanın\nve 192.168.4.1 adresini açın";
+  if (std::strcmp(text, "Connect to") == 0) return "Şuna bağlanın:";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "WiFi’ye bağlan";
   if (std::strcmp(text, "Connected") == 0) return "Bağlandı";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Ethernet’e bağlanıyor";
@@ -4546,6 +4585,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Güncelleme tamamlandı";
   if (std::strcmp(text, "Update failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi bağlantısı kesildi";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "ağ ayarlarınızı yapılandırmak için";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi Kurulumu";
   if (std::strcmp(text, "Speaker Group") == 0) return "Hoparlör Grubu";
   if (std::strcmp(text, "Speakers") == 0) return "Hoparlörler";
@@ -4755,6 +4795,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Booting") == 0) return "Завантаження";
   if (std::strcmp(text, "Connect an Ethernet cable\nand wait for a network address") == 0) return "Під’єднайте кабель Ethernet\nі дочекайтеся мережевої адреси";
   if (std::strcmp(text, "Connect to the setup hotspot\nthen open 192.168.4.1") == 0) return "Під’єднайтеся до точки доступу налаштування\nі відкрийте 192.168.4.1";
+  if (std::strcmp(text, "Connect to") == 0) return "Підключіться до";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Під’єднатися до WiFi";
   if (std::strcmp(text, "Connected") == 0) return "Під’єднано";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Під’єднання до Ethernet";
@@ -4782,6 +4823,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Оновлення завершено";
   if (std::strcmp(text, "Update failed") == 0) return "Помилка оновлення";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi від’єднано";
+  if (std::strcmp(text, "to configure your network settings") == 0) return "щоб налаштувати параметри мережі";
   if (std::strcmp(text, "Configure your WiFi") == 0) return "Налаштування WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Група динаміків";
   if (std::strcmp(text, "Speakers") == 0) return "Динаміки";
@@ -5254,6 +5296,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Aktualizace dokončena";
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojena";
+  if (std::strcmp(key, "connect_to") == 0) return "Připojte se k";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "a nastavte síť";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavení WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Skupina reproduktorů";
   if (std::strcmp(key, "speakers") == 0) return "Reproduktory";
@@ -5474,6 +5518,8 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Opdatering fuldført";
   if (std::strcmp(key, "update_failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi afbrudt";
+  if (std::strcmp(key, "connect_to") == 0) return "Opret forbindelse til";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "for at konfigurere dine netværksindstillinger";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-opsætning";
   if (std::strcmp(key, "speaker_group") == 0) return "Højttalergruppe";
   if (std::strcmp(key, "speakers") == 0) return "Højttalere";
@@ -5692,6 +5738,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Update abgeschlossen";
   if (std::strcmp(key, "update_failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi getrennt";
+  if (std::strcmp(key, "connect_to") == 0) return "Verbinde dich mit";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "um deine Netzwerkeinstellungen zu konfigurieren";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-Einrichtung";
   if (std::strcmp(key, "speaker_group") == 0) return "Lautsprechergruppe";
   if (std::strcmp(key, "speakers") == 0) return "Lautsprecher";
@@ -5917,6 +5965,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Actualización completa";
   if (std::strcmp(key, "update_failed") == 0) return "Error en la actualización";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
+  if (std::strcmp(key, "connect_to") == 0) return "Conéctate a";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "para configurar los ajustes de red";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuración WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupo de altavoces";
   if (std::strcmp(key, "speakers") == 0) return "Altavoces";
@@ -6152,6 +6202,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Päivitys valmis";
   if (std::strcmp(key, "update_failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi katkaistu";
+  if (std::strcmp(key, "connect_to") == 0) return "Yhdistä verkkoon";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "määrittääksesi verkkoasetukset";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-asennus";
   if (std::strcmp(key, "speaker_group") == 0) return "Kaiutinryhmä";
   if (std::strcmp(key, "speakers") == 0) return "Kaiuttimet";
@@ -6370,6 +6422,8 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Mise à jour terminée";
   if (std::strcmp(key, "update_failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi déconnecté";
+  if (std::strcmp(key, "connect_to") == 0) return "Connectez-vous à";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "pour configurer vos paramètres réseau";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuration WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Groupe d’enceintes";
   if (std::strcmp(key, "speakers") == 0) return "Enceintes";
@@ -6613,6 +6667,8 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "העדכון הושלם";
   if (std::strcmp(key, "update_failed") == 0) return "העדכון נכשל";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi מנותק";
+  if (std::strcmp(key, "connect_to") == 0) return "התחבר אל";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "כדי להגדיר את הגדרות הרשת";
   if (std::strcmp(key, "wifi_setup") == 0) return "הגדרת WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "קבוצת רמקולים";
   if (std::strcmp(key, "speakers") == 0) return "רמקולים";
@@ -6848,6 +6904,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Frissítés kész";
   if (std::strcmp(key, "update_failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi megszakadt";
+  if (std::strcmp(key, "connect_to") == 0) return "Csatlakozzon ehhez:";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "a hálózati beállítások konfigurálásához";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi beállítás";
   if (std::strcmp(key, "speaker_group") == 0) return "Hangszórócsoport";
   if (std::strcmp(key, "speakers") == 0) return "Hangszórók";
@@ -7075,6 +7133,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Aggiornamento completato";
   if (std::strcmp(key, "update_failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi disconnesso";
+  if (std::strcmp(key, "connect_to") == 0) return "Connettiti a";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "per configurare le impostazioni di rete";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurazione WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Gruppo di altoparlanti";
   if (std::strcmp(key, "speakers") == 0) return "Altoparlanti";
@@ -7298,6 +7358,8 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Oppdatering fullført";
   if (std::strcmp(key, "update_failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frakoblet";
+  if (std::strcmp(key, "connect_to") == 0) return "Koble til";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "for å konfigurere nettverksinnstillingene";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-oppsett";
   if (std::strcmp(key, "speaker_group") == 0) return "Høyttalergruppe";
   if (std::strcmp(key, "speakers") == 0) return "Høyttalere";
@@ -7521,6 +7583,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Update voltooid";
   if (std::strcmp(key, "update_failed") == 0) return "Update mislukt";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi verbroken";
+  if (std::strcmp(key, "connect_to") == 0) return "Maak verbinding met";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "om je netwerkinstellingen te configureren";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installatie";
   if (std::strcmp(key, "speaker_group") == 0) return "Luidsprekergroep";
   if (std::strcmp(key, "speakers") == 0) return "Luidsprekers";
@@ -7744,6 +7808,8 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Aktualizacja ukończona";
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi rozłączone";
+  if (std::strcmp(key, "connect_to") == 0) return "Połącz się z";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "aby skonfigurować ustawienia sieci";
   if (std::strcmp(key, "wifi_setup") == 0) return "Konfiguracja WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupa głośników";
   if (std::strcmp(key, "speakers") == 0) return "Głośniki";
@@ -7969,6 +8035,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Atualização concluída";
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
+  if (std::strcmp(key, "connect_to") == 0) return "Conecte-se a";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "para configurar suas definições de rede";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupo de alto-falantes";
   if (std::strcmp(key, "speakers") == 0) return "Alto-falantes";
@@ -8195,6 +8263,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Atualização concluída";
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desligado";
+  if (std::strcmp(key, "connect_to") == 0) return "Ligue-se a";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "para configurar as definições de rede";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grupo de colunas";
   if (std::strcmp(key, "speakers") == 0) return "Colunas";
@@ -8430,6 +8500,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Actualizare finalizată";
   if (std::strcmp(key, "update_failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi deconectat";
+  if (std::strcmp(key, "connect_to") == 0) return "Conectați-vă la";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "pentru a configura setările de rețea";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurare WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Grup de difuzoare";
   if (std::strcmp(key, "speakers") == 0) return "Difuzoare";
@@ -8672,6 +8744,8 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Обновление завершено";
   if (std::strcmp(key, "update_failed") == 0) return "Ошибка обновления";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi отключён";
+  if (std::strcmp(key, "connect_to") == 0) return "Подключитесь к";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "чтобы настроить параметры сети";
   if (std::strcmp(key, "wifi_setup") == 0) return "Настройка WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Группа динамиков";
   if (std::strcmp(key, "speakers") == 0) return "Динамики";
@@ -8899,6 +8973,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Aktualizácia dokončená";
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojené";
+  if (std::strcmp(key, "connect_to") == 0) return "Pripojte sa k";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "a nastavte sieť";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavenie WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Skupina reproduktorov";
   if (std::strcmp(key, "speakers") == 0) return "Reproduktory";
@@ -9130,6 +9206,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Posodobitev končana";
   if (std::strcmp(key, "update_failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi prekinjen";
+  if (std::strcmp(key, "connect_to") == 0) return "Povežite se z";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "za konfiguracijo omrežnih nastavitev";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavitev WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Skupina zvočnikov";
   if (std::strcmp(key, "speakers") == 0) return "Zvočniki";
@@ -9353,6 +9431,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Uppdatering slutförd";
   if (std::strcmp(key, "update_failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frånkopplat";
+  if (std::strcmp(key, "connect_to") == 0) return "Anslut till";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "för att konfigurera nätverksinställningarna";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installation";
   if (std::strcmp(key, "speaker_group") == 0) return "Högtalargrupp";
   if (std::strcmp(key, "speakers") == 0) return "Högtalare";
@@ -9588,6 +9668,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Güncelleme tamamlandı";
   if (std::strcmp(key, "update_failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi bağlantısı kesildi";
+  if (std::strcmp(key, "connect_to") == 0) return "Şuna bağlanın:";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "ağ ayarlarınızı yapılandırmak için";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Kurulumu";
   if (std::strcmp(key, "speaker_group") == 0) return "Hoparlör Grubu";
   if (std::strcmp(key, "speakers") == 0) return "Hoparlörler";
@@ -9825,6 +9907,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Оновлення завершено";
   if (std::strcmp(key, "update_failed") == 0) return "Помилка оновлення";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi від’єднано";
+  if (std::strcmp(key, "connect_to") == 0) return "Підключіться до";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "щоб налаштувати параметри мережі";
   if (std::strcmp(key, "wifi_setup") == 0) return "Налаштування WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Група динаміків";
   if (std::strcmp(key, "speakers") == 0) return "Динаміки";
