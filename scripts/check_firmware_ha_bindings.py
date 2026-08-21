@@ -19,6 +19,7 @@ COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
 SCREEN_CLOCK_PATH = ROOT / "common" / "device" / "screen_clock.yaml"
 ARTWORK_IMAGE_PATH = ROOT / "components" / "artwork_image" / "artwork_image.cpp"
 BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
+BACKLIGHT_SCHEDULE_PATH = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
@@ -2552,6 +2553,40 @@ def firmware_display_backlight_manual_sleep_errors(
     return errors
 
 
+def firmware_display_backlight_mode_restore_errors(
+    schedule_path: Path,
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    if not schedule_path.exists():
+        return errors
+
+    rel = schedule_path.relative_to(root)
+    text = schedule_path.read_text(encoding="utf-8")
+    handler_body = yaml_script_body(text, "display_backlight_handle_state")
+    if handler_body is None:
+        errors.append(f"{rel}: missing shared display_backlight_handle_state script")
+        return errors
+
+    setup_guard = "!App.is_setup_complete()"
+    mode_guard = "!id(brightness_mode_runtime_ready)"
+    state_read = "id(display_backlight).remote_values.is_on()"
+    guard_index = handler_body.find(setup_guard)
+    mode_index = handler_body.find(mode_guard)
+    state_index = handler_body.find(state_read)
+    if (
+        guard_index == -1
+        or mode_index == -1
+        or state_index == -1
+        or guard_index > state_index
+        or mode_index > state_index
+    ):
+        errors.append(
+            f"{rel}: ignore restored Display Backlight state until startup and brightness mode setup complete"
+        )
+    return errors
+
+
 def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> list[str]:
     if not display_path.exists():
         return []
@@ -3357,6 +3392,11 @@ def run_scan() -> int:
             BACKLIGHT_PATH, DEVICE_DEVICE_PATHS, ROOT
         )
     )
+    errors.extend(
+        firmware_display_backlight_mode_restore_errors(
+            BACKLIGHT_SCHEDULE_PATH, ROOT
+        )
+    )
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_bar_navigation_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
@@ -4045,6 +4085,23 @@ def expect_display_backlight_manual_sleep_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_display_backlight_mode_restore_errors(
+    name: str,
+    schedule_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "backlight_schedule.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(schedule_text, encoding="utf-8")
+        errors = firmware_display_backlight_mode_restore_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_clock_bar_navigation_errors(
     name: str, text: str, expected: tuple[str, ...]
 ) -> None:
@@ -4358,6 +4415,29 @@ def run_self_test() -> int:
         valid_backlight_off_handler,
         {"guition-esp32-p4-jc8012p4a1-v2": valid_simple_backlight},
         ("preserve display takeover recovery before manual sleep handling",),
+    )
+    valid_backlight_state_handler = (
+        "script:\n"
+        "  - id: display_backlight_handle_state\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) return;\n"
+        "          if (!id(display_backlight).remote_values.is_on()) return;\n"
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state waits for startup",
+        valid_backlight_state_handler,
+        (),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state requires ESPHome setup",
+        valid_backlight_state_handler.replace("!App.is_setup_complete() || ", ""),
+        ("ignore restored Display Backlight state",),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state requires brightness mode setup",
+        valid_backlight_state_handler.replace(" || !id(brightness_mode_runtime_ready)", ""),
+        ("ignore restored Display Backlight state",),
     )
     expect_screen_wake_button_errors(
         "missing Screen: Wake button",

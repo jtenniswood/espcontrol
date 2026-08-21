@@ -611,6 +611,7 @@ script:
     mode: restart
     then:
       - lambda: |-
+          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) return;
           if (!id(display_backlight).remote_values.is_on()) return;
           float requested = id(display_backlight).remote_values.get_brightness();
           if (std::isnan(requested) || requested <= 0.0f) return;
