@@ -123,7 +123,7 @@ const devices = [
   {
     slug: 'esp32-p4-86',
     name: 'ESP32-P4 86 Panel',
-    size: '4 in',
+    size: '4 in P4',
     resolution: '720 x 720',
     orientation: 'Square',
     slots: 9,
@@ -135,7 +135,7 @@ const devices = [
   {
     slug: 'guition-esp32-s3-4848s040',
     name: '4848S040',
-    size: '4 in',
+    size: '4 in S3',
     resolution: '480 x 480',
     orientation: 'Square',
     slots: 9,
