@@ -74,7 +74,7 @@ const devices = [
     slug: 'guition-esp32-p4-jc8012p4a1',
     name: 'JC8012P4A1 original panel',
     revision: 'Rear case 2627 or lower',
-    size: '10.1 in',
+    size: '10.1 inch',
     resolution: '1280 x 800',
     orientation: 'Landscape',
     slots: 20,
@@ -87,7 +87,7 @@ const devices = [
     slug: 'guition-esp32-p4-jc8012p4a1-v2',
     name: 'JC8012P4A1 new panel',
     revision: 'Rear case 2628 or higher',
-    size: '10.1 in',
+    size: '10.1 inch',
     resolution: '1280 x 800',
     orientation: 'Landscape',
     slots: 20,
@@ -99,7 +99,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc1060p470',
     name: 'JC1060P470',
-    size: '7 in',
+    size: '7 inch',
     resolution: '1024 x 600',
     orientation: 'Landscape',
     slots: 15,
@@ -111,7 +111,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc4880p443',
     name: 'JC4880P443',
-    size: '4.3 in',
+    size: '4.3 inch',
     resolution: '480 x 800',
     orientation: 'Portrait',
     slots: 6,
@@ -123,7 +123,7 @@ const devices = [
   {
     slug: 'esp32-p4-86',
     name: 'ESP32-P4 86 Panel',
-    size: '4 in',
+    size: '4 inch P4',
     resolution: '720 x 720',
     orientation: 'Square',
     slots: 9,
@@ -135,7 +135,7 @@ const devices = [
   {
     slug: 'guition-esp32-s3-4848s040',
     name: '4848S040',
-    size: '4 in',
+    size: '4 inch S3',
     resolution: '480 x 480',
     orientation: 'Square',
     slots: 9,
