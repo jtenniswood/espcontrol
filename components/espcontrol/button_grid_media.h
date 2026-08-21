@@ -1640,14 +1640,17 @@ inline void media_playback_subscribe_volume(MediaPlaybackState *state) {
         state->volume_control_mode = espcontrol::media::volume_control_mode(
           state->supported_features_known,
           state->supported_features);
-        media_playback_subscribe_modes(state);
+        if (!state->controls.empty()) {
+          media_playback_subscribe_modes(state);
+        }
         media_playback_apply_volume_consumers(state);
       })
   );
 }
 
 inline void media_playback_subscribe_modes(MediaPlaybackState *state) {
-  if (!state || state->entity_id.empty() || !state->supported_features_known) return;
+  if (!state || state->controls.empty() || state->entity_id.empty() ||
+      !state->supported_features_known) return;
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
 
