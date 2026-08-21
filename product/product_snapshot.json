@@ -13,7 +13,7 @@
     "cardTypes": 40,
     "entityNames": 99,
     "icons": 334,
-    "structuralIcons": 16,
+    "structuralIcons": 19,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -7105,6 +7105,24 @@
         "codepoint": "F02E9",
         "mdi": "image",
         "comment": "Image card loading state"
+      },
+      {
+        "name": "Shuffle",
+        "codepoint": "F049D",
+        "mdi": "shuffle",
+        "comment": "Media modal shuffle control"
+      },
+      {
+        "name": "Repeat",
+        "codepoint": "F0456",
+        "mdi": "repeat",
+        "comment": "Media modal repeat control"
+      },
+      {
+        "name": "Repeat Once",
+        "codepoint": "F0458",
+        "mdi": "repeat-once",
+        "comment": "Media modal repeat-one state"
       },
       {
         "name": "Image Card Unavailable",

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "media_playback_modes.h"
 #include "media_volume_capability.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -661,6 +662,22 @@ inline void send_media_player_action(const std::string &entity_id,
     ha_action_add_data(req, value_key, value);
   }
   ha_action_send(req);
+}
+
+inline void send_media_shuffle_action(const std::string &entity_id,
+                                      bool enabled) {
+  send_media_player_action(
+    entity_id, "media_player.shuffle_set", "shuffle",
+    enabled ? "true" : "false");
+}
+
+inline void send_media_repeat_action(
+    const std::string &entity_id,
+    espcontrol::media::RepeatMode mode) {
+  const char *value = espcontrol::media::repeat_mode_value(mode);
+  if (!value) return;
+  send_media_player_action(
+    entity_id, "media_player.repeat_set", "repeat", value);
 }
 
 inline void send_media_volume_action(const std::string &entity_id, int value) {
