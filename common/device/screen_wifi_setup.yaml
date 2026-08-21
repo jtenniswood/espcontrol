@@ -48,7 +48,7 @@ lvgl:
                   widgets:
                     - label:
                         text_font: $setup_icon_font_id
-                        text: $icon_wifi
+                        text: $icon_wifi_startup
                         text_color: 0xFFFFFF
                         text_align: center
                     - label:
