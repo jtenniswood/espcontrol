@@ -98,8 +98,13 @@ their expected-head equivalent; otherwise use
 established method's equivalent).
 
 Do not delete the source branch or close linked issues as part of this skill.
-After the command returns, refresh the PR and verify that GitHub reports it as
-merged. A successful command alone is not sufficient confirmation.
+After the command returns, refresh the PR. If GitHub placed it in a merge queue,
+monitor the queued PR at reasonable intervals until GitHub reports it merged or
+reports that it left the queue without merging. Do not treat queue admission as
+success, and do not stop merely because the PR remains open while queued. If it
+leaves the queue without merging, report the rejection or failed requirement
+and leave the PR open. Otherwise, verify that GitHub reports the PR as merged. A
+successful command or queue admission alone is not sufficient confirmation.
 
 ## Final Update
 
