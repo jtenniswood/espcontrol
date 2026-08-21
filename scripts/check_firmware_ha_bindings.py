@@ -2878,6 +2878,10 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     errors.append(
                         f"{loading_rel}: bypass the boot guard before showing WiFi setup"
                     )
+                if "script.execute: wifi_show_hotspot_setup" in loading_text:
+                    errors.append(
+                        f"{loading_rel}: keep the visible first-boot WiFi instructions active until setup connects"
+                    )
                 if reconcile_body is None or (
                     "id(connectivity_setup_display_active)" not in reconcile_body
                     or "id(button_order).state.empty()" not in reconcile_body

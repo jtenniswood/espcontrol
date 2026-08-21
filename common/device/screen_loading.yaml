@@ -145,4 +145,6 @@ esphome:
                           - script.execute: wifi_reconnect_flow
             else:
               - lambda: 'id(boot_grace_period) = false;'
-              - script.execute: wifi_show_hotspot_setup
+              # The loading page already contains the live hotspot name and
+              # connection instructions. Keep that proven-visible page active
+              # until WiFi connects instead of replacing it during late boot.
