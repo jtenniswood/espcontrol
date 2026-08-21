@@ -3294,6 +3294,8 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
         automatic_body = automatic_script.group("body")
         required_steps = (
             r"update\.check:\s*\n\s*id:\s*esp32_c6_update",
+            r"wait_until:\s*\n\s*condition:\s*\n\s*update\.is_available:\s*esp32_c6_update"
+            r"\s*\n\s*timeout:\s*30s",
             r"switch\.is_on:\s*c6_auto_update_switch",
             r"update\.is_available:\s*esp32_c6_update",
             r"update\.perform:\s*\n\s*id:\s*esp32_c6_update",

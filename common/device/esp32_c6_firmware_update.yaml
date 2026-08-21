@@ -15,6 +15,10 @@ script:
     then:
       - update.check:
           id: esp32_c6_update
+      - wait_until:
+          condition:
+            update.is_available: esp32_c6_update
+          timeout: 30s
       - if:
           condition:
             and:
