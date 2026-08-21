@@ -40,6 +40,10 @@ wifi:
     - script.execute: network_status_refresh
     - script.execute: ntp_servers_apply_after_network
     - script.stop: wifi_reconnect_flow
+    - globals.set:
+        id: connectivity_setup_display_active
+        value: 'false'
+    - script.execute: display_mode_reconcile
     - script.execute: setup_screen_dim_cancel
     - lambda: |-
         ESP_LOGI("connectivity", "WiFi connected (%lu ms)", millis());
@@ -106,6 +110,9 @@ script:
     mode: restart
     then:
       - lvgl.resume:
+      - globals.set:
+          id: connectivity_setup_display_active
+          value: 'true'
       - lambda: |-
           id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
@@ -113,8 +120,10 @@ script:
       - script.wait: display_mode_apply_transition
       - script.execute: clock_bar_hide
       - lambda: |-
+          std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
+          if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
           std::string msg = std::string(espcontrol_i18n("Connect to WiFi")) +
-                            "\n${friendly_name}\n" +
+                            "\n" + hotspot_ssid + "\n" +
                             espcontrol_i18n("Open 192.168.4.1");
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("WiFi Setup"));
           lv_label_set_text(id(wifi_setup_instructions), msg.c_str());

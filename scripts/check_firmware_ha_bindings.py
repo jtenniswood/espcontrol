@@ -2880,10 +2880,12 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     )
                 if reconcile_body is None or (
                     "id(connectivity_setup_display_active)" not in reconcile_body
-                    or "!connectivity_setup" not in reconcile_body
+                    or "id(button_order).state.empty()" not in reconcile_body
+                    or "!onboarding" not in reconcile_body
+                    or "DisplayRequestSource::ONBOARDING" not in reconcile_body
                 ):
                     errors.append(
-                        f"{rel}: let connectivity setup override boot guard and scheduled night requests"
+                        f"{rel}: keep first-time onboarding visible over boot guard and scheduled night requests"
                     )
         sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
         if sleep_body is None:

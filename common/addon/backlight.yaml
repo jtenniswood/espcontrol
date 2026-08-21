@@ -397,10 +397,11 @@ script:
           };
 
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          const bool connectivity_setup = id(connectivity_setup_display_active);
-          const bool waiting_for_time = !connectivity_setup && screen_schedule_waiting_for_time(
+          const bool onboarding = id(connectivity_setup_display_active) ||
+                                  id(button_order).state.empty();
+          const bool waiting_for_time = !onboarding && screen_schedule_waiting_for_time(
               id(screen_schedule_trigger).state, id(schedule_enabled).state, now.is_valid());
-          const bool schedule_night = !connectivity_setup && screen_schedule_night_active(
+          const bool schedule_night = !onboarding && screen_schedule_night_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
               id(schedule_presence_detected),
@@ -421,6 +422,8 @@ script:
             controller.clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           }
 
+          set_request(espcontrol::DisplayRequestSource::ONBOARDING, onboarding,
+                      espcontrol::DisplayMode::ACTIVE);
           set_request(espcontrol::DisplayRequestSource::BOOT_GUARD, waiting_for_time,
                       espcontrol::DisplayMode::DISPLAY_OFF);
           set_request(espcontrol::DisplayRequestSource::USER_WAKE,

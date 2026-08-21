@@ -72,6 +72,9 @@ script:
     then:
       - lambda: |-
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("WiFi Setup"));
-          lv_label_set_text(
-              id(wifi_setup_instructions),
-              espcontrol_i18n("Connect to the setup hotspot\nthen open 192.168.4.1"));
+          std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
+          if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
+          std::string msg = std::string(espcontrol_i18n("Connect to WiFi")) +
+                            "\n" + hotspot_ssid + "\n" +
+                            espcontrol_i18n("Open 192.168.4.1");
+          lv_label_set_text(id(wifi_setup_instructions), msg.c_str());
