@@ -3,6 +3,7 @@
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #include "cover_art.h"
+#include "media_playback_modes.h"
 #include "media_power_capability.h"
 #include "media_metadata_policy.h"
 
@@ -70,6 +71,10 @@ struct MediaControlCtx {
   bool dragging_volume = false;
   bool supported_features_known = false;
   int supported_features = 0;
+  bool shuffle_known = false;
+  bool shuffle_enabled = false;
+  espcontrol::media::RepeatMode repeat_mode =
+    espcontrol::media::RepeatMode::UNKNOWN;
   espcontrol::media::VolumeControlMode volume_control_mode =
     espcontrol::media::VolumeControlMode::ABSOLUTE;
   bool grouping_supported = false;
@@ -118,10 +123,13 @@ struct MediaControlModalUi {
   lv_obj_t *progress_fill = nullptr;
   lv_obj_t *progress_handle = nullptr;
   lv_obj_t *progress_time_lbl = nullptr;
+  lv_obj_t *shuffle_btn = nullptr;
   lv_obj_t *previous_btn = nullptr;
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
   lv_obj_t *next_btn = nullptr;
+  lv_obj_t *repeat_btn = nullptr;
+  lv_obj_t *repeat_icon_lbl = nullptr;
   lv_obj_t *volume_arc = nullptr;
   lv_obj_t *volume_group_lbl = nullptr;
   lv_obj_t *volume_pct_lbl = nullptr;
@@ -210,6 +218,16 @@ inline bool media_control_power_supported(MediaControlCtx *ctx) {
     ctx->supported_features_known, ctx->supported_features);
 }
 
+inline bool media_control_shuffle_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::shuffle_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
+inline bool media_control_repeat_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::repeat_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
 inline espcontrol::media::PowerCommand media_control_power_command(
     MediaControlCtx *ctx) {
   if (!ctx) return espcontrol::media::PowerCommand::NONE;
@@ -283,6 +301,7 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_refresh_group_volume(MediaControlCtx *ctx);
 inline void media_control_speaker_action_timer_cb(lv_timer_t *timer);
 inline void media_control_refresh_power(MediaControlCtx *ctx);
+inline void media_control_refresh_playback_modes(MediaControlCtx *ctx);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
 inline void media_control_refresh_speakers(MediaControlCtx *ctx);
@@ -313,6 +332,7 @@ inline void media_playback_subscribe_progress(
   MediaPlaybackState *state,
   uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT);
 inline void media_playback_subscribe_volume(MediaPlaybackState *state);
+inline void media_playback_subscribe_modes(MediaPlaybackState *state);
 inline void media_playback_subscribe_friendly_name(MediaPlaybackState *state);
 inline void media_playback_subscribe_grouping(MediaPlaybackState *state);
 inline void media_playback_subscribe_speaker_discovery(
@@ -384,6 +404,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   media_playback_subscribe_content(state);
   media_playback_subscribe_metadata(state);
   media_playback_subscribe_volume(state);
+  media_playback_subscribe_modes(state);
   if (!ctx->speaker_group_entity.empty()) {
     media_playback_subscribe_grouping(state);
     media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);
@@ -570,6 +591,8 @@ struct MediaPlaybackState {
   uint32_t progress_subscription_scope = 0;
   bool volume_subscribed = false;
   bool capabilities_subscribed = false;
+  bool shuffle_subscribed = false;
+  bool repeat_subscribed = false;
   bool content_subscribed = false;
   bool friendly_name_subscribed = false;
   bool grouping_subscribed = false;
@@ -604,6 +627,10 @@ struct MediaPlaybackState {
   int volume_pct = 0;
   bool supported_features_known = false;
   int supported_features = 0;
+  bool shuffle_known = false;
+  bool shuffle_enabled = false;
+  espcontrol::media::RepeatMode repeat_mode =
+    espcontrol::media::RepeatMode::UNKNOWN;
   espcontrol::media::VolumeControlMode volume_control_mode =
     espcontrol::media::VolumeControlMode::ABSOLUTE;
   bool has_current_content_id = false;
@@ -732,6 +759,8 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->progress_subscription_scope = 0;
   state->volume_subscribed = false;
   state->capabilities_subscribed = false;
+  state->shuffle_subscribed = false;
+  state->repeat_subscribed = false;
   state->content_subscribed = false;
   state->friendly_name_subscribed = false;
   state->grouping_subscribed = false;
@@ -765,6 +794,9 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->volume_pct = 0;
   state->supported_features_known = false;
   state->supported_features = 0;
+  state->shuffle_known = false;
+  state->shuffle_enabled = false;
+  state->repeat_mode = espcontrol::media::RepeatMode::UNKNOWN;
   state->volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
   state->has_current_content_id = false;
   state->has_current_content_type = false;
@@ -1103,6 +1135,8 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   if (!state || !ctx) return;
   const bool previous_power_supported = espcontrol::media::power_toggle_supported(
     ctx->supported_features_known, ctx->supported_features);
+  const bool previous_shuffle_supported = media_control_shuffle_supported(ctx);
+  const bool previous_repeat_supported = media_control_repeat_supported(ctx);
   bool metadata_changed = ctx->title != state->title ||
                           ctx->artist != state->artist ||
                           ctx->friendly_name != state->friendly_name;
@@ -1146,6 +1180,12 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   ctx->supported_features = state->supported_features;
   const bool power_supported = espcontrol::media::power_toggle_supported(
     ctx->supported_features_known, ctx->supported_features);
+  const bool shuffle_supported = media_control_shuffle_supported(ctx);
+  const bool repeat_supported = media_control_repeat_supported(ctx);
+  ctx->shuffle_known = shuffle_supported && state->shuffle_known;
+  ctx->shuffle_enabled = state->shuffle_enabled;
+  ctx->repeat_mode = repeat_supported
+    ? state->repeat_mode : espcontrol::media::RepeatMode::UNKNOWN;
   const auto previous_volume_control_mode = ctx->volume_control_mode;
   ctx->volume_control_mode = state->volume_control_mode;
   if (previous_volume_control_mode != ctx->volume_control_mode &&
@@ -1220,8 +1260,15 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   if (ui.active == ctx && !ctx->available) {
     media_control_hide_modal();
   } else if (ui.active == ctx) {
+    const bool mode_capabilities_changed =
+      previous_shuffle_supported != shuffle_supported ||
+      previous_repeat_supported != repeat_supported;
     bool layout_needed = metadata_changed || grouping_changed ||
-                         previous_power_supported != power_supported;
+                         previous_power_supported != power_supported ||
+                         mode_capabilities_changed;
+    if (mode_capabilities_changed && ui.tab == MediaControlTab::CONTROLS) {
+      media_control_clear_tab_content();
+    }
 #ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
     if (media_control_progress_supported(ctx) && !ui.progress_tab) layout_needed = true;
     if (!media_control_progress_supported(ctx) && ui.tab == MediaControlTab::PROGRESS) {
@@ -1593,9 +1640,50 @@ inline void media_playback_subscribe_volume(MediaPlaybackState *state) {
         state->volume_control_mode = espcontrol::media::volume_control_mode(
           state->supported_features_known,
           state->supported_features);
+        media_playback_subscribe_modes(state);
         media_playback_apply_volume_consumers(state);
       })
   );
+}
+
+inline void media_playback_subscribe_modes(MediaPlaybackState *state) {
+  if (!state || state->entity_id.empty() || !state->supported_features_known) return;
+  const std::string entity_id = state->entity_id;
+  const uint32_t generation = state->generation;
+
+  if (espcontrol::media::shuffle_supported(
+        state->supported_features_known, state->supported_features) &&
+      !state->shuffle_subscribed) {
+    state->shuffle_subscribed = true;
+    ha_subscribe_attribute(
+      entity_id, std::string("shuffle"),
+      std::function<void(esphome::StringRef)>(
+        [state, generation](esphome::StringRef value) {
+          if (!media_playback_generation_valid(state, generation)) return;
+          bool enabled = false;
+          state->shuffle_known = espcontrol::media::parse_shuffle_state(
+            string_ref_limited(value, HA_SHORT_STATE_MAX_LEN), enabled);
+          if (state->shuffle_known) state->shuffle_enabled = enabled;
+          media_playback_apply_state_to_controls(state);
+        })
+    );
+  }
+
+  if (espcontrol::media::repeat_supported(
+        state->supported_features_known, state->supported_features) &&
+      !state->repeat_subscribed) {
+    state->repeat_subscribed = true;
+    ha_subscribe_attribute(
+      entity_id, std::string("repeat"),
+      std::function<void(esphome::StringRef)>(
+        [state, generation](esphome::StringRef value) {
+          if (!media_playback_generation_valid(state, generation)) return;
+          state->repeat_mode = espcontrol::media::parse_repeat_mode(
+            string_ref_limited(value, HA_SHORT_STATE_MAX_LEN));
+          media_playback_apply_state_to_controls(state);
+        })
+    );
+  }
 }
 
 inline void media_playback_subscribe_content(MediaPlaybackState *state) {
@@ -2437,6 +2525,50 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
   media_control_apply_availability(ui.power_btn, ui.power_btn, interactive);
 }
 
+inline void media_control_style_playback_mode_button(lv_obj_t *btn,
+                                                      bool active,
+                                                      bool interactive,
+                                                      uint32_t accent_color) {
+  if (!btn) return;
+  lv_obj_set_style_bg_color(
+    btn, lv_color_hex(active ? accent_color : SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_t *label = lv_obj_get_child(btn, 0);
+  if (label) {
+    lv_obj_set_style_text_color(
+      label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
+  media_control_apply_availability(btn, btn, interactive);
+}
+
+inline void media_control_refresh_playback_modes(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  if (ui.shuffle_btn) {
+    const bool active = ctx->shuffle_known && ctx->shuffle_enabled;
+    const bool interactive = ctx->available && ctx->shuffle_known &&
+      media_control_shuffle_supported(ctx);
+    media_control_style_playback_mode_button(
+      ui.shuffle_btn, active, interactive, ctx->accent_color);
+  }
+  if (ui.repeat_btn) {
+    const bool known =
+      ctx->repeat_mode != espcontrol::media::RepeatMode::UNKNOWN;
+    const bool active = known &&
+      ctx->repeat_mode != espcontrol::media::RepeatMode::OFF;
+    const bool interactive = ctx->available && known &&
+      media_control_repeat_supported(ctx);
+    if (ui.repeat_icon_lbl) {
+      lv_label_set_text(
+        ui.repeat_icon_lbl,
+        find_icon(ctx->repeat_mode == espcontrol::media::RepeatMode::ONE
+          ? "Repeat Once" : "Repeat"));
+    }
+    media_control_style_playback_mode_button(
+      ui.repeat_btn, active, interactive, ctx->accent_color);
+  }
+}
+
 inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -2449,6 +2581,7 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   media_control_refresh_volume(ctx);
   media_control_refresh_speakers(ctx);
   media_control_refresh_power(ctx);
+  media_control_refresh_playback_modes(ctx);
 }
 
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct) {
@@ -2695,6 +2828,10 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
     apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
   }
 
+  if (media_control_shuffle_supported(ctx)) {
+    ui.shuffle_btn = media_control_create_icon_button(
+      ui.content_box, find_icon("Shuffle"), ctx->icon_font, ctx->accent_color);
+  }
   ui.previous_btn = media_control_create_icon_button(
     ui.content_box, find_icon("Skip Previous"), ctx->icon_font, ctx->accent_color);
   ui.play_btn = media_control_create_icon_button(
@@ -2702,6 +2839,18 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
   ui.play_icon_lbl = ui.play_btn ? lv_obj_get_child(ui.play_btn, 0) : nullptr;
   ui.next_btn = media_control_create_icon_button(
     ui.content_box, find_icon("Skip Next"), ctx->icon_font, ctx->accent_color);
+  if (media_control_repeat_supported(ctx)) {
+    ui.repeat_btn = media_control_create_icon_button(
+      ui.content_box, find_icon("Repeat"), ctx->icon_font, ctx->accent_color);
+    ui.repeat_icon_lbl = ui.repeat_btn ? lv_obj_get_child(ui.repeat_btn, 0) : nullptr;
+  }
+  if (ui.shuffle_btn) lv_obj_add_event_cb(ui.shuffle_btn, [](lv_event_t *) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (!ui.active || !ui.active->available || !ui.active->shuffle_known ||
+        !media_control_shuffle_supported(ui.active)) return;
+    send_media_shuffle_action(
+      ui.active->entity_id, !ui.active->shuffle_enabled);
+  }, LV_EVENT_CLICKED, nullptr);
   if (ui.previous_btn) lv_obj_add_event_cb(ui.previous_btn, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (ui.active && ui.active->available) {
@@ -2719,6 +2868,15 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
       media_control_reset_track_position(ui.active);
       send_media_playback_action(ui.active->entity_id, "next");
     }
+  }, LV_EVENT_CLICKED, nullptr);
+  if (ui.repeat_btn) lv_obj_add_event_cb(ui.repeat_btn, [](lv_event_t *) {
+    MediaControlModalUi &ui = media_control_modal_ui();
+    if (!ui.active || !ui.active->available ||
+        !media_control_repeat_supported(ui.active)) return;
+    const auto next = espcontrol::media::next_repeat_mode(
+      ui.active->repeat_mode);
+    if (next == espcontrol::media::RepeatMode::UNKNOWN) return;
+    send_media_repeat_action(ui.active->entity_id, next);
   }, LV_EVENT_CLICKED, nullptr);
 }
 
@@ -3688,10 +3846,13 @@ inline void media_control_clear_tab_content() {
   ui.progress_fill = nullptr;
   ui.progress_handle = nullptr;
   ui.progress_time_lbl = nullptr;
+  ui.shuffle_btn = nullptr;
   ui.previous_btn = nullptr;
   ui.play_btn = nullptr;
   ui.play_icon_lbl = nullptr;
   ui.next_btn = nullptr;
+  ui.repeat_btn = nullptr;
+  ui.repeat_icon_lbl = nullptr;
   ui.volume_arc = nullptr;
   ui.volume_group_lbl = nullptr;
   ui.volume_pct_lbl = nullptr;
@@ -3849,14 +4010,12 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t text_w = content_w * 92 / 100;
   lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
   if (text_gap < 6) text_gap = 6;
-  lv_coord_t btn_gap = control_modal_scaled_px(16, layout.short_side);
-  if (btn_gap < 12) btn_gap = 12;
-  lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
-  lv_coord_t max_btn = control_modal_scaled_px(88, layout.short_side);
-  if (btn_size > max_btn) btn_size = max_btn;
-  if (btn_size < 74) btn_size = 74;
-  lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
-  lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
+  const espcontrol::media::MediaTransportLayout transport_layout =
+    espcontrol::media::media_transport_layout(
+      content_w, layout.short_side,
+      media_control_shuffle_supported(ctx),
+      media_control_repeat_supported(ctx));
+  const lv_coord_t btn_size = transport_layout.primary_size;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
   lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
   if (progress_slider_h > progress_slider_max_h) progress_slider_h = progress_slider_max_h;
@@ -3934,17 +4093,25 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(ui.progress_time_lbl, LV_ALIGN_TOP_MID, 0, time_y);
     lv_obj_clear_flag(ui.progress_time_lbl, LV_OBJ_FLAG_HIDDEN);
   }
-  lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
-  for (int i = 0; i < 3; i++) {
+  lv_obj_t *buttons[5] = {
+    ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn};
+  const bool mode_buttons[5] = {true, false, false, false, true};
+  lv_coord_t button_x = transport_layout.start_x;
+  for (int i = 0; i < 5; i++) {
     if (!buttons[i]) continue;
-    lv_obj_set_size(buttons[i], btn_size, btn_size);
-    lv_obj_set_style_radius(buttons[i], btn_size / 2, LV_PART_MAIN);
-    lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_start_x + i * (btn_size + btn_gap), button_y);
+    const lv_coord_t size = mode_buttons[i]
+      ? transport_layout.mode_size : transport_layout.primary_size;
+    const lv_coord_t y = button_y + (transport_layout.primary_size - size) / 2;
+    lv_obj_set_size(buttons[i], size, size);
+    lv_obj_set_style_radius(buttons[i], size / 2, LV_PART_MAIN);
+    lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_x, y);
     lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
     if (label) {
-      lv_obj_set_style_transform_zoom(label, 230, LV_PART_MAIN);
+      lv_obj_set_style_transform_zoom(
+        label, mode_buttons[i] ? 190 : 230, LV_PART_MAIN);
       light_control_center_icon_label(label);
     }
+    button_x += size + transport_layout.gap;
   }
 
   if (ui.volume_arc) {
