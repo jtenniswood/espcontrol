@@ -18,6 +18,7 @@ esp32:
 
 packages:
   core: !include ../devices/guition-esp32-s3-4848s040/packages.yaml
+  api_encryption: !include ../common/addon/api_encryption_dynamic.yaml
 
 esphome:
   name_add_mac_suffix: true
