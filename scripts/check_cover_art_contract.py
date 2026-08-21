@@ -23,6 +23,13 @@ int main() {
   assert(!media_entity_state_usable("idle"));
   assert(!media_entity_state_usable("off"));
   assert(!media_entity_state_usable(" unavailable "));
+  assert(!media_card_artwork_should_clear(false, true, "unknown"));
+  assert(!media_card_artwork_should_clear(true, true, "playing"));
+  assert(!media_card_artwork_should_clear(true, true, "paused"));
+  assert(!media_card_artwork_should_clear(true, true, "buffering"));
+  assert(media_card_artwork_should_clear(true, true, "idle"));
+  assert(media_card_artwork_should_clear(true, true, "off"));
+  assert(media_card_artwork_should_clear(true, false, "playing"));
   assert(!use_secondary_media_entity(false, true, true, true));
   assert(!use_secondary_media_entity(true, false, true, true));
   assert(!use_secondary_media_entity(true, true, false, true));
@@ -521,6 +528,8 @@ for required in (
     'std::string("entity_picture")',
     'std::string("entity_picture_local")',
     "image_card_schedule_media_artwork_refresh(art)",
+    "media_card_artwork_should_clear(",
+    "image_card_clear_media_artwork(art)",
 ):
     if required not in media_art:
         raise SystemExit(f"Media card cover art subscription contract missing: {required}")
@@ -529,4 +538,23 @@ if "subscribe_image_card_entity_state" in media_art:
         "Media card cover art must not add a general entity-state subscription "
         "on top of its picture subscriptions"
     )
+now_playing_refresh_start = media.find(
+    "inline void media_playback_refresh_stable_artwork("
+)
+now_playing_refresh_end = media.find(
+    "inline void media_playback_apply_state_to_now_playing_snapshot(",
+    now_playing_refresh_start,
+)
+if now_playing_refresh_start < 0 or now_playing_refresh_end < 0:
+    raise SystemExit("Media cover-art playback-state contract missing")
+now_playing_refresh = media[now_playing_refresh_start:now_playing_refresh_end]
+for required in (
+    "media_card_artwork_should_clear(",
+    "ctx->artwork_refresh_signature.clear();",
+    "image_card_clear_media_artwork(ctx->cover_art);",
+):
+    if required not in now_playing_refresh:
+        raise SystemExit(
+            f"Stopped media must clear stale card artwork: {required}"
+        )
 print("Cover art policy, layout, and state contract checks passed.")

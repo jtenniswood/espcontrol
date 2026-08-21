@@ -957,6 +957,12 @@ inline std::string media_playback_artwork_refresh_signature(
 inline void media_playback_refresh_stable_artwork(MediaPlaybackState *state,
                                                   MediaNowPlayingCtx *ctx) {
   if (!state || !ctx || !ctx->cover_art) return;
+  if (espcontrol::cover_art::media_card_artwork_should_clear(
+        state->has_state, state->available, state->state_text)) {
+    ctx->artwork_refresh_signature.clear();
+    image_card_clear_media_artwork(ctx->cover_art);
+    return;
+  }
   const std::string signature = media_playback_artwork_refresh_signature(state);
   if (signature.empty() || signature == ctx->artwork_refresh_signature) return;
   ctx->artwork_refresh_signature = signature;
@@ -969,9 +975,14 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
   ctx->source_known = state->source_known;
   ctx->external_source = state->external_source;
   if (ctx->cover_art) {
-    image_card_set_media_artwork_suppressed(
-      ctx->cover_art, espcontrol::cover_art::media_card_artwork_suppressed(
-        ctx->source_known, ctx->external_source));
+    if (espcontrol::cover_art::media_card_artwork_should_clear(
+          state->has_state, state->available, state->state_text)) {
+      image_card_clear_media_artwork(ctx->cover_art);
+    } else {
+      image_card_set_media_artwork_suppressed(
+        ctx->cover_art, espcontrol::cover_art::media_card_artwork_suppressed(
+          ctx->source_known, ctx->external_source));
+    }
   }
   if (ctx->title_lbl) {
     const std::string title =

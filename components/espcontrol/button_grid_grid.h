@@ -452,6 +452,7 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     std::string("entity_picture"),
     std::function<void(esphome::StringRef)>(
       [art, playback, entity_id, generation](esphome::StringRef picture) {
+        bool clear_stale_artwork = false;
         if (media_playback_generation_valid(playback, generation)) {
           const std::string value = string_ref_limited(
             picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
@@ -459,9 +460,15 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
                                value != "unavailable";
           if (present) playback->artwork_content_mask |= 1u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~1u);
+          clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
+            playback->has_state, playback->available, playback->state_text);
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
+        if (clear_stale_artwork) {
+          image_card_clear_media_artwork(art);
+          return;
+        }
         // Attribute subscriptions are independent. Ask the artwork coordinator
         // to obtain a matching remote/local pair instead of downloading from
         // this individual notification.
@@ -475,6 +482,7 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     std::string("entity_picture_local"),
     std::function<void(esphome::StringRef)>(
       [art, playback, entity_id, generation](esphome::StringRef picture) {
+        bool clear_stale_artwork = false;
         if (media_playback_generation_valid(playback, generation)) {
           const std::string value = string_ref_limited(
             picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
@@ -482,9 +490,15 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
                                value != "unavailable";
           if (present) playback->artwork_content_mask |= 2u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~2u);
+          clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
+            playback->has_state, playback->available, playback->state_text);
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
+        if (clear_stale_artwork) {
+          image_card_clear_media_artwork(art);
+          return;
+        }
         // See the remote callback above: one notification starts one paired
         // refresh, which prevents either attribute winning by arrival order.
         image_card_schedule_media_artwork_refresh(art);
