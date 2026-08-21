@@ -1052,7 +1052,8 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
                                                  MediaVolumeCtx *ctx) {
   if (!state || !ctx) return;
   ctx->available = state->available;
-  ctx->volume_known = state->volume_known;
+  ctx->capabilities_known = state->supported_features_known;
+  ctx->volume_known = state->volume_known && ctx->capabilities_known;
   const auto previous_volume_control_mode = ctx->volume_control_mode;
   ctx->volume_control_mode = state->volume_control_mode;
   if (previous_volume_control_mode != ctx->volume_control_mode &&
@@ -1063,7 +1064,7 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
   }
   media_volume_refresh_controls(ctx);
   if (!ctx->available) media_volume_hide_modal();
-  if (!state->volume_known) {
+  if (!ctx->volume_known) {
     if (ctx->pct_lbl) lv_label_set_text(ctx->pct_lbl, "--");
     if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
     return;
@@ -1140,8 +1141,8 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     ctx->speaker_discovery_available = false;
   }
   ctx->duration = state->duration;
-  ctx->volume_known = state->volume_known;
   ctx->supported_features_known = state->supported_features_known;
+  ctx->volume_known = state->volume_known && ctx->supported_features_known;
   ctx->supported_features = state->supported_features;
   const bool power_supported = espcontrol::media::power_toggle_supported(
     ctx->supported_features_known, ctx->supported_features);
@@ -1185,7 +1186,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     }
   }
 
-  if (state->volume_known) {
+  if (ctx->volume_known) {
     int pct = ctx->volume_control_mode ==
         espcontrol::media::VolumeControlMode::ABSOLUTE
       ? media_control_clamp_volume(ctx, state->volume_pct)
@@ -1559,13 +1560,18 @@ inline void media_playback_subscribe_volume(MediaPlaybackState *state) {
         float level = 0.0f;
         if (!parse_float_ref(val, level) || !std::isfinite(level)) {
           state->volume_known = false;
+          ESP_LOGD("media", "Volume unavailable for %s", state->entity_id.c_str());
           media_playback_apply_volume_consumers(state);
           return;
         }
         state->volume_known = true;
         state->volume_pct = media_clamp_percent((int)(level * 100.0f + 0.5f));
+        ESP_LOGD("media", "Received volume for %s: %d%%",
+                 state->entity_id.c_str(), state->volume_pct);
         media_playback_apply_volume_consumers(state);
-      })
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
 
   if (state->capabilities_subscribed) return;
@@ -2343,7 +2349,9 @@ inline void media_control_refresh_volume_controls(MediaControlCtx *ctx) {
   const bool grouped = media_control_group_size(ctx) > 1;
   const bool group_known = grouped && media_control_group_volume_percent(ctx, &group_pct);
   const bool arc_interactive = grouped ? group_known :
-    espcontrol::media::volume_arc_interactive(ctx->volume_control_mode);
+    espcontrol::media::volume_arc_interactive(
+      ctx->volume_control_mode, ctx->volume_known,
+      ctx->supported_features_known);
   if (ui.volume_arc) {
     if (arc_interactive) lv_obj_add_flag(ui.volume_arc, LV_OBJ_FLAG_CLICKABLE);
     else lv_obj_clear_flag(ui.volume_arc, LV_OBJ_FLAG_CLICKABLE);
@@ -2362,7 +2370,7 @@ inline void media_control_refresh_volume_controls(MediaControlCtx *ctx) {
     grouped ? group_known && group_pct < media_control_volume_max_pct(ctx) :
     espcontrol::media::volume_increase_enabled(
       ctx->volume_control_mode, ctx->current_pct,
-      media_control_volume_max_pct(ctx)));
+      media_control_volume_max_pct(ctx), ctx->volume_known));
 }
 
 inline void media_control_refresh_volume(MediaControlCtx *ctx) {
@@ -2385,9 +2393,13 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx) {
     }
   }
   if (ui.volume_pct_lbl) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", pct);
-    lv_label_set_text(ui.volume_pct_lbl, buf);
+    if (ctx->volume_known) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d", pct);
+      lv_label_set_text(ui.volume_pct_lbl, buf);
+    } else {
+      lv_label_set_text(ui.volume_pct_lbl, "--");
+    }
   }
   if (ui.volume_arc && !ctx->dragging_volume) {
     ui.updating_volume = true;
@@ -2454,6 +2466,7 @@ inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
     media_control_apply_group_volume_percent(ctx, pct, send_action);
     return;
   }
+  if (!ctx->volume_known || !ctx->supported_features_known) return;
   const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto command = espcontrol::media::volume_command(
     ctx->volume_control_mode, current_pct, pct,
@@ -2815,7 +2828,8 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
     if (!ui.active || ui.updating_volume) return;
     if (media_control_group_size(ui.active) < 2 &&
         !espcontrol::media::volume_arc_interactive(
-          ui.active->volume_control_mode)) return;
+          ui.active->volume_control_mode, ui.active->volume_known,
+          ui.active->supported_features_known)) return;
     ui.active->dragging_volume = true;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
     const bool grouped = media_group_defer_volume_actions(
@@ -4445,6 +4459,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
   ctx->volume_known = true;
+  ctx->capabilities_known = true;
   ctx->pending_pct = -1;
   ctx->pending_until_ms = 0;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);

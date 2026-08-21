@@ -48,6 +48,7 @@ inline VolumeCommand volume_command(VolumeControlMode mode,
   if (current_value > 100) current_value = 100;
 
   if (mode == VolumeControlMode::ABSOLUTE) {
+    if (!current_value_known) return {};
     if (requested_value < 0) requested_value = 0;
     if (requested_value > maximum_value) requested_value = maximum_value;
     if (requested_value == current_value) return {};
@@ -68,8 +69,11 @@ inline VolumeCommand volume_command(VolumeControlMode mode,
   return {};
 }
 
-inline bool volume_arc_interactive(VolumeControlMode mode) {
-  return mode == VolumeControlMode::ABSOLUTE;
+inline bool volume_arc_interactive(VolumeControlMode mode,
+                                   bool current_value_known = true,
+                                   bool capabilities_known = true) {
+  return mode == VolumeControlMode::ABSOLUTE && current_value_known &&
+         capabilities_known;
 }
 
 inline int volume_display_value(VolumeControlMode mode,
@@ -94,7 +98,9 @@ inline bool volume_decrease_enabled(VolumeControlMode mode,
 
 inline bool volume_increase_enabled(VolumeControlMode mode,
                                     int current_value,
-                                    int maximum_value) {
+                                    int maximum_value,
+                                    bool current_value_known = true) {
+  if (!current_value_known) return mode == VolumeControlMode::STEP;
   return mode != VolumeControlMode::READ_ONLY && current_value < maximum_value;
 }
 
