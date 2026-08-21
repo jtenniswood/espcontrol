@@ -22,6 +22,8 @@ BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_w
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
 WEB_SERVER_IDF_INIT = ROOT / "components" / "web_server_idf" / "__init__.py"
 WEB_SERVER_IDF_CPP = ROOT / "components" / "web_server_idf" / "web_server_idf.cpp"
+PUBLIC_API_ENCRYPTION_PACKAGE = ROOT / "common" / "addon" / "api_encryption_dynamic.yaml"
+PUBLIC_API_ENCRYPTION_REFERENCE = "common/addon/api_encryption_dynamic.yaml"
 LEGACY_OTA_PARTITION_LAYOUTS = {
     "esp32-p4-86": "partitions_32mb_card_images.csv",
     "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
@@ -232,6 +234,35 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
+
+
+def test_public_api_encryption_policy(profile_slugs: list[str]) -> None:
+    policy = PUBLIC_API_ENCRYPTION_PACKAGE.read_text(encoding="utf-8")
+    assert policy == "api:\n  encryption: {}\n", (
+        "public API encryption package must remain keyless and dynamically provisionable"
+    )
+    assert "key:" not in policy, "public firmware must not embed a shared API encryption key"
+    assert "provisioning:" not in policy, "public firmware must not add a timed provisioning lockout"
+
+    local_reference = f"api_encryption: !include ../{PUBLIC_API_ENCRYPTION_REFERENCE}"
+    remote_reference = f"file: {PUBLIC_API_ENCRYPTION_REFERENCE}"
+    for slug in profile_slugs:
+        factory = (ROOT / "builds" / f"{slug}.factory.yaml").read_text(encoding="utf-8")
+        public_config = (ROOT / "devices" / slug / "esphome.yaml").read_text(encoding="utf-8")
+        dev = (ROOT / "devices" / slug / "dev.yaml").read_text(encoding="utf-8")
+        local_build = (ROOT / "builds" / f"{slug}.yaml").read_text(encoding="utf-8")
+        assert local_reference in factory, f"{slug}: factory firmware must support dynamic API encryption"
+        assert remote_reference in public_config, f"{slug}: public config must support dynamic API encryption"
+        assert PUBLIC_API_ENCRYPTION_REFERENCE not in dev, f"{slug}: dev firmware must remain plaintext"
+        assert PUBLIC_API_ENCRYPTION_REFERENCE not in local_build, f"{slug}: local build must remain plaintext"
+
+    core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
+    assert PUBLIC_API_ENCRYPTION_REFERENCE not in core, "shared core firmware must remain plaintext"
+
+    manual_setup = (ROOT / "docs" / "getting-started" / "manual-esphome-setup.md").read_text(encoding="utf-8")
+    assert manual_setup.count(remote_reference) == 3, (
+        "manual WiFi, authenticated web, and Ethernet examples must include dynamic API encryption"
+    )
 
 
 def test_ota_preserves_deployed_partition_layouts() -> None:
@@ -762,6 +793,7 @@ def main() -> int:
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
