@@ -129,10 +129,9 @@ class DisplayModeController {
       return result;
     }
 
-    // First-time setup must stay visible regardless of saved display policy.
-    // Its own burn-in timeout may still dim the static instructions.
+    // First-time setup must stay fully visible regardless of saved display
+    // policy or the normal setup-screen burn-in timeout.
     if (request_active(DisplayRequestSource::ONBOARDING)) {
-      if (apply_source(DisplayRequestSource::SETUP_TIMEOUT, result)) return result;
       if (apply_source(DisplayRequestSource::ONBOARDING, result)) return result;
     }
 

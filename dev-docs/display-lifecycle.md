@@ -71,7 +71,7 @@ first matching row wins.
 | Priority | Condition | Winning result | Existing behaviour to preserve |
 |---:|---|---|---|
 | 1 | Critical alarm takeover | `ACTIVE`, alarm overlay foreground | Alarm arming delay or triggered state prevents ordinary display transitions. |
-| 2 | First-time onboarding | `ACTIVE` / `ONBOARDING`, or `SETUP_DIMMED` after its timeout | WiFi, Home Assistant, and tile-configuration instructions remain visible while the grid is empty. Saved sleep and schedule policy cannot hide setup. |
+| 2 | First-time onboarding | `ACTIVE` / `ONBOARDING` | WiFi, Home Assistant, and tile-configuration instructions remain fully visible while the grid is empty. Saved sleep, schedule, and setup-timeout policy cannot hide or dim setup. |
 | 3 | Manual sleep | `DISPLAY_OFF` / `MANUAL_SLEEP` | Closes ordinary and interactive modals; next deliberate user wake clears it. |
 | 4 | Temporary user wake | `ACTIVE` / `USER_WAKE` | Uses configured wake brightness until the existing 10–3600 second timeout expires. |
 | 5 | Night schedule | Off, `CLOCK`, or `ACTIVE` / `SCREEN_SCHEDULE` | Off and clock close image modals; Screen Dimmed keeps the active UI at `schedule_dimmed_brightness`. An enabled time-based schedule fails dark until local time is valid, whether or not a saved sleep marker exists. |
@@ -152,7 +152,7 @@ tests. `gN` denotes a transition generation.
 | Sequence | Events | Expected decisions and checks |
 |---|---|---|
 | Default boot | Boot, valid time, schedule normal | Resolve `ACTIVE`; normal UI and normal brightness; idle timer starts. |
-| First-time onboarding | Boot without WiFi or configured tiles; schedule or sleep requests change | `ONBOARDING` keeps the current setup instructions visible. After 120 seconds, `SETUP_TIMEOUT` dims them to 50%; adding the first tile clears onboarding and resolves live policy. |
+| First-time onboarding | Boot without WiFi or configured tiles; schedule, sleep, or setup-timeout requests change | `ONBOARDING` keeps the current setup instructions fully visible without a dimming timeout; adding the first tile clears onboarding and resolves live policy. |
 | Fail-dark boot | Enabled time-based schedule; boot; time invalid; repeat before and after upgrading saved settings | `BOOT_GUARD` requests `DISPLAY_OFF` in both cases; PWM remains off. When time becomes valid, clear boot guard and resolve the live schedule. |
 | Idle dim | `ACTIVE`; idle timeout; configured action Dim | `IDLE_TIMER` requests `DIMMED` at `g1`; normal UI remains beneath the dim guard; dim brightness applies. |
 | Idle clock | `ACTIVE`; idle timeout; configured action Clock | `IDLE_TIMER` requests `CLOCK`; full-screen clock alone is visible at day/night clock brightness. |
@@ -172,7 +172,7 @@ tests. `gN` denotes a transition generation.
 | Media changes during interactive modal | Open image modal; eligible playback starts or stops; close modal | Modal remains visible. On close, current media eligibility decides whether `COVER_ART` wins. |
 | Critical alarm takeover | Any mode; alarm enters arming delay or triggered; other requests change; alarm clears | `CRITICAL` selects active UI with alarm overlay. No lower request changes presentation. On release, resolve all current requests. |
 | Rapid opposing requests | Idle requests off `g1`; touch requests active `g2`; schedule requests clock `g3`; old fade callback from `g1` fires | Final mode is `CLOCK` from `g3`; callbacks from `g1` and `g2` are rejected and cannot change widgets or PWM. |
-| Setup timeout | Static setup page; 120 seconds | `SETUP_TIMEOUT` selects `SETUP_DIMMED` at 50%. During first-time onboarding it dims the instructions without allowing saved schedule or sleep policy to blank them. |
+| Setup timeout | Static setup page on an already configured device; 120 seconds | `SETUP_TIMEOUT` selects `SETUP_DIMMED` at 50%. First-time onboarding suppresses this timeout so installation instructions remain fully visible. |
 | Home Assistant reconnect | Any stable mode; API disconnect/reconnect; entities and time refresh | Re-resolve updated schedule, presence, media, and alarm inputs without publishing new entities or losing saved settings. |
 
 ## Required test mapping for later stages

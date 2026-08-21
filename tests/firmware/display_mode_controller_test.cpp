@@ -85,7 +85,7 @@ int main() {
                     DisplayRequestSource::SETUP_TIMEOUT));
 
   // Onboarding blocks every normal sleep policy while configuration is empty,
-  // but its burn-in timeout is still allowed to dim the static setup page.
+  // including the normal setup-screen burn-in timeout.
   DisplayModeController onboarding;
   CHECK(onboarding.request(DisplayRequestSource::MANUAL_SLEEP,
                            DisplayMode::DISPLAY_OFF));
@@ -99,8 +99,8 @@ int main() {
                     DisplayRequestSource::ONBOARDING));
   CHECK(onboarding.request(DisplayRequestSource::SETUP_TIMEOUT,
                            DisplayMode::SETUP_DIMMED));
-  CHECK(decision_is(onboarding, DisplayMode::SETUP_DIMMED,
-                    DisplayRequestSource::SETUP_TIMEOUT));
+  CHECK(decision_is(onboarding, DisplayMode::ACTIVE,
+                    DisplayRequestSource::ONBOARDING));
   CHECK(onboarding.clear(DisplayRequestSource::SETUP_TIMEOUT));
   CHECK(onboarding.clear(DisplayRequestSource::ONBOARDING));
   CHECK(decision_is(onboarding, DisplayMode::DISPLAY_OFF,

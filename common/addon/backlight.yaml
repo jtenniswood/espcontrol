@@ -424,6 +424,9 @@ script:
 
           set_request(espcontrol::DisplayRequestSource::ONBOARDING, onboarding,
                       espcontrol::DisplayMode::ACTIVE);
+          if (onboarding) {
+            controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
+          }
           set_request(espcontrol::DisplayRequestSource::BOOT_GUARD, waiting_for_time,
                       espcontrol::DisplayMode::DISPLAY_OFF);
           set_request(espcontrol::DisplayRequestSource::USER_WAKE,
@@ -969,22 +972,28 @@ script:
     mode: restart
     then:
       - script.execute: display_mode_clear_setup_dimmed
-      - delay: 120s
       - if:
           condition:
             lambda: |-
-              return (id(espcontrol_app).display().target_source_is(
-                          espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                      id(espcontrol_app).display().target_mode_is(
-                          espcontrol::DisplayMode::DISPLAY_OFF)) ||
-                     screen_schedule_waiting_for_time(
-                       id(screen_schedule_trigger).state,
-                       id(schedule_enabled).state,
-                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+              return !id(connectivity_setup_display_active) &&
+                     !id(button_order).state.empty();
           then:
-            - script.execute: display_mode_reconcile
-          else:
-            - script.execute: display_mode_request_setup_dimmed
+            - delay: 120s
+            - if:
+                condition:
+                  lambda: |-
+                    return (id(espcontrol_app).display().target_source_is(
+                                espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                            id(espcontrol_app).display().target_mode_is(
+                                espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                           screen_schedule_waiting_for_time(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+                then:
+                  - script.execute: display_mode_reconcile
+                else:
+                  - script.execute: display_mode_request_setup_dimmed
 
   # Home screen return timer (restartable)
   - id: home_screen_idle_check

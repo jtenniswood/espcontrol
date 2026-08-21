@@ -2883,9 +2883,10 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     or "id(button_order).state.empty()" not in reconcile_body
                     or "!onboarding" not in reconcile_body
                     or "DisplayRequestSource::ONBOARDING" not in reconcile_body
+                    or "controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT)" not in reconcile_body
                 ):
                     errors.append(
-                        f"{rel}: keep first-time onboarding visible over boot guard and scheduled night requests"
+                        f"{rel}: keep first-time onboarding fully visible over dimming, boot guard, and scheduled night requests"
                     )
         sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
         if sleep_body is None:
