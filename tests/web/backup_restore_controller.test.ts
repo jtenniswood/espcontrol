@@ -75,4 +75,26 @@ export async function runBackupRestoreControllerTests(): Promise<void> {
   equal(rejected.restore({}, undefined, () => { throw new Error("must not apply invalid backup"); }), false,
     "invalid backups are rejected before writes");
   equal(events.at(-1), "error:Backup is too new", "validation error stays user-readable");
+
+  const failedEvents: string[] = [];
+  const failed = createBackupRestoreController<{}, undefined>({
+    plan: () => ({}),
+    warnings: () => [],
+    showBanner: (message, kind) => failedEvents.push(`${kind}:${message}`),
+    setPostThrottle: (milliseconds) => failedEvents.push(`throttle:${milliseconds}`),
+    resetPostQueueError: () => undefined,
+    postQueueIdle: async () => undefined,
+    postQueueHadError: () => false,
+  });
+  equal(failed.restore({}, undefined, async () => {
+    throw Object.assign(new Error("verification failed"), { backupMessage: "Layout verification failed" });
+  }), true, "an asynchronous restore failure is handled");
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  equal(failedEvents.includes("error:Layout verification failed"), true,
+    "verification failures are shown to the user");
+  equal(failedEvents.some((event) => event.startsWith("success:")), false,
+    "verification failures suppress the success banner");
+  equal(failedEvents.includes("throttle:0"), true, "verification failures reset throttling");
 }
