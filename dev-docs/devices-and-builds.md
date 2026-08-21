@@ -157,8 +157,8 @@ deliberately.
 | `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443` | Caps runtime grid allocation to the device's 6 slots. | Grid slot capacity is generated from device profile data. |
 | `ESPCONTROL_MAX_GRID_SLOTS=9` | `esp32-p4-86`, `guition-esp32-s3-4848s040` | Caps runtime grid allocation to the device's 9 slots. | Grid slot capacity is generated from device profile data. |
 | `ESPCONTROL_ESPHOME_2026_5_REBUILD=1` | P4 devices | Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler/watchdog changes. | Local and CI caches no longer contain stale 2026.4 objects, or the next deliberate cache-busting marker replaces it. |
-| `ESPCONTROL_JC1060P470_BOOTFIX_20260522=1` | `guition-esp32-p4-jc1060p470` | Cache-busting marker for a JC1060P470 boot-loop fix. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC1060P470_OTA_WDT_20260526=1` | `guition-esp32-p4-jc1060p470` | Cache-busting marker for the OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC1060P470_BOOTFIX_20260522=1` | `guition-esp32-p4-jc1060p470`, `guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for a JC1060P470 boot-loop fix. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC1060P470_OTA_WDT_20260526=1` | `guition-esp32-p4-jc1060p470`, `guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for the OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC4880P443_BOOTFIX_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for a JC4880P443 boot-loop fix. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC4880P443_OTA_WDT_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for the JC4880P443 OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for a JC8012P4A1 boot-loop fix. | A later required rebuild marker supersedes it. |
