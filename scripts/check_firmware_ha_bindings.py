@@ -2926,6 +2926,7 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     or "id(button_order).state.empty()" not in reconcile_body
                     or "setup_page_active" not in reconcile_body
                     or "(id(button_order).state.empty() && setup_page_active)" not in reconcile_body
+                    or "lv_scr_act() == id(loading_page)->obj" in reconcile_body
                     or "!onboarding" not in reconcile_body
                     or "DisplayRequestSource::ONBOARDING" not in reconcile_body
                     or "controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT)" not in reconcile_body

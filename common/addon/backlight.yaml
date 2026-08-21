@@ -398,7 +398,6 @@ script:
 
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           const bool setup_page_active =
-              lv_scr_act() == id(loading_page)->obj ||
               lv_scr_act() == id(ha_setup_page)->obj ||
               lv_scr_act() == id(ha_actions_page)->obj ||
               lv_scr_act() == id(button_setup_page)->obj;
