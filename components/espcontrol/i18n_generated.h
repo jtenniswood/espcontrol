@@ -4998,9 +4998,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "booting") == 0) return "Booting";
   if (std::strcmp(key, "connect_an_ethernet_cable_and_wait_for_a_network_address") == 0) return "Connect an Ethernet cable\nand wait for a network address";
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Connect to the setup hotspot\nthen open 192.168.4.1";
-  if (std::strcmp(key, "connect_to_the_device_wifi_access_point_to_configure_your_network_settings") == 0) return "Connect to the device WiFi access point to configure your network settings.";
+  if (std::strcmp(key, "connect_to") == 0) return "Connect to";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Connect to WiFi";
-  if (std::strcmp(key, "look_for") == 0) return "Look for...";
   if (std::strcmp(key, "connected") == 0) return "Connected";
   if (std::strcmp(key, "connecting_to_ethernet") == 0) return "Connecting to Ethernet";
   if (std::strcmp(key, "connecting_to_wifi") == 0) return "Connecting to WiFi";
@@ -5028,7 +5027,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "update_complete") == 0) return "Update complete";
   if (std::strcmp(key, "update_failed") == 0) return "Update failed";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi Disconnected";
-  if (std::strcmp(key, "then_open_a_browser_to_192_168_4_1") == 0) return "Then open a browser to 192.168.4.1";
+  if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "to configure your network settings";
   if (std::strcmp(key, "wifi_setup") == 0) return "Set up your WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Speaker Group";
   if (std::strcmp(key, "speakers") == 0) return "Speakers";
