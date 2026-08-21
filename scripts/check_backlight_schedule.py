@@ -14,8 +14,11 @@ def main() -> None:
     handler_end = text.index("\n  # ---------------------------------------------------------------------------", handler)
     handler_text = text[handler:handler_end]
 
-    guard = "if (!id(brightness_mode_runtime_ready)) return;"
+    guard = "if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) {"
     assert guard in handler_text, "backlight state handler lacks the startup guard"
+    assert "id(backlight_expected_internal_level_valid) = false;" in handler_text, (
+        "startup guard must clear pending internal brightness state"
+    )
     assert handler_text.index(guard) < handler_text.index(
         "if (!id(display_backlight).remote_values.is_on()) return;"
     ), "startup guard must run before restored light-state handling"
