@@ -64,6 +64,7 @@ wifi:
         condition:
           lambda: 'return millis() >= 60000;'
         then:
+          - script.wait: c6_check_and_install_update
           - script.execute: c6_check_and_install_update
 
 text_sensor:

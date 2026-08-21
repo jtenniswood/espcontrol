@@ -3357,10 +3357,13 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: check C6 firmware one minute after boot and every 24 hours")
     if not re.search(
         r"(?ms)^wifi:\s*.*?on_connect:.*?millis\(\)\s*>=\s*60000"
+        r".*?script\.wait:\s*c6_check_and_install_update"
         r".*?script\.execute:\s*c6_check_and_install_update",
         text,
     ):
-        errors.append(f"{rel}: retry the C6 firmware check after late or recovered WiFi")
+        errors.append(
+            f"{rel}: queue a C6 firmware retry after late or recovered WiFi"
+        )
     latest_match = re.search(
         r"(?ms)id:\s*c6_update_latest_firmware\b(?P<body>.*?)(?:^button:|\Z)",
         text,
