@@ -56,6 +56,16 @@ interval:
     then:
       - script.execute: c6_check_and_install_update
 
+# Retry after late or recovered connectivity without bypassing the one-minute
+# boot delay when WiFi connects normally during startup.
+wifi:
+  on_connect:
+    - if:
+        condition:
+          lambda: 'return millis() >= 60000;'
+        then:
+          - script.execute: c6_check_and_install_update
+
 text_sensor:
   - platform: template
     name: "ESP32-C6: Update Available"
