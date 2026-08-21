@@ -161,6 +161,12 @@ void EspControlApp::register_panel_config_endpoints() {
   const bool can_bind_document_endpoints = panel_config_service != nullptr &&
       runtime != nullptr && runtime->document_buffer != nullptr;
   if (!can_bind_document_endpoints) {
+    ESP_LOGE(TAG,
+             "Native configuration endpoints unavailable: service=%s runtime=%s document_buffer=%s",
+             panel_config_service != nullptr ? "ready" : "missing",
+             runtime != nullptr ? "ready" : "missing",
+             runtime != nullptr && runtime->document_buffer != nullptr ? "ready"
+                                                                    : "missing");
     configuration::set_panel_config_read_supported(false);
     configuration::set_panel_config_write_supported(false);
     panel_config_http_context_bound_ = true;
