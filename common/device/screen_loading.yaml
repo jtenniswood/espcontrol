@@ -90,7 +90,7 @@ esphome:
               - script.execute: display_mode_reconcile
               - script.wait: display_mode_apply_transition
               - lambda: |-
-                  lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
+                  lv_label_set_text(id(loading_status_icon), "${icon_wifi_startup}");
                   lv_label_set_text(id(loading_status_title), espcontrol_i18n("Configure your WiFi"));
                   std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
                   if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";

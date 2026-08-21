@@ -2882,6 +2882,14 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     errors.append(
                         f"{loading_rel}: keep the visible first-boot WiFi instructions active until setup connects"
                     )
+                if (
+                    'text: $icon_wifi_startup' not in loading_text
+                    or 'lv_label_set_text(id(loading_status_icon), "${icon_wifi_startup}");'
+                    not in loading_text
+                ):
+                    errors.append(
+                        f"{loading_rel}: keep the standard mdi-wifi icon on the first-boot setup screen"
+                    )
                 if reconcile_body is None or (
                     "id(connectivity_setup_display_active)" not in reconcile_body
                     or "id(button_order).state.empty()" not in reconcile_body
