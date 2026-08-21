@@ -51,6 +51,11 @@ inline bool media_entity_state_usable(const std::string &state) {
          normalized == "buffering";
 }
 
+inline bool media_card_artwork_should_clear(bool state_known, bool available,
+                                            const std::string &state) {
+  return state_known && (!available || !media_entity_state_usable(state));
+}
+
 inline bool use_secondary_media_entity(bool primary_external,
                                        bool secondary_configured,
                                        bool secondary_available,
