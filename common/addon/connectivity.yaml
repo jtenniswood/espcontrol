@@ -128,7 +128,7 @@ script:
           std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
           if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
           std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
-                            " '" + hotspot_ssid + "'\n" +
+                            " '" + hotspot_ssid + "' " +
                             espcontrol_i18n_key("to_configure_your_network_settings");
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("Configure your WiFi"));
           lv_label_set_text(id(wifi_setup_instructions), msg.c_str());

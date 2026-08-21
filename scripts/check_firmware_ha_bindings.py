@@ -2890,6 +2890,19 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     errors.append(
                         f"{loading_rel}: keep the standard mdi-wifi icon on the first-boot setup screen"
                     )
+                for setup_text_path in (
+                    loading_path,
+                    root / "common" / "device" / "screen_wifi_setup.yaml",
+                    root / "common" / "addon" / "connectivity.yaml",
+                ):
+                    setup_copy = setup_text_path.read_text(encoding="utf-8")
+                    if (
+                        r'''hotspot_ssid + "'\n" +''' in setup_copy
+                        or r'''hotspot_ssid + "' " +''' not in setup_copy
+                    ):
+                        errors.append(
+                            f"{setup_text_path.relative_to(root)}: let WiFi setup instructions wrap to the screen width"
+                        )
                 if reconcile_body is None or (
                     "id(connectivity_setup_display_active)" not in reconcile_body
                     or "id(button_order).state.empty()" not in reconcile_body
