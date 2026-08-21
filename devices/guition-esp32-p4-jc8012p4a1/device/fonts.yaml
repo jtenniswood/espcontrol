@@ -103,6 +103,8 @@ font:
     extras:
       - file: "gfonts://Noto+Sans"
         glyphs: !include ../../../common/assets/latin_extended_additional_glyphs.yaml
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
   # Normal sensor values
   - file: "gfonts://Roboto@Light"

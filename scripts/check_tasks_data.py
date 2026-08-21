@@ -197,6 +197,8 @@ TASKS = (
     task("firmware-modals", ("python3", "scripts/check_firmware_modals.py"),
          ("python3", "scripts/check_firmware_modals.py", "--self-test"), profiles=FAST,
          domains=("firmware",), inputs=("common/**", "components/**", "scripts/check_firmware_modals.py", "scripts/generate_device_slots.py"), parallel_safe=True),
+    task("backlight-schedule", ("python3", "scripts/check_backlight_schedule.py"), profiles=FAST,
+         domains=("firmware",), inputs=("common/addon/backlight_schedule.yaml", "scripts/check_backlight_schedule.py"), parallel_safe=True),
     task("firmware-modal-layouts", ("python3", "scripts/check_firmware_modal_layouts.py"),
          ("python3", "scripts/generate_modal_layout_reference.py", "--check"),
          dependencies=("device-manifest-output",), profiles=FAST,
