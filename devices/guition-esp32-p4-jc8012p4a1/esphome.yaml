@@ -24,6 +24,10 @@ wifi:
 # Remote package (pulls full config from GitHub)
 # ---------------------------------------------------------------------------
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1s
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc8012p4a1/packages.yaml
