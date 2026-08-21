@@ -2570,6 +2570,7 @@ def firmware_display_backlight_mode_restore_errors(
 
     setup_guard = "!App.is_setup_complete()"
     mode_guard = "!id(brightness_mode_runtime_ready)"
+    marker_clear = "id(backlight_expected_internal_level_valid) = false;"
     state_read = "id(display_backlight).remote_values.is_on()"
     guard_index = handler_body.find(setup_guard)
     mode_index = handler_body.find(mode_guard)
@@ -2577,6 +2578,7 @@ def firmware_display_backlight_mode_restore_errors(
     if (
         guard_index == -1
         or mode_index == -1
+        or marker_clear not in handler_body
         or state_index == -1
         or guard_index > state_index
         or mode_index > state_index
@@ -4421,7 +4423,10 @@ def run_self_test() -> int:
         "  - id: display_backlight_handle_state\n"
         "    then:\n"
         "      - lambda: |-\n"
-        "          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) return;\n"
+        "          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) {\n"
+        "            id(backlight_expected_internal_level_valid) = false;\n"
+        "            return;\n"
+        "          }\n"
         "          if (!id(display_backlight).remote_values.is_on()) return;\n"
     )
     expect_display_backlight_mode_restore_errors(
@@ -4437,6 +4442,13 @@ def run_self_test() -> int:
     expect_display_backlight_mode_restore_errors(
         "restored backlight state requires brightness mode setup",
         valid_backlight_state_handler.replace(" || !id(brightness_mode_runtime_ready)", ""),
+        ("ignore restored Display Backlight state",),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state clears pending internal marker",
+        valid_backlight_state_handler.replace(
+            "            id(backlight_expected_internal_level_valid) = false;\n", ""
+        ),
         ("ignore restored Display Backlight state",),
     )
     expect_screen_wake_button_errors(
