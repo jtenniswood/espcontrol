@@ -317,7 +317,7 @@ jobs:
               --version "${VERSION}" \
               --manifest "dist/firmware/${{ matrix.slug }}.recovery.manifest.json" \
               --recovery "dist/firmware/${{ matrix.slug }}.recovery.bin" \
-              --c6-firmware "espcontrol-${{ matrix.slug }}/.firmware-deps/esp32-c6/2.12.9/network_adapter_esp32c6.bin" \
+              --c6-firmware "espcontrol-${{ matrix.slug }}/.firmware-deps/esp32-c6/2.12.12/network_adapter_esp32c6.bin" \
               --normal-factory "dist/firmware/${{ matrix.slug }}.factory.bin" \
               --normal-ota "dist/firmware/${{ matrix.slug }}.ota.bin"
           fi
