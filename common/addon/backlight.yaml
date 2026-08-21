@@ -1003,14 +1003,18 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              return !std::isnan(val) && val > 0;
+              return !id(connectivity_setup_display_active) &&
+                     !id(button_order).state.empty() &&
+                     !std::isnan(val) && val > 0;
           then:
             - delay: !lambda |-
                 float val = id(home_screen_timeout).state;
                 if (std::isnan(val) || val <= 0) val = 60;
                 return (int)(val * 1000);
             - lambda: |-
-                if (!alarm_display_takeover_active()) {
+                if (!id(connectivity_setup_display_active) &&
+                    !id(button_order).state.empty() &&
+                    !alarm_display_takeover_active()) {
                   navigation_return_home(id(main_page)->obj);
                 }
 
@@ -1021,7 +1025,9 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              if (std::isnan(val) || val <= 0) return false;
+              if (id(connectivity_setup_display_active) ||
+                  id(button_order).state.empty() ||
+                  std::isnan(val) || val <= 0) return false;
               return lv_disp_get_inactive_time(NULL) >= (uint32_t)(val * 1000);
           then:
             - lambda: |-
