@@ -3284,14 +3284,38 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
         or "restore_mode: RESTORE_DEFAULT_ON" not in text
     ):
         errors.append(f"{rel}: expose a persistent default-on C6 automatic update switch")
-    if (
-        "on_update_available:" not in text
-        or "switch.is_on: c6_auto_update_switch" not in text
-        or not re.search(r"(?ms)on_update_available:.*?update\.perform:\s*\n\s*id:\s*esp32_c6_update", text)
+    automatic_script = re.search(
+        r"(?ms)^script:\s*.*?id:\s*c6_check_and_install_update\b(?P<body>.*?)(?:^update:|\Z)",
+        text,
+    )
+    if not automatic_script:
+        errors.append(f"{rel}: define the C6 automatic check/install script")
+    else:
+        automatic_body = automatic_script.group("body")
+        required_steps = (
+            r"update\.check:\s*\n\s*id:\s*esp32_c6_update",
+            r"switch\.is_on:\s*c6_auto_update_switch",
+            r"update\.is_available:\s*esp32_c6_update",
+            r"update\.perform:\s*\n\s*id:\s*esp32_c6_update",
+        )
+        if any(not re.search(pattern, automatic_body) for pattern in required_steps):
+            errors.append(
+                f"{rel}: check C6 firmware before conditionally installing an available update"
+            )
+    if "on_update_available:" in text:
+        errors.append(f"{rel}: do not rely on ESPHome's unfired C6 update-available trigger")
+    if "update_interval: never" not in text:
+        errors.append(f"{rel}: let EspControl own C6 update scheduling")
+    if not re.search(
+        r"(?ms)on_turn_on:.*?script\.execute:\s*c6_check_and_install_update", text
     ):
-        errors.append(f"{rel}: automatically install available C6 firmware when enabled")
-    if not re.search(r"(?ms)on_turn_on:.*?update\.check:\s*\n\s*id:\s*esp32_c6_update", text):
-        errors.append(f"{rel}: check for C6 firmware immediately when automatic updates are enabled")
+        errors.append(f"{rel}: check C6 firmware immediately when automatic updates are enabled")
+    if not re.search(
+        r"(?ms)^interval:\s*.*?interval:\s*24h.*?startup_delay:\s*1min"
+        r".*?script\.execute:\s*c6_check_and_install_update",
+        text,
+    ):
+        errors.append(f"{rel}: check C6 firmware one minute after boot and every 24 hours")
     latest_match = re.search(
         r"(?ms)id:\s*c6_update_latest_firmware\b(?P<body>.*?)(?:^button:|\Z)",
         text,
