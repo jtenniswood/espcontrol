@@ -11,8 +11,8 @@
 # =============================================================================
 
 external_components:
-  # v2026.7.0 fixes ESPHome 2026.7's portable integer format warnings.
-  - source: github://n-IA-hane/esphome-audio-stack@v2026.7.0
+  # Issue #1701 bisect candidate 1: event-driven AFE processing midpoint.
+  - source: github://n-IA-hane/esphome-audio-stack@81c0cf54b4c4906e8d722720991372112d2d6525
     components: [esp_audio_stack, esp_afe]
 
 esp_afe:
