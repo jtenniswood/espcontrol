@@ -62,11 +62,17 @@ commit to finish. Before merging, require all of the following:
 - GitHub reports it mergeable with no conflicts;
 - no actionable unresolved review threads or change requests remain;
 - all required reviews and required status checks have passed;
+- the user has explicitly confirmed they tested the PR's relevant behavior;
 - branch protection does not report another unmet requirement.
 
 Run any focused local check required by the two nested skills. Do not treat a
 local build as physical device testing, and do not waive a required check
 because a similar local command passed.
+
+User confirmation is mandatory even when automated checks pass or the current
+request says to merge. If the user has not confirmed testing, prepare the PR as
+far as possible, leave it open, and ask them to test it. Never infer physical
+device testing from a build or compile result.
 
 If GitHub is still calculating mergeability, refresh briefly. If checks are
 pending, wait for them rather than enabling auto-merge. If any gate fails, leave
@@ -75,9 +81,12 @@ administrator override or otherwise bypass branch protection.
 
 ### 5. Merge
 
-Merge the identified PR using the repository's established merge method,
-preferring squash when no clear convention is available. Prefer GitHub connector
-tools when available; otherwise use `gh pr merge <number> --squash` (or the
+Refresh the PR once more and record its reviewed head commit SHA. Merge the
+identified PR using the repository's established merge method, preferring squash
+when no clear convention is available. Bind the merge to that exact head SHA so
+it fails safely if another commit arrives. Prefer GitHub connector tools when
+available and pass their expected-head equivalent; otherwise use
+`gh pr merge <number> --squash --match-head-commit <head-sha>` (or the
 established method's equivalent).
 
 Do not delete the source branch or close linked issues as part of this skill.
