@@ -68,7 +68,12 @@ wifi:
     - script.execute: network_status_refresh
     - if:
         condition:
-          lambda: 'return !id(boot_grace_period);'
+          lambda: |-
+            // A factory device has no saved network to reconnect to. Keep its
+            // AP instructions on screen indefinitely instead of entering the
+            // delayed 60-second reconnect flow.
+            return !id(boot_grace_period) &&
+                   wifi::global_wifi_component->has_sta();
         then:
           - script.execute: wifi_reconnect_flow
 
@@ -140,20 +145,24 @@ script:
   - id: wifi_reconnect_flow
     mode: restart
     then:
-      - delay: 60s
       - if:
           condition:
-            not:
-              wifi.connected:
+            lambda: 'return wifi::global_wifi_component->has_sta();'
           then:
-            - script.execute: wifi_show_reconnecting
-            - delay: 30s
+            - delay: 60s
             - if:
                 condition:
                   not:
                     wifi.connected:
                 then:
-                  - script.execute: wifi_show_hotspot_setup
+                  - script.execute: wifi_show_reconnecting
+                  - delay: 30s
+                  - if:
+                      condition:
+                        not:
+                          wifi.connected:
+                      then:
+                        - script.execute: wifi_show_hotspot_setup
 
   - id: navigate_after_api
     mode: restart
