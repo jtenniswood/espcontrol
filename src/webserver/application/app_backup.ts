@@ -50,6 +50,7 @@ import type { BackupContractFeature } from "./backup_contract";
 import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
 import type { PreviewRenderFeature } from "./preview_render";
 import type { ButtonSettingsFeature } from "./button_settings";
+import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
 
 export interface AppBackupControllers {
     readonly layout: ApplicationLayoutState;
@@ -61,7 +62,7 @@ export interface AppBackupControllers {
     readonly gridColsForImportedSettings: (settings: any) => number;
     readonly nativePanelConfig?: NativePanelConfigController;
     readonly codec: ConfigCodecFeature;
-    readonly configPersistence: Pick<ConfigPersistenceFeature, "saveButtonConfig" | "saveSubpageEntity">;
+    readonly configPersistence: Pick<ConfigPersistenceFeature, "subpageEntityKeys">;
     readonly backupContract: Pick<BackupContractFeature, "createBackupConfig" | "normalizeButtonConfig">;
     readonly runtime: UiRuntimeState;
     readonly core: Pick<CoreFeature, "syncPreviewOrientation">;
@@ -69,7 +70,7 @@ export interface AppBackupControllers {
     readonly screensaverTimeout: ScreensaverTimeoutFeature;
     readonly firmwareUpdate: FirmwareUpdateFeature;
     readonly clockBar: ClockBarFeature;
-    readonly entityState: Pick<EntityStateFeature, "entityName">;
+    readonly entityState: Pick<EntityStateFeature, "entityName" | "entityNameForSlot">;
     readonly shell: Pick<ControlsShellFeature, "switchTab">;
     readonly requestApi: ApplicationApiFeature;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput" | "updateTempPreview">;
@@ -94,9 +95,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
     const { syncAlarmDelayAudioUi, syncClockScreensaverControls, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = controllers.settingsHelpers;
     const { render: renderPreview } = controllers.preview;
     const { render: renderButtonSettings } = controllers.buttonSettings;
-    const { saveButtonConfig, saveSubpageEntity } = controllers.configPersistence;
+    const { subpageEntityKeys } = controllers.configPersistence;
     const { createBackupConfig, normalizeButtonConfig: backupNormalizeButtonConfig } = controllers.backupContract;
-    const { entityName } = controllers.entityState;
+    const { entityName, entityNameForSlot } = controllers.entityState;
     const { switchTab } = controllers.shell;
     const requestApi = controllers.requestApi;
     const { syncInput, updateTempPreview } = controllers.statusPreview;
@@ -167,7 +168,13 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         postNumber,
     } = requestApi;
     const { syncPreviewOrientation } = controllers.core;
-    const { serializeButtonConfig, serializeSubpageConfig } = controllers.codec;
+    const {
+        buildSubpageGrid,
+        parseButtonConfig,
+        parseSubpageConfig,
+        serializeButtonConfig,
+        serializeSubpageConfig,
+    } = controllers.codec;
     const els = controllers.runtime.els;
     const { syncUi: syncScreenScheduleUi } = controllers.screenScheduleState;
     const { syncUi: syncScreensaverTimeoutUi } = controllers.screensaverTimeout;
@@ -305,24 +312,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 var importedGridCols: any = plannedImport.importedGridCols;
                 var backupPlan: any = plannedImport.backupPlan;
                 cancelMainGridSave();
-                for (var i: any = 0; i < controllers.layout.numSlots; i++) {
-                    var b: any = backupPlan.buttons[i];
-                    state.buttons[i] = backupNormalizeButtonConfig(b);
-                }
-                state.subpages = {};
-                state.subpageRaw = {};
-                for (var subpageKey in backupPlan.subpages) {
-                    state.subpages[subpageKey] = backupPlan.subpages[subpageKey];
-                }
                 var activeGridCols: any = controllers.layout.gridCols;
                 controllers.layout.gridCols = importedGridCols;
-                var normalizedButtonOrder: any;
-                try {
-                    normalizedButtonOrder = applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
-                }
-                finally {
-                    controllers.layout.gridCols = activeGridCols;
-                }
                 var nativeDocument: PanelConfigDocument = {
                     deviceProfile: controllers.layout.deviceId,
                     buttons: {},
@@ -333,12 +324,12 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     },
                 };
                 for (var nativeButtonIndex: any = 0; nativeButtonIndex < controllers.layout.numSlots; nativeButtonIndex++) {
-                    var nativeButtonValue: any = serializeButtonConfig(state.buttons[nativeButtonIndex]);
+                    var nativeButtonValue: any = serializeButtonConfig(backupNormalizeButtonConfig(backupPlan.buttons[nativeButtonIndex]));
                     if (nativeButtonValue)
                         nativeDocument.buttons[nativeButtonIndex + 1] = nativeButtonValue;
                 }
-                for (var nativeSubpageKey in state.subpages) {
-                    var nativeSubpageValue: any = serializeSubpageConfig(state.subpages[nativeSubpageKey]);
+                for (var nativeSubpageKey in backupPlan.subpages) {
+                    var nativeSubpageValue: any = serializeSubpageConfig(backupPlan.subpages[nativeSubpageKey]);
                     if (nativeSubpageValue)
                         nativeDocument.subpages[Number(nativeSubpageKey)] = nativeSubpageValue;
                 }
@@ -348,13 +339,49 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     nativeDocument = EspControlModel.decodePanelConfig(
                         EspControlModel.decodePanelConfigBackupPayload(backedUpNativeConfig));
                 }
+                nativeDocument.settings.button_order = String(nativeDocument.settings.button_order || backupPlan.button_order || "");
+                nativeDocument.settings.button_on_color = String(nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || "");
+
+                state.buttons = [];
+                for (var canonicalButtonIndex: any = 0; canonicalButtonIndex < controllers.layout.numSlots; canonicalButtonIndex++)
+                    state.buttons[canonicalButtonIndex] = parseButtonConfig(nativeDocument.buttons[canonicalButtonIndex + 1] || "");
+                state.subpages = {};
+                state.subpageRaw = {};
+                for (var canonicalSubpageKey in nativeDocument.subpages) {
+                    var canonicalSubpage: any = parseSubpageConfig(nativeDocument.subpages[Number(canonicalSubpageKey)] || "");
+                    buildSubpageGrid(canonicalSubpage);
+                    state.subpages[canonicalSubpageKey] = canonicalSubpage;
+                }
+                var normalizedButtonOrder: any;
+                try {
+                    normalizedButtonOrder = applyImportedButtonOrder(nativeDocument.settings.button_order, {});
+                    nativeDocument.settings.button_order = normalizedButtonOrder;
+                }
+                finally {
+                    controllers.layout.gridCols = activeGridCols;
+                }
+
+                function readLegacyText(name: string) {
+                    return requestApi.getJsonFirst(requestApi.entityDetailPaths("text", [name], "state"));
+                }
                 function queueLegacyLayoutRestore() {
-                    postText(entityName("button_on_color"), backupPlan.config.button_on_color);
-                    for (var legacyButtonIndex: any = 0; legacyButtonIndex < controllers.layout.numSlots; legacyButtonIndex++)
-                        saveButtonConfig(legacyButtonIndex + 1);
-                    for (var legacySubpageKey in state.subpages)
-                        saveSubpageEntity(Number(legacySubpageKey));
-                    postText(entityName("button_order"), normalizedButtonOrder);
+                    return restoreLegacyLayoutDocument(nativeDocument, {
+                        slotCount: controllers.layout.numSlots,
+                        subpageEntityKeys: subpageEntityKeys(),
+                        entityName: entityName,
+                        entityNameForSlot: entityNameForSlot,
+                        splitSubpageConfigChunks: EspControlModel.splitSubpageConfigChunks,
+                        postText: requestApi.postTextLegacy,
+                        readText: readLegacyText,
+                    }).then(function (result: any) {
+                        if (!result.ok) {
+                            requestApi.postQueueError = true;
+                            throw Object.assign(new Error(legacyRestoreFailureMessage(result)), {
+                                backupMessage: legacyRestoreFailureMessage(result),
+                            });
+                        }
+                        return "legacy-fallback";
+                    });
                 }
                 var nativeRestore: any = controllers.nativePanelConfig
                     ? controllers.nativePanelConfig.writeDocument(nativeDocument)
@@ -363,7 +390,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 if (nativeRestore) {
                     nativeRestoreCompletion = requestApi.postQueue.then(function () { return nativeRestore; }).then(function (result: any) {
                         if (result === "legacy-fallback") {
-                            queueLegacyLayoutRestore();
+                            return queueLegacyLayoutRestore();
                         }
                         else if (result !== "saved") {
                             requestApi.postQueueError = true;
@@ -373,9 +400,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     requestApi.postQueue = nativeRestoreCompletion;
                 }
                 else {
-                    queueLegacyLayoutRestore();
+                    nativeRestoreCompletion = queueLegacyLayoutRestore();
+                    requestApi.postQueue = nativeRestoreCompletion;
                 }
-                state.onColor = backupPlan.config.button_on_color;
+                state.onColor = nativeDocument.settings.button_on_color;
                 if (els.setOnColor && els.setOnColor._syncColor)
                     els.setOnColor._syncColor(state.onColor);
                 if (backupPlan.settings) {

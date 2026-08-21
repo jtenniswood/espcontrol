@@ -611,6 +611,13 @@ script:
     mode: restart
     then:
       - lambda: |-
+          // Restored light state is published during component setup. It is
+          // not a user brightness change and must not switch the persisted
+          // brightness mode to Manual before boot initialization completes.
+          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) {
+            id(backlight_expected_internal_level_valid) = false;
+            return;
+          }
           if (!id(display_backlight).remote_values.is_on()) return;
           float requested = id(display_backlight).remote_values.get_brightness();
           if (std::isnan(requested) || requested <= 0.0f) return;

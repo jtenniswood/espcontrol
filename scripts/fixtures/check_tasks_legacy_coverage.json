@@ -11,7 +11,7 @@
     "product-snapshot", "local-artifacts", "local-esphome", "dev-docs", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
     "preview-features", "memory-monitor", "camera-test-endpoint", "cover-art-contract",
-    "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "firmware-modal-layouts", "firmware-display-tokens",
+    "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "backlight-schedule", "firmware-modal-layouts", "firmware-display-tokens",
     "firmware-ha-bindings", "firmware-card-runtime", "firmware-release", "device-matrix",
     "device-profiles", "release-confidence", "release-changelog", "card-contract-outputs", "card-runtime-coverage",
     "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script"
@@ -21,7 +21,7 @@
     "product-snapshot", "local-artifacts", "local-esphome", "dev-docs", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
     "preview-features", "memory-monitor", "camera-test-endpoint", "cover-art-contract",
-    "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "firmware-modal-layouts", "firmware-display-tokens",
+    "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "backlight-schedule", "firmware-modal-layouts", "firmware-display-tokens",
     "firmware-ha-bindings", "firmware-card-runtime", "firmware-release", "device-matrix",
     "device-profiles", "release-confidence", "release-changelog", "card-contract-outputs", "card-runtime-coverage",
     "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script", "web-browser-smoke"
@@ -31,7 +31,7 @@
     "product-snapshot", "local-artifacts", "local-esphome", "dev-docs", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
     "preview-features", "memory-monitor", "camera-test-endpoint", "cover-art-contract",
-    "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "firmware-modal-layouts", "firmware-display-tokens",
+    "web-smoke", "web-asset-manifest", "types", "saved-config-parity", "saved-config-shadow", "saved-config-production", "firmware-parser", "firmware-modals", "backlight-schedule", "firmware-modal-layouts", "firmware-display-tokens",
     "firmware-ha-bindings", "firmware-card-runtime", "firmware-release", "device-matrix",
     "device-profiles", "release-confidence", "release-changelog", "card-contract-outputs", "card-runtime-coverage",
     "device-slots", "icon-groups", "status-icon-glyphs", "timezones", "public-firmware-script", "web-browser-smoke",
