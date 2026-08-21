@@ -230,7 +230,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aktualizace dokončena";
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojena";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Nastavení WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Nastavení WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorů";
   if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
   if (std::strcmp(text, "No Speakers") == 0) return "Žádné reproduktory";
@@ -449,7 +449,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Opdatering fuldført";
   if (std::strcmp(text, "Update failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi afbrudt";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi-opsætning";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-opsætning";
   if (std::strcmp(text, "Speaker Group") == 0) return "Højttalergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Højttalere";
   if (std::strcmp(text, "No Speakers") == 0) return "Ingen højttalere";
@@ -666,7 +666,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Update abgeschlossen";
   if (std::strcmp(text, "Update failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi getrennt";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi-Einrichtung";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-Einrichtung";
   if (std::strcmp(text, "Speaker Group") == 0) return "Lautsprechergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Lautsprecher";
   if (std::strcmp(text, "No Speakers") == 0) return "Keine Lautsprecher";
@@ -890,7 +890,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Actualización completa";
   if (std::strcmp(text, "Update failed") == 0) return "Error en la actualización";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Configuración WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuración WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de altavoces";
   if (std::strcmp(text, "Speakers") == 0) return "Altavoces";
   if (std::strcmp(text, "No Speakers") == 0) return "Sin altavoces";
@@ -1124,7 +1124,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Päivitys valmis";
   if (std::strcmp(text, "Update failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi katkaistu";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi-asennus";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-asennus";
   if (std::strcmp(text, "Speaker Group") == 0) return "Kaiutinryhmä";
   if (std::strcmp(text, "Speakers") == 0) return "Kaiuttimet";
   if (std::strcmp(text, "No Speakers") == 0) return "Ei kaiuttimia";
@@ -1341,7 +1341,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Mise à jour terminée";
   if (std::strcmp(text, "Update failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi déconnecté";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Configuration WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuration WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Groupe d’enceintes";
   if (std::strcmp(text, "Speakers") == 0) return "Enceintes";
   if (std::strcmp(text, "No Speakers") == 0) return "Aucune enceinte";
@@ -1583,7 +1583,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "העדכון הושלם";
   if (std::strcmp(text, "Update failed") == 0) return "העדכון נכשל";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi מנותק";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "הגדרת WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "הגדרת WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "קבוצת רמקולים";
   if (std::strcmp(text, "Speakers") == 0) return "רמקולים";
   if (std::strcmp(text, "No Speakers") == 0) return "אין רמקולים";
@@ -1817,7 +1817,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Frissítés kész";
   if (std::strcmp(text, "Update failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi megszakadt";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi beállítás";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi beállítás";
   if (std::strcmp(text, "Speaker Group") == 0) return "Hangszórócsoport";
   if (std::strcmp(text, "Speakers") == 0) return "Hangszórók";
   if (std::strcmp(text, "No Speakers") == 0) return "Nincsenek hangszórók";
@@ -2043,7 +2043,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aggiornamento completato";
   if (std::strcmp(text, "Update failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi disconnesso";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Configurazione WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Configurazione WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Gruppo di altoparlanti";
   if (std::strcmp(text, "Speakers") == 0) return "Altoparlanti";
   if (std::strcmp(text, "No Speakers") == 0) return "Nessun altoparlante";
@@ -2265,7 +2265,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Oppdatering fullført";
   if (std::strcmp(text, "Update failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frakoblet";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi-oppsett";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-oppsett";
   if (std::strcmp(text, "Speaker Group") == 0) return "Høyttalergruppe";
   if (std::strcmp(text, "Speakers") == 0) return "Høyttalere";
   if (std::strcmp(text, "No Speakers") == 0) return "Ingen høyttalere";
@@ -2488,7 +2488,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Update voltooid";
   if (std::strcmp(text, "Update failed") == 0) return "Update mislukt";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi verbroken";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi-installatie";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-installatie";
   if (std::strcmp(text, "Speaker Group") == 0) return "Luidsprekergroep";
   if (std::strcmp(text, "Speakers") == 0) return "Luidsprekers";
   if (std::strcmp(text, "No Speakers") == 0) return "Geen luidsprekers";
@@ -2710,7 +2710,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aktualizacja ukończona";
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi rozłączone";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Konfiguracja WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Konfiguracja WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupa głośników";
   if (std::strcmp(text, "Speakers") == 0) return "Głośniki";
   if (std::strcmp(text, "No Speakers") == 0) return "Brak głośników";
@@ -2934,7 +2934,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Atualização concluída";
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Configuração WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuração WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de alto-falantes";
   if (std::strcmp(text, "Speakers") == 0) return "Alto-falantes";
   if (std::strcmp(text, "No Speakers") == 0) return "Nenhum alto-falante";
@@ -3159,7 +3159,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Atualização concluída";
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desligado";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Configuração WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Configuração WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grupo de colunas";
   if (std::strcmp(text, "Speakers") == 0) return "Colunas";
   if (std::strcmp(text, "No Speakers") == 0) return "Sem colunas";
@@ -3393,7 +3393,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Actualizare finalizată";
   if (std::strcmp(text, "Update failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi deconectat";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Configurare WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Configurare WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Grup de difuzoare";
   if (std::strcmp(text, "Speakers") == 0) return "Difuzoare";
   if (std::strcmp(text, "No Speakers") == 0) return "Niciun difuzor";
@@ -3634,7 +3634,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Обновление завершено";
   if (std::strcmp(text, "Update failed") == 0) return "Ошибка обновления";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi отключён";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Настройка WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Настройка WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Группа динамиков";
   if (std::strcmp(text, "Speakers") == 0) return "Динамики";
   if (std::strcmp(text, "No Speakers") == 0) return "Нет динамиков";
@@ -3860,7 +3860,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Aktualizácia dokončená";
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojené";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Nastavenie WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Nastavenie WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina reproduktorov";
   if (std::strcmp(text, "Speakers") == 0) return "Reproduktory";
   if (std::strcmp(text, "No Speakers") == 0) return "Žiadne reproduktory";
@@ -4090,7 +4090,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Posodobitev končana";
   if (std::strcmp(text, "Update failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi prekinjen";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Nastavitev WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Nastavitev WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Skupina zvočnikov";
   if (std::strcmp(text, "Speakers") == 0) return "Zvočniki";
   if (std::strcmp(text, "No Speakers") == 0) return "Ni zvočnikov";
@@ -4312,7 +4312,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Uppdatering slutförd";
   if (std::strcmp(text, "Update failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frånkopplat";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi-installation";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi-installation";
   if (std::strcmp(text, "Speaker Group") == 0) return "Högtalargrupp";
   if (std::strcmp(text, "Speakers") == 0) return "Högtalare";
   if (std::strcmp(text, "No Speakers") == 0) return "Inga högtalare";
@@ -4546,7 +4546,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Güncelleme tamamlandı";
   if (std::strcmp(text, "Update failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi bağlantısı kesildi";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "WiFi Kurulumu";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "WiFi Kurulumu";
   if (std::strcmp(text, "Speaker Group") == 0) return "Hoparlör Grubu";
   if (std::strcmp(text, "Speakers") == 0) return "Hoparlörler";
   if (std::strcmp(text, "No Speakers") == 0) return "Hoparlör Yok";
@@ -4782,7 +4782,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Update complete") == 0) return "Оновлення завершено";
   if (std::strcmp(text, "Update failed") == 0) return "Помилка оновлення";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi від’єднано";
-  if (std::strcmp(text, "Set up your WiFi") == 0) return "Налаштування WiFi";
+  if (std::strcmp(text, "Configure your WiFi") == 0) return "Налаштування WiFi";
   if (std::strcmp(text, "Speaker Group") == 0) return "Група динаміків";
   if (std::strcmp(text, "Speakers") == 0) return "Динаміки";
   if (std::strcmp(text, "No Speakers") == 0) return "Немає динаміків";
@@ -5028,7 +5028,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update failed";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi Disconnected";
   if (std::strcmp(key, "to_configure_your_network_settings") == 0) return "to configure your network settings";
-  if (std::strcmp(key, "wifi_setup") == 0) return "Set up your WiFi";
+  if (std::strcmp(key, "wifi_setup") == 0) return "Configure your WiFi";
   if (std::strcmp(key, "speaker_group") == 0) return "Speaker Group";
   if (std::strcmp(key, "speakers") == 0) return "Speakers";
   if (std::strcmp(key, "no_speakers") == 0) return "No Speakers";

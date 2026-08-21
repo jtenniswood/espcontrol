@@ -91,11 +91,11 @@ esphome:
               - script.wait: display_mode_apply_transition
               - lambda: |-
                   lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
-                  lv_label_set_text(id(loading_status_title), espcontrol_i18n("Set up your WiFi"));
+                  lv_label_set_text(id(loading_status_title), espcontrol_i18n("Configure your WiFi"));
                   std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
                   if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
                   std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
-                                    " '" + hotspot_ssid + "' " +
+                                    " '" + hotspot_ssid + "'\n" +
                                     espcontrol_i18n_key("to_configure_your_network_settings");
                   lv_label_set_text(id(loading_status_label), msg.c_str());
         - if:
