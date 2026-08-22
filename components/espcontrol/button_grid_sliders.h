@@ -173,6 +173,7 @@ struct MediaVolumeCtx {
   espcontrol::media::VolumeControlMode volume_control_mode =
     espcontrol::media::VolumeControlMode::ABSOLUTE;
   bool volume_known = false;
+  bool capabilities_known = false;
   bool available = true;
 };
 
@@ -3251,7 +3252,9 @@ inline void media_volume_refresh_controls(MediaVolumeCtx *ctx) {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
   if (!ctx || ui.active != ctx) return;
   const auto mode = media_volume_effective_control_mode(ctx);
-  const bool arc_interactive = espcontrol::media::volume_arc_interactive(mode);
+  const bool local_volume = static_cast<bool>(ctx->apply_percent);
+  const bool arc_interactive = espcontrol::media::volume_arc_interactive(
+    mode, ctx->volume_known, local_volume || ctx->capabilities_known);
   if (ui.arc) {
     if (arc_interactive) lv_obj_add_flag(ui.arc, LV_OBJ_FLAG_CLICKABLE);
     else lv_obj_clear_flag(ui.arc, LV_OBJ_FLAG_CLICKABLE);
@@ -3265,7 +3268,7 @@ inline void media_volume_refresh_controls(MediaVolumeCtx *ctx) {
   media_volume_set_button_enabled(
     ui.plus_btn,
     espcontrol::media::volume_increase_enabled(
-      mode, ctx->current_pct, media_volume_max_pct(ctx)));
+      mode, ctx->current_pct, media_volume_max_pct(ctx), ctx->volume_known));
 }
 
 inline bool media_volume_has_mic_control(MediaVolumeCtx *ctx) {
@@ -3298,8 +3301,11 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
                                        bool from_user, bool send_action) {
   if (!ctx || !ctx->available) return;
-  const int current_pct = media_clamp_percent(ctx->current_pct);
+  if (!ctx->apply_percent && !ctx->capabilities_known) return;
   const auto mode = media_volume_effective_control_mode(ctx);
+  if (!ctx->volume_known && mode !=
+      espcontrol::media::VolumeControlMode::STEP) return;
+  const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto command = espcontrol::media::volume_command(
     mode, current_pct, pct, media_volume_max_pct(ctx), ctx->volume_known);
   if (!ctx->apply_percent &&
@@ -3433,15 +3439,23 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
     ui.updating_arc = false;
   }
   if (ui.pct_lbl) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", pct);
-    lv_label_set_text(ui.pct_lbl, buf);
+    if (ctx->volume_known) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d", pct);
+      lv_label_set_text(ui.pct_lbl, buf);
+    } else {
+      lv_label_set_text(ui.pct_lbl, "--");
+    }
   }
   if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "");
 }
 
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   if (!ctx || !ctx->available) return;
+  if (!ctx->apply_percent && !ctx->capabilities_known) return;
+  const auto mode = media_volume_effective_control_mode(ctx);
+  if (!ctx->volume_known && mode !=
+      espcontrol::media::VolumeControlMode::STEP) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_VOLUME, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, media_volume_hide_modal);
@@ -3455,8 +3469,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   ui.arc = lv_arc_create(ui.panel);
   lv_arc_set_bg_angles(ui.arc, 135, 45);
-  const int arc_max = media_volume_effective_control_mode(ctx) ==
-      espcontrol::media::VolumeControlMode::ABSOLUTE
+  const int arc_max = mode == espcontrol::media::VolumeControlMode::ABSOLUTE
     ? media_volume_max_pct(ctx) : 100;
   lv_arc_set_range(ui.arc, 0, arc_max);
   lv_arc_set_value(ui.arc, media_clamp_percent(ctx->current_pct));
@@ -3473,8 +3486,11 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
     if (ui.updating_arc || !ui.active) return;
+    const bool local_volume = static_cast<bool>(ui.active->apply_percent);
     if (!espcontrol::media::volume_arc_interactive(
-          media_volume_effective_control_mode(ui.active))) return;
+          media_volume_effective_control_mode(ui.active),
+          ui.active->volume_known,
+          local_volume || ui.active->capabilities_known)) return;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
     media_volume_apply_percent(ui.active, lv_arc_get_value(arc), true, true);
   }, LV_EVENT_VALUE_CHANGED, nullptr);

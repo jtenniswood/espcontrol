@@ -1637,6 +1637,113 @@ def firmware_media_power_binding_errors(firmware_dir: Path, root: Path) -> list[
     return errors
 
 
+def firmware_media_playback_mode_binding_errors(
+    firmware_dir: Path, root: Path
+) -> list[str]:
+    media_path = firmware_dir / "button_grid_media.h"
+    actions_path = firmware_dir / "button_grid_actions.h"
+    capability_path = firmware_dir / "media_playback_modes.h"
+    if not media_path.exists() or not actions_path.exists() or not capability_path.exists():
+        return [
+            "components/espcontrol: keep Shuffle and Repeat capability, subscription, and action helpers"
+        ]
+
+    media_text = media_path.read_text(encoding="utf-8")
+    actions_text = actions_path.read_text(encoding="utf-8")
+    capability_text = capability_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    capability_required = (
+        "SUPPORT_SHUFFLE_SET = 32768",
+        "SUPPORT_REPEAT_SET = 262144",
+        "parse_shuffle_state",
+        "parse_repeat_mode",
+        "next_repeat_mode",
+        "RepeatMode::OFF) return RepeatMode::ALL",
+        "RepeatMode::ALL) return RepeatMode::ONE",
+        "RepeatMode::ONE) return RepeatMode::OFF",
+    )
+    if any(needle not in capability_text for needle in capability_required):
+        errors.append(
+            "components/espcontrol/media_playback_modes.h: preserve Shuffle and Repeat feature detection, parsing, and repeat cycling"
+        )
+
+    action_required = (
+        "send_media_shuffle_action",
+        '"media_player.shuffle_set", "shuffle"',
+        'enabled ? "true" : "false"',
+        "send_media_repeat_action",
+        '"media_player.repeat_set", "repeat", value',
+        "repeat_mode_value(mode)",
+    )
+    if any(needle not in actions_text for needle in action_required):
+        errors.append(
+            "components/espcontrol/button_grid_actions.h: preserve Home Assistant Shuffle and Repeat services and payloads"
+        )
+
+    media_required = (
+        "bool shuffle_subscribed = false;",
+        "bool repeat_subscribed = false;",
+        "bool shuffle_known = false;",
+        "RepeatMode::UNKNOWN",
+        'std::string("shuffle")',
+        'std::string("repeat")',
+        "parse_shuffle_state",
+        "parse_repeat_mode",
+        "media_playback_subscribe_modes(state)",
+        "!ui.active->shuffle_known",
+        "!media_control_shuffle_supported(ui.active)",
+        "!media_control_repeat_supported(ui.active)",
+        "next_repeat_mode",
+    )
+    if any(needle not in media_text for needle in media_required):
+        errors.append(
+            "components/espcontrol/button_grid_media.h: keep capability-gated Shuffle and Repeat subscriptions and actions"
+        )
+
+    subscribe_marker = "inline void media_playback_subscribe_modes"
+    next_marker = "inline void media_playback_subscribe_content"
+    if subscribe_marker not in media_text or next_marker not in media_text:
+        errors.append(
+            "components/espcontrol/button_grid_media.h: keep dedicated Shuffle and Repeat subscriptions"
+        )
+    else:
+        subscribe_body = media_text.split(subscribe_marker, 1)[1].split(next_marker, 1)[0]
+        if "state->controls.empty()" not in subscribe_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: do not subscribe volume-only media entities to Shuffle and Repeat attributes"
+            )
+        if subscribe_body.count("media_playback_generation_valid(state, generation)") < 2:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: generation-guard both playback-mode subscriptions"
+            )
+        if "if (subscription_added) ha_reannounce_state_subscriptions();" not in subscribe_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: re-announce dynamically added playback-mode subscriptions"
+            )
+
+    capabilities_marker = 'std::string("supported_features")'
+    if capabilities_marker in media_text:
+        capabilities_body = media_text.split(capabilities_marker, 1)[1].split(
+            "inline void media_playback_subscribe_modes", 1
+        )[0]
+        if "!state->controls.empty()" not in capabilities_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: gate capability-triggered playback-mode subscriptions on All Controls consumers"
+            )
+
+    match = MEDIA_CONTROL_STATE_PATTERN.search(media_text)
+    if match:
+        always_on = match.group("body").split(
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL", 1
+        )[0]
+        if "media_playback_subscribe_modes(state)" not in always_on:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: keep Shuffle and Repeat subscribed on low-heap displays"
+            )
+    return errors
+
+
 def firmware_cover_art_low_heap_progress_errors(
     firmware_dir: Path, cover_art_path: Path, root: Path
 ) -> list[str]:
@@ -3480,6 +3587,7 @@ def run_scan() -> int:
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_media_group_lifecycle_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_media_power_binding_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_playback_mode_binding_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
@@ -4019,6 +4127,89 @@ def valid_media_power_binding_text() -> tuple[str, str]:
         "}\n"
     )
     return media_text, capability_text
+
+
+def expect_media_playback_mode_binding_errors(
+    name: str,
+    media_text: str,
+    actions_text: str,
+    capability_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(media_text, encoding="utf-8")
+        (firmware_dir / "button_grid_actions.h").write_text(actions_text, encoding="utf-8")
+        (firmware_dir / "media_playback_modes.h").write_text(
+            capability_text, encoding="utf-8"
+        )
+
+        errors = firmware_media_playback_mode_binding_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_playback_mode_binding_text() -> tuple[str, str, str]:
+    media_text = (
+        "struct MediaPlaybackState {\n"
+        "  bool shuffle_subscribed = false;\n"
+        "  bool repeat_subscribed = false;\n"
+        "  bool shuffle_known = false;\n"
+        "  RepeatMode repeat_mode = RepeatMode::UNKNOWN;\n"
+        "};\n"
+        "inline void media_playback_subscribe_modes(MediaPlaybackState *state) {\n"
+        "  if (state->controls.empty()) return;\n"
+        "  bool subscription_added = false;\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"shuffle\"), [state, generation]() {\n"
+        "    if (!media_playback_generation_valid(state, generation)) return;\n"
+        "    parse_shuffle_state(value, enabled);\n"
+        "  });\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"repeat\"), [state, generation]() {\n"
+        "    if (!media_playback_generation_valid(state, generation)) return;\n"
+        "    parse_repeat_mode(value);\n"
+        "  });\n"
+        "  if (subscription_added) ha_reannounce_state_subscriptions();\n"
+        "}\n"
+        "inline void media_playback_subscribe_content(MediaPlaybackState *state) {}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  media_playback_subscribe_modes(state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n"
+        "if (!ui.active->shuffle_known || !media_control_shuffle_supported(ui.active)) return;\n"
+        "if (!media_control_repeat_supported(ui.active)) return;\n"
+        "next_repeat_mode(ui.active->repeat_mode);\n"
+        "ha_subscribe_attribute(entity_id, std::string(\"supported_features\"), [state]() {\n"
+        "  if (!state->controls.empty()) media_playback_subscribe_modes(state);\n"
+        "});\n"
+    )
+    actions_text = (
+        "inline void send_media_shuffle_action(bool enabled) {\n"
+        "  send_media_player_action(entity_id, \"media_player.shuffle_set\", \"shuffle\",\n"
+        "    enabled ? \"true\" : \"false\");\n"
+        "}\n"
+        "inline void send_media_repeat_action(RepeatMode mode) {\n"
+        "  const char *value = repeat_mode_value(mode);\n"
+        "  send_media_player_action(entity_id, \"media_player.repeat_set\", \"repeat\", value);\n"
+        "}\n"
+    )
+    capability_text = (
+        "constexpr int SUPPORT_SHUFFLE_SET = 32768;\n"
+        "constexpr int SUPPORT_REPEAT_SET = 262144;\n"
+        "inline bool parse_shuffle_state() {}\n"
+        "inline RepeatMode parse_repeat_mode() {}\n"
+        "inline RepeatMode next_repeat_mode(RepeatMode mode) {\n"
+        "  if (mode == RepeatMode::OFF) return RepeatMode::ALL;\n"
+        "  if (mode == RepeatMode::ALL) return RepeatMode::ONE;\n"
+        "  if (mode == RepeatMode::ONE) return RepeatMode::OFF;\n"
+        "}\n"
+    )
+    return media_text, actions_text, capability_text
 
 
 def expect_cover_art_low_heap_progress_errors(
@@ -6135,6 +6326,61 @@ def run_self_test() -> int:
         ),
         valid_media_power_capability,
         ("low-heap displays",),
+    )
+    valid_modes, valid_mode_actions, valid_mode_capability = (
+        valid_media_playback_mode_binding_text()
+    )
+    expect_media_playback_mode_binding_errors(
+        "media Shuffle and Repeat bindings",
+        valid_modes,
+        valid_mode_actions,
+        valid_mode_capability,
+        (),
+    )
+    expect_media_playback_mode_binding_errors(
+        "low heap media playback-mode subscription removed",
+        valid_modes.replace(
+            "  media_playback_subscribe_modes(state);\n"
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n",
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+            "  media_playback_subscribe_modes(state);\n",
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("low-heap displays",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "repeat service payload removed",
+        valid_modes,
+        valid_mode_actions.replace('"media_player.repeat_set"', '"media_player.repeat"'),
+        valid_mode_capability,
+        ("services and payloads",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "volume-only playback-mode guard removed",
+        valid_modes.replace("  if (state->controls.empty()) return;\n", ""),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("volume-only media entities",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "capability callback All Controls guard removed",
+        valid_modes.replace(
+            "  if (!state->controls.empty()) media_playback_subscribe_modes(state);\n",
+            "  media_playback_subscribe_modes(state);\n",
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("capability-triggered",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "playback-mode subscription re-announcement removed",
+        valid_modes.replace(
+            "  if (subscription_added) ha_reannounce_state_subscriptions();\n", ""
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("re-announce dynamically added",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",

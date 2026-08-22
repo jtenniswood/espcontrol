@@ -32,6 +32,14 @@ int main() {
   const auto capped = volume_command(VolumeControlMode::ABSOLUTE, 30, 80, 40);
   assert(capped.kind == VolumeCommandKind::SET_ABSOLUTE);
   assert(capped.value == 40);
+  assert(volume_command(VolumeControlMode::ABSOLUTE, 48, 17, 100, false).kind ==
+         VolumeCommandKind::NONE);
+  assert(volume_command(VolumeControlMode::ABSOLUTE, 17, 17, 100).kind ==
+         VolumeCommandKind::NONE);
+  const auto later_update =
+    volume_command(VolumeControlMode::ABSOLUTE, 17, 48, 100);
+  assert(later_update.kind == VolumeCommandKind::SET_ABSOLUTE);
+  assert(later_update.value == 48);
 
   assert(volume_command(VolumeControlMode::STEP, 30, 31, 100).kind ==
          VolumeCommandKind::STEP_UP);
@@ -51,6 +59,8 @@ int main() {
          VolumeCommandKind::NONE);
 
   assert(volume_arc_interactive(VolumeControlMode::ABSOLUTE));
+  assert(!volume_arc_interactive(VolumeControlMode::ABSOLUTE, false, true));
+  assert(!volume_arc_interactive(VolumeControlMode::ABSOLUTE, true, false));
   assert(!volume_arc_interactive(VolumeControlMode::STEP));
   assert(!volume_arc_interactive(VolumeControlMode::READ_ONLY));
   assert(volume_display_value(VolumeControlMode::ABSOLUTE, 65, 40) == 40);
@@ -61,6 +71,7 @@ int main() {
   assert(!volume_decrease_enabled(VolumeControlMode::ABSOLUTE, 0, false));
   assert(!volume_decrease_enabled(VolumeControlMode::READ_ONLY, 30));
   assert(volume_increase_enabled(VolumeControlMode::STEP, 39, 40));
+  assert(!volume_increase_enabled(VolumeControlMode::ABSOLUTE, 0, 100, false));
   assert(!volume_increase_enabled(VolumeControlMode::STEP, 40, 40));
 
   return 0;
