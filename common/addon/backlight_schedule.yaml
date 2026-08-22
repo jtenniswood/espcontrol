@@ -792,7 +792,9 @@ script:
           if (!id(espcontrol_app).display().target_mode_is(
                 espcontrol::DisplayMode::ACTIVE) &&
               !id(espcontrol_app).display().target_mode_is(
-                espcontrol::DisplayMode::COVER_ART)) return;
+                espcontrol::DisplayMode::COVER_ART) &&
+              !id(espcontrol_app).display().target_mode_is(
+                espcontrol::DisplayMode::CAMERA)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (id(espcontrol_app).display().target_source_is(
                 espcontrol::DisplayRequestSource::SCREEN_SCHEDULE)) {
