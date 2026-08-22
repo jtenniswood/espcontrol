@@ -74,7 +74,6 @@ struct ImageCardCtx {
   bool media_artwork = false;
   bool media_artwork_suppressed = false;
   bool media_artwork_refresh_forced = false;
-  bool media_artwork_remote_refresh_pending = false;
   lv_obj_t *media_overlay = nullptr;
   bool media_overlay_artwork_tint = false;
   std::function<void()> media_artwork_applied;
@@ -531,7 +530,6 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->media_artwork_retry_mask = 0;
   ctx->media_artwork_timeout_retries = 0;
   ctx->media_artwork_refresh_forced = false;
-  ctx->media_artwork_remote_refresh_pending = false;
   if (ctx->media_artwork_trigger_timer) {
     lv_timer_del(ctx->media_artwork_trigger_timer);
     ctx->media_artwork_trigger_timer = nullptr;
@@ -885,7 +883,6 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].media_artwork = false;
     contexts[i].media_artwork_suppressed = false;
     contexts[i].media_artwork_refresh_forced = false;
-    contexts[i].media_artwork_remote_refresh_pending = false;
     contexts[i].media_overlay = nullptr;
     contexts[i].media_overlay_artwork_tint = false;
     contexts[i].media_artwork_applied = nullptr;
@@ -2136,7 +2133,7 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
   const bool batch_complete = ctx->media_artwork_refresh.complete();
   const bool refresh_forced = ctx->media_artwork_refresh.forced;
   const bool prefer_refreshed_remote =
-    ctx->media_artwork_remote_refresh_pending;
+    ctx->media_artwork_sources.remote_changed_in_refresh();
   const espcontrol::artwork::SourceSelection selection =
       ctx->media_artwork_sources.select(ctx->source_url, prefer_refreshed_remote);
   const std::string &chosen = selection.primary;
@@ -2169,7 +2166,7 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
   }
   if (batch_complete) ctx->media_artwork_timeout_retries = 0;
   ctx->media_artwork_refresh.finish();
-  ctx->media_artwork_remote_refresh_pending = false;
+  ctx->media_artwork_sources.finish_refresh();
   if (espcontrol::artwork::artwork_pending_refresh_needs_reschedule(
         ctx->media_artwork_trigger.pending,
         ctx->media_artwork_trigger_timer != nullptr)) {
@@ -2250,9 +2247,6 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
   bool source_changed = ctx->media_artwork_sources.update(
       local, url,
       espcontrol::artwork::RemoteUpdatePolicy::PRESERVE_LOCAL);
-  if (!local && !url.empty() && url != ctx->source_url) {
-    ctx->media_artwork_remote_refresh_pending = true;
-  }
   if (local) {
     if (!url.empty() && url != ctx->source_url) ctx->startup_download_errors = 0;
     if (!url.empty()) ctx->pending_fallback_picture.clear();
@@ -2293,12 +2287,10 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
     ctx->media_artwork_refresh_forced,
     force_refresh);
   ctx->media_artwork_refresh_forced = false;
-  ctx->media_artwork_remote_refresh_pending = false;
-  // A retry requests only the source that failed to queue. Keep the successful
-  // companion as a fallback so an empty retry result cannot clear valid art.
-  if (request_mask == espcontrol::artwork::ARTWORK_SOURCE_BOTH) {
-    ctx->media_artwork_sources.clear();
-  }
+  // Preserve the last paired candidates so an unchanged remote favicon is not
+  // mistaken for new artwork merely because the selected local proxy differs.
+  // Empty responses still clear each candidate explicitly.
+  ctx->media_artwork_sources.begin_refresh();
   // A response-window timer belongs to the batch that created it. A partial
   // queue retry can begin a new batch before that timer expires, so cancel it
   // here rather than allowing the old timeout to settle the new generation.
@@ -2474,7 +2466,6 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   ctx->media_artwork = false;
   ctx->media_artwork_suppressed = false;
   ctx->media_artwork_refresh_forced = false;
-  ctx->media_artwork_remote_refresh_pending = false;
   ctx->media_artwork_refresh.reset();
   ctx->media_overlay = nullptr;
   ctx->pending_fallback_picture.clear();

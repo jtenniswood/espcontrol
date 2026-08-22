@@ -23,6 +23,10 @@
 #include "esp_http_client.h"
 #endif
 
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+#include "s3_artwork_transfer.h"
+#endif
+
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -792,6 +796,16 @@ void ArtworkImage::start_update_() {
   }
 #endif
 
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (this->start_s3_transfer_(headers)) {
+    ESP_LOGD(TAG, "Queued artwork on guarded ESP32-S3 transfer task");
+    return;
+  }
+  ESP_LOGE(TAG, "Guarded ESP32-S3 transfer task unavailable; refusing synchronous artwork request");
+  this->fail_download_();
+  return;
+#endif
+
   if (this->should_use_local_idf_url_(this->url_)) {
     this->downloader_ = this->get_local_idf_(this->url_, headers);
   } else {
@@ -1001,6 +1015,10 @@ size_t ArtworkImage::get_sane_content_length_() const {
 
 void ArtworkImage::loop() {
   this->cleanup_retired_buffers_(false);
+  if (this->s3_transfer_pending_) {
+    this->consume_s3_transfer_result_();
+    return;
+  }
   if (this->p4_pipeline_pending_) {
     this->consume_p4_pipeline_result_();
     return;
@@ -1164,6 +1182,138 @@ void ArtworkImage::loop() {
     this->fail_download_();
     return;
   }
+}
+
+bool ArtworkImage::start_s3_transfer_(
+    const std::vector<http_request::Header> &headers) {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  this->download_buffer_.reset();
+  ++this->s3_transfer_generation_;
+  const int timeout_ms = this->parent_ ? this->parent_->get_timeout() : 10000;
+  if (!S3ArtworkTransferService::instance().submit(
+          this, this->s3_transfer_generation_,
+          static_cast<uint8_t>(this->request_priority_), this->url_, headers,
+          this->allow_insecure_local_urls_, timeout_ms)) {
+    return false;
+  }
+  this->s3_transfer_pending_ = true;
+  this->start_time_ = ::time(nullptr);
+  this->last_data_millis_ = millis();
+  this->enable_loop();
+  return true;
+#else
+  (void) headers;
+  return false;
+#endif
+}
+
+bool ArtworkImage::consume_s3_transfer_result_() {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  bool allocation_failed = false;
+  S3ArtworkTransferResult *result =
+      S3ArtworkTransferService::instance().take(
+          this, this->s3_transfer_generation_, &allocation_failed);
+  if (allocation_failed) {
+    this->s3_transfer_pending_ = false;
+    ESP_LOGE(TAG, "ESP32-S3 artwork transfer could not allocate its result");
+    this->log_state_("s3-transfer-allocation-failed");
+    this->fail_download_();
+    return true;
+  }
+  if (!result) return false;
+
+  this->s3_transfer_pending_ = false;
+  this->last_http_status_ = result->status;
+  this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
+  this->request_started_ms_ = result->request_started_ms;
+  this->response_ready_ms_ = result->response_ready_ms;
+  this->first_byte_ms_ = result->first_byte_ms;
+  this->transfer_complete_ms_ = result->transfer_complete_ms;
+  this->completed_transfer_bytes_ = result->size;
+
+  const bool status_ok = p4_pipeline_http_status_is_success(
+      result->status, this->last_error_was_ha_media_proxy_);
+  const bool publishable = background_transfer_result_can_publish(
+      this->s3_transfer_generation_, result->generation, false,
+      result->error == ESP_OK, result->error != ESP_ERR_NO_MEM, status_ok,
+      result->status == HTTP_CODE_NOT_MODIFIED, result->size,
+      this->max_download_buffer_size_);
+  if (!publishable) {
+    ESP_LOGE(TAG,
+             "ESP32-S3 artwork transfer failed: error=%s status=%d bytes=%zu source=%s url=%s",
+             esp_err_to_name(result->error), result->status, result->size,
+             classify_artwork_url_for_log(this->url_),
+             sanitize_artwork_url_for_log(this->url_).c_str());
+    delete result;
+    this->log_state_("s3-transfer-failed");
+    this->fail_download_();
+    return true;
+  }
+  if (result->status <= 0 && this->last_error_was_ha_media_proxy_) {
+    ESP_LOGW(TAG,
+             "Home Assistant media proxy returned an unknown HTTP status; trying artwork bytes anyway");
+    this->last_http_status_ = HTTP_CODE_OK;
+  }
+  if (result->status == HTTP_CODE_NOT_MODIFIED) {
+    delete result;
+    this->log_timing_("not-modified", 0);
+    if (this->has_newer_pending_update_()) {
+      this->complete_service_request_();
+      return true;
+    }
+    this->download_finished_callback_.call(true);
+    this->complete_service_request_();
+    return true;
+  }
+  if (result->size < 12 || result->size > this->max_download_buffer_size_) {
+    ESP_LOGE(TAG, "ESP32-S3 artwork transfer returned an invalid image size: %zu",
+             result->size);
+    delete result;
+    this->fail_download_();
+    return true;
+  }
+
+  const size_t result_size = result->size;
+  uint8_t *result_data = result->release_data();
+  if (!this->download_buffer_.adopt(result_data, result_size)) {
+    heap_caps_free(result_data);
+    ESP_LOGE(TAG, "ESP32-S3 artwork transfer returned an invalid transfer buffer");
+    delete result;
+    this->fail_download_();
+    return true;
+  }
+  this->peak_download_buffer_size_ =
+      std::max(this->peak_download_buffer_size_, result_size);
+  delete result;
+
+  const ImageFormat resolved = this->detect_format_();
+  if (resolved == ImageFormat::AUTO ||
+      !this->create_decoder_(resolved, this->completed_transfer_bytes_)) {
+    ESP_LOGE(TAG,
+             "ESP32-S3 artwork transfer could not create a decoder for the response");
+    this->fail_download_();
+    return true;
+  }
+  this->log_state_("s3-transfer-decoder-ready");
+  if (!this->decode_buffered_data_()) {
+    this->fail_download_();
+    return true;
+  }
+  if (this->decoder_->is_finished()) this->finish_download_();
+  return true;
+#else
+  return false;
+#endif
+}
+
+void ArtworkImage::cancel_s3_transfer_() {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (this->s3_transfer_pending_) {
+    S3ArtworkTransferService::instance().cancel(this);
+  }
+#endif
+  this->s3_transfer_pending_ = false;
+  ++this->s3_transfer_generation_;
 }
 
 bool ArtworkImage::start_p4_pipeline_(std::vector<http_request::Header> &headers) {
@@ -1755,7 +1905,9 @@ void ArtworkImage::fail_download_() {
     this->complete_service_request_();
     return;
   }
-  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read()
+                                              : this->completed_transfer_bytes_;
+  this->log_state_("request-failed");
   this->log_timing_("error", bytes_read);
   this->end_connection_();
   this->download_error_callback_.call();
@@ -1801,24 +1953,34 @@ void ArtworkImage::queue_pending_update_(const std::string &url) {
 void ArtworkImage::log_state_(const char *stage) {
   size_t heap_free = 0;
   size_t heap_largest = this->allocator_.get_max_free_block_size();
+  size_t internal_free = 0;
+  size_t internal_largest = 0;
+  size_t psram_free = 0;
+  size_t psram_largest = 0;
 #ifdef USE_ESP32
   heap_free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
   heap_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  internal_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  internal_largest = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  psram_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  psram_largest = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 #endif
   size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   size_t content_length = this->downloader_ ? this->downloader_->content_length : 0;
   size_t retired_bytes = this->retired_buffer_bytes_();
   ESP_LOGD(TAG,
-           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu pending=%s",
+           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu internal_free=%zu internal_largest=%zu psram_free=%zu psram_largest=%zu pending=%s",
            stage, this->url_.size(), bytes_read, content_length, this->download_buffer_.unread(),
            this->download_buffer_.size(), this->buffer_width_, this->buffer_height_, this->buffer_content_width_,
            this->buffer_content_height_, this->buffer_offset_x_, this->buffer_offset_y_, this->decode_buffer_width_,
            this->decode_buffer_height_, this->decode_content_width_, this->decode_content_height_,
            this->decode_offset_x_, this->decode_offset_y_, this->retired_buffers_.size(), retired_bytes, heap_free,
-           heap_largest, this->update_pending_ ? "yes" : "no");
+           heap_largest, internal_free, internal_largest, psram_free,
+           psram_largest, this->update_pending_ ? "yes" : "no");
 }
 
 void ArtworkImage::end_connection_() {
+  this->cancel_s3_transfer_();
   this->cancel_p4_pipeline_();
   if (this->downloader_) {
     this->downloader_->end();

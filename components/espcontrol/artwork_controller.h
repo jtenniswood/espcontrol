@@ -228,6 +228,7 @@ constexpr bool artwork_selection_needs_download(bool refresh_forced,
 struct SourceCandidates {
   std::string remote_url;
   std::string local_url;
+  bool remote_changed{false};
 
   bool empty() const { return remote_url.empty() && local_url.empty(); }
 
@@ -237,15 +238,22 @@ struct SourceCandidates {
 
   bool update(
       bool local, const std::string &url,
-      RemoteUpdatePolicy remote_policy = RemoteUpdatePolicy::START_NEW_GENERATION) {
+      RemoteUpdatePolicy remote_policy = RemoteUpdatePolicy::PRESERVE_LOCAL) {
     std::string &candidate = local ? local_url : remote_url;
     if (candidate == url) return false;
     candidate = url;
+    if (!local) this->remote_changed = true;
     if (!local && remote_policy == RemoteUpdatePolicy::START_NEW_GENERATION) {
       local_url.clear();
     }
     return true;
   }
+
+  void begin_refresh() { this->remote_changed = false; }
+
+  void finish_refresh() { this->remote_changed = false; }
+
+  bool remote_changed_in_refresh() const { return this->remote_changed; }
 
   SourceSelection select(const std::string &current_url,
                          bool refresh_needed) const {
@@ -256,9 +264,12 @@ struct SourceCandidates {
       selection.fallback = remote_url;
     }
 
-    // Local proxy URLs can remain unchanged while Home Assistant publishes a
-    // refreshed remote URL for a new track. Prefer that fresh URL immediately.
-    if (refresh_needed && !remote_url.empty() && remote_url != current_url) {
+    // A local proxy URL can remain unchanged across tracks. Promote the remote
+    // candidate only when Home Assistant actually changed that attribute in
+    // this paired refresh; merely differing from the selected local proxy does
+    // not make a stable station favicon fresh artwork.
+    if (refresh_needed && this->remote_changed && !remote_url.empty() &&
+        remote_url != current_url) {
       selection.fallback = selection.primary;
       selection.primary = remote_url;
       selection.preferred_refreshed_remote = true;
@@ -269,6 +280,7 @@ struct SourceCandidates {
   void clear() {
     remote_url.clear();
     local_url.clear();
+    remote_changed = false;
   }
 };
 
