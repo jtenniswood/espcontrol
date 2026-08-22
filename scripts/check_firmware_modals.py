@@ -752,8 +752,13 @@ def firmware_media_modal_playback_mode_errors(root: Path) -> list[str]:
         "media_transport_layout(",
         "lv_obj_t *buttons[5]",
         "ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn",
-        "transport_layout.mode_size",
-        "transport_layout.primary_size",
+        "transport_layout.button_size",
+        "transport_layout.modes_on_second_row",
+        "control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw",
+        "lv_obj_t *transport_buttons[3]",
+        "lv_obj_t *mode_buttons[2]",
+        "transport_layout.second_row_start_x",
+        "transport_layout.row_gap",
     )
     if any(needle not in text for needle in required):
         return [
@@ -1470,11 +1475,17 @@ def valid_media_modal_playback_mode_text() -> str:
         "  media_control_refresh_playback_modes(ctx);\n"
         "}\n"
         "inline void media_control_layout_modal() {\n"
-        "  media_transport_layout(content_w, short_side, show_shuffle, show_repeat);\n"
+        "  media_transport_layout(content_w, short_side, show_shuffle, show_repeat,\n"
+        "    control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);\n"
         "  lv_obj_t *buttons[5] = {\n"
         "    ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn};\n"
-        "  int small = transport_layout.mode_size;\n"
-        "  int large = transport_layout.primary_size;\n"
+        "  int size = transport_layout.button_size;\n"
+        "  if (transport_layout.modes_on_second_row) {\n"
+        "    lv_obj_t *transport_buttons[3] = {};\n"
+        "    lv_obj_t *mode_buttons[2] = {};\n"
+        "    int x = transport_layout.second_row_start_x;\n"
+        "    int y = transport_layout.row_gap;\n"
+        "  }\n"
         "}\n"
     )
 

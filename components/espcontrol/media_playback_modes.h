@@ -82,11 +82,16 @@ inline const char *repeat_mode_value(RepeatMode mode) {
 }
 
 struct MediaTransportLayout {
-  int primary_size = 0;
-  int mode_size = 0;
+  int button_size = 0;
   int gap = 0;
+  int row_gap = 0;
   int total_width = 0;
-  int start_x = 0;
+  int total_height = 0;
+  int first_row_width = 0;
+  int first_row_start_x = 0;
+  int second_row_width = 0;
+  int second_row_start_x = 0;
+  bool modes_on_second_row = false;
 };
 
 inline int media_transport_scaled_px(int px, int short_side) {
@@ -98,32 +103,49 @@ inline int media_transport_scaled_px(int px, int short_side) {
 inline MediaTransportLayout media_transport_layout(int content_width,
                                                     int short_side,
                                                     bool show_shuffle,
-                                                    bool show_repeat) {
+                                                    bool show_repeat,
+                                                    bool stack_modes = false) {
   MediaTransportLayout layout;
   if (content_width < 1) return layout;
   const int mode_count = (show_shuffle ? 1 : 0) + (show_repeat ? 1 : 0);
-  const int button_count = 3 + mode_count;
+  layout.modes_on_second_row = stack_modes && mode_count > 0;
+  const int first_row_count = layout.modes_on_second_row ? 3 : 3 + mode_count;
+  const int second_row_count = layout.modes_on_second_row ? mode_count : 0;
+  const int widest_row_count = first_row_count > second_row_count
+    ? first_row_count : second_row_count;
   layout.gap = media_transport_scaled_px(mode_count == 0 ? 16 : 12, short_side);
   const int minimum_gap = mode_count == 0 ? 12 : 8;
   if (layout.gap < minimum_gap) layout.gap = minimum_gap;
-  layout.primary_size = media_transport_scaled_px(88, short_side);
-  const int minimum_primary = media_transport_scaled_px(74, short_side);
-  if (layout.primary_size < minimum_primary) layout.primary_size = minimum_primary;
-  layout.mode_size = layout.primary_size * 3 / 4;
+  layout.row_gap = media_transport_scaled_px(12, short_side);
+  if (layout.row_gap < 8) layout.row_gap = 8;
+  layout.button_size = media_transport_scaled_px(88, short_side);
+  const int minimum_button = media_transport_scaled_px(74, short_side);
+  if (layout.button_size < minimum_button) layout.button_size = minimum_button;
 
-  const int gaps_width = layout.gap * (button_count - 1);
-  layout.total_width = layout.primary_size * 3 +
-                       layout.mode_size * mode_count + gaps_width;
-  if (layout.total_width > content_width) {
-    const int available = content_width - gaps_width;
+  const int widest_gaps_width = layout.gap * (widest_row_count - 1);
+  const int widest_row_width = layout.button_size * widest_row_count +
+                               widest_gaps_width;
+  if (widest_row_width > content_width) {
+    const int available = content_width - widest_gaps_width;
     if (available <= 0) return MediaTransportLayout();
-    layout.primary_size = available * 4 / (12 + mode_count * 3);
-    layout.mode_size = layout.primary_size * 3 / 4;
-    layout.total_width = layout.primary_size * 3 +
-                         layout.mode_size * mode_count + gaps_width;
+    layout.button_size = available / widest_row_count;
   }
-  layout.start_x = (content_width - layout.total_width) / 2;
-  if (layout.start_x < 0) layout.start_x = 0;
+  layout.first_row_width = layout.button_size * first_row_count +
+                           layout.gap * (first_row_count - 1);
+  layout.first_row_start_x = (content_width - layout.first_row_width) / 2;
+  if (layout.first_row_start_x < 0) layout.first_row_start_x = 0;
+  if (second_row_count > 0) {
+    layout.second_row_width = layout.button_size * second_row_count +
+                              layout.gap * (second_row_count - 1);
+    layout.second_row_start_x = (content_width - layout.second_row_width) / 2;
+    if (layout.second_row_start_x < 0) layout.second_row_start_x = 0;
+  }
+  layout.total_width = layout.first_row_width > layout.second_row_width
+    ? layout.first_row_width : layout.second_row_width;
+  layout.total_height = layout.button_size;
+  if (layout.modes_on_second_row) {
+    layout.total_height += layout.row_gap + layout.button_size;
+  }
   return layout;
 }
 
