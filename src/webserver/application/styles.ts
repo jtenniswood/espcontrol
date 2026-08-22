@@ -124,6 +124,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-media-cover-tint{position:absolute;inset:-2px;background:rgba(49,49,49,.6);z-index:0}" +
         ".sp-media-cover-details-title{margin:var(--btn-pad) var(--btn-pad) 0}" +
         ".sp-btn-label-row.sp-media-cover-details-row{width:auto;margin:0 var(--btn-pad) var(--btn-pad)}" +
+        ".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}" +
         ".sp-btn-double{grid-row:span 2}" +
         ".sp-btn-double .sp-btn-label,.sp-btn-double .sp-btn-label-row .sp-btn-label{max-height:var(--btn-label-max-height-dbl)}" +
         ".sp-btn-double .sp-media-now-title{-webkit-line-clamp:2}" +
