@@ -9,6 +9,7 @@ struct ImageCardCtx;
 inline void image_card_set_media_artwork_suppressed(ImageCardCtx *ctx,
                                                      bool suppressed);
 inline void image_card_refresh_media_artwork_on_metadata_change(ImageCardCtx *ctx);
+inline void image_card_clear_media_artwork(ImageCardCtx *ctx);
 
 struct CardPadding {
   lv_coord_t left = 0;
