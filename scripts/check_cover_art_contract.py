@@ -229,6 +229,7 @@ for required in (
     ".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}",
     ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}",
     ".sp-btn-wide .sp-media-cover-details-title,.sp-btn-extra-wide .sp-media-cover-details-title{-webkit-line-clamp:2}",
+    ".sp-btn-extra-large .sp-media-cover-details-title{-webkit-line-clamp:5}",
 ):
     if required not in web_styles:
         raise SystemExit(f"Large cover art web font-selection contract missing: {required}")
@@ -410,8 +411,9 @@ for required in (
     "inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,",
     "return media_cover_art_uses_compact_large_fonts(row_span, col_span)",
     "ctx->artist_gap = media_cover_art_artist_gap(",
-    "inline bool media_cover_art_limits_title_to_two_lines(int row_span,",
-    "return row_span == 1 || (row_span == 2 && col_span == 2);",
+    "inline int media_cover_art_title_line_limit(int row_span, int col_span)",
+    "if (row_span == 3 && col_span == 3) return 5;",
+    "if (row_span == 1 || (row_span == 2 && col_span == 2)) return 2;",
     "inline void media_position_now_playing_artist(MediaNowPlayingCtx *ctx)",
     "LV_ALIGN_OUT_BOTTOM_LEFT, 0, ctx->artist_gap",
     "ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(",
@@ -433,7 +435,7 @@ for required in (
     "lv_obj_t *artist_lbl = lv_label_create(s.btn);",
     "ctx->artist_lbl = artist_lbl;",
     "lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);",
-    "media_cover_art_limits_title_to_two_lines(row_span, col_span)",
+    "media_cover_art_title_line_limit(row_span, col_span)",
 ):
     if required not in cover_details:
         raise SystemExit(f"Cover art track-details layout contract missing: {required}")
@@ -461,8 +463,8 @@ for required in (
         raise SystemExit(f"2x2 cover art must reuse All Controls fonts: {required}")
 
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
-if "media_cover_art_limits_title_to_two_lines(row_span, col_span)" not in grid:
-    raise SystemExit("Cover art layout refresh must keep track titles limited to two lines")
+if "media_cover_art_title_line_limit(row_span, col_span)" not in grid:
+    raise SystemExit("Cover art layout refresh must preserve the per-size track-title limit")
 if "ctx->artist_gap = media_cover_art_artist_gap(" not in grid:
     raise SystemExit("Cover art layout refresh must preserve the size-aware artist gap")
 for required in (
@@ -477,10 +479,11 @@ if "if (ha_api_state_connected()) {" not in grid or "refresh_image_cards();" not
 for required in (
     "lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);",
     "lv_obj_set_style_max_height(",
-    "title_lbl, font->line_height * 2 + TITLE_LINE_SPACE, LV_PART_MAIN);",
+    "font->line_height * title_line_limit +",
+    "TITLE_LINE_SPACE * (title_line_limit - 1)",
 ):
     if required not in media:
-        raise SystemExit(f"Two-line cover art title must flex to its content height: {required}")
+        raise SystemExit(f"Limited cover art titles must flex to their configured line count: {required}")
 media_art_start = grid.find("inline void subscribe_media_cover_art(")
 media_art_end = grid.find("\ninline void setup_card_visual(", media_art_start)
 if media_art_start < 0 or media_art_end < 0:
