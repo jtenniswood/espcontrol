@@ -1,7 +1,6 @@
 {
   "deviceProfiles": [
     "guition-esp32-p4-jc1060p470",
-    "guition-esp32-p4-jc1060p470-v2",
     "guition-esp32-p4-jc4880p443",
     "guition-esp32-p4-jc8012p4a1",
     "guition-esp32-p4-jc8012p4a1-v2",
@@ -108,5 +107,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2557793, "gzip": 1079318, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2557529, "gzip": 1083724, "gzipTolerance": 9216 }
 }
