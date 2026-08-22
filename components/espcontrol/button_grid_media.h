@@ -1653,11 +1653,13 @@ inline void media_playback_subscribe_modes(MediaPlaybackState *state) {
       !state->supported_features_known) return;
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
+  bool subscription_added = false;
 
   if (espcontrol::media::shuffle_supported(
         state->supported_features_known, state->supported_features) &&
       !state->shuffle_subscribed) {
     state->shuffle_subscribed = true;
+    subscription_added = true;
     ha_subscribe_attribute(
       entity_id, std::string("shuffle"),
       std::function<void(esphome::StringRef)>(
@@ -1676,6 +1678,7 @@ inline void media_playback_subscribe_modes(MediaPlaybackState *state) {
         state->supported_features_known, state->supported_features) &&
       !state->repeat_subscribed) {
     state->repeat_subscribed = true;
+    subscription_added = true;
     ha_subscribe_attribute(
       entity_id, std::string("repeat"),
       std::function<void(esphome::StringRef)>(
@@ -1687,6 +1690,8 @@ inline void media_playback_subscribe_modes(MediaPlaybackState *state) {
         })
     );
   }
+
+  if (subscription_added) ha_reannounce_state_subscriptions();
 }
 
 inline void media_playback_subscribe_content(MediaPlaybackState *state) {
