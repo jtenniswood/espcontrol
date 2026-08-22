@@ -51,6 +51,19 @@ artwork_image:
           then:
             - lvgl.widget.show: camera_screensaver_unavailable
 
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(espcontrol_app).display().target_mode_is(
+                       espcontrol::DisplayMode::CAMERA) &&
+                     id(camera_screensaver_subscribed_generation) !=
+                       ha_subscription_generation();
+          then:
+            - script.execute: camera_screensaver_request_image
+
 lvgl:
   top_layer:
     widgets:
@@ -132,7 +145,14 @@ script:
                       if (subscription_generation != ha_subscription_generation() ||
                           entity != id(screensaver_camera_entity).state) return;
                       const std::string next = string_ref_limited(token, 512);
-                      if (image_card_valid_access_token(next)) id(camera_screensaver_access_token) = next;
+                      id(camera_screensaver_request_pending) = false;
+                      if (!image_card_valid_access_token(next)) {
+                        id(camera_screensaver_access_token).clear();
+                        return;
+                      }
+                      if (next == id(camera_screensaver_access_token)) return;
+                      id(camera_screensaver_access_token) = next;
+                      id(camera_screensaver_request_image).execute();
                     }));
                 }
                 if (image_card_valid_access_token(id(camera_screensaver_access_token))) {
