@@ -3301,10 +3301,11 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
                                        bool from_user, bool send_action) {
   if (!ctx || !ctx->available) return;
-  if (!ctx->volume_known) return;
   if (!ctx->apply_percent && !ctx->capabilities_known) return;
-  const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto mode = media_volume_effective_control_mode(ctx);
+  if (!ctx->volume_known && mode !=
+      espcontrol::media::VolumeControlMode::STEP) return;
+  const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto command = espcontrol::media::volume_command(
     mode, current_pct, pct, media_volume_max_pct(ctx), ctx->volume_known);
   if (!ctx->apply_percent &&
@@ -3438,16 +3439,23 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
     ui.updating_arc = false;
   }
   if (ui.pct_lbl) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", pct);
-    lv_label_set_text(ui.pct_lbl, buf);
+    if (ctx->volume_known) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d", pct);
+      lv_label_set_text(ui.pct_lbl, buf);
+    } else {
+      lv_label_set_text(ui.pct_lbl, "--");
+    }
   }
   if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "");
 }
 
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   if (!ctx || !ctx->available) return;
-  if (!ctx->volume_known || (!ctx->apply_percent && !ctx->capabilities_known)) return;
+  if (!ctx->apply_percent && !ctx->capabilities_known) return;
+  const auto mode = media_volume_effective_control_mode(ctx);
+  if (!ctx->volume_known && mode !=
+      espcontrol::media::VolumeControlMode::STEP) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_VOLUME, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, media_volume_hide_modal);
@@ -3461,8 +3469,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   ui.arc = lv_arc_create(ui.panel);
   lv_arc_set_bg_angles(ui.arc, 135, 45);
-  const int arc_max = media_volume_effective_control_mode(ctx) ==
-      espcontrol::media::VolumeControlMode::ABSOLUTE
+  const int arc_max = mode == espcontrol::media::VolumeControlMode::ABSOLUTE
     ? media_volume_max_pct(ctx) : 100;
   lv_arc_set_range(ui.arc, 0, arc_max);
   lv_arc_set_value(ui.arc, media_clamp_percent(ctx->current_pct));
