@@ -737,6 +737,15 @@ int main() {
   assert(fitting_span_safe.row_span[1] == 1);
   assert(fitting_span_safe.col_span[1] == 2);
 
+  // Legacy subpages reserve the first cell for Back. A wide card at source
+  // position 4 is rendered at position 5, where it fits a five-column grid.
+  int subpage_row_span = 1;
+  int subpage_col_span = 2;
+  normalize_grid_span_for_position(5, 15, 5, subpage_row_span,
+                                   subpage_col_span);
+  assert(subpage_row_span == 1);
+  assert(subpage_col_span == 2);
+
   return 0;
 }
 '''
