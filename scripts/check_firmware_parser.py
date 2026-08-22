@@ -719,6 +719,24 @@ int main() {
   assert(cleared.positions[3] == 0);
   assert(cleared.positions[4] == 0);
 
+  // A 10-inch portrait-large tile must not retain its 4x3 span when restored
+  // onto the 7-inch 5x3 grid from the reported backup layout.
+  OrderResult cross_device;
+  parse_order_string("1,7,6p,,,8,2,,,,3,4,,,,9,5", 15, cross_device);
+  OrderResult cross_device_safe;
+  clear_spanned_cells(cross_device, 15, 5, cross_device_safe);
+  assert(cross_device_safe.positions[2] == 6);
+  assert(cross_device_safe.row_span[5] == 1);
+  assert(cross_device_safe.col_span[5] == 1);
+
+  // Spans that fit the target grid remain unchanged.
+  OrderResult fitting_span;
+  parse_order_string("1,2w", 6, fitting_span);
+  OrderResult fitting_span_safe;
+  clear_spanned_cells(fitting_span, 6, 3, fitting_span_safe);
+  assert(fitting_span_safe.row_span[1] == 1);
+  assert(fitting_span_safe.col_span[1] == 2);
+
   return 0;
 }
 '''
