@@ -72,7 +72,11 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn:hover{filter:brightness(1.15)}" +
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{border-color:var(--accent)}" +
-        ".sp-btn-icon{font-size:var(--btn-icon);line-height:1;color:#fff}" +
+        ".sp-btn-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad);" +
+        "font-size:var(--btn-icon);line-height:1;color:#fff}" +
+        ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +
+        ".sp-btn-icon~.sp-btn-label,.sp-btn-icon~.sp-btn-label-row{box-sizing:border-box;" +
+        "padding-right:calc(var(--btn-icon) + var(--btn-pad)*.5)}" +
         ".sp-media-group-active{box-shadow:inset 0 0 0 3px var(--accent)}" +
         ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);" +
         "display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +
@@ -95,7 +99,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-image-card{padding:0}" +
         ".sp-image-preview{position:absolute;inset:0;display:block;overflow:hidden;border-radius:var(--btn-r);" +
         "background:var(--screen-tertiary)}" +
-        ".sp-image-preview-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad);" +
+        ".sp-image-preview-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad);" +
         "font-size:var(--btn-icon);line-height:1;color:#fff}" +
         ".sp-image-label{position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;" +
         "padding:var(--btn-pad);z-index:1;pointer-events:none}" +
@@ -111,7 +115,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-media-position-time{z-index:1}" +
         ".sp-media-now-title{font-size:var(--media-title);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
         "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
-        ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:300}" +
+        ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400)}" +
+        ".sp-media-cover-details-single .sp-media-cover-details-row{padding-right:calc(var(--btn-label)*1.25);box-sizing:border-box}" +
+        ".sp-media-cover-details-single .sp-media-now-artist{white-space:nowrap;text-overflow:ellipsis;word-break:normal;max-height:none}" +
+        ".sp-media-cover-details-single .sp-type-badge{display:block;position:absolute;right:0;bottom:0;font-size:var(--btn-label);line-height:1.2;opacity:.58}" +
         ".sp-btn-big .sp-media-cover-details-title{font-size:var(--media-cover-artist)}" +
         ".sp-btn-big.sp-media-cover-control-fonts .sp-media-cover-details-title{font-size:calc(var(--btn-label)*1.75)}" +
         ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}" +
@@ -121,6 +128,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-media-cover-tint{position:absolute;inset:-2px;background:rgba(49,49,49,.6);z-index:0}" +
         ".sp-media-cover-details-title{margin:var(--btn-pad) var(--btn-pad) 0}" +
         ".sp-btn-label-row.sp-media-cover-details-row{width:auto;margin:0 var(--btn-pad) var(--btn-pad)}" +
+        ".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}" +
         ".sp-btn-double{grid-row:span 2}" +
         ".sp-btn-double .sp-btn-label,.sp-btn-double .sp-btn-label-row .sp-btn-label{max-height:var(--btn-label-max-height-dbl)}" +
         ".sp-btn-double .sp-media-now-title{-webkit-line-clamp:2}" +
@@ -139,6 +147,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-extra-large .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}" +
         ".sp-btn-wide .sp-media-cover-details-title,.sp-btn-extra-wide .sp-media-cover-details-title{-webkit-line-clamp:2}" +
+        ".sp-btn-extra-large .sp-media-cover-details-title{-webkit-line-clamp:5}" +
         ".sp-btn-max-wide{grid-row:span 2;grid-column:span 3}" +
         ".sp-btn-max-tall{grid-row:span 3;grid-column:span 2}" +
         ".sp-btn-portrait-large{grid-row:span 4;grid-column:span 3}" +

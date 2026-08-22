@@ -489,10 +489,25 @@ for (const option of pickerOptions) {
 const switchPickerOption = pickerOptions.find((option) => option.key === "");
 assert(switchPickerOption, "switch card appears in the main card picker");
 assert.strictEqual(switchPickerOption.icon, "toggle-switch", "switch picker option uses the expected icon");
+const cardStylesSource = fs.readFileSync(
+  path.join(ROOT, "src", "webserver", "application", "styles.ts"),
+  "utf8",
+);
 assert(
-  fs.readFileSync(path.join(ROOT, "src", "webserver", "application", "styles.ts"), "utf8")
-    .includes(".sp-card-type-icon::before{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"),
+  cardStylesSource.includes(".sp-card-type-icon::before{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"),
   "card picker icons stay centred inside their accent boxes"
+);
+assert(
+  cardStylesSource.includes(".sp-btn-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
+  "standard card icons stay in the bottom-right corner at every size",
+);
+assert(
+  cardStylesSource.includes(".sp-image-preview-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
+  "image card icons use the same bottom-right placement",
+);
+assert(
+  cardStylesSource.includes(".sp-btn-icon~.sp-btn-label,.sp-btn-icon~.sp-btn-label-row{box-sizing:border-box;"),
+  "card labels reserve room for their bottom-right icon",
 );
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
 assert(
@@ -828,7 +843,7 @@ const imagePreview = hooks.buttonTypePreviewFor("image", {
   type: "image",
   options: "image_label",
 });
-assert(!imagePreview.iconHtml.includes("sp-image-preview-icon"), "image preview hides the top-left icon by default");
+assert(!imagePreview.iconHtml.includes("sp-image-preview-icon"), "image preview hides the card icon by default");
 assert(!imagePreview.iconHtml.includes("sp-image-preview-text"), "image preview does not show centered placeholder text");
 assert(!imagePreview.iconHtml.includes(">Image<"), "image preview does not show centered Image copy");
 assert(imagePreview.labelHtml.includes("Seaside"), "image preview keeps the configured label");
@@ -839,7 +854,7 @@ const imageIconPreview = hooks.buttonTypePreviewFor("image", {
   type: "image",
   options: "image_icon",
 });
-assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a top-left camera icon when enabled");
+assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a bottom-right camera icon when enabled");
 assert(!imageIconPreview.labelHtml.includes("Seaside"), "image preview hides the label when label option is off");
 const customImageIconPreview = hooks.buttonTypePreviewFor("image", {
   entity: "image.seaside",
@@ -1432,6 +1447,7 @@ const mediaNowPlayingPreview = hooks.buttonTypePreviewFor("media", {
 assert(mediaNowPlayingPreview.iconHtml.includes("Track Title"), "media now-playing preview uses the shared mock title");
 assert(mediaNowPlayingPreview.labelHtml.includes("Artist Name"), "media now-playing preview uses the shared mock artist");
 assert(mediaNowPlayingPreview.labelHtml.includes("sp-media-now-artist"), "media now-playing preview keeps artist styling");
+assert(previewStylesSource.includes(".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400)}"), "media artists use standard card-label typography");
 
 const mediaCoverArtPreview = hooks.buttonTypePreviewFor("media", {
   entity: "media_player.office",
@@ -1455,8 +1471,20 @@ assert(mediaCoverArtDetailsPreview.iconHtml.includes("sp-media-cover-tint"), "me
 assert(mediaCoverArtDetailsPreview.iconHtml.includes("sp-media-cover-details-title"), "media cover art details preview insets its title like other cards");
 assert(mediaCoverArtDetailsPreview.iconHtml.includes("Track Title"), "media cover art details preview shows a track title");
 assert(mediaCoverArtDetailsPreview.buttonClass.includes("sp-media-cover-details-card"), "media cover art details preview can stack large-card metadata");
+assert(mediaCoverArtDetailsPreview.buttonClass.includes("sp-media-cover-details-single"), "media cover art details 1x1 preview uses its compact layout");
 assert(mediaCoverArtDetailsPreview.labelHtml.includes("sp-media-cover-details-row"), "media cover art details preview insets its artist row like other cards");
 assert(mediaCoverArtDetailsPreview.labelHtml.includes("Artist Name"), "media cover art details preview shows an artist");
+assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-media-now-artist{white-space:nowrap"), "media cover art details 1x1 artist stays on one line");
+assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-type-badge{display:block;position:absolute;right:0;bottom:0"), "media cover art details 1x1 icon sits in the bottom-right corner");
+assert(previewStylesSource.includes(".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}"), "media cover art details 2x2 preview separates its title and artist");
+
+const mediaCoverArtDetailsLargePreview = hooks.buttonTypePreviewFor("media", {
+  entity: "media_player.office",
+  sensor: "cover_art",
+  type: "media",
+  options: "cover_art_details",
+}, { cardSize: 4 });
+assert(!mediaCoverArtDetailsLargePreview.buttonClass.includes("sp-media-cover-details-single"), "media cover art details larger previews keep their existing layout");
 
 const issue243Backup = {
   version: 1,

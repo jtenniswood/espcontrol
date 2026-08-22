@@ -1285,7 +1285,7 @@ inline void image_card_align_icon(lv_obj_t *icon, lv_obj_t *btn) {
   lv_coord_t parent_y = 0;
   lv_coord_t parent_height = 0;
   image_card_parent_offset_from_button(icon, btn, parent_x, parent_y, parent_height);
-  lv_obj_align(icon, LV_ALIGN_TOP_LEFT, -parent_x, -parent_y);
+  align_card_icon_bottom_right(icon, parent_x, parent_y);
   lv_obj_move_foreground(icon);
 }
 

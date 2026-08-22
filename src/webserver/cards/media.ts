@@ -19,6 +19,7 @@ import {
     MEDIA_COVER_ART_OPTION,
     MEDIA_PLAYLIST_CONTENT_TYPE_OPTION,
 } from "../application/config_option_core";
+import { CARD_SIZE_SINGLE } from "../model/grid";
 export function registerMediaCardTypes(
     registry: CardRegistry,
     mediaOptions: ConfigMediaOptionsFeature,
@@ -844,11 +845,13 @@ export function registerMediaCardTypes(
             if (mode === "cover_art") {
                 var coverArtColor: any = WEB_UI_COLORS.tertiary;
                 if (mediaCoverArtDetailsEnabled(b)) {
+                    var singleCoverArtCard: any = ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_SINGLE;
                     var controlFontClass: any = deviceId === "guition-esp32-p4-jc4880p443"
                         ? " sp-media-cover-control-fonts"
                         : "";
                     return {
-                        buttonClass: "sp-image-card sp-media-cover-details-card" + controlFontClass,
+                        buttonClass: "sp-image-card sp-media-cover-details-card" + controlFontClass +
+                            (singleCoverArtCard ? " sp-media-cover-details-single" : ""),
                         iconHtml: '<span class="sp-image-preview sp-media-cover-artwork" style="background-color:#' +
                             helpers.escHtml(coverArtColor) + '"></span>' +
                             '<span class="sp-media-cover-tint"></span>' +

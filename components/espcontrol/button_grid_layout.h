@@ -395,6 +395,14 @@ inline void configure_button_label_wrap(lv_obj_t *label) {
   lv_obj_set_width(label, lv_pct(100));
 }
 
+inline void align_card_icon_bottom_right(lv_obj_t *icon,
+                                         lv_coord_t right_inset = 0,
+                                         lv_coord_t bottom_inset = 0) {
+  if (!icon) return;
+  lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+  lv_obj_align(icon, LV_ALIGN_BOTTOM_RIGHT, -right_inset, -bottom_inset);
+}
+
 inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) {
   if (!label) return;
   configure_button_label_wrap(label);

@@ -5081,6 +5081,102 @@ async function assertOfflineProfileFallback(browser, testCase) {
   }
 }
 
+async function assertMediaCoverArtCompactPreview(page, label) {
+  const layout = await page.evaluate(() => {
+    const card = document.querySelector('.sp-main [data-slot="4"]');
+    const artist = card.querySelector(".sp-media-now-artist");
+    const row = card.querySelector(".sp-media-cover-details-row");
+    const badge = card.querySelector(".sp-type-badge");
+    const standardLabel = document.querySelector('.sp-main [data-slot="1"] .sp-btn-label');
+    const artistStyle = getComputedStyle(artist);
+    const standardStyle = getComputedStyle(standardLabel);
+    const badgeStyle = getComputedStyle(badge);
+    const rowRect = row.getBoundingClientRect();
+    const badgeRect = badge.getBoundingClientRect();
+    const largeCard = card.cloneNode(true);
+    largeCard.classList.remove("sp-media-cover-details-single");
+    largeCard.classList.add("sp-btn-big");
+    largeCard.style.cssText = "position:fixed;left:-1000px;top:0;width:400px;height:400px";
+    document.body.appendChild(largeCard);
+    const largeTitleRect = largeCard.querySelector(".sp-media-cover-details-title").getBoundingClientRect();
+    const largeArtistRow = largeCard.querySelector(".sp-media-cover-details-row");
+    const largeArtistRect = largeArtistRow.querySelector(".sp-media-now-artist").getBoundingClientRect();
+    const largeArtistMarginTop = parseFloat(getComputedStyle(largeArtistRow).marginTop);
+    const extraLargeCard = card.cloneNode(true);
+    extraLargeCard.classList.remove("sp-media-cover-details-single");
+    extraLargeCard.classList.add("sp-btn-extra-large");
+    extraLargeCard.style.cssText = "position:fixed;left:-1000px;top:0;width:600px;height:600px";
+    document.body.appendChild(extraLargeCard);
+    const extraLargeTitleLineClamp = getComputedStyle(
+      extraLargeCard.querySelector(".sp-media-cover-details-title"),
+    ).webkitLineClamp;
+    const result = {
+      compactClass: card.classList.contains("sp-media-cover-details-single"),
+      whiteSpace: artistStyle.whiteSpace,
+      textOverflow: artistStyle.textOverflow,
+      fontFamily: artistStyle.fontFamily,
+      fontSize: artistStyle.fontSize,
+      fontWeight: artistStyle.fontWeight,
+      standardFontFamily: standardStyle.fontFamily,
+      standardFontSize: standardStyle.fontSize,
+      standardFontWeight: standardStyle.fontWeight,
+      badgeDisplay: badgeStyle.display,
+      badgeRightGap: Math.abs(rowRect.right - badgeRect.right),
+      badgeBottomGap: Math.abs(rowRect.bottom - badgeRect.bottom),
+      largeArtistMarginTop,
+      largeTitleArtistGap: largeArtistRect.top - largeTitleRect.bottom,
+      extraLargeTitleLineClamp,
+    };
+    largeCard.remove();
+    extraLargeCard.remove();
+    return result;
+  });
+
+  assert(layout.compactClass, `${label}: 1x1 Cover Art details preview uses its compact layout`);
+  assert.strictEqual(layout.whiteSpace, "nowrap", `${label}: 1x1 Cover Art artist stays on one line`);
+  assert.strictEqual(layout.textOverflow, "ellipsis", `${label}: long 1x1 Cover Art artists truncate cleanly`);
+  assert.strictEqual(layout.fontFamily, layout.standardFontFamily, `${label}: Cover Art artist uses the card-label font`);
+  assert.strictEqual(layout.fontSize, layout.standardFontSize, `${label}: Cover Art artist uses the card-label size`);
+  assert.strictEqual(layout.fontWeight, layout.standardFontWeight, `${label}: Cover Art artist uses the card-label weight`);
+  assert.strictEqual(layout.badgeDisplay, "block", `${label}: 1x1 Cover Art icon is visible`);
+  assert(layout.badgeRightGap < 1, `${label}: 1x1 Cover Art icon is right-aligned`);
+  assert(layout.badgeBottomGap < 1, `${label}: 1x1 Cover Art icon is bottom-aligned`);
+  assert(layout.largeArtistMarginTop > 0, `${label}: 2x2 Cover Art artist has extra top spacing`);
+  assert(layout.largeTitleArtistGap >= layout.largeArtistMarginTop - 1, `${label}: 2x2 Cover Art title and artist remain separated`);
+  assert.strictEqual(layout.extraLargeTitleLineClamp, "5", `${label}: 3x3 Cover Art title is limited to five lines`);
+}
+
+async function assertCardIconsBottomRight(page, label) {
+  const icons = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(
+      ".sp-main > .sp-btn .sp-btn-icon, .sp-main > .sp-btn .sp-image-preview-icon",
+    )).map((icon) => {
+      const card = icon.closest(".sp-btn");
+      const cardRect = card.getBoundingClientRect();
+      const iconRect = icon.getBoundingClientRect();
+      const iconStyle = getComputedStyle(icon);
+      return {
+        visible: iconRect.width > 0 && iconRect.height > 0,
+        rightGap: cardRect.right - iconRect.right,
+        bottomGap: cardRect.bottom - iconRect.bottom,
+        rightInset: parseFloat(iconStyle.right) || 0,
+        bottomInset: parseFloat(iconStyle.bottom) || 0,
+      };
+    }).filter((measurement) => measurement.visible),
+  );
+  assert(icons.length > 0, `${label}: preview contains visible card icons`);
+  for (const icon of icons) {
+    assert(
+      Math.abs(icon.rightGap - icon.rightInset) <= 3,
+      `${label}: card icon is inset from the right edge by the shared card padding (${JSON.stringify(icon)})`,
+    );
+    assert(
+      Math.abs(icon.bottomGap - icon.bottomInset) <= 3,
+      `${label}: card icon is inset from the bottom edge by the shared card padding (${JSON.stringify(icon)})`,
+    );
+  }
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -5159,6 +5255,8 @@ async function runCase(browser, testCase) {
       testCase.name,
       testCase,
     );
+    await assertCardIconsBottomRight(page, testCase.name);
+    await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
