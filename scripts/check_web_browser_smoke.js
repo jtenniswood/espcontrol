@@ -166,6 +166,8 @@ function publicFirmwareVersions(slug) {
 async function installRoutes(context, slug, options = {}) {
   const nativeState = options.nativeState || null;
   const offlineFallback = options.offlineFallback === true;
+  const legacyTextState = options.legacyTextState || {};
+  const truncateLegacyText = options.truncateLegacyText || "";
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   const webAssetManifestPath = path.join(WEB_OUTPUT_DIR, "web-assets.json");
   assert(
@@ -180,6 +182,31 @@ async function installRoutes(context, slug, options = {}) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    const legacyTextMatch = requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname.match(/^\/text\/([^/]+)(?:\/set)?$/);
+    if (legacyTextMatch) {
+      const name = decodeURIComponent(legacyTextMatch[1]);
+      const objectId = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      if (route.request().method() === "POST") {
+        const value = requestUrl.searchParams.get("value") || "";
+        const storedValue = objectId === truncateLegacyText ? "" : value;
+        legacyTextState[name] = storedValue;
+        legacyTextState[objectId] = storedValue;
+        await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+        return;
+      }
+      if (route.request().method() === "GET") {
+        const value = Object.prototype.hasOwnProperty.call(legacyTextState, name)
+          ? legacyTextState[name]
+          : legacyTextState[objectId];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ value: value || "" }),
+        });
+        return;
+      }
+    }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
       const suppliedGeneration = route.request().headers()["if-match"];
       nativeState.requests.push(
@@ -5002,6 +5029,26 @@ async function assertLegacyProfileFallback(browser, testCase) {
   }
 }
 
+async function assertLegacyRestoreVerificationFailure(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { truncateLegacyText: "button_16_config" });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources && window.__eventSources.length > 0);
+    await page.evaluate((events) => window.__seedEspState(events), seededEvents());
+    await importBackup(page, backupFixture(testCase.slug, testCase.slots), "truncated-legacy-backup");
+    await page.waitForSelector(".sp-banner.sp-error", { timeout: 30000 });
+    const message = await page.locator(".sp-banner").textContent();
+    assert(message.includes("Button 16 Config"), "legacy verification identifies a truncated slot");
+    assert(!message.includes("successfully"), "legacy verification failure suppresses import success");
+  } finally {
+    await context.close();
+  }
+}
+
 async function assertOfflineProfileFallback(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug, { offlineFallback: true });
@@ -5173,6 +5220,7 @@ async function runCase(browser, testCase) {
       if (!acceptanceOnly) await runCase(browser, testCase);
       await assertNativeProfileJourney(browser, testCase);
       await assertLegacyProfileFallback(browser, testCase);
+      if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);
       await assertOfflineProfileFallback(browser, testCase);
       if (!acceptanceOnly) await assertMobileDeviceViewport(browser, testCase);
     }

@@ -19,6 +19,7 @@ COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
 SCREEN_CLOCK_PATH = ROOT / "common" / "device" / "screen_clock.yaml"
 ARTWORK_IMAGE_PATH = ROOT / "components" / "artwork_image" / "artwork_image.cpp"
 BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
+BACKLIGHT_SCHEDULE_PATH = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
@@ -2552,6 +2553,42 @@ def firmware_display_backlight_manual_sleep_errors(
     return errors
 
 
+def firmware_display_backlight_mode_restore_errors(
+    schedule_path: Path,
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    if not schedule_path.exists():
+        return errors
+
+    rel = schedule_path.relative_to(root)
+    text = schedule_path.read_text(encoding="utf-8")
+    handler_body = yaml_script_body(text, "display_backlight_handle_state")
+    if handler_body is None:
+        errors.append(f"{rel}: missing shared display_backlight_handle_state script")
+        return errors
+
+    setup_guard = "!App.is_setup_complete()"
+    mode_guard = "!id(brightness_mode_runtime_ready)"
+    marker_clear = "id(backlight_expected_internal_level_valid) = false;"
+    state_read = "id(display_backlight).remote_values.is_on()"
+    guard_index = handler_body.find(setup_guard)
+    mode_index = handler_body.find(mode_guard)
+    state_index = handler_body.find(state_read)
+    if (
+        guard_index == -1
+        or mode_index == -1
+        or marker_clear not in handler_body
+        or state_index == -1
+        or guard_index > state_index
+        or mode_index > state_index
+    ):
+        errors.append(
+            f"{rel}: ignore restored Display Backlight state until startup and brightness mode setup complete"
+        )
+    return errors
+
+
 def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> list[str]:
     if not display_path.exists():
         return []
@@ -2830,6 +2867,24 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     f"{schedule_rel}: publish the live fail-dark schedule before the loading screen can light the panel"
                 )
 
+            if brightness_body is None or (
+                "const bool onboarding" not in brightness_body
+                or "DisplayRequestSource::ONBOARDING" not in brightness_body
+                or "if (!onboarding && screen_schedule_waiting_for_time(" not in brightness_body
+                or "if (onboarding) {" not in brightness_body
+                or "pct = 90;" not in brightness_body
+            ):
+                errors.append(
+                    f"{schedule_rel}: keep onboarding visible at full setup brightness despite restored schedule policy"
+                )
+            if (
+                "return !id(espcontrol_app).display().target_source_is(\n"
+                "                         espcontrol::DisplayRequestSource::ONBOARDING)" not in schedule_text
+            ):
+                errors.append(
+                    f"{schedule_rel}: bypass the periodic fail-dark check while onboarding owns the display"
+                )
+
             loading_path = backlight_path.parent.parent / "device" / "screen_loading.yaml"
             if loading_path.exists():
                 loading_rel = loading_path.relative_to(root)
@@ -2841,13 +2896,64 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     errors.append(
                         f"{loading_rel}: bypass the boot guard before showing WiFi setup"
                     )
-                if reconcile_body is None or (
-                    "id(connectivity_setup_display_active)" not in reconcile_body
-                    or "!connectivity_setup" not in reconcile_body
+                if "script.execute: wifi_show_hotspot_setup" in loading_text:
+                    errors.append(
+                        f"{loading_rel}: keep the visible first-boot WiFi instructions active until setup connects"
+                    )
+                if (
+                    'text: $icon_wifi_startup' not in loading_text
+                    or 'lv_label_set_text(id(loading_status_icon), "${icon_wifi_startup}");'
+                    not in loading_text
                 ):
                     errors.append(
-                        f"{rel}: let connectivity setup override boot guard and scheduled night requests"
+                        f"{loading_rel}: keep the standard mdi-wifi icon on the first-boot setup screen"
                     )
+                for setup_text_path in (
+                    loading_path,
+                    root / "common" / "device" / "screen_wifi_setup.yaml",
+                    root / "common" / "addon" / "connectivity.yaml",
+                ):
+                    setup_copy = setup_text_path.read_text(encoding="utf-8")
+                    if (
+                        r'''hotspot_ssid + "'\n" +''' in setup_copy
+                        or r'''hotspot_ssid + "' " +''' not in setup_copy
+                    ):
+                        errors.append(
+                            f"{setup_text_path.relative_to(root)}: let WiFi setup instructions wrap to the screen width"
+                        )
+                if reconcile_body is None or (
+                    "id(connectivity_setup_display_active)" not in reconcile_body
+                    or "id(button_order).state.empty()" not in reconcile_body
+                    or "setup_page_active" not in reconcile_body
+                    or "(id(button_order).state.empty() && setup_page_active)" not in reconcile_body
+                    or "lv_scr_act() == id(loading_page)->obj" in reconcile_body
+                    or "!onboarding" not in reconcile_body
+                    or "DisplayRequestSource::ONBOARDING" not in reconcile_body
+                    or "controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT)" not in reconcile_body
+                ):
+                    errors.append(
+                        f"{rel}: keep first-time onboarding fully visible over dimming, boot guard, and scheduled night requests"
+                    )
+
+                button_order_path = root / "common" / "config" / "button_order.yaml"
+                if button_order_path.exists():
+                    button_order_text = button_order_path.read_text(encoding="utf-8")
+                    if (
+                        "lv_scr_act() == id(button_setup_page)->obj" not in button_order_text
+                        or """            then:
+              - delay: 750ms
+              - script.execute: refresh_button_grid
+              - script.wait: refresh_button_grid
+              - script.execute: navigate_after_api
+              - script.wait: navigate_after_api
+              - script.execute: display_mode_reconcile
+            else:
+              - script.execute: display_mode_reconcile
+""" not in button_order_text
+                    ):
+                        errors.append(
+                            f"{button_order_path.relative_to(root)}: keep onboarding active until the first configured grid is visible"
+                        )
         sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
         if sleep_body is None:
             errors.append(f"{schedule_rel}: missing screen_schedule_sleep script")
@@ -3284,14 +3390,49 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
         or "restore_mode: RESTORE_DEFAULT_ON" not in text
     ):
         errors.append(f"{rel}: expose a persistent default-on C6 automatic update switch")
-    if (
-        "on_update_available:" not in text
-        or "switch.is_on: c6_auto_update_switch" not in text
-        or not re.search(r"(?ms)on_update_available:.*?update\.perform:\s*\n\s*id:\s*esp32_c6_update", text)
+    automatic_script = re.search(
+        r"(?ms)^script:\s*.*?id:\s*c6_check_and_install_update\b(?P<body>.*?)(?:^update:|\Z)",
+        text,
+    )
+    if not automatic_script:
+        errors.append(f"{rel}: define the C6 automatic check/install script")
+    else:
+        automatic_body = automatic_script.group("body")
+        required_steps = (
+            r"update\.check:\s*\n\s*id:\s*esp32_c6_update",
+            r"wait_until:\s*\n\s*condition:\s*\n\s*update\.is_available:\s*esp32_c6_update"
+            r"\s*\n\s*timeout:\s*30s",
+            r"switch\.is_on:\s*c6_auto_update_switch",
+            r"update\.is_available:\s*esp32_c6_update",
+            r"update\.perform:\s*\n\s*id:\s*esp32_c6_update",
+        )
+        if any(not re.search(pattern, automatic_body) for pattern in required_steps):
+            errors.append(
+                f"{rel}: check C6 firmware before conditionally installing an available update"
+            )
+    if "on_update_available:" in text:
+        errors.append(f"{rel}: do not rely on ESPHome's unfired C6 update-available trigger")
+    if "update_interval: never" not in text:
+        errors.append(f"{rel}: let EspControl own C6 update scheduling")
+    if not re.search(
+        r"(?ms)on_turn_on:.*?script\.execute:\s*c6_check_and_install_update", text
     ):
-        errors.append(f"{rel}: automatically install available C6 firmware when enabled")
-    if not re.search(r"(?ms)on_turn_on:.*?update\.check:\s*\n\s*id:\s*esp32_c6_update", text):
-        errors.append(f"{rel}: check for C6 firmware immediately when automatic updates are enabled")
+        errors.append(f"{rel}: check C6 firmware immediately when automatic updates are enabled")
+    if not re.search(
+        r"(?ms)^interval:\s*.*?interval:\s*24h.*?startup_delay:\s*1min"
+        r".*?script\.execute:\s*c6_check_and_install_update",
+        text,
+    ):
+        errors.append(f"{rel}: check C6 firmware one minute after boot and every 24 hours")
+    if not re.search(
+        r"(?ms)^wifi:\s*.*?on_connect:.*?millis\(\)\s*>=\s*60000"
+        r".*?script\.wait:\s*c6_check_and_install_update"
+        r".*?script\.execute:\s*c6_check_and_install_update",
+        text,
+    ):
+        errors.append(
+            f"{rel}: queue a C6 firmware retry after late or recovered WiFi"
+        )
     latest_match = re.search(
         r"(?ms)id:\s*c6_update_latest_firmware\b(?P<body>.*?)(?:^button:|\Z)",
         text,
@@ -3355,6 +3496,11 @@ def run_scan() -> int:
     errors.extend(
         firmware_display_backlight_manual_sleep_errors(
             BACKLIGHT_PATH, DEVICE_DEVICE_PATHS, ROOT
+        )
+    )
+    errors.extend(
+        firmware_display_backlight_mode_restore_errors(
+            BACKLIGHT_SCHEDULE_PATH, ROOT
         )
     )
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
@@ -4045,6 +4191,23 @@ def expect_display_backlight_manual_sleep_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_display_backlight_mode_restore_errors(
+    name: str,
+    schedule_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "backlight_schedule.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(schedule_text, encoding="utf-8")
+        errors = firmware_display_backlight_mode_restore_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_clock_bar_navigation_errors(
     name: str, text: str, expected: tuple[str, ...]
 ) -> None:
@@ -4358,6 +4521,39 @@ def run_self_test() -> int:
         valid_backlight_off_handler,
         {"guition-esp32-p4-jc8012p4a1-v2": valid_simple_backlight},
         ("preserve display takeover recovery before manual sleep handling",),
+    )
+    valid_backlight_state_handler = (
+        "script:\n"
+        "  - id: display_backlight_handle_state\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) {\n"
+        "            id(backlight_expected_internal_level_valid) = false;\n"
+        "            return;\n"
+        "          }\n"
+        "          if (!id(display_backlight).remote_values.is_on()) return;\n"
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state waits for startup",
+        valid_backlight_state_handler,
+        (),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state requires ESPHome setup",
+        valid_backlight_state_handler.replace("!App.is_setup_complete() || ", ""),
+        ("ignore restored Display Backlight state",),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state requires brightness mode setup",
+        valid_backlight_state_handler.replace(" || !id(brightness_mode_runtime_ready)", ""),
+        ("ignore restored Display Backlight state",),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state clears pending internal marker",
+        valid_backlight_state_handler.replace(
+            "            id(backlight_expected_internal_level_valid) = false;\n", ""
+        ),
+        ("ignore restored Display Backlight state",),
     )
     expect_screen_wake_button_errors(
         "missing Screen: Wake button",

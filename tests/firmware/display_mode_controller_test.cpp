@@ -17,22 +17,24 @@ static bool decision_is(const DisplayModeController &controller, DisplayMode mod
 static void activate_priority(DisplayModeController &controller, int priority) {
   switch (priority) {
     case 1: controller.begin_takeover(DisplayTakeoverKind::CRITICAL); break;
-    case 2: controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF); break;
-    case 3: controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE); break;
-    case 4: controller.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::CLOCK); break;
-    case 5: controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE); break;
-    case 6: controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART); break;
-    case 7: controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED); break;
-    case 8: controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED); break;
+    case 2: controller.request(DisplayRequestSource::ONBOARDING, DisplayMode::ACTIVE); break;
+    case 3: controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF); break;
+    case 4: controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE); break;
+    case 5: controller.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::CLOCK); break;
+    case 6: controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE); break;
+    case 7: controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART); break;
+    case 8: controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED); break;
+    case 9: controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED); break;
     default: break;
   }
 }
 
 static DisplayMode expected_mode_for_priority(int priority) {
   const DisplayMode modes[] = {
-      DisplayMode::ACTIVE, DisplayMode::ACTIVE, DisplayMode::DISPLAY_OFF,
-      DisplayMode::ACTIVE, DisplayMode::CLOCK, DisplayMode::ACTIVE,
-      DisplayMode::COVER_ART, DisplayMode::DIMMED, DisplayMode::SETUP_DIMMED};
+      DisplayMode::ACTIVE, DisplayMode::ACTIVE, DisplayMode::ACTIVE,
+      DisplayMode::DISPLAY_OFF, DisplayMode::ACTIVE, DisplayMode::CLOCK,
+      DisplayMode::ACTIVE, DisplayMode::COVER_ART, DisplayMode::DIMMED,
+      DisplayMode::SETUP_DIMMED};
   return modes[priority];
 }
 
@@ -63,8 +65,11 @@ int main() {
   CHECK(!presence_can_wake_display(scheduled_presence.resolve()));
 
   // Every higher-priority policy beats every lower-priority policy.
-  for (int higher = 1; higher <= 8; ++higher) {
-    for (int lower = higher + 1; lower <= 9; ++lower) {
+  for (int higher = 1; higher <= 9; ++higher) {
+    for (int lower = higher + 1; lower <= 10; ++lower) {
+      // Setup timeout is deliberately nested inside onboarding: it may dim
+      // instructions but cannot expose any other lower-priority policy.
+      if (higher == 2 && lower == 9) continue;
       DisplayModeController pair;
       activate_priority(pair, lower);
       activate_priority(pair, higher);
@@ -78,6 +83,28 @@ int main() {
   CHECK(controller.transition_required(controller.resolve()));
   CHECK(decision_is(controller, DisplayMode::SETUP_DIMMED,
                     DisplayRequestSource::SETUP_TIMEOUT));
+
+  // Onboarding blocks every normal sleep policy while configuration is empty,
+  // including the normal setup-screen burn-in timeout.
+  DisplayModeController onboarding;
+  CHECK(onboarding.request(DisplayRequestSource::MANUAL_SLEEP,
+                           DisplayMode::DISPLAY_OFF));
+  CHECK(onboarding.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                           DisplayMode::CLOCK));
+  CHECK(onboarding.request(DisplayRequestSource::IDLE_TIMER,
+                           DisplayMode::DISPLAY_OFF));
+  CHECK(onboarding.request(DisplayRequestSource::ONBOARDING,
+                           DisplayMode::ACTIVE));
+  CHECK(decision_is(onboarding, DisplayMode::ACTIVE,
+                    DisplayRequestSource::ONBOARDING));
+  CHECK(onboarding.request(DisplayRequestSource::SETUP_TIMEOUT,
+                           DisplayMode::SETUP_DIMMED));
+  CHECK(decision_is(onboarding, DisplayMode::ACTIVE,
+                    DisplayRequestSource::ONBOARDING));
+  CHECK(onboarding.clear(DisplayRequestSource::SETUP_TIMEOUT));
+  CHECK(onboarding.clear(DisplayRequestSource::ONBOARDING));
+  CHECK(decision_is(onboarding, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::MANUAL_SLEEP));
   CHECK(controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CLOCK));
   CHECK(decision_is(controller, DisplayMode::CLOCK, DisplayRequestSource::IDLE_TIMER));
   CHECK(controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::DIMMED));
@@ -172,6 +199,7 @@ int main() {
   // after its clear path when tested independently.
   struct SourceMode { DisplayRequestSource source; DisplayMode mode; };
   const SourceMode clear_paths[] = {
+      {DisplayRequestSource::ONBOARDING, DisplayMode::ACTIVE},
       {DisplayRequestSource::BOOT_GUARD, DisplayMode::DISPLAY_OFF},
       {DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED},
       {DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::CLOCK},

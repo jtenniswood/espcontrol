@@ -423,10 +423,15 @@ script:
           };
 
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          const bool connectivity_setup = id(connectivity_setup_display_active);
-          const bool waiting_for_time = !connectivity_setup && screen_schedule_waiting_for_time(
+          const bool setup_page_active =
+              lv_scr_act() == id(ha_setup_page)->obj ||
+              lv_scr_act() == id(ha_actions_page)->obj ||
+              lv_scr_act() == id(button_setup_page)->obj;
+          const bool onboarding = id(connectivity_setup_display_active) ||
+                                  (id(button_order).state.empty() && setup_page_active);
+          const bool waiting_for_time = !onboarding && screen_schedule_waiting_for_time(
               id(screen_schedule_trigger).state, id(schedule_enabled).state, now.is_valid());
-          const bool schedule_night = !connectivity_setup && screen_schedule_night_active(
+          const bool schedule_night = !onboarding && screen_schedule_night_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
               id(schedule_presence_detected),
@@ -447,6 +452,11 @@ script:
             controller.clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           }
 
+          set_request(espcontrol::DisplayRequestSource::ONBOARDING, onboarding,
+                      espcontrol::DisplayMode::ACTIVE);
+          if (onboarding) {
+            controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
+          }
           set_request(espcontrol::DisplayRequestSource::BOOT_GUARD, waiting_for_time,
                       espcontrol::DisplayMode::DISPLAY_OFF);
           set_request(espcontrol::DisplayRequestSource::USER_WAKE,
@@ -1001,22 +1011,28 @@ script:
     mode: restart
     then:
       - script.execute: display_mode_clear_setup_dimmed
-      - delay: 120s
       - if:
           condition:
             lambda: |-
-              return (id(espcontrol_app).display().target_source_is(
-                          espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                      id(espcontrol_app).display().target_mode_is(
-                          espcontrol::DisplayMode::DISPLAY_OFF)) ||
-                     screen_schedule_waiting_for_time(
-                       id(screen_schedule_trigger).state,
-                       id(schedule_enabled).state,
-                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+              return !id(connectivity_setup_display_active) &&
+                     !id(button_order).state.empty();
           then:
-            - script.execute: display_mode_reconcile
-          else:
-            - script.execute: display_mode_request_setup_dimmed
+            - delay: 120s
+            - if:
+                condition:
+                  lambda: |-
+                    return (id(espcontrol_app).display().target_source_is(
+                                espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                            id(espcontrol_app).display().target_mode_is(
+                                espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                           screen_schedule_waiting_for_time(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+                then:
+                  - script.execute: display_mode_reconcile
+                else:
+                  - script.execute: display_mode_request_setup_dimmed
 
   # Home screen return timer (restartable)
   - id: home_screen_idle_check
@@ -1026,14 +1042,18 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              return !std::isnan(val) && val > 0;
+              return !id(connectivity_setup_display_active) &&
+                     !id(button_order).state.empty() &&
+                     !std::isnan(val) && val > 0;
           then:
             - delay: !lambda |-
                 float val = id(home_screen_timeout).state;
                 if (std::isnan(val) || val <= 0) val = 60;
                 return (int)(val * 1000);
             - lambda: |-
-                if (!alarm_display_takeover_active()) {
+                if (!id(connectivity_setup_display_active) &&
+                    !id(button_order).state.empty() &&
+                    !alarm_display_takeover_active()) {
                   navigation_return_home(id(main_page)->obj);
                 }
 
@@ -1044,7 +1064,9 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              if (std::isnan(val) || val <= 0) return false;
+              if (id(connectivity_setup_display_active) ||
+                  id(button_order).state.empty() ||
+                  std::isnan(val) || val <= 0) return false;
               return lv_disp_get_inactive_time(NULL) >= (uint32_t)(val * 1000);
           then:
             - lambda: |-

@@ -18,6 +18,7 @@ enum class DisplayMode : uint8_t {
 };
 
 enum class DisplayRequestSource : uint8_t {
+  ONBOARDING,
   BOOT_GUARD,
   IDLE_TIMER,
   PRESENCE_SENSOR,
@@ -130,6 +131,12 @@ class DisplayModeController {
       return result;
     }
 
+    // First-time setup must stay fully visible regardless of saved display
+    // policy or the normal setup-screen burn-in timeout.
+    if (request_active(DisplayRequestSource::ONBOARDING)) {
+      if (apply_source(DisplayRequestSource::ONBOARDING, result)) return result;
+    }
+
     if (apply_source(DisplayRequestSource::MANUAL_SLEEP, result)) return result;
     if (apply_source(DisplayRequestSource::USER_WAKE, result)) return result;
     if (apply_source(DisplayRequestSource::BOOT_GUARD, result)) return result;
@@ -212,6 +219,8 @@ class DisplayModeController {
 
   static bool request_is_valid(DisplayRequestSource source, DisplayMode mode) {
     switch (source) {
+      case DisplayRequestSource::ONBOARDING:
+        return mode == DisplayMode::ACTIVE;
       case DisplayRequestSource::BOOT_GUARD:
       case DisplayRequestSource::MANUAL_SLEEP:
         return mode == DisplayMode::DISPLAY_OFF;
@@ -239,7 +248,7 @@ class DisplayModeController {
     bool active{false};
   };
 
-  static constexpr std::size_t kRequestCount = 8;
+  static constexpr std::size_t kRequestCount = 9;
   static constexpr std::size_t kTakeoverCount = 2;
 
   static constexpr std::size_t source_index(DisplayRequestSource source) {
@@ -299,6 +308,7 @@ inline const char *display_request_source_name(
     const std::optional<DisplayRequestSource> &source) {
   if (!source) return "default";
   switch (*source) {
+    case DisplayRequestSource::ONBOARDING: return "onboarding";
     case DisplayRequestSource::BOOT_GUARD: return "boot_guard";
     case DisplayRequestSource::IDLE_TIMER: return "idle_timer";
     case DisplayRequestSource::PRESENCE_SENSOR: return "presence_sensor";

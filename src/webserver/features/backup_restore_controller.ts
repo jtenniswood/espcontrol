@@ -12,6 +12,12 @@ export interface BackupRestoreController<Plan, Target> {
   restore(data: unknown, target: Target, apply: (plan: Plan) => unknown): boolean;
 }
 
+function restoreErrorMessage(error: unknown): string {
+  return (error as Error & { backupMessage?: string })?.backupMessage
+    || (error instanceof Error && error.message)
+    || "Configuration restore failed. Check the connection and try again.";
+}
+
 /** Coordinates a restore so all entity posts use the same safe queue lifecycle. */
 export function createBackupRestoreController<Plan, Target>(
   options: BackupRestoreControllerOptions<Plan, Target>,
@@ -58,9 +64,12 @@ export function createBackupRestoreController<Plan, Target>(
           throw error;
         })
         : finishApply();
-      queueCompletion.then(() => {
-        if (!options.postQueueHadError()) options.showBanner("Configuration imported successfully", "success");
-      });
+      queueCompletion.then(
+        () => {
+          if (!options.postQueueHadError()) options.showBanner("Configuration imported successfully", "success");
+        },
+        (error) => options.showBanner(restoreErrorMessage(error), "error"),
+      );
       return true;
     },
   };

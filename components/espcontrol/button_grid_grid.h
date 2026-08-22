@@ -2210,8 +2210,14 @@ inline bool grid_rebuild_all(
     const std::string &order_str,
     const std::string &on_hex,
     lv_obj_t *main_page_obj) {
+  if (main_page_obj == nullptr) {
+    ESP_LOGW("navigation", "Main page is not ready");
+    return false;
+  }
   const int active_subpage_slot = navigation_active_subpage_slot();
-  if (!navigation_return_home(main_page_obj)) return false;
+  const bool grid_screen_active = grid_navigation_rebuild_should_return_home(
+      lv_scr_act() == main_page_obj, active_subpage_slot);
+  if (grid_screen_active && !navigation_return_home(main_page_obj)) return false;
   grid_phase1(slots, cfg, order_str, on_hex, main_page_obj);
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, sp_ext2_configs,
               sp_ext3_configs, sp_ext4_configs, sp_ext5_configs,

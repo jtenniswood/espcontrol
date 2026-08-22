@@ -158,6 +158,13 @@ for required in (
     if required not in jpeg_decoder:
         raise SystemExit("P4 JPEG workspace must be released after image buffer allocation failure")
 
+if 'if (err == ESP_ERR_NOT_SUPPORTED) {' not in jpeg_decoder:
+    raise SystemExit("P4 JPEG unsupported-format fallback must be handled explicitly")
+if 'ESP_LOGD(TAG, "ESP32-P4 JPEG format is not hardware-supported; using software decoder");' not in jpeg_decoder:
+    raise SystemExit("P4 JPEG unsupported-format fallback must be debug-level")
+if 'ESP_LOGW(TAG, "ESP32-P4 JPEG hardware rejected image (error %d); using software decoder", err);' not in jpeg_decoder:
+    raise SystemExit("P4 JPEG unexpected hardware failures must remain warnings")
+
 image_cards = (ROOT / "components" / "espcontrol" / "button_grid_image.h").read_text(encoding="utf-8")
 for required in (
     "RefreshBatch media_artwork_refresh",

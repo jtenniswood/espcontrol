@@ -255,7 +255,11 @@ int JpegDecoder::decode_hardware_(uint8_t *buffer, size_t size) {
   esp_err_t err = jpeg_decoder_process(decoder, &decode_config, workspace.input, size,
                                        workspace.output, workspace.output_capacity, &output_size);
   if (err != ESP_OK || output_size < requested_output_size) {
-    ESP_LOGW(TAG, "ESP32-P4 JPEG hardware rejected image (error %d); using software decoder", err);
+    if (err == ESP_ERR_NOT_SUPPORTED) {
+      ESP_LOGD(TAG, "ESP32-P4 JPEG format is not hardware-supported; using software decoder");
+    } else {
+      ESP_LOGW(TAG, "ESP32-P4 JPEG hardware rejected image (error %d); using software decoder", err);
+    }
     p4_release_jpeg_workspace();
     return 0;
   }
