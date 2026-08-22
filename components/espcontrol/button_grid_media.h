@@ -4039,8 +4039,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     espcontrol::media::media_transport_layout(
       content_w, layout.short_side,
       media_control_shuffle_supported(ctx),
-      media_control_repeat_supported(ctx));
-  const lv_coord_t btn_size = transport_layout.primary_size;
+      media_control_repeat_supported(ctx),
+      control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);
+  const lv_coord_t btn_size = transport_layout.button_size;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
   lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
   if (progress_slider_h > progress_slider_max_h) progress_slider_h = progress_slider_max_h;
@@ -4057,7 +4058,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (progress_radius > 34) progress_radius = 34;
   lv_coord_t controls_bottom_gap = control_modal_scaled_px(10, layout.short_side);
   if (controls_bottom_gap < 6) controls_bottom_gap = 6;
-  lv_coord_t button_y = content_h - btn_size - controls_bottom_gap;
+  lv_coord_t button_y = content_h - transport_layout.total_height - controls_bottom_gap;
   if (ui.title_lbl) {
     const char *title_text = lv_label_get_text(ui.title_lbl);
     lv_point_t title_size;
@@ -4120,23 +4121,39 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   }
   lv_obj_t *buttons[5] = {
     ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn};
-  const bool mode_buttons[5] = {true, false, false, false, true};
-  lv_coord_t button_x = transport_layout.start_x;
-  for (int i = 0; i < 5; i++) {
-    if (!buttons[i]) continue;
-    const lv_coord_t size = mode_buttons[i]
-      ? transport_layout.mode_size : transport_layout.primary_size;
-    const lv_coord_t y = button_y + (transport_layout.primary_size - size) / 2;
-    lv_obj_set_size(buttons[i], size, size);
-    lv_obj_set_style_radius(buttons[i], size / 2, LV_PART_MAIN);
-    lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_x, y);
-    lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
+  auto layout_media_button = [btn_size](lv_obj_t *button, lv_coord_t x, lv_coord_t y) {
+    if (!button) return;
+    lv_obj_set_size(button, btn_size, btn_size);
+    lv_obj_set_style_radius(button, btn_size / 2, LV_PART_MAIN);
+    lv_obj_align(button, LV_ALIGN_TOP_LEFT, x, y);
+    lv_obj_t *label = lv_obj_get_child(button, 0);
     if (label) {
-      lv_obj_set_style_transform_zoom(
-        label, mode_buttons[i] ? 190 : 230, LV_PART_MAIN);
+      lv_obj_set_style_transform_zoom(label, 230, LV_PART_MAIN);
       light_control_center_icon_label(label);
     }
-    button_x += size + transport_layout.gap;
+  };
+  if (transport_layout.modes_on_second_row) {
+    lv_obj_t *transport_buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
+    lv_coord_t button_x = transport_layout.first_row_start_x;
+    for (lv_obj_t *button : transport_buttons) {
+      layout_media_button(button, button_x, button_y);
+      button_x += btn_size + transport_layout.gap;
+    }
+    lv_obj_t *mode_buttons[2] = {ui.shuffle_btn, ui.repeat_btn};
+    button_x = transport_layout.second_row_start_x;
+    const lv_coord_t mode_y = button_y + btn_size + transport_layout.row_gap;
+    for (lv_obj_t *button : mode_buttons) {
+      if (!button) continue;
+      layout_media_button(button, button_x, mode_y);
+      button_x += btn_size + transport_layout.gap;
+    }
+  } else {
+    lv_coord_t button_x = transport_layout.first_row_start_x;
+    for (lv_obj_t *button : buttons) {
+      if (!button) continue;
+      layout_media_button(button, button_x, button_y);
+      button_x += btn_size + transport_layout.gap;
+    }
   }
 
   if (ui.volume_arc) {
