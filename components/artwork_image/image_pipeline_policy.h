@@ -6,6 +6,41 @@
 namespace esphome {
 namespace artwork_image {
 
+enum class BackgroundTransferTlsMode : uint8_t {
+  PLAIN_HTTP = 0,
+  VERIFIED_HTTPS = 1,
+  INSECURE_LOCAL_HTTPS = 2,
+};
+
+// Public HTTPS always uses the certificate bundle. The insecure mode is
+// reachable only when both the component setting and private/local host check
+// have opted in.
+constexpr BackgroundTransferTlsMode background_transfer_tls_mode(
+    bool https, bool private_or_local_host, bool allow_insecure_local_urls) {
+  if (!https) return BackgroundTransferTlsMode::PLAIN_HTTP;
+  return private_or_local_host && allow_insecure_local_urls
+             ? BackgroundTransferTlsMode::INSECURE_LOCAL_HTTPS
+             : BackgroundTransferTlsMode::VERIFIED_HTTPS;
+}
+
+constexpr bool background_transfer_result_is_current(
+    uint32_t expected_generation, uint32_t result_generation, bool cancelled) {
+  return !cancelled && expected_generation == result_generation;
+}
+
+// Only a current, successful, bounded transfer can hand bytes back to the
+// decoder. HTTP 304 is a successful cache result and intentionally has no
+// payload.
+constexpr bool background_transfer_result_can_publish(
+    uint32_t expected_generation, uint32_t result_generation, bool cancelled,
+    bool transport_ok, bool allocation_ok, bool http_status_ok,
+    bool not_modified, size_t response_size, size_t maximum_size) {
+  return background_transfer_result_is_current(
+             expected_generation, result_generation, cancelled) &&
+         transport_ok && allocation_ok && http_status_ok &&
+         (not_modified || (response_size > 0 && response_size <= maximum_size));
+}
+
 // Higher-priority requests win. Equal-priority requests keep their original
 // submission order so a busy camera page cannot starve its first tile.
 constexpr bool p4_pipeline_candidate_precedes(uint8_t candidate_priority,
@@ -21,7 +56,8 @@ constexpr bool p4_pipeline_candidate_precedes(uint8_t candidate_priority,
 constexpr bool p4_pipeline_result_is_current(uint32_t expected_generation,
                                              uint32_t result_generation,
                                              bool cancelled) {
-  return !cancelled && expected_generation == result_generation;
+  return background_transfer_result_is_current(
+      expected_generation, result_generation, cancelled);
 }
 
 // Home Assistant's local media proxy can provide valid image bytes while the

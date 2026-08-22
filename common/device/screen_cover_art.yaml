@@ -997,6 +997,7 @@ script:
             request_mask,
             espcontrol::artwork::artwork_refresh_forced(
               id(cover_art_runtime).artwork_refresh.forced, false, force_refresh));
+          id(cover_art_runtime).sources.begin_refresh();
           auto handle_picture_change =
             [cover_entity, subscription_generation, request_generation](
                 esphome::StringRef picture, bool local) {
@@ -1048,7 +1049,8 @@ script:
                 if (process_cached) id(cover_art_process_cached_artwork).execute();
                 return;
               }
-              id(cover_art_runtime).sources.update(local, url);
+              id(cover_art_runtime).sources.update(
+                local, url, espcontrol::artwork::RemoteUpdatePolicy::PRESERVE_LOCAL);
               if (!url.empty() && url != id(cover_art_runtime).source_url) {
                 id(cover_art_runtime).refresh_needed = true;
                 id(cover_art_runtime).retry_url.clear();
@@ -1138,7 +1140,8 @@ script:
           espcontrol::artwork::SourceSelection selection =
               id(cover_art_runtime).sources.select(
                   id(cover_art_runtime).source_url,
-                  id(cover_art_runtime).refresh_needed);
+                  id(cover_art_runtime).sources.remote_changed_in_refresh());
+          id(cover_art_runtime).sources.finish_refresh();
           std::string chosen = selection.primary;
           std::string alternate = selection.fallback;
           if (selection.preferred_refreshed_remote) {

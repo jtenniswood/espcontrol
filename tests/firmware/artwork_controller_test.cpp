@@ -60,26 +60,79 @@ int main() {
   assert(selected.primary == "local-a");
   assert(selected.fallback == "remote-a");
 
-  // A new remote event represents a new artwork generation. Stale local art
-  // must not remain selected while the matching local attribute is in flight.
+  // A genuinely changed remote source is promoted while the stable local
+  // proxy remains available as fallback.
+  sources.begin_refresh();
   assert(sources.update(false, "remote-b"));
-  assert(sources.local_url.empty());
-  assert(sources.select("local-a", false).primary == "remote-b");
+  assert(sources.local_url == "local-a");
+  selected = sources.select("local-a", true);
+  assert(selected.primary == "remote-b");
+  assert(selected.fallback == "local-a");
+  assert(selected.preferred_refreshed_remote);
 
   // Repeated events are idempotent and an empty local result retains the
   // current remote fallback.
   assert(!sources.update(false, "remote-b"));
-  assert(!sources.update(true, ""));
+  assert(sources.update(true, ""));
   assert(sources.select("remote-b", false).primary == "remote-b");
 
   // Media-card remote/local requests can finish out of order. A delayed
   // remote callback must preserve the newer local result.
   sources.clear();
+  sources.begin_refresh();
   assert(sources.update(true, "local-new"));
   assert(sources.update(false, "remote-old", RemoteUpdatePolicy::PRESERVE_LOCAL));
   selected = sources.select("", false);
   assert(selected.primary == "local-new");
   assert(selected.fallback == "remote-old");
+
+  // Metadata-only refreshes retain both unchanged candidates and select the
+  // local proxy for a forced cache-busting download. Callback order is
+  // irrelevant because neither response clears its companion.
+  sources.begin_refresh();
+  assert(!sources.update(false, "remote-old"));
+  assert(!sources.update(true, "local-new"));
+  selected = sources.select("local-new", true);
+  assert(selected.primary == "local-new");
+  assert(selected.fallback == "remote-old");
+  assert(!selected.preferred_refreshed_remote);
+
+  sources.begin_refresh();
+  assert(sources.update(false, "remote-new"));
+  assert(!sources.update(true, "local-new"));
+  selected = sources.select("local-new", true);
+  assert(selected.primary == "remote-new");
+  assert(selected.fallback == "local-new");
+  assert(selected.preferred_refreshed_remote);
+
+  // Paired callbacks settle exactly once regardless of arrival order. This is
+  // the contract that prevents a local response and its remote companion from
+  // starting two serialized image requests for one Home Assistant refresh.
+  auto settle_pair = [](bool local_first) {
+    SourceCandidates paired;
+    paired.remote_url = "remote-stable";
+    paired.local_url = "local-stable";
+    paired.begin_refresh();
+    RefreshBatch paired_batch;
+    const uint32_t generation = paired_batch.begin(ARTWORK_SOURCE_BOTH, true);
+    int selections = 0;
+    auto receive = [&](bool local) {
+      assert(paired_batch.receive(generation, local));
+      assert(!paired.update(local, local ? "local-stable" : "remote-stable"));
+      if (!paired_batch.complete()) return;
+      const auto pair_selection = paired.select(
+          "local-stable", paired.remote_changed_in_refresh());
+      assert(pair_selection.primary == "local-stable");
+      ++selections;
+      assert(paired_batch.finish());
+      paired.finish_refresh();
+    };
+    receive(local_first);
+    receive(!local_first);
+    assert(selections == 1);
+  };
+  settle_pair(true);
+  settle_pair(false);
 
   // A valid local proxy is already preferred and can skip the media-card
   // debounce. Remote or empty responses must retain fallback scheduling.

@@ -418,7 +418,6 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->media_artwork_suppressed = espcontrol::cover_art::media_card_artwork_suppressed(
     media_ctx->source_known, media_ctx->external_source);
   art->media_artwork_refresh_forced = false;
-  art->media_artwork_remote_refresh_pending = false;
   art->media_overlay = overlay;
   art->media_overlay_artwork_tint = show_track_details;
   art->media_artwork_applied = [media_ctx]() {

@@ -149,7 +149,13 @@ void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
   }
 }
 
-DownloadBuffer::DownloadBuffer(size_t size) : size_(size) {
+DownloadBuffer::DownloadBuffer(size_t size) : buffer_(nullptr), size_(size) {
+  // ArtworkImage intentionally starts with no staging allocation and grows on
+  // first use. A zero-sized allocator returning nullptr is therefore expected.
+  if (size == 0) {
+    this->reset();
+    return;
+  }
   this->buffer_ = this->allocator_.allocate(size);
   this->reset();
   if (!this->buffer_) {

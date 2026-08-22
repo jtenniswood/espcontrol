@@ -170,7 +170,8 @@ class ArtworkImage : public PollingComponent,
   bool create_decoder_(ImageFormat format, size_t total_size);
   bool is_busy_() const {
     return this->service_pending_ || this->service_active_ || this->downloader_ != nullptr ||
-           this->decoder_ != nullptr || this->p4_pipeline_pending_;
+           this->decoder_ != nullptr || this->p4_pipeline_pending_ ||
+           this->s3_transfer_pending_;
   }
   bool has_newer_pending_update_() const {
     return this->update_pending_ && !this->pending_url_.empty() && this->pending_url_ != this->url_;
@@ -218,6 +219,9 @@ class ArtworkImage : public PollingComponent,
   bool start_p4_pipeline_(std::vector<http_request::Header> &headers);
   bool consume_p4_pipeline_result_();
   void cancel_p4_pipeline_();
+  bool start_s3_transfer_(const std::vector<http_request::Header> &headers);
+  bool consume_s3_transfer_result_();
+  void cancel_s3_transfer_();
   void note_response_bytes_();
   void log_timing_(const char *result, size_t bytes_read) const;
   void finish_download_();
@@ -324,6 +328,8 @@ class ArtworkImage : public PollingComponent,
   uint32_t service_generation_{0};
   bool service_pending_{false};
   bool service_active_{false};
+  bool s3_transfer_pending_{false};
+  uint32_t s3_transfer_generation_{0};
   P4PipelinePriority p4_pipeline_priority_{P4_PIPELINE_DISABLED};
   bool p4_pipeline_pending_{false};
   uint32_t p4_pipeline_generation_{0};

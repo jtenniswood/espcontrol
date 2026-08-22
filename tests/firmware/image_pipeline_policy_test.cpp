@@ -18,8 +18,40 @@ using esphome::artwork_image::p4_pipeline_transfer_capacity;
 using esphome::artwork_image::cover_alignment_edge_overscan;
 using esphome::artwork_image::p4_cover_scale_plan;
 using esphome::artwork_image::p4_jpeg_hardware_target_supported;
+using esphome::artwork_image::BackgroundTransferTlsMode;
+using esphome::artwork_image::background_transfer_result_can_publish;
+using esphome::artwork_image::background_transfer_tls_mode;
 
 int main() {
+  // Public HTTPS cannot inherit the explicitly permitted local insecure mode.
+  assert(background_transfer_tls_mode(true, false, true) ==
+         BackgroundTransferTlsMode::VERIFIED_HTTPS);
+  assert(background_transfer_tls_mode(true, true, false) ==
+         BackgroundTransferTlsMode::VERIFIED_HTTPS);
+  assert(background_transfer_tls_mode(true, true, true) ==
+         BackgroundTransferTlsMode::INSECURE_LOCAL_HTTPS);
+  assert(background_transfer_tls_mode(false, true, true) ==
+         BackgroundTransferTlsMode::PLAIN_HTTP);
+
+  // Stale generations, cancellation, connection failure, allocation failure,
+  // and oversized responses are never published to the image decoder.
+  constexpr size_t transfer_limit = 2 * 1024 * 1024;
+  assert(background_transfer_result_can_publish(
+      7, 7, false, true, true, true, false, 4096, transfer_limit));
+  assert(background_transfer_result_can_publish(
+      7, 7, false, true, true, true, true, 0, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 6, false, true, true, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, true, true, true, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, false, false, true, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, false, true, false, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, false, true, true, true, false, transfer_limit + 1,
+      transfer_limit));
+
   // Modal work preempts queued tile work.
   assert(p4_pipeline_candidate_precedes(2, 20, 1, 10));
   assert(!p4_pipeline_candidate_precedes(1, 10, 2, 20));
