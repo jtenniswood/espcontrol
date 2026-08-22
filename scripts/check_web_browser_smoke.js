@@ -5081,6 +5081,46 @@ async function assertOfflineProfileFallback(browser, testCase) {
   }
 }
 
+async function assertMediaCoverArtCompactPreview(page, label) {
+  const layout = await page.evaluate(() => {
+    const card = document.querySelector('.sp-main [data-slot="4"]');
+    const artist = card.querySelector(".sp-media-now-artist");
+    const row = card.querySelector(".sp-media-cover-details-row");
+    const badge = card.querySelector(".sp-type-badge");
+    const standardLabel = document.querySelector('.sp-main [data-slot="1"] .sp-btn-label');
+    const artistStyle = getComputedStyle(artist);
+    const standardStyle = getComputedStyle(standardLabel);
+    const badgeStyle = getComputedStyle(badge);
+    const rowRect = row.getBoundingClientRect();
+    const badgeRect = badge.getBoundingClientRect();
+    const result = {
+      compactClass: card.classList.contains("sp-media-cover-details-single"),
+      whiteSpace: artistStyle.whiteSpace,
+      textOverflow: artistStyle.textOverflow,
+      fontFamily: artistStyle.fontFamily,
+      fontSize: artistStyle.fontSize,
+      fontWeight: artistStyle.fontWeight,
+      standardFontFamily: standardStyle.fontFamily,
+      standardFontSize: standardStyle.fontSize,
+      standardFontWeight: standardStyle.fontWeight,
+      badgeDisplay: badgeStyle.display,
+      badgeRightGap: Math.abs(rowRect.right - badgeRect.right),
+      badgeBottomGap: Math.abs(rowRect.bottom - badgeRect.bottom),
+    };
+    return result;
+  });
+
+  assert(layout.compactClass, `${label}: 1x1 Cover Art details preview uses its compact layout`);
+  assert.strictEqual(layout.whiteSpace, "nowrap", `${label}: 1x1 Cover Art artist stays on one line`);
+  assert.strictEqual(layout.textOverflow, "ellipsis", `${label}: long 1x1 Cover Art artists truncate cleanly`);
+  assert.strictEqual(layout.fontFamily, layout.standardFontFamily, `${label}: Cover Art artist uses the card-label font`);
+  assert.strictEqual(layout.fontSize, layout.standardFontSize, `${label}: Cover Art artist uses the card-label size`);
+  assert.strictEqual(layout.fontWeight, layout.standardFontWeight, `${label}: Cover Art artist uses the card-label weight`);
+  assert.strictEqual(layout.badgeDisplay, "block", `${label}: 1x1 Cover Art icon is visible`);
+  assert(layout.badgeRightGap < 1, `${label}: 1x1 Cover Art icon is right-aligned`);
+  assert(layout.badgeBottomGap < 1, `${label}: 1x1 Cover Art icon is bottom-aligned`);
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -5159,6 +5199,7 @@ async function runCase(browser, testCase) {
       testCase.name,
       testCase,
     );
+    await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);

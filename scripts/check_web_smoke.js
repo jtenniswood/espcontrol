@@ -1432,6 +1432,7 @@ const mediaNowPlayingPreview = hooks.buttonTypePreviewFor("media", {
 assert(mediaNowPlayingPreview.iconHtml.includes("Track Title"), "media now-playing preview uses the shared mock title");
 assert(mediaNowPlayingPreview.labelHtml.includes("Artist Name"), "media now-playing preview uses the shared mock artist");
 assert(mediaNowPlayingPreview.labelHtml.includes("sp-media-now-artist"), "media now-playing preview keeps artist styling");
+assert(previewStylesSource.includes(".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400)}"), "media artists use standard card-label typography");
 
 const mediaCoverArtPreview = hooks.buttonTypePreviewFor("media", {
   entity: "media_player.office",
@@ -1455,8 +1456,19 @@ assert(mediaCoverArtDetailsPreview.iconHtml.includes("sp-media-cover-tint"), "me
 assert(mediaCoverArtDetailsPreview.iconHtml.includes("sp-media-cover-details-title"), "media cover art details preview insets its title like other cards");
 assert(mediaCoverArtDetailsPreview.iconHtml.includes("Track Title"), "media cover art details preview shows a track title");
 assert(mediaCoverArtDetailsPreview.buttonClass.includes("sp-media-cover-details-card"), "media cover art details preview can stack large-card metadata");
+assert(mediaCoverArtDetailsPreview.buttonClass.includes("sp-media-cover-details-single"), "media cover art details 1x1 preview uses its compact layout");
 assert(mediaCoverArtDetailsPreview.labelHtml.includes("sp-media-cover-details-row"), "media cover art details preview insets its artist row like other cards");
 assert(mediaCoverArtDetailsPreview.labelHtml.includes("Artist Name"), "media cover art details preview shows an artist");
+assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-media-now-artist{white-space:nowrap"), "media cover art details 1x1 artist stays on one line");
+assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-type-badge{display:block;position:absolute;right:0;bottom:0"), "media cover art details 1x1 icon sits in the bottom-right corner");
+
+const mediaCoverArtDetailsLargePreview = hooks.buttonTypePreviewFor("media", {
+  entity: "media_player.office",
+  sensor: "cover_art",
+  type: "media",
+  options: "cover_art_details",
+}, { cardSize: 4 });
+assert(!mediaCoverArtDetailsLargePreview.buttonClass.includes("sp-media-cover-details-single"), "media cover art details larger previews keep their existing layout");
 
 const issue243Backup = {
   version: 1,

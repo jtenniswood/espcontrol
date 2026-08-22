@@ -111,7 +111,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-media-position-time{z-index:1}" +
         ".sp-media-now-title{font-size:var(--media-title);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
         "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
-        ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:300}" +
+        ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400)}" +
+        ".sp-media-cover-details-single .sp-media-cover-details-row{padding-right:calc(var(--btn-label)*1.25);box-sizing:border-box}" +
+        ".sp-media-cover-details-single .sp-media-now-artist{white-space:nowrap;text-overflow:ellipsis;word-break:normal;max-height:none}" +
+        ".sp-media-cover-details-single .sp-type-badge{display:block;position:absolute;right:0;bottom:0;font-size:var(--btn-label);line-height:1.2;opacity:.58}" +
         ".sp-btn-big .sp-media-cover-details-title{font-size:var(--media-cover-artist)}" +
         ".sp-btn-big.sp-media-cover-control-fonts .sp-media-cover-details-title{font-size:calc(var(--btn-label)*1.75)}" +
         ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}" +
