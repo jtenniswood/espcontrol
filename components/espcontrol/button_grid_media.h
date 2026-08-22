@@ -2607,7 +2607,9 @@ inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
     media_control_apply_group_volume_percent(ctx, pct, send_action);
     return;
   }
-  if (!ctx->volume_known || !ctx->supported_features_known) return;
+  if (!ctx->supported_features_known) return;
+  if (!ctx->volume_known && ctx->volume_control_mode !=
+      espcontrol::media::VolumeControlMode::STEP) return;
   const int current_pct = media_clamp_percent(ctx->current_pct);
   const auto command = espcontrol::media::volume_command(
     ctx->volume_control_mode, current_pct, pct,
