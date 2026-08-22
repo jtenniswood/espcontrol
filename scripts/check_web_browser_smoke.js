@@ -5093,6 +5093,15 @@ async function assertMediaCoverArtCompactPreview(page, label) {
     const badgeStyle = getComputedStyle(badge);
     const rowRect = row.getBoundingClientRect();
     const badgeRect = badge.getBoundingClientRect();
+    const largeCard = card.cloneNode(true);
+    largeCard.classList.remove("sp-media-cover-details-single");
+    largeCard.classList.add("sp-btn-big");
+    largeCard.style.cssText = "position:fixed;left:-1000px;top:0;width:400px;height:400px";
+    document.body.appendChild(largeCard);
+    const largeTitleRect = largeCard.querySelector(".sp-media-cover-details-title").getBoundingClientRect();
+    const largeArtistRow = largeCard.querySelector(".sp-media-cover-details-row");
+    const largeArtistRect = largeArtistRow.querySelector(".sp-media-now-artist").getBoundingClientRect();
+    const largeArtistMarginTop = parseFloat(getComputedStyle(largeArtistRow).marginTop);
     const result = {
       compactClass: card.classList.contains("sp-media-cover-details-single"),
       whiteSpace: artistStyle.whiteSpace,
@@ -5106,7 +5115,10 @@ async function assertMediaCoverArtCompactPreview(page, label) {
       badgeDisplay: badgeStyle.display,
       badgeRightGap: Math.abs(rowRect.right - badgeRect.right),
       badgeBottomGap: Math.abs(rowRect.bottom - badgeRect.bottom),
+      largeArtistMarginTop,
+      largeTitleArtistGap: largeArtistRect.top - largeTitleRect.bottom,
     };
+    largeCard.remove();
     return result;
   });
 
@@ -5119,6 +5131,8 @@ async function assertMediaCoverArtCompactPreview(page, label) {
   assert.strictEqual(layout.badgeDisplay, "block", `${label}: 1x1 Cover Art icon is visible`);
   assert(layout.badgeRightGap < 1, `${label}: 1x1 Cover Art icon is right-aligned`);
   assert(layout.badgeBottomGap < 1, `${label}: 1x1 Cover Art icon is bottom-aligned`);
+  assert(layout.largeArtistMarginTop > 0, `${label}: 2x2 Cover Art artist has extra top spacing`);
+  assert(layout.largeTitleArtistGap >= layout.largeArtistMarginTop - 1, `${label}: 2x2 Cover Art title and artist remain separated`);
 }
 
 async function runCase(browser, testCase) {

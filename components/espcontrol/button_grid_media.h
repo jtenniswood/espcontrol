@@ -4106,6 +4106,14 @@ inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)
   return row_span == 2 && col_span == 2;
 }
 
+inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,
+                                               int row_span, int col_span) {
+  if (top_padding <= 1) return 0;
+  return media_cover_art_uses_compact_large_fonts(row_span, col_span)
+    ? top_padding
+    : top_padding / 2;
+}
+
 inline bool media_cover_art_limits_title_to_two_lines(int row_span,
                                                        int col_span) {
   return row_span == 1 || (row_span == 2 && col_span == 2);
@@ -4179,7 +4187,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       }
       ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(
         row_span, col_span);
-      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
+      ctx->artist_gap = media_cover_art_artist_gap(
+        padding.top, row_span, col_span);
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
         media_title_font, layout_padding,

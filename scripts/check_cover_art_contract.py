@@ -228,6 +228,7 @@ for required in (
     ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}",
     ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist,.sp-btn-portrait-large .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--media-cover-artist)}",
     ".sp-btn-big.sp-media-cover-details-card,.sp-btn-extra-large.sp-media-cover-details-card,.sp-btn-portrait-large.sp-media-cover-details-card{justify-content:flex-start}",
+    ".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}",
     ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}",
     ".sp-btn-wide .sp-media-cover-details-title,.sp-btn-extra-wide .sp-media-cover-details-title{-webkit-line-clamp:2}",
 ):
@@ -408,6 +409,9 @@ for required in (
     "return row_span >= 2 && col_span >= 2;",
     "inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)",
     "return row_span == 2 && col_span == 2;",
+    "inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,",
+    "return media_cover_art_uses_compact_large_fonts(row_span, col_span)",
+    "ctx->artist_gap = media_cover_art_artist_gap(",
     "inline bool media_cover_art_limits_title_to_two_lines(int row_span,",
     "return row_span == 1 || (row_span == 2 && col_span == 2);",
     "inline void media_position_now_playing_artist(MediaNowPlayingCtx *ctx)",
@@ -461,6 +465,8 @@ for required in (
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
 if "media_cover_art_limits_title_to_two_lines(row_span, col_span)" not in grid:
     raise SystemExit("Cover art layout refresh must keep track titles limited to two lines")
+if "ctx->artist_gap = media_cover_art_artist_gap(" not in grid:
+    raise SystemExit("Cover art layout refresh must preserve the size-aware artist gap")
 for required in (
     "display.modal.layout_family == DisplayModalLayoutFamily::COMPACT_PORTRAIT",
     "compact_portrait\n        ? display_media_control_title_font(display)",

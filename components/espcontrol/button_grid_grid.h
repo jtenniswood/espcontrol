@@ -767,7 +767,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
         lv_obj_set_style_text_font(ctx->artist_lbl, artist_font, LV_PART_MAIN);
       }
       ctx->artist_below_title = large;
-      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
+      ctx->artist_gap = media_cover_art_artist_gap(
+        padding.top, row_span, col_span);
       if (ctx->show_track_details || ctx->external_source_fallback) {
         lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
