@@ -1129,6 +1129,7 @@ inline bool grid_refresh_subpage_layouts(
     const std::string order = get_subpage_order(sp_cfg);
     SubpageOrder sp_order;
     parse_subpage_order(order, NS, sp_btns.size(), sp_order);
+    normalize_subpage_order_spans(sp_order, NS, COLS);
 
     // Binding a card to another entity/type requires new HA callbacks. Keep
     // the existing data-bound widgets intact and defer that structural edit to
@@ -1965,6 +1966,7 @@ inline void grid_phase2(
 
     SubpageOrder sp_ord;
     parse_subpage_order(sp_order_str, NS, sp_btns.size(), sp_ord);
+    normalize_subpage_order_spans(sp_ord, NS, COLS);
 
     lv_obj_t *sub_scr = lv_obj_create(NULL);
     int display_order = NS;
