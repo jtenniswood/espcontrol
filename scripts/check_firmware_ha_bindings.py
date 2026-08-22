@@ -1717,6 +1717,10 @@ def firmware_media_playback_mode_binding_errors(
             errors.append(
                 "components/espcontrol/button_grid_media.h: generation-guard both playback-mode subscriptions"
             )
+        if "if (subscription_added) ha_reannounce_state_subscriptions();" not in subscribe_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: re-announce dynamically added playback-mode subscriptions"
+            )
 
     capabilities_marker = 'std::string("supported_features")'
     if capabilities_marker in media_text:
@@ -4159,6 +4163,7 @@ def valid_media_playback_mode_binding_text() -> tuple[str, str, str]:
         "};\n"
         "inline void media_playback_subscribe_modes(MediaPlaybackState *state) {\n"
         "  if (state->controls.empty()) return;\n"
+        "  bool subscription_added = false;\n"
         "  ha_subscribe_attribute(entity_id, std::string(\"shuffle\"), [state, generation]() {\n"
         "    if (!media_playback_generation_valid(state, generation)) return;\n"
         "    parse_shuffle_state(value, enabled);\n"
@@ -4167,6 +4172,7 @@ def valid_media_playback_mode_binding_text() -> tuple[str, str, str]:
         "    if (!media_playback_generation_valid(state, generation)) return;\n"
         "    parse_repeat_mode(value);\n"
         "  });\n"
+        "  if (subscription_added) ha_reannounce_state_subscriptions();\n"
         "}\n"
         "inline void media_playback_subscribe_content(MediaPlaybackState *state) {}\n"
         "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
@@ -6366,6 +6372,15 @@ def run_self_test() -> int:
         valid_mode_actions,
         valid_mode_capability,
         ("capability-triggered",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "playback-mode subscription re-announcement removed",
+        valid_modes.replace(
+            "  if (subscription_added) ha_reannounce_state_subscriptions();\n", ""
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("re-announce dynamically added",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",
