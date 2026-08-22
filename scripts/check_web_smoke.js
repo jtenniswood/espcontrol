@@ -489,10 +489,25 @@ for (const option of pickerOptions) {
 const switchPickerOption = pickerOptions.find((option) => option.key === "");
 assert(switchPickerOption, "switch card appears in the main card picker");
 assert.strictEqual(switchPickerOption.icon, "toggle-switch", "switch picker option uses the expected icon");
+const cardStylesSource = fs.readFileSync(
+  path.join(ROOT, "src", "webserver", "application", "styles.ts"),
+  "utf8",
+);
 assert(
-  fs.readFileSync(path.join(ROOT, "src", "webserver", "application", "styles.ts"), "utf8")
-    .includes(".sp-card-type-icon::before{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"),
+  cardStylesSource.includes(".sp-card-type-icon::before{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"),
   "card picker icons stay centred inside their accent boxes"
+);
+assert(
+  cardStylesSource.includes(".sp-btn-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
+  "standard card icons stay in the bottom-right corner at every size",
+);
+assert(
+  cardStylesSource.includes(".sp-image-preview-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
+  "image card icons use the same bottom-right placement",
+);
+assert(
+  cardStylesSource.includes(".sp-btn-icon~.sp-btn-label,.sp-btn-icon~.sp-btn-label-row{box-sizing:border-box;"),
+  "card labels reserve room for their bottom-right icon",
 );
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
 assert(
@@ -828,7 +843,7 @@ const imagePreview = hooks.buttonTypePreviewFor("image", {
   type: "image",
   options: "image_label",
 });
-assert(!imagePreview.iconHtml.includes("sp-image-preview-icon"), "image preview hides the top-left icon by default");
+assert(!imagePreview.iconHtml.includes("sp-image-preview-icon"), "image preview hides the card icon by default");
 assert(!imagePreview.iconHtml.includes("sp-image-preview-text"), "image preview does not show centered placeholder text");
 assert(!imagePreview.iconHtml.includes(">Image<"), "image preview does not show centered Image copy");
 assert(imagePreview.labelHtml.includes("Seaside"), "image preview keeps the configured label");
@@ -839,7 +854,7 @@ const imageIconPreview = hooks.buttonTypePreviewFor("image", {
   type: "image",
   options: "image_icon",
 });
-assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a top-left camera icon when enabled");
+assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a bottom-right camera icon when enabled");
 assert(!imageIconPreview.labelHtml.includes("Seaside"), "image preview hides the label when label option is off");
 const customImageIconPreview = hooks.buttonTypePreviewFor("image", {
   entity: "image.seaside",

@@ -1809,7 +1809,7 @@ inline void setup_media_action_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
-    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    align_card_icon_bottom_right(icon_lbl);
   }
   if (text_lbl) {
     std::string label = media_play_pause_show_state(p)
@@ -1827,7 +1827,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            lv_obj_t *artist_lbl,
                                            const lv_font_t *title_font,
                                            const CardPadding &padding,
-                                           bool limit_title_lines,
+                                           int title_line_limit,
                                            bool tappable,
                                            lv_coord_t content_inset = 0,
                                            bool reset_text = true) {
@@ -1849,14 +1849,17 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   if (title_lbl) {
     if (title_font) lv_obj_set_style_text_font(title_lbl, title_font, LV_PART_MAIN);
     lv_obj_set_style_text_line_space(title_lbl, TITLE_LINE_SPACE, LV_PART_MAIN);
-    if (limit_title_lines) {
+    if (title_line_limit > 0) {
       const lv_font_t *font = title_font ? title_font : lv_obj_get_style_text_font(title_lbl, LV_PART_MAIN);
       lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
       lv_obj_set_width(title_lbl, text_width);
       lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);
       if (font && font->line_height > 0) {
         lv_obj_set_style_max_height(
-          title_lbl, font->line_height * 2 + TITLE_LINE_SPACE, LV_PART_MAIN);
+          title_lbl,
+          font->line_height * title_line_limit +
+            TITLE_LINE_SPACE * (title_line_limit - 1),
+          LV_PART_MAIN);
       }
     } else {
       lv_obj_set_style_max_height(title_lbl, LV_COORD_MAX, LV_PART_MAIN);
@@ -1988,7 +1991,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (icon_lbl) {
       lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
-      lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
+      align_card_icon_bottom_right(icon_lbl, padding.right, padding.bottom);
       lv_obj_move_foreground(icon_lbl);
     }
     if (text_lbl) {
@@ -2112,7 +2115,7 @@ inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
   } else if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(icon_lbl, media_default_icon(media_card_mode(p.sensor), p.icon));
-    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    align_card_icon_bottom_right(icon_lbl);
     if (sensor_container) lv_obj_add_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
   if (text_lbl) {
@@ -4114,9 +4117,10 @@ inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,
     : top_padding / 2;
 }
 
-inline bool media_cover_art_limits_title_to_two_lines(int row_span,
-                                                       int col_span) {
-  return row_span == 1 || (row_span == 2 && col_span == 2);
+inline int media_cover_art_title_line_limit(int row_span, int col_span) {
+  if (row_span == 3 && col_span == 3) return 5;
+  if (row_span == 1 || (row_span == 2 && col_span == 2)) return 2;
+  return 0;
 }
 
 inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
@@ -4192,7 +4196,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
         media_title_font, layout_padding,
-        media_cover_art_limits_title_to_two_lines(row_span, col_span),
+        media_cover_art_title_line_limit(row_span, col_span),
         true, 0);
       media_position_now_playing_artist(ctx);
       return;
@@ -4205,7 +4209,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->artist_lbl = s.text_lbl;
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, layout_padding,
-      row_span == 1, ctx->play_pause_background,
+      row_span == 1 ? 2 : 0, ctx->play_pause_background,
       mode == "now_playing" && media_now_playing_progress_enabled(p)
         ? layout_padding.left : 0);
     return;

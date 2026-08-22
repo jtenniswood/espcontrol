@@ -527,7 +527,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   apply_standard_sensor_number_style(s, display);
   if (s.unit_lbl) lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.text_lbl) lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+  align_card_icon_bottom_right(s.icon_lbl);
   if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   // A previous unsupported or information-only config may have disabled this
@@ -781,7 +781,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
         title_font, padding,
-        media_cover_art_limits_title_to_two_lines(row_span, col_span),
+        media_cover_art_title_line_limit(row_span, col_span),
         true, 0, false);
       media_position_now_playing_artist(ctx);
     }
@@ -798,7 +798,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
       display_media_title_font(display), padding,
-      row_span == 1, ctx->play_pause_background,
+      row_span == 1 ? 2 : 0, ctx->play_pause_background,
       ctx->progress_slider ? padding.left : 0, false);
     media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
@@ -836,7 +836,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
 
   if (media_playback_button_mode(mode)) {
-    if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    align_card_icon_bottom_right(s.icon_lbl);
     if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     return;
   }
@@ -867,7 +867,7 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
     ? ctx->label_pad_top : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
   const lv_coord_t pad_bottom = ctx
     ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
-  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
+  align_card_icon_bottom_right(s.icon_lbl, pad_left, pad_bottom);
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
   if (slider) slider_refresh_geometry(slider);
 }
