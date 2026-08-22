@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 99,
+    "entityNames": 100,
     "icons": 334,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -6087,6 +6087,19 @@
           "screen_saver__action",
           "screen_saver_action",
           "screensaver_action"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_camera_entity",
+        "domain": "text",
+        "name": "Screen Saver: Camera Entity",
+        "objectIds": [
+          "screen_saver__camera_entity",
+          "screen_saver_camera_entity",
+          "screensaver_camera_entity"
         ],
         "groups": [
           "settings"

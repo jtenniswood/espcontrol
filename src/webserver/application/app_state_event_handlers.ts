@@ -345,8 +345,13 @@ export function createAppStateEventHandlersFeature(
             "text-screensaver_mode": function (this: any, val?: any) {
                 state._screensaverModeReceived = true;
                 state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
-                if (els.setSsMode)
-                    els.setSsMode(getActiveScreensaverMode());
+                    if (els.setSsMode)
+                        els.setSsMode(getActiveScreensaverMode());
+            },
+            "text-screen_saver__camera_entity": function (this: any, val?: any) {
+                state.screensaverCameraEntity = val;
+                syncInput(els.setScreensaverCamera, val);
+                syncInput(els.setSensorScreensaverCamera, val);
             },
             "number-screen__daytime_brightness": function (this: any, val?: any) {
                 state.brightnessDayVal = parseFloat(val) || 100;

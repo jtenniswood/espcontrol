@@ -10,6 +10,8 @@ A Camera card shows a still image from a Home Assistant `camera` or `image` enti
 
 Camera cards are display cards. They do not stream live video, pan the camera, or send camera control actions. Tapping the card opens a larger view of the latest loaded image.
 
+On ESP32-P4 panels, the same `camera.*` and `image.*` entities can also be selected as the **Camera** screensaver action in **Settings > Sleep & Schedule > Screensaver**. That full-screen view is separate from the Camera-card pool, always uses **Show full image** framing, and does not consume a Camera-card slot.
+
 ::: info P4 screens only
 Camera cards are not supported on the ESP32-S3 screen because it has an older, slower processor and less available memory than the ESP32-P4 screens.
 :::

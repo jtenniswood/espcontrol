@@ -257,6 +257,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 ntp_server_3: state.ntpServer3,
                 screensaver_mode: getActiveScreensaverMode(),
                 presence_sensor_entity: state.presenceEntity,
+                screensaver_camera_entity: state.screensaverCameraEntity,
                 media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
                 media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity || state.coverArtMediaPlayerEntity,
                 cover_art_screensaver: state.coverArtScreensaverOn,
@@ -462,6 +463,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedScreensaverMode: any = importedSettings.screensaverMode;
                     postScreensaverMode(importedScreensaverMode);
                     postPresenceSensorEntity(importedSettings.presenceSensorEntity);
+                    if (controllers.layout.config.features && controllers.layout.config.features.cameraScreensaver)
+                        postText(entityName("screen_saver_camera_entity"), importedSettings.screensaverCameraEntity);
                     postMediaPlayerSleepPrevention(importedSettings.mediaPlayerSleepPrevention);
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
                     postCoverArtScreensaver(importedSettings.coverArtScreensaver);
@@ -478,6 +481,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         postFirmwareUpdateFrequency(importedSettings.updateFrequency);
                     }
                     var importedScreensaverAction: any = importedSettings.screensaverAction;
+                    if (importedScreensaverAction === "camera" &&
+                        !(controllers.layout.config.features && controllers.layout.config.features.cameraScreensaver))
+                        importedScreensaverAction = "off";
                     var importedScreensaverDimmedBrightness: any = importedSettings.screensaverDimmedBrightness;
                     var importedScreensaverDimmedBrightnessDay: any = importedSettings.screensaverDimmedBrightnessDay;
                     var importedScreensaverDimmedBrightnessNight: any = importedSettings.screensaverDimmedBrightnessNight;
@@ -525,6 +531,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.screensaverMode = importedScreensaverMode;
                     state._screensaverModeReceived = true;
                     state.presenceEntity = importedSettings.presenceSensorEntity;
+                    state.screensaverCameraEntity = importedSettings.screensaverCameraEntity;
                     state.mediaPlayerSleepPreventionOn = importedSettings.mediaPlayerSleepPrevention;
                     state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;
                     state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
@@ -555,6 +562,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     if (els.setTemperatureUnit)
                         els.setTemperatureUnit.value = state.temperatureUnit;
                     syncInput(els.setPresence, state.presenceEntity);
+                    syncInput(els.setScreensaverCamera, state.screensaverCameraEntity);
                     syncInput(els.setSchedulePresence, state.scheduleSensorEntity);
                     syncMediaPlayerSleepPreventionUi();
                     syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);

@@ -3,6 +3,7 @@ import type { EntityStateFeature } from "./entity_state";
 import type { ApplicationApiFeature } from "./api";
 export interface ArtworkPostApiFeature {
     postPresenceSensorEntity(value?: any): any;
+    postScreensaverCameraEntity(value?: any): any;
     postMediaPlayerSleepPrevention(on?: any): any;
     postMediaPlayerSleepPreventionEntity(value?: any): any;
     postCoverArtScreensaver(on?: any): any;
@@ -29,6 +30,9 @@ export function createArtworkPostApiFeature(
     // ── Artwork Post API ──────────────────────────────────────────────────
     function postPresenceSensorEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("presence_sensor_entity"), entityObjectIds("presence_sensor_entity"), value);
+    }
+    function postScreensaverCameraEntity(this: any, value?: any) {
+        return postTextWithObjectIds(entityName("screen_saver_camera_entity"), entityObjectIds("screen_saver_camera_entity"), value);
     }
     function postMediaPlayerSleepPrevention(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_media_player_sleep_prevention"), entityObjectIds("screen_saver_media_player_sleep_prevention"), on);
@@ -77,6 +81,7 @@ export function createArtworkPostApiFeature(
     }
     return {
         postPresenceSensorEntity,
+        postScreensaverCameraEntity,
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtScreensaver,
