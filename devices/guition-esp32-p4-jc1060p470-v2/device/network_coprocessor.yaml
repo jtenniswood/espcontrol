@@ -18,6 +18,9 @@ esp32_hosted:
   # The V2 (new panel) boards show a fixed band of vertical streaks on the
   # MIPI-DSI panel whenever the ESP32-C6 SDIO link runs at 20MHz (interference
   # into the DSI stream; unaffected by DPI timing or lane rate). 10MHz removes
-  # it completely and still leaves ample bandwidth for Home Assistant traffic
-  # and cover art. Verified on a JC1060P470C_I_W_Y / ESP32-P4 rev 1.3 unit.
+  # it completely, verified on a JC1060P470C_I_W_Y / ESP32-P4 rev 1.3 unit.
+  # Home Assistant traffic and cover art are unaffected at this clock. Camera
+  # card throughput has NOT been measured here; the original panel keeps 20MHz
+  # specifically so camera transfers stay supported, so a camera user on this
+  # profile has half that link budget.
   sdio_frequency: 10MHz

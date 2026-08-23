@@ -4,6 +4,14 @@
 
 After the initial install, everything is configured through the built-in web page — no coding or file editing required.
 
+## Which panel is this?
+
+Guition ships two 7-inch panels under the same JC1060P470 name. This profile is for the
+original panel, whose rear label has no `V2` in the SKU / material number. Units marked
+`V2` need the [JC1060P470 V2 profile](../guition-esp32-p4-jc1060p470-v2/). Flashing
+the wrong one leaves a white screen with a vertical noise band; reflash the other profile
+to recover.
+
 ## Quick links
 
 - **Full documentation:** [jtenniswood.github.io/espcontrol](https://jtenniswood.github.io/espcontrol/)
