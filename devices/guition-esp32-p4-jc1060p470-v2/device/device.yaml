@@ -355,10 +355,13 @@ display:
     vsync_front_porch: 12
     # JD9165 vendor init for the 2026 "New Panel" (Guition rear label "V2").
     # Source: Guition JC1060P470C_I_W_Y.zip (2026-07-13), 1-Demo/.../JC1060P470C_I_W_Y_New_Panel/lvgl_demo_v8/src/lcd/esp_lcd_jd9165.{c,h}
-    # PIXFMT/MADCTL/SLPOUT/DISPON are appended by ESPHome; do not add 0x3A/0x11/0x29 here.
+    # ESPHome appends PIXFMT/MADCTL/INVOFF/SLPOUT/DISPON, so do not add 0x3A,
+    # 0x36 or 0x29 here. The 0x11 at the end of the table IS deliberate; see the
+    # comment there before removing it.
     init_sequence:
-      # JD9165 needs 120 ms after reset before it accepts the vendor table
-      # (Guition esp_lcd_jd9165.c waits 120 ms; ESPHome itself waits 0 ms).
+      # JD9165 needs 120 ms after reset before it accepts the vendor table.
+      # ESPHome holds only SLPOUT until 120 ms after reset (mipi_dsi.cpp), not
+      # the vendor table, so the wait has to be declared here.
       - delay 120ms
       - [0x30, 0x00]
       - [0xF7, 0x49, 0x61, 0x02, 0x00]
@@ -417,8 +420,11 @@ display:
       - [0x12, 0x05]
       - [0x13, 0x0C]
       - [0x30, 0x00]
-      # SLPOUT here so DISPON (appended by ESPHome ~20 ms after its own SLPOUT)
-      # lands >=120 ms after sleep-out, as the JD9165 power-on sequence requires.
+      # Deliberate SLPOUT. ESPHome appends its own SLPOUT and then DISPON only
+      # ~10 ms later, but the JD9165 power-on sequence needs >=120 ms after
+      # sleep-out before display-on. Issuing it here plus the delay below gives
+      # DISPON that margin. Removing this pair regresses the panel to a white
+      # screen on warm reboot (hardware-verified).
       - [0x11]
       - delay 120ms
 
