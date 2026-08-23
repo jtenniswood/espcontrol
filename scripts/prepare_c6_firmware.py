@@ -12,8 +12,8 @@ import urllib.request
 
 
 ROOT = Path(__file__).resolve().parent.parent
-C6_VERSION = "2.12.9"
-C6_SHA256 = "9d8cec9dcca632e9ded31de555a5b49c70316d30b87ae06bd933fd35a5a11513"
+C6_VERSION = "2.12.12"
+C6_SHA256 = "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94"
 C6_URL = (
     "https://esphome.github.io/esp-hosted-firmware/"
     f"v{C6_VERSION}/network_adapter_esp32c6.bin"

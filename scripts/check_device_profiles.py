@@ -20,6 +20,8 @@ COMPAT_FIXTURES = ROOT / "product" / "v2" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
 BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_weather_driver.h"
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
+WEB_SERVER_IDF_INIT = ROOT / "components" / "web_server_idf" / "__init__.py"
+WEB_SERVER_IDF_CPP = ROOT / "components" / "web_server_idf" / "web_server_idf.cpp"
 LEGACY_OTA_PARTITION_LAYOUTS = {
     "esp32-p4-86": "partitions_32mb_card_images.csv",
     "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
@@ -169,6 +171,27 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
         assert "webserver/www.js?device=${device_slug}&v=${firmware_version}" in factory, (
             f"{slug}.factory.yaml: release firmware does not request its compatible hosted editor"
         )
+
+
+def test_web_server_request_limits() -> None:
+    init = WEB_SERVER_IDF_INIT.read_text(encoding="utf-8")
+    server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
+    header_limit = re.search(
+        r'add_idf_sdkconfig_option\("CONFIG_HTTPD_MAX_REQ_HDR_LEN",\s*(\d+)\)',
+        init,
+    )
+    assert header_limit and int(header_limit.group(1)) >= 4096, (
+        "web server request-header limit must support modern browser headers"
+    )
+    assert "static constexpr size_t MAX_FORM_URLENCODED_BODY_LENGTH = 1024;" in server, (
+        "form-encoded POST bodies must retain their independent 1024-byte limit"
+    )
+    assert "r->content_len > MAX_FORM_URLENCODED_BODY_LENGTH" in server, (
+        "form-encoded POST body validation must use its independent limit"
+    )
+    assert "r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN" not in server, (
+        "form-encoded POST bodies must not inherit the request-header limit"
+    )
 
 
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
@@ -737,6 +760,7 @@ def main() -> int:
     assert profile_slugs == compatibility_required_slugs(), "current compatibility device slug fixture is stale"
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
+    test_web_server_request_limits()
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Merge"
+  short_description: "Review, update, and safely merge an EspControl PR"
+  default_prompt: "Use $merge to clear review feedback and conflicts for the identified pull request, verify every merge gate, and merge it if ready."

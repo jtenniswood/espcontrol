@@ -40,6 +40,10 @@ wifi:
     - script.execute: network_status_refresh
     - script.execute: ntp_servers_apply_after_network
     - script.stop: wifi_reconnect_flow
+    - globals.set:
+        id: connectivity_setup_display_active
+        value: 'false'
+    - script.execute: display_mode_reconcile
     - script.execute: setup_screen_dim_cancel
     - lambda: |-
         ESP_LOGI("connectivity", "WiFi connected (%lu ms)", millis());
@@ -64,7 +68,12 @@ wifi:
     - script.execute: network_status_refresh
     - if:
         condition:
-          lambda: 'return !id(boot_grace_period);'
+          lambda: |-
+            // A factory device has no saved network to reconnect to. Keep its
+            // AP instructions on screen indefinitely instead of entering the
+            // delayed 60-second reconnect flow.
+            return !id(boot_grace_period) &&
+                   wifi::global_wifi_component->has_sta();
         then:
           - script.execute: wifi_reconnect_flow
 
@@ -106,6 +115,9 @@ script:
     mode: restart
     then:
       - lvgl.resume:
+      - globals.set:
+          id: connectivity_setup_display_active
+          value: 'true'
       - lambda: |-
           id(espcontrol_app).display().clear(
               espcontrol::DisplayRequestSource::MANUAL_SLEEP);
@@ -113,10 +125,12 @@ script:
       - script.wait: display_mode_apply_transition
       - script.execute: clock_bar_hide
       - lambda: |-
-          std::string msg = std::string(espcontrol_i18n("Connect to WiFi")) +
-                            "\n${friendly_name}\n" +
-                            espcontrol_i18n("Open 192.168.4.1");
-          lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("WiFi Setup"));
+          std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
+          if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
+          std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
+                            " '" + hotspot_ssid + "' " +
+                            espcontrol_i18n_key("to_configure_your_network_settings");
+          lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("Configure your WiFi"));
           lv_label_set_text(id(wifi_setup_instructions), msg.c_str());
       - lvgl.page.show: wifi_setup_page
       - script.execute:
@@ -131,20 +145,24 @@ script:
   - id: wifi_reconnect_flow
     mode: restart
     then:
-      - delay: 60s
       - if:
           condition:
-            not:
-              wifi.connected:
+            lambda: 'return wifi::global_wifi_component->has_sta();'
           then:
-            - script.execute: wifi_show_reconnecting
-            - delay: 30s
+            - delay: 60s
             - if:
                 condition:
                   not:
                     wifi.connected:
                 then:
-                  - script.execute: wifi_show_hotspot_setup
+                  - script.execute: wifi_show_reconnecting
+                  - delay: 30s
+                  - if:
+                      condition:
+                        not:
+                          wifi.connected:
+                      then:
+                        - script.execute: wifi_show_hotspot_setup
 
   - id: navigate_after_api
     mode: restart
