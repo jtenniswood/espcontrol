@@ -359,9 +359,11 @@ display:
     # 0x36 or 0x29 here. The 0x11 at the end of the table IS deliberate; see the
     # comment there before removing it.
     init_sequence:
-      # JD9165 needs 120 ms after reset before it accepts the vendor table.
-      # ESPHome holds only SLPOUT until 120 ms after reset (mipi_dsi.cpp), not
-      # the vendor table, so the wait has to be declared here.
+      # Load-bearing: the JD9165 needs 120 ms after reset before it accepts the
+      # vendor table. ESPHome holds only SLPOUT until 120 ms after reset
+      # (mipi_dsi.cpp), not the vendor table, so the wait has to be declared
+      # here. Without it the panel comes up white on a warm reboot (A/B tested
+      # on hardware); a cold boot survives, having had power-on settling time.
       - delay 120ms
       - [0x30, 0x00]
       - [0xF7, 0x49, 0x61, 0x02, 0x00]
@@ -420,11 +422,14 @@ display:
       - [0x12, 0x05]
       - [0x13, 0x0C]
       - [0x30, 0x00]
-      # Deliberate SLPOUT. ESPHome appends its own SLPOUT and then DISPON only
-      # ~10 ms later, but the JD9165 power-on sequence needs >=120 ms after
-      # sleep-out before display-on. Issuing it here plus the delay below gives
-      # DISPON that margin. Removing this pair regresses the panel to a white
-      # screen on warm reboot (hardware-verified).
+      # Deliberate SLPOUT, kept for vendor-timing fidelity rather than because
+      # it is required: Guition's driver waits 120 ms between sleep-out and
+      # display-on, while ESPHome appends its own SLPOUT and then DISPON only
+      # ~10 ms later. Issuing it here plus the delay gives DISPON that margin.
+      # Isolation testing showed the leading delay above is what actually
+      # rescues the warm boot; this pair alone does not, and dropping it alone
+      # still booted cleanly on the test unit. Retained because the full
+      # firmware's boot timing differs from that minimal test.
       - [0x11]
       - delay 120ms
 
