@@ -506,6 +506,10 @@ assert(
   "image card icons use the same bottom-right placement",
 );
 assert(
+  cardStylesSource.includes(".sp-image-card-with-icon>.sp-image-label{padding-right:calc(var(--btn-icon) + var(--btn-pad)*1.5)"),
+  "image card labels reserve room for their bottom-right icon",
+);
+assert(
   cardStylesSource.includes(".sp-btn-icon~.sp-btn-label,.sp-btn-icon~.sp-btn-label-row{box-sizing:border-box;"),
   "card labels reserve room for their bottom-right icon",
 );
@@ -855,6 +859,7 @@ const imageIconPreview = hooks.buttonTypePreviewFor("image", {
   options: "image_icon",
 });
 assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a bottom-right camera icon when enabled");
+assert(imageIconPreview.buttonClass.includes("sp-image-card-with-icon"), "image preview marks cards whose labels need icon clearance");
 assert(!imageIconPreview.labelHtml.includes("Seaside"), "image preview hides the label when label option is off");
 const customImageIconPreview = hooks.buttonTypePreviewFor("image", {
   entity: "image.seaside",

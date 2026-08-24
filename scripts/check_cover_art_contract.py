@@ -465,10 +465,17 @@ for required in (
         raise SystemExit(f"2x2 cover art must reuse All Controls fonts: {required}")
 
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+layout = (ROOT / "components" / "espcontrol" / "button_grid_layout.h").read_text(encoding="utf-8")
+if "reserve_button_label_icon_space" not in layout:
+    raise SystemExit("Firmware card labels must reserve width beside visible icons")
+if "reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);" not in grid:
+    raise SystemExit("Firmware card layout refresh must apply icon-aware label width")
 if "media_cover_art_title_line_limit(row_span, col_span)" not in grid:
     raise SystemExit("Cover art layout refresh must preserve the per-size track-title limit")
 if "ctx->artist_gap = media_cover_art_artist_gap(" not in grid:
     raise SystemExit("Cover art layout refresh must preserve the size-aware artist gap")
+if "media_cover_art_artist_gap(\n        ctx->content_padding.top, row_span, col_span)" not in grid:
+    raise SystemExit("Cover art layout refresh must use the captured content padding for the artist gap")
 for required in (
     "display.modal.layout_family == DisplayModalLayoutFamily::COMPACT_PORTRAIT",
     "compact_portrait\n        ? display_media_control_title_font(display)",

@@ -103,6 +103,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "font-size:var(--btn-icon);line-height:1;color:#fff}" +
         ".sp-image-label{position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;" +
         "padding:var(--btn-pad);z-index:1;pointer-events:none}" +
+        ".sp-image-card-with-icon>.sp-image-label{padding-right:calc(var(--btn-icon) + var(--btn-pad)*1.5)}" +
         ".sp-image-label-stack{position:relative;display:block}" +
         ".sp-image-label-text{font-size:var(--btn-label);line-height:1.2;font-weight:var(--btn-label-weight,400);" +
         "display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +

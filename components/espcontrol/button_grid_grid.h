@@ -768,7 +768,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       }
       ctx->artist_below_title = large;
       ctx->artist_gap = media_cover_art_artist_gap(
-        padding.top, row_span, col_span);
+        ctx->content_padding.top, row_span, col_span);
       if (ctx->show_track_details || ctx->external_source_fallback) {
         lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -868,7 +868,10 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
   const lv_coord_t pad_bottom = ctx
     ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
   align_card_icon_bottom_right(s.icon_lbl, pad_left, pad_bottom);
-  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+  if (s.text_lbl) {
+    lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+    reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn, pad_left);
+  }
   if (slider) slider_refresh_geometry(slider);
 }
 
@@ -886,6 +889,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
   display_apply_main_width(s.icon_lbl, display);
   display_apply_slot_text_width(s, display);
+  reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
