@@ -1,10 +1,23 @@
 <template>
   <div class="esp-install-wrapper">
-    <div v-if="!supported" class="unsupported">
+    <div v-if="!checked" class="installer-status">
+      Preparing installer...
+    </div>
+    <div v-else-if="!supported" class="installer-status warning">
       Your browser does not support WebSerial. Use Chrome or Edge on desktop.
     </div>
-    <div v-else-if="loadError" class="unsupported">
-      Failed to load installer. {{ loadError }}
+    <div v-else-if="loadError" class="installer-status warning">
+      {{ loadError }}
+    </div>
+    <div v-else-if="checkingManifest" class="installer-status">
+      Checking the latest firmware...
+    </div>
+    <div v-else-if="!manifestAvailable" class="installer-status warning">
+      WebInstall firmware for this panel has not been published yet. Use the manual ESPHome
+      setup below or check again after the next EspControl release.
+    </div>
+    <div v-else-if="!ready" class="installer-status">
+      Loading installer...
     </div>
     <div v-else class="install-button">
       <esp-web-install-button :manifest="manifestUrl">
@@ -22,16 +35,35 @@ const props = defineProps({
   slug: { type: String, default: 'guition-esp32-p4-jc1060p470' }
 })
 const manifestUrl = withBase(`/firmware/${props.slug}/manifest.json`)
+const checked = ref(false)
 const supported = ref(false)
-const loadError = ref(null)
+const checkingManifest = ref(false)
+const manifestAvailable = ref(false)
+const ready = ref(false)
+const loadError = ref('')
 
 onMounted(async () => {
+  checked.value = true
   supported.value = 'serial' in navigator
   if (!supported.value) return
+
+  checkingManifest.value = true
+  try {
+    const response = await fetch(manifestUrl, { cache: 'no-store' })
+    manifestAvailable.value = response.ok
+  } catch {
+    manifestAvailable.value = false
+  } finally {
+    checkingManifest.value = false
+  }
+
+  if (!manifestAvailable.value) return
+
   try {
     await import('https://unpkg.com/esp-web-tools@10/dist/web/install-button.js')
+    ready.value = true
   } catch (err) {
-    loadError.value = err?.message || 'Network or script load error.'
+    loadError.value = `Failed to load the USB installer. ${err?.message || ''}`.trim()
   }
 })
 </script>
@@ -61,11 +93,16 @@ onMounted(async () => {
   background-color: var(--vp-button-brand-hover-bg);
 }
 
-.unsupported {
+.installer-status {
   padding: 12px 16px;
   border-radius: 8px;
+  background-color: var(--vp-c-default-soft);
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+}
+
+.installer-status.warning {
   background-color: var(--vp-c-warning-soft);
   color: var(--vp-c-warning-1);
-  font-size: 14px;
 }
 </style>

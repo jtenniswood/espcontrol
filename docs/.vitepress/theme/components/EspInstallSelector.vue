@@ -46,7 +46,14 @@
         Your browser does not support WebSerial. Use Chrome or Edge on desktop.
       </div>
       <div v-else-if="loadError" class="installer-status warning">
-        Failed to load installer. {{ loadError }}
+        {{ loadError }}
+      </div>
+      <div v-else-if="checkingManifest" class="installer-status">
+        Checking the latest firmware...
+      </div>
+      <div v-else-if="!manifestAvailable" class="installer-status warning">
+        WebInstall firmware for this panel has not been published yet. Use its manual ESPHome
+        setup or check again after the next EspControl release.
       </div>
       <div v-else-if="!ready" class="installer-status">
         Loading installer...
@@ -164,25 +171,53 @@ const selected = ref(devices[0])
 const checked = ref(false)
 const supported = ref(false)
 const ready = ref(false)
-const loadError = ref(null)
+const checkingManifest = ref(false)
+const manifestAvailable = ref(false)
+const loadError = ref('')
+let manifestRequest = 0
 
 const manifestUrl = computed(() => withBase(`/firmware/${selected.value.slug}/manifest.json`))
 
-function selectDevice(device) {
-  selected.value = device
-}
+async function prepareInstaller() {
+  const request = ++manifestRequest
+  checkingManifest.value = true
+  manifestAvailable.value = false
+  ready.value = false
+  loadError.value = ''
 
-onMounted(async () => {
-  checked.value = true
-  supported.value = 'serial' in navigator
-  if (!supported.value) return
+  try {
+    const response = await fetch(manifestUrl.value, { cache: 'no-store' })
+    if (request !== manifestRequest) return
+    manifestAvailable.value = response.ok
+  } catch {
+    if (request !== manifestRequest) return
+    manifestAvailable.value = false
+  } finally {
+    if (request === manifestRequest) checkingManifest.value = false
+  }
+
+  if (request !== manifestRequest || !manifestAvailable.value) return
 
   try {
     await import('https://unpkg.com/esp-web-tools@10/dist/web/install-button.js')
-    ready.value = true
+    if (request === manifestRequest) ready.value = true
   } catch (err) {
-    loadError.value = err?.message || 'Network or script load error.'
+    if (request === manifestRequest) {
+      loadError.value = `Failed to load the USB installer. ${err?.message || ''}`.trim()
+    }
   }
+}
+
+function selectDevice(device) {
+  selected.value = device
+  if (checked.value && supported.value) prepareInstaller()
+}
+
+onMounted(() => {
+  checked.value = true
+  supported.value = 'serial' in navigator
+  if (!supported.value) return
+  prepareInstaller()
 })
 </script>
 

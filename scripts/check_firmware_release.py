@@ -478,6 +478,22 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     assert "guition-esp32-s3-4848s040" not in selector
 
 
+def test_installers_preflight_public_manifest() -> None:
+    install_button = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallButton.vue"
+    ).read_text(encoding="utf-8")
+    install_selector = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallSelector.vue"
+    ).read_text(encoding="utf-8")
+    for component in (install_button, install_selector):
+        assert "fetch(manifestUrl" in component
+        assert "cache: 'no-store'" in component
+        assert "manifestAvailable.value = response.ok" in component
+        assert "!manifestAvailable" in component
+        assert "has not been published yet" in component
+    assert "if (checked.value && supported.value) prepareInstaller()" in install_selector
+
+
 def test_valid_files_and_directory() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
@@ -775,6 +791,7 @@ def main() -> int:
     test_recovery_manifest_and_payload_verification()
     test_c6_dependency_preparation_is_verified_and_atomic()
     test_recovery_sources_and_documentation_stay_complete()
+    test_installers_preflight_public_manifest()
     test_draft_release_publishes_only_after_remote_asset_verification()
     test_published_or_mismatched_asset_release_stays_unpublished()
     test_wrong_slug_path_fails()
