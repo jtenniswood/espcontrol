@@ -44,12 +44,15 @@ def parse_resolution(value: str) -> tuple[int, int]:
 def assert_profile_contract(fixtures: dict, profiles: dict[str, dict]) -> None:
     fixture_by_slug = {entry["slug"]: entry for entry in fixtures["layouts"]}
     missing = sorted(set(profiles) - set(fixture_by_slug))
-    allowed_aliases = {"guition-esp32-p4-jc8012p4a1-v2"}
-    unexpected = sorted(set(missing) - allowed_aliases)
+    allowed_aliases = {
+        "guition-esp32-p4-jc8012p4a1-v2": "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc1060p470-v2": "guition-esp32-p4-jc1060p470",
+    }
+    unexpected = sorted(set(missing) - set(allowed_aliases))
     assert not unexpected, f"modal geometry fixtures missing devices: {', '.join(unexpected)}"
 
     for slug, profile in profiles.items():
-        fixture_slug = "guition-esp32-p4-jc8012p4a1" if slug in allowed_aliases else slug
+        fixture_slug = allowed_aliases.get(slug, slug)
         fixture = fixture_by_slug[fixture_slug]
         modal = profile["firmware"]["display"]["modal"]
         expected_profile = fixture["profile"]

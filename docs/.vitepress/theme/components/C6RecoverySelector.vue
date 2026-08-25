@@ -80,10 +80,17 @@ const devices = [
   },
   {
     slug: 'guition-esp32-p4-jc1060p470',
-    name: 'JC1060P470',
+    name: 'JC1060P470 original panel',
     size: '7 in',
-    detail: '1024 × 600 landscape',
-    warning: 'Confirm the back label says JC1060P470.',
+    detail: 'No V2 on the rear label',
+    warning: 'Use this when the rear label has no V2 in the SKU or material number.',
+  },
+  {
+    slug: 'guition-esp32-p4-jc1060p470-v2',
+    name: 'JC1060P470 new panel',
+    size: '7 in',
+    detail: 'Rear label marked V2',
+    warning: 'Use this only when the rear label shows V2 in the SKU or material number.',
   },
   {
     slug: 'guition-esp32-p4-jc4880p443',

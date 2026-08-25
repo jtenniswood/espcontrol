@@ -1,4 +1,4 @@
-# Guition ESP32-P4 JC1060P470 (7")
+# Guition ESP32-P4 JC1060P470 V2 / new panel (7")
 
 7-inch 1024x600 touchscreen panel that runs EspControl firmware for Home Assistant. A fixed 3x5 grid of 15 configurable buttons lets you control lights, switches, fans, and other smart home devices with a single tap. The display also shows a live clock, indoor/outdoor temperature, and includes a screensaver with adjustable brightness.
 
@@ -7,8 +7,8 @@ After the initial install, everything is configured through the built-in web pag
 ## Which panel is this?
 
 Guition ships two 7-inch panels under the same JC1060P470 name. This profile is for the
-original panel, whose rear label has no `V2` in the SKU / material number. Units marked
-`V2` need the [JC1060P470 V2 profile](../guition-esp32-p4-jc1060p470-v2/). Flashing
+2026 batch, whose rear label shows `V2` in the SKU / material number. Units without the `V2`
+marking need the original [JC1060P470 profile](../guition-esp32-p4-jc1060p470/). Flashing
 the wrong one leaves a white screen with a vertical noise band; reflash the other profile
 to recover.
 

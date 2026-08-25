@@ -43,6 +43,8 @@ int main() {
   assert(ten.split && ten.art_size == 800 && ten.panel_x == 840);
   auto ten_v2 = cover_art_layout("guition-esp32-p4-jc8012p4a1-v2", "90", 800, 1280, 800, 506);
   assert(ten_v2.screen_height == 1280 && ten_v2.panel_y == 834);
+  auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
+  assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
   assert(four.screen_width == 800);
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);

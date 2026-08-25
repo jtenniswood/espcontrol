@@ -13,8 +13,8 @@
   },
   "config": {
     "public": {
-      "name": "Guition JC1060P470",
-      "docsPath": "/screens/jc1060p470"
+      "name": "Guition JC1060P470 new panel (V2 label)",
+      "docsPath": "/screens/jc1060p470-v2"
     }
   },
   "overrides": {
