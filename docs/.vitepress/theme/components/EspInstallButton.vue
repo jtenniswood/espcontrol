@@ -7,7 +7,8 @@
       Your browser does not support WebSerial. Use Chrome or Edge on desktop.
     </div>
     <div v-else-if="loadError" class="installer-status warning">
-      {{ loadError }}
+      <span>{{ loadError }}</span>
+      <button type="button" class="retry-button" @click="prepareInstaller">Try again</button>
     </div>
     <div v-else-if="checkingManifest" class="installer-status">
       Checking the latest firmware...
@@ -42,17 +43,21 @@ const manifestAvailable = ref(false)
 const ready = ref(false)
 const loadError = ref('')
 
-onMounted(async () => {
-  checked.value = true
-  supported.value = 'serial' in navigator
-  if (!supported.value) return
-
+async function prepareInstaller() {
   checkingManifest.value = true
+  manifestAvailable.value = false
+  ready.value = false
+  loadError.value = ''
+
   try {
     const response = await fetch(manifestUrl, { cache: 'no-store' })
     manifestAvailable.value = response.ok
+    if (!response.ok && response.status !== 404) {
+      loadError.value = `Could not check for WebInstall firmware (HTTP ${response.status}).`
+    }
   } catch {
     manifestAvailable.value = false
+    loadError.value = 'Could not check for WebInstall firmware. Check your connection.'
   } finally {
     checkingManifest.value = false
   }
@@ -65,6 +70,13 @@ onMounted(async () => {
   } catch (err) {
     loadError.value = `Failed to load the USB installer. ${err?.message || ''}`.trim()
   }
+}
+
+onMounted(() => {
+  checked.value = true
+  supported.value = 'serial' in navigator
+  if (!supported.value) return
+  prepareInstaller()
 })
 </script>
 
@@ -104,5 +116,16 @@ onMounted(async () => {
 .installer-status.warning {
   background-color: var(--vp-c-warning-soft);
   color: var(--vp-c-warning-1);
+}
+
+.retry-button {
+  margin-left: 10px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 2px 10px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 </style>

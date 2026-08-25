@@ -489,8 +489,10 @@ def test_installers_preflight_public_manifest() -> None:
         assert "fetch(manifestUrl" in component
         assert "cache: 'no-store'" in component
         assert "manifestAvailable.value = response.ok" in component
+        assert "response.status !== 404" in component
         assert "!manifestAvailable" in component
         assert "has not been published yet" in component
+        assert '@click="prepareInstaller"' in component
     assert "if (checked.value && supported.value) prepareInstaller()" in install_selector
 
 

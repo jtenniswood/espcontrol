@@ -46,7 +46,8 @@
         Your browser does not support WebSerial. Use Chrome or Edge on desktop.
       </div>
       <div v-else-if="loadError" class="installer-status warning">
-        {{ loadError }}
+        <span>{{ loadError }}</span>
+        <button type="button" class="retry-button" @click="prepareInstaller">Try again</button>
       </div>
       <div v-else-if="checkingManifest" class="installer-status">
         Checking the latest firmware...
@@ -189,9 +190,13 @@ async function prepareInstaller() {
     const response = await fetch(manifestUrl.value, { cache: 'no-store' })
     if (request !== manifestRequest) return
     manifestAvailable.value = response.ok
+    if (!response.ok && response.status !== 404) {
+      loadError.value = `Could not check for WebInstall firmware (HTTP ${response.status}).`
+    }
   } catch {
     if (request !== manifestRequest) return
     manifestAvailable.value = false
+    loadError.value = 'Could not check for WebInstall firmware. Check your connection.'
   } finally {
     if (request === manifestRequest) checkingManifest.value = false
   }
@@ -407,6 +412,17 @@ onMounted(() => {
 .installer-status.warning {
   background-color: var(--vp-c-warning-soft);
   color: var(--vp-c-warning-1);
+}
+
+.retry-button {
+  margin-left: 10px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 2px 10px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 @media (max-width: 640px) {
