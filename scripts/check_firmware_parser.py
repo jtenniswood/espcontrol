@@ -715,7 +715,7 @@ int main() {
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;
-  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,99", 10, parsed);
+  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,10u,99", 11, parsed);
   assert(parsed.positions[0] == 1);
   assert(parsed.positions[1] == 2);
   assert(parsed.row_span[1] == 2 && parsed.col_span[1] == 1);
@@ -726,6 +726,7 @@ int main() {
   assert(parsed.row_span[6] == 2 && parsed.col_span[6] == 3);
   assert(parsed.row_span[7] == 3 && parsed.col_span[7] == 2);
   assert(parsed.row_span[8] == 3 && parsed.col_span[8] == 4);
+  assert(parsed.row_span[9] == 1 && parsed.col_span[9] == 5);
 
   OrderResult overlap;
   parse_order_string("1b,2,3,4,5,6", 9, overlap);
