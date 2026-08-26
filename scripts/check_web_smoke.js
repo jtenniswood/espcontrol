@@ -502,6 +502,10 @@ assert(
   "standard card icons stay in the bottom-right corner at every size",
 );
 assert(
+  cardStylesSource.includes("font-size:var(--btn-icon);line-height:1;color:#fff;z-index:1}"),
+  "standard card icons stay above slider preview fills",
+);
+assert(
   cardStylesSource.includes(".sp-image-preview-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
   "image card icons use the same bottom-right placement",
 );

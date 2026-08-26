@@ -73,7 +73,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{border-color:var(--accent)}" +
         ".sp-btn-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad);" +
-        "font-size:var(--btn-icon);line-height:1;color:#fff}" +
+        "font-size:var(--btn-icon);line-height:1;color:#fff;z-index:1}" +
         ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +
         ".sp-btn-icon~.sp-btn-label,.sp-btn-icon~.sp-btn-label-row{box-sizing:border-box;" +
         "padding-right:calc(var(--btn-icon) + var(--btn-pad)*.5)}" +

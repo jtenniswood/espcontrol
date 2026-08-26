@@ -5155,12 +5155,17 @@ async function assertCardIconsBottomRight(page, label) {
       const cardRect = card.getBoundingClientRect();
       const iconRect = icon.getBoundingClientRect();
       const iconStyle = getComputedStyle(icon);
+      const sliderPreview = card.querySelector(".sp-slider-preview");
       return {
         visible: iconRect.width > 0 && iconRect.height > 0,
         rightGap: cardRect.right - iconRect.right,
         bottomGap: cardRect.bottom - iconRect.bottom,
         rightInset: parseFloat(iconStyle.right) || 0,
         bottomInset: parseFloat(iconStyle.bottom) || 0,
+        iconZIndex: parseInt(iconStyle.zIndex, 10) || 0,
+        sliderZIndex: sliderPreview
+          ? (parseInt(getComputedStyle(sliderPreview).zIndex, 10) || 0)
+          : null,
       };
     }).filter((measurement) => measurement.visible),
   );
@@ -5174,6 +5179,12 @@ async function assertCardIconsBottomRight(page, label) {
       Math.abs(icon.bottomGap - icon.bottomInset) <= 3,
       `${label}: card icon is inset from the bottom edge by the shared card padding (${JSON.stringify(icon)})`,
     );
+    if (icon.sliderZIndex !== null) {
+      assert(
+        icon.iconZIndex > icon.sliderZIndex,
+        `${label}: slider card icon stays above its fill overlay (${JSON.stringify(icon)})`,
+      );
+    }
   }
 }
 
