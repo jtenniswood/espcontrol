@@ -387,14 +387,6 @@ inline void set_card_checked_state(lv_obj_t *btn, bool checked) {
   sync_card_checked_text_color(btn);
 }
 
-// Match the main-page button widget label behavior so longer titles wrap
-// instead of running off the edge of the tile.
-inline void configure_button_label_wrap(lv_obj_t *label) {
-  if (!label) return;
-  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(label, lv_pct(100));
-}
-
 inline void reserve_button_label_icon_space(lv_obj_t *label, lv_obj_t *icon,
                                             lv_obj_t *btn = nullptr,
                                             lv_coord_t horizontal_inset = 0) {
@@ -423,6 +415,16 @@ inline void reserve_button_label_icon_space(lv_obj_t *label, lv_obj_t *icon,
   const lv_coord_t available_width =
     lv_obj_get_width(btn) - pad_left - pad_right - icon_width - gap;
   if (available_width > 1) lv_obj_set_width(label, available_width);
+}
+
+// Match the main-page button widget label behavior so longer titles wrap
+// instead of running off the edge of the tile. Grid card labels retain their
+// icon pointer as user data so later state/friendly-name updates preserve the
+// space reserved for a bottom-right icon.
+inline void configure_button_label_wrap(lv_obj_t *label) {
+  if (!label) return;
+  lv_obj_t *icon = static_cast<lv_obj_t *>(lv_obj_get_user_data(label));
+  reserve_button_label_icon_space(label, icon);
 }
 
 inline void align_card_icon_bottom_right(lv_obj_t *icon,

@@ -1276,7 +1276,8 @@ inline void image_card_move_label_foreground(lv_obj_t *loading_widget) {
   lv_obj_t *shadow = image_card_label_shadow(label, btn);
   if (shadow) lv_obj_move_foreground(shadow);
   lv_obj_move_foreground(label);
-  image_card_align_label_stack(label, btn);
+  lv_obj_t *icon = static_cast<lv_obj_t *>(lv_obj_get_user_data(label));
+  image_card_align_label_stack(label, btn, icon);
 }
 
 inline void image_card_align_icon(lv_obj_t *icon, lv_obj_t *btn) {
@@ -1324,6 +1325,7 @@ inline void subscribe_image_card_label(lv_obj_t *label, lv_obj_t *btn,
 
 inline void image_card_configure_label(BtnSlot &s, const ParsedCfg &p) {
   if (!s.text_lbl) return;
+  lv_obj_set_user_data(s.text_lbl, s.icon_lbl);
   if (!image_card_label_enabled(p)) {
     image_card_delete_label_shadow(s.text_lbl, s.btn);
     lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);

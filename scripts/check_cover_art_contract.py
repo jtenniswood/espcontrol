@@ -468,8 +468,14 @@ grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(enc
 layout = (ROOT / "components" / "espcontrol" / "button_grid_layout.h").read_text(encoding="utf-8")
 if "reserve_button_label_icon_space" not in layout:
     raise SystemExit("Firmware card labels must reserve width beside visible icons")
+if "lv_obj_get_user_data(label)" not in layout:
+    raise SystemExit("Runtime firmware label updates must retain icon-aware width")
+if "lv_obj_set_user_data(s.text_lbl, s.icon_lbl);" not in grid:
+    raise SystemExit("Firmware card labels must retain their icon for runtime relayouts")
 if "reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);" not in grid:
     raise SystemExit("Firmware card layout refresh must apply icon-aware label width")
+if "image_card_align_label_stack(label, btn, icon);" not in image_cards:
+    raise SystemExit("Image loading-state relayouts must retain icon-aware label width")
 if "media_cover_art_title_line_limit(row_span, col_span)" not in grid:
     raise SystemExit("Cover art layout refresh must preserve the per-size track-title limit")
 if "ctx->artist_gap = media_cover_art_artist_gap(" not in grid:
