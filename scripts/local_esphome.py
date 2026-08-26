@@ -169,15 +169,15 @@ class LocalEsphomeTests(unittest.TestCase):
             run_mock.return_value = subprocess.CompletedProcess(
                 args=["esphome", "version"],
                 returncode=0,
-                stdout="Version: 2026.7.4\n",
+                stdout="Version: 2026.8.1\n",
                 stderr="",
             )
-            self.assertEqual(installed_esphome_version("esphome"), "2026.7.4")
+            self.assertEqual(installed_esphome_version("esphome"), "2026.8.1")
 
     def test_rejects_an_unpinned_esphome_version(self) -> None:
-        with mock.patch(__name__ + ".pinned_esphome_version", return_value="2026.7.4"), \
-            mock.patch(__name__ + ".installed_esphome_version", return_value="2026.7.0"):
-            with self.assertRaisesRegex(LocalEsphomeError, "2026.7.4.*2026.7.0"):
+        with mock.patch(__name__ + ".pinned_esphome_version", return_value="2026.8.1"), \
+            mock.patch(__name__ + ".installed_esphome_version", return_value="2026.8.0"):
+            with self.assertRaisesRegex(LocalEsphomeError, "2026.8.1.*2026.8.0"):
                 ensure_pinned_esphome("esphome")
 
     def test_uses_dev_firmware_version(self) -> None:
