@@ -107,7 +107,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc1060p470',
     name: 'JC1060P470 original panel',
-    revision: 'No V2 on the rear label',
+    revision: 'Unmarked case; board date before 2622',
     size: '7 inch',
     resolution: '1024 x 600',
     orientation: 'Landscape',
@@ -120,7 +120,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc1060p470-v2',
     name: 'JC1060P470 new panel',
-    revision: 'Rear label marked V2',
+    revision: 'Case marked V2; board date 2622 or newer',
     size: '7 inch',
     resolution: '1024 x 600',
     orientation: 'Landscape',
