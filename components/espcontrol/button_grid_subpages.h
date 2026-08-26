@@ -371,6 +371,7 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   lv_obj_set_style_text_color(slot.text_lbl, text_color, LV_PART_MAIN);
   lv_label_set_text(slot.text_lbl, espcontrol_i18n("Configure"));
   lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  lv_obj_set_user_data(slot.text_lbl, slot.icon_lbl);
   configure_button_label_wrap(slot.text_lbl);
 
   slot.subpage_lbl = lv_label_create(btn);
