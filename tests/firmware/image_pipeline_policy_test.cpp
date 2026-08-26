@@ -22,6 +22,7 @@ using esphome::artwork_image::BackgroundTransferTlsMode;
 using esphome::artwork_image::background_transfer_result_can_publish;
 using esphome::artwork_image::background_transfer_decode_is_incomplete;
 using esphome::artwork_image::background_transfer_resolve_redirect_url;
+using esphome::artwork_image::background_transfer_should_follow_redirect;
 using esphome::artwork_image::background_transfer_tls_mode;
 
 int main() {
@@ -54,6 +55,9 @@ int main() {
          "https://ha.local/api/image?new=1");
   assert(background_transfer_resolve_redirect_url(
              "https://ha.local/api/image", "ftp://cdn.example/art.jpg").empty());
+  assert(background_transfer_should_follow_redirect(true, true));
+  assert(!background_transfer_should_follow_redirect(false, true));
+  assert(!background_transfer_should_follow_redirect(true, false));
 
   // A synchronous decoder that cannot finish from the complete buffered body
   // is malformed/truncated and must release the serialized artwork request.

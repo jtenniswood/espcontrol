@@ -38,6 +38,11 @@ constexpr bool background_transfer_decode_is_incomplete(bool finished,
   return !finished && !decoding;
 }
 
+constexpr bool background_transfer_should_follow_redirect(
+    bool redirect_event_received, bool location_available) {
+  return redirect_event_received && location_available;
+}
+
 // Resolve an HTTP Location value without asking ESP-IDF to follow it on the
 // existing client. The caller can then rebuild the client and select the TLS
 // policy for the redirect destination instead of inheriting the source policy.
