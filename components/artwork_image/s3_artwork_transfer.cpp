@@ -376,6 +376,7 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
   esp_err_t error = ESP_OK;
   int status = 0;
   int redirect_count = 0;
+  bool strip_sensitive_headers = false;
 
   while (true) {
     if (job->cancelled.load()) {
@@ -418,6 +419,10 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
       break;
     }
     for (const auto &header : job->headers) {
+      if (strip_sensitive_headers &&
+          background_transfer_header_is_sensitive(header.name)) {
+        continue;
+      }
       esp_http_client_set_header(client, header.name.c_str(),
                                  header.value.c_str());
     }
@@ -475,6 +480,9 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
                  sanitize_url(current_url).c_str());
         error = ESP_ERR_INVALID_ARG;
         break;
+      }
+      if (!background_transfer_same_origin(current_url, redirected)) {
+        strip_sensitive_headers = true;
       }
       current_url = redirected;
       ++redirect_count;

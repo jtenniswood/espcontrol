@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -41,6 +43,66 @@ constexpr bool background_transfer_decode_is_incomplete(bool finished,
 constexpr bool background_transfer_should_follow_redirect(
     bool redirect_event_received, bool location_available) {
   return redirect_event_received && location_available;
+}
+
+inline std::string background_transfer_url_origin(const std::string &url) {
+  const size_t scheme_end = url.find("://");
+  if (scheme_end == std::string::npos) return {};
+  std::string scheme = url.substr(0, scheme_end);
+  std::transform(scheme.begin(), scheme.end(), scheme.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  if (scheme != "http" && scheme != "https") return {};
+
+  const size_t authority_start = scheme_end + 3;
+  const size_t authority_end = url.find_first_of("/?#", authority_start);
+  std::string authority = url.substr(
+      authority_start, authority_end == std::string::npos
+                           ? std::string::npos
+                           : authority_end - authority_start);
+  const size_t userinfo = authority.rfind('@');
+  if (userinfo != std::string::npos) authority = authority.substr(userinfo + 1);
+  if (authority.empty()) return {};
+  std::transform(authority.begin(), authority.end(), authority.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+
+  std::string host;
+  std::string port;
+  if (authority.front() == '[') {
+    const size_t bracket = authority.find(']');
+    if (bracket == std::string::npos) return {};
+    host = authority.substr(0, bracket + 1);
+    if (bracket + 1 < authority.size()) {
+      if (authority[bracket + 1] != ':') return {};
+      port = authority.substr(bracket + 2);
+    }
+  } else {
+    const size_t colon = authority.rfind(':');
+    if (colon == std::string::npos) {
+      host = authority;
+    } else {
+      host = authority.substr(0, colon);
+      port = authority.substr(colon + 1);
+    }
+  }
+  if (host.empty()) return {};
+  if (port.empty()) port = scheme == "https" ? "443" : "80";
+  return scheme + "://" + host + ":" + port;
+}
+
+inline bool background_transfer_same_origin(const std::string &left,
+                                            const std::string &right) {
+  const std::string left_origin = background_transfer_url_origin(left);
+  return !left_origin.empty() && left_origin == background_transfer_url_origin(right);
+}
+
+inline bool background_transfer_header_is_sensitive(const std::string &name) {
+  std::string lower = name;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return lower == "authorization" || lower == "proxy-authorization" ||
+         lower == "cookie" || lower == "api-key" || lower == "x-api-key" ||
+         lower.find("token") != std::string::npos ||
+         lower.find("secret") != std::string::npos;
 }
 
 // Resolve an HTTP Location value without asking ESP-IDF to follow it on the

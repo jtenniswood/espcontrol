@@ -22,6 +22,8 @@ using esphome::artwork_image::BackgroundTransferTlsMode;
 using esphome::artwork_image::background_transfer_result_can_publish;
 using esphome::artwork_image::background_transfer_decode_is_incomplete;
 using esphome::artwork_image::background_transfer_resolve_redirect_url;
+using esphome::artwork_image::background_transfer_header_is_sensitive;
+using esphome::artwork_image::background_transfer_same_origin;
 using esphome::artwork_image::background_transfer_should_follow_redirect;
 using esphome::artwork_image::background_transfer_tls_mode;
 
@@ -58,6 +60,16 @@ int main() {
   assert(background_transfer_should_follow_redirect(true, true));
   assert(!background_transfer_should_follow_redirect(false, true));
   assert(!background_transfer_should_follow_redirect(true, false));
+  assert(background_transfer_same_origin(
+      "https://HA.local/api/image", "https://ha.local:443/media/art.jpg"));
+  assert(!background_transfer_same_origin(
+      "https://ha.local/api/image", "https://cdn.example/art.jpg"));
+  assert(!background_transfer_same_origin(
+      "https://ha.local/api/image", "http://ha.local/api/image"));
+  assert(background_transfer_header_is_sensitive("Authorization"));
+  assert(background_transfer_header_is_sensitive("Cookie"));
+  assert(background_transfer_header_is_sensitive("X-Auth-Token"));
+  assert(!background_transfer_header_is_sensitive("Accept"));
 
   // A synchronous decoder that cannot finish from the complete buffered body
   // is malformed/truncated and must release the serialized artwork request.
