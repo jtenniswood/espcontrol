@@ -48,11 +48,11 @@ WEB_SOURCE_DIR = ROOT / "src" / "webserver"
 # list aligned with the GitHub Pages release catalogue in pages.yml.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
+    "v2.8.2",
     "v2.8.1",
     "v2.8.0",
     "v2.7.1",
     "v2.7.0",
-    "v2.6.3",
 )
 
 # Fixed editor controls use a few MDI glyphs that are not selectable Product

@@ -59,8 +59,10 @@ generated output.
 - `v2/devices/guition-esp32-p4-jc8012p4a1.json` and
   `guition-esp32-p4-jc8012p4a1-v2.json` are the 10-inch V1 and V2 device
   entries; shared hardware profiles remain in `product/v2/device_catalog.json`.
-- `v2/devices/guition-esp32-p4-jc1060p470.json` is the authoritative 7-inch
-  device entry, including its display and cover-art layout.
+- `v2/devices/guition-esp32-p4-jc1060p470.json` and
+  `guition-esp32-p4-jc1060p470-v2.json` are the 7-inch original-panel and
+  new-panel device entries; shared hardware profiles remain in
+  `product/v2/device_catalog.json`.
 - `v2/devices/guition-esp32-p4-jc4880p443.json` is the authoritative 4.3-inch
   P4 device entry.
 - `v2/devices/esp32-p4-86.json` is the authoritative square P4-86 device

@@ -189,6 +189,9 @@ esp32-p4-86.ota.bin
 guition-esp32-p4-jc1060p470.factory.bin
 guition-esp32-p4-jc1060p470.manifest.json
 guition-esp32-p4-jc1060p470.ota.bin
+guition-esp32-p4-jc1060p470-v2.factory.bin
+guition-esp32-p4-jc1060p470-v2.manifest.json
+guition-esp32-p4-jc1060p470-v2.ota.bin
 guition-esp32-p4-jc4880p443.factory.bin
 guition-esp32-p4-jc4880p443.manifest.json
 guition-esp32-p4-jc4880p443.ota.bin

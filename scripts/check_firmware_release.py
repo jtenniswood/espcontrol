@@ -461,6 +461,7 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     assert "/getting-started/c6-recovery" in install
     screen_docs = {
         "guition-esp32-p4-jc1060p470": ROOT / "docs/screens/jc1060p470.md",
+        "guition-esp32-p4-jc1060p470-v2": ROOT / "docs/screens/jc1060p470-v2.md",
         "guition-esp32-p4-jc4880p443": ROOT / "docs/screens/jc4880p443.md",
         "guition-esp32-p4-jc8012p4a1": ROOT / "docs/screens/jc8012p4a1.md",
         "guition-esp32-p4-jc8012p4a1-v2": ROOT / "docs/screens/jc8012p4a1-v2.md",
@@ -475,6 +476,24 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     s3_doc = (ROOT / "docs/screens/4848s040.md").read_text(encoding="utf-8")
     assert "C6RecoveryCallout" not in s3_doc
     assert "guition-esp32-s3-4848s040" not in selector
+
+
+def test_installers_preflight_public_manifest() -> None:
+    install_button = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallButton.vue"
+    ).read_text(encoding="utf-8")
+    install_selector = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallSelector.vue"
+    ).read_text(encoding="utf-8")
+    for component in (install_button, install_selector):
+        assert "fetch(manifestUrl" in component
+        assert "cache: 'no-store'" in component
+        assert "manifestAvailable.value = response.ok" in component
+        assert "response.status !== 404" in component
+        assert "!manifestAvailable" in component
+        assert "has not been published yet" in component
+        assert '@click="prepareInstaller"' in component
+    assert "if (checked.value && supported.value) prepareInstaller()" in install_selector
 
 
 def test_valid_files_and_directory() -> None:
@@ -774,6 +793,7 @@ def main() -> int:
     test_recovery_manifest_and_payload_verification()
     test_c6_dependency_preparation_is_verified_and_atomic()
     test_recovery_sources_and_documentation_stay_complete()
+    test_installers_preflight_public_manifest()
     test_draft_release_publishes_only_after_remote_asset_verification()
     test_published_or_mismatched_asset_release_stays_unpublished()
     test_wrong_slug_path_fails()

@@ -568,4 +568,27 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
   }
 }
 
+inline void normalize_subpage_order_spans(SubpageOrder &order, int num_slots,
+                                          int cols) {
+  int slot_limit = bounded_grid_slots(num_slots);
+  if (order.has_back_token) {
+    normalize_grid_span_for_position(order.back_pos, slot_limit, cols,
+                                     order.back_row_span,
+                                     order.back_col_span);
+  }
+  for (int position = 0; position < slot_limit; position++) {
+    int button_index = order.positions[position];
+    if (button_index < 1 || button_index > MAX_GRID_SLOTS) continue;
+    int rendered_position = order.has_back_token ? position : position + 1;
+    if (rendered_position >= slot_limit) {
+      order.positions[position] = 0;
+      continue;
+    }
+    int &row_span = order.row_span[button_index - 1];
+    int &col_span = order.col_span[button_index - 1];
+    normalize_grid_span_for_position(rendered_position, slot_limit, cols,
+                                     row_span, col_span);
+  }
+}
+
 #endif  // ESPCONTROL_SUBPAGE_PARSER_ONLY

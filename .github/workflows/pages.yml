@@ -242,7 +242,7 @@ jobs:
       - name: Verify firmware assets
         run: |
           MISSING=false
-          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 esp32-p4-86"
+          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc1060p470-v2 esp32-p4-86"
           for SLUG in $DEVICE_SLUGS; do
             MANIFEST="firmware/${SLUG}/manifest.json"
             if [ ! -f "$MANIFEST" ]; then
@@ -304,6 +304,6 @@ jobs:
           python3 scripts/check_public_firmware.py
           --base-url "${{ steps.deployment.outputs.page_url }}"
           --manifest devices/manifest.json
-          --optional-stable-slugs guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 esp32-p4-86
+          --optional-stable-slugs guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 guition-esp32-p4-jc1060p470-v2 esp32-p4-86
           --retries 5
           --delay 20
