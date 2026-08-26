@@ -23,7 +23,6 @@ namespace artwork_image {
 static const char *const TAG = "artwork_image.s3_transfer";
 static constexpr size_t MAX_TRANSFER_SIZE = 2 * 1024 * 1024;
 static constexpr size_t INITIAL_TRANSFER_CAPACITY = 16 * 1024;
-static constexpr size_t MAX_REDIRECT_URL_LENGTH = 2048;
 static constexpr int MAX_REDIRECTS = 3;
 
 static std::string sanitize_url(const std::string &url) {
@@ -113,22 +112,8 @@ struct S3ArtworkTransferService::Transfer {
   bool allocation_failed{false};
   bool oversized{false};
   bool redirect_failed{false};
-  std::string redirect_url;
   uint32_t response_ready_ms{0};
   uint32_t first_byte_ms{0};
-
-  void reset_for_redirect() {
-    heap_caps_free(this->data);
-    this->data = nullptr;
-    this->size = 0;
-    this->capacity = 0;
-    this->allocation_failed = false;
-    this->oversized = false;
-    this->redirect_failed = false;
-    this->redirect_url.clear();
-    this->response_ready_ms = 0;
-    this->first_byte_ms = 0;
-  }
 };
 
 S3ArtworkTransferResult::~S3ArtworkTransferResult() {
@@ -312,24 +297,9 @@ esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) 
       transfer->redirect_failed = true;
       return ESP_FAIL;
     }
-    char *redirect_url = static_cast<char *>(heap_caps_malloc(
-        MAX_REDIRECT_URL_LENGTH + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-    if (!redirect_url) {
-      transfer->allocation_failed = true;
-      return ESP_FAIL;
-    }
-    const esp_err_t get_url_result = esp_http_client_get_url(
-        event->client, redirect_url, MAX_REDIRECT_URL_LENGTH + 1);
-    if (get_url_result == ESP_OK) {
-      transfer->redirect_url.assign(redirect_url);
-    } else {
-      transfer->redirect_failed = true;
-    }
-    heap_caps_free(redirect_url);
-    return get_url_result;
+    return ESP_OK;
   }
-  if (event->event_id != HTTP_EVENT_ON_DATA || event->data_len <= 0 ||
-      !transfer->redirect_url.empty()) {
+  if (event->event_id != HTTP_EVENT_ON_DATA || event->data_len <= 0) {
     return ESP_OK;
   }
 
@@ -383,12 +353,11 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
 
   Transfer transfer;
   transfer.job = job;
-  std::string current_url(job->url);
+  const std::string current_url(job->url);
   esp_err_t error = ESP_OK;
   int status = 0;
 
-  for (int redirect_count = 0; redirect_count <= MAX_REDIRECTS;
-       ++redirect_count) {
+  do {
     if (job->cancelled.load()) {
       delete result;
       return nullptr;
@@ -407,6 +376,9 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
     config.url = current_url.c_str();
     config.method = HTTP_METHOD_GET;
     config.timeout_ms = job->timeout_ms;
+    // The redirect callback calls esp_http_client_set_redirection(), which
+    // continues the same blocking request. Do not replay the resolved URL in a
+    // second client after esp_http_client_perform() returns.
     config.disable_auto_redirect = true;
     config.max_redirection_count = MAX_REDIRECTS;
     config.auth_type = HTTP_AUTH_TYPE_NONE;
@@ -470,19 +442,7 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
       error = ESP_ERR_INVALID_RESPONSE;
       break;
     }
-    if (!transfer.redirect_url.empty()) {
-      if (redirect_count == MAX_REDIRECTS) {
-        error = ESP_ERR_INVALID_RESPONSE;
-        break;
-      }
-      ESP_LOGD(TAG, "Following artwork redirect to %s",
-               sanitize_url(transfer.redirect_url).c_str());
-      current_url = transfer.redirect_url;
-      transfer.reset_for_redirect();
-      continue;
-    }
-    break;
-  }
+  } while (false);
 
   const uint32_t completed_at = millis();
   result->status = status;
