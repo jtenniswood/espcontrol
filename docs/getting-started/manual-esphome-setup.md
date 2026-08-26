@@ -11,7 +11,7 @@ The normal [browser install](/getting-started/install) is the easiest route. Use
 ## What You Need
 
 - A supported ESP32 panel.
-- ESPHome 2026.7.4 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
+- ESPHome 2026.8.1 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
 - A USB-C data cable for the first install.
 - Your WiFi name and password, unless you are using an advanced wired Ethernet option.
 
