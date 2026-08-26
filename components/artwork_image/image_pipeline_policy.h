@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace esphome {
 namespace artwork_image {
@@ -26,6 +28,90 @@ constexpr BackgroundTransferTlsMode background_transfer_tls_mode(
 constexpr bool background_transfer_result_is_current(
     uint32_t expected_generation, uint32_t result_generation, bool cancelled) {
   return !cancelled && expected_generation == result_generation;
+}
+
+// A completed background transfer has no downloader left to feed the decoder.
+// Synchronous decoders must therefore either finish from the buffered bytes or
+// fail the request; asynchronous decoders are allowed to complete later.
+constexpr bool background_transfer_decode_is_incomplete(bool finished,
+                                                        bool decoding) {
+  return !finished && !decoding;
+}
+
+// Resolve an HTTP Location value without asking ESP-IDF to follow it on the
+// existing client. The caller can then rebuild the client and select the TLS
+// policy for the redirect destination instead of inheriting the source policy.
+inline std::string background_transfer_resolve_redirect_url(
+    const std::string &base_url, const std::string &location) {
+  if (location.empty()) return {};
+
+  std::string target = location;
+  const size_t fragment = target.find('#');
+  if (fragment != std::string::npos) target.resize(fragment);
+  if (target.empty()) return {};
+
+  const auto is_http_url = [](const std::string &url) {
+    return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
+  };
+  if (is_http_url(target)) return target;
+  if (target.find("://") != std::string::npos) return {};
+
+  const size_t scheme_end = base_url.find("://");
+  if (scheme_end == std::string::npos || !is_http_url(base_url)) return {};
+  const size_t authority_start = scheme_end + 3;
+  const size_t path_start = base_url.find_first_of("/?#", authority_start);
+  const std::string origin = base_url.substr(
+      0, path_start == std::string::npos ? base_url.size() : path_start);
+  if (origin.size() <= authority_start) return {};
+
+  if (target.rfind("//", 0) == 0) {
+    return base_url.substr(0, scheme_end + 1) + target;
+  }
+
+  std::string base_path =
+      path_start == std::string::npos || base_url[path_start] != '/'
+          ? "/"
+          : base_url.substr(path_start);
+  const size_t base_suffix = base_path.find_first_of("?#");
+  if (base_suffix != std::string::npos) base_path.resize(base_suffix);
+
+  if (target.front() == '?') return origin + base_path + target;
+
+  std::string path;
+  if (target.front() == '/') {
+    path = target;
+  } else {
+    const size_t slash = base_path.rfind('/');
+    path = base_path.substr(0, slash == std::string::npos ? 0 : slash + 1) + target;
+  }
+
+  std::string suffix;
+  const size_t query = path.find('?');
+  if (query != std::string::npos) {
+    suffix = path.substr(query);
+    path.resize(query);
+  }
+
+  std::vector<std::string> segments;
+  for (size_t start = 0; start <= path.size();) {
+    const size_t end = path.find('/', start);
+    const std::string segment = path.substr(
+        start, end == std::string::npos ? std::string::npos : end - start);
+    if (segment == "..") {
+      if (!segments.empty()) segments.pop_back();
+    } else if (!segment.empty() && segment != ".") {
+      segments.push_back(segment);
+    }
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+
+  std::string normalized = "/";
+  for (size_t i = 0; i < segments.size(); ++i) {
+    if (i != 0) normalized.push_back('/');
+    normalized += segments[i];
+  }
+  return origin + normalized + suffix;
 }
 
 // Only a current, successful, bounded transfer can hand bytes back to the

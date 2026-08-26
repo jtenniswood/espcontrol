@@ -69,6 +69,7 @@ int main() {
   assert(selected.primary == "remote-b");
   assert(selected.fallback == "local-a");
   assert(selected.preferred_refreshed_remote);
+  sources.finish_refresh();
 
   // Repeated events are idempotent and an empty local result retains the
   // current remote fallback.
@@ -85,6 +86,7 @@ int main() {
   selected = sources.select("", false);
   assert(selected.primary == "local-new");
   assert(selected.fallback == "remote-old");
+  sources.finish_refresh();
 
   // Metadata-only refreshes retain both unchanged candidates and select the
   // local proxy for a forced cache-busting download. Callback order is
@@ -96,6 +98,7 @@ int main() {
   assert(selected.primary == "local-new");
   assert(selected.fallback == "remote-old");
   assert(!selected.preferred_refreshed_remote);
+  sources.finish_refresh();
 
   sources.begin_refresh();
   assert(sources.update(false, "remote-new"));
@@ -104,6 +107,20 @@ int main() {
   assert(selected.primary == "remote-new");
   assert(selected.fallback == "local-new");
   assert(selected.preferred_refreshed_remote);
+  sources.finish_refresh();
+
+  // A second paired read can supersede the first while its 300 ms selection
+  // debounce is still running. An unchanged repeat of the new remote URL must
+  // not erase the first read's change marker or select the stale local proxy.
+  sources.begin_refresh();
+  assert(sources.update(false, "remote-latest"));
+  sources.begin_refresh();
+  assert(!sources.update(false, "remote-latest"));
+  selected = sources.select("local-new", sources.remote_changed_in_refresh());
+  assert(selected.primary == "remote-latest");
+  assert(selected.fallback == "local-new");
+  assert(selected.preferred_refreshed_remote);
+  sources.finish_refresh();
 
   // Paired callbacks settle exactly once regardless of arrival order. This is
   // the contract that prevents a local response and its remote companion from

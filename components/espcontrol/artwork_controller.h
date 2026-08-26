@@ -249,7 +249,10 @@ struct SourceCandidates {
     return true;
   }
 
-  void begin_refresh() { this->remote_changed = false; }
+  // A superseding paired read may begin during the debounce before the prior
+  // candidates are selected. Preserve its remote-change marker until that
+  // selection is actually consumed.
+  void begin_refresh() {}
 
   void finish_refresh() { this->remote_changed = false; }
 

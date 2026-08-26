@@ -23,6 +23,7 @@ namespace artwork_image {
 static const char *const TAG = "artwork_image.s3_transfer";
 static constexpr size_t MAX_TRANSFER_SIZE = 2 * 1024 * 1024;
 static constexpr size_t INITIAL_TRANSFER_CAPACITY = 16 * 1024;
+static constexpr size_t MAX_REDIRECT_URL_LENGTH = 2048;
 static constexpr int MAX_REDIRECTS = 3;
 
 static std::string sanitize_url(const std::string &url) {
@@ -112,6 +113,7 @@ struct S3ArtworkTransferService::Transfer {
   bool allocation_failed{false};
   bool oversized{false};
   bool redirect_failed{false};
+  std::string redirect_location;
   uint32_t response_ready_ms{0};
   uint32_t first_byte_ms{0};
 };
@@ -287,19 +289,34 @@ esp_err_t S3ArtworkTransferService::http_event_(esp_http_client_event_t *event) 
   if (transfer->job->cancelled.load()) return ESP_FAIL;
 
   const uint32_t now = millis();
-  if (event->event_id == HTTP_EVENT_ON_HEADER &&
-      transfer->response_ready_ms == 0) {
-    transfer->response_ready_ms = now;
-    return ESP_OK;
-  }
-  if (event->event_id == HTTP_EVENT_REDIRECT) {
-    if (esp_http_client_set_redirection(event->client) != ESP_OK) {
-      transfer->redirect_failed = true;
-      return ESP_FAIL;
+  if (event->event_id == HTTP_EVENT_ON_HEADER) {
+    if (transfer->response_ready_ms == 0) transfer->response_ready_ms = now;
+    if (event->header_key && event->header_value) {
+      std::string key(event->header_key);
+      std::transform(key.begin(), key.end(), key.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      if (key == "location") {
+        const size_t length = std::strlen(event->header_value);
+        if (length == 0 || length > MAX_REDIRECT_URL_LENGTH) {
+          transfer->redirect_failed = true;
+        } else {
+          transfer->redirect_location.assign(event->header_value, length);
+        }
+      }
     }
     return ESP_OK;
   }
+  if (event->event_id == HTTP_EVENT_REDIRECT) {
+    // Leave automatic redirect handling disabled. perform_() will resolve the
+    // captured Location and create a fresh client with destination-specific
+    // TLS settings.
+    if (transfer->redirect_location.empty()) transfer->redirect_failed = true;
+    return ESP_OK;
+  }
   if (event->event_id != HTTP_EVENT_ON_DATA || event->data_len <= 0) {
+    return ESP_OK;
+  }
+  if (transfer->redirect_failed || !transfer->redirect_location.empty()) {
     return ESP_OK;
   }
 
@@ -353,11 +370,12 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
 
   Transfer transfer;
   transfer.job = job;
-  const std::string current_url(job->url);
+  std::string current_url(job->url);
   esp_err_t error = ESP_OK;
   int status = 0;
+  int redirect_count = 0;
 
-  do {
+  while (true) {
     if (job->cancelled.load()) {
       delete result;
       return nullptr;
@@ -376,11 +394,9 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
     config.url = current_url.c_str();
     config.method = HTTP_METHOD_GET;
     config.timeout_ms = job->timeout_ms;
-    // The redirect callback calls esp_http_client_set_redirection(), which
-    // continues the same blocking request. Do not replay the resolved URL in a
-    // second client after esp_http_client_perform() returns.
+    // Redirects are handled outside this client so each destination receives
+    // a newly evaluated TLS policy.
     config.disable_auto_redirect = true;
-    config.max_redirection_count = MAX_REDIRECTS;
     config.auth_type = HTTP_AUTH_TYPE_NONE;
     config.event_handler = http_event_;
     config.user_data = &transfer;
@@ -442,7 +458,36 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
       error = ESP_ERR_INVALID_RESPONSE;
       break;
     }
-  } while (false);
+    if (!transfer.redirect_location.empty()) {
+      if (redirect_count >= MAX_REDIRECTS) {
+        ESP_LOGE(TAG, "Too many artwork redirects from %s",
+                 sanitize_url(current_url).c_str());
+        error = ESP_ERR_INVALID_RESPONSE;
+        break;
+      }
+      std::string redirected = background_transfer_resolve_redirect_url(
+          current_url, transfer.redirect_location);
+      if (!is_supported_url(redirected)) {
+        ESP_LOGE(TAG, "Artwork redirect has an unsupported destination from %s",
+                 sanitize_url(current_url).c_str());
+        error = ESP_ERR_INVALID_ARG;
+        break;
+      }
+      current_url = redirected;
+      ++redirect_count;
+      transfer.redirect_location.clear();
+      transfer.redirect_failed = false;
+      transfer.response_ready_ms = 0;
+      transfer.first_byte_ms = 0;
+      heap_caps_free(transfer.data);
+      transfer.data = nullptr;
+      transfer.size = 0;
+      transfer.capacity = 0;
+      status = 0;
+      continue;
+    }
+    break;
+  }
 
   const uint32_t completed_at = millis();
   result->status = status;

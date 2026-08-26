@@ -20,6 +20,8 @@ using esphome::artwork_image::p4_cover_scale_plan;
 using esphome::artwork_image::p4_jpeg_hardware_target_supported;
 using esphome::artwork_image::BackgroundTransferTlsMode;
 using esphome::artwork_image::background_transfer_result_can_publish;
+using esphome::artwork_image::background_transfer_decode_is_incomplete;
+using esphome::artwork_image::background_transfer_resolve_redirect_url;
 using esphome::artwork_image::background_transfer_tls_mode;
 
 int main() {
@@ -32,6 +34,32 @@ int main() {
          BackgroundTransferTlsMode::INSECURE_LOCAL_HTTPS);
   assert(background_transfer_tls_mode(false, true, true) ==
          BackgroundTransferTlsMode::PLAIN_HTTP);
+
+  // Redirects are resolved before creating the next client, allowing its TLS
+  // policy to be recalculated for the destination host.
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "https://cdn.example/art.jpg") ==
+         "https://cdn.example/art.jpg");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "//cdn.example/art.jpg") ==
+         "https://cdn.example/art.jpg");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "/media/art.jpg?token=1") ==
+         "https://ha.local/media/art.jpg?token=1");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/images/current", "../art.jpg") ==
+         "https://ha.local/api/art.jpg");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image?old=1", "?new=1") ==
+         "https://ha.local/api/image?new=1");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "ftp://cdn.example/art.jpg").empty());
+
+  // A synchronous decoder that cannot finish from the complete buffered body
+  // is malformed/truncated and must release the serialized artwork request.
+  assert(!background_transfer_decode_is_incomplete(true, false));
+  assert(!background_transfer_decode_is_incomplete(false, true));
+  assert(background_transfer_decode_is_incomplete(false, false));
 
   // Stale generations, cancellation, connection failure, allocation failure,
   // and oversized responses are never published to the image decoder.

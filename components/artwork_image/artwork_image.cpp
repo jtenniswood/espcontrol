@@ -1299,7 +1299,14 @@ bool ArtworkImage::consume_s3_transfer_result_() {
     this->fail_download_();
     return true;
   }
-  if (this->decoder_->is_finished()) this->finish_download_();
+  if (this->decoder_->is_finished()) {
+    this->finish_download_();
+  } else if (background_transfer_decode_is_incomplete(
+                 this->decoder_->is_finished(), this->decoder_->is_decoding())) {
+    ESP_LOGE(TAG,
+             "ESP32-S3 artwork transfer finished before image decoder completed");
+    this->fail_download_();
+  }
   return true;
 #else
   return false;
