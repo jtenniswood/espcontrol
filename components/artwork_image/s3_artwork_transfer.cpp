@@ -232,6 +232,12 @@ void S3ArtworkTransferService::task_loop_() {
       S3ArtworkTransferResult *result = this->perform_(job);
       this->lock_();
       this->active_ = nullptr;
+      if (result && !background_transfer_result_is_current(
+                        job->generation, result->generation,
+                        job->cancelled.load())) {
+        delete result;
+        result = nullptr;
+      }
       if (result) {
         this->discard_completed_for_owner_locked_(result->owner);
         if (this->completed_count_ < 16) {
