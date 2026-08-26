@@ -23,6 +23,13 @@ int main() {
   assert(!media_entity_state_usable("idle"));
   assert(!media_entity_state_usable("off"));
   assert(!media_entity_state_usable(" unavailable "));
+  assert(media_state_change_invalidates_retained_content(false, "unknown", "idle"));
+  assert(media_state_change_invalidates_retained_content(true, "playing", "idle"));
+  assert(media_state_change_invalidates_retained_content(true, "paused", "off"));
+  assert(media_state_change_invalidates_retained_content(true, "idle", "off"));
+  assert(!media_state_change_invalidates_retained_content(true, "idle", "idle"));
+  assert(!media_state_change_invalidates_retained_content(true, "idle", "playing"));
+  assert(!media_state_change_invalidates_retained_content(true, "paused", "buffering"));
   assert(!media_card_artwork_should_clear(false, true, "unknown", false));
   assert(!media_card_artwork_should_clear(true, true, "playing", false));
   assert(!media_card_artwork_should_clear(true, true, "paused", false));
@@ -587,6 +594,23 @@ for stale_gate in (
     if stale_gate in current_content:
         raise SystemExit(
             f"Secondary routing must follow actual metadata, not {stale_gate}"
+        )
+state_subscription_start = media.find(
+    "inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {"
+)
+state_subscription_end = media.find(
+    "inline void media_playback_subscribe_metadata(", state_subscription_start
+)
+if state_subscription_start < 0 or state_subscription_end < 0:
+    raise SystemExit("Playback-state retained metadata contract missing")
+state_subscription = media[state_subscription_start:state_subscription_end]
+for required in (
+    "media_state_change_invalidates_retained_content(",
+    "media_playback_invalidate_retained_content(state);",
+):
+    if required not in state_subscription:
+        raise SystemExit(
+            f"Stopped playback must invalidate retained metadata: {required}"
         )
 for required in (
     "espcontrol::cover_art::media_entity_state_usable(next)",

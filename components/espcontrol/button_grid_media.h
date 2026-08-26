@@ -777,6 +777,19 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   std::vector<MediaPlaybackButtonRef>().swap(state->buttons);
 }
 
+inline void media_playback_invalidate_retained_content(MediaPlaybackState *state) {
+  if (!state) return;
+  state->title.clear();
+  state->artist.clear();
+  state->current_content_id.clear();
+  state->current_content_fingerprint = 0;
+  state->current_content_type.clear();
+  state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
+  state->has_current_content_id = false;
+  state->has_current_content_type = false;
+  state->artwork_content_mask = 0;
+}
+
 inline MediaPlaybackState *media_playback_find_state(const std::string &entity_id) {
   if (entity_id.empty()) return nullptr;
   std::vector<MediaPlaybackState *> &states = media_playback_states();
@@ -1422,6 +1435,9 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
       [state, generation](esphome::StringRef state_ref) {
         if (!media_playback_generation_valid(state, generation)) return;
         std::string state_text = string_ref_limited(state_ref, HA_SHORT_STATE_MAX_LEN);
+        const bool invalidate_retained_content =
+          espcontrol::cover_art::media_state_change_invalidates_retained_content(
+            state->has_state, state->state_text, state_text);
         bool was_playing = state->playing;
         float paused_position_seconds = was_playing
           ? media_playback_current_position_seconds(state)
@@ -1430,6 +1446,9 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         state->state_text = state_text;
         state->available = !ha_state_unavailable_ref(state_ref);
         state->playing = state_text == "playing";
+        if (invalidate_retained_content) {
+          media_playback_invalidate_retained_content(state);
+        }
         if (was_playing && !state->playing) {
           state->position_seconds = paused_position_seconds;
           state->position_updated_ms = esphome::millis();
