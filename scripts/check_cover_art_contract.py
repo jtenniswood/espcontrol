@@ -475,6 +475,13 @@ if "lv_obj_set_user_data(s.text_lbl, s.icon_lbl);" not in grid:
     raise SystemExit("Firmware card labels must retain their icon for runtime relayouts")
 if "lv_obj_set_user_data(slot.text_lbl, slot.icon_lbl);" not in subpages:
     raise SystemExit("Dynamic subpage labels must retain their icon for runtime relayouts")
+for required in (
+    "configure_button_label_wrap(entry->back_slot.text_lbl);",
+    "configure_button_label_wrap(back_slot.text_lbl);",
+    "configure_button_label_wrap(sub_slot.text_lbl);",
+):
+    if required not in grid:
+        raise SystemExit(f"Subpage label clamps must restore icon-aware width: {required}")
 if "reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);" not in grid:
     raise SystemExit("Firmware card layout refresh must apply icon-aware label width")
 if "image_card_align_label_stack(label, btn, icon);" not in image_cards:

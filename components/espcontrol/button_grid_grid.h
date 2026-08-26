@@ -1169,6 +1169,7 @@ inline bool grid_refresh_subpage_layouts(
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
+    configure_button_label_wrap(entry->back_slot.text_lbl);
 
     // Preserve card instances (and their HA subscriptions), but hide cards
     // removed from the saved order so stale content is never left visible.
@@ -2013,6 +2014,7 @@ inline void grid_phase2(
     lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
     lv_label_set_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
+    configure_button_label_wrap(back_slot.text_lbl);
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
@@ -2074,6 +2076,7 @@ inline void grid_phase2(
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
       apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);
+      configure_button_label_wrap(sub_slot.text_lbl);
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;
