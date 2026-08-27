@@ -1138,6 +1138,18 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
     if "url.empty() && id(cover_art_delayed_playback_stopped).is_running()" not in text:
         errors.append(f"{rel}: keep cached artwork when Home Assistant clears it during a brief playback transition")
+    else:
+        cached_guard = text.find(
+            "url.empty() && id(cover_art_delayed_playback_stopped).is_running()"
+        )
+        relative_markers = (
+            text.find("id(cover_art_local_source_relative) = relative;"),
+            text.find("id(cover_art_remote_source_relative) = relative;"),
+        )
+        if any(0 <= marker < cached_guard for marker in relative_markers):
+            errors.append(
+                f"{rel}: retain cached artwork's relative marker during a brief playback transition"
+            )
 
     stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
     if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
@@ -5999,6 +6011,8 @@ def run_self_test() -> int:
         "          id(cover_art_delay_timer).stop();\n"
         "          id(cover_art_delayed_playback_stopped).execute();\n"
         "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
+        "          id(cover_art_local_source_relative) = relative;\n"
+        "          id(cover_art_remote_source_relative) = relative;\n"
         "  - id: cover_art_delayed_playback_stopped\n"
         "    mode: restart\n"
         "    then:\n"

@@ -111,8 +111,20 @@ inline std::string normalize_address(std::string value) {
   std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
     return static_cast<char>(std::tolower(c));
   });
-  if (value.rfind("::ffff:", 0) == 0) return value.substr(7);
-  if (value.find(':') != std::string::npos) value = canonical_ipv6(value);
+  if (value.rfind("::ffff:", 0) == 0 && value.find('.') != std::string::npos)
+    return value.substr(7);
+  if (value.find(':') != std::string::npos) {
+    std::array<uint16_t, 8> words{};
+    if (parse_ipv6_words(value, words) && words[0] == 0 && words[1] == 0 &&
+        words[2] == 0 && words[3] == 0 && words[4] == 0 &&
+        words[5] == 0xFFFF) {
+      return std::to_string(words[6] >> 8) + "." +
+             std::to_string(words[6] & 0xFF) + "." +
+             std::to_string(words[7] >> 8) + "." +
+             std::to_string(words[7] & 0xFF);
+    }
+    value = canonical_ipv6(value);
+  }
   return value;
 }
 
