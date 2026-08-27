@@ -7,8 +7,10 @@ After the initial install, everything is configured through the built-in web pag
 ## Which panel is this?
 
 Guition ships two 7-inch panels under the same JC1060P470 name. This profile is for the
-2026 batch, whose rear label shows `V2` in the SKU / material number. Units without the `V2`
-marking need the original [JC1060P470 profile](../guition-esp32-p4-jc1060p470/). Flashing
+V2 panel, whose case is marked `V2`. V1 / original cases have no version marking at all—they
+do not say `V1`. If needed, disconnect the panel from power and remove the back: a date code
+of `2622` or higher on the screen's circuit board identifies V2; an earlier code identifies
+V1 and needs the original [JC1060P470 profile](../guition-esp32-p4-jc1060p470/). Flashing
 the wrong one leaves a white screen with a vertical noise band; reflash the other profile
 to recover.
 

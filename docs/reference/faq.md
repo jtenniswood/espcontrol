@@ -72,8 +72,8 @@ The home screen has a grid of card slots sized to fill the screen:
 
 - **10.1-inch JC8012P4A1 original panel** — 20 cards (4 rows, 5 columns), for rear case marking `2622` or lower
 - **10.1-inch JC8012P4A1 new panel** — 20 cards (4 rows, 5 columns), for rear case marking `2624` or higher
-- **7-inch JC1060P470** — 15 cards (3 rows, 5 columns)
-- **7-inch JC1060P470 new panel** — 15 cards (3 rows, 5 columns), for boards with `V2` in the SKU / material number on the rear label
+- **7-inch JC1060P470 V1 / original panel** — 15 cards (3 rows, 5 columns), with no version marking on the case and a screen-board date code earlier than `2622`
+- **7-inch JC1060P470 V2 / new panel** — 15 cards (3 rows, 5 columns), with `V2` marked on the case or a screen-board date code of `2622` or higher
 - **4.3-inch JC4880P443** — 6 cards (3 rows, 2 columns)
 - **4-inch ESP32-P4 86 Panel** — 9 cards (3 rows, 3 columns)
 - **4-inch 4848S040** — 9 cards (3 rows, 3 columns)
@@ -94,8 +94,8 @@ EspControl currently supports these touchscreen panels:
 
 - **JC8012P4A1 original panel** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4), for rear case marking `2622` or lower
 - **JC8012P4A1 new panel** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4), for rear case marking `2624` or higher
-- **JC1060P470** — 7-inch, 1024x600, landscape orientation (ESP32-P4)
-- **JC1060P470 new panel** — 7-inch, 1024x600, landscape orientation (ESP32-P4), for boards with `V2` in the SKU / material number on the rear label
+- **JC1060P470 V1 / original panel** — 7-inch, 1024x600, landscape orientation (ESP32-P4), with no version marking on the case and a screen-board date code earlier than `2622`
+- **JC1060P470 V2 / new panel** — 7-inch, 1024x600, landscape orientation (ESP32-P4), with `V2` marked on the case or a screen-board date code of `2622` or higher
 - **JC4880P443** — 4.3-inch, 480x800, portrait orientation (ESP32-P4)
 - **ESP32-P4 86 Panel** — 4-inch, 720x720, square (ESP32-P4)
 - **4848S040** — 4-inch, 480x480, square (ESP32-S3)
