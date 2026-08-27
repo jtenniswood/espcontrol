@@ -1138,6 +1138,18 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
     if "url.empty() && id(cover_art_delayed_playback_stopped).is_running()" not in text:
         errors.append(f"{rel}: keep cached artwork when Home Assistant clears it during a brief playback transition")
+    else:
+        cached_guard = text.find(
+            "url.empty() && id(cover_art_delayed_playback_stopped).is_running()"
+        )
+        relative_markers = (
+            text.find("id(cover_art_local_source_relative) = relative;"),
+            text.find("id(cover_art_remote_source_relative) = relative;"),
+        )
+        if any(marker < 0 or marker < cached_guard for marker in relative_markers):
+            errors.append(
+                f"{rel}: retain cached artwork's relative marker during a brief playback transition"
+            )
 
     stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
     if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
@@ -5984,8 +5996,7 @@ def run_self_test() -> int:
             "cancel pending playback grace during an immediate stop",
         ),
     )
-    expect_cover_art_playback_grace_errors(
-        "cover art playback grace present",
+    valid_cover_art_playback_grace = (
         "script:\n"
         "  - id: cover_art_resubscribe\n"
         "    then:\n"
@@ -5999,6 +6010,8 @@ def run_self_test() -> int:
         "          id(cover_art_delay_timer).stop();\n"
         "          id(cover_art_delayed_playback_stopped).execute();\n"
         "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
+        "          id(cover_art_local_source_relative) = relative;\n"
+        "          id(cover_art_remote_source_relative) = relative;\n"
         "  - id: cover_art_delayed_playback_stopped\n"
         "    mode: restart\n"
         "    then:\n"
@@ -6011,8 +6024,26 @@ def run_self_test() -> int:
         "            - script.execute: cover_art_playback_stopped\n"
         "  - id: cover_art_playback_stopped\n"
         "    then:\n"
-        "      - script.stop: cover_art_delayed_playback_stopped\n",
+        "      - script.stop: cover_art_delayed_playback_stopped\n"
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace present",
+        valid_cover_art_playback_grace,
         (),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace missing local relative marker",
+        valid_cover_art_playback_grace.replace(
+            "          id(cover_art_local_source_relative) = relative;\n", ""
+        ),
+        ("retain cached artwork's relative marker",),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace missing remote relative marker",
+        valid_cover_art_playback_grace.replace(
+            "          id(cover_art_remote_source_relative) = relative;\n", ""
+        ),
+        ("retain cached artwork's relative marker",),
     )
     expect_cover_art_disable_errors(
         "independent media sleep prevention when cover art is disabled",

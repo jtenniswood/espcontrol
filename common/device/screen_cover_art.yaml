@@ -1061,15 +1061,15 @@ script:
                   }
                 }
               }
+              if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) {
+                ESP_LOGD("cover_art", "Keeping cached artwork during brief playback transition");
+                return;
+              }
+
               if (local) {
                 id(cover_art_local_source_relative) = relative;
               } else {
                 id(cover_art_remote_source_relative) = relative;
-              }
-
-              if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) {
-                ESP_LOGD("cover_art", "Keeping cached artwork during brief playback transition");
-                return;
               }
 
               const bool source_changed = id(cover_art_runtime).sources.get(local) != url;

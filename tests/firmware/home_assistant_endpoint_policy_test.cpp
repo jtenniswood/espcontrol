@@ -14,6 +14,8 @@ using espcontrol::home_assistant_endpoint::select_discovered_origin;
 int main() {
   assert(normalize_address(" 192.168.1.10:60532 ") == "192.168.1.10");
   assert(normalize_address("::ffff:192.168.1.10") == "192.168.1.10");
+  assert(normalize_address("::ffff:c0a8:10a") == "192.168.1.10");
+  assert(normalize_address("0:0:0:0:0:ffff:c0a8:010a") == "192.168.1.10");
   assert(normalize_address("[FE80::1234%wlan0]") ==
          "fe80:0:0:0:0:0:0:1234");
   assert(normalize_address("fe80:0000:0000:0000:0000:0000:0000:1234") ==
@@ -35,9 +37,12 @@ int main() {
                       "http://other.local:8123", false};
   ServiceRecord landing{{"192.168.1.10"}, 8123, "", true};
   assert(record_matches_client(matching, "192.168.1.10:60532"));
+  assert(record_matches_client(matching, "::ffff:c0a8:10a"));
   assert(!record_matches_client(other, "192.168.1.10"));
   assert(!record_matches_client(landing, "192.168.1.10"));
   assert(select_discovered_origin({other, matching}, "192.168.1.10", "http") ==
+         "http://192.168.1.10:80");
+  assert(select_discovered_origin({other, matching}, "::ffff:c0a8:10a", "http") ==
          "http://192.168.1.10:80");
   assert(select_discovered_origin({landing, other}, "192.168.1.10", "http").empty());
 
