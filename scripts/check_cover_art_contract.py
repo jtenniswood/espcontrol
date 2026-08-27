@@ -439,7 +439,7 @@ for required in (
     "inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)",
     "return row_span == 2 && col_span == 2;",
     "inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,",
-    "return media_cover_art_uses_compact_large_fonts(row_span, col_span)",
+    "return top_padding / 2;",
     "ctx->artist_gap = media_cover_art_artist_gap(",
     "inline int media_cover_art_title_line_limit(int row_span, int col_span)",
     "if (row_span == 3 && col_span == 3) return 5;",
