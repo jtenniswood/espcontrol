@@ -83,6 +83,7 @@ class StringRef {
 struct lv_obj_t {
   int flags = 0;
   std::string text;
+  void *user_data = nullptr;
 };
 constexpr int MAX_GRID_SLOTS = 25;
 inline int bounded_grid_slots(int num_slots) {
@@ -100,7 +101,7 @@ struct BtnSlot {
   lv_obj_t *subpage_lbl = nullptr;
 };
 struct lv_disp_t {};
-struct lv_font_t {};
+struct lv_font_t { int line_height = 16; };
 using lv_coord_t = int;
 using lv_style_selector_t = int;
 using lv_color_t = int;
@@ -147,6 +148,10 @@ inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {
 inline void lv_obj_set_style_text_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_text_align(lv_obj_t *, int, lv_style_selector_t) {}
 inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
+inline const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *, lv_style_selector_t) {
+  static const lv_font_t font;
+  return &font;
+}
 inline void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_add_state(lv_obj_t *, int) {}
@@ -166,6 +171,7 @@ inline int lv_obj_get_style_pad_bottom(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_column(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_row(lv_obj_t *, int) { return 0; }
 inline lv_obj_t *lv_obj_get_parent(lv_obj_t *) { return nullptr; }
+inline void *lv_obj_get_user_data(lv_obj_t *obj) { return obj ? obj->user_data : nullptr; }
 inline lv_disp_t *lv_disp_get_default() { return lv_test_disp_available ? &lv_test_default_disp : nullptr; }
 inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
 inline int lv_disp_get_ver_res(lv_disp_t *) { return lv_test_ver_res; }
@@ -178,6 +184,7 @@ inline void lv_obj_set_grid_cell(lv_obj_t *, int, int, int, int, int, int) {}
 inline void lv_obj_set_style_pad_top(lv_obj_t *, int, int) {}
 inline void lv_obj_update_layout(lv_obj_t *) {}
 inline void lv_label_set_text(lv_obj_t *obj, const char *text) { if (obj) obj->text = text ? text : ""; }
+inline const char *lv_label_get_text(lv_obj_t *obj) { return obj ? obj->text.c_str() : ""; }
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
 inline void lv_obj_move_foreground(lv_obj_t *) {}
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }

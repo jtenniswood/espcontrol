@@ -379,7 +379,7 @@ inline void subscribe_friendly_name(lv_obj_t *text_lbl, const std::string &entit
 
 // Subscribe to a toggle entity's state; updates checked visual, icon swap, sensor overlay
 inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
-                                   lv_obj_t *sensor_ctr,
+                                   lv_obj_t *sensor_ctr, lv_obj_t *text_lbl,
                                    bool *slot_has_sensor, bool *slot_sensor_text_mode,
                                    bool *slot_has_icon_on,
                                    const char **slot_icon_off, const char **slot_icon_on,
@@ -390,7 +390,7 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
-      [btn_ptr, icon_lbl, sensor_ctr, slot_has_sensor, slot_sensor_text_mode,
+      [btn_ptr, icon_lbl, sensor_ctr, text_lbl, slot_has_sensor, slot_sensor_text_mode,
        slot_has_icon_on, slot_icon_off, slot_icon_on, text_sensor_ctx,
        is_active_state](esphome::StringRef state) {
         bool on = is_active_state(state);
@@ -416,6 +416,7 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
           if (*slot_has_icon_on)
             lv_label_set_text(icon_lbl, on ? *slot_icon_on : *slot_icon_off);
         }
+        configure_button_label_wrap(text_lbl);
       })
   );
 }

@@ -527,7 +527,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   apply_standard_sensor_number_style(s, display);
   if (s.unit_lbl) lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.text_lbl) lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+  align_card_icon_bottom_right(s.icon_lbl);
   if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   // A previous unsupported or information-only config may have disabled this
@@ -767,7 +767,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
         lv_obj_set_style_text_font(ctx->artist_lbl, artist_font, LV_PART_MAIN);
       }
       ctx->artist_below_title = large;
-      ctx->artist_gap = padding.top > 1 ? padding.top / 2 : 0;
+      ctx->artist_gap = media_cover_art_artist_gap(
+        ctx->content_padding.top, row_span, col_span);
       if (ctx->show_track_details || ctx->external_source_fallback) {
         lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -780,7 +781,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
         title_font, padding,
-        media_cover_art_limits_title_to_two_lines(row_span, col_span),
+        media_cover_art_title_line_limit(row_span, col_span),
         true, 0, false);
       media_position_now_playing_artist(ctx);
     }
@@ -797,7 +798,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
       display_media_title_font(display), padding,
-      row_span == 1, ctx->play_pause_background,
+      row_span == 1 ? 2 : 0, ctx->play_pause_background,
       ctx->progress_slider ? padding.left : 0, false);
     media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
@@ -835,7 +836,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
 
   if (media_playback_button_mode(mode)) {
-    if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    align_card_icon_bottom_right(s.icon_lbl);
     if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     return;
   }
@@ -866,8 +867,11 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
     ? ctx->label_pad_top : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
   const lv_coord_t pad_bottom = ctx
     ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
-  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
-  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+  align_card_icon_bottom_right(s.icon_lbl, pad_left, pad_bottom);
+  if (s.text_lbl) {
+    lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+    reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn, pad_left);
+  }
   if (slider) slider_refresh_geometry(slider);
 }
 
@@ -877,6 +881,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
+  if (s.text_lbl) lv_obj_set_user_data(s.text_lbl, s.icon_lbl);
   if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
@@ -885,6 +890,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
   display_apply_main_width(s.icon_lbl, display);
   display_apply_slot_text_width(s, display);
+  reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -1163,6 +1169,7 @@ inline bool grid_refresh_subpage_layouts(
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
+    configure_button_label_wrap(entry->back_slot.text_lbl);
 
     // Preserve card instances (and their HA subscriptions), but hide cards
     // removed from the saved order so stale content is never left visible.
@@ -2007,6 +2014,7 @@ inline void grid_phase2(
     lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
     lv_label_set_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
+    configure_button_label_wrap(back_slot.text_lbl);
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
@@ -2068,6 +2076,7 @@ inline void grid_phase2(
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
       apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);
+      configure_button_label_wrap(sub_slot.text_lbl);
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;

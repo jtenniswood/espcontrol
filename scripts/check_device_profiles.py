@@ -527,10 +527,10 @@ def test_weather_card_visual_matches_preview() -> None:
         and "reset_card_slot_dynamic_children(s);" in setup_visual
     ), "weather cards must clear stale widget children, active states, and opacity before rendering"
     assert (
-        "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_visual
+        "align_card_icon_bottom_right(s.icon_lbl);" in setup_visual
         and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_visual
         and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_visual
-    ), "weather cards must reset inherited icon, value, and label placement before rendering"
+    ), "weather cards must reset icons bottom-right and values/labels to their standard positions before rendering"
     assert "inline std::string normalize_weather_state" in weather_forecast, (
         "current weather device cards should normalize equivalent weather state spellings before mapping icons"
     )

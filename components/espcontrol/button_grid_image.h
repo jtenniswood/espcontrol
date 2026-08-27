@@ -1248,9 +1248,11 @@ inline void image_card_align_label(lv_obj_t *label, lv_obj_t *btn,
   lv_obj_move_foreground(label);
 }
 
-inline void image_card_align_label_stack(lv_obj_t *label, lv_obj_t *btn) {
+inline void image_card_align_label_stack(lv_obj_t *label, lv_obj_t *btn,
+                                         lv_obj_t *icon = nullptr) {
   if (!label || !btn) return;
   image_card_align_label(label, btn);
+  if (icon) reserve_button_label_icon_space(label, icon, btn);
   lv_obj_t *shadow = image_card_label_shadow(label, btn);
   if (shadow) {
     // The shadow gets the same layout as the label, then a one-pixel style
@@ -1258,6 +1260,7 @@ inline void image_card_align_label_stack(lv_obj_t *label, lv_obj_t *btn) {
     // so the shadow stays locked one pixel below and right of the text instead
     // of drifting the way two independent bottom-left aligns did.
     image_card_align_label(shadow, btn, 0, 0);
+    if (icon) reserve_button_label_icon_space(shadow, icon, btn);
     lv_obj_set_style_translate_x(shadow, 1, LV_PART_MAIN);
     lv_obj_set_style_translate_y(shadow, 1, LV_PART_MAIN);
     lv_obj_move_foreground(shadow);
@@ -1273,7 +1276,8 @@ inline void image_card_move_label_foreground(lv_obj_t *loading_widget) {
   lv_obj_t *shadow = image_card_label_shadow(label, btn);
   if (shadow) lv_obj_move_foreground(shadow);
   lv_obj_move_foreground(label);
-  image_card_align_label_stack(label, btn);
+  lv_obj_t *icon = static_cast<lv_obj_t *>(lv_obj_get_user_data(label));
+  image_card_align_label_stack(label, btn, icon);
 }
 
 inline void image_card_align_icon(lv_obj_t *icon, lv_obj_t *btn) {
@@ -1282,7 +1286,7 @@ inline void image_card_align_icon(lv_obj_t *icon, lv_obj_t *btn) {
   lv_coord_t parent_y = 0;
   lv_coord_t parent_height = 0;
   image_card_parent_offset_from_button(icon, btn, parent_x, parent_y, parent_height);
-  lv_obj_align(icon, LV_ALIGN_TOP_LEFT, -parent_x, -parent_y);
+  align_card_icon_bottom_right(icon, parent_x, parent_y);
   lv_obj_move_foreground(icon);
 }
 
@@ -1291,7 +1295,8 @@ inline bool image_card_entity_supported(const std::string &entity_id) {
 }
 
 inline void image_card_set_label_text(lv_obj_t *label, lv_obj_t *btn,
-                                      const char *text) {
+                                      const char *text,
+                                      lv_obj_t *icon = nullptr) {
   if (!label) return;
   const char *safe_text = text ? text : "";
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
@@ -1301,24 +1306,26 @@ inline void image_card_set_label_text(lv_obj_t *label, lv_obj_t *btn,
     lv_label_set_long_mode(shadow, LV_LABEL_LONG_WRAP);
     lv_label_set_text(shadow, safe_text);
   }
-  image_card_align_label_stack(label, btn);
+  image_card_align_label_stack(label, btn, icon);
 }
 
 inline void subscribe_image_card_label(lv_obj_t *label, lv_obj_t *btn,
+                                       lv_obj_t *icon,
                                        const std::string &entity_id) {
   const uint32_t generation = ha_subscription_generation();
   ha_subscribe_attribute(
     entity_id, std::string("friendly_name"),
-    std::function<void(esphome::StringRef)>([label, btn, generation](esphome::StringRef name) {
+    std::function<void(esphome::StringRef)>([label, btn, icon, generation](esphome::StringRef name) {
       if (generation != ha_subscription_generation()) return;
       image_card_set_label_text(
-        label, btn, string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN).c_str());
+        label, btn, string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN).c_str(), icon);
     })
   );
 }
 
 inline void image_card_configure_label(BtnSlot &s, const ParsedCfg &p) {
   if (!s.text_lbl) return;
+  lv_obj_set_user_data(s.text_lbl, s.icon_lbl);
   if (!image_card_label_enabled(p)) {
     image_card_delete_label_shadow(s.text_lbl, s.btn);
     lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -1342,9 +1349,10 @@ inline void image_card_configure_label(BtnSlot &s, const ParsedCfg &p) {
   lv_obj_set_style_bg_opa(shadow, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_radius(shadow, 0, LV_PART_MAIN);
   lv_label_set_long_mode(shadow, LV_LABEL_LONG_WRAP);
-  image_card_set_label_text(s.text_lbl, s.btn, (p.label.empty() ? p.entity : p.label).c_str());
+  image_card_set_label_text(
+    s.text_lbl, s.btn, (p.label.empty() ? p.entity : p.label).c_str(), s.icon_lbl);
   if (p.label.empty() && !p.entity.empty()) {
-    subscribe_image_card_label(s.text_lbl, s.btn, p.entity);
+    subscribe_image_card_label(s.text_lbl, s.btn, s.icon_lbl, p.entity);
   }
 }
 
@@ -2442,8 +2450,8 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
     image_card_set_loading_state(loading, "Unavailable");
     return true;
   }
-  image_card_configure_label(s, p);
   image_card_configure_icon(s, p);
+  image_card_configure_label(s, p);
   ImageCardCtx *ctx = acquire_image_card_context(cfg, p.entity);
   if (!ctx) {
     ESP_LOGW("image_card", "No image card downloader available for %s", p.entity.c_str());
