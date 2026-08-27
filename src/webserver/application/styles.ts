@@ -301,6 +301,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-field-info-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}" +
         ".sp-field-info-text{display:none;font-size:.75rem;color:var(--text2);line-height:1.35;margin:-2px 0 8px}" +
         ".sp-field-info-text.sp-visible{display:block}" +
+        ".sp-setting-note{margin:-2px 0 14px;color:var(--text2);font-size:.8rem;line-height:1.4;overflow-wrap:anywhere}" +
         ".sp-input,.sp-select{width:100%;padding:10px 12px;background:var(--surface2);" +
         "border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.875rem;" +
         "font-family:inherit;box-sizing:border-box;outline:none;" +

@@ -452,10 +452,27 @@ function seededEvents() {
     },
     { id: "select-screen__language", state: "en", value: "en", option: ["en"] },
     {
+      id: "select-home_assistant_artwork_endpoint_mode",
+      state: "Automatic",
+      value: "Automatic",
+      option: ["Automatic", "Manual"],
+    },
+    {
+      id: "text_sensor-home_assistant_artwork_endpoint_status",
+      state: "Automatic — http://192.0.2.10",
+    },
+    {
       id: "select-home_assistant_artwork_protocol",
       state: "http",
       value: "http",
       option: ["http", "https"],
+    },
+    {
+      id: "number-home_assistant_artwork_port",
+      state: "8123",
+      value: 8123,
+      min: 1,
+      max: 65535,
     },
     { id: "switch-firmware__auto_update", state: "ON", value: true },
     { id: "text_sensor-firmware__version", state: "v1.12.0" },
@@ -1660,6 +1677,40 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       .inputValue(),
     "8123",
     `${label}: Home Assistant port field should default to 8123`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(),
+    "Automatic",
+    `${label}: Home Assistant artwork endpoint should default to Automatic`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-ha-artwork-endpoint-status").textContent(),
+    "Automatic — http://192.0.2.10",
+    `${label}: Home Assistant artwork endpoint status should render`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isDisabled(),
+    `${label}: Home Assistant protocol should be disabled in Automatic mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isDisabled(),
+    `${label}: Home Assistant port should be disabled in Automatic mode`,
+  );
+  const endpointModePostsBefore = posts.length;
+  await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-endpoint-mode").selectOption("Manual");
+  await waitForPost(
+    posts,
+    { domain: "select", name: "home_assistant_artwork_endpoint_mode", action: "set", option: "Manual" },
+    `${label}: Home Assistant artwork endpoint mode post`,
+    endpointModePostsBefore,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isEnabled(),
+    `${label}: Home Assistant protocol should be editable in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isEnabled(),
+    `${label}: Home Assistant port should be editable in Manual mode`,
   );
   assert(
     (await homeAssistantSettingsCard
@@ -3597,6 +3648,15 @@ async function assertBackupImportSmoke(page, posts, testCase) {
         value: "9443",
       },
       "backup Home Assistant artwork port import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "home_assistant_artwork_endpoint_mode",
+        action: "set",
+        option: "Manual",
+      },
+      "backup Home Assistant artwork endpoint mode import",
     ],
     [
       {

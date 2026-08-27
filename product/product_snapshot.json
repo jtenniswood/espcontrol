@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 7,
     "cardTypes": 40,
-    "entityNames": 99,
+    "entityNames": 101,
     "icons": 334,
     "structuralIcons": 19,
     "compatibilityFixtureGroups": 2
@@ -6427,6 +6427,28 @@
           "hide_cover_art_on_external_input",
           "cover_art_hide_external_input",
           "screen_saver__hide_for_external_sources"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "home_assistant_artwork_endpoint_mode",
+        "domain": "select",
+        "name": "Home Assistant Artwork Connection",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_mode"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "home_assistant_artwork_endpoint_status",
+        "domain": "text_sensor",
+        "name": "Home Assistant Artwork Endpoint",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_status"
         ],
         "groups": [
           "settings"

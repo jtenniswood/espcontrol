@@ -214,6 +214,7 @@ void EspControlApp::apply_boot_configuration() {
 }
 
 void EspControlApp::setup() {
+  home_assistant_endpoint_.setup();
   if (core_.start()) {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
   } else {
@@ -326,6 +327,7 @@ void EspControlApp::initialize_native_configuration() {
 }
 
 void EspControlApp::loop() {
+  home_assistant_endpoint_.loop();
   core_.run_once();
   // The app core starts before WiFi so Home Assistant boot automations are
   // safe. The IDF web server starts later, so retry idempotent registrations.
@@ -333,6 +335,7 @@ void EspControlApp::loop() {
 }
 
 void EspControlApp::on_shutdown() {
+  home_assistant_endpoint_.shutdown();
   cards::set_card_runtime_registry_service(nullptr);
   core_.stop();
 }

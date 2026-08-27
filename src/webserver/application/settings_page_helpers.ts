@@ -448,6 +448,15 @@ export function createSettingsPageHelpersFeature(
         if (els.setCoverArtHomeAssistantPort) {
             els.setCoverArtHomeAssistantPort.value = String(normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
         }
+        if (els.setHomeAssistantArtworkEndpointMode) {
+            els.setHomeAssistantArtworkEndpointMode.value = state.homeAssistantArtworkEndpointMode;
+        }
+        var manualEndpoint: any = state.homeAssistantArtworkEndpointMode === "Manual";
+        if (els.setHomeAssistantArtworkProtocol) els.setHomeAssistantArtworkProtocol.disabled = !manualEndpoint;
+        if (els.setCoverArtHomeAssistantPort) els.setCoverArtHomeAssistantPort.disabled = !manualEndpoint;
+        if (els.homeAssistantArtworkEndpointStatus) {
+            els.homeAssistantArtworkEndpointStatus.textContent = state.homeAssistantArtworkEndpointStatus || "Discovering";
+        }
         if (els.setCoverArtFilterToggle) {
             els.setCoverArtFilterToggle.checked = !!state.coverArtFilteringEnabled;
         }

@@ -1039,6 +1039,8 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         "rebuild_relative_artwork_url" not in base_url_body
         or "id(cover_art_runtime).sources.remote_url" not in base_url_body
         or "id(cover_art_runtime).sources.local_url" not in base_url_body
+        or "id(cover_art_remote_source_relative)" not in base_url_body
+        or "id(cover_art_local_source_relative)" not in base_url_body
         or "id(cover_art_process_cached_artwork).execute();" not in base_url_body
     ):
         errors.append(f"{rel}: rebuild cached full-screen artwork URLs when the Home Assistant base URL changes")
@@ -5887,6 +5889,8 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: |-\n"
         "          auto rebuild_relative_artwork_url = [](std::string &url) { return !url.empty(); };\n"
+        "          id(cover_art_remote_source_relative);\n"
+        "          id(cover_art_local_source_relative);\n"
         "          id(cover_art_runtime).sources.remote_url.clear();\n"
         "          id(cover_art_runtime).sources.local_url.clear();\n"
         "          id(cover_art_process_cached_artwork).execute();\n"

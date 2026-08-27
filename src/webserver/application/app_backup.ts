@@ -5,6 +5,7 @@ import {
     normalizeHexColor,
     normalizeHomeAssistantArtworkPort,
     normalizeHomeAssistantArtworkProtocol,
+    normalizeHomeAssistantArtworkEndpointMode,
     normalizeHour,
     normalizeLanguage,
     normalizeScheduleClockBrightness,
@@ -115,6 +116,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         postCoverArtHideExternalInput,
         postHomeAssistantArtworkProtocol,
         postHomeAssistantArtworkPort,
+        postHomeAssistantArtworkEndpointMode,
     } = controllers.artworkPostApi;
     const {
         postBrightnessMode,
@@ -268,6 +270,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 cover_art_hide_external_input: state.coverArtHideExternalInputOn,
                 home_assistant_artwork_protocol: normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol),
                 home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
+                home_assistant_artwork_endpoint_mode: normalizeHomeAssistantArtworkEndpointMode(
+                    state.homeAssistantArtworkEndpointMode,
+                    state.homeAssistantArtworkProtocol,
+                    state.coverArtHomeAssistantPort),
                 firmware_auto_update: !!state.autoUpdate,
                 firmware_update_frequency: state.updateFrequency,
                 screensaver_action: normalizeScreensaverAction(state.screensaverAction),
@@ -473,6 +479,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
                     postHomeAssistantArtworkProtocol(importedSettings.coverArtHomeAssistantProtocol);
                     postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
+                    postHomeAssistantArtworkEndpointMode(importedSettings.coverArtHomeAssistantEndpointMode);
                     if (firmwareUpdateControlsVisible()) {
                         postFirmwareAutoUpdate(importedSettings.autoUpdate);
                         postFirmwareUpdateFrequency(importedSettings.updateFrequency);
@@ -536,6 +543,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
                     state.homeAssistantArtworkProtocol = importedSettings.coverArtHomeAssistantProtocol;
                     state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
+                    state.homeAssistantArtworkEndpointMode = importedSettings.coverArtHomeAssistantEndpointMode;
                     state.autoUpdate = importedSettings.autoUpdate;
                     state.updateFrequency = importedSettings.updateFrequency;
                     state.screensaverAction = importedScreensaverAction;

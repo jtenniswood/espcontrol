@@ -161,6 +161,25 @@ button:
 
 select:
   - platform: template
+    name: "${entity_home_assistant_artwork_endpoint_mode}"
+    internal: true
+    id: home_assistant_artwork_endpoint_mode
+    entity_category: config
+    icon: "mdi:lan-check"
+    optimistic: true
+    restore_value: true
+    initial_option: "Automatic"
+    options:
+      - "Automatic"
+      - "Manual"
+    web_server:
+      sorting_group_id: sg_connectivity
+    set_action:
+      - lambda: |-
+          id(home_assistant_artwork_endpoint_mode).publish_state(x);
+          id(cover_art_resolve_home_assistant_base_url).execute();
+
+  - platform: template
     name: "${entity_home_assistant_artwork_protocol}"
     internal: true
     id: cover_art_home_assistant_artwork_protocol
@@ -199,3 +218,14 @@ number:
       - lambda: |-
           id(cover_art_home_assistant_artwork_port).publish_state(x);
           id(cover_art_resolve_home_assistant_base_url).execute();
+
+text_sensor:
+  - platform: template
+    name: "${entity_home_assistant_artwork_endpoint_status}"
+    internal: true
+    id: home_assistant_artwork_endpoint_status
+    entity_category: diagnostic
+    icon: "mdi:connection"
+    update_interval: 1s
+    lambda: |-
+      return id(espcontrol_app).home_assistant_endpoint().status();

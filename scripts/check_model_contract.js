@@ -583,6 +583,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
   cover_art_hide_external_input: true,
+  home_assistant_artwork_endpoint_mode: "Manual",
   home_assistant_artwork_protocol: "https",
   home_assistant_artwork_port: "80",
   firmware_auto_update: false,
@@ -628,8 +629,24 @@ assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server i
 assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mode imports");
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
+assert.strictEqual(panelSettings.coverArtHomeAssistantEndpointMode, "Manual", "panel Home Assistant artwork endpoint mode imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantProtocol, "https", "panel Home Assistant artwork protocol imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");
+assert.strictEqual(
+  model.normalizeHomeAssistantArtworkEndpointMode(undefined, "http", 8123),
+  "Automatic",
+  "legacy HTTP/8123 artwork settings migrate to automatic discovery",
+);
+assert.strictEqual(
+  model.normalizeHomeAssistantArtworkEndpointMode(undefined, "https", 8123),
+  "Manual",
+  "legacy HTTPS artwork settings remain manual",
+);
+assert.strictEqual(
+  model.normalizeHomeAssistantArtworkEndpointMode(undefined, "http", 80),
+  "Manual",
+  "legacy custom artwork ports remain manual",
+);
 assert.strictEqual(panelSettings.autoUpdate, false, "panel firmware auto-update imports");
 assert.strictEqual(panelSettings.updateFrequency, "Weekly", "panel firmware update frequency imports");
 assert.strictEqual(
