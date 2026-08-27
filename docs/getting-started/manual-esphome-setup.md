@@ -52,11 +52,19 @@ wifi:
   password: !secret wifi_password
 
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1sec
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc1060p470/packages.yaml
     refresh: 1sec
 ```
+
+The `api_encryption` package lets Home Assistant create a unique encryption key for the display the first time it connects. Home Assistant stores that key and, with Home Assistant and ESPHome Device Builder 2026.8 or newer, passes the same key to Device Builder when you adopt or rebuild the display. You do not need to create or share a key yourself.
+
+Wireless OTA updates preserve the key stored on the display. A full USB erase can remove it, so Home Assistant may ask you to pair the display again afterward. For the underlying behavior, see the [ESPHome native API documentation](https://esphome.io/components/api/), the [Home Assistant key-handoff fix](https://github.com/home-assistant/core/pull/178039), and the [Device Builder adoption fix](https://github.com/esphome/device-builder/pull/2496).
 
 If you do not use ESPHome secrets, replace the two `!secret` lines with your WiFi details:
 
@@ -85,6 +93,10 @@ substitutions:
   espcontrol_web_password: !secret espcontrol_web_password
 
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1sec
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc1060p470/packages.yaml
@@ -129,6 +141,10 @@ substitutions:
   disable_updates: "true"
 
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1sec
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc1060p470/packages.yaml

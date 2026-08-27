@@ -29,6 +29,13 @@ description:
 - Make sure the display and Home Assistant are on the **same WiFi network** (not a guest network or a different VLAN).
 - In Home Assistant, go to **Settings > Devices & Services > Add Integration** and search for **ESPHome**. Enter the device's IP address manually.
 
+## Home Assistant Says "Connection Requires Encryption"
+
+- Update both Home Assistant and ESPHome Device Builder to 2026.8 or newer. These versions pass a display's unique API encryption key between Home Assistant and Device Builder when the display is adopted or rebuilt.
+- If you already rebuilt the display and Home Assistant asks for a key, open its YAML in ESPHome Device Builder and use the existing `api.encryption.key` value in Home Assistant's reauthentication prompt. Do not generate a different key.
+- Normal OTA updates retain the key stored on the display. Erasing the whole display during a USB install can remove it and may require pairing the display with Home Assistant again.
+- See [Manual Setup](/getting-started/manual-esphome-setup) for more about automatic API encryption.
+
 ## A P4 Panel Has Unreliable WiFi
 
 - P4 panels use a separate ESP32-C6 WiFi processor. Mismatched or outdated C6

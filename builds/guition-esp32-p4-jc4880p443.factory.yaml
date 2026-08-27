@@ -13,6 +13,7 @@ substitutions:
 
 packages:
   core: !include guition-esp32-p4-jc4880p443.yaml
+  api_encryption: !include ../common/addon/api_encryption_dynamic.yaml
 
 esphome:
   project:
