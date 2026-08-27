@@ -23,6 +23,33 @@ int main() {
   assert(!media_entity_state_usable("idle"));
   assert(!media_entity_state_usable("off"));
   assert(!media_entity_state_usable(" unavailable "));
+  assert(media_artwork_content_current(true, true, "playing", true));
+  assert(media_artwork_content_current(true, true, "paused", true));
+  assert(media_artwork_content_current(true, true, "buffering", true));
+  assert(!media_artwork_content_current(true, true, "idle", true));
+  assert(!media_artwork_content_current(true, true, "off", true));
+  assert(!media_artwork_content_current(true, false, "playing", true));
+  assert(!media_artwork_content_current(false, true, "playing", true));
+  assert(!media_artwork_content_current(true, true, "playing", false));
+  assert(media_state_change_invalidates_retained_content(false, "unknown", "idle"));
+  assert(media_state_change_invalidates_retained_content(true, "playing", "idle"));
+  assert(media_state_change_invalidates_retained_content(true, "paused", "off"));
+  assert(media_state_change_invalidates_retained_content(true, "idle", "off"));
+  assert(!media_state_change_invalidates_retained_content(true, "idle", "idle"));
+  assert(!media_state_change_invalidates_retained_content(true, "idle", "playing"));
+  assert(!media_state_change_invalidates_retained_content(true, "paused", "buffering"));
+  assert(!media_card_artwork_should_clear(false, true, "unknown", false));
+  assert(!media_card_artwork_should_clear(true, true, "playing", false));
+  assert(!media_card_artwork_should_clear(true, true, "paused", false));
+  assert(!media_card_artwork_should_clear(true, true, "buffering", false));
+  assert(media_card_artwork_should_clear(true, true, "idle", false));
+  assert(!media_card_artwork_should_clear(true, true, "idle", true));
+  assert(media_card_artwork_should_clear(true, true, "off", false));
+  assert(media_card_artwork_should_clear(true, false, "playing", true));
+  assert(media_entity_content_available(true, true, true));
+  assert(!media_entity_content_available(true, true, false));
+  assert(!media_entity_content_available(true, false, true));
+  assert(!media_entity_content_available(false, true, true));
   assert(!use_secondary_media_entity(false, true, true, true));
   assert(!use_secondary_media_entity(true, false, true, true));
   assert(!use_secondary_media_entity(true, true, false, true));
@@ -521,6 +548,9 @@ for required in (
     'std::string("entity_picture")',
     'std::string("entity_picture_local")',
     "image_card_schedule_media_artwork_refresh(art)",
+    "media_artwork_content_current(",
+    "media_card_artwork_should_clear(",
+    "image_card_clear_media_artwork(art)",
 ):
     if required not in media_art:
         raise SystemExit(f"Media card cover art subscription contract missing: {required}")
@@ -529,4 +559,74 @@ if "subscribe_image_card_entity_state" in media_art:
         "Media card cover art must not add a general entity-state subscription "
         "on top of its picture subscriptions"
     )
+now_playing_refresh_start = media.find(
+    "inline void media_playback_refresh_stable_artwork("
+)
+now_playing_refresh_end = media.find(
+    "inline void media_playback_apply_state_to_now_playing_snapshot(",
+    now_playing_refresh_start,
+)
+if now_playing_refresh_start < 0 or now_playing_refresh_end < 0:
+    raise SystemExit("Media cover-art playback-state contract missing")
+now_playing_refresh = media[now_playing_refresh_start:now_playing_refresh_end]
+for required in (
+    "media_card_artwork_should_clear(",
+    "ctx->artwork_refresh_signature.clear();",
+    "image_card_clear_media_artwork(ctx->cover_art);",
+):
+    if required not in now_playing_refresh:
+        raise SystemExit(
+            f"Stopped media must clear stale card artwork: {required}"
+        )
+current_content_start = media.find(
+    "inline bool media_playback_has_current_content("
+)
+current_content_end = media.find("\n}", current_content_start)
+if current_content_start < 0 or current_content_end < 0:
+    raise SystemExit("Secondary media content routing contract missing")
+current_content = media[current_content_start:current_content_end]
+for required in (
+    "media_entity_content_available(",
+    "!state->title.empty()",
+    "!state->artist.empty()",
+    "state->has_current_content_id",
+    "state->artwork_content_mask != 0",
+):
+    if required not in current_content:
+        raise SystemExit(
+            f"Secondary media content routing contract missing: {required}"
+        )
+for stale_gate in (
+    "media_entity_state_usable(",
+    "state->has_current_content_type",
+):
+    if stale_gate in current_content:
+        raise SystemExit(
+            f"Secondary routing must follow actual metadata, not {stale_gate}"
+        )
+state_subscription_start = media.find(
+    "inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {"
+)
+state_subscription_end = media.find(
+    "inline void media_playback_subscribe_metadata(", state_subscription_start
+)
+if state_subscription_start < 0 or state_subscription_end < 0:
+    raise SystemExit("Playback-state retained metadata contract missing")
+state_subscription = media[state_subscription_start:state_subscription_end]
+for required in (
+    "media_state_change_invalidates_retained_content(",
+    "media_playback_invalidate_retained_content(state);",
+):
+    if required not in state_subscription:
+        raise SystemExit(
+            f"Stopped playback must invalidate retained metadata: {required}"
+        )
+for required in (
+    "espcontrol::cover_art::media_entity_state_usable(next)",
+    'subscribe_secondary_content_probe(std::string("media_artist"), 16u)',
+):
+    if required not in resubscribe:
+        raise SystemExit(
+            f"Full-screen secondary media routing contract missing: {required}"
+        )
 print("Cover art policy, layout, and state contract checks passed.")

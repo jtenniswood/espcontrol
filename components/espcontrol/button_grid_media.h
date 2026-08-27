@@ -777,6 +777,19 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   std::vector<MediaPlaybackButtonRef>().swap(state->buttons);
 }
 
+inline void media_playback_invalidate_retained_content(MediaPlaybackState *state) {
+  if (!state) return;
+  state->title.clear();
+  state->artist.clear();
+  state->current_content_id.clear();
+  state->current_content_fingerprint = 0;
+  state->current_content_type.clear();
+  state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
+  state->has_current_content_id = false;
+  state->has_current_content_type = false;
+  state->artwork_content_mask = 0;
+}
+
 inline MediaPlaybackState *media_playback_find_state(const std::string &entity_id) {
   if (entity_id.empty()) return nullptr;
   std::vector<MediaPlaybackState *> &states = media_playback_states();
@@ -954,9 +967,25 @@ inline std::string media_playback_artwork_refresh_signature(
   return state->has_state ? std::string("state:") + state->state_text : std::string();
 }
 
+inline bool media_playback_has_current_content(const MediaPlaybackState *state) {
+  if (!state) return false;
+  const bool has_content = !state->title.empty() || !state->artist.empty() ||
+                           state->has_current_content_id ||
+                           state->artwork_content_mask != 0;
+  return espcontrol::cover_art::media_entity_content_available(
+    state->has_state, state->available, has_content);
+}
+
 inline void media_playback_refresh_stable_artwork(MediaPlaybackState *state,
                                                   MediaNowPlayingCtx *ctx) {
   if (!state || !ctx || !ctx->cover_art) return;
+  const bool has_content = media_playback_has_current_content(state);
+  if (espcontrol::cover_art::media_card_artwork_should_clear(
+        state->has_state, state->available, state->state_text, has_content)) {
+    ctx->artwork_refresh_signature.clear();
+    image_card_clear_media_artwork(ctx->cover_art);
+    return;
+  }
   const std::string signature = media_playback_artwork_refresh_signature(state);
   if (signature.empty() || signature == ctx->artwork_refresh_signature) return;
   ctx->artwork_refresh_signature = signature;
@@ -969,9 +998,15 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
   ctx->source_known = state->source_known;
   ctx->external_source = state->external_source;
   if (ctx->cover_art) {
-    image_card_set_media_artwork_suppressed(
-      ctx->cover_art, espcontrol::cover_art::media_card_artwork_suppressed(
-        ctx->source_known, ctx->external_source));
+    const bool has_content = media_playback_has_current_content(state);
+    if (espcontrol::cover_art::media_card_artwork_should_clear(
+          state->has_state, state->available, state->state_text, has_content)) {
+      image_card_clear_media_artwork(ctx->cover_art);
+    } else {
+      image_card_set_media_artwork_suppressed(
+        ctx->cover_art, espcontrol::cover_art::media_card_artwork_suppressed(
+          ctx->source_known, ctx->external_source));
+    }
   }
   if (ctx->title_lbl) {
     const std::string title =
@@ -1012,14 +1047,6 @@ inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state,
   }
   media_playback_refresh_stable_artwork(state, ctx);
   media_playback_apply_state_to_now_playing_snapshot(state, ctx);
-}
-
-inline bool media_playback_has_current_content(const MediaPlaybackState *state) {
-  if (!state || !state->has_state || !state->available ||
-      !espcontrol::cover_art::media_entity_state_usable(state->state_text)) return false;
-  return !state->title.empty() || !state->artist.empty() ||
-         state->has_current_content_id || state->has_current_content_type ||
-         state->artwork_content_mask != 0;
 }
 
 inline void media_playback_apply_state_to_now_playing(MediaPlaybackState *state) {
@@ -1408,6 +1435,9 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
       [state, generation](esphome::StringRef state_ref) {
         if (!media_playback_generation_valid(state, generation)) return;
         std::string state_text = string_ref_limited(state_ref, HA_SHORT_STATE_MAX_LEN);
+        const bool invalidate_retained_content =
+          espcontrol::cover_art::media_state_change_invalidates_retained_content(
+            state->has_state, state->state_text, state_text);
         bool was_playing = state->playing;
         float paused_position_seconds = was_playing
           ? media_playback_current_position_seconds(state)
@@ -1416,6 +1446,9 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         state->state_text = state_text;
         state->available = !ha_state_unavailable_ref(state_ref);
         state->playing = state_text == "playing";
+        if (invalidate_retained_content) {
+          media_playback_invalidate_retained_content(state);
+        }
         if (was_playing && !state->playing) {
           state->position_seconds = paused_position_seconds;
           state->position_updated_ms = esphome::millis();

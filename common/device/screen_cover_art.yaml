@@ -2163,6 +2163,7 @@ script:
               subscribe_secondary_content_probe(std::string("entity_picture"), 2u);
               subscribe_secondary_content_probe(std::string("entity_picture_local"), 4u);
               subscribe_secondary_content_probe(std::string("media_content_id"), 8u);
+              subscribe_secondary_content_probe(std::string("media_artist"), 16u);
             }
           }
 
