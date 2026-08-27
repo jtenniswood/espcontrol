@@ -137,6 +137,74 @@ void reentrant_reads_are_deferred() {
   require(nested == 1, "reentrant callback did not run");
 }
 
+void reentrant_reads_on_one_channel_share_deferred_work() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.outer", "", [](std::string) {}, 1u, nullptr, true),
+          "outer retained subscription should register");
+  require(coordinator.subscribe("sensor.inner", "", [](std::string) {}, 1u, nullptr, true),
+          "inner retained subscription should register");
+  int first = 0;
+  int second = 0;
+  require(coordinator.read_retained(
+              "sensor.outer", "",
+              [&](std::string) {
+                require(coordinator.read_retained(
+                            "sensor.inner", "", [&](std::string) { first++; }, false, 10, 5),
+                        "first nested read should queue");
+                require(coordinator.read_retained(
+                            "sensor.inner", "", [&](std::string) { second++; }, false, 10, 5),
+                        "second nested read should queue");
+              },
+              false, 10, 5),
+          "outer read should wait");
+
+  coordinator.transport().publish(0, "outer");
+  require(coordinator.deferred_count() == 1 && coordinator.pending_read_count() == 2,
+          "same-channel nested reads were not grouped");
+  coordinator.flush(8, 10, 5);
+  coordinator.transport().publish(1, "inner");
+  require(first == 1 && second == 1,
+          "grouped same-channel reads did not fan out once");
+}
+
+void resolved_deferred_channels_survive_channel_vector_growth() {
+  Coordinator coordinator;
+  require(coordinator.subscribe("sensor.outer", "", [](std::string) {}, 1u, nullptr, true),
+          "outer retained subscription should register");
+  require(coordinator.subscribe("sensor.first", "", [](std::string) {}, 1u, nullptr, true),
+          "first retained subscription should register");
+  require(coordinator.subscribe("sensor.second", "", [](std::string) {}, 1u, nullptr, true),
+          "second retained subscription should register");
+  int first = 0;
+  int second = 0;
+  require(coordinator.read_retained(
+              "sensor.outer", "",
+              [&](std::string) {
+                require(coordinator.read_retained(
+                            "sensor.first", "", [&](std::string) { first++; }, false, 10, 5),
+                        "first resolved channel should queue");
+                require(coordinator.read_retained(
+                            "sensor.second", "", [&](std::string) { second++; }, false, 10, 5),
+                        "second resolved channel should queue");
+                for (size_t i = 0; i < 100; i++) {
+                  require(coordinator.subscribe(
+                              "sensor.extra_" + std::to_string(i), "", [](std::string) {}, 1u),
+                          "extra subscription should register");
+                }
+              },
+              false, 10, 5),
+          "outer read should wait");
+
+  coordinator.transport().publish(0, "outer");
+  require(coordinator.deferred_count() == 2,
+          "different resolved channels were incorrectly combined");
+  coordinator.flush(8, 10, 5);
+  coordinator.transport().publish(1, "first");
+  coordinator.transport().publish(2, "second");
+  require(first == 1 && second == 1,
+          "resolved channel index became stale after channel vector growth");
+}
+
 void cancellation_is_safe_during_callback() {
   Coordinator coordinator;
   constexpr uint32_t scope = 1u << 2;
@@ -350,6 +418,29 @@ void pending_unowned_reads_are_globally_capped() {
   coordinator.transport().publish(1, "local");
   require(calls == 64 && coordinator.pending_read_count() == 0,
           "globally capped pending retained reads were not released");
+}
+
+void a_full_pending_queue_rejects_new_work_without_evicting_accepted_callbacks() {
+  Coordinator coordinator;
+  require(coordinator.subscribe(
+              "media_player.room", "entity_picture", [](std::string) {}, 1u, nullptr, true),
+          "retained artwork subscription should register");
+  int accepted_calls = 0;
+  for (size_t i = 0; i < 64; i++) {
+    require(coordinator.read_retained(
+                "media_player.room", "entity_picture",
+                [&](std::string) { accepted_calls++; }, true, 10, 5),
+            "bounded read should be accepted");
+  }
+  int rejected_calls = 0;
+  require(!coordinator.read_retained(
+              "media_player.room", "entity_picture",
+              [&](std::string) { rejected_calls++; }, true, 10, 5),
+          "full queue should explicitly reject newest work");
+
+  coordinator.transport().publish(0, "artwork");
+  require(accepted_calls == 64 && rejected_calls == 0,
+          "full queue silently evicted accepted work or delivered rejected work");
 }
 
 void generation_change_discards_cached_and_pending_channel_reads() {
@@ -570,6 +661,8 @@ int main() {
   low_memory_rejects_retained_read_without_pending_work();
   duplicate_reads_fan_out_once();
   reentrant_reads_are_deferred();
+  reentrant_reads_on_one_channel_share_deferred_work();
+  resolved_deferred_channels_survive_channel_vector_growth();
   cancellation_is_safe_during_callback();
   rebuilt_subscriptions_share_one_transport_channel();
   rebuilt_subscription_replays_last_value();
@@ -580,6 +673,7 @@ int main() {
   retained_reads_never_accumulate_transport_callbacks();
   missing_retained_channel_fails_closed();
   pending_unowned_reads_are_globally_capped();
+  a_full_pending_queue_rejects_new_work_without_evicting_accepted_callbacks();
   generation_change_discards_cached_and_pending_channel_reads();
   reconnect_discards_retained_channel_state();
   ordinary_subscriptions_fail_closed_for_retained_reads();
