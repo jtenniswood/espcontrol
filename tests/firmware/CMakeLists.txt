@@ -63,6 +63,12 @@ target_compile_options(media_power_capability_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(media_power_capability_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_power_capability_test COMMAND media_power_capability_test)
 
+add_executable(media_playback_modes_test media_playback_modes_test.cpp)
+target_compile_features(media_playback_modes_test PRIVATE cxx_std_17)
+target_compile_options(media_playback_modes_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_playback_modes_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_playback_modes_test COMMAND media_playback_modes_test)
+
 add_executable(media_metadata_policy_test media_metadata_policy_test.cpp)
 target_compile_features(media_metadata_policy_test PRIVATE cxx_std_17)
 target_compile_options(media_metadata_policy_test PRIVATE -Wall -Wextra -Werror)
