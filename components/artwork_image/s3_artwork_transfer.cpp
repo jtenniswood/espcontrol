@@ -14,6 +14,7 @@
 #include "esp_heap_caps.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include "freertos/idf_additions.h"
 
 #include "image_pipeline_policy.h"
 
@@ -23,6 +24,11 @@ namespace artwork_image {
 static const char *const TAG = "artwork_image.s3_transfer";
 static constexpr size_t MAX_TRANSFER_SIZE = 2 * 1024 * 1024;
 static constexpr size_t INITIAL_TRANSFER_CAPACITY = 16 * 1024;
+// Keep the ESP-IDF HTTP client's internal RX buffer below the S3 panel's
+// narrow internal-heap margin. Artwork bytes themselves are accumulated in
+// PSRAM by http_event_().
+static constexpr size_t HTTP_CLIENT_BUFFER_SIZE = 4 * 1024;
+static constexpr uint32_t TRANSFER_TASK_STACK_SIZE = 8192;
 static constexpr size_t MAX_REDIRECT_URL_LENGTH = 2048;
 static constexpr int MAX_REDIRECTS = 3;
 
@@ -137,9 +143,21 @@ S3ArtworkTransferService &S3ArtworkTransferService::instance() {
 S3ArtworkTransferService::S3ArtworkTransferService() {
   this->mutex_ = xSemaphoreCreateMutex();
   if (!this->mutex_) return;
-  const BaseType_t created = xTaskCreate(
-      task_entry_, "s3_artwork_http", 8192, this, 2, &this->task_);
+  bool stack_in_psram = false;
+  BaseType_t created = xTaskCreateWithCaps(
+      task_entry_, "s3_artwork_http", TRANSFER_TASK_STACK_SIZE, this, 2,
+      &this->task_, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  stack_in_psram = created == pdPASS;
+  if (created != pdPASS) {
+    ESP_LOGW(TAG, "Could not allocate artwork task stack in PSRAM; falling back to internal RAM");
+    created = xTaskCreate(
+        task_entry_, "s3_artwork_http", TRANSFER_TASK_STACK_SIZE, this, 2,
+        &this->task_);
+  }
   this->ready_ = created == pdPASS && this->task_ != nullptr;
+  if (this->ready_) {
+    ESP_LOGI(TAG, "Artwork transfer task ready (stack=%s)", stack_in_psram ? "PSRAM" : "internal RAM");
+  }
   if (!this->ready_) {
     ESP_LOGE(TAG, "Could not start guarded ESP32-S3 artwork transfer task");
   }
@@ -409,7 +427,7 @@ S3ArtworkTransferResult *S3ArtworkTransferService::perform_(Job *job) {
     config.auth_type = HTTP_AUTH_TYPE_NONE;
     config.event_handler = http_event_;
     config.user_data = &transfer;
-    config.buffer_size = 8192;
+    config.buffer_size = HTTP_CLIENT_BUFFER_SIZE;
     if (tls_mode == BackgroundTransferTlsMode::VERIFIED_HTTPS) {
       config.crt_bundle_attach = esp_crt_bundle_attach;
     } else if (tls_mode ==
