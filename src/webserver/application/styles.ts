@@ -119,6 +119,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-big.sp-media-cover-control-fonts .sp-media-cover-details-title{font-size:calc(var(--btn-label)*1.75)}" +
         ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}" +
         ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist,.sp-btn-portrait-large .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--media-cover-artist)}" +
+        ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist{font-weight:300}" +
         ".sp-btn-big.sp-media-cover-details-card,.sp-btn-extra-large.sp-media-cover-details-card,.sp-btn-portrait-large.sp-media-cover-details-card{justify-content:flex-start}" +
         ".sp-media-cover-artwork{background-image:radial-gradient(circle at 68% 28%,#ea80fc 0 13%,transparent 34%),linear-gradient(135deg,#3949ab 0%,#00897b 48%,#ff7043 100%)}" +
         ".sp-media-cover-tint{position:absolute;inset:-2px;background:rgba(49,49,49,.6);z-index:0}" +

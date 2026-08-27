@@ -4335,11 +4335,10 @@ inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)
 }
 
 inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,
-                                               int row_span, int col_span) {
+                                               int /* row_span */,
+                                               int /* col_span */) {
   if (top_padding <= 1) return 0;
-  return media_cover_art_uses_compact_large_fonts(row_span, col_span)
-    ? top_padding
-    : top_padding / 2;
+  return top_padding / 2;
 }
 
 inline int media_cover_art_title_line_limit(int row_span, int col_span) {

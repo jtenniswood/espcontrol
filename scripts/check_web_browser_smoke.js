@@ -5184,6 +5184,9 @@ async function assertMediaCoverArtCompactPreview(page, label) {
     const extraLargeTitleLineClamp = getComputedStyle(
       extraLargeCard.querySelector(".sp-media-cover-details-title"),
     ).webkitLineClamp;
+    const extraLargeArtistFontWeight = getComputedStyle(
+      extraLargeCard.querySelector(".sp-media-now-artist"),
+    ).fontWeight;
     const result = {
       compactClass: card.classList.contains("sp-media-cover-details-single"),
       whiteSpace: artistStyle.whiteSpace,
@@ -5198,6 +5201,7 @@ async function assertMediaCoverArtCompactPreview(page, label) {
       largeArtistMarginTop,
       largeTitleArtistGap: largeArtistRect.top - largeTitleRect.bottom,
       extraLargeTitleLineClamp,
+      extraLargeArtistFontWeight,
     };
     largeCard.remove();
     extraLargeCard.remove();
@@ -5214,6 +5218,7 @@ async function assertMediaCoverArtCompactPreview(page, label) {
   assert(layout.largeArtistMarginTop > 0, `${label}: 2x2 Cover Art artist has extra top spacing`);
   assert(layout.largeTitleArtistGap >= layout.largeArtistMarginTop - 1, `${label}: 2x2 Cover Art title and artist remain separated`);
   assert.strictEqual(layout.extraLargeTitleLineClamp, "5", `${label}: 3x3 Cover Art title is limited to five lines`);
+  assert.strictEqual(layout.extraLargeArtistFontWeight, "300", `${label}: 3x3 Cover Art artist uses a light font weight`);
 }
 
 async function assertCardIconsTopLeft(page, label) {
