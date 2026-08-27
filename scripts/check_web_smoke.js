@@ -498,24 +498,16 @@ assert(
   "card picker icons stay centred inside their accent boxes"
 );
 assert(
-  cardStylesSource.includes(".sp-btn-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
-  "standard card icons stay in the bottom-right corner at every size",
+  cardStylesSource.includes(".sp-btn-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad)"),
+  "standard card icons stay in the top-left corner at every size",
 );
 assert(
   cardStylesSource.includes("font-size:var(--btn-icon);line-height:1;color:#fff;z-index:1}"),
   "standard card icons stay above slider preview fills",
 );
 assert(
-  cardStylesSource.includes(".sp-image-preview-icon{position:absolute;right:var(--btn-pad);bottom:var(--btn-pad)"),
-  "image card icons use the same bottom-right placement",
-);
-assert(
-  cardStylesSource.includes(".sp-image-card-with-icon>.sp-image-label{padding-right:calc(var(--btn-icon) + var(--btn-pad)*1.5)"),
-  "image card labels reserve room for their bottom-right icon",
-);
-assert(
-  cardStylesSource.includes(".sp-btn-icon~.sp-btn-label,.sp-btn-icon~.sp-btn-label-row{box-sizing:border-box;"),
-  "card labels reserve room for their bottom-right icon",
+  cardStylesSource.includes(".sp-image-preview-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad)"),
+  "image card icons use the same top-left placement",
 );
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
 assert(
@@ -695,7 +687,7 @@ const datePreview = hooks.buttonTypePreviewFor("calendar", {
   precision: "",
   options: "",
 });
-assert(datePreview.labelHtml.includes("mdi-calendar-month"), "date preview uses the calendar badge");
+assert(!datePreview.labelHtml.includes("sp-type-badge"), "date preview omits the card-type badge");
 assert(datePreview.iconHtml.includes("sp-sensor-preview"), "date preview uses the shared sensor preview");
 const frenchMonth = new Intl.DateTimeFormat("fr", { month: "long" }).format(hooks.webserverMockNow());
 const frenchDatePreview = hooks.buttonTypePreviewForMockNow("calendar", {
@@ -741,7 +733,7 @@ const wideDateTimePreview = hooks.buttonTypePreviewFor("calendar", {
 });
 assert(!wideDateTimePreview.iconHtml.includes("sp-sensor-preview-large"), "date/time wide preview does not support large numbers");
 assert.strictEqual(wideDateTimePreview.buttonClass, undefined, "date/time wide preview uses the standard wrapper");
-assert(wideDateTimePreview.labelHtml.includes("mdi-calendar-month"), "date/time wide preview keeps the date label");
+assert(wideDateTimePreview.labelHtml.includes("sp-btn-label"), "date/time wide preview keeps the date label");
 
 const clockPreview = hooks.buttonTypePreviewFor("clock", {
   type: "clock",
@@ -774,7 +766,7 @@ const timezonePreview = hooks.buttonTypePreviewFor("timezone", {
   clockFormat: "24h",
 });
 assert(timezonePreview.labelHtml.includes("New York"), "world clock preview uses the city label");
-assert(timezonePreview.labelHtml.includes("mdi-map-clock"), "world clock preview uses the map clock badge");
+assert(!timezonePreview.labelHtml.includes("sp-type-badge"), "world clock preview omits the card-type badge");
 
 const autoTimezonePreview = hooks.buttonTypePreviewForMockNow("timezone", {
   entity: "Auto (Home Assistant)",
@@ -828,7 +820,7 @@ const weatherCurrentPreview = hooks.buttonTypePreviewFor("weather", {
   precision: "",
 });
 assert(weatherCurrentPreview.iconHtml.includes("mdi-weather-cloudy"), "weather current preview uses the current-condition icon");
-assert(weatherCurrentPreview.labelHtml.includes("mdi-weather-cloudy"), "weather current preview uses the weather badge");
+assert(!weatherCurrentPreview.labelHtml.includes("sp-type-badge"), "weather current preview omits the card-type badge");
 
 const weatherForecastPreview = hooks.buttonTypePreviewFor("weather", {
   entity: "weather.forecast_home",
@@ -862,8 +854,7 @@ const imageIconPreview = hooks.buttonTypePreviewFor("image", {
   type: "image",
   options: "image_icon",
 });
-assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a bottom-right camera icon when enabled");
-assert(imageIconPreview.buttonClass.includes("sp-image-card-with-icon"), "image preview marks cards whose labels need icon clearance");
+assert(imageIconPreview.iconHtml.includes("sp-image-preview-icon mdi mdi-camera"), "image preview shows a top-left camera icon when enabled");
 assert(!imageIconPreview.labelHtml.includes("Seaside"), "image preview hides the label when label option is off");
 const customImageIconPreview = hooks.buttonTypePreviewFor("image", {
   entity: "image.seaside",
@@ -882,7 +873,7 @@ const sensorNumericPreview = hooks.buttonTypePreviewFor("sensor", {
   options: "",
 }, { cardSize: 4 });
 assert(sensorNumericPreview.iconHtml.includes("sp-sensor-preview-large"), "sensor numeric 2x2 preview defaults to large numbers");
-assert(sensorNumericPreview.labelHtml.includes("mdi-gauge"), "sensor numeric preview uses the gauge badge");
+assert(!sensorNumericPreview.labelHtml.includes("sp-type-badge"), "sensor numeric preview omits the card-type badge");
 assert(sensorNumericPreview.iconHtml.includes("\u00b0C"), "sensor numeric preview includes the unit");
 
 const sensorLargeDisabledPreview = hooks.buttonTypePreviewFor("sensor", {
@@ -912,7 +903,7 @@ const sensorTextPreview = hooks.buttonTypePreviewFor("sensor", {
   precision: "text",
 });
 assert(sensorTextPreview.iconHtml.includes("mdi-washing-machine"), "sensor text preview uses the selected icon");
-assert(sensorTextPreview.labelHtml.includes("mdi-format-text"), "sensor text preview uses the text badge");
+assert(!sensorTextPreview.labelHtml.includes("sp-type-badge"), "sensor text preview omits the card-type badge");
 
 const sensorIconPreview = hooks.buttonTypePreviewFor("sensor", {
   sensor: "binary_sensor.patio_door",
@@ -922,7 +913,7 @@ const sensorIconPreview = hooks.buttonTypePreviewFor("sensor", {
   precision: "icon",
 });
 assert(sensorIconPreview.iconHtml.includes("mdi-door"), "sensor icon preview uses the selected icon");
-assert(sensorIconPreview.labelHtml.includes("mdi-toggle-switch"), "sensor icon preview uses the icon badge");
+assert(!sensorIconPreview.labelHtml.includes("sp-type-badge"), "sensor icon preview omits the card-type badge");
 
 const sensorTimeCard = {
   sensor: "sensor.ups_runtime",
@@ -966,7 +957,7 @@ const doorPreview = hooks.buttonTypePreviewFor("door_window", {
   precision: "door",
 });
 assert(doorPreview.iconHtml.includes("mdi-door"), "door/window door preview uses the closed door icon");
-assert(doorPreview.labelHtml.includes("mdi-door"), "door/window door preview uses the door badge");
+assert(!doorPreview.labelHtml.includes("sp-type-badge"), "door/window door preview omits the card-type badge");
 
 const windowPreview = hooks.buttonTypePreviewFor("door_window", {
   label: "Kitchen Window",
@@ -976,7 +967,7 @@ const windowPreview = hooks.buttonTypePreviewFor("door_window", {
   type: "door_window",
   precision: "window",
 });
-assert(windowPreview.labelHtml.includes("mdi-window-closed"), "door/window window preview uses the window badge");
+assert(!windowPreview.labelHtml.includes("sp-type-badge"), "door/window window preview omits the card-type badge");
 
 const actionPreview = hooks.buttonTypePreviewFor("action", {
   entity: "scene.movie_mode",
@@ -986,7 +977,7 @@ const actionPreview = hooks.buttonTypePreviewFor("action", {
   type: "action",
 });
 assert(actionPreview.iconHtml.includes("mdi-flash"), "action preview uses the selected action icon");
-assert(actionPreview.labelHtml.includes("mdi-flash"), "action preview uses the action badge");
+assert(!actionPreview.labelHtml.includes("sp-type-badge"), "action preview omits the card-type badge");
 const actionLargePreview = hooks.buttonTypePreviewFor("action", {
   entity: "script.kitchen_lights",
   label: "Kitchen Lights",
@@ -1015,7 +1006,7 @@ const actionOptionPreview = hooks.buttonTypePreviewFor("action", {
   type: "action",
 });
 assert(actionOptionPreview.iconHtml.includes("Option"), "action option-select preview uses option text");
-assert(actionOptionPreview.labelHtml.includes("mdi-chevron-down"), "action option-select preview uses the dropdown badge");
+assert(!actionOptionPreview.labelHtml.includes("sp-type-badge"), "action option-select preview omits the card-type badge");
 
 const localActionPreview = hooks.buttonTypePreviewFor("action", {
   entity: "zoom_mute",
@@ -1025,7 +1016,7 @@ const localActionPreview = hooks.buttonTypePreviewFor("action", {
   type: "action",
 });
 assert(localActionPreview.iconHtml.includes("mdi-gesture-tap"), "local action subtype preview uses the local action icon");
-assert(localActionPreview.labelHtml.includes("mdi-chip"), "local action subtype preview uses the local action badge");
+assert(!localActionPreview.labelHtml.includes("sp-type-badge"), "local action subtype preview omits the card-type badge");
 
 const alarmActionPreview = hooks.buttonTypePreviewFor("alarm_action", {
   entity: "alarm_control_panel.house",
@@ -1043,7 +1034,7 @@ const fanSpeedPreview = hooks.buttonTypePreviewFor("fan_speed", {
   type: "fan_speed",
 });
 assert(fanSpeedPreview.iconHtml.includes("sp-slider-preview"), "fan speed preview keeps the slider preview");
-assert(fanSpeedPreview.labelHtml.includes("mdi-fan-speed-2"), "fan speed preview uses the speed badge");
+assert(!fanSpeedPreview.labelHtml.includes("sp-type-badge"), "fan speed preview omits the card-type badge");
 
 const fanControlPreview = hooks.buttonTypePreviewFor("fan_control", {
   entity: "fan.bedroom",
@@ -1052,7 +1043,7 @@ const fanControlPreview = hooks.buttonTypePreviewFor("fan_control", {
   type: "fan_control",
 });
 assert(!fanControlPreview.iconHtml.includes("sp-slider-preview"), "fan control preview is not an inline slider");
-assert(fanControlPreview.labelHtml.includes("mdi-fan"), "fan control preview uses the fan badge");
+assert(!fanControlPreview.labelHtml.includes("sp-type-badge"), "fan control preview omits the card-type badge");
 
 const fanSwitchPreview = hooks.buttonTypePreviewFor("fan_switch", {
   entity: "fan.bedroom",
@@ -1061,7 +1052,7 @@ const fanSwitchPreview = hooks.buttonTypePreviewFor("fan_switch", {
   icon_on: "Fan",
   type: "fan_switch",
 });
-assert(fanSwitchPreview.labelHtml.includes("mdi-fan"), "fan switch preview uses the fan badge");
+assert(!fanSwitchPreview.labelHtml.includes("sp-type-badge"), "fan switch preview omits the card-type badge");
 
 const switchPreview = hooks.buttonTypePreviewFor("", {
   entity: "switch.printer",
@@ -1069,7 +1060,7 @@ const switchPreview = hooks.buttonTypePreviewFor("", {
   icon: "Power Plug",
   icon_on: "Power",
 });
-assert(switchPreview.labelHtml.includes("mdi-toggle-switch-variant-off"), "switch preview uses the switch badge");
+assert(!switchPreview.labelHtml.includes("sp-type-badge"), "switch preview omits the card-type badge");
 
 const switchNumericPreview = hooks.buttonTypePreviewFor("", {
   entity: "switch.washing_machine",
@@ -1077,7 +1068,7 @@ const switchNumericPreview = hooks.buttonTypePreviewFor("", {
   sensor: "sensor.washer_power",
   unit: "W",
 });
-assert(switchNumericPreview.labelHtml.includes("mdi-gauge"), "switch numeric active display preview uses the gauge badge");
+assert(!switchNumericPreview.labelHtml.includes("sp-type-badge"), "switch numeric preview omits the card-type badge");
 const switchLargePreview = hooks.buttonTypePreviewFor("", {
   entity: "switch.washing_machine",
   label: "Washer",
@@ -1093,7 +1084,7 @@ const switchTextPreview = hooks.buttonTypePreviewFor("", {
   sensor: "sensor.washer_state",
   precision: "text",
 });
-assert(switchTextPreview.labelHtml.includes("mdi-format-text"), "switch text active display preview uses the text badge");
+assert(!switchTextPreview.labelHtml.includes("sp-type-badge"), "switch text preview omits the card-type badge");
 
 const sliderPreview = hooks.buttonTypePreviewFor("slider", {
   entity: "light.strip",
@@ -1103,7 +1094,7 @@ const sliderPreview = hooks.buttonTypePreviewFor("slider", {
   type: "slider",
 });
 assert(sliderPreview.iconHtml.includes("sp-slider-preview"), "slider preview uses the slider track");
-assert(sliderPreview.labelHtml.includes("mdi-tune-vertical-variant"), "slider preview uses the tune badge");
+assert(!sliderPreview.labelHtml.includes("sp-type-badge"), "slider preview omits the card-type badge");
 
 const lightBrightnessPreview = hooks.buttonTypePreviewFor("light_brightness", {
   entity: "light.living_room",
@@ -1113,7 +1104,7 @@ const lightBrightnessPreview = hooks.buttonTypePreviewFor("light_brightness", {
   type: "light_brightness",
 });
 assert(lightBrightnessPreview.iconHtml.includes("sp-slider-preview"), "light brightness preview uses the slider track");
-assert(lightBrightnessPreview.labelHtml.includes("mdi-tune-vertical-variant"), "light brightness preview uses the tune badge");
+assert(!lightBrightnessPreview.labelHtml.includes("sp-type-badge"), "light brightness preview omits the card-type badge");
 
 const lightSwitchPreview = hooks.buttonTypePreviewFor("light_switch", {
   entity: "light.living_room",
@@ -1122,7 +1113,7 @@ const lightSwitchPreview = hooks.buttonTypePreviewFor("light_switch", {
   icon_on: "Lightbulb",
   type: "light_switch",
 });
-assert(lightSwitchPreview.labelHtml.includes("mdi-lightbulb"), "light switch preview uses the lightbulb badge");
+assert(!lightSwitchPreview.labelHtml.includes("sp-type-badge"), "light switch preview omits the card-type badge");
 
 const lightTemperaturePreview = hooks.buttonTypePreviewFor("light_temperature", {
   entity: "light.living_room",
@@ -1131,7 +1122,7 @@ const lightTemperaturePreview = hooks.buttonTypePreviewFor("light_temperature", 
   type: "light_temperature",
 });
 assert(lightTemperaturePreview.iconHtml.includes("sp-slider-preview"), "light temperature preview uses the slider track");
-assert(lightTemperaturePreview.labelHtml.includes("mdi-lightbulb"), "light temperature preview uses the lightbulb badge");
+assert(!lightTemperaturePreview.labelHtml.includes("sp-type-badge"), "light temperature preview omits the card-type badge");
 
 const coverSliderPreview = hooks.buttonTypePreviewFor("cover", {
   entity: "cover.office_blind",
@@ -1142,7 +1133,7 @@ const coverSliderPreview = hooks.buttonTypePreviewFor("cover", {
   type: "cover",
 });
 assert(coverSliderPreview.iconHtml.includes("sp-slider-preview"), "cover slider preview uses the slider track");
-assert(coverSliderPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover slider preview uses the cover badge");
+assert(!coverSliderPreview.labelHtml.includes("sp-type-badge"), "cover slider preview omits the card-type badge");
 
 const coverModalPreview = hooks.buttonTypePreviewFor("cover", {
   entity: "cover.office_blind",
@@ -1154,7 +1145,7 @@ const coverModalPreview = hooks.buttonTypePreviewFor("cover", {
 });
 assert(coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview shows read-only position track");
 assert(coverModalPreview.iconHtml.includes("mdi-blinds"), "cover modal preview uses the cover icon");
-assert(coverModalPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover modal preview uses the cover badge");
+assert(!coverModalPreview.labelHtml.includes("sp-type-badge"), "cover modal preview omits the card-type badge");
 
 const coverCommandPreview = hooks.buttonTypePreviewFor("cover", {
   entity: "cover.office_blind",
@@ -1166,7 +1157,7 @@ const coverCommandPreview = hooks.buttonTypePreviewFor("cover", {
 });
 assert(!coverCommandPreview.iconHtml.includes("sp-slider-preview"), "cover command preview uses icon-only layout");
 assert(coverCommandPreview.iconHtml.includes("mdi-blinds-open"), "cover command preview uses the command icon");
-assert(coverCommandPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover command preview uses the cover badge");
+assert(!coverCommandPreview.labelHtml.includes("sp-type-badge"), "cover command preview omits the card-type badge");
 
 const coverSetPositionPreview = hooks.buttonTypePreviewFor("cover", {
   entity: "cover.office_blind",
@@ -1178,7 +1169,7 @@ const coverSetPositionPreview = hooks.buttonTypePreviewFor("cover", {
   type: "cover",
 });
 assert(!coverSetPositionPreview.iconHtml.includes("sp-slider-preview"), "cover set-position preview uses command layout");
-assert(coverSetPositionPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover set-position preview uses the cover badge");
+assert(!coverSetPositionPreview.labelHtml.includes("sp-type-badge"), "cover set-position preview omits the card-type badge");
 
 const lockTogglePreview = hooks.buttonTypePreviewFor("lock", {
   entity: "lock.front_door",
@@ -1188,7 +1179,7 @@ const lockTogglePreview = hooks.buttonTypePreviewFor("lock", {
   type: "lock",
 });
 assert(lockTogglePreview.iconHtml.includes("mdi-lock"), "lock toggle preview uses the locked icon");
-assert(lockTogglePreview.labelHtml.includes("mdi-lock"), "lock toggle preview uses the lock badge");
+assert(!lockTogglePreview.labelHtml.includes("sp-type-badge"), "lock toggle preview omits the card-type badge");
 
 const lockCommandPreview = hooks.buttonTypePreviewFor("lock", {
   entity: "lock.front_door",
@@ -1221,7 +1212,7 @@ const garageStatusPreview = hooks.buttonTypePreviewFor("garage", {
 });
 assert(garageStatusPreview.iconHtml.includes("mdi-garage"), "garage status preview uses the garage icon");
 assert(garageStatusPreview.labelHtml.includes("Closed"), "garage status preview uses the status label");
-assert(garageStatusPreview.labelHtml.includes("mdi-garage"), "garage status preview uses the garage badge");
+assert(!garageStatusPreview.labelHtml.includes("sp-type-badge"), "garage status preview omits the card-type badge");
 
 const garageOpenPreview = hooks.buttonTypePreviewFor("garage", {
   entity: "cover.garage",
@@ -1232,7 +1223,7 @@ const garageOpenPreview = hooks.buttonTypePreviewFor("garage", {
   type: "garage",
 });
 assert(garageOpenPreview.iconHtml.includes("mdi-garage-open"), "garage open command preview uses the open icon");
-assert(garageOpenPreview.labelHtml.includes("mdi-garage"), "garage open command preview uses the garage badge");
+assert(!garageOpenPreview.labelHtml.includes("sp-type-badge"), "garage open preview omits the card-type badge");
 
 const garageClosePreview = hooks.buttonTypePreviewFor("garage", {
   entity: "cover.garage",
@@ -1250,7 +1241,7 @@ const pushPreview = hooks.buttonTypePreviewFor("push", {
   type: "push",
 });
 assert(pushPreview.iconHtml.includes("mdi-gesture-tap"), "push preview uses the trigger icon");
-assert(pushPreview.labelHtml.includes("mdi-gesture-tap"), "push preview uses the trigger badge");
+assert(!pushPreview.labelHtml.includes("sp-type-badge"), "push preview omits the card-type badge");
 
 const internalSwitchPreview = hooks.buttonTypePreviewFor("internal", {
   entity: "relay_1",
@@ -1260,7 +1251,7 @@ const internalSwitchPreview = hooks.buttonTypePreviewFor("internal", {
   type: "internal",
 });
 assert(internalSwitchPreview.iconHtml.includes("mdi-power-plug"), "internal switch preview uses the configured icon");
-assert(internalSwitchPreview.labelHtml.includes("mdi-power-plug"), "internal switch preview uses the switch badge");
+assert(!internalSwitchPreview.labelHtml.includes("sp-type-badge"), "internal switch preview omits the card-type badge");
 
 const internalPushPreview = hooks.buttonTypePreviewFor("internal", {
   entity: "relay_2",
@@ -1271,7 +1262,7 @@ const internalPushPreview = hooks.buttonTypePreviewFor("internal", {
   type: "internal",
 });
 assert(internalPushPreview.iconHtml.includes("mdi-gesture-tap"), "internal push preview uses the push icon");
-assert(internalPushPreview.labelHtml.includes("mdi-gesture-tap"), "internal push preview uses the push badge");
+assert(!internalPushPreview.labelHtml.includes("sp-type-badge"), "internal push preview omits the card-type badge");
 
 const subpagePlainPreview = hooks.buttonTypePreviewFor("subpage", {
   label: "Lighting",
@@ -1378,7 +1369,7 @@ const lawnMowerPreview = hooks.buttonTypePreviewFor("lawn_mower", {
   options: "ignored",
 });
 assert(lawnMowerPreview.iconHtml.includes("mdi-robot-mower"), "lawn mower preview uses the robot mower icon");
-assert(lawnMowerPreview.labelHtml.includes("mdi-robot-mower"), "lawn mower preview badge uses the robot mower icon");
+assert(!lawnMowerPreview.labelHtml.includes("sp-type-badge"), "lawn mower preview omits the card-type badge");
 
 const subpageCustomPresetPreview = hooks.buttonTypePreviewFor("subpage", {
   entity: "climate.living_room",
@@ -1428,7 +1419,7 @@ const mediaVolumePreview = hooks.buttonTypePreviewFor("media", {
   type: "media",
 });
 assert(mediaVolumePreview.iconHtml.includes("sp-sensor-preview"), "media volume preview uses the shared number preview");
-assert(mediaVolumePreview.labelHtml.includes("mdi-speaker"), "media volume preview uses the speaker badge");
+assert(!mediaVolumePreview.labelHtml.includes("sp-type-badge"), "media volume preview omits the card-type badge");
 const mediaVolumeLargePreview = hooks.buttonTypePreviewFor("media", {
   entity: "media_player.kitchen",
   label: "Kitchen",
@@ -1484,7 +1475,7 @@ assert(mediaCoverArtDetailsPreview.buttonClass.includes("sp-media-cover-details-
 assert(mediaCoverArtDetailsPreview.labelHtml.includes("sp-media-cover-details-row"), "media cover art details preview insets its artist row like other cards");
 assert(mediaCoverArtDetailsPreview.labelHtml.includes("Artist Name"), "media cover art details preview shows an artist");
 assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-media-now-artist{white-space:nowrap"), "media cover art details 1x1 artist stays on one line");
-assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-type-badge{display:block;position:absolute;right:0;bottom:0"), "media cover art details 1x1 icon sits in the bottom-right corner");
+assert(!mediaCoverArtDetailsPreview.labelHtml.includes("sp-type-badge"), "media cover art details preview omits the card-type badge");
 assert(previewStylesSource.includes(".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}"), "media cover art details 2x2 preview separates its title and artist");
 
 const mediaCoverArtDetailsLargePreview = hooks.buttonTypePreviewFor("media", {

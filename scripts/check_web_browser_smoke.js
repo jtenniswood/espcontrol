@@ -5085,14 +5085,9 @@ async function assertMediaCoverArtCompactPreview(page, label) {
   const layout = await page.evaluate(() => {
     const card = document.querySelector('.sp-main [data-slot="4"]');
     const artist = card.querySelector(".sp-media-now-artist");
-    const row = card.querySelector(".sp-media-cover-details-row");
-    const badge = card.querySelector(".sp-type-badge");
     const standardLabel = document.querySelector('.sp-main [data-slot="1"] .sp-btn-label');
     const artistStyle = getComputedStyle(artist);
     const standardStyle = getComputedStyle(standardLabel);
-    const badgeStyle = getComputedStyle(badge);
-    const rowRect = row.getBoundingClientRect();
-    const badgeRect = badge.getBoundingClientRect();
     const largeCard = card.cloneNode(true);
     largeCard.classList.remove("sp-media-cover-details-single");
     largeCard.classList.add("sp-btn-big");
@@ -5120,9 +5115,7 @@ async function assertMediaCoverArtCompactPreview(page, label) {
       standardFontFamily: standardStyle.fontFamily,
       standardFontSize: standardStyle.fontSize,
       standardFontWeight: standardStyle.fontWeight,
-      badgeDisplay: badgeStyle.display,
-      badgeRightGap: Math.abs(rowRect.right - badgeRect.right),
-      badgeBottomGap: Math.abs(rowRect.bottom - badgeRect.bottom),
+      hasTypeBadge: Boolean(card.querySelector(".sp-type-badge")),
       largeArtistMarginTop,
       largeTitleArtistGap: largeArtistRect.top - largeTitleRect.bottom,
       extraLargeTitleLineClamp,
@@ -5138,15 +5131,13 @@ async function assertMediaCoverArtCompactPreview(page, label) {
   assert.strictEqual(layout.fontFamily, layout.standardFontFamily, `${label}: Cover Art artist uses the card-label font`);
   assert.strictEqual(layout.fontSize, layout.standardFontSize, `${label}: Cover Art artist uses the card-label size`);
   assert.strictEqual(layout.fontWeight, layout.standardFontWeight, `${label}: Cover Art artist uses the card-label weight`);
-  assert.strictEqual(layout.badgeDisplay, "block", `${label}: 1x1 Cover Art icon is visible`);
-  assert(layout.badgeRightGap < 1, `${label}: 1x1 Cover Art icon is right-aligned`);
-  assert(layout.badgeBottomGap < 1, `${label}: 1x1 Cover Art icon is bottom-aligned`);
+  assert.strictEqual(layout.hasTypeBadge, false, `${label}: 1x1 Cover Art omits the card-type icon`);
   assert(layout.largeArtistMarginTop > 0, `${label}: 2x2 Cover Art artist has extra top spacing`);
   assert(layout.largeTitleArtistGap >= layout.largeArtistMarginTop - 1, `${label}: 2x2 Cover Art title and artist remain separated`);
   assert.strictEqual(layout.extraLargeTitleLineClamp, "5", `${label}: 3x3 Cover Art title is limited to five lines`);
 }
 
-async function assertCardIconsBottomRight(page, label) {
+async function assertCardIconsTopLeft(page, label) {
   const icons = await page.evaluate(() =>
     Array.from(document.querySelectorAll(
       ".sp-main > .sp-btn .sp-btn-icon, .sp-main > .sp-btn .sp-image-preview-icon",
@@ -5158,10 +5149,10 @@ async function assertCardIconsBottomRight(page, label) {
       const sliderPreview = card.querySelector(".sp-slider-preview");
       return {
         visible: iconRect.width > 0 && iconRect.height > 0,
-        rightGap: cardRect.right - iconRect.right,
-        bottomGap: cardRect.bottom - iconRect.bottom,
-        rightInset: parseFloat(iconStyle.right) || 0,
-        bottomInset: parseFloat(iconStyle.bottom) || 0,
+        leftGap: iconRect.left - cardRect.left,
+        topGap: iconRect.top - cardRect.top,
+        leftInset: parseFloat(iconStyle.left) || 0,
+        topInset: parseFloat(iconStyle.top) || 0,
         iconZIndex: parseInt(iconStyle.zIndex, 10) || 0,
         sliderZIndex: sliderPreview
           ? (parseInt(getComputedStyle(sliderPreview).zIndex, 10) || 0)
@@ -5172,12 +5163,12 @@ async function assertCardIconsBottomRight(page, label) {
   assert(icons.length > 0, `${label}: preview contains visible card icons`);
   for (const icon of icons) {
     assert(
-      Math.abs(icon.rightGap - icon.rightInset) <= 3,
-      `${label}: card icon is inset from the right edge by the shared card padding (${JSON.stringify(icon)})`,
+      Math.abs(icon.leftGap - icon.leftInset) <= 3,
+      `${label}: card icon is inset from the left edge by the shared card padding (${JSON.stringify(icon)})`,
     );
     assert(
-      Math.abs(icon.bottomGap - icon.bottomInset) <= 3,
-      `${label}: card icon is inset from the bottom edge by the shared card padding (${JSON.stringify(icon)})`,
+      Math.abs(icon.topGap - icon.topInset) <= 3,
+      `${label}: card icon is inset from the top edge by the shared card padding (${JSON.stringify(icon)})`,
     );
     if (icon.sliderZIndex !== null) {
       assert(
@@ -5266,7 +5257,7 @@ async function runCase(browser, testCase) {
       testCase.name,
       testCase,
     );
-    await assertCardIconsBottomRight(page, testCase.name);
+    await assertCardIconsTopLeft(page, testCase.name);
     await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {

@@ -2737,7 +2737,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     return;
   }
   ESP_LOGI("slider", "Slider object created for %s", p.entity.c_str());
-  align_card_icon_bottom_right(s.icon_lbl, padding.right, padding.bottom);
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
@@ -3051,7 +3051,7 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   const CardPadding padding = capture_card_padding(s.btn);
 
   lv_obj_t *slider = setup_slider_widget(s.btn, on_color, false);
-  align_card_icon_bottom_right(s.icon_lbl, padding.right, padding.bottom);
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_label_set_long_mode(s.icon_lbl, LV_LABEL_LONG_CLIP);
   lv_obj_set_width(s.icon_lbl, lv_pct(100));
   lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);

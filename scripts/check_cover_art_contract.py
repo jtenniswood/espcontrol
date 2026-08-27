@@ -495,27 +495,35 @@ grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(enc
 layout = (ROOT / "components" / "espcontrol" / "button_grid_layout.h").read_text(encoding="utf-8")
 subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
 subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
-if "reserve_button_label_icon_space" not in layout:
-    raise SystemExit("Firmware card labels must reserve width beside visible icons")
-if "lv_obj_get_user_data(label)" not in layout:
-    raise SystemExit("Runtime firmware label updates must retain icon-aware width")
-if "lv_obj_set_user_data(s.text_lbl, s.icon_lbl);" not in grid:
-    raise SystemExit("Firmware card labels must retain their icon for runtime relayouts")
-if "lv_obj_set_user_data(slot.text_lbl, slot.icon_lbl);" not in subpages:
-    raise SystemExit("Dynamic subpage labels must retain their icon for runtime relayouts")
+sliders = (ROOT / "components" / "espcontrol" / "button_grid_sliders.h").read_text(encoding="utf-8")
+climate = (ROOT / "components" / "espcontrol" / "button_grid_climate.h").read_text(encoding="utf-8")
+if "lv_obj_set_width(label, lv_pct(100));" not in layout:
+    raise SystemExit("Firmware card labels must retain their full width below top-left icons")
+if "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" not in grid:
+    raise SystemExit("Firmware card setup must place main icons in the top-left corner")
+if "lv_obj_align(slot.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" not in subpages:
+    raise SystemExit("Dynamic subpage cards must place main icons in the top-left corner")
+if "lv_obj_align(slot.subpage_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 2);" not in subpages:
+    raise SystemExit("Dynamic subpage cards must retain the bottom-right navigation chevron")
+if "lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);" not in media:
+    raise SystemExit("Media cards must refresh main icons in the top-left corner")
+if sliders.count("lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);") < 2:
+    raise SystemExit("Slider and light-temperature cards must keep main icons in the top-left corner")
+if "lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" not in climate:
+    raise SystemExit("Climate cards must keep main icons in the top-left corner")
 if "configure_button_label_wrap(text_lbl);" not in subscriptions:
-    raise SystemExit("Toggle state updates must restore label clearance when icons reappear")
+    raise SystemExit("Toggle state updates must restore full-width label wrapping when icons reappear")
 for required in (
     "configure_button_label_wrap(entry->back_slot.text_lbl);",
     "configure_button_label_wrap(back_slot.text_lbl);",
     "configure_button_label_wrap(sub_slot.text_lbl);",
 ):
     if required not in grid:
-        raise SystemExit(f"Subpage label clamps must restore icon-aware width: {required}")
-if "reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);" not in grid:
-    raise SystemExit("Firmware card layout refresh must apply icon-aware label width")
+        raise SystemExit(f"Subpage label clamps must restore full-width wrapping: {required}")
 if "image_card_align_label_stack(label, btn, icon);" not in image_cards:
-    raise SystemExit("Image loading-state relayouts must retain icon-aware label width")
+    raise SystemExit("Image loading-state relayouts must retain the label stack")
+if "lv_obj_align(icon, LV_ALIGN_TOP_LEFT, -parent_x, -parent_y);" not in image_cards:
+    raise SystemExit("Image card icons must stay in the top-left corner")
 if "media_cover_art_title_line_limit(row_span, col_span)" not in grid:
     raise SystemExit("Cover art layout refresh must preserve the per-size track-title limit")
 if "ctx->artist_gap = media_cover_art_artist_gap(" not in grid:

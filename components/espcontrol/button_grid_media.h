@@ -1842,7 +1842,7 @@ inline void setup_media_action_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
-    align_card_icon_bottom_right(icon_lbl);
+    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
   }
   if (text_lbl) {
     std::string label = media_play_pause_show_state(p)
@@ -2024,7 +2024,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (icon_lbl) {
       lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
-      align_card_icon_bottom_right(icon_lbl, padding.right, padding.bottom);
+      lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
       lv_obj_move_foreground(icon_lbl);
     }
     if (text_lbl) {
@@ -2148,7 +2148,7 @@ inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
   } else if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(icon_lbl, media_default_icon(media_card_mode(p.sensor), p.icon));
-    align_card_icon_bottom_right(icon_lbl);
+    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     if (sensor_container) lv_obj_add_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
   if (text_lbl) {

@@ -154,7 +154,7 @@ export function registerImageCardTypes(
             var iconName: any = b && b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "camera";
             var icon: any = imageIconEnabled(b) ? '<span class="sp-image-preview-icon mdi mdi-' + iconName + '"></span>' : "";
             return {
-                buttonClass: "sp-image-card" + (icon ? " sp-image-card-with-icon" : ""),
+                buttonClass: "sp-image-card",
                 iconHtml: '<span class="sp-image-preview" style="background:#' + helpers.escHtml(tertiaryColor) + '">' +
                     icon +
                     '</span>',
