@@ -23,6 +23,14 @@ int main() {
   assert(!media_entity_state_usable("idle"));
   assert(!media_entity_state_usable("off"));
   assert(!media_entity_state_usable(" unavailable "));
+  assert(media_artwork_content_current(true, true, "playing", true));
+  assert(media_artwork_content_current(true, true, "paused", true));
+  assert(media_artwork_content_current(true, true, "buffering", true));
+  assert(!media_artwork_content_current(true, true, "idle", true));
+  assert(!media_artwork_content_current(true, true, "off", true));
+  assert(!media_artwork_content_current(true, false, "playing", true));
+  assert(!media_artwork_content_current(false, true, "playing", true));
+  assert(!media_artwork_content_current(true, true, "playing", false));
   assert(media_state_change_invalidates_retained_content(false, "unknown", "idle"));
   assert(media_state_change_invalidates_retained_content(true, "playing", "idle"));
   assert(media_state_change_invalidates_retained_content(true, "paused", "off"));
@@ -540,6 +548,7 @@ for required in (
     'std::string("entity_picture")',
     'std::string("entity_picture_local")',
     "image_card_schedule_media_artwork_refresh(art)",
+    "media_artwork_content_current(",
     "media_card_artwork_should_clear(",
     "image_card_clear_media_artwork(art)",
 ):

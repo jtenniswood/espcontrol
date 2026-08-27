@@ -51,6 +51,13 @@ inline bool media_entity_state_usable(const std::string &state) {
          normalized == "buffering";
 }
 
+inline bool media_artwork_content_current(bool state_known, bool available,
+                                          const std::string &state,
+                                          bool artwork_present) {
+  return artwork_present && state_known && available &&
+         media_entity_state_usable(state);
+}
+
 inline bool media_state_change_invalidates_retained_content(
     bool previous_state_known, const std::string &previous_state,
     const std::string &next_state) {

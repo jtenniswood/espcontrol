@@ -458,7 +458,9 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
             picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
           const bool present = !value.empty() && value != "unknown" &&
                                value != "unavailable";
-          if (present) playback->artwork_content_mask |= 1u;
+          const bool current = espcontrol::cover_art::media_artwork_content_current(
+            playback->has_state, playback->available, playback->state_text, present);
+          if (current) playback->artwork_content_mask |= 1u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~1u);
           clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
             playback->has_state, playback->available, playback->state_text,
@@ -489,7 +491,9 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
             picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
           const bool present = !value.empty() && value != "unknown" &&
                                value != "unavailable";
-          if (present) playback->artwork_content_mask |= 2u;
+          const bool current = espcontrol::cover_art::media_artwork_content_current(
+            playback->has_state, playback->available, playback->state_text, present);
+          if (current) playback->artwork_content_mask |= 2u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~2u);
           clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
             playback->has_state, playback->available, playback->state_text,
