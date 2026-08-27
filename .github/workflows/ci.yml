@@ -44,7 +44,7 @@ jobs:
   pr-process:
     name: PR Process
     if: github.event_name == 'pull_request'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Check PR documentation decision
@@ -137,7 +137,7 @@ jobs:
     if: >-
       always() &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -220,7 +220,7 @@ jobs:
       always() &&
       needs.validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -247,7 +247,7 @@ jobs:
     name: CI Gate
     needs: [pr-process, validate, docs]
     if: always() && github.event_name == 'pull_request'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Verify required CI jobs passed
         run: |

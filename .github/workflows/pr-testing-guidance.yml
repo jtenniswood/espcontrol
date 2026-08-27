@@ -15,7 +15,7 @@ concurrency:
 jobs:
   guidance:
     name: Generate Testing Guidance
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
@@ -48,7 +48,7 @@ jobs:
   comment:
     name: Post Testing Guidance
     needs: guidance
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       issues: write
