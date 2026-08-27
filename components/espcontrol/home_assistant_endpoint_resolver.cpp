@@ -36,10 +36,12 @@ void HomeAssistantEndpointResolver::configure(
   const uint16_t next_port = port == 0 ? 8123 : port;
   const std::string next_client =
       home_assistant_endpoint::normalize_address(client_address);
+  const bool protocol_changed = next_protocol != protocol_;
+  const bool client_changed = next_client != client_address_;
   const bool discovery_input_changed = next_mode != mode_ ||
-      next_protocol != protocol_ || next_client != client_address_;
-  const bool fallback_changed = next_port != port_ || next_protocol != protocol_ ||
-                                next_client != client_address_;
+      protocol_changed || client_changed;
+  const bool fallback_changed =
+      next_port != port_ || protocol_changed || client_changed;
   mode_ = next_mode;
   protocol_ = next_protocol;
   port_ = next_port;
@@ -53,7 +55,15 @@ void HomeAssistantEndpointResolver::configure(
   if (discovery_input_changed) {
     cancel_query();
     retry_stage_ = 0;
-    publish({}, home_assistant_endpoint::Source::DISCOVERING);
+    // Keep relative artwork usable through the discovery window using the
+    // current verified origin when it still belongs to this client, otherwise
+    // use the configured fallback on the newly connected HA host. Discovery
+    // may replace it only after an unambiguous address match.
+    const std::string pending_origin =
+        !origin_.empty() && !protocol_changed && !client_changed
+            ? origin_
+            : home_assistant_endpoint::build_origin(protocol_, client_address_, port_);
+    publish(pending_origin, home_assistant_endpoint::Source::DISCOVERING);
     next_query_ms_ = esphome::millis();
   } else if (fallback_changed && source_ == home_assistant_endpoint::Source::FALLBACK) {
     recompute_fallback();
@@ -64,7 +74,10 @@ void HomeAssistantEndpointResolver::request_discovery() {
   if (mode_ != home_assistant_endpoint::Mode::AUTOMATIC) return;
   cancel_query();
   retry_stage_ = 0;
-  publish({}, home_assistant_endpoint::Source::DISCOVERING);
+  const std::string pending_origin = origin_.empty()
+      ? home_assistant_endpoint::build_origin(protocol_, client_address_, port_)
+      : origin_;
+  publish(pending_origin, home_assistant_endpoint::Source::DISCOVERING);
   next_query_ms_ = esphome::millis();
 }
 

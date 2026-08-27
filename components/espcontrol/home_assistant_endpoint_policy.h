@@ -165,12 +165,20 @@ inline bool record_matches_client(const ServiceRecord &record,
 inline std::string select_discovered_origin(
     const std::vector<ServiceRecord> &records, const std::string &client_address,
     const std::string &fallback_protocol) {
+  std::string matched_origin;
+  bool found_match = false;
   for (const ServiceRecord &record : records) {
     if (!record_matches_client(record, client_address)) continue;
-    return build_origin(protocol_from_internal_url(record.internal_url, fallback_protocol),
-                        client_address, record.port);
+    // The native API connection identifies the host but not the HTTP service
+    // when multiple Home Assistant instances share that host. Do not choose a
+    // token-bearing destination based on mDNS result order.
+    if (found_match) return {};
+    matched_origin = build_origin(
+        protocol_from_internal_url(record.internal_url, fallback_protocol),
+        client_address, record.port);
+    found_match = true;
   }
-  return {};
+  return matched_origin;
 }
 
 inline Mode infer_legacy_mode(const std::string &protocol, uint16_t port) {

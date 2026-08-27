@@ -41,6 +41,11 @@ int main() {
          "http://192.168.1.10:80");
   assert(select_discovered_origin({landing, other}, "192.168.1.10", "http").empty());
 
+  ServiceRecord same_host_other_instance{{"192.168.1.10"}, 8123,
+                                         "http://other.local:8123", false};
+  assert(select_discovered_origin({matching, same_host_other_instance},
+                                  "192.168.1.10", "http").empty());
+
   ServiceRecord missing_url{{"fe80::1234"}, 8123, "", false};
   assert(select_discovered_origin({missing_url}, "[fe80::1234]", "https") ==
          "https://[fe80:0:0:0:0:0:0:1234]:8123");
