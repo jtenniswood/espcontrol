@@ -216,12 +216,22 @@ void AsyncWebServer::begin() {
   // The ESPControl web UI exposes many internal configuration entities. Larger
   // P4 panels can overflow the ESP-IDF default while serving entity details.
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // The S3 display has a much smaller internal-heap margin than P4 panels.
+  // Keep the configuration UI available while returning 4 KiB to the
+  // artwork/networking paths.
+  config.stack_size = 12288;
+  config.max_open_sockets = 3;
+#else
   config.stack_size = 16384;
   // Keep browser bursts from opening several web sessions at once. The config
   // UI fetches details sequentially, so two client sockets are enough and leave
   // more internal heap available for LVGL/display work on P4 panels.
   config.max_open_sockets = 5;
+#endif
   config.backlog_conn = 2;
+  ESP_LOGI(TAG, "HTTP server policy: stack=%u sockets=%u", (unsigned) config.stack_size,
+           (unsigned) config.max_open_sockets);
   config.server_port = this->port_;
   config.uri_match_fn = [](const char * /*unused*/, const char * /*unused*/, size_t /*unused*/) { return true; };
   // Always enable LRU purging to handle socket exhaustion gracefully.

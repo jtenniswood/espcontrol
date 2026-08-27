@@ -22,6 +22,8 @@ BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_w
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
 WEB_SERVER_IDF_INIT = ROOT / "components" / "web_server_idf" / "__init__.py"
 WEB_SERVER_IDF_CPP = ROOT / "components" / "web_server_idf" / "web_server_idf.cpp"
+S3_DEVICE_YAML = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
+S3_ARTWORK_TRANSFER_CPP = ROOT / "components" / "artwork_image" / "s3_artwork_transfer.cpp"
 PUBLIC_API_ENCRYPTION_PACKAGE = ROOT / "common" / "addon" / "api_encryption_dynamic.yaml"
 PUBLIC_API_ENCRYPTION_REFERENCE = "common/addon/api_encryption_dynamic.yaml"
 LEGACY_OTA_PARTITION_LAYOUTS = {
@@ -193,6 +195,37 @@ def test_web_server_request_limits() -> None:
     )
     assert "r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN" not in server, (
         "form-encoded POST bodies must not inherit the request-header limit"
+    )
+
+
+def test_s3_low_heap_policy() -> None:
+    """Keep the S3 artwork path and web server within its internal-heap budget."""
+    device = S3_DEVICE_YAML.read_text(encoding="utf-8")
+    artwork = S3_ARTWORK_TRANSFER_CPP.read_text(encoding="utf-8")
+    server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
+
+    for option in (
+        'CONFIG_SPIRAM_USE_MALLOC: "y"',
+        'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"',
+        'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"',
+    ):
+        assert option in device, f"S3 device profile is missing {option}"
+    assert "HTTP_CLIENT_BUFFER_SIZE = 4 * 1024" in artwork, (
+        "S3 artwork HTTP buffer must stay at 4 KiB"
+    )
+    assert "xTaskCreateWithCaps" in artwork and "MALLOC_CAP_SPIRAM" in artwork, (
+        "S3 artwork transfer task must prefer a PSRAM stack"
+    )
+    assert "falling back to internal RAM" in artwork and "config.buffer_size = HTTP_CLIENT_BUFFER_SIZE" in artwork, (
+        "S3 artwork transfer must retain an internal-stack fallback and bounded HTTP buffer"
+    )
+    conditional = server.split("#if defined(CONFIG_IDF_TARGET_ESP32S3)", 1)[1].split("#endif", 1)[0]
+    s3_server, p4_server = conditional.split("#else", 1)
+    assert "config.stack_size = 12288;" in s3_server and "config.max_open_sockets = 3;" in s3_server, (
+        "S3 web server policy must use the reduced stack and socket count"
+    )
+    assert "config.stack_size = 16384;" in p4_server and "config.max_open_sockets = 5;" in p4_server, (
+        "P4 web server policy must remain unchanged"
     )
 
 
@@ -793,6 +826,7 @@ def main() -> int:
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
     test_web_server_request_limits()
+    test_s3_low_heap_policy()
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
