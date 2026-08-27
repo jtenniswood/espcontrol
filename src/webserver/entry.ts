@@ -693,6 +693,7 @@ function composeApplicationContext(): ApplicationContext {
       ntpServer3: state.ntpServer3,
       coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
       coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
+      coverArtHomeAssistantEndpointMode: state.homeAssistantArtworkEndpointMode,
       autoUpdate: state.autoUpdate,
       updateFrequency: state.updateFrequency,
       updateFrequencyOptions: state.updateFreqOptions,

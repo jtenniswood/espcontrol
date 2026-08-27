@@ -174,6 +174,12 @@ target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(artwork_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME artwork_controller_test COMMAND artwork_controller_test)
 
+add_executable(home_assistant_endpoint_policy_test home_assistant_endpoint_policy_test.cpp)
+target_compile_features(home_assistant_endpoint_policy_test PRIVATE cxx_std_17)
+target_compile_options(home_assistant_endpoint_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(home_assistant_endpoint_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME home_assistant_endpoint_policy_test COMMAND home_assistant_endpoint_policy_test)
+
 add_executable(image_service_test image_service_test.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)
 target_compile_options(image_service_test PRIVATE -Wall -Wextra -Werror)

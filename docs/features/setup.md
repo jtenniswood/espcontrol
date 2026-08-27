@@ -104,7 +104,9 @@ The **Settings** tab also includes display, brightness, screensaver, backup, and
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
 
-Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
+Open **Settings > System > Home Assistant Settings** to manage the address used for camera/image cards and media artwork downloads. **Automatic** connection mode discovers the HTTP endpoint advertised by the connected Home Assistant instance, including port `80` used by new Home Assistant OS installations and port `8123` commonly used by existing installations and Home Assistant Container.
+
+If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and enter the protocol and port shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
 
 ## Apply Configuration
 

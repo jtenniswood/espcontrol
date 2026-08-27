@@ -39,6 +39,7 @@ wifi:
   on_connect:
     - script.execute: network_status_refresh
     - script.execute: ntp_servers_apply_after_network
+    - lambda: 'id(espcontrol_app).home_assistant_endpoint().request_discovery();'
     - script.stop: wifi_reconnect_flow
     - globals.set:
         id: connectivity_setup_display_active

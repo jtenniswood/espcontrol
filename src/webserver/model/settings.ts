@@ -197,6 +197,20 @@ export function normalizeHomeAssistantArtworkProtocol(value: unknown): string {
   return String(value || "").trim().toLowerCase() === "https" ? "https" : "http";
 }
 
+export function normalizeHomeAssistantArtworkEndpointMode(
+  value: unknown,
+  protocol: unknown = "http",
+  port: unknown = 8123,
+): string {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "automatic") return "Automatic";
+  if (mode === "manual") return "Manual";
+  return normalizeHomeAssistantArtworkProtocol(protocol) === "http" &&
+    normalizeHomeAssistantArtworkPort(port) === 8123
+    ? "Automatic"
+    : "Manual";
+}
+
 export function normalizeNtpServer(value: unknown, fallback: string): string {
   const server = String(value == null ? "" : value).trim();
   return server || fallback;
@@ -303,6 +317,7 @@ export interface BackupPanelSettingsCurrent {
   ntpServer3: string;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  coverArtHomeAssistantEndpointMode: string;
   autoUpdate: boolean;
   updateFrequency: string;
   updateFrequencyOptions: readonly string[];
@@ -351,6 +366,7 @@ export interface BackupPanelSettingsState {
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  coverArtHomeAssistantEndpointMode: string;
   autoUpdate: boolean;
   updateFrequency: string;
   screensaverAction: string;
@@ -429,6 +445,12 @@ export function normalizeBackupPanelSettings(
       ? settings.clock_bar_temperature_entities
       : legacyTemperatureEntities,
   );
+  const coverArtHomeAssistantProtocol = objectValue(settings, "home_assistant_artwork_protocol") != null
+    ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
+    : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol);
+  const coverArtHomeAssistantPort = objectValue(settings, "home_assistant_artwork_port") != null
+    ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
+    : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort);
   return {
     indoorTempEnable: false,
     outdoorTempEnable: hasOutdoorTempEnable ? !!settings.outdoor_temp_enable : clockBarTemperatureEntities.length > 0,
@@ -491,12 +513,13 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
-    coverArtHomeAssistantProtocol: objectValue(settings, "home_assistant_artwork_protocol") != null
-      ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
-      : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol),
-    coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
-      ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
-      : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
+    coverArtHomeAssistantProtocol,
+    coverArtHomeAssistantPort,
+    coverArtHomeAssistantEndpointMode: normalizeHomeAssistantArtworkEndpointMode(
+      settings.home_assistant_artwork_endpoint_mode,
+      coverArtHomeAssistantProtocol,
+      coverArtHomeAssistantPort,
+    ),
     autoUpdate: objectValue(settings, "firmware_auto_update") != null
       ? !!settings.firmware_auto_update
       : current.autoUpdate,

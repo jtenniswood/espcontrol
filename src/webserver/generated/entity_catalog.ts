@@ -325,6 +325,20 @@ export const ENTITY_CATALOG = {
         "screen_saver__hide_for_external_sources"
       ]
     },
+    "home_assistant_artwork_endpoint_mode": {
+      "domain": "select",
+      "name": "Home Assistant Artwork Connection",
+      "objectIds": [
+        "home_assistant_artwork_endpoint_mode"
+      ]
+    },
+    "home_assistant_artwork_endpoint_status": {
+      "domain": "text_sensor",
+      "name": "Home Assistant Artwork Endpoint",
+      "objectIds": [
+        "home_assistant_artwork_endpoint_status"
+      ]
+    },
     "home_assistant_artwork_protocol": {
       "domain": "select",
       "name": "Home Assistant Artwork Protocol",
@@ -739,6 +753,8 @@ export const ENTITY_CATALOG = {
       "screen_saver_cover_art_delay",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",
+      "home_assistant_artwork_endpoint_mode",
+      "home_assistant_artwork_endpoint_status",
       "home_assistant_artwork_protocol",
       "home_assistant_artwork_port",
       "screen_saver_daytime_clock_brightness",

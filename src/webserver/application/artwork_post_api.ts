@@ -1,4 +1,4 @@
-import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
+import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
 import type { EntityStateFeature } from "./entity_state";
 import type { ApplicationApiFeature } from "./api";
 export interface ArtworkPostApiFeature {
@@ -18,6 +18,7 @@ export interface ArtworkPostApiFeature {
     homeAssistantArtworkPortPostUrls(value?: any): any;
     postHomeAssistantArtworkPort(value?: any): any;
     postHomeAssistantArtworkProtocol(value?: any): any;
+    postHomeAssistantArtworkEndpointMode(value?: any): any;
 }
 
 export function createArtworkPostApiFeature(
@@ -75,6 +76,9 @@ export function createArtworkPostApiFeature(
     function postHomeAssistantArtworkProtocol(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("home_assistant_artwork_protocol"), entityObjectIds("home_assistant_artwork_protocol"), normalizeHomeAssistantArtworkProtocol(value));
     }
+    function postHomeAssistantArtworkEndpointMode(this: any, value?: any) {
+        return postSelectWithObjectIds(entityName("home_assistant_artwork_endpoint_mode"), entityObjectIds("home_assistant_artwork_endpoint_mode"), normalizeHomeAssistantArtworkEndpointMode(value));
+    }
     return {
         postPresenceSensorEntity,
         postMediaPlayerSleepPrevention,
@@ -92,5 +96,6 @@ export function createArtworkPostApiFeature(
         homeAssistantArtworkPortPostUrls,
         postHomeAssistantArtworkPort,
         postHomeAssistantArtworkProtocol,
+        postHomeAssistantArtworkEndpointMode,
     };
 }
