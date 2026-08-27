@@ -856,8 +856,7 @@ export function registerMediaCardTypes(
                             helpers.escHtml(coverArtColor) + '"></span>' +
                             '<span class="sp-media-cover-tint"></span>' +
                             '<span class="sp-media-now-title sp-media-cover-details-title">Track Title</span>',
-                        labelHtml: '<span class="sp-btn-label-row sp-media-cover-details-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span>' +
-                            '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+                        labelHtml: '<span class="sp-btn-label-row sp-media-cover-details-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span></span>',
                     };
                 }
                 return {
@@ -886,8 +885,7 @@ export function registerMediaCardTypes(
                 }
                 return {
                     iconHtml: progressBg + '<span class="sp-media-now-title">Track Title</span>',
-                    labelHtml: '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span>' +
-                        '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+                    labelHtml: '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span></span>',
                 };
             }
             return {

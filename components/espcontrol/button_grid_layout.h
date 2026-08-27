@@ -387,52 +387,12 @@ inline void set_card_checked_state(lv_obj_t *btn, bool checked) {
   sync_card_checked_text_color(btn);
 }
 
-inline void reserve_button_label_icon_space(lv_obj_t *label, lv_obj_t *icon,
-                                            lv_obj_t *btn = nullptr,
-                                            lv_coord_t horizontal_inset = 0) {
-  if (!label) return;
-  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  const char *icon_text = icon ? lv_label_get_text(icon) : nullptr;
-  if (!icon || lv_obj_has_flag(icon, LV_OBJ_FLAG_HIDDEN) ||
-      !icon_text || icon_text[0] == '\0') {
-    lv_obj_set_width(label, lv_pct(100));
-    return;
-  }
-  if (!btn) btn = lv_obj_get_parent(label);
-  if (!btn) return;
-  lv_obj_update_layout(btn);
-  const lv_font_t *icon_font = lv_obj_get_style_text_font(icon, LV_PART_MAIN);
-  const lv_coord_t icon_width = icon_font && icon_font->line_height > 0
-    ? icon_font->line_height
-    : 24;
-  const lv_coord_t pad_left = horizontal_inset > 0
-    ? horizontal_inset
-    : lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
-  const lv_coord_t pad_right = horizontal_inset > 0
-    ? horizontal_inset
-    : lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
-  const lv_coord_t gap = pad_right > 8 ? pad_right / 2 : 4;
-  const lv_coord_t available_width =
-    lv_obj_get_width(btn) - pad_left - pad_right - icon_width - gap;
-  if (available_width > 1) lv_obj_set_width(label, available_width);
-}
-
 // Match the main-page button widget label behavior so longer titles wrap
-// instead of running off the edge of the tile. Grid card labels retain their
-// icon pointer as user data so later state/friendly-name updates preserve the
-// space reserved for a bottom-right icon.
+// instead of running off the edge of the tile.
 inline void configure_button_label_wrap(lv_obj_t *label) {
   if (!label) return;
-  lv_obj_t *icon = static_cast<lv_obj_t *>(lv_obj_get_user_data(label));
-  reserve_button_label_icon_space(label, icon);
-}
-
-inline void align_card_icon_bottom_right(lv_obj_t *icon,
-                                         lv_coord_t right_inset = 0,
-                                         lv_coord_t bottom_inset = 0) {
-  if (!icon) return;
-  lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-  lv_obj_align(icon, LV_ALIGN_BOTTOM_RIGHT, -right_inset, -bottom_inset);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(label, lv_pct(100));
 }
 
 inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) {

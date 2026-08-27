@@ -1059,7 +1059,7 @@ inline std::string climate_card_label(ClimateControlCtx *ctx) {
 
 inline void climate_layout_card_icon(lv_obj_t *icon_lbl) {
   if (!icon_lbl) return;
-  align_card_icon_bottom_right(icon_lbl);
+  lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
 }
 
 inline void climate_layout_card_sensor(lv_obj_t *sensor_container) {

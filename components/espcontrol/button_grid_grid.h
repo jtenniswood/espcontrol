@@ -547,7 +547,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   apply_standard_sensor_number_style(s, display);
   if (s.unit_lbl) lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.text_lbl) lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
-  align_card_icon_bottom_right(s.icon_lbl);
+  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   // A previous unsupported or information-only config may have disabled this
@@ -856,7 +856,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
 
   if (media_playback_button_mode(mode)) {
-    align_card_icon_bottom_right(s.icon_lbl);
+    if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     return;
   }
@@ -887,11 +887,8 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
     ? ctx->label_pad_top : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
   const lv_coord_t pad_bottom = ctx
     ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
-  align_card_icon_bottom_right(s.icon_lbl, pad_left, pad_bottom);
-  if (s.text_lbl) {
-    lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
-    reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn, pad_left);
-  }
+  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
+  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
   if (slider) slider_refresh_geometry(slider);
 }
 
@@ -901,7 +898,6 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
-  if (s.text_lbl) lv_obj_set_user_data(s.text_lbl, s.icon_lbl);
   if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
@@ -910,7 +906,6 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
   display_apply_main_width(s.icon_lbl, display);
   display_apply_slot_text_width(s, display);
-  reserve_button_label_icon_space(s.text_lbl, s.icon_lbl, s.btn);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 

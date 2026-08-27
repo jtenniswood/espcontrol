@@ -533,10 +533,10 @@ export function createControlsFieldsFeature(
             (unit != null ? '<span class="sp-sensor-unit">' + helpers.escHtml(unit) + '</span>' : "") +
             '</span>';
     }
-    function cardBadgeLabelHtml(this: any, helpers?: any, label?: any, badgeIcon?: any) {
+    function cardBadgeLabelHtml(this: any, helpers?: any, label?: any, _badgeIcon?: any) {
         return '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
             helpers.escHtml(label) +
-            '</span><span class="sp-type-badge mdi mdi-' + badgeIcon + '"></span></span>';
+            '</span></span>';
     }
     function cardIconHtml(this: any, iconSlugName?: any, extraHtml?: any) {
         return '<span class="sp-btn-icon mdi mdi-' + iconSlugName + '"></span>' + (extraHtml || "");
