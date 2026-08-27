@@ -1146,7 +1146,7 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
             text.find("id(cover_art_local_source_relative) = relative;"),
             text.find("id(cover_art_remote_source_relative) = relative;"),
         )
-        if any(0 <= marker < cached_guard for marker in relative_markers):
+        if any(marker < 0 or marker < cached_guard for marker in relative_markers):
             errors.append(
                 f"{rel}: retain cached artwork's relative marker during a brief playback transition"
             )
@@ -5996,8 +5996,7 @@ def run_self_test() -> int:
             "cancel pending playback grace during an immediate stop",
         ),
     )
-    expect_cover_art_playback_grace_errors(
-        "cover art playback grace present",
+    valid_cover_art_playback_grace = (
         "script:\n"
         "  - id: cover_art_resubscribe\n"
         "    then:\n"
@@ -6025,8 +6024,26 @@ def run_self_test() -> int:
         "            - script.execute: cover_art_playback_stopped\n"
         "  - id: cover_art_playback_stopped\n"
         "    then:\n"
-        "      - script.stop: cover_art_delayed_playback_stopped\n",
+        "      - script.stop: cover_art_delayed_playback_stopped\n"
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace present",
+        valid_cover_art_playback_grace,
         (),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace missing local relative marker",
+        valid_cover_art_playback_grace.replace(
+            "          id(cover_art_local_source_relative) = relative;\n", ""
+        ),
+        ("retain cached artwork's relative marker",),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace missing remote relative marker",
+        valid_cover_art_playback_grace.replace(
+            "          id(cover_art_remote_source_relative) = relative;\n", ""
+        ),
+        ("retain cached artwork's relative marker",),
     )
     expect_cover_art_disable_errors(
         "independent media sleep prevention when cover art is disabled",
