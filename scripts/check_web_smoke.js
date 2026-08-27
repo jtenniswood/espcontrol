@@ -1477,6 +1477,7 @@ assert(mediaCoverArtDetailsPreview.labelHtml.includes("Artist Name"), "media cov
 assert(previewStylesSource.includes(".sp-media-cover-details-single .sp-media-now-artist{white-space:nowrap"), "media cover art details 1x1 artist stays on one line");
 assert(!mediaCoverArtDetailsPreview.labelHtml.includes("sp-type-badge"), "media cover art details preview omits the card-type badge");
 assert(previewStylesSource.includes(".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}"), "media cover art details 2x2 preview separates its title and artist");
+assert(previewStylesSource.includes(".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist{font-weight:300}"), "media cover art details 3x3 preview uses a light artist weight");
 
 const mediaCoverArtDetailsLargePreview = hooks.buttonTypePreviewFor("media", {
   entity: "media_player.office",

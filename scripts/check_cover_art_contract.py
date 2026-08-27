@@ -254,6 +254,7 @@ for required in (
     ".sp-btn-big.sp-media-cover-control-fonts .sp-media-cover-details-title{font-size:calc(var(--btn-label)*1.75)}",
     ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}",
     ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist,.sp-btn-portrait-large .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--media-cover-artist)}",
+    ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist{font-weight:300}",
     ".sp-btn-big.sp-media-cover-details-card,.sp-btn-extra-large.sp-media-cover-details-card,.sp-btn-portrait-large.sp-media-cover-details-card{justify-content:flex-start}",
     ".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}",
     ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}",
