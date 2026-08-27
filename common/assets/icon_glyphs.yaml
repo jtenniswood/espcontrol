@@ -15,6 +15,9 @@
 - "\U000F0200"  # mdi-ethernet (Setup screens)
 - "\U000F07D0"  # mdi-home-assistant (Setup screens)
 - "\U000F02E9"  # mdi-image (Image card loading state)
+- "\U000F049D"  # mdi-shuffle (Media modal shuffle control)
+- "\U000F0456"  # mdi-repeat (Media modal repeat control)
+- "\U000F0458"  # mdi-repeat-once (Media modal repeat-one state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
 - "\U000F0141"  # mdi-chevron-left
 - "\U000F0142"  # mdi-chevron-right

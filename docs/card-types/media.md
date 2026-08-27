@@ -30,6 +30,8 @@ A Media card controls a Home Assistant `media_player`. Choose a small one-job ca
 ## What to Expect
 
 - Playback buttons send the matching Home Assistant media action.
+- Shuffle and Repeat appear in **All Controls** only when the player advertises support for them. A supported control stays disabled until Home Assistant reports its current state, then continues to follow changes made elsewhere.
+- Repeat cycles through **Off**, **All**, and **One**. Its icon changes to Repeat Once in **One** mode, while active Shuffle and Repeat modes use the accent colour.
 - Volume and track position follow changes made elsewhere in Home Assistant. Some players show progress but do not support seeking; some only support volume up and down rather than an exact level.
 - All Controls hides tabs that the selected player does not support. Its speaker tab appears only when compatible speakers are available.
 - For **Track, Album or Playlist**, choose the speaker, then provide the content ID or URI. You can also set the player source or input when the integration uses one.

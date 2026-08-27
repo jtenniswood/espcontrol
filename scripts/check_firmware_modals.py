@@ -723,6 +723,50 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
     return []
 
 
+def firmware_media_modal_playback_mode_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_media.h"
+    if not path.exists():
+        return [
+            "components/espcontrol/button_grid_media.h: keep conditional Shuffle and Repeat modal controls"
+        ]
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "lv_obj_t *shuffle_btn = nullptr;",
+        "lv_obj_t *repeat_btn = nullptr;",
+        "lv_obj_t *repeat_icon_lbl = nullptr;",
+        "if (media_control_shuffle_supported(ctx))",
+        "if (media_control_repeat_supported(ctx))",
+        'find_icon("Shuffle")',
+        '"Repeat Once"',
+        "media_control_refresh_playback_modes(ctx)",
+        "media_control_style_playback_mode_button",
+        "ctx->available && ctx->shuffle_known",
+        "ctx->available && known",
+        "previous_shuffle_supported != shuffle_supported",
+        "previous_repeat_supported != repeat_supported",
+        "media_control_clear_tab_content();",
+        "ui.shuffle_btn = nullptr;",
+        "ui.repeat_btn = nullptr;",
+        "ui.repeat_icon_lbl = nullptr;",
+        "media_transport_layout(",
+        "lv_obj_t *buttons[5]",
+        "ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn",
+        "transport_layout.button_size",
+        "transport_layout.modes_on_second_row",
+        "control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw",
+        "lv_obj_t *transport_buttons[3]",
+        "lv_obj_t *mode_buttons[2]",
+        "transport_layout.second_row_start_x",
+        "transport_layout.row_gap",
+    )
+    if any(needle not in text for needle in required):
+        return [
+            "components/espcontrol/button_grid_media.h: keep conditional, state-synchronised Shuffle and Repeat controls with dynamic three/four/five-button layouts and cleanup"
+        ]
+    return []
+
+
 def firmware_network_status_version_errors(root: Path) -> list[str]:
     path = root / "components" / "espcontrol" / "network_status.h"
     errors: list[str] = []
@@ -1114,6 +1158,7 @@ def run_scan() -> int:
     errors.extend(firmware_modal_tab_layout_errors(ROOT))
     errors.extend(firmware_media_modal_progress_layout_errors(ROOT))
     errors.extend(firmware_media_modal_power_tab_errors(ROOT))
+    errors.extend(firmware_media_modal_playback_mode_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:
@@ -1382,6 +1427,67 @@ def expect_media_modal_power_tab_errors(name: str, text: str, expected: tuple[st
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
             assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_modal_playback_mode_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_media.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_media_modal_playback_mode_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_modal_playback_mode_text() -> str:
+    return (
+        "struct MediaControlModalUi {\n"
+        "  lv_obj_t *shuffle_btn = nullptr;\n"
+        "  lv_obj_t *repeat_btn = nullptr;\n"
+        "  lv_obj_t *repeat_icon_lbl = nullptr;\n"
+        "};\n"
+        "inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {\n"
+        "  if (media_control_shuffle_supported(ctx)) find_icon(\"Shuffle\");\n"
+        "  if (media_control_repeat_supported(ctx)) find_icon(\"Repeat Once\");\n"
+        "}\n"
+        "inline void media_control_refresh_playback_modes(MediaControlCtx *ctx) {\n"
+        "  media_control_style_playback_mode_button();\n"
+        "  bool shuffle = ctx->available && ctx->shuffle_known;\n"
+        "  bool repeat = ctx->available && known;\n"
+        "}\n"
+        "inline void media_playback_apply_state_to_control() {\n"
+        "  bool changed = previous_shuffle_supported != shuffle_supported ||\n"
+        "    previous_repeat_supported != repeat_supported;\n"
+        "  media_control_clear_tab_content();\n"
+        "}\n"
+        "inline void media_control_clear_tab_content() {\n"
+        "  ui.shuffle_btn = nullptr;\n"
+        "  ui.repeat_btn = nullptr;\n"
+        "  ui.repeat_icon_lbl = nullptr;\n"
+        "}\n"
+        "inline void media_control_refresh_modal() {\n"
+        "  media_control_refresh_playback_modes(ctx);\n"
+        "}\n"
+        "inline void media_control_layout_modal() {\n"
+        "  media_transport_layout(content_w, short_side, show_shuffle, show_repeat,\n"
+        "    control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);\n"
+        "  lv_obj_t *buttons[5] = {\n"
+        "    ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn};\n"
+        "  int size = transport_layout.button_size;\n"
+        "  if (transport_layout.modes_on_second_row) {\n"
+        "    lv_obj_t *transport_buttons[3] = {};\n"
+        "    lv_obj_t *mode_buttons[2] = {};\n"
+        "    int x = transport_layout.second_row_start_x;\n"
+        "    int y = transport_layout.row_gap;\n"
+        "  }\n"
+        "}\n"
+    )
 
 
 def valid_media_modal_power_tab_text() -> str:
@@ -2166,6 +2272,22 @@ def run_self_test() -> int:
             "  ui.tab = MediaControlTab::CONTROLS;\n", ""
         ),
         ("safe Controls fallback",),
+    )
+    valid_playback_modes = valid_media_modal_playback_mode_text()
+    expect_media_modal_playback_mode_errors(
+        "conditional media Shuffle and Repeat controls",
+        valid_playback_modes,
+        (),
+    )
+    expect_media_modal_playback_mode_errors(
+        "media playback-mode cleanup removed",
+        valid_playback_modes.replace("  ui.repeat_btn = nullptr;\n", ""),
+        ("three/four/five-button layouts and cleanup",),
+    )
+    expect_media_modal_playback_mode_errors(
+        "media playback-mode capability relayout removed",
+        valid_playback_modes.replace("  media_control_clear_tab_content();\n", ""),
+        ("state-synchronised",),
     )
     home_idle_gated = valid_sleep_takeover_files()
     home_idle_gated["common/addon/backlight.yaml"] = home_idle_gated[

@@ -3837,9 +3837,10 @@ def gen_icon_glyphs(data):
 
 def gen_icons_h_entries(data):
     """C++ IconEntry array initializers for icons.h."""
-    max_name_len = max(len(i["name"]) for i in data["icons"])
+    firmware_icons = [*data.get("structural", []), *data["icons"]]
+    max_name_len = max(len(i["name"]) for i in firmware_icons)
     lines = []
-    for icon in data["icons"]:
+    for icon in firmware_icons:
         padded = f'"{icon["name"]}",'
         padded = padded.ljust(max_name_len + 3)
         lines.append(f'    {{{padded} "\\U{icon["codepoint"]:>08s}"}},\n')
