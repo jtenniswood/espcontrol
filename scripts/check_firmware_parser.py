@@ -525,6 +525,10 @@ int main() {
   assert(media_cover_art_enabled(cover_art_details));
   assert(media_cover_art_details_enabled(cover_art_details));
   assert(cover_art_details.options == "cover_art_details");
+  auto cover_art_advanced = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
+  assert(cover_art_advanced.options == "speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
+  assert(media_speaker_group_entity(cover_art_advanced) == "sensor.cover_art_speakers");
+  assert(media_volume_max_percent(cover_art_advanced) == 75);
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");

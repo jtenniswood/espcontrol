@@ -1692,7 +1692,7 @@
           "defaultValue": "100",
           "omitDefault": true,
           "applicability": [
-            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "speaker_group", "volume"] }
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "cover_art", "speaker_group", "volume"] }
           ]
         },
         {
@@ -1701,7 +1701,7 @@
           "kind": "text",
           "omitDefault": true,
           "applicability": [
-            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "speaker_group"] }
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "cover_art", "speaker_group"] }
           ]
         },
         {

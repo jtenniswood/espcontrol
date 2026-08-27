@@ -450,6 +450,13 @@ hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, true);
 assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art removes its retired press action while preserving track details");
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
 assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
+hooks.setMediaSpeakerGroupEntity(coverArtActionButton, " sensor.cover_art_speakers ");
+hooks.setMediaVolumeMax(coverArtActionButton, "75");
+assert.strictEqual(
+  coverArtActionButton.options,
+  "speaker_group_entity=sensor.cover_art_speakers,volume_max=75",
+  "cover art stores the advanced settings used by its All Controls modal"
+);
 const speakerGroupButton = { type: "media", sensor: "speaker_group", options: "" };
 hooks.setMediaSpeakerGroupEntity(speakerGroupButton, " media_player.compatible_speakers ");
 hooks.setMediaVolumeMax(speakerGroupButton, "80");

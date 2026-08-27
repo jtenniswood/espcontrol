@@ -116,6 +116,7 @@
           "operator": "in",
           "value": [
             "control_modal",
+            "cover_art",
             "speaker_group",
             "volume"
           ]
@@ -134,6 +135,7 @@
           "operator": "in",
           "value": [
             "control_modal",
+            "cover_art",
             "speaker_group"
           ]
         }

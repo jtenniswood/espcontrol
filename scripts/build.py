@@ -2647,7 +2647,7 @@ def gen_saved_config_shadow_ts(data):
         "  if (config.sensor === \"control_modal\") {\n"
         "    if (optionValue(source, \"label_display\").trim() === \"label\") out.push(\"label_display=label\"); if (optionValue(source, \"number_display\").trim() === \"volume\") out.push(\"number_display=volume\"); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push(\"volume_max=\" + maxVolume);\n"
         "  } else if (config.sensor === \"cover_art\") {\n"
-        "    if (optionPresent(source, \"cover_art_details\")) out.push(\"cover_art_details\"); const secondaryEntity = optionValue(source, \"cover_art_secondary_entity\").trim(); if (secondaryEntity) out.push(\"cover_art_secondary_entity=\" + encodeOptionValue(secondaryEntity));\n"
+        "    if (optionPresent(source, \"cover_art_details\")) out.push(\"cover_art_details\"); const secondaryEntity = optionValue(source, \"cover_art_secondary_entity\").trim(); if (secondaryEntity) out.push(\"cover_art_secondary_entity=\" + encodeOptionValue(secondaryEntity)); const speakerGroupEntity = optionValue(source, \"speaker_group_entity\").trim(); if (speakerGroupEntity) out.push(\"speaker_group_entity=\" + encodeOptionValue(speakerGroupEntity)); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push(\"volume_max=\" + maxVolume);\n"
         "  } else if (config.sensor === \"playlist\") {\n"
         "    for (const [name, defaultValue] of [[\"playlist_content_id\", \"\"], [\"playlist_content_type\", \"playlist\"], [\"playlist_player_source\", \"\"]] as const) { const value = optionValue(source, name).trim() || defaultValue; if (value && value !== defaultValue) out.push(name + \"=\" + encodeOptionValue(value)); }\n"
         "  } else if (config.sensor === \"volume\" || config.sensor === \"position\") {\n"
@@ -2847,6 +2847,9 @@ def gen_saved_config_shadow_h(data):
         "    if (cfg_option_token_present(source, \"cover_art_details\")) saved_config_shadow_append_option(out, \"cover_art_details\");\n",
         "    const std::string secondary_entity = saved_config_shadow_trim(cfg_option_value(source, \"cover_art_secondary_entity\"));\n",
         "    if (!secondary_entity.empty()) saved_config_shadow_append_option(out, \"cover_art_secondary_entity\", secondary_entity);\n",
+        "    const std::string speaker_group_entity = saved_config_shadow_trim(cfg_option_value(source, \"speaker_group_entity\"));\n",
+        "    if (!speaker_group_entity.empty()) saved_config_shadow_append_option(out, \"speaker_group_entity\", speaker_group_entity);\n",
+        "    if (max_volume != SAVED_CONFIG_SHADOW_MEDIA_VOLUME_DEFAULT) saved_config_shadow_append_option(out, \"volume_max\", std::to_string(max_volume));\n",
         "  } else if (config.sensor == \"playlist\") {\n",
         "    const std::string content_id = saved_config_shadow_trim(cfg_option_value(source, \"playlist_content_id\"));\n",
         "    const std::string content_type = saved_config_shadow_trim(cfg_option_value(source, \"playlist_content_type\"));\n",

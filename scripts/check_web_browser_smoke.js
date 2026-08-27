@@ -2932,10 +2932,15 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
   const externalSources = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-cover-art-secondary-player"),
   });
+  const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-advanced"),
+  });
   assert(await cardSettings.isVisible(), `${label}: Cover Art card settings panel should render`);
   assert(await externalSources.isVisible(), `${label}: Cover Art external sources panel should render`);
+  assert(await advanced.isVisible(), `${label}: Cover Art advanced settings panel should render`);
   assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: Cover Art card settings should start collapsed`);
   assert(!(await externalSources.getAttribute("class")).includes("sp-open"), `${label}: Cover Art external sources should start collapsed`);
+  assert(!(await advanced.getAttribute("class")).includes("sp-open"), `${label}: Cover Art advanced settings should start collapsed`);
   assert(
     await externalSources.getByText("External Sources", { exact: true }).isVisible(),
     `${label}: Cover Art external sources panel should use the shared title`,
@@ -2960,6 +2965,9 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
     1,
     `${label}: Cover Art secondary entity should be inside External Sources`,
   );
+  await advanced.locator("> .sp-disclosure-button").click();
+  assert(await page.locator("#sp-inp-volume-max").isVisible(), `${label}: Cover Art Advanced should reveal maximum volume`);
+  assert(await page.locator("#sp-inp-speaker-group-entity").isVisible(), `${label}: Cover Art Advanced should reveal speaker discovery`);
 
   await cardSettings.locator("> .sp-disclosure-button").click();
   assert(await page.locator("#sp-inp-media-cover-art-details").isChecked(), `${label}: existing Cover Art details setting should be retained`);

@@ -401,6 +401,19 @@ inline std::string media_card_options_normalized(const std::string &options,
       out += std::string(MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION) + "=" +
              encode_compact_field(secondary_entity);
     }
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+             encode_compact_field(speaker_group_entity);
+    }
+    int max_pct = normalize_media_volume_max_percent(
+      cfg_option_value(options, VOLUME_MAX_OPTION));
+    if (max_pct < card_runtime_media_volume_max_default()) {
+      if (!out.empty()) out += ",";
+      out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
+    }
     return out;
   }
   if (mode != "volume" && mode != "position") return "";
@@ -1397,13 +1410,15 @@ inline bool cfg_option_enabled(const std::string &options, const char *name) {
 
 inline int media_volume_max_percent(const ParsedCfg &p) {
   return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal" ||
+                               p.sensor == "cover_art" ||
                                p.sensor == "speaker_group")
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
 }
 
 inline std::string media_speaker_group_entity(const ParsedCfg &p) {
-  if (p.type != "media" || (p.sensor != "control_modal" && p.sensor != "speaker_group")) {
+  if (p.type != "media" || (p.sensor != "control_modal" && p.sensor != "cover_art" &&
+                            p.sensor != "speaker_group")) {
     return "";
   }
   return trim_saved_option_value(cfg_option_value(p.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));

@@ -121,6 +121,13 @@ assert.strictEqual(model.decodeMediaCardConfigV1({
   sensor: "cover_art",
   options: "cover_art_secondary_entity=media_player.apple_tv",
 }).secondaryEntity, "media_player.apple_tv", "Media decoder exposes the external-source player");
+const coverArtAdvanced = model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "cover_art",
+  options: "speaker_group_entity=sensor.cover_art_speakers,volume_max=75",
+});
+assert.strictEqual(coverArtAdvanced.speakerGroupEntity, "sensor.cover_art_speakers", "Media decoder exposes the Cover Art speaker helper");
+assert.strictEqual(coverArtAdvanced.maxVolumePercent, 75, "Media decoder exposes the Cover Art modal volume cap");
 assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
   type: "media",
   sensor: "controls",

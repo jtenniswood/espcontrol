@@ -399,7 +399,7 @@ export function registerMediaCardTypes(
                 }
                 : MEDIA_CARD_METADATA);
             function renderSpeakerDiscoveryEntityField(this: any, target?: any) {
-            if (b.sensor === "control_modal" || b.sensor === "speaker_group") {
+            if (b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
                 target = target || panel;
                 var groupEntityField: any = helpers.textField(
                     "Speaker Discovery Entity (optional)",
@@ -635,7 +635,7 @@ export function registerMediaCardTypes(
                 });
             }
             var mediaAdvancedSettings: any = panel;
-            if (b.sensor === "control_modal") {
+            if (b.sensor === "control_modal" || b.sensor === "cover_art") {
                 var mediaAdvancedDisclosure: any = helpers.disclosureSection(
                     "Advanced",
                     helpers.idPrefix + "media-advanced",
@@ -643,7 +643,7 @@ export function registerMediaCardTypes(
                 mediaAdvancedSettings = mediaAdvancedDisclosure.section;
                 panel.appendChild(mediaAdvancedDisclosure.panel);
             }
-            if (b.sensor === "volume" || b.sensor === "control_modal" || b.sensor === "speaker_group") {
+            if (b.sensor === "volume" || b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
                 if (b.sensor === "volume") helpers.renderCardLargeNumbersToggle(panel, b, helpers, MEDIA_CARD_METADATA);
                 var maxField: any = helpers.renderCardNumberField(mediaAdvancedSettings, b, helpers, {
                     label: "Maximum Volume",
