@@ -208,6 +208,14 @@ export function createConfigMediaOptionsFeature(
             if (secondaryEntity) {
                 coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION, secondaryEntity);
             }
+            var coverArtGroupEntity: any = normalizeMediaSpeakerGroupEntity(configOptionValue(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+            if (coverArtGroupEntity) {
+                coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_SPEAKER_GROUP_ENTITY_OPTION, coverArtGroupEntity);
+            }
+            var coverArtMaxVolume: any = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
+            if (coverArtMaxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
+                coverArtOut = setConfigOptionValue(coverArtOut, MEDIA_VOLUME_MAX_OPTION, coverArtMaxVolume);
+            }
             return coverArtOut;
         }
         if (mode !== "volume" && mode !== "position")

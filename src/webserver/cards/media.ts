@@ -398,8 +398,9 @@ export function registerMediaCardTypes(
                     }),
                 }
                 : MEDIA_CARD_METADATA);
-            function renderSpeakerDiscoveryEntityField(this: any) {
-            if (b.sensor === "control_modal" || b.sensor === "speaker_group") {
+            function renderSpeakerDiscoveryEntityField(this: any, target?: any) {
+            if (b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
+                target = target || panel;
                 var groupEntityField: any = helpers.textField(
                     "Speaker Discovery Entity (optional)",
                     helpers.idPrefix + "speaker-group-entity",
@@ -458,7 +459,7 @@ export function registerMediaCardTypes(
                 });
                 groupEntityField.field.querySelector("label").appendChild(groupEntityHint);
                 groupEntityField.field.insertBefore(groupEntityTooltip, groupEntityField.input);
-                panel.appendChild(groupEntityField.field);
+                target.appendChild(groupEntityField.field);
                 groupEntityField.input.pattern = "(?:media_player|sensor)\\.[A-Za-z0-9_]+";
                 groupEntityField.input.addEventListener("change", function (this: any) {
                     setMediaSpeakerGroupEntity(b, groupEntityField.input.value);
@@ -633,9 +634,18 @@ export function registerMediaCardTypes(
                     rerender: true,
                 });
             }
-            if (b.sensor === "volume" || b.sensor === "control_modal" || b.sensor === "speaker_group") {
+            var mediaAdvancedSettings: any = panel;
+            if (b.sensor === "control_modal" || b.sensor === "cover_art") {
+                var mediaAdvancedDisclosure: any = helpers.disclosureSection(
+                    "Advanced",
+                    helpers.idPrefix + "media-advanced",
+                    false);
+                mediaAdvancedSettings = mediaAdvancedDisclosure.section;
+                panel.appendChild(mediaAdvancedDisclosure.panel);
+            }
+            if (b.sensor === "volume" || b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
                 if (b.sensor === "volume") helpers.renderCardLargeNumbersToggle(panel, b, helpers, MEDIA_CARD_METADATA);
-                var maxField: any = helpers.renderCardNumberField(panel, b, helpers, {
+                var maxField: any = helpers.renderCardNumberField(mediaAdvancedSettings, b, helpers, {
                     label: "Maximum Volume",
                     idSuffix: "volume-max",
                     min: 1,
@@ -775,7 +785,7 @@ export function registerMediaCardTypes(
                     fallback: "Speaker",
                 });
             }
-            renderSpeakerDiscoveryEntityField();
+            renderSpeakerDiscoveryEntityField(mediaAdvancedSettings);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             function modeInfo(this: any, value?: any) {

@@ -2703,6 +2703,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "operator": "in",
             "value": [
               "control_modal",
+              "cover_art",
               "speaker_group",
               "volume"
             ]
@@ -2721,6 +2722,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "operator": "in",
             "value": [
               "control_modal",
+              "cover_art",
               "speaker_group"
             ]
           }
