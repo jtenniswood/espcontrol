@@ -467,6 +467,7 @@ for required in (
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
 layout = (ROOT / "components" / "espcontrol" / "button_grid_layout.h").read_text(encoding="utf-8")
 subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
+subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
 if "reserve_button_label_icon_space" not in layout:
     raise SystemExit("Firmware card labels must reserve width beside visible icons")
 if "lv_obj_get_user_data(label)" not in layout:
@@ -475,6 +476,8 @@ if "lv_obj_set_user_data(s.text_lbl, s.icon_lbl);" not in grid:
     raise SystemExit("Firmware card labels must retain their icon for runtime relayouts")
 if "lv_obj_set_user_data(slot.text_lbl, slot.icon_lbl);" not in subpages:
     raise SystemExit("Dynamic subpage labels must retain their icon for runtime relayouts")
+if "configure_button_label_wrap(text_lbl);" not in subscriptions:
+    raise SystemExit("Toggle state updates must restore label clearance when icons reappear")
 for required in (
     "configure_button_label_wrap(entry->back_slot.text_lbl);",
     "configure_button_label_wrap(back_slot.text_lbl);",
