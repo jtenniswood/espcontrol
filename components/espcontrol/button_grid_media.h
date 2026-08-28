@@ -1617,10 +1617,20 @@ inline void media_playback_subscribe_source(MediaPlaybackState *state) {
   auto handle_media_source = [state, generation](esphome::StringRef source) {
     if (!media_playback_generation_valid(state, generation)) return;
     const std::string next = media_playback_metadata_value(source, HA_STATE_TEXT_MAX_LEN);
-    bool external = media_external_source_input(next);
-    bool changed = !state->source_known || next != state->source ||
+    const bool source_external = media_external_source_input(next);
+    const bool content_id_overrides_source =
+      espcontrol::media::media_content_id_should_override_source_update(
+        state->current_content_id, source_external);
+    const char *content_id_source = content_id_overrides_source
+      ? espcontrol::media::media_content_id_external_source(
+          state->current_content_id)
+      : "";
+    const std::string reconciled_source = content_id_overrides_source
+      ? content_id_source : next;
+    const bool external = source_external || content_id_overrides_source;
+    bool changed = !state->source_known || reconciled_source != state->source ||
                    external != state->external_source;
-    state->source = next;
+    state->source = reconciled_source;
     state->source_known = true;
     state->external_source = external;
     state->source_observed_for_state = true;

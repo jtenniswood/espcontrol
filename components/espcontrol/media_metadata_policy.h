@@ -56,6 +56,11 @@ inline bool media_content_id_should_replace_external_source(
          !retained_source_present;
 }
 
+inline bool media_content_id_should_override_source_update(
+    const std::string &content_id, bool source_update_external) {
+  return !source_update_external && media_content_id_external_input(content_id);
+}
+
 inline MediaItemKind media_item_kind_from_token(std::string token) {
   token = normalize_media_kind_token(std::move(token));
   if (token == "track") return MediaItemKind::TRACK;

@@ -7,6 +7,7 @@ int main() {
   using espcontrol::media::media_content_identity_fingerprint;
   using espcontrol::media::media_content_id_external_input;
   using espcontrol::media::media_content_id_external_source;
+  using espcontrol::media::media_content_id_should_override_source_update;
   using espcontrol::media::media_content_id_should_replace_external_source;
   using espcontrol::media::media_item_kind;
   using espcontrol::media::media_metadata_clear_decision;
@@ -52,6 +53,14 @@ int main() {
   assert(media_content_id_should_replace_external_source(true, false, true));
   assert(media_content_id_should_replace_external_source(true, true, false));
   assert(!media_content_id_should_replace_external_source(true, true, true));
+  assert(media_content_id_should_override_source_update(
+    "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", false));
+  assert(media_content_id_should_override_source_update(
+    "x-rincon-stream:RINCON_804AF2CAFA8001400", false));
+  assert(!media_content_id_should_override_source_update(
+    "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", true));
+  assert(!media_content_id_should_override_source_update(
+    "x-sonos-spotify:spotify%3atrack%3a0KIhLAkHfL9fvgn0yy1qsU", false));
   assert(!media_content_id_external_input(
     "x-sonos-spotify:spotify%3atrack%3a0KIhLAkHfL9fvgn0yy1qsU"));
   assert(!media_content_id_external_input(
