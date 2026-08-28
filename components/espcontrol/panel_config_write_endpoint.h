@@ -14,6 +14,7 @@
 #include "panel_config_document.h"
 #include "panel_config_http_etag.h"
 #include "panel_config_http_context.h"
+#include "panel_config_write_status.h"
 
 namespace espcontrol::configuration {
 
@@ -122,28 +123,33 @@ class PanelConfigWriteHandler final
     // buffers in handleRequest() so they remain valid through every send below.
     char generation_text[16]{};
     char etag[20]{};
-    if (saved.status == ServiceStatus::GENERATION_CONFLICT) {
+    const PanelConfigWriteResponse response =
+        panel_config_write_response(saved.status);
+    if (response == PanelConfigWriteResponse::GENERATION_CONFLICT) {
       set_generation_headers(raw_request, saved.generation, generation_text,
                              etag);
       send_status(raw_request, "409 Conflict",
                   "Panel configuration changed on the device");
       return;
     }
-    if (saved.status == ServiceStatus::INVALID_DOCUMENT ||
-        saved.status == ServiceStatus::UNSUPPORTED_VERSION ||
-        saved.status == ServiceStatus::INVALID_ARGUMENT) {
+    if (response == PanelConfigWriteResponse::BAD_REQUEST) {
       httpd_resp_send_err(raw_request, HTTPD_400_BAD_REQUEST,
                           "Invalid panel configuration document");
       return;
     }
-    if (!saved.durable()) {
+    if (response == PanelConfigWriteResponse::INTERNAL_ERROR) {
+      const char *const message =
+          saved.status == ServiceStatus::RUNTIME_APPLY_FAILED
+              ? "Panel configuration was saved but could not be applied"
+              : "Panel configuration could not be saved";
       httpd_resp_send_err(raw_request, HTTPD_500_INTERNAL_SERVER_ERROR,
-                          "Panel configuration could not be saved");
+                          message);
       return;
     }
     set_generation_headers(raw_request, saved.generation, generation_text,
                            etag);
-    if (saved.status == ServiceStatus::LEGACY_MIRROR_FAILED) {
+    if (response ==
+        PanelConfigWriteResponse::ACCEPTED_WITH_LEGACY_WARNING) {
       httpd_resp_set_hdr(raw_request, "X-Panel-Config-Legacy-Mirror", "failed");
       httpd_resp_set_status(raw_request, "202 Accepted");
     } else {

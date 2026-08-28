@@ -103,6 +103,14 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   });
   equal(await mirrorFailureClient.save((current) => current), "mirror-failed", "a failed legacy mirror is reported");
 
+  const runtimeFailureClient = createNativePanelConfigClient(async (path, request) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    if (request?.method === "PUT") return response(500);
+    return response(200, document, "\"1\"");
+  });
+  equal(await runtimeFailureClient.save((current) => current), "failed",
+    "a runtime application failure is not reported as a successful restore");
+
   const legacyClient = createNativePanelConfigClient(async () => ({
     ...response(200),
     json: async () => ({ configuration: { read: false, write: false, document_versions: [] } }),

@@ -229,17 +229,49 @@ def test_s3_low_heap_policy() -> None:
     )
 
 
+def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> None:
+    espcontrol = re.search(r"(?ms)^espcontrol:\n(?P<body>(?:^  .*\n|^\s*$\n)*)", device)
+    assert espcontrol, f"{slug}: device.yaml is missing its espcontrol block"
+    body = espcontrol.group("body")
+    if "  panel_config:\n" not in body:
+        return
+
+    slots = int(profile["slots"])
+    bindings = [
+        int(slot)
+        for slot in re.findall(r"(?m)^      - config: button_(\d+)_config$", body)
+    ]
+    assert bindings == list(range(1, slots + 1)), (
+        f"{slug}: native panel config bindings must cover slots 1-{slots} exactly; "
+        f"found {bindings}"
+    )
+
+    chunk_rows = re.findall(r"(?m)^        subpage_chunks: \[([^\n]+)\]$", body)
+    assert len(chunk_rows) == slots, (
+        f"{slug}: native panel config must provide subpage chunks for all {slots} slots"
+    )
+    for slot, row in enumerate(chunk_rows, start=1):
+        expected = [f"subpage_{slot}_config", f"subpage_{slot}_config_ext"] + [
+            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, 8)
+        ]
+        actual = [value.strip() for value in row.split(",")]
+        assert actual == expected, (
+            f"{slug}: slot {slot} native subpage bindings differ: {actual} != {expected}"
+        )
+
+
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
     for slug, profile in profiles.items():
         package_path = ROOT / "devices" / slug / "packages.yaml"
         device_path = ROOT / "devices" / slug / "device" / "device.yaml"
         sensor_path = ROOT / "devices" / slug / "device" / "sensors.yaml"
         package = package_path.read_text(encoding="utf-8")
-        device_path.read_text(encoding="utf-8")
+        device = device_path.read_text(encoding="utf-8")
         sensors = sensor_path.read_text(encoding="utf-8")
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        test_native_panel_config_bindings(slug, profile, device)
         label_lines = profile["web"]["btn"]["labelLines"]
         label_lines_tall = profile["web"]["btn"]["labelLinesDouble"]
         assert f"cfg.label_lines = {label_lines};" in sensors, (
