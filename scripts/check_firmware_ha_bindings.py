@@ -254,8 +254,7 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     if (
         "if (callback_depth_ != 0)" not in coordinator_text
         or "queue_callback_ref(request.callbacks, std::move(callback))" not in coordinator_text
-        or "request.channel == channel" not in coordinator_text
-        or "queue_on_subscription_channel(channel, std::move(callback_ref))" not in coordinator_text
+        or "request.entity_id == entity_id" not in coordinator_text
         or "for (const auto &callback_ref : callbacks)" not in coordinator_text
     ):
         errors.append(f"{rel}: queue and fan out bounded reentrant retained reads")
@@ -266,8 +265,8 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     if (
         "subscription_channels_" not in coordinator_text
         or "invoke_subscription_channel" not in coordinator_text
-        or "size_t channel = find_subscription_channel(entity_id, attribute, true);" not in coordinator_text
-        or "transport_.subscribe(" not in coordinator_text
+        or "subscription_channels_[i].entity_id == entity_id" not in coordinator_text
+        or "subscription_channels_[i].attribute == attribute" not in coordinator_text
     ):
         errors.append(f"{rel}: reuse one Home Assistant transport subscription across grid rebuilds")
     if (
