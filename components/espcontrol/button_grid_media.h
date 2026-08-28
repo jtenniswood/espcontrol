@@ -1854,6 +1854,17 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
             ESP_LOGI("media_card", "Detected external input for %s from media_content_id",
                      state->entity_id.c_str());
           }
+        } else if (
+          espcontrol::media::media_content_id_should_clear_external_source(
+            next_content_id, state->external_source)) {
+          ESP_LOGI(
+            "media_card",
+            "Clearing conflicting external source for %s from media_content_id",
+            state->entity_id.c_str());
+          state->source.clear();
+          state->source_known = false;
+          state->external_source = false;
+          state->source_observed_for_state = false;
         } else {
           media_playback_clear_stale_external_source(
             state, !next_content_id.empty());
