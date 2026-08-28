@@ -453,11 +453,12 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [art, playback, entity_id, generation](esphome::StringRef picture) {
         bool clear_stale_artwork = false;
+        const std::string value = string_ref_limited(
+          picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
+        const bool present =
+          espcontrol::artwork::artwork_entity_picture_present(value);
         if (media_playback_generation_valid(playback, generation)) {
-          const std::string value = string_ref_limited(
-            picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
-          const bool present = !value.empty() && value != "unknown" &&
-                               value != "unavailable";
+          media_playback_clear_stale_external_source(playback, present);
           const bool current = espcontrol::cover_art::media_artwork_content_current(
             playback->has_state, playback->available, playback->state_text, present);
           if (current) playback->artwork_content_mask |= 1u;
@@ -468,7 +469,7 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
-        if (clear_stale_artwork) {
+        if (!present || clear_stale_artwork) {
           image_card_clear_media_artwork(art);
           return;
         }
@@ -489,8 +490,8 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
         if (media_playback_generation_valid(playback, generation)) {
           const std::string value = string_ref_limited(
             picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
-          const bool present = !value.empty() && value != "unknown" &&
-                               value != "unavailable";
+          const bool present =
+            espcontrol::artwork::artwork_entity_picture_present(value);
           const bool current = espcontrol::cover_art::media_artwork_content_current(
             playback->has_state, playback->available, playback->state_text, present);
           if (current) playback->artwork_content_mask |= 2u;

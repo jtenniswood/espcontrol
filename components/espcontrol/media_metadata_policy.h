@@ -34,6 +34,14 @@ inline std::string normalize_media_kind_token(std::string value) {
   return value;
 }
 
+inline bool media_content_id_external_input(std::string content_id) {
+  content_id = normalize_media_kind_token(std::move(content_id));
+  return content_id.rfind("x_sonos_htastream:", 0) == 0 ||
+         content_id.rfind("x_rincon_htastream:", 0) == 0 ||
+         content_id.rfind("x_rincon_stream:", 0) == 0 ||
+         content_id.find(":spdif") != std::string::npos;
+}
+
 inline MediaItemKind media_item_kind_from_token(std::string token) {
   token = normalize_media_kind_token(std::move(token));
   if (token == "track") return MediaItemKind::TRACK;

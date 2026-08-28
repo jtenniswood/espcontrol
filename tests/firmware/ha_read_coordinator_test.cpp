@@ -223,6 +223,79 @@ void cancellation_is_safe_during_callback() {
           "callback cancellation was not deferred safely");
 }
 
+void subscription_reset_during_callback_preserves_rebuilt_subscriptions() {
+  Coordinator coordinator;
+  constexpr uint32_t scope = 1u << 1;
+  int artwork_calls = 0;
+  int secondary_idle_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.primary", "source",
+              [&](std::string) {
+                coordinator.reset_subscriptions(scope);
+                require(coordinator.subscribe(
+                            "media_player.music", "entity_picture",
+                            [&](std::string) { artwork_calls++; }, scope, nullptr, true),
+                        "rebuilt artwork subscription should register");
+                require(coordinator.subscribe(
+                            "media_player.secondary", "",
+                            [&](std::string state) {
+                              if (state == "idle") secondary_idle_calls++;
+                            }, scope),
+                        "rebuilt secondary playback subscription should register");
+              },
+              scope),
+          "source subscription should register");
+
+  coordinator.transport().publish(0, "Music");
+  require(coordinator.subscription_count() == 2,
+          "deferred reset removed rebuilt media subscriptions");
+  require(coordinator.read_retained(
+              "media_player.music", "entity_picture",
+              [](std::string) {}, true, 10, 5),
+          "rebuilt artwork subscription should support retained reads");
+  coordinator.transport().publish(1, "/api/media_player_proxy/music");
+  coordinator.transport().publish(2, "idle");
+  require(artwork_calls == 1,
+          "rebuilt artwork subscription did not receive its first update");
+  require(secondary_idle_calls == 1,
+          "rebuilt secondary playback subscription missed its stopped state");
+}
+
+void owner_release_during_callback_preserves_rebuilt_subscriptions() {
+  Coordinator coordinator;
+  int card_owner = 0;
+  int source_calls = 0;
+  int stopped_calls = 0;
+  require(coordinator.subscribe(
+              "text.button_config", "",
+              [&](std::string) {
+                coordinator.release_owner(&card_owner);
+                require(coordinator.subscribe(
+                            "media_player.primary", "source",
+                            [&](std::string) { source_calls++; }, 1u,
+                            &card_owner, true),
+                        "rebuilt source subscription should register");
+                require(coordinator.subscribe(
+                            "media_player.secondary", "",
+                            [&](std::string state) {
+                              if (state == "idle") stopped_calls++;
+                            }, 1u, &card_owner),
+                        "rebuilt secondary subscription should register");
+              },
+              1u, &card_owner),
+          "card configuration subscription should register");
+
+  coordinator.transport().publish(0, "rebuilt");
+  require(coordinator.subscription_count() == 2,
+          "deferred owner release removed rebuilt card subscriptions");
+  coordinator.transport().publish(1, "Music");
+  coordinator.transport().publish(2, "idle");
+  require(source_calls == 1,
+          "rebuilt source subscription missed its first update");
+  require(stopped_calls == 1,
+          "rebuilt secondary subscription missed its stopped state");
+}
+
 void rebuilt_subscriptions_share_one_transport_channel() {
   Coordinator coordinator;
   constexpr uint32_t scope = 1u;
@@ -664,6 +737,8 @@ int main() {
   reentrant_reads_on_one_channel_share_deferred_work();
   resolved_deferred_channels_survive_channel_vector_growth();
   cancellation_is_safe_during_callback();
+  subscription_reset_during_callback_preserves_rebuilt_subscriptions();
+  owner_release_during_callback_preserves_rebuilt_subscriptions();
   rebuilt_subscriptions_share_one_transport_channel();
   rebuilt_subscription_replays_last_value();
   reconnect_does_not_replay_previous_connection_state();

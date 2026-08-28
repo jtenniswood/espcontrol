@@ -131,7 +131,12 @@ class HaReadCoordinator {
 
   void reset_subscriptions(uint32_t scope = 0) {
     if (callback_depth_ != 0) {
-      pending_reset_mask_ = scope == 0 ? UINT32_MAX : (pending_reset_mask_ | scope);
+      // A callback can rebuild a card immediately after requesting its old
+      // subscriptions be reset. Mark only the callbacks that exist now so the
+      // replacements survive the deferred vector compaction.
+      mark_subscriptions_for_release(scope);
+      pending_subscription_compaction_ = true;
+      release_inactive_channel_state();
       return;
     }
     release_subscriptions(scope);
@@ -159,7 +164,13 @@ class HaReadCoordinator {
           channel.pending_reads.end());
     }
     if (callback_depth_ != 0) {
-      pending_owner_releases_.push_back(owner);
+      // Grid rebuilds can release an old card and attach its replacement to
+      // the same persistent LVGL owner before this callback returns. Mark the
+      // subscriptions that exist now; resolving by owner later would also
+      // delete the replacement card's newly registered callbacks.
+      mark_owner_subscriptions_for_release(owner);
+      pending_subscription_compaction_ = true;
+      release_inactive_channel_state();
       return;
     }
     release_owner_subscriptions(owner);
@@ -191,6 +202,7 @@ class HaReadCoordinator {
     void *owner = nullptr;
     size_t channel = 0;
     bool retain_latest = false;
+    bool pending_release = false;
   };
 
   struct SubscriptionChannel {
@@ -267,14 +279,9 @@ class HaReadCoordinator {
     callback_depth_++;
     (*callback)(state);
     callback_depth_--;
-    if (callback_depth_ == 0 && pending_reset_mask_ != 0) {
-      uint32_t mask = pending_reset_mask_;
-      pending_reset_mask_ = 0;
-      release_subscriptions(mask == UINT32_MAX ? 0 : mask);
-    }
-    if (callback_depth_ == 0 && !pending_owner_releases_.empty()) {
-      for (void *owner : pending_owner_releases_) release_owner_subscriptions(owner);
-      pending_owner_releases_.clear();
+    if (callback_depth_ == 0 && pending_subscription_compaction_) {
+      pending_subscription_compaction_ = false;
+      compact_released_subscriptions();
     }
   }
 
@@ -287,7 +294,8 @@ class HaReadCoordinator {
     callbacks.reserve(subscriptions_.size());
     bool retain_latest = false;
     for (const auto &ref : subscriptions_) {
-      if (ref.channel == channel && ref.callback && *ref.callback) {
+      if (!ref.pending_release && ref.channel == channel &&
+          ref.callback && *ref.callback) {
         callbacks.push_back(ref.callback);
         retain_latest = retain_latest || ref.retain_latest;
       }
@@ -308,7 +316,12 @@ class HaReadCoordinator {
     for (const auto &callback_ref : pending_reads) {
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
     }
-    for (const auto &callback : callbacks) invoke(callback, state);
+    for (const auto &callback : callbacks) {
+      // An earlier callback can reset this scope while the channel snapshot is
+      // being dispatched. Skip callbacks marked by that reset, but keep the
+      // currently executing std::function alive until it returns.
+      if (subscription_callback_active(callback)) invoke(callback, state);
+    }
     // Reentrant reads are deferred above, so this channel should still have an
     // empty pending list. Reacquire it by index because a callback may have
     // appended channels and reallocated subscription_channels_.
@@ -367,7 +380,15 @@ class HaReadCoordinator {
 
   bool channel_reuses_reads(size_t channel) const {
     for (const auto &ref : subscriptions_) {
-      if (ref.channel == channel && ref.retain_latest && ref.callback && *ref.callback) return true;
+      if (!ref.pending_release && ref.channel == channel && ref.retain_latest &&
+          ref.callback && *ref.callback) return true;
+    }
+    return false;
+  }
+
+  bool subscription_callback_active(const std::shared_ptr<Callback> &callback) const {
+    for (const auto &ref : subscriptions_) {
+      if (!ref.pending_release && ref.callback == callback && ref.callback && *ref.callback) return true;
     }
     return false;
   }
@@ -403,26 +424,25 @@ class HaReadCoordinator {
   }
 
   void release_subscriptions(uint32_t scope) {
-    size_t write_index = 0;
-    for (size_t read_index = 0; read_index < subscriptions_.size(); read_index++) {
-      SubscriptionRef &ref = subscriptions_[read_index];
-      if (scope == 0 || (ref.scope & scope) != 0) {
-        if (ref.callback && *ref.callback) *ref.callback = nullptr;
-        continue;
-      }
-      if (write_index != read_index) subscriptions_[write_index] = std::move(ref);
-      write_index++;
-    }
-    subscriptions_.resize(write_index);
-    if (subscriptions_.empty()) std::vector<SubscriptionRef>().swap(subscriptions_);
+    mark_subscriptions_for_release(scope);
+    compact_released_subscriptions();
     release_inactive_channel_state();
   }
 
-  void release_owner_subscriptions(void *owner) {
+  void mark_subscriptions_for_release(uint32_t scope) {
+    for (SubscriptionRef &ref : subscriptions_) {
+      if (scope != 0 && (ref.scope & scope) == 0) continue;
+      ref.pending_release = true;
+    }
+  }
+
+  void compact_released_subscriptions() {
     size_t write_index = 0;
     for (size_t read_index = 0; read_index < subscriptions_.size(); read_index++) {
       SubscriptionRef &ref = subscriptions_[read_index];
-      if (ref.owner == owner) {
+      if (ref.pending_release) {
+        // Compaction only runs outside a callback body, so it is now safe to
+        // release the std::function target as well as its tracking entry.
         if (ref.callback && *ref.callback) *ref.callback = nullptr;
         continue;
       }
@@ -431,7 +451,19 @@ class HaReadCoordinator {
     }
     subscriptions_.resize(write_index);
     if (subscriptions_.empty()) std::vector<SubscriptionRef>().swap(subscriptions_);
+  }
+
+  void release_owner_subscriptions(void *owner) {
+    mark_owner_subscriptions_for_release(owner);
+    compact_released_subscriptions();
     release_inactive_channel_state();
+  }
+
+  void mark_owner_subscriptions_for_release(void *owner) {
+    if (!owner) return;
+    for (SubscriptionRef &ref : subscriptions_) {
+      if (ref.owner == owner) ref.pending_release = true;
+    }
   }
 
   Transport transport_;
@@ -442,7 +474,6 @@ class HaReadCoordinator {
   std::vector<OwnerGeneration> owner_generations_;
   uint32_t generation_ = 1;
   uint32_t next_owner_generation_ = 1;
-  uint32_t pending_reset_mask_ = 0;
-  std::vector<void *> pending_owner_releases_;
+  bool pending_subscription_compaction_ = false;
   uint8_t callback_depth_ = 0;
 };

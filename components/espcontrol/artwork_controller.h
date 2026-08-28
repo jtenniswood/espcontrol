@@ -22,6 +22,10 @@ constexpr uint8_t ARTWORK_SOURCE_REMOTE = 1u << 0;
 constexpr uint8_t ARTWORK_SOURCE_LOCAL = 1u << 1;
 constexpr uint8_t ARTWORK_SOURCE_BOTH = ARTWORK_SOURCE_REMOTE | ARTWORK_SOURCE_LOCAL;
 
+inline bool artwork_entity_picture_present(const std::string &value) {
+  return !value.empty() && value != "unknown" && value != "unavailable";
+}
+
 // Coalesces adjacent refresh triggers before a paired Home Assistant read.
 // A forced trigger must survive later ordinary triggers in the same window.
 struct RefreshTrigger {
@@ -261,6 +265,10 @@ struct SourceCandidates {
   SourceSelection select(const std::string &current_url,
                          bool refresh_needed) const {
     SourceSelection selection;
+    // entity_picture is the authoritative indication that the entity has
+    // artwork. entity_picture_local is only a transport-friendly version of
+    // that image and must never keep stale artwork alive by itself.
+    if (remote_url.empty()) return selection;
     selection.primary = local_url.empty() ? remote_url : local_url;
     if (!local_url.empty() && !remote_url.empty() &&
         remote_url != selection.primary) {

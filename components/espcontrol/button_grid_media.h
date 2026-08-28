@@ -615,6 +615,7 @@ struct MediaPlaybackState {
   bool playing = false;
   bool source_known = false;
   bool external_source = false;
+  bool source_observed_for_state = false;
   bool has_duration = false;
   bool has_position = false;
   float duration = 0.0f;
@@ -782,6 +783,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->playing = false;
   state->source_known = false;
   state->external_source = false;
+  state->source_observed_for_state = false;
   state->has_duration = false;
   state->has_position = false;
   state->duration = 0.0f;
@@ -820,6 +822,36 @@ inline void media_playback_invalidate_retained_content(MediaPlaybackState *state
   state->has_current_content_id = false;
   state->has_current_content_type = false;
   state->artwork_content_mask = 0;
+}
+
+inline void media_playback_invalidate_external_input_metadata(
+    MediaPlaybackState *state) {
+  if (!state) return;
+  bool primary_cover_source = false;
+  for (MediaNowPlayingCtx *ctx : state->now_playing) {
+    if (ctx && ctx->primary_entity == state->entity_id) {
+      primary_cover_source = true;
+      break;
+    }
+  }
+  // A secondary media entity can expose TV/HDMI as its own source while still
+  // supplying the programme metadata that should replace the Sonos details.
+  // Only the card's primary source owns the external-input fallback.
+  if (!primary_cover_source) return;
+  // Home Assistant omits attributes that do not apply to TV and line-in
+  // snapshots. Treat the source transition itself as authoritative so song
+  // metadata cannot survive just because there is no empty attribute callback.
+  state->title.clear();
+  state->artist.clear();
+  state->artwork_content_mask = 0;
+  state->duration = 0.0f;
+  state->has_duration = false;
+  state->last_duration_callback_ms = 0;
+  state->position_seconds = 0.0f;
+  state->position_updated_ms = 0;
+  state->position_updated_at_known = false;
+  state->position_updated_at_ms = 0;
+  state->has_position = false;
 }
 
 inline MediaPlaybackState *media_playback_find_state(const std::string &entity_id) {
@@ -892,6 +924,15 @@ inline void media_playback_set_artist(MediaPlaybackState *state,
   if (!media_playback_generation_valid(state, generation)) return;
   state->artist = media_playback_metadata_value(value, HA_STATE_TEXT_MAX_LEN);
   media_playback_apply_metadata_consumers(state);
+}
+
+inline void media_playback_clear_video_artist(MediaPlaybackState *state,
+                                               const std::string &content_type) {
+  if (state &&
+      espcontrol::media::media_item_kind({}, content_type) ==
+        espcontrol::media::MediaItemKind::VIDEO) {
+    state->artist.clear();
+  }
 }
 
 inline void media_playback_set_playing_hint(MediaPlaybackState *state, bool playing) {
@@ -999,6 +1040,23 @@ inline std::string media_playback_artwork_refresh_signature(
   return state->has_state ? std::string("state:") + state->state_text : std::string();
 }
 
+inline bool media_playback_clear_stale_external_source(
+    MediaPlaybackState *state, bool current_content_present) {
+  if (!state ||
+      !espcontrol::cover_art::media_external_source_stale_for_current_content(
+        state->external_source, state->source_observed_for_state,
+        current_content_present)) {
+    return false;
+  }
+  ESP_LOGI("media_card",
+           "Clearing retained external source for %s; current state omitted source",
+           state->entity_id.c_str());
+  state->source.clear();
+  state->source_known = false;
+  state->external_source = false;
+  return true;
+}
+
 inline bool media_playback_has_current_content(const MediaPlaybackState *state) {
   if (!state) return false;
   const bool has_content = !state->title.empty() || !state->artist.empty() ||
@@ -1056,7 +1114,8 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
     std::strncpy(ctx->artist, state->artist.c_str(), sizeof(ctx->artist) - 1);
     ctx->artist[sizeof(ctx->artist) - 1] = '\0';
     media_apply_now_playing_artist_text(ctx);
-    if (ctx->show_track_details || ctx->external_source_fallback) {
+    if (!state->artist.empty() &&
+        (ctx->show_track_details || ctx->external_source_fallback)) {
       lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
       lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -1493,6 +1552,7 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         state->state_text = state_text;
         state->available = !ha_state_unavailable_ref(state_ref);
         state->playing = state_text == "playing";
+        state->source_observed_for_state = false;
         if (invalidate_retained_content) {
           media_playback_invalidate_retained_content(state);
         }
@@ -1513,12 +1573,26 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
   state->metadata_subscribed = true;
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
+  // Subscribe to source before the metadata attributes. Home Assistant omits
+  // an attribute callback when source is absent, so later title/artwork
+  // callbacks can distinguish that from a source value belonging to this
+  // same entity-state snapshot.
+  media_playback_subscribe_source(state);
   ha_subscribe_attribute(
     entity_id, std::string("media_title"),
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef value) {
         if (!media_playback_generation_valid(state, generation)) return;
-        state->title = media_playback_metadata_value(value, HA_STATE_TEXT_MAX_LEN);
+        const std::string next_title = media_playback_metadata_value(
+          value, HA_STATE_TEXT_MAX_LEN);
+        media_playback_clear_stale_external_source(
+          state, !next_title.empty());
+        if (next_title != state->title) {
+          // Video entities commonly omit media_artist entirely. Clear the
+          // previous audio item's grouping as soon as the film title changes.
+          media_playback_clear_video_artist(state, state->current_content_type);
+        }
+        state->title = next_title;
         media_playback_apply_metadata_consumers(state);
       })
   );
@@ -1533,7 +1607,6 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
     true
   );
 
-  media_playback_subscribe_source(state);
 }
 
 inline void media_playback_subscribe_source(MediaPlaybackState *state) {
@@ -1550,6 +1623,11 @@ inline void media_playback_subscribe_source(MediaPlaybackState *state) {
     state->source = next;
     state->source_known = true;
     state->external_source = external;
+    state->source_observed_for_state = true;
+    if (changed && external) {
+      media_playback_invalidate_external_input_metadata(state);
+      media_playback_apply_progress_consumers(state);
+    }
     if (changed) media_playback_apply_metadata_consumers(state);
   };
   ha_subscribe_attribute(
@@ -1734,6 +1812,7 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
         state->current_content_type = media_playback_metadata_value(
           value, HA_SHORT_STATE_MAX_LEN);
         state->has_current_content_type = !state->current_content_type.empty();
+        media_playback_clear_video_artist(state, state->current_content_type);
         media_playback_apply_state_to_playlists(state);
         media_playback_apply_state_to_now_playing(state);
       })
@@ -1746,6 +1825,24 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
         if (!media_playback_generation_valid(state, generation)) return;
         const std::string next_content_id = media_playback_metadata_value(
           value, HA_STATE_TEXT_MAX_LEN);
+        const bool external_content =
+          espcontrol::media::media_content_id_external_input(next_content_id);
+        if (external_content) {
+          const bool changed = !state->external_source;
+          state->source_known = true;
+          state->external_source = true;
+          state->source_observed_for_state = true;
+          if (state->source.empty()) state->source = "TV";
+          if (changed) {
+            media_playback_invalidate_external_input_metadata(state);
+            media_playback_apply_progress_consumers(state);
+            ESP_LOGI("media_card", "Detected external input for %s from media_content_id",
+                     state->entity_id.c_str());
+          }
+        } else {
+          media_playback_clear_stale_external_source(
+            state, !next_content_id.empty());
+        }
         const uint64_t next_content_fingerprint = next_content_id.empty()
           ? 0
           : espcontrol::media::media_content_identity_fingerprint(
