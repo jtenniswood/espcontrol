@@ -1118,8 +1118,9 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
     std::strncpy(ctx->artist, state->artist.c_str(), sizeof(ctx->artist) - 1);
     ctx->artist[sizeof(ctx->artist) - 1] = '\0';
     media_apply_now_playing_artist_text(ctx);
-    if (!state->artist.empty() &&
-        (ctx->show_track_details || ctx->external_source_fallback)) {
+    if (espcontrol::cover_art::media_now_playing_artist_visible(
+          !state->artist.empty(), ctx->external_source,
+          ctx->show_track_details, ctx->external_source_fallback)) {
       lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
       lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);

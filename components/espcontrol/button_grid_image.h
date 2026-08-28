@@ -2177,7 +2177,9 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
   if (espcontrol::artwork::artwork_pending_refresh_needs_reschedule(
         ctx->media_artwork_trigger.pending,
         ctx->media_artwork_trigger_timer != nullptr)) {
-    const bool force_refresh = ctx->media_artwork_trigger.forced;
+    const bool force_refresh =
+      espcontrol::artwork::artwork_rescheduled_refresh_forced(
+        refresh_forced, ctx->media_artwork_trigger.forced);
     ctx->media_artwork_retry_mask = 0;
     ctx->next_picture_retry_ms = 0;
     image_card_schedule_media_artwork_refresh(ctx, force_refresh);

@@ -21,6 +21,7 @@ using espcontrol::artwork::artwork_empty_selection_preserves_retry;
 using espcontrol::artwork::artwork_entity_picture_present;
 using espcontrol::artwork::artwork_timeout_retry_mask;
 using espcontrol::artwork::artwork_pending_refresh_needs_reschedule;
+using espcontrol::artwork::artwork_rescheduled_refresh_forced;
 using espcontrol::artwork::artwork_timeout_retry_allowed;
 using espcontrol::artwork::artwork_timeout_exhaustion_preserves_current;
 using espcontrol::artwork::artwork_timeout_preserves_displayed_image;
@@ -32,6 +33,7 @@ using espcontrol::artwork::source_response_can_apply_immediately;
 using espcontrol::cover_art::RuntimeState;
 using espcontrol::cover_art::media_card_artwork_suppressed;
 using espcontrol::cover_art::media_external_source_stale_for_current_content;
+using espcontrol::cover_art::media_now_playing_artist_visible;
 
 int main() {
   RefreshTrigger trigger;
@@ -50,6 +52,14 @@ int main() {
   assert(!media_card_artwork_suppressed(false, true));
   assert(!media_card_artwork_suppressed(true, false));
   assert(media_card_artwork_suppressed(true, true));
+
+  // External inputs replace the artist with the localized "Source" caption,
+  // so the label remains visible even when no artist metadata is available.
+  assert(media_now_playing_artist_visible(false, true, false, true));
+  assert(media_now_playing_artist_visible(false, true, true, false));
+  assert(media_now_playing_artist_visible(true, false, true, false));
+  assert(!media_now_playing_artist_visible(false, false, true, false));
+  assert(!media_now_playing_artist_visible(true, false, false, false));
 
   // A source attribute omitted from the latest Home Assistant state must not
   // leave a retained TV route active once current music content arrives.
@@ -200,6 +210,10 @@ int main() {
   assert(artwork_pending_refresh_needs_reschedule(true, false));
   assert(!artwork_pending_refresh_needs_reschedule(true, true));
   assert(!artwork_pending_refresh_needs_reschedule(false, false));
+  assert(artwork_rescheduled_refresh_forced(true, false));
+  assert(artwork_rescheduled_refresh_forced(false, true));
+  assert(artwork_rescheduled_refresh_forced(true, true));
+  assert(!artwork_rescheduled_refresh_forced(false, false));
   assert(artwork_timeout_retry_allowed(0, 3));
   assert(artwork_timeout_retry_allowed(2, 3));
   assert(!artwork_timeout_retry_allowed(3, 3));

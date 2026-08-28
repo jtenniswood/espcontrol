@@ -191,6 +191,13 @@ constexpr bool artwork_pending_refresh_needs_reschedule(
   return refresh_pending && !timer_scheduled;
 }
 
+// If an ordinary replacement refresh has to be rescheduled after a forced
+// batch finishes, it must inherit that batch's explicit refresh requirement.
+constexpr bool artwork_rescheduled_refresh_forced(
+    bool completed_batch_forced, bool pending_trigger_forced) {
+  return completed_batch_forced || pending_trigger_forced;
+}
+
 constexpr bool artwork_timeout_retry_allowed(uint8_t attempts,
                                              uint8_t max_attempts) {
   return attempts < max_attempts;
