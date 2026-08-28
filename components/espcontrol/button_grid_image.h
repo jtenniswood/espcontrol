@@ -2243,6 +2243,13 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
   ctx->media_artwork_retry_mask = espcontrol::artwork::artwork_source_mark_received(
     ctx->media_artwork_retry_mask, local);
   std::string raw = string_ref_limited(picture, 4096);
+  if (!local &&
+      !espcontrol::artwork::artwork_entity_picture_present(raw)) {
+    ESP_LOGD("image_card", "Clearing artwork for %s because entity_picture is empty",
+             ctx->entity_id.c_str());
+    image_card_clear_media_artwork(ctx);
+    return;
+  }
   std::string url = image_card_join_url(image_card_base_url(ctx), raw);
   ESP_LOGD("image_card", "Artwork %s response for %s: value=%s base_url=%s",
            local ? "local" : "remote", ctx->entity_id.c_str(),

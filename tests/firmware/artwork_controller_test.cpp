@@ -18,6 +18,7 @@ using espcontrol::artwork::artwork_batch_waits_for_companion;
 using espcontrol::artwork::artwork_batch_needs_response_timer;
 using espcontrol::artwork::artwork_empty_selection_preserves_pending_refresh;
 using espcontrol::artwork::artwork_empty_selection_preserves_retry;
+using espcontrol::artwork::artwork_entity_picture_present;
 using espcontrol::artwork::artwork_timeout_retry_mask;
 using espcontrol::artwork::artwork_pending_refresh_needs_reschedule;
 using espcontrol::artwork::artwork_timeout_retry_allowed;
@@ -29,6 +30,7 @@ using espcontrol::artwork::artwork_selection_needs_download;
 using espcontrol::artwork::source_response_can_apply_immediately;
 using espcontrol::cover_art::RuntimeState;
 using espcontrol::cover_art::media_card_artwork_suppressed;
+using espcontrol::cover_art::media_external_source_stale_for_current_content;
 
 int main() {
   RefreshTrigger trigger;
@@ -48,8 +50,19 @@ int main() {
   assert(!media_card_artwork_suppressed(true, false));
   assert(media_card_artwork_suppressed(true, true));
 
+  // A source attribute omitted from the latest Home Assistant state must not
+  // leave a retained TV route active once current music content arrives.
+  assert(media_external_source_stale_for_current_content(true, false, true));
+  assert(!media_external_source_stale_for_current_content(true, true, true));
+  assert(!media_external_source_stale_for_current_content(true, false, false));
+  assert(!media_external_source_stale_for_current_content(false, false, true));
+
   SourceCandidates sources;
   assert(sources.empty());
+  assert(!artwork_entity_picture_present(""));
+  assert(!artwork_entity_picture_present("unknown"));
+  assert(!artwork_entity_picture_present("unavailable"));
+  assert(artwork_entity_picture_present("/api/media_player_proxy/player"));
 
   // Home Assistant normally publishes the remote value first. It is usable
   // immediately, then the matching local value takes priority when it arrives.
@@ -72,7 +85,7 @@ int main() {
   sources.finish_refresh();
 
   // Repeated events are idempotent and an empty local result retains the
-  // current remote fallback.
+  // current remote source.
   assert(!sources.update(false, "remote-b"));
   assert(sources.update(true, ""));
   assert(sources.select("remote-b", false).primary == "remote-b");
@@ -222,9 +235,12 @@ int main() {
   assert(selected.primary == "local-stable");
   assert(selected.fallback == "remote-stable");
 
-  // Empty responses are a real artwork update. Once both sources are empty,
-  // the caller must clear/cancel the currently displayed artwork.
+  // entity_picture is authoritative. An empty remote response immediately
+  // suppresses even a retained local proxy, so it cannot restore stale art.
   assert(sources.update(false, "", RemoteUpdatePolicy::PRESERVE_LOCAL));
+  selected = sources.select("local-stable", false);
+  assert(selected.primary.empty());
+  assert(sources.local_url == "local-stable");
   assert(sources.update(true, ""));
   selected = sources.select("local-stable", false);
   assert(selected.primary.empty());

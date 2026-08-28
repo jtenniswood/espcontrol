@@ -45,6 +45,13 @@ inline bool media_card_artwork_suppressed(bool source_known,
   return source_known && external_source;
 }
 
+inline bool media_external_source_stale_for_current_content(
+    bool external_source, bool source_observed_for_state,
+    bool current_content_present) {
+  return external_source && !source_observed_for_state &&
+         current_content_present;
+}
+
 inline bool media_entity_state_usable(const std::string &state) {
   const std::string normalized = normalized_media_source(state);
   return normalized == "playing" || normalized == "paused" ||
@@ -81,9 +88,9 @@ inline bool media_entity_content_available(bool state_known, bool available,
 
 inline bool use_secondary_media_entity(bool primary_external,
                                        bool secondary_configured,
-                                       bool secondary_available,
+                                       bool secondary_playback_active,
                                        bool secondary_has_content) {
-  return primary_external && secondary_configured && secondary_available &&
+  return primary_external && secondary_configured && secondary_playback_active &&
          secondary_has_content;
 }
 
