@@ -616,6 +616,7 @@ struct MediaPlaybackState {
   bool source_known = false;
   bool external_source = false;
   bool source_observed_for_state = false;
+  bool content_id_observed_for_state = false;
   bool has_duration = false;
   bool has_position = false;
   float duration = 0.0f;
@@ -784,6 +785,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->source_known = false;
   state->external_source = false;
   state->source_observed_for_state = false;
+  state->content_id_observed_for_state = false;
   state->has_duration = false;
   state->has_position = false;
   state->duration = 0.0f;
@@ -802,6 +804,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->volume_control_mode = espcontrol::media::VolumeControlMode::ABSOLUTE;
   state->has_current_content_id = false;
   state->has_current_content_type = false;
+  state->content_id_observed_for_state = false;
   state->artwork_content_mask = 0;
   std::vector<SliderCtx *>().swap(state->sliders);
   std::vector<MediaControlCtx *>().swap(state->controls);
@@ -821,6 +824,7 @@ inline void media_playback_invalidate_retained_content(MediaPlaybackState *state
   state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
   state->has_current_content_id = false;
   state->has_current_content_type = false;
+  state->content_id_observed_for_state = false;
   state->artwork_content_mask = 0;
 }
 
@@ -1553,6 +1557,7 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         state->available = !ha_state_unavailable_ref(state_ref);
         state->playing = state_text == "playing";
         state->source_observed_for_state = false;
+        state->content_id_observed_for_state = false;
         if (invalidate_retained_content) {
           media_playback_invalidate_retained_content(state);
         }
@@ -1620,7 +1625,7 @@ inline void media_playback_subscribe_source(MediaPlaybackState *state) {
     const bool source_external = media_external_source_input(next);
     const bool content_id_overrides_source =
       espcontrol::media::media_content_id_should_override_source_update(
-        state->current_content_id, next);
+        state->content_id_observed_for_state, state->current_content_id, next);
     const char *content_id_source = content_id_overrides_source
       ? espcontrol::media::media_content_id_external_source(
           state->current_content_id)
@@ -1835,6 +1840,7 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
         if (!media_playback_generation_valid(state, generation)) return;
         const std::string next_content_id = media_playback_metadata_value(
           value, HA_STATE_TEXT_MAX_LEN);
+        state->content_id_observed_for_state = !next_content_id.empty();
         const char *external_source =
           espcontrol::media::media_content_id_external_source(next_content_id);
         const bool external_content = external_source[0] != '\0';

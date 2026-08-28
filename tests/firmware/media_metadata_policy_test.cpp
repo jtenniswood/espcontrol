@@ -55,19 +55,22 @@ int main() {
   assert(media_content_id_should_replace_external_source(true, true, false));
   assert(!media_content_id_should_replace_external_source(true, true, true));
   assert(media_content_id_should_override_source_update(
-    "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "Spotify"));
+    true, "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "Spotify"));
   assert(media_content_id_should_override_source_update(
-    "x-rincon-stream:RINCON_804AF2CAFA8001400", "Spotify"));
+    true, "x-rincon-stream:RINCON_804AF2CAFA8001400", "Spotify"));
   assert(!media_content_id_should_override_source_update(
-    "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "TV"));
+    true, "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "TV"));
   assert(!media_content_id_should_override_source_update(
-    "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "HDMI 1"));
+    true, "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "HDMI 1"));
   assert(media_content_id_should_override_source_update(
-    "x-rincon-stream:RINCON_804AF2CAFA8001400", "TV"));
+    true, "x-rincon-stream:RINCON_804AF2CAFA8001400", "TV"));
   assert(!media_content_id_should_override_source_update(
-    "x-rincon-stream:RINCON_804AF2CAFA8001400", "Line in"));
+    true, "x-rincon-stream:RINCON_804AF2CAFA8001400", "Line in"));
   assert(!media_content_id_should_override_source_update(
+    true,
     "x-sonos-spotify:spotify%3atrack%3a0KIhLAkHfL9fvgn0yy1qsU", "TV"));
+  assert(!media_content_id_should_override_source_update(
+    false, "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif", "Spotify"));
   assert(media_content_id_should_clear_external_source(
     "x-sonos-spotify:spotify%3atrack%3a0KIhLAkHfL9fvgn0yy1qsU", true));
   assert(!media_content_id_should_clear_external_source("", true));

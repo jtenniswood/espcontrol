@@ -64,7 +64,9 @@ inline bool media_content_id_should_replace_external_source(
 }
 
 inline bool media_content_id_should_override_source_update(
-    const std::string &content_id, const std::string &source_update) {
+    bool content_id_observed_for_state, const std::string &content_id,
+    const std::string &source_update) {
+  if (!content_id_observed_for_state) return false;
   const char *content_label = media_content_id_external_source(content_id);
   return content_label[0] != '\0' &&
          std::string(content_label) != media_source_external_label(source_update);
