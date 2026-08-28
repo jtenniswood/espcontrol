@@ -2137,6 +2137,7 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
                                              bool response_window_expired = false) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
   const bool batch_complete = ctx->media_artwork_refresh.complete();
+  const bool response_received = ctx->media_artwork_refresh.received_mask != 0;
   const bool refresh_forced = ctx->media_artwork_refresh.forced;
   const bool prefer_refreshed_remote =
     ctx->media_artwork_sources.remote_changed_in_refresh();
@@ -2206,6 +2207,11 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
       return;
     }
     image_card_clear_media_artwork(ctx);
+    return;
+  }
+  if (espcontrol::artwork::artwork_timeout_preserves_displayed_image(
+        response_window_expired, response_received, ctx->image_ready)) {
+    image_card_log_diagnostics(ctx, "media-artwork-timeout-current-preserved");
     return;
   }
   if (!espcontrol::artwork::artwork_selection_needs_download(

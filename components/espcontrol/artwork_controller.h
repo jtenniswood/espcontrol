@@ -98,6 +98,7 @@ struct RefreshBatch {
     if (!this->active()) return false;
     this->expected_mask = 0;
     this->received_mask = 0;
+    this->forced = false;
     return true;
   }
 
@@ -217,6 +218,15 @@ constexpr bool artwork_refresh_forced(bool active_forced,
                                      bool pending_forced,
                                      bool requested_forced) {
   return active_forced || pending_forced || requested_forced;
+}
+
+// A timed-out batch that received no new source cannot justify replacing the
+// artwork already on screen. Retrying the retained attribute read is enough;
+// decoding the same cached URL again only creates avoidable allocator churn.
+constexpr bool artwork_timeout_preserves_displayed_image(bool response_window_expired,
+                                                          bool response_received,
+                                                          bool image_ready) {
+  return response_window_expired && !response_received && image_ready;
 }
 
 // A selected source only needs another download when it differs from the

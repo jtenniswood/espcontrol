@@ -23,6 +23,7 @@ using espcontrol::artwork::artwork_timeout_retry_mask;
 using espcontrol::artwork::artwork_pending_refresh_needs_reschedule;
 using espcontrol::artwork::artwork_timeout_retry_allowed;
 using espcontrol::artwork::artwork_timeout_exhaustion_preserves_current;
+using espcontrol::artwork::artwork_timeout_preserves_displayed_image;
 using espcontrol::artwork::artwork_metadata_refresh_clears_retry;
 using espcontrol::artwork::artwork_refresh_forced;
 using espcontrol::artwork::artwork_response_needs_processing;
@@ -215,6 +216,10 @@ int main() {
   assert(artwork_refresh_forced(false, true, false));
   assert(artwork_refresh_forced(false, false, true));
   assert(!artwork_refresh_forced(false, false, false));
+  assert(artwork_timeout_preserves_displayed_image(true, false, true));
+  assert(!artwork_timeout_preserves_displayed_image(false, false, true));
+  assert(!artwork_timeout_preserves_displayed_image(true, true, true));
+  assert(!artwork_timeout_preserves_displayed_image(true, false, false));
 
   // A state update with the same selected local artwork does not download it
   // again. Reconnect and attribute-read retry use the forced path instead.
@@ -274,6 +279,7 @@ int main() {
   assert(batch.complete());
   assert(batch.finish());
   assert(!batch.active());
+  assert(!batch.forced);
 
   const uint32_t second_read = batch.begin(ARTWORK_SOURCE_BOTH, true);
   assert(second_read != first_read && batch.forced);
@@ -283,6 +289,7 @@ int main() {
   assert(batch.receive(second_read, false));
   assert(batch.complete());
   assert(batch.finish());
+  assert(!batch.forced);
 
   // Each paired read captures its own generation. A delayed response from the
   // previous track cannot be accepted into the newer track's batch.
