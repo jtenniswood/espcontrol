@@ -6,6 +6,8 @@ int main() {
   using espcontrol::media::MediaItemKind;
   using espcontrol::media::media_content_identity_fingerprint;
   using espcontrol::media::media_content_id_external_input;
+  using espcontrol::media::media_content_id_external_source;
+  using espcontrol::media::media_content_id_should_replace_external_source;
   using espcontrol::media::media_item_kind;
   using espcontrol::media::media_metadata_clear_decision;
   using espcontrol::media::should_replace_media_metadata_identity;
@@ -40,6 +42,16 @@ int main() {
     "x-rincon-stream:RINCON_804AF2CAFA8001400"));
   assert(media_content_id_external_input(
     "x-rincon-stream:RINCON_804AF2CAFA8001400:0"));
+  assert(std::string(media_content_id_external_source(
+    "x-sonos-htastream:RINCON_48A6B8B84F0901400:spdif")) == "TV");
+  assert(std::string(media_content_id_external_source(
+    "x-rincon-stream:RINCON_804AF2CAFA8001400")) == "Line-in");
+  assert(std::string(media_content_id_external_source(
+    "x-sonos-spotify:spotify%3atrack%3a0KIhLAkHfL9fvgn0yy1qsU")).empty());
+  assert(media_content_id_should_replace_external_source(false, false, true));
+  assert(media_content_id_should_replace_external_source(true, false, true));
+  assert(media_content_id_should_replace_external_source(true, true, false));
+  assert(!media_content_id_should_replace_external_source(true, true, true));
   assert(!media_content_id_external_input(
     "x-sonos-spotify:spotify%3atrack%3a0KIhLAkHfL9fvgn0yy1qsU"));
   assert(!media_content_id_external_input(

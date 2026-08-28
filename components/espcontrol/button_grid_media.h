@@ -1825,14 +1825,19 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
         if (!media_playback_generation_valid(state, generation)) return;
         const std::string next_content_id = media_playback_metadata_value(
           value, HA_STATE_TEXT_MAX_LEN);
-        const bool external_content =
-          espcontrol::media::media_content_id_external_input(next_content_id);
+        const char *external_source =
+          espcontrol::media::media_content_id_external_source(next_content_id);
+        const bool external_content = external_source[0] != '\0';
         if (external_content) {
           const bool changed = !state->external_source;
+          const bool replace_retained_source =
+            espcontrol::media::media_content_id_should_replace_external_source(
+              state->source_observed_for_state, state->external_source,
+              !state->source.empty());
           state->source_known = true;
           state->external_source = true;
           state->source_observed_for_state = true;
-          if (state->source.empty()) state->source = "TV";
+          if (replace_retained_source) state->source = external_source;
           if (changed) {
             media_playback_invalidate_external_input_metadata(state);
             media_playback_apply_progress_consumers(state);

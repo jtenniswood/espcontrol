@@ -34,12 +34,26 @@ inline std::string normalize_media_kind_token(std::string value) {
   return value;
 }
 
-inline bool media_content_id_external_input(std::string content_id) {
+inline const char *media_content_id_external_source(std::string content_id) {
   content_id = normalize_media_kind_token(std::move(content_id));
-  return content_id.rfind("x_sonos_htastream:", 0) == 0 ||
-         content_id.rfind("x_rincon_htastream:", 0) == 0 ||
-         content_id.rfind("x_rincon_stream:", 0) == 0 ||
-         content_id.find(":spdif") != std::string::npos;
+  if (content_id.rfind("x_rincon_stream:", 0) == 0) return "Line-in";
+  if (content_id.rfind("x_sonos_htastream:", 0) == 0 ||
+      content_id.rfind("x_rincon_htastream:", 0) == 0 ||
+      content_id.find(":spdif") != std::string::npos) {
+    return "TV";
+  }
+  return "";
+}
+
+inline bool media_content_id_external_input(const std::string &content_id) {
+  return media_content_id_external_source(content_id)[0] != '\0';
+}
+
+inline bool media_content_id_should_replace_external_source(
+    bool source_observed_for_state, bool retained_source_external,
+    bool retained_source_present) {
+  return !source_observed_for_state || !retained_source_external ||
+         !retained_source_present;
 }
 
 inline MediaItemKind media_item_kind_from_token(std::string token) {
