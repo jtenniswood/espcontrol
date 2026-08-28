@@ -112,6 +112,16 @@ espcontrol:
         subpage_chunks: [subpage_14_config, subpage_14_config_ext, subpage_14_config_ext_2, subpage_14_config_ext_3, subpage_14_config_ext_4, subpage_14_config_ext_5, subpage_14_config_ext_6, subpage_14_config_ext_7]
       - config: button_15_config
         subpage_chunks: [subpage_15_config, subpage_15_config_ext, subpage_15_config_ext_2, subpage_15_config_ext_3, subpage_15_config_ext_4, subpage_15_config_ext_5, subpage_15_config_ext_6, subpage_15_config_ext_7]
+      - config: button_16_config
+        subpage_chunks: [subpage_16_config, subpage_16_config_ext, subpage_16_config_ext_2, subpage_16_config_ext_3, subpage_16_config_ext_4, subpage_16_config_ext_5, subpage_16_config_ext_6, subpage_16_config_ext_7]
+      - config: button_17_config
+        subpage_chunks: [subpage_17_config, subpage_17_config_ext, subpage_17_config_ext_2, subpage_17_config_ext_3, subpage_17_config_ext_4, subpage_17_config_ext_5, subpage_17_config_ext_6, subpage_17_config_ext_7]
+      - config: button_18_config
+        subpage_chunks: [subpage_18_config, subpage_18_config_ext, subpage_18_config_ext_2, subpage_18_config_ext_3, subpage_18_config_ext_4, subpage_18_config_ext_5, subpage_18_config_ext_6, subpage_18_config_ext_7]
+      - config: button_19_config
+        subpage_chunks: [subpage_19_config, subpage_19_config_ext, subpage_19_config_ext_2, subpage_19_config_ext_3, subpage_19_config_ext_4, subpage_19_config_ext_5, subpage_19_config_ext_6, subpage_19_config_ext_7]
+      - config: button_20_config
+        subpage_chunks: [subpage_20_config, subpage_20_config_ext, subpage_20_config_ext_2, subpage_20_config_ext_3, subpage_20_config_ext_4, subpage_20_config_ext_5, subpage_20_config_ext_6, subpage_20_config_ext_7]
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------

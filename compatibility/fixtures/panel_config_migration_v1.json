@@ -77,6 +77,87 @@
         "settings": { "button_order": "1" }
       },
       "expected_result": "mirror-failed"
+    },
+    "ten_inch_legacy_restore": {
+      "backup": {
+        "version": 2,
+        "format": "espcontrol.backup",
+        "device": "guition-esp32-p4-jc8012p4a1",
+        "source": { "device": "guition-esp32-p4-jc8012p4a1", "slots": 20 },
+        "exported_at": "2026-08-09T00:00:00.000Z",
+        "button_order": "1,7,6p,,,8,2,,,,3,4,,,,9,5",
+        "button_on_color": "FF8C00",
+        "buttons": [
+          { "entity": "light.office", "label": "Features", "icon": "Lightbulb Outline", "icon_on": "Lightbulb", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" },
+          { "entity": "climate.office", "label": "Aircon", "icon": "Thermostat", "icon_on": "Auto", "sensor": "", "unit": "", "type": "climate_control", "precision": "", "options": "" },
+          { "entity": "", "label": "Devices", "icon": "Power", "icon_on": "Auto", "sensor": "", "unit": "", "type": "subpage", "precision": "", "options": "" },
+          { "entity": "cover.office", "label": "Blind", "icon": "Blinds Open", "icon_on": "Blinds", "sensor": "", "unit": "", "type": "cover", "precision": "", "options": "" },
+          { "entity": "alarm_control_panel.home", "label": "", "icon": "Security", "icon_on": "Auto", "sensor": "", "unit": "", "type": "alarm", "precision": "", "options": "" },
+          { "entity": "media_player.office", "label": "Cover Art", "icon": "Auto", "icon_on": "Auto", "sensor": "cover_art", "unit": "", "type": "media", "precision": "", "options": "" },
+          { "entity": "switch.calls", "label": "Calls", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" },
+          { "entity": "climate.heating", "label": "Heating", "icon": "Thermostat", "icon_on": "Auto", "sensor": "", "unit": "", "type": "climate_control", "precision": "", "options": "" },
+          { "entity": "switch.charger", "label": "Battery", "icon": "Battery 30%", "icon_on": "Battery Charging", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" },
+          {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+        ],
+        "subpages": {},
+        "subpage_objects": {
+          "3": {
+            "order": ["B", "1", "2"],
+            "back_label": "Back",
+            "buttons": [
+              { "entity": "switch.printer", "label": "Printer", "icon": "Printer 3D", "icon_on": "Auto", "sensor": "sensor.printer_progress", "unit": "%", "type": "", "precision": "", "options": "confirm_off" },
+              { "entity": "switch.heater", "label": "Heater", "icon": "Radiator", "icon_on": "Auto", "sensor": "sensor.heater_humidity", "unit": "%", "type": "", "precision": "", "options": "" }
+            ]
+          }
+        },
+        "settings": {},
+        "screen": {}
+      },
+      "expected": {
+        "button_order": "1,7,6p,,,8,2,,,,3,4,,,,9,5",
+        "button_entities": ["light.office", "climate.office", "", "cover.office", "alarm_control_panel.home", "media_player.office", "switch.calls", "climate.heating", "switch.charger"],
+        "subpage_slot": "3",
+        "subpage_entities": ["switch.printer", "switch.heater"]
+      }
+    },
+    "ten_inch_native_restore": {
+      "backup": {
+        "version": 2,
+        "format": "espcontrol.backup",
+        "device": "guition-esp32-p4-jc8012p4a1",
+        "source": { "device": "guition-esp32-p4-jc8012p4a1", "slots": 20 },
+        "exported_at": "2026-08-22T00:00:00.000Z",
+        "button_order": "1,2,6p,,,7,8,,,,9,4,,,,5",
+        "button_on_color": "FF8C00",
+        "buttons": [
+          { "entity": "light.office", "label": "Features" },
+          { "entity": "climate.office", "label": "Aircon", "type": "climate_control" },
+          { "entity": "", "label": "Devices", "type": "subpage" },
+          { "entity": "cover.office", "label": "Blind", "type": "cover" },
+          { "entity": "alarm_control_panel.home", "type": "alarm" },
+          { "entity": "media_player.office", "label": "Cover Art", "sensor": "cover_art", "type": "media" },
+          { "entity": "switch.calls", "label": "Calls" },
+          { "entity": "climate.heating", "label": "Heating", "type": "climate_control" },
+          { "entity": "switch.charger", "label": "Battery" },
+          {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+        ],
+        "subpages": {},
+        "subpage_objects": {},
+        "settings": {},
+        "screen": {},
+        "native_config": {
+          "document_version": 1,
+          "device_profile": "guition-esp32-p4-jc8012p4a1",
+          "payload": "RVBDRgEAEADJAgAAFwAAAAEbAGd1aXRpb24tZXNwMzItcDQtamM4MDEycDRhMQIyAAFsaWdodC5vZmZpY2U7RmVhdHVyZXM7TGlnaHRidWxiIE91dGxpbmU7TGlnaHRidWxiAjgAAmNsaW1hdGUub2ZmaWNlO0FpcmNvbjtUaGVybW9zdGF0O0F1dG87OztjbGltYXRlX2NvbnRyb2wCHgADO0RldmljZXM7UG93ZXI7QXV0bzs7O3N1YnBhZ2UCLgAEY292ZXIub2ZmaWNlO0JsaW5kO0JsaW5kcyBPcGVuO0JsaW5kczs7O2NvdmVyAjAABWFsYXJtX2NvbnRyb2xfcGFuZWwuaG9tZTs7U2VjdXJpdHk7QXV0bzs7O2FsYXJtAjkABm1lZGlhX3BsYXllci5vZmZpY2U7Q292ZXIgQXJ0O0F1dG87QXV0bztjb3Zlcl9hcnQ7O21lZGlhAh0AB3N3aXRjaC5jYWxscztDYWxscztBdXRvO0F1dG8COgAIY2xpbWF0ZS5oZWF0aW5nO0hlYXRpbmc7VGhlcm1vc3RhdDtBdXRvOzs7Y2xpbWF0ZV9jb250cm9sAjQACXN3aXRjaC5jaGFyZ2VyO0JhdHRlcnk7QmF0dGVyeSAzMCU7QmF0dGVyeSBDaGFyZ2luZwIMAAo7O0F1dG87QXV0bwIMAAs7O0F1dG87QXV0bwIMAAw7O0F1dG87QXV0bwIMAA07O0F1dG87QXV0bwIMAA47O0F1dG87QXV0bwIMAA87O0F1dG87QXV0bwIMABA7O0F1dG87QXV0bwIMABE7O0F1dG87QXV0bwIMABI7O0F1dG87QXV0bwIMABM7O0F1dG87QXV0bwIMABQ7O0F1dG87QXV0bwQWAA9idXR0b25fb25fY29sb3JGRjhDMDAEJQAMYnV0dG9uX29yZGVyMSwyLDZwLCwsNyw4LCwsLDksNCwsLCw1"
+        }
+      },
+      "expected": {
+        "record_count": 20,
+        "slot_16": ";;Auto;Auto",
+        "slot_20": ";;Auto;Auto",
+        "button_order": "1,2,6p,,,7,8,,,,9,4,,,,5",
+        "subpage_slots": []
+      }
     }
   }
 }

@@ -126,6 +126,12 @@ target_compile_options(panel_config_http_etag_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(panel_config_http_etag_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_http_etag_test COMMAND panel_config_http_etag_test)
 
+add_executable(panel_config_write_status_test panel_config_write_status_test.cpp)
+target_compile_features(panel_config_write_status_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_write_status_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_write_status_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_write_status_test COMMAND panel_config_write_status_test)
+
 add_executable(panel_config_storage_backend_test
   panel_config_storage_backend_test.cpp
   ../../components/espcontrol/configuration_store.cpp
