@@ -301,9 +301,11 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
 
 inline bool ha_read_retained_attribute(const std::string &entity_id,
                                        const std::string &attribute,
-                                       HomeAssistantStateCallback callback) {
-  void *owner = ha_callback_owner();
-  if (owner != nullptr) {
+                                       HomeAssistantStateCallback callback,
+                                       void *request_owner = nullptr) {
+  void *ambient_owner = ha_callback_owner();
+  void *owner = request_owner != nullptr ? request_owner : ambient_owner;
+  if (ambient_owner != nullptr && request_owner == nullptr) {
     callback = [owner, callback = std::move(callback)](esphome::StringRef state) {
       if (!lv_obj_is_valid(static_cast<lv_obj_t *>(owner))) return;
       if (callback) callback(state);

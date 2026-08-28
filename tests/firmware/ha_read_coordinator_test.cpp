@@ -165,6 +165,8 @@ void reentrant_reads_on_one_channel_share_deferred_work() {
   coordinator.transport().publish(1, "inner");
   require(first == 1 && second == 1,
           "grouped same-channel reads did not fan out once");
+  require(coordinator.transient_callback_capacity() == 0,
+          "completed reentrant reads retained callback storage");
 }
 
 void resolved_deferred_channels_survive_channel_vector_growth() {
@@ -514,6 +516,8 @@ void a_full_pending_queue_rejects_new_work_without_evicting_accepted_callbacks()
   coordinator.transport().publish(0, "artwork");
   require(accepted_calls == 64 && rejected_calls == 0,
           "full queue silently evicted accepted work or delivered rejected work");
+  require(coordinator.transient_callback_capacity() == 0,
+          "delivered retained reads kept their high-water callback allocation");
 }
 
 void generation_change_discards_cached_and_pending_channel_reads() {
@@ -605,6 +609,9 @@ void stalled_reusable_channel_coalesces_reads_per_owner() {
   require(coordinator.read_retained("media_player.room", "entity_picture_local",
                           [&](std::string) { current_calls++; }, true, 10, 5, &owner),
           "replacement local artwork read should wait");
+  require(coordinator.pending_read_count() == 1 &&
+              coordinator.transient_callback_capacity() == 1,
+          "stalled artwork retries retained superseded callback storage");
   coordinator.transport().publish(0, "new");
   require(stale_calls == 0 && current_calls == 1,
           "stalled artwork retries retained superseded callbacks for one owner");
@@ -670,6 +677,9 @@ void released_owner_drops_pending_reads_even_if_its_address_is_reused() {
               "sensor.old", "", [&](std::string) { old_calls++; }, false, 10, 5, &owner),
           "old owned read should wait");
   coordinator.release_owner(&owner);
+  require(coordinator.pending_read_count() == 0 &&
+              coordinator.transient_callback_capacity() == 0,
+          "released owner retained pending callback storage");
   require(coordinator.subscribe("sensor.replacement", "", [](std::string) {}, 1u, &owner, true),
           "replacement retained subscription should register");
   require(coordinator.read_retained(

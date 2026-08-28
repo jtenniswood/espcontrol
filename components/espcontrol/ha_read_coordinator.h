@@ -43,6 +43,12 @@ class HaReadCoordinator {
     for (const auto &request : deferred_) count += request.callbacks.size();
     return count;
   }
+  size_t transient_callback_capacity() const {
+    size_t capacity = deferred_.capacity();
+    for (const auto &request : deferred_) capacity += request.callbacks.capacity();
+    for (const auto &channel : subscription_channels_) capacity += channel.pending_reads.capacity();
+    return capacity;
+  }
 
   bool read_retained(const std::string &entity_id,
                      const std::string &attribute,
@@ -109,12 +115,11 @@ class HaReadCoordinator {
       dispatch_many(request.channel, std::move(request.callbacks));
       processed++;
     }
+    release_empty_deferred_storage();
   }
 
   void reset_deferred() {
-    // Keep the small high-water allocation so reentrant refreshes do not
-    // repeatedly release and regrow the same queue storage.
-    deferred_.clear();
+    std::vector<DeferredRequest>().swap(deferred_);
   }
 
   void invalidate_retained_state() {
@@ -122,9 +127,9 @@ class HaReadCoordinator {
     // particular, artwork URLs and access tokens may change while the panel is
     // offline, so reads after a reconnect must wait for a fresh announcement.
     for (auto &channel : subscription_channels_) {
-      channel.last_state.clear();
+      release_string_storage(channel.last_state);
       channel.has_last_state = false;
-      channel.cached_state.clear();
+      release_string_storage(channel.cached_state);
       channel.has_cached_state = false;
     }
   }
@@ -147,8 +152,8 @@ class HaReadCoordinator {
     if (generation_ == 0) generation_ = 1;
     reset_deferred();
     for (auto &channel : subscription_channels_) {
-      channel.pending_reads.clear();
-      channel.cached_state.clear();
+      release_callback_storage(channel.pending_reads);
+      release_string_storage(channel.cached_state);
       channel.has_cached_state = false;
     }
     reset_subscriptions(default_scope);
@@ -162,6 +167,7 @@ class HaReadCoordinator {
           std::remove_if(channel.pending_reads.begin(), channel.pending_reads.end(),
                          [owner](const CallbackRef &ref) { return ref.owner == owner; }),
           channel.pending_reads.end());
+      if (channel.pending_reads.empty()) release_callback_storage(channel.pending_reads);
     }
     if (callback_depth_ != 0) {
       // Grid rebuilds can release an old card and attach its replacement to
@@ -301,7 +307,7 @@ class HaReadCoordinator {
       }
     }
     if (callbacks.empty()) {
-      subscription.last_state.clear();
+      release_string_storage(subscription.last_state);
       subscription.has_last_state = false;
     } else {
       retain_replay_state(channel, state);
@@ -310,7 +316,7 @@ class HaReadCoordinator {
       subscription.cached_state.assign(state.c_str(), state.size());
       subscription.has_cached_state = true;
     } else {
-      subscription.cached_state.clear();
+      release_string_storage(subscription.cached_state);
       subscription.has_cached_state = false;
     }
     for (const auto &callback_ref : pending_reads) {
@@ -321,14 +327,6 @@ class HaReadCoordinator {
       // being dispatched. Skip callbacks marked by that reset, but keep the
       // currently executing std::function alive until it returns.
       if (subscription_callback_active(callback)) invoke(callback, state);
-    }
-    // Reentrant reads are deferred above, so this channel should still have an
-    // empty pending list. Reacquire it by index because a callback may have
-    // appended channels and reallocated subscription_channels_.
-    pending_reads.clear();
-    if (channel < subscription_channels_.size() &&
-        subscription_channels_[channel].pending_reads.empty()) {
-      pending_reads.swap(subscription_channels_[channel].pending_reads);
     }
   }
 
@@ -403,7 +401,7 @@ class HaReadCoordinator {
       if (retained >= MAX_REPLAY_STATES) {
         for (size_t candidate = 0; candidate < subscription_channels_.size(); candidate++) {
           if (candidate == channel || !subscription_channels_[candidate].has_last_state) continue;
-          subscription_channels_[candidate].last_state.clear();
+          release_string_storage(subscription_channels_[candidate].last_state);
           subscription_channels_[candidate].has_last_state = false;
           break;
         }
@@ -417,10 +415,23 @@ class HaReadCoordinator {
     for (size_t channel = 0; channel < subscription_channels_.size(); channel++) {
       if (channel_reuses_reads(channel)) continue;
       SubscriptionChannel &subscription = subscription_channels_[channel];
-      subscription.cached_state.clear();
-      subscription.pending_reads.clear();
+      release_string_storage(subscription.cached_state);
+      release_callback_storage(subscription.pending_reads);
       subscription.has_cached_state = false;
     }
+  }
+
+  static void release_callback_storage(std::vector<CallbackRef> &callbacks) {
+    std::vector<CallbackRef>().swap(callbacks);
+  }
+
+  static void release_string_storage(std::string &value) {
+    std::string().swap(value);
+  }
+
+  void release_empty_deferred_storage() {
+    if (!deferred_.empty() || deferred_.capacity() == 0) return;
+    std::vector<DeferredRequest>().swap(deferred_);
   }
 
   void release_subscriptions(uint32_t scope) {
