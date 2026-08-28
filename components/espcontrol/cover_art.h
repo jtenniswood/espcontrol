@@ -45,6 +45,14 @@ inline bool media_card_artwork_suppressed(bool source_known,
   return source_known && external_source;
 }
 
+inline bool media_now_playing_artist_visible(bool artist_present,
+                                             bool external_source,
+                                             bool show_track_details,
+                                             bool external_source_fallback) {
+  return (show_track_details || external_source_fallback) &&
+         (artist_present || external_source);
+}
+
 inline bool media_external_source_stale_for_current_content(
     bool external_source, bool source_observed_for_state,
     bool current_content_present) {

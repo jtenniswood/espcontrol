@@ -98,6 +98,7 @@ struct RefreshBatch {
     if (!this->active()) return false;
     this->expected_mask = 0;
     this->received_mask = 0;
+    this->forced = false;
     return true;
   }
 
@@ -190,6 +191,13 @@ constexpr bool artwork_pending_refresh_needs_reschedule(
   return refresh_pending && !timer_scheduled;
 }
 
+// If an ordinary replacement refresh has to be rescheduled after a forced
+// batch finishes, it must inherit that batch's explicit refresh requirement.
+constexpr bool artwork_rescheduled_refresh_forced(
+    bool completed_batch_forced, bool pending_trigger_forced) {
+  return completed_batch_forced || pending_trigger_forced;
+}
+
 constexpr bool artwork_timeout_retry_allowed(uint8_t attempts,
                                              uint8_t max_attempts) {
   return attempts < max_attempts;
@@ -217,6 +225,15 @@ constexpr bool artwork_refresh_forced(bool active_forced,
                                      bool pending_forced,
                                      bool requested_forced) {
   return active_forced || pending_forced || requested_forced;
+}
+
+// A timed-out batch that received no new source cannot justify replacing the
+// artwork already on screen. Retrying the retained attribute read is enough;
+// decoding the same cached URL again only creates avoidable allocator churn.
+constexpr bool artwork_timeout_preserves_displayed_image(bool response_window_expired,
+                                                          bool response_received,
+                                                          bool image_ready) {
+  return response_window_expired && !response_received && image_ready;
 }
 
 // A selected source only needs another download when it differs from the
