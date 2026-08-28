@@ -49,6 +49,13 @@ inline bool media_content_id_external_input(const std::string &content_id) {
   return media_content_id_external_source(content_id)[0] != '\0';
 }
 
+inline const char *media_source_external_label(std::string source) {
+  source = normalize_media_kind_token(std::move(source));
+  if (source == "line_in") return "Line-in";
+  if (source == "tv" || source.rfind("hdmi", 0) == 0) return "TV";
+  return "";
+}
+
 inline bool media_content_id_should_replace_external_source(
     bool source_observed_for_state, bool retained_source_external,
     bool retained_source_present) {
@@ -57,8 +64,10 @@ inline bool media_content_id_should_replace_external_source(
 }
 
 inline bool media_content_id_should_override_source_update(
-    const std::string &content_id, bool source_update_external) {
-  return !source_update_external && media_content_id_external_input(content_id);
+    const std::string &content_id, const std::string &source_update) {
+  const char *content_label = media_content_id_external_source(content_id);
+  return content_label[0] != '\0' &&
+         std::string(content_label) != media_source_external_label(source_update);
 }
 
 inline bool media_content_id_should_clear_external_source(

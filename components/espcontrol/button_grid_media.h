@@ -1620,7 +1620,7 @@ inline void media_playback_subscribe_source(MediaPlaybackState *state) {
     const bool source_external = media_external_source_input(next);
     const bool content_id_overrides_source =
       espcontrol::media::media_content_id_should_override_source_update(
-        state->current_content_id, source_external);
+        state->current_content_id, next);
     const char *content_id_source = content_id_overrides_source
       ? espcontrol::media::media_content_id_external_source(
           state->current_content_id)
