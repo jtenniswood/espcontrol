@@ -835,6 +835,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   if (cfg.image_card_modal_image) cfg.image_card_modal_image->cancel_update();
   image_card_bind_modal_callbacks(cfg.image_card_modal_image);
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ha_release_callbacks_for_owner(&contexts[i]);
     esphome::artwork_image::ArtworkImage *next_image =
         (i < count && cfg.image_card_images) ? cfg.image_card_images[i] : nullptr;
     if (contexts[i].image) contexts[i].image->cancel_update();
@@ -2333,7 +2334,8 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
         [ctx, entity_id, generation, request_generation](esphome::StringRef picture) {
           if (!image_card_context_current(ctx, entity_id, generation)) return;
           image_card_handle_media_artwork_picture(ctx, picture, false, request_generation);
-        })
+        }),
+      ctx
     );
   }
   bool local_queued = true;
@@ -2345,7 +2347,8 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx, bool force_refre
         [ctx, entity_id, generation, request_generation](esphome::StringRef picture) {
           if (!image_card_context_current(ctx, entity_id, generation)) return;
           image_card_handle_media_artwork_picture(ctx, picture, true, request_generation);
-        })
+        }),
+      ctx
     );
   }
   ctx->media_artwork_retry_mask = espcontrol::artwork::artwork_source_failed_mask(
