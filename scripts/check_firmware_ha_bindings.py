@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE_DIR = ROOT / "components" / "espcontrol"
 CORE_INFRA_PATH = ROOT / "common" / "device" / "core_infra.yaml"
 SCREEN_LOADING_PATH = ROOT / "common" / "device" / "screen_loading.yaml"
+SCREEN_WIFI_SETUP_PATH = ROOT / "common" / "device" / "screen_wifi_setup.yaml"
 API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 C6_FIRMWARE_UPDATE_PATH = ROOT / "common" / "device" / "esp32_c6_firmware_update.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
@@ -3489,7 +3490,10 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
 
 
 def firmware_wifi_setup_display_text_errors(
-    loading_path: Path, connectivity_path: Path, root: Path
+    loading_path: Path,
+    wifi_setup_path: Path,
+    connectivity_path: Path,
+    root: Path,
 ) -> list[str]:
     errors: list[str] = []
     expected_calls = (
@@ -3499,6 +3503,10 @@ def firmware_wifi_setup_display_text_errors(
         ),
         (
             connectivity_path,
+            "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
+        ),
+        (
+            wifi_setup_path,
             "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
         ),
     )
@@ -3688,7 +3696,10 @@ def run_scan() -> int:
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(
         firmware_wifi_setup_display_text_errors(
-            SCREEN_LOADING_PATH, CONNECTIVITY_PATHS[0], ROOT
+            SCREEN_LOADING_PATH,
+            SCREEN_WIFI_SETUP_PATH,
+            CONNECTIVITY_PATHS[0],
+            ROOT,
         )
     )
     errors.extend(firmware_ha_connection_screen_errors(CORE_INFRA_PATH, ROOT))
@@ -4633,19 +4644,25 @@ def expect_connectivity_api_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def expect_wifi_setup_display_text_errors(
-    name: str, loading_text: str, connectivity_text: str, expected: tuple[str, ...]
+    name: str,
+    loading_text: str,
+    wifi_setup_text: str,
+    connectivity_text: str,
+    expected: tuple[str, ...],
 ) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         loading_path = root / "common" / "device" / "screen_loading.yaml"
+        wifi_setup_path = root / "common" / "device" / "screen_wifi_setup.yaml"
         connectivity_path = root / "common" / "addon" / "connectivity.yaml"
         loading_path.parent.mkdir(parents=True)
         connectivity_path.parent.mkdir(parents=True)
         loading_path.write_text(loading_text, encoding="utf-8")
+        wifi_setup_path.write_text(wifi_setup_text, encoding="utf-8")
         connectivity_path.write_text(connectivity_text, encoding="utf-8")
 
         errors = firmware_wifi_setup_display_text_errors(
-            loading_path, connectivity_path, root
+            loading_path, wifi_setup_path, connectivity_path, root
         )
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
@@ -7844,14 +7861,17 @@ def run_self_test() -> int:
         "raw WiFi setup display names",
         "lv_label_set_text(id(loading_status_label), msg.c_str());\n",
         "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
+        "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
         (
             "common/device/screen_loading.yaml: normalize user-controlled WiFi setup names",
+            "common/device/screen_wifi_setup.yaml: normalize user-controlled WiFi setup names",
             "common/addon/connectivity.yaml: normalize user-controlled WiFi setup names",
         ),
     )
     expect_wifi_setup_display_text_errors(
         "normalized WiFi setup display names",
         "lv_label_set_display_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
         "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
         (),
     )
