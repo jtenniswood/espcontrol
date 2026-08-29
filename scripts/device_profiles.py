@@ -977,6 +977,9 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
             "blue": correction.get("bluePercent", 100),
         }
     slot["image_slot_capacity"] = profile["capabilities"]["imageSlots"]
+    slot["media_cover_art_supported"] = "media_cover_art" not in set(
+        profile["web"].get("disabledCardTypes", [])
+    )
     if display.get("imageCardDiagnostics"):
         slot["image_card_diagnostics"] = True
     if display.get("refreshRebuildsSubpages"):

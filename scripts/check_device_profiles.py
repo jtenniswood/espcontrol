@@ -9,7 +9,13 @@ from pathlib import Path
 
 import device_matrix
 import generate_device_slots
-from device_profiles import ROOT, load_device_profiles, public_device_capabilities, web_config
+from device_profiles import (
+    ROOT,
+    load_device_profiles,
+    public_device_capabilities,
+    public_device_capability,
+    web_config,
+)
 import check_public_firmware
 
 
@@ -104,12 +110,17 @@ def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str,
         )
 
 
-def test_constrained_s3_supports_one_cover_art_card(profiles: dict[str, dict]) -> None:
-    profile = profiles["guition-esp32-s3-4848s040"]
+def test_s3_exposes_one_camera_without_media_cover_art(profiles: dict[str, dict]) -> None:
+    slug = "guition-esp32-s3-4848s040"
+    profile = profiles[slug]
     disabled = set(web_config(profile).get("disabledCardTypes", []))
-    assert image_slot_capacity(profile) == 1, "S3 must provide one low-memory artwork slot"
-    assert "image" in disabled, "S3 must keep general Image cards unavailable"
-    assert "media_cover_art" not in disabled, "S3 must expose Media Cover Art cards"
+    assert image_slot_capacity(profile) == 1, f"{slug}: S3 must expose exactly one image slot"
+    assert "image" not in disabled, f"{slug}: S3 Camera Cards must be available"
+    assert "media_cover_art" in disabled, f"{slug}: S3 Media Cover Art must remain unavailable"
+    capability = public_device_capability(profile)
+    assert capability["imageCardTypes"] == ["image"], (
+        f"{slug}: public capability must expose only Camera Cards"
+    )
 
 
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
@@ -297,6 +308,17 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert "image_cards:" not in package, f"{slug}: zero image-card profile should not include image cards"
             assert "cfg.image_card_image_count" not in sensors, (
                 f"{slug}: zero image-card profile should not wire image-card downloaders"
+            )
+        media_cover_art_supported = "media_cover_art" not in set(
+            profile["web"].get("disabledCardTypes", [])
+        )
+        if media_cover_art_supported:
+            assert "cfg.media_cover_art_supported = false;" not in sensors, (
+                f"{slug}: supported Media Cover Art must retain the firmware default"
+            )
+        else:
+            assert "cfg.media_cover_art_supported = false;" in sensors, (
+                f"{slug}: firmware must block unsupported Media Cover Art"
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
@@ -860,7 +882,7 @@ def main() -> int:
     test_web_server_request_limits()
     test_s3_low_heap_policy()
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
-    test_constrained_s3_supports_one_cover_art_card(profiles)
+    test_s3_exposes_one_camera_without_media_cover_art(profiles)
     test_generated_yaml(profiles)
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()

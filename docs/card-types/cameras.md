@@ -10,8 +10,8 @@ A Camera card shows a still image from a Home Assistant `camera` or `image` enti
 
 Camera cards are display cards. They do not stream live video, pan the camera, or send camera control actions. Tapping the card opens a larger view of the latest loaded image.
 
-::: info P4 screens only
-Camera cards are not supported on the ESP32-S3 screen because it has an older, slower processor and less available memory than the ESP32-P4 screens.
+::: info Display limits
+ESP32-P4 screens support up to six Camera or Media Cover Art cards. The 4-inch ESP32-S3 supports one Camera Card and keeps Media Cover Art unavailable.
 :::
 
 ## Setting Up a Camera Card
@@ -43,6 +43,8 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 Camera images use more memory than normal control cards, so EspControl limits how many can be active at once.
 
 ESP32-P4 screens provide **6 shared image slots**. Each Camera card or Media card set to **Cover Art** uses one slot, across the main page and all subpages combined. For example, 4 Camera cards and 2 Media Cover Art cards use all 6 slots.
+
+The 4-inch ESP32-S3 provides **1 Camera Card slot** across the main page and all subpages. Its expanded view requests an optimised image up to 320 pixels wide or tall; it remains a still snapshot and does not stream live video.
 
 If you see a **Too many** message or a warning while saving, reduce the number of Camera cards across the main page and subpages.
 
