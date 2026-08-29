@@ -14,7 +14,9 @@ inline lv_coord_t wifi_qr_driver_tile_side(lv_obj_t *button) {
   lv_obj_update_layout(button);
   const lv_coord_t shortest =
     std::min<lv_coord_t>(lv_obj_get_width(button), lv_obj_get_height(button));
-  const lv_coord_t inset = std::max<lv_coord_t>(2, shortest / 64);
+  // Keep a narrow white strip around the device QR, especially above and
+  // below it, without giving up the enlarged card-filling layout.
+  const lv_coord_t inset = std::max<lv_coord_t>(4, shortest / 48);
   const lv_coord_t available = shortest - inset * 2;
   return available >= 48 ? available : 0;
 }
