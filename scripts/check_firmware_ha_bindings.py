@@ -13,6 +13,7 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE_DIR = ROOT / "components" / "espcontrol"
 CORE_INFRA_PATH = ROOT / "common" / "device" / "core_infra.yaml"
+SCREEN_LOADING_PATH = ROOT / "common" / "device" / "screen_loading.yaml"
 API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 C6_FIRMWARE_UPDATE_PATH = ROOT / "common" / "device" / "esp32_c6_firmware_update.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
@@ -3487,6 +3488,30 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
     return errors
 
 
+def firmware_wifi_setup_display_text_errors(
+    loading_path: Path, connectivity_path: Path, root: Path
+) -> list[str]:
+    errors: list[str] = []
+    expected_calls = (
+        (
+            loading_path,
+            "lv_label_set_display_text(id(loading_status_label), msg.c_str());",
+        ),
+        (
+            connectivity_path,
+            "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
+        ),
+    )
+    for path, expected_call in expected_calls:
+        if not path.exists():
+            continue
+        if expected_call not in path.read_text(encoding="utf-8"):
+            errors.append(
+                f"{path.relative_to(root)}: normalize user-controlled WiFi setup names before display"
+            )
+    return errors
+
+
 def firmware_ha_connection_screen_errors(core_infra_path: Path, root: Path) -> list[str]:
     if not core_infra_path.exists():
         return []
@@ -3661,6 +3686,11 @@ def run_scan() -> int:
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(
+        firmware_wifi_setup_display_text_errors(
+            SCREEN_LOADING_PATH, CONNECTIVITY_PATHS[0], ROOT
+        )
+    )
     errors.extend(firmware_ha_connection_screen_errors(CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_c6_update_status_errors(C6_FIRMWARE_UPDATE_PATH, ROOT))
     if errors:
@@ -4596,6 +4626,27 @@ def expect_connectivity_api_errors(name: str, text: str, expected: tuple[str, ..
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_connectivity_api_errors((path,), root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_wifi_setup_display_text_errors(
+    name: str, loading_text: str, connectivity_text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        loading_path = root / "common" / "device" / "screen_loading.yaml"
+        connectivity_path = root / "common" / "addon" / "connectivity.yaml"
+        loading_path.parent.mkdir(parents=True)
+        connectivity_path.parent.mkdir(parents=True)
+        loading_path.write_text(loading_text, encoding="utf-8")
+        connectivity_path.write_text(connectivity_text, encoding="utf-8")
+
+        errors = firmware_wifi_setup_display_text_errors(
+            loading_path, connectivity_path, root
+        )
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -7788,6 +7839,21 @@ def run_self_test() -> int:
         "  on_client_connected:\n"
         "    - script.execute: navigate_after_api\n",
         ("wait for Home Assistant state subscription", "only navigate after a Home Assistant state connection"),
+    )
+    expect_wifi_setup_display_text_errors(
+        "raw WiFi setup display names",
+        "lv_label_set_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
+        (
+            "common/device/screen_loading.yaml: normalize user-controlled WiFi setup names",
+            "common/addon/connectivity.yaml: normalize user-controlled WiFi setup names",
+        ),
+    )
+    expect_wifi_setup_display_text_errors(
+        "normalized WiFi setup display names",
+        "lv_label_set_display_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
+        (),
     )
     expect_connectivity_api_errors(
         "home assistant state connected navigation",
