@@ -2740,7 +2740,7 @@ def firmware_clock_bar_navigation_errors(
         active_mode = body.find("DisplayMode::ACTIVE", active_guard)
         page_show = max(
             body.find("lvgl.page.show: main_page"),
-            body.find("button_grid_load_screen(id(main_page));"),
+            body.find("button_grid_load_screen(id(main_page)->obj);"),
         )
         if (
             active_guard == -1
@@ -7298,7 +7298,7 @@ def run_self_test() -> int:
         "              return id(espcontrol_app).display().target_mode_is(\n"
         "                  espcontrol::DisplayMode::ACTIVE);\n"
         "          then:\n"
-        "            - lambda: 'button_grid_load_screen(id(main_page));'\n",
+        "            - lambda: 'button_grid_load_screen(id(main_page)->obj);'\n",
         (),
     )
     expect_clock_screensaver_overlay_errors(

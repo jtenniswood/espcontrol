@@ -406,6 +406,7 @@ export function createCardImageBackupAssetProvider(
 ): BackupAssetProvider<CardImageReferencePlan> {
   let activeRestoreSession: string | null = null;
   let pendingCreatedIds: string[] = [];
+  let pendingExistingRenames: Array<{ id: string; name: string }> = [];
   const createArchiveEntries = async (): Promise<BackupArchiveEntry[]> => {
     const manifest = { format: "espcontrol.card-images", version: 1, images: [] as CardImageManifestItem[] };
     const entries: BackupArchiveEntry[] = [];
@@ -467,6 +468,7 @@ export function createCardImageBackupAssetProvider(
 
     const references: Record<string, string> = {};
     const createdIds: string[] = [];
+    const renamedExisting: Array<{ id: string; name: string }> = [];
     try {
       const existing = await cardImages.list(true);
       const info = cardImages.info();
@@ -478,8 +480,10 @@ export function createCardImageBackupAssetProvider(
       for (const image of archived) {
         if (existingIds.has(image.item.id)) {
           references[image.item.id] = image.item.id;
-          if (existingById.get(image.item.id)?.name !== image.item.name) {
+          const existingImage = existingById.get(image.item.id);
+          if (existingImage && existingImage.name !== image.item.name) {
             await cardImages.rename(image.item.id, image.item.name);
+            renamedExisting.push({ id: image.item.id, name: existingImage.name });
           }
           continue;
         }
@@ -495,6 +499,7 @@ export function createCardImageBackupAssetProvider(
         }
       }
       pendingCreatedIds = createdIds.slice();
+      pendingExistingRenames = renamedExisting.slice();
       cardImages.invalidate();
       return references;
     } catch (error) {
@@ -513,8 +518,17 @@ export function createCardImageBackupAssetProvider(
           }
         }
       }
+      for (let index = renamedExisting.length - 1; index >= 0; index -= 1) {
+        try {
+          const rename = renamedExisting[index];
+          if (rename) await cardImages.rename(rename.id, rename.name);
+        } catch {
+          // Best-effort rollback keeps the original restore failure visible.
+        }
+      }
       activeRestoreSession = null;
       pendingCreatedIds = [];
+      pendingExistingRenames = [];
       cardImages.invalidate();
       throw error;
     }
@@ -539,16 +553,34 @@ export function createCardImageBackupAssetProvider(
     if (activeRestoreSession) await cardImages.commitRestore(activeRestoreSession);
     activeRestoreSession = null;
     pendingCreatedIds = [];
+    pendingExistingRenames = [];
   };
 
   const rollbackRestore = async (): Promise<void> => {
-    if (activeRestoreSession) {
-      await cardImages.rollbackRestore(activeRestoreSession);
-    } else {
-      for (const id of pendingCreatedIds) await cardImages.delete(id);
+    let rollbackError: unknown;
+    try {
+      if (activeRestoreSession) {
+        await cardImages.rollbackRestore(activeRestoreSession);
+      } else {
+        for (const id of pendingCreatedIds) await cardImages.delete(id);
+      }
+    } catch (error) {
+      rollbackError = error;
+    }
+    for (let index = pendingExistingRenames.length - 1; index >= 0; index -= 1) {
+      const rename = pendingExistingRenames[index];
+      if (!rename) continue;
+      try {
+        await cardImages.rename(rename.id, rename.name);
+      } catch (error) {
+        if (!rollbackError) rollbackError = error;
+      }
     }
     activeRestoreSession = null;
     pendingCreatedIds = [];
+    pendingExistingRenames = [];
+    cardImages.invalidate();
+    if (rollbackError) throw rollbackError;
   };
 
   return {

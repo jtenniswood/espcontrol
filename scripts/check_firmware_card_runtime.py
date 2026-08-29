@@ -364,7 +364,7 @@ def check_root(root: Path) -> list[str]:
                 continue
             connectivity = connectivity_path.read_text(encoding="utf-8")
             if "lvgl.page.show: main_page" in connectivity or (
-                "button_grid_load_screen(id(main_page));" not in connectivity
+                "button_grid_load_screen(id(main_page)->obj);" not in connectivity
             ):
                 failures.append(
                     f"{relative}: reconnect must activate the main page through the card background lifecycle"

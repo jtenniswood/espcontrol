@@ -125,9 +125,11 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   equal(emptyRequests, 0, "image-free restore does not query storage");
 
   const existingRequests: string[] = [];
+  const existingRenameBodies: string[] = [];
   const existingProvider = providerFor(async (url, request) => {
     existingRequests.push(`${request?.method || "GET"} ${url}`);
     if (request?.method === "POST" && url === "/api/card-images/existing-1/rename") {
+      existingRenameBodies.push(String(request.body || ""));
       return response({ json: { id: "existing-1", name: "Archived", size: 4 } });
     }
     return response({ json: {
@@ -143,6 +145,11 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   );
   deepEqual(existingRequests, ["GET /api/card-images", "POST /api/card-images/existing-1/rename"],
     "existing images reuse their bytes and restore the archived display name");
+  await existingProvider.rollbackRestore?.();
+  equal(existingRequests.at(-1), "POST /api/card-images/existing-1/rename",
+    "failed configuration restore puts an existing image name back");
+  deepEqual(existingRenameBodies, ["name=Archived", "name=Current"],
+    "existing image rollback restores the exact pre-import name");
 
   const capacityRequests: string[] = [];
   const capacityProvider = providerFor(async (url, request) => {
