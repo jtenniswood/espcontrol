@@ -2401,6 +2401,59 @@ def firmware_image_card_startup_errors(
     return errors
 
 
+def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
+    errors: list[str] = []
+    image_header = root / "components" / "espcontrol" / "button_grid_image.h"
+    p4_package = root / "common" / "device" / "image_cards_6.yaml"
+    s3_package = root / "common" / "device" / "image_cards_1.yaml"
+    if not image_header.exists() or not p4_package.exists() or not s3_package.exists():
+        return errors
+
+    image_text = image_header.read_text(encoding="utf-8")
+    p4_text = p4_package.read_text(encoding="utf-8")
+    s3_text = s3_package.read_text(encoding="utf-8")
+    camera_refresh_contract = (
+        "inline void refresh_visible_camera_cards()",
+        "image_card_context_on_active_screen(ctx)",
+        "ctx->media_artwork",
+        "screen == lv_scr_act()",
+        'std::string("access_token")',
+        'std::string("entity_picture")',
+        "ctx->camera_refresh_pending",
+        "image_card_handle_picture(ctx, picture)",
+        "IMAGE_CARD_MIN_REPEAT_REFRESH_MS",
+        "image_card_active_download_context()",
+        "image_card_modal_active_for(ctx)",
+    )
+    if any(token not in image_text for token in camera_refresh_contract):
+        errors.append(
+            "components/espcontrol/button_grid_image.h: keep the Home Assistant camera "
+            "refresh action visible-only, camera-only, serialized, and throttled"
+        )
+    if (
+        "action: refresh_camera_cards" not in p4_text
+        or "refresh_visible_camera_cards();" not in p4_text
+    ):
+        errors.append(
+            "common/device/image_cards_6.yaml: expose the camera refresh action on P4 profiles"
+        )
+    if "refresh_camera_cards" in s3_text or "refresh_visible_camera_cards" in s3_text:
+        errors.append(
+            "common/device/image_cards_1.yaml: keep the unsupported S3 camera refresh action disabled"
+        )
+
+    for package_path in sorted((root / "devices").glob("*/packages.yaml")):
+        slug = package_path.parent.name
+        package_text = package_path.read_text(encoding="utf-8")
+        expected = "image_cards_1.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
+        if expected not in package_text:
+            errors.append(
+                f"{package_path.relative_to(root)}: include {expected} so camera refresh action support "
+                "matches the display profile"
+            )
+    return errors
+
+
 def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
     if not path.exists():
         return []
@@ -3648,6 +3701,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_camera_refresh_action_errors(ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(
         firmware_screensaver_wake_guard_errors(

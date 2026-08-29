@@ -2,6 +2,13 @@
 # IMAGE CARD DOWNLOADERS - Reusable runtime pool for Home Assistant camera cards
 # =============================================================================
 
+api:
+  actions:
+    - action: refresh_camera_cards
+      then:
+        - lambda: |-
+            refresh_visible_camera_cards();
+
 artwork_image:
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_download_1
