@@ -5,7 +5,7 @@ description: Share separately configured guest Wifi with a scannable QR code on 
 
 # Wifi Sharing
 
-**Wifi Sharing** provides two cards for sharing a guest network. Both open the same modal with QR and text connection details:
+**Wifi Sharing** provides two card types for sharing a guest network. Both open the same modal with QR and text connection details:
 
 - **Connect Card** shows a configurable title and Wifi icon.
 - **QR Card** shows the scannable QR code directly on a white tile, without a title or icon.
@@ -14,7 +14,7 @@ It does not read, reveal, or share the Wifi network used by the EspControl panel
 
 ## Set It Up
 
-1. Select a card and choose **Connect Card** or **QR Card**.
+1. Add **Wifi Sharing**, then choose **Connect Card** or **QR Card** from its **Type** setting.
 2. Enter the guest network name exactly as it is broadcast, including any meaningful spaces.
 3. Choose **WPA/WPA2 Personal** and enter its password, or choose **Open** for a password-free network.
 4. Turn on **Hidden network** only when the network does not broadcast its name.

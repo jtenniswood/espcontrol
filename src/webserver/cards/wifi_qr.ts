@@ -2,6 +2,7 @@ import {
     cardContractAllowInSubpage,
     cardContractCardLabel,
     cardContractDefaultConfig,
+    cardContractPickerKey,
 } from "../generated/card_contract";
 import {
     configOptionEnabled,
@@ -9,7 +10,7 @@ import {
     setConfigOption,
     setConfigOptionValue,
 } from "../model/config_primitives";
-import type { CardRegistry } from "../application/card_registry";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 
@@ -19,7 +20,9 @@ export function registerWifiQrCardTypes(
     registry: CardRegistry,
     modalTabs: ConfigModalTabOptionsFeature,
     fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
 ): void {
+    const { renderButtonSettings } = cardUi;
     const SSID_OPTION = "ssid64";
     const SECURITY_OPTION = "security";
     const PASSWORD_OPTION = "pass64";
@@ -32,7 +35,19 @@ export function registerWifiQrCardTypes(
         setWifiQrTabs,
         renderModalTabSettings,
     } = modalTabs;
+    const WIFI_QR_CARD_TYPE_METADATA: any = {
+        mode: {
+            label: "Type",
+            idSuffix: "wifi-card-type",
+            options: [["wifi_qr", "Connect Card"], ["wifi_qr_card", "QR Card"]],
+            value: function (this: any, b?: any) { return isQrCard(b) ? "wifi_qr_card" : "wifi_qr"; },
+            onChange: function (this: any, b?: any, helpers?: any) {
+                setWifiQrCardType(b, this.value, helpers);
+            },
+        },
+    };
     const WIFI_QR_CARD_METADATA: any = {
+        mode: WIFI_QR_CARD_TYPE_METADATA.mode,
         labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Connect", bindName: "label", rerender: true },
         icon: { pickerIdSuffix: "wifi-icon-picker", idSuffix: "wifi-icon", field: "icon", fallback: "Wifi" },
     };
@@ -68,6 +83,18 @@ export function registerWifiQrCardTypes(
         return normalized === "guestwifi" || normalized === "guestswifi";
     }
     function isQrCard(this: any, b?: any) { return !!b && b.type === "wifi_qr_card"; }
+    function setWifiQrCardType(this: any, b?: any, type?: any, helpers?: any) {
+        var nextType: any = type === "wifi_qr_card" ? "wifi_qr_card" : "wifi_qr";
+        if (!b || b.type === nextType) return;
+        b.type = nextType;
+        normalizeWifiQrConfig(b);
+        helpers.saveField("type", b.type);
+        helpers.saveField("label", b.label || "");
+        helpers.saveField("icon", b.icon || "Auto");
+        helpers.saveField("icon_on", b.icon_on || "Auto");
+        helpers.saveField("options", b.options || "");
+        renderButtonSettings();
+    }
     function normalizeWifiQrConfig(this: any, b?: any) {
         if (!b) return;
         var tabs: any = wifiQrTabs(b);
@@ -104,12 +131,14 @@ export function registerWifiQrCardTypes(
         return {
             label: function (this: any) { return cardContractCardLabel(type); },
             allowInSubpage: function (this: any) { return cardContractAllowInSubpage(type); },
+            pickerKey: function (this: any) { return cardContractPickerKey(type); },
             hideLabel: true,
             defaultConfig: function (this: any) { return cardContractDefaultConfig(type); },
             cardMetadata: WIFI_QR_CARD_METADATA,
             normalizeConfig: normalizeWifiQrConfig,
             onSelect: normalizeWifiQrConfig,
             renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
+                helpers.renderCardModeSelector(panel, b, helpers, WIFI_QR_CARD_TYPE_METADATA);
                 var networkDisclosure: any = helpers.disclosureSection("Wifi Network", helpers.idPrefix + "wifi-network", false);
                 panel.appendChild(networkDisclosure.panel);
                 var modalTabsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "wifi-modal-tabs", b && b._modalSettingsOpen === true);

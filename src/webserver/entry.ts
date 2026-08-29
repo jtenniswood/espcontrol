@@ -176,7 +176,7 @@ function registerCards(context: ApplicationContext) {
     fields,
     cardUi,
   );
-  registerWifiQrCardTypes(registry, context.configuration.modalTabs, fields);
+  registerWifiQrCardTypes(registry, context.configuration.modalTabs, fields, cardUi);
   registerInternalCardTypes(
     registry,
     context.configuration.internalRelayOptions,

@@ -2685,8 +2685,8 @@
       "web": {
         "registration": "wifi_qr_card",
         "picker": {
-          "main": true,
-          "subpage": true,
+          "main": false,
+          "subpage": false,
           "infoOnly": false
         },
         "preview": {

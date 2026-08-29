@@ -344,7 +344,7 @@ describe("browserless application contracts", () => {
     }
   });
 
-  test("registers distinct Connect and QR Wifi cards", () => {
+  test("groups Connect and QR cards under Wifi Sharing", () => {
     const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
     const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
     const definitions = {};
@@ -362,12 +362,16 @@ describe("browserless application contracts", () => {
       },
       renderModalTabSettings() {},
     };
+    let rerenders = 0;
     registerWifiQrCardTypes({
       register(key, value) {
         definitions[key] = value;
       },
-    }, modalTabs, { cardBadgePreview() {} });
+    }, modalTabs, { cardBadgePreview() {} }, { renderButtonSettings() { rerenders += 1; } });
     assert.deepEqual(Object.keys(definitions), ["wifi_qr", "wifi_qr_card"]);
+    assert.equal(definitions.wifi_qr.label(), "Wifi Sharing");
+    assert.equal(definitions.wifi_qr.pickerKey(), "");
+    assert.equal(definitions.wifi_qr_card.pickerKey(), "wifi_qr");
     assert.equal(definitions.wifi_qr.hideLabel, true);
     assert.equal(definitions.wifi_qr_card.hideLabel, true);
     assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
@@ -392,6 +396,15 @@ describe("browserless application contracts", () => {
     assert.equal(qrCard.icon, "Auto");
     assert.equal(definitions.wifi_qr_card.renderPreview(qrCard, {}).labelHtml, "");
     assert.equal(definitions.wifi_qr_card.renderPreview(qrCard, {}).buttonClass, "sp-wifi-qr-card");
+    definitions.wifi_qr_card.cardMetadata.mode.onChange.call(
+      { value: "wifi_qr" }, qrCard, { saveField() {} },
+    );
+    assert.equal(qrCard.type, "wifi_qr");
+    assert.equal(qrCard.label, "Connect");
+    assert.equal(qrCard.icon, "Wifi");
+    assert.equal(rerenders, 1);
+    assert.match(source, /\[\["wifi_qr", "Connect Card"\], \["wifi_qr_card", "QR Card"\]\]/);
+    assert.match(source, /renderCardModeSelector\(panel, b, helpers, WIFI_QR_CARD_TYPE_METADATA\)/);
   });
 
   test("normalizes and preserves Wifi modal tab settings", () => {

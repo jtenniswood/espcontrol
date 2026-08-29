@@ -513,7 +513,11 @@ assert(/Toggle lights/.test(switchPickerOption.description), "switch picker opti
 const wifiSharePickerOption = pickerOptions.find((option) => option.key === "wifi_qr");
 assert(wifiSharePickerOption, "Wifi Share appears in the main card picker");
 assert.strictEqual(wifiSharePickerOption.icon, "wifi", "Wifi Share uses the expected picker icon");
-assert(/guest Wifi/.test(wifiSharePickerOption.description), "Wifi Share picker option includes concise help text");
+assert(/Connect Card or QR Card/.test(wifiSharePickerOption.description), "Wifi Sharing picker option describes its subtypes");
+assert(
+  !pickerOptions.some((option) => option.key === "wifi_qr_card"),
+  "QR Card is selected as a Wifi Sharing subtype rather than a top-level card",
+);
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"
