@@ -375,6 +375,9 @@ describe("browserless application contracts", () => {
     assert.match(source, /disclosureSection\("Modal Settings"/);
     assert.match(source, /wifiQrTabDefinitions/);
     assert.doesNotMatch(source, /Show password|wifi-reveal|input\.type\s*=\s*"password"/);
+    assert.match(source, /hasCredentialBytes/);
+    assert.match(source, /requireField\(ssidField\.input,[^\n]+hasCredentialBytes\)/);
+    assert.match(source, /requireField\(passwordField\.input,[^\n]+hasCredentialBytes\)/);
     const legacy = { label: "Guests Wifi", options: "" };
     definition.normalizeConfig(legacy);
     assert.equal(legacy.label, "Connect");

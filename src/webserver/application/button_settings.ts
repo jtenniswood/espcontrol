@@ -226,17 +226,21 @@ export function createButtonSettingsFeature(
                 input.setAttribute("aria-describedby", existing.id);
             }
         }
-        function requireField(this: any, input?: any, message?: any, isActive?: any) {
+        function requireField(this: any, input?: any, message?: any, isActive?: any, hasValue?: any) {
             if (!input)
                 return;
             requiredFields.push({
                 input: input,
                 message: message || "Add an entity before saving.",
                 isActive: isActive || function (this: any) { return true; },
+                hasValue: hasValue,
             });
+            function fieldHasValue(this: any) {
+                return hasValue ? hasValue(input.value) : Boolean(String(input.value || "").trim());
+            }
             function maybeClearError(this: any) {
                 if (!isActive || isActive()) {
-                    if (String(input.value || "").trim())
+                    if (fieldHasValue())
                         clearFieldError(input);
                 }
                 else {
@@ -248,7 +252,11 @@ export function createButtonSettingsFeature(
         }
         function validateSettingsDraft(this: any) {
             var validation: any = cardEditorValidationController.validateRequiredFields(requiredFields.map(function (this: any, rule?: any) {
-                return { value: rule.input.value, active: !rule.isActive || rule.isActive() };
+                return {
+                    value: rule.input.value,
+                    active: !rule.isActive || rule.isActive(),
+                    present: rule.hasValue ? Boolean(rule.hasValue(rule.input.value)) : undefined,
+                };
             }));
             var firstInvalid: any = validation.firstInvalidIndex >= 0 ? requiredFields[validation.firstInvalidIndex].input : null;
             for (var i: any = 0; i < requiredFields.length; i++) {
@@ -257,7 +265,7 @@ export function createButtonSettingsFeature(
                     clearFieldError(rule.input);
                     continue;
                 }
-                if (String(rule.input.value || "").trim()) {
+                if (rule.hasValue ? rule.hasValue(rule.input.value) : String(rule.input.value || "").trim()) {
                     clearFieldError(rule.input);
                     continue;
                 }

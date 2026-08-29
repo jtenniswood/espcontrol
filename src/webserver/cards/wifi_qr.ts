@@ -129,8 +129,9 @@ export function registerWifiQrCardTypes(
             var hidden: any = helpers.toggleRow("Hidden network", helpers.idPrefix + "wifi-hidden", wifiQrHidden(b));
             networkSettings.appendChild(ssidField.field); networkSettings.appendChild(securityField.field); networkSettings.appendChild(passwordField.field);
             networkSettings.appendChild(hidden.row);
-            helpers.requireField(ssidField.input, "Add a network name before saving.");
-            helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; });
+            function hasCredentialBytes(this: any, value?: any) { return utf8Bytes(value).length > 0; }
+            helpers.requireField(ssidField.input, "Add a network name before saving.", undefined, hasCredentialBytes);
+            helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; }, hasCredentialBytes);
             helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
             function save(this: any) {
                 var ssid: any = ssidField.input.value;
