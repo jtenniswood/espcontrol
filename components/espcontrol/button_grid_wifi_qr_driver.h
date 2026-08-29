@@ -14,7 +14,7 @@ inline lv_coord_t wifi_qr_driver_tile_side(lv_obj_t *button) {
   lv_obj_update_layout(button);
   const lv_coord_t shortest =
     std::min<lv_coord_t>(lv_obj_get_width(button), lv_obj_get_height(button));
-  const lv_coord_t inset = std::max<lv_coord_t>(8, shortest / 12);
+  const lv_coord_t inset = std::max<lv_coord_t>(4, shortest / 32);
   const lv_coord_t available = shortest - inset * 2;
   return available >= 48 ? available : 0;
 }
@@ -45,7 +45,8 @@ inline bool wifi_qr_driver_render_tile(
     lv_obj_clear_flag(qr, LV_OBJ_FLAG_CLICKABLE);
     lv_qrcode_set_dark_color(qr, lv_color_black());
     lv_qrcode_set_light_color(qr, lv_color_white());
-    lv_obj_set_style_border_color(qr, lv_color_white(), LV_PART_MAIN);
+    lv_qrcode_set_quiet_zone(qr, true);
+    lv_obj_set_style_border_width(qr, 0, LV_PART_MAIN);
     if (slot.sensor_container) lv_obj_set_user_data(slot.sensor_container, qr);
   }
 
@@ -55,8 +56,6 @@ inline bool wifi_qr_driver_render_tile(
   const lv_coord_t side = wifi_qr_driver_tile_side(slot.btn);
   if (side <= 0) return true;
   if (lv_obj_get_width(qr) != side) lv_qrcode_set_size(qr, side);
-  lv_obj_set_style_border_width(
-    qr, std::max<lv_coord_t>(4, side / 20), LV_PART_MAIN);
   if (lv_qrcode_update(qr, payload.c_str(), payload.size()) != LV_RESULT_OK) {
     if (slot.sensor_container) lv_obj_set_user_data(slot.sensor_container, nullptr);
     lv_obj_del(qr);
