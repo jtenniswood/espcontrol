@@ -103,6 +103,21 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   });
   equal(await mirrorFailureClient.save((current) => current), "mirror-failed", "a failed legacy mirror is reported");
 
+  const authenticationRequiredClient = createNativePanelConfigClient(async (path, request) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    if (request?.method === "PUT") return response(403);
+    return response(200, document, "\"1\"");
+  });
+  equal(await authenticationRequiredClient.save((current) => current), "authentication-required",
+    "a password rejected by unauthenticated firmware is reported clearly");
+
+  const protectedReadClient = createNativePanelConfigClient(async (path) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    return response(403);
+  });
+  equal(await protectedReadClient.save((current) => current), "authentication-required",
+    "a protected password document is not treated as a generic save failure");
+
   const runtimeFailureClient = createNativePanelConfigClient(async (path, request) => {
     if (path === "/api/v1/capabilities") return response(200);
     if (request?.method === "PUT") return response(500);

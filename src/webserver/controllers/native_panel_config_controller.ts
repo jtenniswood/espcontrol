@@ -60,6 +60,8 @@ export class NativePanelConfigController {
       this.dependencies.showBanner("Configuration changed in another browser. Reload before saving again.", "error");
     } else if (result === "mirror-failed") {
       this.dependencies.showBanner("The configuration saved, but its older-firmware copy did not. Do not downgrade this panel yet.", "error");
+    } else if (result === "authentication-required") {
+      this.dependencies.showBanner("Wifi Sharing passwords require web authentication. Enable the web_server_auth package before saving this card.", "error");
     } else if (result === "failed") {
       this.dependencies.showBanner("Could not save the configuration. Check the connection and try again.", "error");
     }
