@@ -1,13 +1,13 @@
 {
   "profiles": { "platform": "esp32-s3", "modal": "compact-square-constrained", "fonts": "compact-panel" },
   "config": {
-    "slots": 9, "capabilities": { "imageSlots": 1 },
+    "slots": 9, "capabilities": { "imageSlots": 2 },
     "public": { "name": "Guition 4848S040", "docsPath": "/screens/4848s040", "screenSize": "4 inches", "resolution": "480 x 480", "orientation": "Square" },
     "layout": { "cols": 3, "rows": 3, "firmwareGrid": "3x3" },
     "rotation": { "enabled": true, "options": ["0", "90", "180", "270"], "default": "180", "displayOffset": 180 },
     "internalRelays": [{ "key": "relay_1", "label": "Relay 1" }, { "key": "relay_2", "label": "Relay 2" }, { "key": "relay_3", "label": "Relay 3" }],
     "web": {
-      "coverArtSquareOverlay": true, "dragMode": "displace", "dragAnimation": true, "disabledCardTypes": ["weather_forecast", "media_cover_art"],
+      "coverArtSquareOverlay": true, "dragMode": "displace", "dragAnimation": true, "disabledCardTypes": ["weather_forecast"],
       "screen": { "width": "55%", "aspect": "1/1" },
       "topbar": { "height": 8.0, "padding": "1.25cqw 0.83cqw 0.83cqw", "fontSize": 3.75 },
       "grid": { "top": 8.33, "compactTop": 0.83, "left": 1.04, "right": 1.04, "bottom": 0.83, "gap": 1.39, "fr": "1fr" },
