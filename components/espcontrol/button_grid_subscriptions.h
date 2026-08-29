@@ -105,11 +105,11 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
       if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
         char buf[16];
         format_fixed_decimal(buf, sizeof(buf), val, precision);
-        lv_label_set_text(sensor_lbl, buf);
-        if (unit_lbl) lv_label_set_text(unit_lbl, display_unit.c_str());
+        lv_label_set_display_text(sensor_lbl, buf);
+        if (unit_lbl) lv_label_set_display_text(unit_lbl, display_unit.c_str());
       } else {
-        lv_label_set_text(sensor_lbl, "");
-        if (unit_lbl) lv_label_set_text(unit_lbl, "");
+        lv_label_set_display_text(sensor_lbl, "");
+        if (unit_lbl) lv_label_set_display_text(unit_lbl, "");
       }
     })
   );
@@ -117,16 +117,16 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
 
 inline void apply_time_sensor_value(TimeSensorCtx *ctx) {
   if (!ctx || !ctx->sensor_lbl) return;
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
   if (!ctx->has_state || (ctx->manual_unit.empty() && !ctx->has_auto_unit)) {
-    lv_label_set_text(ctx->sensor_lbl, "");
+    lv_label_set_display_text(ctx->sensor_lbl, "");
     return;
   }
 
   const std::string &input_unit = ctx->manual_unit.empty() ? ctx->auto_unit : ctx->manual_unit;
   double multiplier = 0.0;
   if (!duration_unit_seconds_multiplier(input_unit, multiplier)) {
-    lv_label_set_text(ctx->sensor_lbl, "");
+    lv_label_set_display_text(ctx->sensor_lbl, "");
     if (ctx->manual_unit.empty() &&
         (!ctx->warned_unit_set || ctx->warned_unit != input_unit)) {
       ESP_LOGW("sensors", "Time sensor %s has unsupported or missing unit_of_measurement '%s'",
@@ -144,10 +144,10 @@ inline void apply_time_sensor_value(TimeSensorCtx *ctx) {
                                     ctx->state, ctx->has_state,
                                     ctx->auto_unit, ctx->has_auto_unit,
                                     ctx->manual_unit, ctx->max_components)) {
-    lv_label_set_text(ctx->sensor_lbl, "");
+    lv_label_set_display_text(ctx->sensor_lbl, "");
     return;
   }
-  lv_label_set_text(ctx->sensor_lbl, output);
+  lv_label_set_display_text(ctx->sensor_lbl, output);
 }
 
 inline void subscribe_time_sensor_value(TimeSensorCtx *ctx, const std::string &sensor_id,
@@ -157,7 +157,7 @@ inline void subscribe_time_sensor_value(TimeSensorCtx *ctx, const std::string &s
   ctx->entity_id = sensor_id;
   ctx->manual_unit = manual_unit;
   ctx->max_components = max_components;
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -224,7 +224,7 @@ inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         set_card_checked_state(
           btn_ptr, active_color && !unavailable && is_entity_on_ref(state));
       }
-      lv_label_set_text(icon_lbl, (!unavailable && is_entity_on_ref(state)) ? icon_on : icon_off);
+      lv_label_set_display_text(icon_lbl, (!unavailable && is_entity_on_ref(state)) ? icon_on : icon_off);
     })
   );
 }
@@ -256,8 +256,8 @@ inline void subscribe_weather_state(lv_obj_t *icon_lbl, lv_obj_t *text_lbl, cons
       if (generation != ha_subscription_generation()) return;
       std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
       ESP_LOGI("weather", "Current weather state for %s: %s", entity_id.c_str(), state_text.c_str());
-      lv_label_set_text(icon_lbl, weather_icon_for_state(state_text));
-      lv_label_set_text(text_lbl, weather_label_for_state(state_text).c_str());
+      lv_label_set_display_text(icon_lbl, weather_icon_for_state(state_text));
+      lv_label_set_display_text(text_lbl, weather_label_for_state(state_text).c_str());
       notify_dashboard_content_changed();
     })
   );
@@ -275,7 +275,7 @@ inline void subscribe_garage_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         bool active = garage_state_is_active(state_text);
         set_card_checked_state(btn_ptr, active);
-        lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
+        lv_label_set_display_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
         transient_status_label_show_if_changed(
           status_label, garage_state_label(state_text),
           persistent_status ? false : garage_state_releases_label(state_text));
@@ -298,7 +298,7 @@ inline void subscribe_gate_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         bool active = garage_state_is_active(state_text);
         set_card_checked_state(btn_ptr, active);
-        lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
+        lv_label_set_display_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
         transient_status_label_show_if_changed(
           status_label, garage_state_label(state_text),
           persistent_status ? false : garage_state_releases_label(state_text));
@@ -317,7 +317,7 @@ inline void subscribe_cover_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         bool active = cover_toggle_state_is_active(state_text);
         set_card_checked_state(btn_ptr, active);
-        lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
+        lv_label_set_display_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
         transient_status_label_show_if_changed(
           status_label, garage_state_label(state_text), garage_state_releases_label(state_text));
       })
@@ -337,7 +337,7 @@ inline void subscribe_lock_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         ctx->state = state_text;
         bool active = lock_state_is_active(state_text);
         set_card_checked_state(btn_ptr, active);
-        lv_label_set_text(icon_lbl,
+        lv_label_set_display_text(icon_lbl,
           lock_state_uses_unlocked_icon(state_text) ? unlocked_icon : locked_icon);
         transient_status_label_show_if_changed(
           status_label, lock_state_label(state_text), lock_state_releases_label(state_text));
@@ -414,7 +414,7 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
           if (icon_lbl) lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
           if (sensor_ctr) lv_obj_add_flag(sensor_ctr, LV_OBJ_FLAG_HIDDEN);
           if (*slot_has_icon_on)
-            lv_label_set_text(icon_lbl, on ? *slot_icon_on : *slot_icon_off);
+            lv_label_set_display_text(icon_lbl, on ? *slot_icon_on : *slot_icon_off);
         }
         configure_button_label_wrap(text_lbl);
       })
@@ -461,7 +461,7 @@ inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
                                             bool unavailable) {
   if (!ctx) return;
   if (ctx->show_icon_state && ctx->icon_lbl) {
-    lv_label_set_text(ctx->icon_lbl, (!unavailable && is_entity_on_ref(state)) ? ctx->icon_on : ctx->icon_off);
+    lv_label_set_display_text(ctx->icon_lbl, (!unavailable && is_entity_on_ref(state)) ? ctx->icon_on : ctx->icon_off);
     return;
   }
   if (ctx->show_text_state && ctx->text_lbl) {
@@ -474,11 +474,11 @@ inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
   if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
     char buf[16];
     format_fixed_decimal(buf, sizeof(buf), val, ctx->precision);
-    lv_label_set_text(ctx->sensor_lbl, buf);
-    if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->unit.c_str());
+    lv_label_set_display_text(ctx->sensor_lbl, buf);
+    if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, ctx->unit.c_str());
   } else {
-    lv_label_set_text(ctx->sensor_lbl, "");
-    if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+    lv_label_set_display_text(ctx->sensor_lbl, "");
+    if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
   }
 }
 

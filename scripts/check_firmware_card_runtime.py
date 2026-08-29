@@ -185,7 +185,7 @@ def check_root(root: Path) -> list[str]:
                 )
         unsupported_clear_body = function_body(text, "clear_unsupported_card_slot_visuals")
         if unsupported_clear_body is None or any(
-            f"lv_label_set_text(s.{label}, \"\");" not in unsupported_clear_body
+            f"lv_label_set_display_text(s.{label}, \"\");" not in unsupported_clear_body
             for label in ("icon_lbl", "text_lbl", "sensor_lbl", "unit_lbl")
         ):
             failures.append(

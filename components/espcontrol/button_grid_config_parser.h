@@ -1799,7 +1799,7 @@ inline std::string sensor_state_display_text(const ParsedCfg &p,
 }
 
 inline void lv_label_set_text_limited(lv_obj_t *label, esphome::StringRef value, size_t max_len) {
-  std::string text = string_ref_limited(value, max_len);
+  std::string text = normalize_display_text(string_ref_limited(value, max_len));
   lv_label_set_text(label, text.c_str());
 }
 

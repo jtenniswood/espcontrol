@@ -675,7 +675,7 @@ inline lv_obj_t *control_modal_create_flat_icon_button(
 
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -707,7 +707,7 @@ inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t 
     lv_obj_del(btn);
     return nullptr;
   }
-  lv_label_set_text(label, text);
+  lv_label_set_display_text(label, text);
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -868,7 +868,7 @@ inline lv_obj_t *control_modal_create_title(lv_obj_t *parent,
                                             const lv_font_t *font,
                                             int width_compensation_percent) {
   lv_obj_t *title = lv_label_create(parent);
-  lv_label_set_text(title, text.c_str());
+  lv_label_set_display_text(title, text.c_str());
   lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
   lv_obj_set_width(title, width);
   lv_obj_set_style_text_color(title, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -916,7 +916,7 @@ inline lv_obj_t *control_modal_create_list_row(lv_obj_t *parent,
   control_modal_apply_pressed_fill(btn);
 
   lv_obj_t *value = lv_label_create(btn);
-  lv_label_set_text(value, label.c_str());
+  lv_label_set_display_text(value, label.c_str());
   lv_label_set_long_mode(value, LV_LABEL_LONG_DOT);
   lv_obj_set_width(value, lv_pct(100));
   lv_obj_set_style_text_color(value, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -947,7 +947,7 @@ inline lv_obj_t *control_modal_create_text_button(
   control_modal_apply_pressed_fill(btn);
 
   lv_obj_t *label = lv_label_create(btn);
-  lv_label_set_text(label, text.c_str());
+  lv_label_set_display_text(label, text.c_str());
   lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);

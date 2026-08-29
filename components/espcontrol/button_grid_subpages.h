@@ -335,13 +335,13 @@ inline lv_obj_t *create_card_sensor_container(lv_obj_t *parent,
   lv_obj_t *value = lv_label_create(container);
   if (value_font) lv_obj_set_style_text_font(value, value_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(value, text_color, LV_PART_MAIN);
-  lv_label_set_text(value, "--");
+  lv_label_set_display_text(value, "--");
 
   lv_obj_t *unit = lv_label_create(container);
   if (unit_font) lv_obj_set_style_text_font(unit, unit_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(unit, text_color, LV_PART_MAIN);
   lv_obj_set_style_pad_bottom(unit, 6, LV_PART_MAIN);
-  lv_label_set_text(unit, "");
+  lv_label_set_display_text(unit, "");
 
   if (value_lbl) *value_lbl = value;
   if (unit_lbl) *unit_lbl = unit;
@@ -360,7 +360,7 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   slot.icon_lbl = lv_label_create(btn);
   if (icon_font) lv_obj_set_style_text_font(slot.icon_lbl, icon_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(slot.icon_lbl, text_color, LV_PART_MAIN);
-  lv_label_set_text(slot.icon_lbl, "\U000F0493");
+  lv_label_set_display_text(slot.icon_lbl, "\U000F0493");
   lv_obj_align(slot.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
 
   slot.sensor_container = create_card_sensor_container(
@@ -369,7 +369,7 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   slot.text_lbl = lv_label_create(btn);
   if (label_font) lv_obj_set_style_text_font(slot.text_lbl, label_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(slot.text_lbl, text_color, LV_PART_MAIN);
-  lv_label_set_text(slot.text_lbl, espcontrol_i18n("Configure"));
+  lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Configure"));
   lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   configure_button_label_wrap(slot.text_lbl);
 
@@ -378,7 +378,7 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   if (chevron_font) lv_obj_set_style_text_font(slot.subpage_lbl, chevron_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(slot.subpage_lbl, text_color, LV_PART_MAIN);
   lv_obj_set_style_text_opa(slot.subpage_lbl, LV_OPA_50, LV_PART_MAIN);
-  lv_label_set_text(slot.subpage_lbl, "\U000F0142");
+  lv_label_set_display_text(slot.subpage_lbl, "\U000F0142");
   lv_obj_align(slot.subpage_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 2);
   lv_obj_add_flag(slot.subpage_lbl, LV_OBJ_FLAG_HIDDEN);
   return slot;
@@ -464,10 +464,10 @@ inline void subscribe_subpage_parent_indicator(
         }
         if (sp_on_count[parent_idx] > 0) {
           set_card_checked_state(parent_btn, true);
-          if (has_alt_icon) lv_label_set_text(parent_icon, on_glyph);
+          if (has_alt_icon) lv_label_set_display_text(parent_icon, on_glyph);
         } else {
           set_card_checked_state(parent_btn, false);
-          if (has_alt_icon) lv_label_set_text(parent_icon, off_glyph);
+          if (has_alt_icon) lv_label_set_display_text(parent_icon, off_glyph);
         }
       })
   );
@@ -489,7 +489,7 @@ inline void apply_climate_subpage_parent_indicator(ClimateSubpageParentIndicator
   bool working = ctx->available && climate_action_is_working(ctx->hvac_action);
   set_card_checked_state(ctx->parent_btn, working);
   if (ctx->has_alt_icon && ctx->parent_icon)
-    lv_label_set_text(ctx->parent_icon, working ? ctx->on_glyph : ctx->off_glyph);
+    lv_label_set_display_text(ctx->parent_icon, working ? ctx->on_glyph : ctx->off_glyph);
 }
 
 inline void subscribe_climate_subpage_parent_indicator(

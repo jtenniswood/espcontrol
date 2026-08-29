@@ -595,7 +595,7 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'set_weather_card_badge(s, "Weather Cloudy")' not in weather_visuals, (
         "current weather device card should not render a visible weather badge"
     )
-    assert 'lv_label_set_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
+    assert 'lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
         "current weather device card should render the same label as the web preview"
     )
     assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in weather_visuals, (
@@ -604,10 +604,10 @@ def test_weather_card_visual_matches_preview() -> None:
     assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
-    assert 'lv_label_set_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
+    assert 'lv_label_set_display_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
         "forecast weather placeholder should show the configured unit like the web preview"
     )
-    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
+    assert 'lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")

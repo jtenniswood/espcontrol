@@ -398,7 +398,7 @@ inline void configure_button_label_wrap(lv_obj_t *label) {
 inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) {
   if (!label) return;
   configure_button_label_wrap(label);
-  lv_label_set_text(label, text.c_str());
+  lv_label_set_display_text(label, text.c_str());
   lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 }
 

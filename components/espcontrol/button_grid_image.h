@@ -453,9 +453,9 @@ inline void image_card_set_loading_state(lv_obj_t *loading_widget, const char *t
   lv_obj_t *btn = lv_obj_get_parent(loading_widget);
   image_card_position_widget(btn, loading_widget, nullptr, nullptr);
   lv_obj_t *icon = image_card_loading_icon(loading_widget);
-  if (icon) lv_label_set_text(icon, IMAGE_CARD_LOADING_ICON);
+  if (icon) lv_label_set_display_text(icon, IMAGE_CARD_LOADING_ICON);
   lv_obj_t *label = image_card_loading_label(loading_widget);
-  if (label) lv_label_set_text(label, espcontrol_i18n(text));
+  if (label) lv_label_set_display_text(label, espcontrol_i18n(text));
   image_card_refresh_loading_layout(loading_widget);
   lv_obj_clear_flag(loading_widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_foreground(loading_widget);
@@ -574,8 +574,8 @@ inline void image_card_show_modal_loading(ImageCardCtx *ctx, const char *text) {
   if (lv_obj_get_child_cnt(ui.loading_widget) >= 2) {
     lv_obj_t *icon = lv_obj_get_child(ui.loading_widget, 0);
     lv_obj_t *label = lv_obj_get_child(ui.loading_widget, 1);
-    lv_label_set_text(icon, IMAGE_CARD_LOADING_ICON);
-    lv_label_set_text(label, espcontrol_i18n(text));
+    lv_label_set_display_text(icon, IMAGE_CARD_LOADING_ICON);
+    lv_label_set_display_text(label, espcontrol_i18n(text));
   }
   lv_obj_clear_flag(ui.loading_widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_foreground(ui.loading_widget);
@@ -1181,14 +1181,14 @@ inline void setup_image_card(BtnSlot &s) {
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
   lv_obj_set_style_text_color(loading_icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
-  lv_label_set_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
 
   lv_obj_t *loading_label = lv_label_create(loading);
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
   lv_obj_set_style_text_color(loading_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_label, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_text_align(loading_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-  lv_label_set_text(loading_label, espcontrol_i18n("Loading"));
+  lv_label_set_display_text(loading_label, espcontrol_i18n("Loading"));
 
   lv_obj_set_user_data(img, loading);
   lv_obj_set_user_data(loading, s.text_lbl);
@@ -1300,11 +1300,11 @@ inline void image_card_set_label_text(lv_obj_t *label, lv_obj_t *btn,
   if (!label) return;
   const char *safe_text = text ? text : "";
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  lv_label_set_text(label, safe_text);
+  lv_label_set_display_text(label, safe_text);
   lv_obj_t *shadow = image_card_label_shadow(label, btn);
   if (shadow) {
     lv_label_set_long_mode(shadow, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(shadow, safe_text);
+    lv_label_set_display_text(shadow, safe_text);
   }
   image_card_align_label_stack(label, btn, icon);
 }
@@ -1361,7 +1361,7 @@ inline void image_card_configure_icon(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     return;
   }
-  lv_label_set_text(s.icon_lbl, find_icon(
+  lv_label_set_display_text(s.icon_lbl, find_icon(
     p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon.c_str()));
   lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   image_card_align_icon(s.icon_lbl, s.btn);
@@ -1996,7 +1996,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   if (ctx->icon_font) lv_obj_set_style_text_font(loading_icon, ctx->icon_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(loading_icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
-  lv_label_set_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
 
   lv_obj_t *loading_label = lv_label_create(ui.loading_widget);
   if (!loading_label) {
@@ -2008,7 +2008,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   lv_obj_set_style_text_opa(loading_label, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_text_align(loading_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   lv_label_set_long_mode(loading_label, LV_LABEL_LONG_DOT);
-  lv_label_set_text(loading_label, espcontrol_i18n("Loading"));
+  lv_label_set_display_text(loading_label, espcontrol_i18n("Loading"));
 
   ImageCardModalCache &modal_cache = image_card_modal_cache();
   if (image_card_modal_cache_matches(ctx)) {

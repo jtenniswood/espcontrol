@@ -34,8 +34,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
-      - file: "gfonts://Noto+Sans"
-        glyphs: !include ../../../common/assets/latin_extended_additional_glyphs.yaml
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
@@ -46,8 +44,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
-      - file: "gfonts://Noto+Sans"
-        glyphs: !include ../../../common/assets/latin_extended_additional_glyphs.yaml
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
@@ -58,8 +54,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
-      - file: "gfonts://Noto+Sans@Light"
-        glyphs: !include ../../../common/assets/latin_extended_additional_glyphs.yaml
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
@@ -70,8 +64,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
-      - file: "gfonts://Noto+Sans@Light"
-        glyphs: !include ../../../common/assets/latin_extended_additional_glyphs.yaml
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
@@ -82,8 +74,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
-      - file: "gfonts://Noto+Sans@Light"
-        glyphs: !include ../../../common/assets/latin_extended_additional_glyphs.yaml
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 

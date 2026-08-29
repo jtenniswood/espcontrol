@@ -24,9 +24,9 @@ inline void setup_todo_card(BtnSlot &s, const ParsedCfg &p, uint32_t secondary_c
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
   lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(s.icon_lbl,
+  lv_label_set_display_text(s.icon_lbl,
     (!p.icon.empty() && p.icon != "Auto") ? find_icon(p.icon.c_str()) : find_icon("Check"));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Todo") : p.label.c_str());
+  lv_label_set_display_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Todo") : p.label.c_str());
 }
 
 inline void todo_cancel_pending_request(const char *reason, bool keep_modal_waiting = true) {
@@ -175,12 +175,12 @@ inline std::string todo_lite_card_label(TodoCardCtx *ctx) {
 
 inline void todo_lite_apply_card_text(TodoCardCtx *ctx) {
   if (!ctx) return;
-  if (ctx->label_lbl) lv_label_set_text(ctx->label_lbl, todo_lite_card_label(ctx).c_str());
+  if (ctx->label_lbl) lv_label_set_display_text(ctx->label_lbl, todo_lite_card_label(ctx).c_str());
   if (ctx->value_lbl) {
     if (ctx->value_font) lv_obj_set_style_text_font(ctx->value_lbl, ctx->value_font, LV_PART_MAIN);
-    lv_label_set_text(ctx->value_lbl, ctx->available ? ctx->count_text : "--");
+    lv_label_set_display_text(ctx->value_lbl, ctx->available ? ctx->count_text : "--");
   }
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
 }
 
 inline void setup_todo_card(BtnSlot &s, const ParsedCfg &p, uint32_t secondary_color) {
@@ -194,11 +194,11 @@ inline void setup_todo_card(BtnSlot &s, const ParsedCfg &p, uint32_t secondary_c
     lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
-  lv_label_set_text(s.icon_lbl,
+  lv_label_set_display_text(s.icon_lbl,
     (!p.icon.empty() && p.icon != "Auto") ? find_icon(p.icon.c_str()) : find_icon("Check"));
-  lv_label_set_text(s.sensor_lbl, "--");
-  lv_label_set_text(s.unit_lbl, "");
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Todo") : p.label.c_str());
+  lv_label_set_display_text(s.sensor_lbl, "--");
+  lv_label_set_display_text(s.unit_lbl, "");
+  lv_label_set_display_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Todo") : p.label.c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -264,7 +264,7 @@ inline void todo_lite_modal_set_status(const char *text) {
       lv_obj_set_style_text_font(ui.status_lbl, ui.active->label_font, LV_PART_MAIN);
   }
   if (!ui.status_lbl) return;
-  lv_label_set_text(ui.status_lbl, text ? espcontrol_i18n(text) : "");
+  lv_label_set_display_text(ui.status_lbl, text ? espcontrol_i18n(text) : "");
   if (wants_visible) lv_obj_clear_flag(ui.status_lbl, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_add_flag(ui.status_lbl, LV_OBJ_FLAG_HIDDEN);
 }
@@ -309,7 +309,7 @@ inline lv_obj_t *todo_lite_create_row(TodoCardCtx *ctx, TodoLiteItem *item,
   lv_coord_t label_x = checkbox_size + gap;
   lv_coord_t label_w = content_w > label_x ? content_w - label_x : lv_pct(100);
   lv_obj_t *label = lv_label_create(row);
-  lv_label_set_text(label, item && item->summary[0] ? item->summary : espcontrol_i18n("(untitled)"));
+  lv_label_set_display_text(label, item && item->summary[0] ? item->summary : espcontrol_i18n("(untitled)"));
   lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
   lv_obj_set_width(label, label_w);
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
@@ -334,7 +334,7 @@ inline lv_obj_t *todo_lite_create_note_row(TodoCardCtx *ctx, const char *text,
   lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
   lv_obj_t *label = lv_label_create(row);
-  lv_label_set_text(label, text ? text : "");
+  lv_label_set_display_text(label, text ? text : "");
   lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
   lv_obj_set_width(label, content_w);
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
@@ -681,7 +681,7 @@ inline void subscribe_todo_friendly_name(TodoCardCtx *ctx) {
       ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
       todo_lite_apply_card_text(ctx);
       TodoLiteModalUi &ui = todo_lite_modal_ui();
-      if (ui.active == ctx && ui.title_lbl) lv_label_set_text(ui.title_lbl, todo_lite_card_label(ctx).c_str());
+      if (ui.active == ctx && ui.title_lbl) lv_label_set_display_text(ui.title_lbl, todo_lite_card_label(ctx).c_str());
     })
   );
 }
@@ -820,12 +820,12 @@ inline void todo_apply_value_font(TodoCardCtx *ctx) {
 
 inline void todo_apply_card_text(TodoCardCtx *ctx) {
   if (!ctx) return;
-  if (ctx->label_lbl) lv_label_set_text(ctx->label_lbl, todo_card_label(ctx).c_str());
+  if (ctx->label_lbl) lv_label_set_display_text(ctx->label_lbl, todo_card_label(ctx).c_str());
   if (ctx->value_lbl) {
     todo_apply_value_font(ctx);
-    lv_label_set_text(ctx->value_lbl, ctx->available ? ctx->count_text.c_str() : "--");
+    lv_label_set_display_text(ctx->value_lbl, ctx->available ? ctx->count_text.c_str() : "--");
   }
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
 }
 
 inline void setup_todo_card(BtnSlot &s, const ParsedCfg &p, uint32_t secondary_color) {
@@ -839,11 +839,11 @@ inline void setup_todo_card(BtnSlot &s, const ParsedCfg &p, uint32_t secondary_c
     lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
-  lv_label_set_text(s.icon_lbl,
+  lv_label_set_display_text(s.icon_lbl,
     (!p.icon.empty() && p.icon != "Auto") ? find_icon(p.icon.c_str()) : find_icon("Check"));
-  lv_label_set_text(s.sensor_lbl, "--");
-  lv_label_set_text(s.unit_lbl, "");
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Todo") : p.label.c_str());
+  lv_label_set_display_text(s.sensor_lbl, "--");
+  lv_label_set_display_text(s.unit_lbl, "");
+  lv_label_set_display_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Todo") : p.label.c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -953,7 +953,7 @@ inline void todo_modal_set_status(const char *text) {
       lv_obj_set_style_text_font(ui.status_lbl, ui.active->label_font, LV_PART_MAIN);
   }
   if (!ui.status_lbl) return;
-  lv_label_set_text(ui.status_lbl, text ? espcontrol_i18n(text) : "");
+  lv_label_set_display_text(ui.status_lbl, text ? espcontrol_i18n(text) : "");
   if (wants_visible) lv_obj_clear_flag(ui.status_lbl, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_add_flag(ui.status_lbl, LV_OBJ_FLAG_HIDDEN);
 }
@@ -1037,7 +1037,7 @@ inline lv_obj_t *todo_modal_create_list_item_row(
     lv_obj_align(box, LV_ALIGN_LEFT_MID, 0, 0);
     if (checked) {
       lv_obj_t *check = lv_label_create(box);
-      lv_label_set_text(check, find_icon("Check"));
+      lv_label_set_display_text(check, find_icon("Check"));
       lv_obj_set_style_text_color(check, lv_color_hex(checkbox_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(check, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (icon_font) lv_obj_set_style_text_font(check, icon_font, LV_PART_MAIN);
@@ -1059,7 +1059,7 @@ inline lv_obj_t *todo_modal_create_list_item_row(
   }
 
   lv_obj_t *value = lv_label_create(row);
-  lv_label_set_text(value, label.c_str());
+  lv_label_set_display_text(value, label.c_str());
   lv_label_set_long_mode(value, LV_LABEL_LONG_DOT);
   lv_obj_set_width(value, label_w);
   lv_obj_set_style_text_color(value,
@@ -1396,7 +1396,7 @@ inline void subscribe_todo_friendly_name(TodoCardCtx *ctx) {
       ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
       todo_apply_card_text(ctx);
       TodoModalUi &ui = todo_modal_ui();
-      if (ui.active == ctx && ui.title_lbl) lv_label_set_text(ui.title_lbl, todo_card_label(ctx).c_str());
+      if (ui.active == ctx && ui.title_lbl) lv_label_set_display_text(ui.title_lbl, todo_card_label(ctx).c_str());
     })
   );
 }

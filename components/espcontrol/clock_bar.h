@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "esphome/components/lvgl/lvgl_esphome.h"
+#include "display_text.h"
 #include "display_mode_controller.h"
 #include "temperature_unit.h"
 
@@ -446,7 +447,7 @@ inline void refresh_clock_bar_temperature_label_values(
       else format_fixed_decimal(value_buf, sizeof(value_buf), value, 0);
       char buf[24];
       format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
-      lv_label_set_text(label, buf);
+      lv_label_set_display_text(label, buf);
       clock_bar_set_widget_hidden(label, !show_on_screen);
     };
     if (outdoor_enabled) set_legacy_temperature(outdoor);
@@ -475,7 +476,7 @@ inline void refresh_clock_bar_temperature_label_values(
     else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 0);
     char buf[24];
     format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
-    lv_label_set_text(label, buf);
+    lv_label_set_display_text(label, buf);
     clock_bar_set_widget_hidden(label, false);
   }
 }
