@@ -156,6 +156,9 @@ class ArtworkImage : public PollingComponent,
     return this->data_start_ != nullptr && this->buffer_width_ > 0 &&
            this->buffer_height_ > 0;
   }
+  bool request_is_active() const {
+    return ImageService::instance().is_active(this);
+  }
 
  protected:
   bool validate_url_(const std::string &url);
@@ -219,7 +222,7 @@ class ArtworkImage : public PollingComponent,
   bool start_p4_pipeline_(std::vector<http_request::Header> &headers);
   bool consume_p4_pipeline_result_();
   void cancel_p4_pipeline_();
-  bool start_s3_transfer_(const std::vector<http_request::Header> &headers);
+  bool start_s3_transfer_(std::vector<http_request::Header> &&headers);
   bool consume_s3_transfer_result_();
   void cancel_s3_transfer_();
   void note_response_bytes_();
