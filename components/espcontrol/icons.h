@@ -22,6 +22,8 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Download",                       "\U000F01DA"},
     {"Tag",                            "\U000F04F9"},
     {"Update",                         "\U000F06B0"},
+    {"Wi-Fi QR Tab",                   "\U000F0432"},
+    {"Wi-Fi Password Tab",             "\U000F0306"},
     {"Wi-Fi",                          "\U000F0928"},
     {"Wi-Fi Strength Outline",         "\U000F092F"},
     {"Wi-Fi Strength 1",               "\U000F091F"},

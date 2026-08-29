@@ -69,7 +69,7 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
       return {ControlModalPresentation::IMAGE, ControlModalChrome::BACK,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::WIFI_QR:
-      return {ControlModalPresentation::IMAGE, ControlModalChrome::CLOSE,
+      return {ControlModalPresentation::TABBED_CONTROL, ControlModalChrome::BACK,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::TODO_LIST:
       return {ControlModalPresentation::LIST, ControlModalChrome::BACK,

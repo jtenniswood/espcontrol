@@ -36,6 +36,18 @@
       "comment": "Firmware update entities"
     },
     {
+      "name": "Wi-Fi QR Tab",
+      "codepoint": "F0432",
+      "mdi": "qrcode",
+      "comment": "Wi-Fi Share QR tab"
+    },
+    {
+      "name": "Wi-Fi Password Tab",
+      "codepoint": "F0306",
+      "mdi": "key",
+      "comment": "Wi-Fi Share credentials tab"
+    },
+    {
       "name": "Wi-Fi",
       "codepoint": "F0928",
       "mdi": "wifi-strength-4",

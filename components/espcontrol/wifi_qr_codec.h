@@ -56,7 +56,7 @@ inline std::string wifi_qr_escape(const std::string &value) {
 }
 inline bool wifi_qr_build_payload(const std::string &ssid64, const std::string &security_value,
                                   const std::string &pass64, bool hidden, std::string *payload,
-                                  std::string *ssid) {
+                                  std::string *ssid, std::string *decoded_password = nullptr) {
   if (!payload || !ssid) return false;
   const bool open = security_value == "open";
   std::string network_name;
@@ -64,6 +64,7 @@ inline bool wifi_qr_build_payload(const std::string &ssid64, const std::string &
   std::string password;
   if (!open && (!wifi_qr_decode_base64url(pass64, &password) || !wifi_qr_password_valid(password))) return false;
   *ssid = network_name;
+  if (decoded_password) *decoded_password = password;
   *payload = "WIFI:T:" + std::string(open ? "nopass" : "WPA") + ";S:" + wifi_qr_escape(network_name) + ";";
   if (!open) *payload += "P:" + wifi_qr_escape(password) + ";";
   *payload += "H:" + std::string(hidden ? "true" : "false") + ";;";
