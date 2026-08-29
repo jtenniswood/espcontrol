@@ -258,7 +258,8 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     lv_obj_set_style_pad_row(ui.details_view, shell.layout.title_gap, LV_PART_MAIN);
     wifi_qr_create_detail_label(ui.details_view,
       espcontrol_i18n_key("network"), DARK_TEXT_MUTED, wifi_qr_heading_font_ref());
-    wifi_qr_create_detail_label(ui.details_view, ssid.c_str(), DARK_TEXT_PRIMARY);
+    wifi_qr_create_detail_label(
+      ui.details_view, ssid.c_str(), DARK_TEXT_PRIMARY, wifi_qr_heading_font_ref());
     lv_obj_t *spacer = lv_obj_create(ui.details_view);
     if (spacer) {
       lv_obj_set_size(spacer, 1, std::max<lv_coord_t>(16, shell.layout.title_gap * 2));
@@ -270,8 +271,10 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     wifi_qr_create_detail_label(
       ui.details_view, espcontrol_i18n_key("password"), DARK_TEXT_MUTED,
       wifi_qr_heading_font_ref());
-    wifi_qr_create_detail_label(ui.details_view,
-      password.empty() ? espcontrol_i18n_key("none") : password.c_str(), DARK_TEXT_PRIMARY);
+    wifi_qr_create_detail_label(
+      ui.details_view,
+      password.empty() ? espcontrol_i18n_key("none") : password.c_str(),
+      DARK_TEXT_PRIMARY, wifi_qr_heading_font_ref());
   }
 
   ui.qr = ui.qr_view ? lv_qrcode_create(ui.qr_view) : nullptr;
