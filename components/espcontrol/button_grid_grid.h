@@ -2091,8 +2091,10 @@ inline void grid_phase2(
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
-      apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);
-      configure_button_label_wrap(sub_slot.text_lbl);
+      // The line clamp re-anchors labels at the button content origin. Slider
+      // cards remove button padding so their fill can reach the edges, so run
+      // the card-specific refresh after clamping to restore the captured inset.
+      refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;

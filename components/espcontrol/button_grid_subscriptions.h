@@ -377,6 +377,22 @@ inline void subscribe_friendly_name(lv_obj_t *text_lbl, const std::string &entit
   );
 }
 
+// Slider cards zero the button padding so their fill can reach the tile edges,
+// then position the label with a captured inset. Updating the friendly name
+// must not re-anchor that label at (0, 0), or it becomes flush with the tile.
+inline void subscribe_friendly_name_preserving_layout(
+    lv_obj_t *text_lbl, const std::string &entity_id) {
+  ha_subscribe_attribute(
+    entity_id, std::string("friendly_name"),
+    std::function<void(esphome::StringRef)>([text_lbl](esphome::StringRef name) {
+      if (!text_lbl) return;
+      configure_button_label_wrap(text_lbl);
+      lv_label_set_display_text(
+        text_lbl, string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN).c_str());
+    })
+  );
+}
+
 // Subscribe to a toggle entity's state; updates checked visual, icon swap, sensor overlay
 inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    lv_obj_t *sensor_ctr, lv_obj_t *text_lbl,
