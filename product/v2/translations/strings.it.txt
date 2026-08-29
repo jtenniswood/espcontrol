@@ -206,6 +206,7 @@ booting=Avvio
 connect_an_ethernet_cable_and_wait_for_a_network_address=Collega un cavo Ethernet\ne attendi un indirizzo di rete
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Connettiti all’hotspot di configurazione\ne apri 192.168.4.1
 connect_to_wifi=Connettiti al WiFi
+scan_to_connect_to_wifi=Scansiona per connetterti al WiFi
 connected=Connesso
 connecting_to_ethernet=Connessione a Ethernet
 connecting_to_wifi=Connessione al WiFi

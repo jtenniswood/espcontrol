@@ -206,6 +206,7 @@ booting=Käynnistetään
 connect_an_ethernet_cable_and_wait_for_a_network_address=Liitä Ethernet-kaapeli\nja odota verkko-osoitetta
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Yhdistä määrityshotspotiin\nja avaa 192.168.4.1
 connect_to_wifi=Yhdistä WiFi-verkkoon
+scan_to_connect_to_wifi=Skannaa yhdistääksesi WiFi-verkkoon
 connected=Yhdistetty
 connecting_to_ethernet=Yhdistetään Ethernetiin
 connecting_to_wifi=Yhdistetään WiFi-verkkoon

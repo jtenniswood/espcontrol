@@ -206,6 +206,7 @@ booting=Démarrage
 connect_an_ethernet_cable_and_wait_for_a_network_address=Branchez un câble Ethernet\net attendez une adresse réseau
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Connectez-vous au point d’accès de configuration\npuis ouvrez 192.168.4.1
 connect_to_wifi=Connectez-vous au WiFi
+scan_to_connect_to_wifi=Scannez pour vous connecter au WiFi
 connected=Connecté
 connecting_to_ethernet=Connexion à Ethernet
 connecting_to_wifi=Connexion au WiFi

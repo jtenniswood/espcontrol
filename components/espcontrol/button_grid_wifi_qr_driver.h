@@ -7,6 +7,9 @@ inline bool wifi_qr_driver_matches(const Context &context) {
 inline bool wifi_qr_driver_setup_visual(BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!wifi_qr_driver_matches(context)) return false;
   setup_toggle_visual(slot, config);
+  if (slot.text_lbl) {
+    set_wifi_qr_label_font(lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN));
+  }
   if (slot.icon_lbl) {
     lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     const char *icon = (config.icon.empty() || config.icon == "Auto")

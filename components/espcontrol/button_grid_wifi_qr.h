@@ -25,6 +25,15 @@ inline void set_wifi_qr_icon_font(const lv_font_t *font) {
   wifi_qr_icon_font_ref() = font;
 }
 
+inline const lv_font_t *&wifi_qr_label_font_ref() {
+  static const lv_font_t *font = nullptr;
+  return font;
+}
+
+inline void set_wifi_qr_label_font(const lv_font_t *font) {
+  wifi_qr_label_font_ref() = font;
+}
+
 inline bool wifi_qr_payload_from_config(const ParsedCfg &config, std::string *payload,
                                         std::string *ssid) {
   return wifi_qr_build_payload(cfg_option_value(config.options, "ssid64"),
@@ -55,16 +64,19 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   lv_obj_t *close_icon = control_modal_icon_label(shell.close_btn);
   if (close_icon) lv_obj_set_style_text_color(close_icon, lv_color_black(), LV_PART_MAIN);
   lv_obj_t *title = lv_label_create(ui.panel);
-  lv_label_set_text(title, config.label.empty() ? "Guest Wi-Fi" : config.label.c_str());
+  lv_label_set_text(title, espcontrol_i18n_key("scan_to_connect_to_wifi"));
   lv_obj_set_style_text_color(title, lv_color_black(), LV_PART_MAIN);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, shell.layout.inset + shell.layout.back_size / 4);
-  lv_obj_t *subtitle = lv_label_create(ui.panel);
-  std::string subtitle_text = "Scan to join " + ssid;
-  lv_label_set_text(subtitle, subtitle_text.c_str());
-  lv_obj_set_style_text_color(subtitle, lv_color_black(), LV_PART_MAIN);
-  lv_label_set_long_mode(subtitle, LV_LABEL_LONG_DOT);
-  lv_obj_set_width(subtitle, lv_pct(80));
-  lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, shell.layout.inset + shell.layout.back_size + 8);
+  const lv_font_t *label_font = wifi_qr_label_font_ref();
+  if (label_font) lv_obj_set_style_text_font(title, label_font, LV_PART_MAIN);
+  lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(title, shell.layout.panel_w -
+    (shell.layout.inset + shell.layout.back_size) * 2);
+  lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  const lv_coord_t title_h = label_font && label_font->line_height > 0
+    ? label_font->line_height : 24;
+  const lv_coord_t header_h = std::max(shell.layout.back_size, title_h);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0,
+    shell.layout.inset + (header_h - title_h) / 2);
   ui.qr = lv_qrcode_create(ui.panel);
   if (!ui.qr) {
     lv_obj_t *message = lv_label_create(ui.panel);
@@ -73,8 +85,10 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     lv_obj_align(message, LV_ALIGN_CENTER, 0, 0);
     return;
   }
-  lv_coord_t side = std::max<lv_coord_t>(120, std::min(shell.layout.panel_w, shell.layout.panel_h) -
-    (shell.layout.inset * 2 + shell.layout.back_size * 2));
+  const lv_coord_t qr_top = shell.layout.inset + header_h + shell.layout.title_gap;
+  const lv_coord_t available_w = shell.layout.panel_w - shell.layout.inset * 2;
+  const lv_coord_t available_h = shell.layout.panel_h - qr_top - shell.layout.inset;
+  const lv_coord_t side = std::max<lv_coord_t>(120, std::min(available_w, available_h));
   lv_qrcode_set_size(ui.qr, side);
   lv_qrcode_set_dark_color(ui.qr, lv_color_black());
   lv_qrcode_set_light_color(ui.qr, lv_color_white());
@@ -91,6 +105,6 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     lv_obj_align(message, LV_ALIGN_CENTER, 0, 0);
     return;
   }
-  lv_obj_align(ui.qr, LV_ALIGN_BOTTOM_MID, 0, -shell.layout.inset);
+  lv_obj_align(ui.qr, LV_ALIGN_TOP_MID, 0, qr_top);
   lv_obj_move_foreground(shell.close_btn);
 }

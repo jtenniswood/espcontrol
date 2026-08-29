@@ -206,6 +206,7 @@ booting=A arrancar
 connect_an_ethernet_cable_and_wait_for_a_network_address=Ligue um cabo Ethernet\ne aguarde um endereço de rede
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Ligue-se ao hotspot de configuração\ne abra 192.168.4.1
 connect_to_wifi=Ligar ao WiFi
+scan_to_connect_to_wifi=Digitalize para ligar ao WiFi
 connected=Ligado
 connecting_to_ethernet=A ligar à Ethernet
 connecting_to_wifi=A ligar ao WiFi

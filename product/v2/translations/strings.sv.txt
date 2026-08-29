@@ -206,6 +206,7 @@ booting=Startar
 connect_an_ethernet_cable_and_wait_for_a_network_address=Anslut en Ethernet-kabel\noch vänta på en nätverksadress
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Anslut till installationshotspoten\noch öppna 192.168.4.1
 connect_to_wifi=Anslut till WiFi
+scan_to_connect_to_wifi=Skanna för att ansluta till WiFi
 connected=Ansluten
 connecting_to_ethernet=Ansluter till Ethernet
 connecting_to_wifi=Ansluter till WiFi

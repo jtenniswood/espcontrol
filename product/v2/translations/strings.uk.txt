@@ -206,6 +206,7 @@ booting=Завантаження
 connect_an_ethernet_cable_and_wait_for_a_network_address=Під’єднайте кабель Ethernet\nі дочекайтеся мережевої адреси
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Під’єднайтеся до точки доступу налаштування\nі відкрийте 192.168.4.1
 connect_to_wifi=Під’єднатися до WiFi
+scan_to_connect_to_wifi=Відскануйте, щоб під’єднатися до WiFi
 connected=Під’єднано
 connecting_to_ethernet=Під’єднання до Ethernet
 connecting_to_wifi=Під’єднання до WiFi

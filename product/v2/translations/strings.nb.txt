@@ -206,6 +206,7 @@ booting=Starter
 connect_an_ethernet_cable_and_wait_for_a_network_address=Koble til en Ethernet-kabel\nog vent på en nettverksadresse
 connect_to_the_setup_hotspot_then_open_192_168_4_1=Koble til oppsett-hotspoten\nog åpne 192.168.4.1
 connect_to_wifi=Koble til WiFi
+scan_to_connect_to_wifi=Skann for å koble til WiFi
 connected=Tilkoblet
 connecting_to_ethernet=Kobler til Ethernet
 connecting_to_wifi=Kobler til WiFi
