@@ -21,7 +21,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
     const HIDDEN_OPTION = "hidden";
     const { cardBadgePreview } = fields;
     const WIFI_QR_CARD_METADATA: any = {
-        labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Guest Wi-Fi", bindName: "label", rerender: true },
+        labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Connect", bindName: "label", rerender: true },
         icon: { pickerIdSuffix: "wifi-icon-picker", idSuffix: "wifi-icon", field: "icon", fallback: "Wifi" },
     };
     function utf8Bytes(this: any, value?: any): any[] {
@@ -55,7 +55,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
         if (!b) return;
         b.type = "wifi_qr";
         b.entity = ""; b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
-        if (!b.label) b.label = "Guest Wi-Fi";
+        if (!b.label) b.label = "Connect";
         if (!b.icon || b.icon === "Auto") b.icon = "Wifi";
         var ssid: any = wifiQrSsid(b);
         var password: any = wifiQrPassword(b);
@@ -116,7 +116,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
             save();
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
-            return cardBadgePreview(b, helpers, { label: b.label || "Guest Wi-Fi", iconFallback: "Wifi", badge: "Wi-Fi Share" });
+            return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wi-Fi Share" });
         },
     });
 }

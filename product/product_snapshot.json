@@ -5678,7 +5678,7 @@
             },
             "label": {
               "policy": "default_if_empty",
-              "value": "Guest Wi-Fi"
+              "value": "Connect"
             },
             "icon": {
               "policy": "default_if_empty",
@@ -5715,7 +5715,7 @@
         },
         "default": {
           "entity": "",
-          "label": "Guest Wi-Fi",
+          "label": "Connect",
           "icon": "Wifi",
           "icon_on": "Auto",
           "sensor": "",

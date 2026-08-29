@@ -1261,10 +1261,10 @@
   },
   {
     "name": "wifi_qr: share",
-    "input": "~,Guest%20Wi-Fi,Wifi,Auto,,,wifi_qr,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
+    "input": "~,Connect,Wifi,Auto,,,wifi_qr,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
     "expected": {
       "entity": "",
-      "label": "Guest Wi-Fi",
+      "label": "Connect",
       "icon": "Wifi",
       "icon_on": "Auto",
       "sensor": "",

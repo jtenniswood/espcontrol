@@ -3816,7 +3816,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         },
         "label": {
           "policy": "default_if_empty",
-          "value": "Guest Wi-Fi"
+          "value": "Connect"
         },
         "icon": {
           "policy": "default_if_empty",
@@ -3853,7 +3853,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     },
     "default": {
       "entity": "",
-      "label": "Guest Wi-Fi",
+      "label": "Connect",
       "icon": "Wifi",
       "icon_on": "Auto",
       "sensor": "",

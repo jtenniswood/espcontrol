@@ -2336,7 +2336,7 @@
       "normalization": {
         "fields": {
           "entity": { "policy": "clear" },
-          "label": { "policy": "default_if_empty", "value": "Guest Wi-Fi" },
+          "label": { "policy": "default_if_empty", "value": "Connect" },
           "icon": { "policy": "default_if_empty", "value": "Wifi" },
           "icon_on": { "policy": "default", "value": "Auto" },
           "sensor": { "policy": "clear" },
@@ -2350,7 +2350,7 @@
       },
       "default": {
         "entity": "",
-        "label": "Guest Wi-Fi",
+        "label": "Connect",
         "icon": "Wifi",
         "icon_on": "Auto",
         "sensor": "",
