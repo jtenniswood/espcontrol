@@ -1808,6 +1808,7 @@ inline void grid_phase2(
   set_switch_confirmation_message_font(display_switch_confirmation_message_font(display));
   set_switch_confirmation_icon_font(display_icon_font(display));
   set_wifi_qr_icon_font(display_icon_font(display));
+  set_wifi_qr_heading_font(display_media_title_font(display));
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   configure_grid_layout(main_page_obj, NS, COLS);

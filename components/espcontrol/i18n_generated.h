@@ -206,7 +206,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Připojte se k";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Připojte se k WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Naskenujte pro připojení";
-  if (std::strcmp(text, "Access point name") == 0) return "Název přístupového bodu";
+  if (std::strcmp(text, "Network") == 0) return "Síť";
   if (std::strcmp(text, "Password") == 0) return "Heslo";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Nelze vytvořit QR kód";
   if (std::strcmp(text, "Connected") == 0) return "Připojeno";
@@ -431,7 +431,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Opret forbindelse til";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Opret forbindelse til WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Scan for at oprette forbindelse";
-  if (std::strcmp(text, "Access point name") == 0) return "Navn på adgangspunkt";
+  if (std::strcmp(text, "Network") == 0) return "Netværk";
   if (std::strcmp(text, "Password") == 0) return "Adgangskode";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Kunne ikke oprette QR-kode";
   if (std::strcmp(text, "Connected") == 0) return "Forbundet";
@@ -654,7 +654,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Verbinde dich mit";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Mit WiFi verbinden";
   if (std::strcmp(text, "Scan to connect") == 0) return "Scannen zum Verbinden";
-  if (std::strcmp(text, "Access point name") == 0) return "Name des Zugangspunkts";
+  if (std::strcmp(text, "Network") == 0) return "Netzwerk";
   if (std::strcmp(text, "Password") == 0) return "Passwort";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "QR-Code konnte nicht erstellt werden";
   if (std::strcmp(text, "Connected") == 0) return "Verbunden";
@@ -884,7 +884,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Conéctate a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Conéctate a WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Escanea para conectarte";
-  if (std::strcmp(text, "Access point name") == 0) return "Nombre del punto de acceso";
+  if (std::strcmp(text, "Network") == 0) return "Red";
   if (std::strcmp(text, "Password") == 0) return "Contraseña";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "No se puede crear el código QR";
   if (std::strcmp(text, "Connected") == 0) return "Conectado";
@@ -1124,7 +1124,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Yhdistä verkkoon";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Yhdistä WiFi-verkkoon";
   if (std::strcmp(text, "Scan to connect") == 0) return "Skannaa yhdistääksesi";
-  if (std::strcmp(text, "Access point name") == 0) return "Tukiaseman nimi";
+  if (std::strcmp(text, "Network") == 0) return "Verkko";
   if (std::strcmp(text, "Password") == 0) return "Salasana";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "QR-koodia ei voitu luoda";
   if (std::strcmp(text, "Connected") == 0) return "Yhdistetty";
@@ -1347,7 +1347,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Connectez-vous à";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Connectez-vous au WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Scannez pour vous connecter";
-  if (std::strcmp(text, "Access point name") == 0) return "Nom du point d’accès";
+  if (std::strcmp(text, "Network") == 0) return "Réseau";
   if (std::strcmp(text, "Password") == 0) return "Mot de passe";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Impossible de créer le code QR";
   if (std::strcmp(text, "Connected") == 0) return "Connecté";
@@ -1595,7 +1595,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "התחבר אל";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "התחברות ל-WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "סרקו כדי להתחבר";
-  if (std::strcmp(text, "Access point name") == 0) return "שם נקודת הגישה";
+  if (std::strcmp(text, "Network") == 0) return "רשת";
   if (std::strcmp(text, "Password") == 0) return "סיסמה";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "לא ניתן ליצור קוד QR";
   if (std::strcmp(text, "Connected") == 0) return "מחובר";
@@ -1835,7 +1835,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Csatlakozzon ehhez:";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Csatlakozás WiFi-hez";
   if (std::strcmp(text, "Scan to connect") == 0) return "Olvassa be a csatlakozáshoz";
-  if (std::strcmp(text, "Access point name") == 0) return "Hozzáférési pont neve";
+  if (std::strcmp(text, "Network") == 0) return "Hálózat";
   if (std::strcmp(text, "Password") == 0) return "Jelszó";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Nem sikerült létrehozni a QR-kódot";
   if (std::strcmp(text, "Connected") == 0) return "Csatlakoztatva";
@@ -2067,7 +2067,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Connettiti a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Connettiti al WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Scansiona per connetterti";
-  if (std::strcmp(text, "Access point name") == 0) return "Nome punto di accesso";
+  if (std::strcmp(text, "Network") == 0) return "Rete";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Impossibile creare il codice QR";
   if (std::strcmp(text, "Connected") == 0) return "Connesso";
   if (std::strcmp(text, "Connecting to Ethernet") == 0) return "Connessione a Ethernet";
@@ -2294,7 +2294,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Koble til";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Koble til WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Skann for å koble til";
-  if (std::strcmp(text, "Access point name") == 0) return "Navn på tilgangspunkt";
+  if (std::strcmp(text, "Network") == 0) return "Nettverk";
   if (std::strcmp(text, "Password") == 0) return "Passord";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Kan ikke opprette QR-kode";
   if (std::strcmp(text, "Connected") == 0) return "Tilkoblet";
@@ -2524,7 +2524,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Maak verbinding met";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Verbinden met WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Scan om verbinding te maken";
-  if (std::strcmp(text, "Access point name") == 0) return "Naam toegangspunt";
+  if (std::strcmp(text, "Network") == 0) return "Netwerk";
   if (std::strcmp(text, "Password") == 0) return "Wachtwoord";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Kan QR-code niet maken";
   if (std::strcmp(text, "Connected") == 0) return "Verbonden";
@@ -2751,7 +2751,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Połącz się z";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Połącz z WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Zeskanuj, aby się połączyć";
-  if (std::strcmp(text, "Access point name") == 0) return "Nazwa punktu dostępu";
+  if (std::strcmp(text, "Network") == 0) return "Sieć";
   if (std::strcmp(text, "Password") == 0) return "Hasło";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Nie można utworzyć kodu QR";
   if (std::strcmp(text, "Connected") == 0) return "Połączono";
@@ -2981,7 +2981,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Conecte-se a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Conectar ao WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Escaneie para conectar";
-  if (std::strcmp(text, "Access point name") == 0) return "Nome do ponto de acesso";
+  if (std::strcmp(text, "Network") == 0) return "Rede";
   if (std::strcmp(text, "Password") == 0) return "Senha";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Não foi possível criar o código QR";
   if (std::strcmp(text, "Connected") == 0) return "Conectado";
@@ -3212,7 +3212,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Ligue-se a";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Ligar ao WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Digitalize para ligar";
-  if (std::strcmp(text, "Access point name") == 0) return "Nome do ponto de acesso";
+  if (std::strcmp(text, "Network") == 0) return "Rede";
   if (std::strcmp(text, "Password") == 0) return "Palavra-passe";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Não foi possível criar o código QR";
   if (std::strcmp(text, "Connected") == 0) return "Ligado";
@@ -3452,7 +3452,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Conectați-vă la";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Conectare la WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Scanați pentru conectare";
-  if (std::strcmp(text, "Access point name") == 0) return "Numele punctului de acces";
+  if (std::strcmp(text, "Network") == 0) return "Rețea";
   if (std::strcmp(text, "Password") == 0) return "Parolă";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Codul QR nu a putut fi creat";
   if (std::strcmp(text, "Connected") == 0) return "Conectat";
@@ -3699,7 +3699,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Подключитесь к";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Подключиться к WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Отсканируйте, чтобы подключиться";
-  if (std::strcmp(text, "Access point name") == 0) return "Имя точки доступа";
+  if (std::strcmp(text, "Network") == 0) return "Сеть";
   if (std::strcmp(text, "Password") == 0) return "Пароль";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Не удалось создать QR-код";
   if (std::strcmp(text, "Connected") == 0) return "Подключено";
@@ -3931,7 +3931,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Pripojte sa k";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Pripojte sa k WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Naskenujte pre pripojenie";
-  if (std::strcmp(text, "Access point name") == 0) return "Názov prístupového bodu";
+  if (std::strcmp(text, "Network") == 0) return "Sieť";
   if (std::strcmp(text, "Password") == 0) return "Heslo";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Nie je možné vytvoriť QR kód";
   if (std::strcmp(text, "Connected") == 0) return "Pripojené";
@@ -4167,7 +4167,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Povežite se z";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Povežite se z WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Skenirajte za povezavo";
-  if (std::strcmp(text, "Access point name") == 0) return "Ime dostopne točke";
+  if (std::strcmp(text, "Network") == 0) return "Omrežje";
   if (std::strcmp(text, "Password") == 0) return "Geslo";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Kode QR ni mogoče ustvariti";
   if (std::strcmp(text, "Connected") == 0) return "Povezano";
@@ -4395,7 +4395,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Anslut till";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Anslut till WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Skanna för att ansluta";
-  if (std::strcmp(text, "Access point name") == 0) return "Namn på åtkomstpunkt";
+  if (std::strcmp(text, "Network") == 0) return "Nätverk";
   if (std::strcmp(text, "Password") == 0) return "Lösenord";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Det gick inte att skapa QR-koden";
   if (std::strcmp(text, "Connected") == 0) return "Ansluten";
@@ -4635,7 +4635,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Şuna bağlanın:";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "WiFi’ye bağlan";
   if (std::strcmp(text, "Scan to connect") == 0) return "Bağlanmak için tarayın";
-  if (std::strcmp(text, "Access point name") == 0) return "Erişim noktası adı";
+  if (std::strcmp(text, "Network") == 0) return "Ağ";
   if (std::strcmp(text, "Password") == 0) return "Parola";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "QR kodu oluşturulamadı";
   if (std::strcmp(text, "Connected") == 0) return "Bağlandı";
@@ -4877,7 +4877,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Connect to") == 0) return "Підключіться до";
   if (std::strcmp(text, "Connect to WiFi") == 0) return "Під’єднатися до WiFi";
   if (std::strcmp(text, "Scan to connect") == 0) return "Відскануйте, щоб під’єднатися";
-  if (std::strcmp(text, "Access point name") == 0) return "Назва точки доступу";
+  if (std::strcmp(text, "Network") == 0) return "Мережа";
   if (std::strcmp(text, "Password") == 0) return "Пароль";
   if (std::strcmp(text, "Unable to create QR code") == 0) return "Не вдалося створити QR-код";
   if (std::strcmp(text, "Connected") == 0) return "Під’єднано";
@@ -5126,7 +5126,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "connect_to") == 0) return "Connect to";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Connect to WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scan to connect";
-  if (std::strcmp(key, "access_point_name") == 0) return "Access point name";
+  if (std::strcmp(key, "network") == 0) return "Network";
   if (std::strcmp(key, "password") == 0) return "Password";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Unable to create QR code";
   if (std::strcmp(key, "connected") == 0) return "Connected";
@@ -5358,7 +5358,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Připojte se k nastavovacímu hotspotu\na otevřete 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Připojte se k WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Naskenujte pro připojení";
-  if (std::strcmp(key, "access_point_name") == 0) return "Název přístupového bodu";
+  if (std::strcmp(key, "network") == 0) return "Síť";
   if (std::strcmp(key, "password") == 0) return "Heslo";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Nelze vytvořit QR kód";
   if (std::strcmp(key, "connected") == 0) return "Připojeno";
@@ -5584,7 +5584,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Opret forbindelse til opsætningshotspottet\nog åbn 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Opret forbindelse til WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scan for at oprette forbindelse";
-  if (std::strcmp(key, "access_point_name") == 0) return "Navn på adgangspunkt";
+  if (std::strcmp(key, "network") == 0) return "Netværk";
   if (std::strcmp(key, "password") == 0) return "Adgangskode";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Kunne ikke oprette QR-kode";
   if (std::strcmp(key, "connected") == 0) return "Forbundet";
@@ -5808,7 +5808,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Verbinden Sie sich mit dem Einrichtungs-Hotspot\nund öffnen Sie 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Mit WiFi verbinden";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scannen zum Verbinden";
-  if (std::strcmp(key, "access_point_name") == 0) return "Name des Zugangspunkts";
+  if (std::strcmp(key, "network") == 0) return "Netzwerk";
   if (std::strcmp(key, "password") == 0) return "Passwort";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "QR-Code konnte nicht erstellt werden";
   if (std::strcmp(key, "connected") == 0) return "Verbunden";
@@ -6039,7 +6039,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Conéctate al punto de acceso de configuración\ny abre 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Conéctate a WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Escanea para conectarte";
-  if (std::strcmp(key, "access_point_name") == 0) return "Nombre del punto de acceso";
+  if (std::strcmp(key, "network") == 0) return "Red";
   if (std::strcmp(key, "password") == 0) return "Contraseña";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "No se puede crear el código QR";
   if (std::strcmp(key, "connected") == 0) return "Conectado";
@@ -6280,7 +6280,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Yhdistä määrityshotspotiin\nja avaa 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Yhdistä WiFi-verkkoon";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Skannaa yhdistääksesi";
-  if (std::strcmp(key, "access_point_name") == 0) return "Tukiaseman nimi";
+  if (std::strcmp(key, "network") == 0) return "Verkko";
   if (std::strcmp(key, "password") == 0) return "Salasana";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "QR-koodia ei voitu luoda";
   if (std::strcmp(key, "connected") == 0) return "Yhdistetty";
@@ -6504,7 +6504,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Connectez-vous au point d’accès de configuration\npuis ouvrez 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Connectez-vous au WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scannez pour vous connecter";
-  if (std::strcmp(key, "access_point_name") == 0) return "Nom du point d’accès";
+  if (std::strcmp(key, "network") == 0) return "Réseau";
   if (std::strcmp(key, "password") == 0) return "Mot de passe";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Impossible de créer le code QR";
   if (std::strcmp(key, "connected") == 0) return "Connecté";
@@ -6753,7 +6753,7 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "התחברו לרשת ההגדרה\nופתחו את 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "התחברות ל-WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "סרקו כדי להתחבר";
-  if (std::strcmp(key, "access_point_name") == 0) return "שם נקודת הגישה";
+  if (std::strcmp(key, "network") == 0) return "רשת";
   if (std::strcmp(key, "password") == 0) return "סיסמה";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "לא ניתן ליצור קוד QR";
   if (std::strcmp(key, "connected") == 0) return "מחובר";
@@ -6994,7 +6994,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Csatlakozzon a beállítási hotspothoz,\nmajd nyissa meg: 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Csatlakozás WiFi-hez";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Olvassa be a csatlakozáshoz";
-  if (std::strcmp(key, "access_point_name") == 0) return "Hozzáférési pont neve";
+  if (std::strcmp(key, "network") == 0) return "Hálózat";
   if (std::strcmp(key, "password") == 0) return "Jelszó";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Nem sikerült létrehozni a QR-kódot";
   if (std::strcmp(key, "connected") == 0) return "Csatlakoztatva";
@@ -7227,7 +7227,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Connettiti all’hotspot di configurazione\ne apri 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Connettiti al WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scansiona per connetterti";
-  if (std::strcmp(key, "access_point_name") == 0) return "Nome punto di accesso";
+  if (std::strcmp(key, "network") == 0) return "Rete";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Impossibile creare il codice QR";
   if (std::strcmp(key, "connected") == 0) return "Connesso";
   if (std::strcmp(key, "connecting_to_ethernet") == 0) return "Connessione a Ethernet";
@@ -7455,7 +7455,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Koble til oppsett-hotspoten\nog åpne 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Koble til WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Skann for å koble til";
-  if (std::strcmp(key, "access_point_name") == 0) return "Navn på tilgangspunkt";
+  if (std::strcmp(key, "network") == 0) return "Nettverk";
   if (std::strcmp(key, "password") == 0) return "Passord";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Kan ikke opprette QR-kode";
   if (std::strcmp(key, "connected") == 0) return "Tilkoblet";
@@ -7685,7 +7685,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Maak verbinding met de installatiehotspot\nen open 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Verbinden met WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scan om verbinding te maken";
-  if (std::strcmp(key, "access_point_name") == 0) return "Naam toegangspunt";
+  if (std::strcmp(key, "network") == 0) return "Netwerk";
   if (std::strcmp(key, "password") == 0) return "Wachtwoord";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Kan QR-code niet maken";
   if (std::strcmp(key, "connected") == 0) return "Verbonden";
@@ -7913,7 +7913,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Połącz się z hotspotem konfiguracji\ni otwórz 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Połącz z WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Zeskanuj, aby się połączyć";
-  if (std::strcmp(key, "access_point_name") == 0) return "Nazwa punktu dostępu";
+  if (std::strcmp(key, "network") == 0) return "Sieć";
   if (std::strcmp(key, "password") == 0) return "Hasło";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Nie można utworzyć kodu QR";
   if (std::strcmp(key, "connected") == 0) return "Połączono";
@@ -8144,7 +8144,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Conecte-se ao hotspot de configuração\ne abra 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Conectar ao WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Escaneie para conectar";
-  if (std::strcmp(key, "access_point_name") == 0) return "Nome do ponto de acesso";
+  if (std::strcmp(key, "network") == 0) return "Rede";
   if (std::strcmp(key, "password") == 0) return "Senha";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Não foi possível criar o código QR";
   if (std::strcmp(key, "connected") == 0) return "Conectado";
@@ -8376,7 +8376,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Ligue-se ao hotspot de configuração\ne abra 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Ligar ao WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Digitalize para ligar";
-  if (std::strcmp(key, "access_point_name") == 0) return "Nome do ponto de acesso";
+  if (std::strcmp(key, "network") == 0) return "Rede";
   if (std::strcmp(key, "password") == 0) return "Palavra-passe";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Não foi possível criar o código QR";
   if (std::strcmp(key, "connected") == 0) return "Ligado";
@@ -8617,7 +8617,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Conectați-vă la hotspotul de configurare\nși deschideți 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Conectare la WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Scanați pentru conectare";
-  if (std::strcmp(key, "access_point_name") == 0) return "Numele punctului de acces";
+  if (std::strcmp(key, "network") == 0) return "Rețea";
   if (std::strcmp(key, "password") == 0) return "Parolă";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Codul QR nu a putut fi creat";
   if (std::strcmp(key, "connected") == 0) return "Conectat";
@@ -8865,7 +8865,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Подключитесь к точке доступа настройки,\nзатем откройте 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Подключиться к WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Отсканируйте, чтобы подключиться";
-  if (std::strcmp(key, "access_point_name") == 0) return "Имя точки доступа";
+  if (std::strcmp(key, "network") == 0) return "Сеть";
   if (std::strcmp(key, "password") == 0) return "Пароль";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Не удалось создать QR-код";
   if (std::strcmp(key, "connected") == 0) return "Подключено";
@@ -9098,7 +9098,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Pripojte sa k nastavovaciemu hotspotu\na otvorte 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Pripojte sa k WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Naskenujte pre pripojenie";
-  if (std::strcmp(key, "access_point_name") == 0) return "Názov prístupového bodu";
+  if (std::strcmp(key, "network") == 0) return "Sieť";
   if (std::strcmp(key, "password") == 0) return "Heslo";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Nie je možné vytvoriť QR kód";
   if (std::strcmp(key, "connected") == 0) return "Pripojené";
@@ -9335,7 +9335,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Povežite se z nastavitveno dostopno točko\nin odprite 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Povežite se z WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Skenirajte za povezavo";
-  if (std::strcmp(key, "access_point_name") == 0) return "Ime dostopne točke";
+  if (std::strcmp(key, "network") == 0) return "Omrežje";
   if (std::strcmp(key, "password") == 0) return "Geslo";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Kode QR ni mogoče ustvariti";
   if (std::strcmp(key, "connected") == 0) return "Povezano";
@@ -9564,7 +9564,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Anslut till installationshotspoten\noch öppna 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Anslut till WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Skanna för att ansluta";
-  if (std::strcmp(key, "access_point_name") == 0) return "Namn på åtkomstpunkt";
+  if (std::strcmp(key, "network") == 0) return "Nätverk";
   if (std::strcmp(key, "password") == 0) return "Lösenord";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Det gick inte att skapa QR-koden";
   if (std::strcmp(key, "connected") == 0) return "Ansluten";
@@ -9805,7 +9805,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Kurulum etkin noktasına bağlanın\nve 192.168.4.1 adresini açın";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "WiFi’ye bağlan";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Bağlanmak için tarayın";
-  if (std::strcmp(key, "access_point_name") == 0) return "Erişim noktası adı";
+  if (std::strcmp(key, "network") == 0) return "Ağ";
   if (std::strcmp(key, "password") == 0) return "Parola";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "QR kodu oluşturulamadı";
   if (std::strcmp(key, "connected") == 0) return "Bağlandı";
@@ -10048,7 +10048,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "connect_to_the_setup_hotspot_then_open_192_168_4_1") == 0) return "Під’єднайтеся до точки доступу налаштування\nі відкрийте 192.168.4.1";
   if (std::strcmp(key, "connect_to_wifi") == 0) return "Під’єднатися до WiFi";
   if (std::strcmp(key, "scan_to_connect") == 0) return "Відскануйте, щоб під’єднатися";
-  if (std::strcmp(key, "access_point_name") == 0) return "Назва точки доступу";
+  if (std::strcmp(key, "network") == 0) return "Мережа";
   if (std::strcmp(key, "password") == 0) return "Пароль";
   if (std::strcmp(key, "unable_to_create_qr_code") == 0) return "Не вдалося створити QR-код";
   if (std::strcmp(key, "connected") == 0) return "Під’єднано";
