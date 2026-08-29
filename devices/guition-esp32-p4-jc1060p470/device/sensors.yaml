@@ -58,6 +58,7 @@ script:
           cfg.wrap_tall_labels = true;
           cfg.label_lines = 2;
           cfg.label_lines_tall = 3;
+          cfg.width_compensation_percent = 95;
           cfg.volume_width_compensation_percent = 95;
           cfg.media_artwork_width_compensation_percent = 98;
           cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;
@@ -233,6 +234,7 @@ script:
           cfg.wrap_tall_labels = true;
           cfg.label_lines = 2;
           cfg.label_lines_tall = 3;
+          cfg.width_compensation_percent = 95;
           cfg.volume_width_compensation_percent = 95;
           cfg.media_artwork_width_compensation_percent = 98;
           cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;
@@ -403,6 +405,7 @@ esphome:
             cfg.wrap_tall_labels = true;
             cfg.label_lines = 2;
             cfg.label_lines_tall = 3;
+            cfg.width_compensation_percent = 95;
             cfg.volume_width_compensation_percent = 95;
             cfg.media_artwork_width_compensation_percent = 98;
             cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;
@@ -569,6 +572,7 @@ esphome:
             cfg.wrap_tall_labels = true;
             cfg.label_lines = 2;
             cfg.label_lines_tall = 3;
+            cfg.width_compensation_percent = 95;
             cfg.volume_width_compensation_percent = 95;
             cfg.media_artwork_width_compensation_percent = 98;
             cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;

@@ -450,6 +450,28 @@ def test_rotation_refresh_rebuilds_subpages() -> None:
         )
 
 
+def test_seven_inch_width_compensation_rotates_with_screen() -> None:
+    profiles = load_device_profiles()
+    for slug in (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+    ):
+        profile = profiles[slug]
+        assert profile["rotation"]["rotateWidthCompensation"], (
+            f"{slug}: portrait rotation must move pixel compensation to the rotated axis"
+        )
+        assert profile["firmware"]["display"]["widthCompensationPercent"] == 95, (
+            f"{slug}: 7-inch pixel compensation must remain at 95%"
+        )
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        assert "cfg.width_compensation_percent = 95;" in sensors, (
+            f"{slug}: generated firmware is missing 7-inch pixel compensation"
+        )
+        assert "cfg.width_compensation_vertical = portrait;" in sensors, (
+            f"{slug}: generated firmware does not rotate the compensation axis in portrait"
+        )
+
+
 def test_subpage_config_changes_schedule_live_refresh() -> None:
     templates = {
         "common/config/button_template.yaml": 8,
@@ -868,6 +890,7 @@ def main() -> int:
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()
+    test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()

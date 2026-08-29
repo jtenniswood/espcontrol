@@ -103,6 +103,7 @@
         "firmware": {
           "display": {
             "wrapTallLabels": true,
+            "widthCompensationPercent": 95,
             "volumeWidthCompensationPercent": 95,
             "refreshRebuildsSubpages": true,
             "mediaArtworkWidthCompensationPercent": 98
