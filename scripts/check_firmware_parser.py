@@ -679,6 +679,10 @@ int main() {
   apply_width_compensation(&compensated_obj, 95);
   assert(compensated_obj.transform_scale_x == width_compensation_scale(95));
   assert(compensated_obj.transform_scale_y == 256);
+  set_icon_width_compensation_percent(95);
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 171);
+  assert(compensated_obj.transform_scale_y == 180);
   set_text_width_compensation_percent(100);
   apply_text_width_compensation(&compensated_obj);
   assert(compensated_obj.transform_scale_x == 256);
@@ -687,6 +691,9 @@ int main() {
   apply_width_compensation(&compensated_obj, 95);
   assert(compensated_obj.transform_scale_x == 256);
   assert(compensated_obj.transform_scale_y == width_compensation_scale(95));
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 180);
+  assert(compensated_obj.transform_scale_y == 171);
   apply_text_width_compensation(&compensated_obj);
   assert(compensated_obj.transform_scale_x == 256);
   assert(compensated_obj.transform_scale_y == 256);

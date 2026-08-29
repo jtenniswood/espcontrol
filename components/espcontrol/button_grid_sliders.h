@@ -581,11 +581,9 @@ inline void light_control_center_icon_label(lv_obj_t *label) {
 
 inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                  const lv_font_t *font,
-                                                 LightControlTab tab,
-                                                 int width_compensation_percent) {
+                                                 LightControlTab tab) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  apply_width_compensation(btn, width_compensation_percent);
   lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -953,16 +951,16 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.power_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Power"), ctx->icon_font,
-    LightControlTab::POWER, ctx->width_compensation_percent);
+    LightControlTab::POWER);
   ui.brightness_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Lightbulb"), ctx->icon_font,
-    LightControlTab::BRIGHTNESS, ctx->width_compensation_percent);
+    LightControlTab::BRIGHTNESS);
   ui.temperature_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Thermometer"), ctx->icon_font,
-    LightControlTab::TEMPERATURE, ctx->width_compensation_percent);
+    LightControlTab::TEMPERATURE);
   ui.color_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Palette"), ctx->icon_font,
-    LightControlTab::COLOR, ctx->width_compensation_percent);
+    LightControlTab::COLOR);
 
   ui.power_group = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_color(ui.power_group, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
@@ -1858,11 +1856,9 @@ inline void cover_control_refresh_preset_selection(CoverControlCtx *ctx);
 
 inline lv_obj_t *cover_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                  const lv_font_t *font,
-                                                 CoverControlTab tab,
-                                                 int width_compensation_percent) {
+                                                 CoverControlTab tab) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  apply_width_compensation(btn, width_compensation_percent);
   lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -1891,9 +1887,11 @@ inline lv_obj_t *cover_control_create_tab_button(lv_obj_t *parent, const char *i
 }
 
 inline lv_obj_t *cover_control_create_wide_icon_button(lv_obj_t *parent, const char *icon,
-                                                       const lv_font_t *font) {
+                                                       const lv_font_t *font,
+                                                       int width_compensation_percent) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
+  apply_width_compensation(btn, width_compensation_percent);
   lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -1914,7 +1912,8 @@ inline lv_obj_t *cover_control_create_wide_icon_button(lv_obj_t *parent, const c
 
 inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
                                                     const lv_font_t *icon_font,
-                                                    const lv_font_t *label_font) {
+                                                    const lv_font_t *label_font,
+                                                    int width_compensation_percent) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   lv_obj_set_size(btn, 118, 118);
@@ -1943,6 +1942,7 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
     lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (icon_font) lv_obj_set_style_text_font(icon, icon_font, LV_PART_MAIN);
+    apply_width_compensation(icon, width_compensation_percent);
     lv_obj_clear_flag(icon, LV_OBJ_FLAG_CLICKABLE);
   }
 
@@ -2446,16 +2446,16 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.position_tab = cover_control_create_tab_button(
     ui.tab_row, find_icon("View Headline"), ctx->icon_font,
-    CoverControlTab::POSITION, ctx->width_compensation_percent);
+    CoverControlTab::POSITION);
   ui.controls_tab = cover_control_create_tab_button(
     ui.tab_row, find_icon("Swap Vertical"), ctx->icon_font,
-    CoverControlTab::CONTROLS, ctx->width_compensation_percent);
+    CoverControlTab::CONTROLS);
   ui.tilt_tab = cover_control_create_tab_button(
     ui.tab_row, find_icon("Swap Vertical"), ctx->icon_font,
-    CoverControlTab::TILT, ctx->width_compensation_percent);
+    CoverControlTab::TILT);
   ui.presets_tab = cover_control_create_tab_button(
     ui.tab_row, find_icon("Roller Shade"), ctx->icon_font,
-    CoverControlTab::PRESETS, ctx->width_compensation_percent);
+    CoverControlTab::PRESETS);
 
   ui.controls_box = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.controls_box, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -2464,11 +2464,14 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   lv_obj_set_style_pad_all(ui.controls_box, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.controls_box, LV_OBJ_FLAG_SCROLLABLE);
   ui.up_btn = cover_control_create_wide_icon_button(
-    ui.controls_box, find_icon("Arrow Up"), ctx->icon_font);
+    ui.controls_box, find_icon("Arrow Up"), ctx->icon_font,
+    ctx->width_compensation_percent);
   ui.stop_btn = cover_control_create_wide_icon_button(
-    ui.controls_box, find_icon("Stop"), ctx->icon_font);
+    ui.controls_box, find_icon("Stop"), ctx->icon_font,
+    ctx->width_compensation_percent);
   ui.down_btn = cover_control_create_wide_icon_button(
-    ui.controls_box, find_icon("Arrow Down"), ctx->icon_font);
+    ui.controls_box, find_icon("Arrow Down"), ctx->icon_font,
+    ctx->width_compensation_percent);
   if (ui.up_btn) {
     lv_obj_add_event_cb(ui.up_btn, [](lv_event_t *e) {
       (void) e;
@@ -2516,7 +2519,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
     ui.preset_btns[i] = cover_control_create_preset_button(
       ui.presets_box, preset_values[i],
       cover_control_preset_icon_font(ctx, control_modal_calc_layout(ctx->width_compensation_percent)),
-      ctx->option_menu_font);
+      ctx->option_menu_font, ctx->width_compensation_percent);
   }
 
   ui.position_slider = lv_slider_create(ui.panel);

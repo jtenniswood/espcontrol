@@ -30,6 +30,15 @@ inline void set_width_compensation_vertical_axis(bool vertical) {
   width_compensation_vertical_axis() = vertical;
 }
 
+inline int &icon_width_compensation_percent() {
+  static int percent = 100;
+  return percent;
+}
+
+inline void set_icon_width_compensation_percent(int percent) {
+  icon_width_compensation_percent() = normalize_width_compensation_percent(percent);
+}
+
 inline int &text_width_compensation_percent() {
   static int percent = 100;
   return percent;
@@ -54,6 +63,15 @@ inline void apply_width_compensation(lv_obj_t *obj, int percent) {
 
 inline void apply_text_width_compensation(lv_obj_t *obj) {
   apply_width_compensation(obj, text_width_compensation_percent());
+}
+
+inline void apply_icon_width_compensation(lv_obj_t *obj, int zoom = 256) {
+  if (!obj) return;
+  int compensated_zoom = zoom * icon_width_compensation_percent() / 100;
+  lv_obj_set_style_transform_scale_x(
+    obj, width_compensation_vertical_axis() ? zoom : compensated_zoom, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(
+    obj, width_compensation_vertical_axis() ? compensated_zoom : zoom, LV_PART_MAIN);
 }
 
 inline void apply_slot_text_width_compensation(const BtnSlot &s, int percent) {

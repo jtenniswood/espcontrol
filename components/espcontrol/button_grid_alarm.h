@@ -1388,7 +1388,6 @@ inline lv_obj_t *alarm_control_create_mode_button(
     lv_obj_t **label_out) {
   lv_obj_t *btn = lv_btn_create(parent);
   lv_obj_set_size(btn, width, height);
-  apply_width_compensation(btn, ctx ? ctx->width_compensation_percent : 100);
   lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);
   lv_obj_set_style_bg_color(btn, lv_color_hex(alarm_control_inactive_color(ctx)), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
@@ -1411,7 +1410,6 @@ inline lv_obj_t *alarm_control_create_mode_button(
   lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (icon_font) lv_obj_set_style_text_font(icon, icon_font, LV_PART_MAIN);
-  apply_width_compensation(icon, ctx ? ctx->width_compensation_percent : 100);
   lv_obj_clear_flag(icon, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_align(icon, LV_ALIGN_CENTER, 0, -height / 7);
 

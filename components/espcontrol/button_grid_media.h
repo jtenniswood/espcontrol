@@ -2832,11 +2832,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx);
 
 inline lv_obj_t *media_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                  const lv_font_t *font,
-                                                 MediaControlTab tab,
-                                                 int width_compensation_percent) {
+                                                 MediaControlTab tab) {
   lv_obj_t *btn = control_modal_create_flat_icon_button(
-    parent, icon, font, SECONDARY_GREY, LV_OPA_TRANSP,
-    width_compensation_percent, 180);
+    parent, icon, font, SECONDARY_GREY, LV_OPA_TRANSP, 100, 180);
   if (!btn) return nullptr;
   light_control_center_icon_label(control_modal_icon_label(btn));
   lv_obj_add_event_cb(btn, [](lv_event_t *e) {
@@ -2876,7 +2874,7 @@ inline bool media_control_ensure_progress_tab_button(MediaControlCtx *ctx) {
   if (!ui.progress_tab) {
     ui.progress_tab = media_control_create_tab_button(
       ui.tab_row, find_icon("Progress Clock"), ctx->icon_font,
-      MediaControlTab::PROGRESS, ctx->width_compensation_percent);
+      MediaControlTab::PROGRESS);
   }
   if (!ui.progress_tab) return false;
   lv_obj_clear_flag(ui.progress_tab, LV_OBJ_FLAG_HIDDEN);
@@ -2902,7 +2900,7 @@ inline bool media_control_ensure_speakers_tab_button(MediaControlCtx *ctx) {
   if (!ui.speakers_tab) {
     ui.speakers_tab = media_control_create_tab_button(
       ui.tab_row, find_icon("Speaker Multiple"), ctx->icon_font,
-      MediaControlTab::SPEAKERS, ctx->width_compensation_percent);
+      MediaControlTab::SPEAKERS);
   }
   if (!ui.speakers_tab) return false;
   lv_obj_clear_flag(ui.speakers_tab, LV_OBJ_FLAG_HIDDEN);
@@ -2921,7 +2919,7 @@ inline bool media_control_ensure_power_tab_button(MediaControlCtx *ctx) {
   if (!ui.power_tab) {
     ui.power_tab = media_control_create_tab_button(
       ui.tab_row, find_icon("Power"), ctx->icon_font,
-      MediaControlTab::POWER, ctx->width_compensation_percent);
+      MediaControlTab::POWER);
   }
   if (!ui.power_tab) return false;
   lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
@@ -2941,9 +2939,11 @@ inline lv_obj_t *media_control_create_box(lv_obj_t *parent) {
 
 inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *icon,
                                                   const lv_font_t *font,
-                                                  uint32_t pressed_color) {
+                                                  uint32_t pressed_color,
+                                                  int width_compensation_percent) {
   lv_obj_t *btn = control_modal_create_flat_icon_button(
-    parent, icon, font, SECONDARY_GREY, LV_OPA_COVER);
+    parent, icon, font, SECONDARY_GREY, LV_OPA_COVER,
+    width_compensation_percent);
   if (!btn) return nullptr;
   control_modal_apply_pressed_fill_color(btn, pressed_color);
   return btn;
@@ -2992,18 +2992,23 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
 
   if (media_control_shuffle_supported(ctx)) {
     ui.shuffle_btn = media_control_create_icon_button(
-      ui.content_box, find_icon("Shuffle"), ctx->icon_font, ctx->accent_color);
+      ui.content_box, find_icon("Shuffle"), ctx->icon_font, ctx->accent_color,
+      ctx->width_compensation_percent);
   }
   ui.previous_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Skip Previous"), ctx->icon_font, ctx->accent_color);
+    ui.content_box, find_icon("Skip Previous"), ctx->icon_font, ctx->accent_color,
+    ctx->width_compensation_percent);
   ui.play_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Play"), ctx->icon_font, ctx->accent_color);
+    ui.content_box, find_icon("Play"), ctx->icon_font, ctx->accent_color,
+    ctx->width_compensation_percent);
   ui.play_icon_lbl = ui.play_btn ? lv_obj_get_child(ui.play_btn, 0) : nullptr;
   ui.next_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Skip Next"), ctx->icon_font, ctx->accent_color);
+    ui.content_box, find_icon("Skip Next"), ctx->icon_font, ctx->accent_color,
+    ctx->width_compensation_percent);
   if (media_control_repeat_supported(ctx)) {
     ui.repeat_btn = media_control_create_icon_button(
-      ui.content_box, find_icon("Repeat"), ctx->icon_font, ctx->accent_color);
+      ui.content_box, find_icon("Repeat"), ctx->icon_font, ctx->accent_color,
+      ctx->width_compensation_percent);
     ui.repeat_icon_lbl = ui.repeat_btn ? lv_obj_get_child(ui.repeat_btn, 0) : nullptr;
   }
   if (ui.shuffle_btn) lv_obj_add_event_cb(ui.shuffle_btn, [](lv_event_t *) {
@@ -3714,8 +3719,8 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_label_set_display_text(row->speaker_icon, find_icon("Speaker"));
   lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
-  lv_obj_set_style_transform_zoom(
-    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM, LV_PART_MAIN);
+  apply_icon_width_compensation(
+    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM);
   lv_obj_align(row->speaker_icon, LV_ALIGN_LEFT_MID, compact_pad_x, 0);
 
   row->name_label = lv_label_create(row->row);
@@ -3781,8 +3786,8 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_label_set_display_text(row->speaker_icon, find_icon("Speaker"));
   lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
-  lv_obj_set_style_transform_zoom(
-    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM, LV_PART_MAIN);
+  apply_icon_width_compensation(
+    row->speaker_icon, MEDIA_CONTROL_SPEAKER_ROW_ICON_ZOOM);
 
   row->text_box = lv_obj_create(row->content_box);
   lv_obj_set_size(row->text_box, 0, LV_SIZE_CONTENT);
@@ -3959,7 +3964,8 @@ inline void media_control_create_power_tab_content(MediaControlCtx *ctx) {
   if (!ctx || !ui.content_box || ui.power_btn) return;
 
   ui.power_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Power"), ctx->icon_font, ctx->accent_color);
+    ui.content_box, find_icon("Power"), ctx->icon_font, ctx->accent_color,
+    ctx->width_compensation_percent);
   ui.power_icon_lbl = ui.power_btn ? control_modal_icon_label(ui.power_btn) : nullptr;
   if (ui.power_btn) {
     lv_obj_add_event_cb(ui.power_btn, [](lv_event_t *) {
@@ -4437,10 +4443,10 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     }
     ui.controls_tab = media_control_create_tab_button(
       ui.tab_row, find_icon("Speaker"), ctx->icon_font,
-      MediaControlTab::CONTROLS, ctx->width_compensation_percent);
+      MediaControlTab::CONTROLS);
     ui.volume_tab = media_control_create_tab_button(
       ui.tab_row, find_icon("Volume High"), ctx->icon_font,
-      MediaControlTab::VOLUME, ctx->width_compensation_percent);
+      MediaControlTab::VOLUME);
     progress_tab_ready = media_control_ensure_progress_tab_button(ctx);
     media_control_ensure_speakers_tab_button(ctx);
     power_tab_ready = media_control_ensure_power_tab_button(ctx);

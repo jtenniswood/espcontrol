@@ -71,6 +71,7 @@ inline int display_width_percent(int percent) {
 
 inline void display_set_width_axis(const DisplayProfile &profile) {
   set_width_compensation_vertical_axis(profile.width.vertical_axis);
+  set_icon_width_compensation_percent(profile.width.main_percent);
   set_text_width_compensation_percent(profile.width.text_percent);
 }
 

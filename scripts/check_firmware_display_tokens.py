@@ -118,6 +118,45 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{name}: pass display compensation to every modal tab controller"
                 )
+        tab_creators = {
+            "button_grid_sliders.h": (
+                "light_control_create_tab_button",
+                "cover_control_create_tab_button",
+            ),
+            "button_grid_climate.h": ("climate_control_create_tab_button",),
+            "button_grid_media.h": ("media_control_create_tab_button",),
+            "button_grid_fan.h": ("fan_control_create_tab_button",),
+        }
+        for name, creators in tab_creators.items():
+            text = resolved_tab_paths[name].read_text(encoding="utf-8")
+            for creator in creators:
+                body = re.search(
+                    rf"inline lv_obj_t \*{creator}\(.*?\n\}}",
+                    text,
+                    re.S,
+                )
+                if body is None or "width_compensation_percent" in body.group(0):
+                    failures.append(
+                        f"components/espcontrol/{name}: compensate tab icons once through the shared row"
+                    )
+
+    alarm_path = root / FIRMWARE_DIR.relative_to(ROOT) / "button_grid_alarm.h"
+    if alarm_path.exists():
+        alarm_text = alarm_path.read_text(encoding="utf-8")
+        mode_button = re.search(
+            r"inline lv_obj_t \*alarm_control_create_mode_button\(.*?\n\}",
+            alarm_text,
+            re.S,
+        )
+        if (
+            "apply_width_compensation(ui.rail, ctx->width_compensation_percent);"
+            not in alarm_text
+            or mode_button is None
+            or "apply_width_compensation" in mode_button.group(0)
+        ):
+            failures.append(
+                "components/espcontrol/button_grid_alarm.h: compensate alarm action icons once through the shared rail"
+            )
     return failures
 
 
@@ -174,6 +213,17 @@ def run_self_test() -> None:
                 )
             },
             ("keep firmware constant names unique",),
+        ),
+        (
+            {
+                "button_grid_alarm.h": (
+                    "inline lv_obj_t *alarm_control_create_mode_button() {\n"
+                    "  apply_width_compensation(icon, 95);\n"
+                    "}\n"
+                    "apply_width_compensation(ui.rail, ctx->width_compensation_percent);\n"
+                )
+            },
+            ("compensate alarm action icons once through the shared rail",),
         ),
     )
     for files, expected in cases:

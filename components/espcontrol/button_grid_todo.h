@@ -1051,7 +1051,7 @@ inline lv_obj_t *todo_modal_create_list_item_row(
       lv_obj_update_layout(check);
       lv_coord_t offset_x = lv_obj_get_width(check) * (256 - check_zoom) / 512;
       lv_coord_t offset_y = lv_obj_get_height(check) * (256 - check_zoom) / 512;
-      lv_obj_set_style_transform_zoom(check, check_zoom, LV_PART_MAIN);
+      apply_icon_width_compensation(check, check_zoom);
       lv_obj_align(check, LV_ALIGN_CENTER, offset_x, offset_y);
     }
     label_x = checkbox_size + gap;
