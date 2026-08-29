@@ -12,6 +12,9 @@ namespace artwork_image {
 
 constexpr int IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX = 800;
 constexpr int IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 320;
+constexpr size_t IMAGE_PIPELINE_S3_COMPRESSED_TRANSFER_ALLOWANCE_BYTES =
+    128 * 1024;
+constexpr size_t IMAGE_PIPELINE_S3_PSRAM_HEADROOM_BYTES = 96 * 1024;
 
 constexpr int image_pipeline_modal_max_target_side(bool constrained) {
   return constrained ? IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX
@@ -20,6 +23,39 @@ constexpr int image_pipeline_modal_max_target_side(bool constrained) {
 
 constexpr bool image_pipeline_should_retain_modal_cache(bool constrained) {
   return !constrained;
+}
+
+// Standard displays keep their existing persistent modal cache. Constrained
+// displays may keep a bounded cache only while it is current and enough PSRAM
+// remains for another complete replacement pipeline. This makes cache
+// retention opportunistic without weakening the existing decode headroom.
+constexpr bool image_pipeline_should_retain_modal_cache(
+    bool constrained, bool cache_ready, bool cache_expired,
+    size_t psram_free, size_t psram_largest, size_t image_bytes,
+    size_t replacement_pipeline_bytes, size_t psram_headroom_bytes) {
+  if (!cache_ready || cache_expired) return false;
+  if (!constrained) return true;
+  if (image_bytes == 0 || psram_largest < image_bytes) return false;
+  return psram_free >= replacement_pipeline_bytes &&
+         psram_free - replacement_pipeline_bytes >= psram_headroom_bytes;
+}
+
+// The S3 transfer buffer grows before the decoder allocates its replacement
+// RGB surface. Preserve that future allocation and general PSRAM headroom at
+// every growth step instead of relying only on the pre-request estimate.
+constexpr bool background_transfer_psram_growth_preserves_reserve(
+    size_t psram_free, size_t current_capacity, size_t next_capacity,
+    size_t reserved_free_bytes) {
+  if (next_capacity <= current_capacity) return true;
+  const size_t growth = next_capacity - current_capacity;
+  return psram_free >= growth && psram_free - growth >= reserved_free_bytes;
+}
+
+constexpr bool background_transfer_psram_reserve_is_available(
+    size_t psram_free, size_t psram_largest, size_t reserved_free_bytes,
+    size_t reserved_largest_block_bytes) {
+  return psram_free >= reserved_free_bytes &&
+         psram_largest >= reserved_largest_block_bytes;
 }
 
 enum class ImagePipelineMemoryFailure : uint8_t {
@@ -267,15 +303,6 @@ constexpr bool p4_pipeline_http_status_is_success(int status, bool ha_media_prox
   return status == 200 || status == 304 || (status <= 0 && ha_media_proxy);
 }
 
-// Modal work may cancel an active or queued tile to become responsive. The
-// interrupted tile still needs another turn or its card can remain blank after
-// the modal closes.
-constexpr bool image_pipeline_should_requeue_interrupted_tile(bool was_active_or_queued,
-                                                              bool context_active,
-                                                              bool has_source_url) {
-  return was_active_or_queued && context_active && has_source_url;
-}
-
 // A startup download can finish before its card callback is attached. The
 // periodic card loop may recover only the completed buffer for the current URL.
 constexpr bool image_pipeline_completion_needs_recovery(bool image_ready,
@@ -351,10 +378,6 @@ constexpr bool image_pipeline_should_preempt_stale_modal(bool switching_context,
 // Starting the next queued tile inline is safe only when download and decode
 // work run on the background pipeline. Modal requests are still deferred so
 // LVGL can paint the cached preview before full-resolution work starts.
-constexpr bool image_pipeline_can_start_followup_inline(bool background_pipeline) {
-  return background_pipeline;
-}
-
 // Reserve a known HTTP response in one allocation. Chunked responses and
 // inaccurate Content-Length values retain bounded geometric growth.
 constexpr size_t p4_pipeline_transfer_capacity(size_t current_capacity,

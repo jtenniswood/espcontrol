@@ -210,6 +210,12 @@ target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
+add_executable(rgb565_scaler_test rgb565_scaler_test.cpp)
+target_compile_features(rgb565_scaler_test PRIVATE cxx_std_17)
+target_compile_options(rgb565_scaler_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(rgb565_scaler_test PRIVATE ../../components/artwork_image)
+add_test(NAME rgb565_scaler_test COMMAND rgb565_scaler_test)
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS

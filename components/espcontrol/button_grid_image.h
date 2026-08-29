@@ -22,17 +22,24 @@ constexpr uint32_t IMAGE_CARD_MIN_REPEAT_REFRESH_MS = 30000;
 constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint32_t IMAGE_CARD_MODAL_REQUEST_DELAY_MS = 100;
 constexpr uint32_t IMAGE_CARD_MODAL_CLEANUP_DELAY_MS = 100;
+constexpr uint32_t IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS = 15000;
 constexpr uint32_t IMAGE_CARD_MODAL_CLOSE_GUARD_MS = 350;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_TRIGGER_DEBOUNCE_MS = 75;
 constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_RESPONSE_DEBOUNCE_MS = 300;
 constexpr uint8_t IMAGE_CARD_MEDIA_ARTWORK_MAX_TIMEOUT_RETRIES = 3;
 constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
-constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
+#ifndef ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS
+#define ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS 6
+#endif
+constexpr int IMAGE_CARD_MAX_CONTEXTS = ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS;
+static_assert(IMAGE_CARD_MAX_CONTEXTS > 0,
+              "ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS must be positive");
 constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX =
     esphome::artwork_image::IMAGE_PIPELINE_STANDARD_MODAL_MAX_TARGET_SIDE_PX;
 constexpr int IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX =
     esphome::artwork_image::IMAGE_PIPELINE_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX;
-constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
+constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES =
+    esphome::artwork_image::IMAGE_PIPELINE_S3_PSRAM_HEADROOM_BYTES;
 constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES = 40 * 1024;
 constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES = 24 * 1024;
 constexpr lv_coord_t IMAGE_CARD_COMPACT_PORTRAIT_MODAL_BACK_BUTTON_REF_PX = 58;
@@ -72,7 +79,6 @@ struct ImageCardCtx {
   bool requested_once = false;
   bool image_ready = false;
   bool download_active = false;
-  bool download_queued = false;
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
@@ -108,6 +114,8 @@ struct ImageCardModalCache {
   esphome::artwork_image::ArtworkImage *image = nullptr;
   std::string entity_id;
   std::string source_url;
+  uint32_t cached_at_ms = 0;
+  lv_timer_t *expiry_timer = nullptr;
   bool ready = false;
 };
 
@@ -119,69 +127,29 @@ inline ImageCardCtx *image_card_contexts() {
 inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay_ms,
                                                const char *reason);
 inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed = false);
+inline size_t image_card_estimated_buffer_bytes(int width, int height);
+inline size_t image_card_estimated_pipeline_bytes(int width, int height);
 
-inline bool image_card_uses_background_pipeline(
-    esphome::artwork_image::ArtworkImage *image, const std::string &url) {
-  return image && image->can_use_p4_pipeline(url);
-}
-
-inline ImageCardCtx *&image_card_active_download_context() {
-  static ImageCardCtx *ctx = nullptr;
-  return ctx;
-}
-
-inline void image_card_start_next_queued_download(ImageCardCtx *finished_ctx) {
-  ImageCardCtx *contexts = image_card_contexts();
-  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
-    ImageCardCtx *next = &contexts[i];
-    if (!next->active || !next->download_queued || next == finished_ctx) continue;
-    next->download_queued = false;
-    if (esphome::artwork_image::image_pipeline_can_start_followup_inline(
-          image_card_uses_background_pipeline(next->image, next->source_url))) {
-      image_card_request_source_url(next);
-    } else {
-      image_card_schedule_source_refresh(next, IMAGE_CARD_API_RETRY_INTERVAL_MS,
-                                         "image download queue");
-    }
-    return;
-  }
-}
-inline void image_card_release_download_slot(ImageCardCtx *ctx, bool start_next = true) {
+inline void image_card_release_download_slot(ImageCardCtx *ctx) {
   if (!ctx) return;
   ctx->download_active = false;
-  ctx->download_queued = false;
-  ImageCardCtx *&active = image_card_active_download_context();
-  if (active == ctx) {
-    active = nullptr;
-    if (start_next) image_card_start_next_queued_download(ctx);
-  }
 }
 
-inline void image_card_prioritize_modal_download(ImageCardCtx *ctx) {
-  ImageCardCtx *active = image_card_active_download_context();
-  if (active && active->image) {
-    bool requeue_preempted_tile =
-      esphome::artwork_image::image_pipeline_should_requeue_interrupted_tile(
-        true, active->active, !active->source_url.empty());
-    active->image->cancel_update();
-    image_card_release_download_slot(active, false);
-    if (requeue_preempted_tile) {
-      active->download_queued = true;
-      active->next_download_retry_ms =
+inline void image_card_preempt_active_tile_for_modal() {
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ImageCardCtx *candidate = &contexts[i];
+    if (!candidate->active || !candidate->download_active ||
+        !candidate->image || !candidate->image->request_is_active()) {
+      continue;
+    }
+    candidate->image->cancel_update();
+    image_card_release_download_slot(candidate);
+    if (!candidate->source_url.empty()) {
+      candidate->next_download_retry_ms =
           esphome::millis() + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
     }
-  }
-  if (ctx && ctx != active) {
-    bool requeue_selected_tile =
-      esphome::artwork_image::image_pipeline_should_requeue_interrupted_tile(
-        ctx->download_queued, ctx->active, !ctx->source_url.empty());
-    if (ctx->image) ctx->image->cancel_update();
-    image_card_release_download_slot(ctx, false);
-    if (requeue_selected_tile) {
-      ctx->download_queued = true;
-      ctx->next_download_retry_ms =
-          esphome::millis() + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
-    }
+    return;
   }
 }
 
@@ -199,17 +167,89 @@ inline bool image_card_constrained_memory_profile() {
   return display_modal_is_constrained(display_active_modal_profile());
 }
 
-inline bool image_card_retain_modal_cache() {
+inline bool image_card_modal_cache_expired(uint32_t now = esphome::millis()) {
+  ImageCardModalCache &cache = image_card_modal_cache();
+  return cache.ready && cache.cached_at_ms != 0 &&
+         (uint32_t) (now - cache.cached_at_ms) >=
+             IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS;
+}
+
+inline bool image_card_retain_modal_cache(
+    esphome::artwork_image::ArtworkImage *modal_image = nullptr) {
+  const bool constrained = image_card_constrained_memory_profile();
+  if (!constrained) {
+    return esphome::artwork_image::image_pipeline_should_retain_modal_cache(
+        false);
+  }
+  ImageCardModalCache &cache = image_card_modal_cache();
+  if (!modal_image) modal_image = cache.image;
+  const bool cache_ready = cache.ready && cache.image == modal_image &&
+                           modal_image && modal_image->has_image();
+  const int width = cache_ready ? modal_image->get_width() : 0;
+  const int height = cache_ready ? modal_image->get_height() : 0;
+  const size_t image_bytes = image_card_estimated_buffer_bytes(width, height);
+  const size_t replacement_pipeline_bytes =
+      image_card_estimated_pipeline_bytes(width, height);
+#ifdef ESP_PLATFORM
+  const size_t psram_free =
+      heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+  const size_t psram_largest =
+      heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+#else
+  const size_t psram_free = 0;
+  const size_t psram_largest = 0;
+#endif
   return esphome::artwork_image::image_pipeline_should_retain_modal_cache(
-      image_card_constrained_memory_profile());
+      true, cache_ready, image_card_modal_cache_expired(), psram_free,
+      psram_largest, image_bytes, replacement_pipeline_bytes,
+      IMAGE_CARD_MEMORY_HEADROOM_BYTES);
+}
+
+inline void image_card_cancel_modal_cache_expiry() {
+  ImageCardModalCache &cache = image_card_modal_cache();
+  if (!cache.expiry_timer) return;
+  lv_timer_del(cache.expiry_timer);
+  cache.expiry_timer = nullptr;
 }
 
 inline void image_card_release_modal_cache(
     esphome::artwork_image::ArtworkImage *modal_image) {
   if (!modal_image) return;
   ImageCardModalCache &cache = image_card_modal_cache();
-  if (cache.image == modal_image) cache = ImageCardModalCache();
+  if (cache.image == modal_image) {
+    image_card_cancel_modal_cache_expiry();
+    cache = ImageCardModalCache();
+  }
   modal_image->release();
+}
+
+inline void image_card_modal_cache_expiry_timer_cb(lv_timer_t *timer) {
+  ImageCardModalCache &cache = image_card_modal_cache();
+  auto *modal_image = static_cast<esphome::artwork_image::ArtworkImage *>(
+      lv_timer_get_user_data(timer));
+  if (cache.expiry_timer == timer) cache.expiry_timer = nullptr;
+  lv_timer_del(timer);
+  ImageCardCtx *active = image_card_modal_ui().active;
+  if (active && active->modal_image == modal_image) return;
+  image_card_release_modal_cache(modal_image);
+}
+
+inline void image_card_schedule_modal_cache_expiry(
+    esphome::artwork_image::ArtworkImage *modal_image) {
+  if (!modal_image || !image_card_constrained_memory_profile()) return;
+  image_card_cancel_modal_cache_expiry();
+  ImageCardModalCache &cache = image_card_modal_cache();
+  const uint32_t age = cache.cached_at_ms == 0
+                           ? IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS
+                           : esphome::millis() - cache.cached_at_ms;
+  if (age >= IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS) {
+    image_card_release_modal_cache(modal_image);
+    return;
+  }
+  cache.expiry_timer = lv_timer_create(
+      image_card_modal_cache_expiry_timer_cb,
+      IMAGE_CARD_CONSTRAINED_MODAL_CACHE_TTL_MS - age, modal_image);
+  if (!cache.expiry_timer) image_card_release_modal_cache(modal_image);
 }
 
 inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
@@ -230,7 +270,7 @@ inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
   UBaseType_t stack_high_water = uxTaskGetStackHighWaterMark(nullptr);
   int core = xPortGetCoreID();
   ESP_LOGI("image_card_diag",
-           "%s entity=%s modal=%s image_ready=%s tile_dl=%s queued=%s requested=%s target=%dx%d "
+           "%s entity=%s modal=%s image_ready=%s tile_dl=%s requested=%s target=%dx%d "
            "src_len=%u url_len=%u modal_url_len=%u modal_age=%lu tile_age=%lu modal_req_age=%lu "
            "internal_free=%u internal_min=%u internal_largest=%u psram_free=%u psram_largest=%u "
            "task_stack_free=%u core=%d",
@@ -238,7 +278,6 @@ inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
            ui.active == ctx && ui.overlay ? "open" : "closed",
            ctx->image_ready ? "yes" : "no",
            ctx->download_active ? "yes" : "no",
-           ctx->download_queued ? "yes" : "no",
            ctx->requested_once ? "yes" : "no",
            static_cast<int>(target_width), static_cast<int>(target_height),
            static_cast<unsigned>(ctx->source_url.size()),
@@ -256,13 +295,12 @@ inline void image_card_log_diagnostics(ImageCardCtx *ctx, const char *stage,
            core);
 #else
   ESP_LOGI("image_card_diag",
-           "%s entity=%s modal=%s image_ready=%s tile_dl=%s queued=%s requested=%s target=%dx%d "
+           "%s entity=%s modal=%s image_ready=%s tile_dl=%s requested=%s target=%dx%d "
            "src_len=%u url_len=%u modal_url_len=%u modal_age=%lu tile_age=%lu modal_req_age=%lu",
            stage ? stage : "event", ctx->entity_id.c_str(),
            ui.active == ctx && ui.overlay ? "open" : "closed",
            ctx->image_ready ? "yes" : "no",
            ctx->download_active ? "yes" : "no",
-           ctx->download_queued ? "yes" : "no",
            ctx->requested_once ? "yes" : "no",
            static_cast<int>(target_width), static_cast<int>(target_height),
            static_cast<unsigned>(ctx->source_url.size()),
@@ -630,7 +668,8 @@ inline size_t image_card_estimated_pipeline_bytes(int width, int height) {
   // conservative compressed-transfer allowance can coexist during refresh.
   return frame_bytes * 3u + 256u * 1024u;
 #else
-  return frame_bytes * 2u + 128u * 1024u;
+  return frame_bytes * 2u +
+         esphome::artwork_image::IMAGE_PIPELINE_S3_COMPRESSED_TRANSFER_ALLOWANCE_BYTES;
 #endif
 }
 
@@ -793,7 +832,9 @@ inline void image_card_apply_modal_downloaded(ImageCardCtx *ctx) {
   cache.image = ctx->modal_image;
   cache.entity_id = ctx->entity_id;
   cache.source_url = ctx->modal_source_url;
+  cache.cached_at_ms = esphome::millis();
   cache.ready = true;
+  image_card_cancel_modal_cache_expiry();
   if (ctx->diagnostics_enabled && ctx->last_modal_request_started_ms != 0) {
     ESP_LOGI("image_card_diag", "Modal image applied for %s after %lu ms",
              ctx->entity_id.c_str(),
@@ -863,7 +904,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   if (count < 0) count = 0;
   if (cfg.image_card_modal_image) {
     cfg.image_card_modal_image->cancel_update();
-    if (!image_card_retain_modal_cache()) {
+    if (!image_card_retain_modal_cache(cfg.image_card_modal_image)) {
       image_card_release_modal_cache(cfg.image_card_modal_image);
     }
   }
@@ -911,7 +952,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
       lv_timer_del(contexts[i].modal_cleanup_timer);
       contexts[i].modal_cleanup_timer = nullptr;
     }
-    image_card_release_download_slot(&contexts[i], false);
+    image_card_release_download_slot(&contexts[i]);
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
@@ -1128,7 +1169,8 @@ inline bool image_card_modal_cache_matches(ImageCardCtx *ctx) {
   ImageCardModalCache &cache = image_card_modal_cache();
   return esphome::artwork_image::image_pipeline_modal_cache_matches(
       cache.ready, cache.image == ctx->modal_image,
-      cache.entity_id == ctx->entity_id, cache.source_url == ctx->source_url);
+      cache.entity_id == ctx->entity_id, cache.source_url == ctx->source_url) &&
+         !image_card_modal_cache_expired();
 }
 
 inline bool image_card_modal_has_preview(ImageCardCtx *ctx) {
@@ -1762,15 +1804,6 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
     image_card_log_diagnostics(ctx, "tile-refresh-duplicate", width, height);
     return;
   }
-  ImageCardCtx *active_download = image_card_active_download_context();
-  if (!replace_pending_request && active_download && active_download != ctx) {
-    ctx->download_queued = true;
-    ctx->next_download_retry_ms = now + IMAGE_CARD_API_RETRY_INTERVAL_MS;
-    ESP_LOGD("image_card", "Deferring image refresh for %s while %s is downloading",
-             ctx->entity_id.c_str(), active_download->entity_id.c_str());
-    image_card_log_diagnostics(ctx, "tile-refresh-queued", width, height);
-    return;
-  }
   if (!replace_pending_request && !image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
     if (!ctx->image_ready) {
@@ -1785,8 +1818,6 @@ inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed
   ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);
   ctx->requested_once = true;
   ctx->download_active = true;
-  ctx->download_queued = false;
-  image_card_active_download_context() = ctx;
   ctx->next_download_retry_ms = 0;
   ctx->last_tile_request_started_ms = now;
   ctx->image->set_target_size(decode_width, decode_height);
@@ -1836,6 +1867,10 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
   std::string effective_url = ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);
   if (effective_url.empty()) return false;
   ctx->modal_url = effective_url;
+  // Enqueue the higher-priority modal before cancelling an active tile. The
+  // global ImageService then dispatches the modal immediately and remains the
+  // sole request scheduler.
+  image_card_preempt_active_tile_for_modal();
   return true;
 }
 
@@ -1894,8 +1929,9 @@ inline void image_card_finish_modal_cleanup(ImageCardCtx *ctx) {
   bool shared_modal_in_use = active_modal && active_modal->modal_image == ctx->modal_image;
   if (esphome::artwork_image::image_pipeline_should_cancel_modal_cleanup(
         image_card_has_separate_modal_image(ctx), shared_modal_in_use)) {
-    if (image_card_retain_modal_cache()) {
+    if (image_card_retain_modal_cache(ctx->modal_image)) {
       ctx->modal_image->cancel_update();
+      image_card_schedule_modal_cache_expiry(ctx->modal_image);
     } else {
       image_card_release_modal_cache(ctx->modal_image);
       image_card_log_diagnostics(ctx, "modal-cache-released");
@@ -1970,10 +2006,6 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
     image_card_finish_modal_cleanup(ctx);
   }
   image_card_cancel_stale_modal_download(ctx);
-  // Keep any scheduled tile retry alive. While the modal is open the normal
-  // refresh path defers it, then starts it shortly after the modal closes.
-  image_card_prioritize_modal_download(ctx);
-
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::IMAGE_CARD, ctx->btn, ctx->width_compensation_percent,
     ctx->icon_font, image_card_hide_modal);
@@ -2053,6 +2085,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
 
   ImageCardModalCache &modal_cache = image_card_modal_cache();
   if (image_card_modal_cache_matches(ctx)) {
+    image_card_cancel_modal_cache_expiry();
     image_card_show_modal_image(ctx, modal_cache.image);
     image_card_log_diagnostics(ctx, "modal-cache-shown");
   } else if (ctx->image_ready) {
