@@ -50,14 +50,18 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   WifiQrModalUi &ui = wifi_qr_modal_ui();
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
-  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(DARK_OVERLAY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.panel, lv_color_white(), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_t *close_icon = control_modal_icon_label(shell.close_btn);
+  if (close_icon) lv_obj_set_style_text_color(close_icon, lv_color_black(), LV_PART_MAIN);
   lv_obj_t *title = lv_label_create(ui.panel);
   lv_label_set_text(title, config.label.empty() ? "Guest Wi-Fi" : config.label.c_str());
+  lv_obj_set_style_text_color(title, lv_color_black(), LV_PART_MAIN);
   lv_obj_align(title, LV_ALIGN_TOP_MID, 0, shell.layout.inset + shell.layout.back_size / 4);
   lv_obj_t *subtitle = lv_label_create(ui.panel);
   std::string subtitle_text = "Scan to join " + ssid;
   lv_label_set_text(subtitle, subtitle_text.c_str());
+  lv_obj_set_style_text_color(subtitle, lv_color_black(), LV_PART_MAIN);
   lv_label_set_long_mode(subtitle, LV_LABEL_LONG_DOT);
   lv_obj_set_width(subtitle, lv_pct(80));
   lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, shell.layout.inset + shell.layout.back_size + 8);
@@ -65,6 +69,7 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   if (!ui.qr) {
     lv_obj_t *message = lv_label_create(ui.panel);
     lv_label_set_text(message, "Unable to create QR code");
+    lv_obj_set_style_text_color(message, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(message, LV_ALIGN_CENTER, 0, 0);
     return;
   }
@@ -82,6 +87,7 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     ui.qr = nullptr;
     lv_obj_t *message = lv_label_create(ui.panel);
     lv_label_set_text(message, "Unable to create QR code");
+    lv_obj_set_style_text_color(message, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(message, LV_ALIGN_CENTER, 0, 0);
     return;
   }

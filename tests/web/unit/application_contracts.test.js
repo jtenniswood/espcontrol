@@ -343,6 +343,19 @@ describe("browserless application contracts", () => {
     }
   });
 
+  test("keeps the Wi-Fi Share card name editable", () => {
+    const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
+    let definition;
+    registerWifiQrCardTypes({
+      register(key, value) {
+        assert.equal(key, "wifi_qr");
+        definition = value;
+      },
+    }, { cardBadgePreview() {} });
+    assert.equal(definition.hideLabel, undefined);
+    assert.equal(definition.labelPlaceholder, "Guest Wi-Fi");
+  });
+
   test("registers garage and gate through the explicit cover-card factory", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const coverFactory = fs.readFileSync(path.join(ROOT, "src/webserver/cards/cover_like_card.ts"), "utf8");

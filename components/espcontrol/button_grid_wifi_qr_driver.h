@@ -7,6 +7,12 @@ inline bool wifi_qr_driver_matches(const Context &context) {
 inline bool wifi_qr_driver_setup_visual(BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!wifi_qr_driver_matches(context)) return false;
   setup_toggle_visual(slot, config);
+  if (slot.icon_lbl) {
+    lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    const char *icon = (config.icon.empty() || config.icon == "Auto")
+      ? find_icon("Wifi") : find_icon(config.icon.c_str());
+    lv_label_set_display_text(slot.icon_lbl, icon);
+  }
   apply_push_button_transition(slot.btn);
   return true;
 }

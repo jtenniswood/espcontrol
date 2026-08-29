@@ -78,7 +78,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
     registry.register("wifi_qr", {
         label: function (this: any) { return cardContractCardLabel("wifi_qr"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("wifi_qr"); },
-        hideLabel: true,
+        labelPlaceholder: "Guest Wi-Fi",
         defaultConfig: function (this: any) { return cardContractDefaultConfig("wifi_qr"); },
         cardMetadata: WIFI_QR_CARD_METADATA,
         normalizeConfig: normalizeWifiQrConfig,
