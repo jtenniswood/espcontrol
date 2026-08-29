@@ -377,8 +377,9 @@ CardAssetRestoreResult CardAssetService::commit_restore_session(const std::strin
     restore_committed_ = false;
     return CardAssetRestoreResult::PERSISTENCE_FAILED;
   }
-  return clear_restore_session() ? CardAssetRestoreResult::SUCCESS
-                                 : CardAssetRestoreResult::PERSISTENCE_FAILED;
+  if (clear_restore_session()) return CardAssetRestoreResult::SUCCESS;
+  restore_recovery_needed_ = true;
+  return CardAssetRestoreResult::PERSISTENCE_FAILED;
 }
 
 CardAssetRestoreResult CardAssetService::rollback_restore_session(const std::string &session) {
