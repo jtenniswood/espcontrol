@@ -18,6 +18,7 @@ import {
     SWITCH_CONFIRM_YES_OPTION,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
+    copyCardBackgroundOptions,
     copyLargeNumbersOption,
 } from "./config_option_core";
 import {
@@ -55,6 +56,12 @@ export function createConfigConfirmationOptionsFeature(
         if (typeof button === "string") return button === ACTION_CARD_LOCAL_ACTION;
         return !!(button && (button.type === "action" || button.type === "local") && button.sensor === ACTION_CARD_LOCAL_ACTION);
     }
+    function clearActionModeOptions(this: any, button?: any) {
+        if (!button)
+            return "";
+        button.options = copyCardBackgroundOptions("", button.options, button);
+        return button.options;
+    }
     function actionCardStateEntity(this: any, button?: any) {
         return configOptionValue(button && button.options, ACTION_CARD_STATE_ENTITY_OPTION);
     }
@@ -91,10 +98,10 @@ export function createConfigConfirmationOptionsFeature(
         button.precision = "";
         if (actionCardStateDisplayMode(button) !== "icon") button.icon_on = "Auto";
         if (actionCardIsOptionSelect(button)) {
-            button.unit = ""; button.options = "";
+            button.unit = ""; clearActionModeOptions(button);
             if (!button.icon || button.icon === "Auto" || button.icon === "Chevron Down") button.icon = "Flash";
         } else if (actionCardIsLocal(button)) {
-            button.unit = ""; button.precision = ""; button.options = ""; button.icon_on = "Auto";
+            button.unit = ""; button.precision = ""; clearActionModeOptions(button); button.icon_on = "Auto";
             if (!button.icon || button.icon === "Auto" || button.icon === "Flash") button.icon = "Gesture Tap";
         }
     }
@@ -163,7 +170,7 @@ export function createConfigConfirmationOptionsFeature(
     }
     function normalizeSwitchConfirmationOptions(this: any, options?: any) {
         var mode: any = switchConfirmationMode({ options: options });
-        var out: any = "";
+        var out: any = copyCardBackgroundOptions("", options, { type: "" });
         out = copyLargeNumbersOption(out, options);
         var onPattern: any = normalizeCardOnPattern(configOptionValue(options, CARD_ON_PATTERN_OPTION));
         if (onPattern)
@@ -194,6 +201,7 @@ export function createConfigConfirmationOptionsFeature(
         mode = mode === "on" || mode === "both" || mode === "off" ? mode : "";
         var out: any = "";
         out = copyLargeNumbersOption(out, b.options);
+        out = copyCardBackgroundOptions(out, b.options, b);
         var storage: any = switchConfirmationModeStorage();
         out = setConfigOption(out, storage[0], mode === "off" || mode === "both");
         out = setConfigOption(out, storage[1], mode === "on" || mode === "both");
@@ -345,9 +353,10 @@ export function createConfigConfirmationOptionsFeature(
         return out;
     }
     function normalizeActionOptions(this: any, options?: any, action?: any) {
+        var out: any = copyCardBackgroundOptions("", options, { type: "action" });
         if (action === ACTION_CARD_LOCAL_ACTION)
-            return "";
-        var out: any = copyActionCardStateOptions("", options);
+            return out;
+        out = copyActionCardStateOptions(out, options);
         if (action !== "script.turn_on") {
             return out;
         }
@@ -374,7 +383,8 @@ export function createConfigConfirmationOptionsFeature(
     function setActionScriptConfirmationOptions(this: any, b?: any, enabled?: any, message?: any, yesText?: any, noText?: any) {
         if (!b)
             return "";
-        var out: any = copyActionCardStateOptions("", b.options);
+        var out: any = copyCardBackgroundOptions("", b.options, b);
+        out = copyActionCardStateOptions(out, b.options);
         var fields: any = actionScriptFields(b);
         if (fields)
             out = setConfigOptionValue(out, ACTION_SCRIPT_FIELDS_OPTION, fields);
@@ -405,6 +415,7 @@ export function createConfigConfirmationOptionsFeature(
         actionCardInfo,
         actionCardIsOptionSelect,
         actionCardIsLocal,
+        clearActionModeOptions,
         normalizeSavedConfigActionFields,
         normalizeActionCardConfig,
         actionCardStateEntity,

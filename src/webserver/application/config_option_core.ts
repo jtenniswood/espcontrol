@@ -7,7 +7,14 @@ import {
 import {
     cardContractOptionName,
     cardContractOptions,
+    cardContractSupportsBackground,
 } from "../generated/card_contract";
+import {
+    CARD_BACKGROUND_IMAGE_OPTION,
+    cardBackgroundAssetId,
+    normalizeCardBackgroundAssetId,
+    setCardBackgroundAssetId,
+} from "../model/card";
     // ── Config Option Core ─────────────────────────────────────────────
     var SENSOR_STATE_LABELS_OPTION: any = cardContractOptionName("state_labels");
     var SENSOR_STATE_INPUT_OPTION: any = cardContractOptionName("state_input");
@@ -73,6 +80,34 @@ import {
             return setConfigOption(out, SENSOR_LARGE_NUMBERS_OPTION, true);
         }
         return out;
+    }
+    function cardBackgroundSupported(this: any, button?: any) {
+        if (!button || !cardContractSupportsBackground(button.type || ""))
+            return false;
+        return !(button.type === "media" && button.sensor === "cover_art");
+    }
+    function normalizeCardBackgroundImageId(this: any, value?: any) {
+        return normalizeCardBackgroundAssetId(value);
+    }
+    function cardBackgroundImage(this: any, cardOrOptions?: any) {
+        if (cardOrOptions && typeof cardOrOptions === "object")
+            return cardBackgroundAssetId(cardOrOptions);
+        return normalizeCardBackgroundImageId(configOptionValue(cardOrOptions, CARD_BACKGROUND_IMAGE_OPTION));
+    }
+    function setCardBackgroundImage(this: any, button?: any, value?: any) {
+        if (!button)
+            return "";
+        return setCardBackgroundAssetId(button, value);
+    }
+    function copyCardBackgroundOptions(this: any, out?: any, sourceOptions?: any, button?: any) {
+        if (!cardBackgroundSupported(button))
+            return out || "";
+        var id: any = cardBackgroundImage(button) || cardBackgroundImage(sourceOptions);
+        return id ? setConfigOptionValue(out || "", CARD_BACKGROUND_IMAGE_OPTION, id) : out || "";
+    }
+    function cardImageUrl(this: any, id?: any) {
+        id = normalizeCardBackgroundImageId(id);
+        return id ? "/card-images/" + id + ".jpg" : "";
     }
     function cardContractOptionSpec(this: any, type?: any, name?: any) {
         var options: any = cardContractOptions(type);
@@ -150,6 +185,7 @@ export {
     IMAGE_LABEL_OPTION,
     IMAGE_ICON_OPTION,
     IMAGE_MODAL_MODE_OPTION,
+    CARD_BACKGROUND_IMAGE_OPTION,
     LIGHT_CONTROL_TABS_OPTION,
     COVER_CONTROL_TABS_OPTION,
     CLIMATE_CONTROL_TABS_OPTION,
@@ -157,6 +193,12 @@ export {
     FAN_CONTROL_TABS_OPTION,
     largeNumbersExplicitlyDisabled,
     copyLargeNumbersOption,
+    cardBackgroundSupported,
+    normalizeCardBackgroundImageId,
+    cardBackgroundImage,
+    setCardBackgroundImage,
+    copyCardBackgroundOptions,
+    cardImageUrl,
     cardContractOptionSpec,
     cardContractOptionSupportedFor,
     cardContractOptionDefaultValue,

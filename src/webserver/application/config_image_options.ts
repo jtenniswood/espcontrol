@@ -11,6 +11,7 @@ import {
     IMAGE_ICON_OPTION,
     IMAGE_LABEL_OPTION,
     IMAGE_MODAL_MODE_OPTION,
+    cardBackgroundImage,
     cardContractOptionDefaultValue,
     cardContractOptionSpec,
 } from "./config_option_core";
@@ -24,6 +25,7 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
     const layout = dependencies.layout;
     const mediaEditorMode = dependencies.mediaOptions.mediaEditorMode;
     const IMAGE_SLOT_CAPACITY = Math.max(0, Number(layout.config.imageSlotCapacity) || 0);
+    const CARD_BACKGROUND_IMAGE_LIMIT = Math.max(0, Number(layout.config.cardBackgroundImageLimit) || layout.numSlots);
     let parseSubpage: ((value: string) => any) | undefined;
     function connectSubpageParser(parser: (value: string) => any) {
         parseSubpage = parser;
@@ -45,6 +47,12 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
     }
     function imageSlotCapacity(this: any) {
         return IMAGE_SLOT_CAPACITY;
+    }
+    function cardBackgroundImageLimit(this: any) {
+        return CARD_BACKGROUND_IMAGE_LIMIT;
+    }
+    function cardBackgroundImageLimitMessage(this: any) {
+        return "Every card position on this display can use a background image.";
     }
     function imageSlotCapacityMessage(this: any) {
         if (IMAGE_SLOT_CAPACITY <= 0)
@@ -139,8 +147,34 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
             return true;
         return imageCardCountWithCandidate() + extraCount <= IMAGE_SLOT_CAPACITY;
     }
+    function cardBackgroundImageCountWithCandidate(this: any, candidate?: any) {
+        var buttons: any = state.buttons;
+        var grid: any = state.grid;
+        if (candidate && candidate.isSub) {
+            var subpage: any = state.subpages && state.subpages[candidate.homeSlot];
+            buttons = subpage && subpage.buttons || [];
+            grid = subpage && subpage.grid || [];
+        }
+        var count: any = 0;
+        var matchedCandidate: any = false;
+        activeGridSlots(grid).forEach(function (this: any, slot?: any) {
+            var button: any = buttons && buttons[slot - 1];
+            if (candidate && candidate.slot === slot) {
+                button = candidate.button;
+                matchedCandidate = true;
+            }
+            if (cardBackgroundImage(button))
+                count++;
+        });
+        if (candidate && !matchedCandidate && cardBackgroundImage(candidate.button))
+            count++;
+        return count;
+    }
     function showImageCardLimitBanner(this: any) {
         dependencies.showBanner(imageSlotCapacityMessage(), "error");
+    }
+    function showCardBackgroundImageLimitBanner(this: any) {
+        dependencies.showBanner(cardBackgroundImageLimitMessage(), "error");
     }
     function imageModalMode(this: any, b?: any) {
         return normalizeImageModalMode(configOptionValue(b && b.options, IMAGE_MODAL_MODE_OPTION));
@@ -194,6 +228,8 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
         imageModalModeValues,
         normalizeImageModalMode,
         imageSlotCapacity,
+        cardBackgroundImageLimit,
+        cardBackgroundImageLimitMessage,
         imageSlotCapacityMessage,
         isImageCard,
         activeGridSlots,
@@ -202,8 +238,10 @@ export function createConfigImageOptionsFeature(dependencies: ConfigImageOptions
         imageCardCountInClipboardEntry,
         imageCardCountInClipboardEntries,
         imageCardCountWithCandidate,
+        cardBackgroundImageCountWithCandidate,
         canAddImageCards,
         showImageCardLimitBanner,
+        showCardBackgroundImageLimitBanner,
         imageModalMode,
         imageLabelEnabled,
         imageIconEnabled,

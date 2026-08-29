@@ -13,7 +13,7 @@ from esphome.const import CONF_ID
 import os
 
 CODEOWNERS = ["@jtenniswood"]
-AUTO_LOAD = ["mdns"]
+AUTO_LOAD = ["card_image_store", "mdns"]
 
 CONF_ACTION_RESPONSES = "action_responses"
 CONF_PANEL_CONFIG = "panel_config"

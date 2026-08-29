@@ -45,6 +45,8 @@ class JpegDecoder : public ImageDecoder {
   jpeg_decompress_struct cinfo_{};
   JpegErrorMgr jerr_{};
   uint8_t *row_buffer_{nullptr};
+  uint8_t *rgb565_frame_buffer_{nullptr};
+  size_t rgb565_frame_stride_{0};
   size_t source_size_{0};
   int out_w_{0};
   int out_h_{0};
@@ -53,6 +55,7 @@ class JpegDecoder : public ImageDecoder {
   bool decode_started_{false};
   bool use_rgb565_{false};
   bool big_endian_{false};
+  bool native_rgb565_output_{false};
 };
 
 }  // namespace artwork_image

@@ -36,6 +36,11 @@ names, missing choice/number defaults, aliases to missing cards, invalid
 conditions, duplicate compact codes, and reuse of a code listed in
 `retiredSubpageTypeCodes`.
 
+The top-level `appearance.backgroundImage` section declares the saved option
+name and the card types that can use a background image. The generated browser
+and firmware helpers consume that same list, so adding support to a card no
+longer requires matching handwritten type checks in two places.
+
 The top-level `runtime` section gives every contract card a generated behaviour
 identity without putting executable behaviour in JSON. Each entry selects a
 permitted handwritten `driver` and declares all capability flags:

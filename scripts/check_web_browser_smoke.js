@@ -15,6 +15,9 @@ const {
   decodePanelConfig,
   encodePanelConfig,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
+const { readStoredZip } = loadTypeScriptModule(
+  path.join(ROOT, "src", "webserver", "features", "backup_file_controller.ts"),
+);
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
@@ -2586,7 +2589,10 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         `${label}: Screen Lock should not show an unused Entity field`,
       );
       assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        await page.locator(
+          ".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button",
+        ).evaluateAll((buttons) => buttons.filter((button) =>
+          String(button.firstElementChild?.textContent || "").trim() === "Card Settings").length),
         0,
         `${label}: Screen Lock should not show unused generic Card Settings`,
       );
@@ -2594,7 +2600,10 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
 
     if (cardOption.value === "weather") {
       assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        await page.locator(
+          ".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button",
+        ).evaluateAll((buttons) => buttons.filter((button) =>
+          String(button.firstElementChild?.textContent || "").trim() === "Card Settings").length),
         0,
         `${label}: Weather current conditions should not show empty Card Settings`,
       );
@@ -2621,7 +2630,10 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         await assertGrouped(`${cardOption.label} / ${typeValue || "default"}`);
         if (cardOption.value === "weather" && typeValue) {
           assert.strictEqual(
-            await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+            await page.locator(
+              ".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button",
+            ).evaluateAll((buttons) => buttons.filter((button) =>
+              String(button.firstElementChild?.textContent || "").trim() === "Card Settings").length),
             1,
             `${label}: Weather forecasts should group their extra settings`,
           );
@@ -2756,8 +2768,8 @@ async function assertInternalControlsPanel(page, posts, label) {
       await page
         .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
         .evaluateAll((headings) => headings.map((heading) => heading.textContent)),
-      ["Controls", "Card Settings"],
-      `${label}: Internal groups should show Controls before Card Settings`,
+      ["Controls", "Card Settings", "Card Image"],
+      `${label}: Internal groups should preserve Controls and Card Settings order`,
     );
     assert.strictEqual(
       await page.locator("#sp-inp-internal-relay").evaluate((element) => {
@@ -2831,8 +2843,8 @@ async function assertWebhookSettingsPanel(page, posts, label) {
     await page
       .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
       .evaluateAll((headings) => headings.map((heading) => heading.textContent)),
-    ["Webhook Settings", "Card Settings"],
-    `${label}: Webhook groups should show Webhook Settings before Card Settings`,
+    ["Webhook Settings", "Card Settings", "Card Image"],
+    `${label}: Webhook groups should preserve Webhook Settings and Card Settings order`,
   );
   for (const fieldId of ["#sp-inp-webhook-method", "#sp-inp-webhook-url"]) {
     assert.strictEqual(
@@ -5007,7 +5019,8 @@ async function assertNativeProfileJourney(browser, testCase) {
     const download = await downloadPromise;
     const downloadPath = await download.path();
     assert(downloadPath, `${testCase.name}: backup export creates a file`);
-    const backup = JSON.parse(fs.readFileSync(downloadPath, "utf8"));
+    const archive = readStoredZip(new Uint8Array(fs.readFileSync(downloadPath)));
+    const backup = JSON.parse(Buffer.from(archive["backup.json"]).toString("utf8"));
     assert.strictEqual(backup.version, 2, `${testCase.name}: backup export uses v2`);
     assert.strictEqual(
       backup.native_config.device_profile,

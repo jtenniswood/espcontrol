@@ -38,6 +38,7 @@ static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
 static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 300;
 static constexpr size_t MAX_RETIRED_IMAGE_BUFFERS = 1;
 static constexpr size_t ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
+static constexpr size_t DIRECT_CONTAINER_READ_CHUNK_SIZE = 64 * 1024;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
 #include "image_decoder.h"
@@ -704,6 +705,43 @@ std::string ArtworkImage::request_update_url(const std::string &url, int max_sou
   return effective_url;
 }
 
+bool ArtworkImage::request_update_container(std::shared_ptr<http_request::HttpContainer> container,
+                                            const std::string &source_key) {
+  if (container == nullptr || source_key.empty() || this->is_busy_()) return false;
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
+  this->url_ = source_key;
+  this->direct_container_stream_ = true;
+  this->downloader_ = std::move(container);
+  this->log_state_("local-stream-start");
+  this->start_download_();
+  return true;
+}
+
+bool ArtworkImage::request_update_rgb565_frame(
+    const std::string &source_key, int width, int height,
+    const std::function<bool(uint8_t *, size_t)> &loader) {
+  if (source_key.empty() || width <= 0 || height <= 0 || !loader || this->is_busy_() ||
+      this->type_ != ImageType::IMAGE_TYPE_RGB565) {
+    return false;
+  }
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
+  this->url_ = source_key;
+  size_t size = this->resize_(width, height);
+  if (size == 0 || this->decode_buffer_ == nullptr || !loader(this->decode_buffer_, size)) {
+    this->discard_decode_buffer_();
+    return false;
+  }
+  if (!this->promote_decode_buffer_()) {
+    this->discard_decode_buffer_();
+    return false;
+  }
+  ESP_LOGI(TAG, "Loaded cached RGB565 frame: %dx%d (%zu bytes)", width, height, size);
+  this->download_finished_callback_.call(true);
+  return true;
+}
+
 void ArtworkImage::cancel_update() {
   this->update_pending_ = false;
   this->pending_url_.clear();
@@ -821,6 +859,10 @@ void ArtworkImage::start_update_() {
   }
   this->response_ready_ms_ = millis();
 
+  this->start_download_();
+}
+
+void ArtworkImage::start_download_() {
   int http_code = this->downloader_->status_code;
   this->log_state_("response-ready");
   if (http_code == HTTP_CODE_NOT_MODIFIED) {
@@ -1037,7 +1079,10 @@ void ArtworkImage::loop() {
       return;
     }
 
-    size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
+    const size_t read_chunk_size = this->direct_container_stream_
+                                       ? DIRECT_CONTAINER_READ_CHUNK_SIZE
+                                       : this->download_buffer_initial_size_;
+    size_t available = std::min(this->download_buffer_.free_capacity(), read_chunk_size);
     uint8_t *target = this->download_buffer_.append();
     if (target == nullptr || available == 0) {
       ESP_LOGE(TAG, "Artwork download buffer became unavailable before format detection");
@@ -1126,7 +1171,10 @@ void ArtworkImage::loop() {
     return;
   }
 
-  size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
+  const size_t read_chunk_size = this->direct_container_stream_
+                                     ? DIRECT_CONTAINER_READ_CHUNK_SIZE
+                                     : this->download_buffer_initial_size_;
+  size_t available = std::min(this->download_buffer_.free_capacity(), read_chunk_size);
   uint8_t *target = this->download_buffer_.append();
   if (target == nullptr || available == 0) {
     ESP_LOGE(TAG, "Artwork download buffer became unavailable before reading image data");

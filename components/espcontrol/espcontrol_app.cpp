@@ -213,12 +213,37 @@ void EspControlApp::apply_boot_configuration() {
   }
 }
 
+bool EspControlApp::persist_card_asset_references(void *context) {
+  EspControlApp *const app = static_cast<EspControlApp *>(context);
+  if (app == nullptr || !app->native_configuration_requested()) return true;
+  NativeConfigurationRuntime *const runtime = app->native_configuration_runtime_.get();
+  configuration::ConfigurationService *const service =
+      app->core_.configuration_service();
+  if (!app->native_configuration_initialized_ || runtime == nullptr ||
+      runtime->document_buffer == nullptr || service == nullptr) {
+    return false;
+  }
+  const configuration::ServiceLoadResult result = service->refresh_legacy_shadow(
+      runtime->document_buffer, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+  if (!result.ok()) {
+    ESP_LOGE(TAG, "Card image reference update could not reach native configuration (%u)",
+             static_cast<unsigned>(result.status));
+    return false;
+  }
+  return true;
+}
+
 void EspControlApp::setup() {
   home_assistant_endpoint_.setup();
   if (core_.start()) {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
   } else {
     ESP_LOGE(TAG, "Application core failed to start");
+  }
+  card_assets_.set_reference_persistence_callback(
+      &EspControlApp::persist_card_asset_references, this);
+  if (!card_assets_.start()) {
+    ESP_LOGE(TAG, "Card asset service failed to start");
   }
 
   // NVS work and the legacy snapshot can be expensive on a populated panel.
@@ -329,6 +354,7 @@ void EspControlApp::initialize_native_configuration() {
 void EspControlApp::loop() {
   home_assistant_endpoint_.loop();
   core_.run_once();
+  card_assets_.loop();
   // The app core starts before WiFi so Home Assistant boot automations are
   // safe. The IDF web server starts later, so retry idempotent registrations.
   register_panel_config_endpoints();
@@ -337,6 +363,7 @@ void EspControlApp::loop() {
 void EspControlApp::on_shutdown() {
   home_assistant_endpoint_.shutdown();
   cards::set_card_runtime_registry_service(nullptr);
+  card_assets_.stop();
   core_.stop();
 }
 

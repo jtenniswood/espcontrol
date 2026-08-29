@@ -115,6 +115,17 @@ def check_root(root: Path) -> list[str]:
                 and not service_mapping_line_allowed(line)
             ):
                 failures.append(f"{rel}:{line_no}: keep shared card service mappings in the card runtime/contract boundary")
+    asset_service = root / "components" / "espcontrol" / "card_asset_service.cpp"
+    if asset_service.exists():
+        commit_body = function_body(
+            asset_service.read_text(encoding="utf-8"), "CardAssetService::commit_restore_session"
+        )
+        clear_index = commit_body.find("clear_restore_session()") if commit_body else -1
+        recovery_index = commit_body.find("restore_recovery_needed_ = true;") if commit_body else -1
+        if clear_index < 0 or recovery_index < clear_index:
+            failures.append(
+                "components/espcontrol/card_asset_service.cpp: queue recovery when a committed restore marker cannot be cleared"
+            )
     runtime_header = root / "components" / "espcontrol" / "button_grid_card_runtime.h"
     if runtime_header.exists():
         text = runtime_header.read_text(encoding="utf-8")
@@ -341,6 +352,35 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: reset image-card contexts before deleting subpage screens"
             )
+        background_required = (
+            "apply_card_background_image(s, p, cfg);",
+            "sync_card_background_image(s, p, cfg);",
+            "card_background_move_content_foreground(s);",
+            "reset_card_background_image_pool(cfg);",
+            "card_background_activate_page(cfg, main_page_obj);",
+            "card_background_unregister_page(entry.screen);",
+            "button_grid_load_screen((lv_obj_t *)lv_event_get_user_data(e));",
+        )
+        for needle in background_required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: missing card background lifecycle guard {needle}"
+                )
+        for relative in (
+            "common/addon/connectivity.yaml",
+            "common/addon/connectivity_deployed.yaml",
+            "common/addon/connectivity_ethernet.yaml",
+        ):
+            connectivity_path = root / relative
+            if not connectivity_path.exists():
+                continue
+            connectivity = connectivity_path.read_text(encoding="utf-8")
+            if "lvgl.page.show: main_page" in connectivity or (
+                "button_grid_load_screen(id(main_page)->obj);" not in connectivity
+            ):
+                failures.append(
+                    f"{relative}: reconnect must activate the main page through the card background lifecycle"
+                )
     action_header = root / "components" / "espcontrol" / ACTION_HEADER
     if action_header.exists():
         text = action_header.read_text(encoding="utf-8")

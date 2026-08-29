@@ -84,7 +84,7 @@ export function createControlsShellFeature(
             dependencies.cancelSchedule(els._bannerTimer);
             els._bannerTimer = dependencies.schedule(function (this: any) {
                 els.banner.className = "sp-banner";
-            }, 6000);
+            }, 10000);
         }
     }
     function buildUI(this: any) {

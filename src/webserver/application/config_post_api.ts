@@ -8,6 +8,11 @@ import type { ApplicationLayoutState } from "./application_context";
 import type { EntityStateFeature } from "./entity_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
+import {
+    cardBackgroundImage,
+    normalizeCardBackgroundImageId,
+    setCardBackgroundImage,
+} from "./config_option_core";
 
 export interface ConfigPersistenceFeature {
     connectCodec(codec: Pick<ConfigCodecFeature, "serializeButtonConfig" | "serializeSubpageConfig">): void;
@@ -15,8 +20,15 @@ export interface ConfigPersistenceFeature {
     subpageEntityKeys(): string[];
     saveButtonConfig(slot: number): void;
     saveSubpageEntity(slot: number): unknown;
+    clearCardImageReferences(id: unknown, persistChanges?: boolean): CardImageReferenceSnapshot;
     subpageChunkShouldPost(slot?: any, keys?: any, chunks?: any, index?: any, previousPendingChunks?: any): boolean;
     scheduleSliderSubpageMigration(slot?: any): void;
+}
+
+export interface CardImageReferenceSnapshot {
+    changed: number;
+    restore(): void;
+    persist(): void;
 }
 
 export function createConfigPersistenceFeature(
@@ -55,6 +67,59 @@ export function createConfigPersistenceFeature(
     function saveButtonConfig(this: any, slot?: any) {
         var b: any = state.buttons[slot - 1];
         requests().postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
+    }
+    function clearCardImageReferences(this: any, id?: any, persistChanges?: any): CardImageReferenceSnapshot {
+        const shouldPersist = persistChanges !== false;
+        const imageId = normalizeCardBackgroundImageId(id);
+        const entries: Array<{ button: any; imageId: string }> = [];
+        const mainSlots: number[] = [];
+        const subpageKeys: string[] = [];
+        const seen = new Set<any>();
+        const snapshot: CardImageReferenceSnapshot = {
+            changed: 0,
+            restore() {
+                entries.forEach((entry) => setCardBackgroundImage(entry.button, entry.imageId));
+            },
+            persist() {
+                mainSlots.forEach((slot) => saveButtonConfig(slot));
+                subpageKeys.forEach((key) => saveSubpageEntity(key));
+            },
+        };
+        if (!imageId)
+            return snapshot;
+
+        const clearButtons = (buttons: any[], saveSlot?: (index: number) => void): number => {
+            let changed = 0;
+            (buttons || []).forEach((button, index) => {
+                if (cardBackgroundImage(button) !== imageId)
+                    return;
+                if (!seen.has(button)) {
+                    seen.add(button);
+                    entries.push({ button, imageId: cardBackgroundImage(button) });
+                }
+                setCardBackgroundImage(button, "");
+                changed++;
+                saveSlot?.(index);
+            });
+            return changed;
+        };
+
+        snapshot.changed += clearButtons(state.buttons, shouldPersist ? (index) => {
+            const slot = index + 1;
+            saveButtonConfig(slot);
+            mainSlots.push(slot);
+        } : undefined);
+        if (state.settingsDraft?.button)
+            snapshot.changed += clearButtons([state.settingsDraft.button]);
+        Object.keys(state.subpages || {}).forEach((key) => {
+            const changed = clearButtons(state.subpages[key]?.buttons || []);
+            snapshot.changed += changed;
+            if (changed && shouldPersist) {
+                saveSubpageEntity(key);
+                subpageKeys.push(key);
+            }
+        });
+        return snapshot;
     }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];
@@ -139,6 +204,7 @@ export function createConfigPersistenceFeature(
         subpageEntityKeys,
         saveButtonConfig: (slot) => saveButtonConfig(slot),
         saveSubpageEntity: (slot) => saveSubpageEntity(slot),
+        clearCardImageReferences,
         subpageChunkShouldPost,
         scheduleSliderSubpageMigration,
     };

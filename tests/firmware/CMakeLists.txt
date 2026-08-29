@@ -106,6 +106,15 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_executable(legacy_card_config_test
+  legacy_card_config_test.cpp
+  ../../components/espcontrol/legacy_card_config.cpp
+)
+target_compile_features(legacy_card_config_test PRIVATE cxx_std_17)
+target_compile_options(legacy_card_config_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(legacy_card_config_test PRIVATE ../../components/espcontrol)
+add_test(NAME legacy_card_config_test COMMAND legacy_card_config_test)
+
 add_executable(panel_config_document_test panel_config_document_test.cpp)
 target_compile_features(panel_config_document_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_document_test PRIVATE -Wall -Wextra -Werror)
@@ -179,6 +188,33 @@ target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
 target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(artwork_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME artwork_controller_test COMMAND artwork_controller_test)
+
+add_executable(card_background_controller_test card_background_controller_test.cpp)
+target_compile_features(card_background_controller_test PRIVATE cxx_std_17)
+target_compile_options(card_background_controller_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(card_background_controller_test PRIVATE ../../components/espcontrol)
+add_test(NAME card_background_controller_test COMMAND card_background_controller_test)
+
+add_executable(card_image_store_layout_test card_image_store_layout_test.cpp)
+target_compile_features(card_image_store_layout_test PRIVATE cxx_std_17)
+target_compile_options(card_image_store_layout_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(card_image_store_layout_test PRIVATE ../../components/card_image_store)
+add_test(NAME card_image_store_layout_test COMMAND card_image_store_layout_test)
+
+add_executable(card_image_store_test
+  card_image_store_test.cpp
+  ../../components/card_image_store/card_image_store.cpp
+  ../../components/espcontrol/card_asset_service.cpp
+)
+target_compile_features(card_image_store_test PRIVATE cxx_std_17)
+target_compile_options(card_image_store_test PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(card_image_store_test PRIVATE USE_ESP32)
+target_include_directories(card_image_store_test PRIVATE
+  stubs
+  ../../components/card_image_store
+  ../../components/espcontrol
+)
+add_test(NAME card_image_store_test COMMAND card_image_store_test)
 
 add_executable(home_assistant_endpoint_policy_test home_assistant_endpoint_policy_test.cpp)
 target_compile_features(home_assistant_endpoint_policy_test PRIVATE cxx_std_17)

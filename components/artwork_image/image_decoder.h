@@ -87,6 +87,11 @@ class ImageDecoder {
    */
   void draw_rgb565_block(int x, int y, int w, int h, const uint8_t *data);
 
+  /**
+   * @brief Scale a complete RGB565 frame directly into the image buffer.
+   * Uses target-driven nearest-neighbor sampling to avoid the generic
+   * per-source-pixel expansion cost.
+   */
   /** Copy or scale a complete RGB565 frame into the target image buffer. */
   void draw_rgb565_frame(int width, int height, size_t stride_bytes, const uint8_t *data);
 

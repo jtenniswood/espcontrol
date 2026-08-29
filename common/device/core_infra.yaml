@@ -156,7 +156,10 @@ button:
         # Flush web UI settings before rebooting; ESPHome normally batches
         # preference writes, so an immediate restart can otherwise lose them.
         - lambda: |-
-            global_preferences->sync();
+            if (!global_preferences->sync()) {
+              ESP_LOGE("apply_configuration", "Settings could not be saved; restart cancelled");
+              return;
+            }
             App.safe_reboot();
 
 select:

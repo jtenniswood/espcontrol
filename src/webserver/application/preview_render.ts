@@ -19,6 +19,7 @@ import type { ScreenRotationFeature } from "./screen_rotation_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { GridFeature } from "./grid";
 import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+import { cardBackgroundImage, cardBackgroundSupported, cardImageUrl } from "./config_option_core";
 export interface PreviewRenderDependencies {
     readonly document: Document;
     readonly layout: ApplicationLayoutState;
@@ -164,6 +165,13 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                     btn.style.backgroundImage =
                         "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
                             " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";
+                }
+                var bgImage: any = cardBackgroundSupported(b) ? cardBackgroundImage(b) : "";
+                if (bgImage) {
+                    btn.className += " sp-btn-has-bg";
+                    btn.style.backgroundImage = "url('" + cardImageUrl(bgImage) + "')";
+                    btn.style.backgroundSize = "cover";
+                    btn.style.backgroundPosition = "center";
                 }
                 var badgeIcon: any = b.sensor ? "gauge" : "swap-horizontal";
                 var sensorBadge: any = hasWhenOn

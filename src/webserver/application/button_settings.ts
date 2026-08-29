@@ -61,13 +61,16 @@ export function createButtonSettingsFeature(
         renderCardActiveColorToggle, renderCardEntityField, renderCardIconPair,
         renderCardIconPicker, renderCardLargeNumbersToggle, renderCardModeSelector,
         renderCardNumberField, renderCardOptionToggle, renderCardSegmentControl,
-        renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
+        renderCardTextField, renderCardBackgroundControl, segmentControl, selectField, syncCardLargeNumbersToggle,
         textInput, toggleRow,
     } = fields;
     const {
         imageSlotCapacity,
         imageCardCountWithCandidate,
         showImageCardLimitBanner,
+        cardBackgroundImageLimit,
+        cardBackgroundImageCountWithCandidate,
+        showCardBackgroundImageLimitBanner,
     } = imageOptions;
     const { cardOnPattern, setCardOnPattern } = confirmationOptions;
     const {
@@ -297,6 +300,18 @@ export function createButtonSettingsFeature(
             if (validation.reason !== "image-limit")
                 return true;
             showImageCardLimitBanner();
+            return false;
+        }
+        function validateCardBackgroundImageLimit(this: any) {
+            var count: any = cardBackgroundImageCountWithCandidate({
+                isSub: c.isSub,
+                homeSlot: state.editingSubpage,
+                slot: slot,
+                button: b,
+            });
+            if (count <= cardBackgroundImageLimit())
+                return true;
+            showCardBackgroundImageLimitBanner();
             return false;
         }
         function validateSaveLimits(this: any) {
@@ -688,6 +703,7 @@ export function createButtonSettingsFeature(
             renderCardActiveColorToggle: renderCardActiveColorToggle,
             renderBasicCardFields: renderBasicCardFields,
             renderCardSegmentControl: renderCardSegmentControl,
+            renderCardBackgroundControl: renderCardBackgroundControl,
             requireField: requireField,
             clearFieldError: clearFieldError,
             toggleRow: toggleRow,
@@ -742,6 +758,7 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         groupCardSettingsFields(panel, idPrefix);
+        renderCardBackgroundControl(panel, b, typeHelpers);
         var saveRow: any = document.createElement("div");
         saveRow.className = "sp-btn-row sp-btn-row--save";
         if (!isNewDraft) {
@@ -767,6 +784,8 @@ export function createButtonSettingsFeature(
             if (!validateSettingsDraft())
                 return;
             if (!validateImageCardLimit())
+                return;
+            if (!validateCardBackgroundImageLimit())
                 return;
             if (!validateConfigSize())
                 return;

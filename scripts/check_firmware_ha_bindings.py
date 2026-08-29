@@ -2738,7 +2738,10 @@ def firmware_clock_bar_navigation_errors(
             continue
         active_guard = body.find("target_mode_is(")
         active_mode = body.find("DisplayMode::ACTIVE", active_guard)
-        page_show = body.find("lvgl.page.show: main_page")
+        page_show = max(
+            body.find("lvgl.page.show: main_page"),
+            body.find("button_grid_load_screen(id(main_page)->obj);"),
+        )
         if (
             active_guard == -1
             or active_mode == -1
@@ -7282,6 +7285,20 @@ def run_self_test() -> int:
         "                  espcontrol::DisplayMode::ACTIVE);\n"
         "          then:\n"
         "            - lvgl.page.show: main_page\n",
+        (),
+    )
+    expect_clock_bar_navigation_errors(
+        "active background-aware navigation remains available",
+        "script:\n"
+        "  - id: navigate_after_api\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(espcontrol_app).display().target_mode_is(\n"
+        "                  espcontrol::DisplayMode::ACTIVE);\n"
+        "          then:\n"
+        "            - lambda: 'button_grid_load_screen(id(main_page)->obj);'\n",
         (),
     )
     expect_clock_screensaver_overlay_errors(

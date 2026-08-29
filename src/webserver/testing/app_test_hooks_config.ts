@@ -37,8 +37,8 @@ import type { PreviewRenderFeature } from "../application/preview_render";
 import type { PreviewClipboardFeature } from "../application/preview_clipboard";
 import type { PreviewContextMenuFeature } from "../application/preview_context_menu";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
-import { cardContractOptionSupportedFor } from "../application/config_option_core";
-import { subpageKind } from "../application/config_subpage_options";
+import { cardBackgroundSupported, cardContractOptionSupportedFor } from "../application/config_option_core";
+import { normalizeSubpageOptions, subpageKind } from "../application/config_subpage_options";
 import { pushDefaultIcon, pushDefaultIconOn } from "../cards/push";
 import {
     coverModeOptionValues,
@@ -127,6 +127,8 @@ export function installAppTestHooksConfig(
         imageSlotCapacity,
         imageSlotCapacityMessage,
         imageCardCountWithCandidate,
+        cardBackgroundImageLimit,
+        cardBackgroundImageCountWithCandidate,
         imageModalMode,
         imageLabelEnabled,
         imageIconEnabled,
@@ -180,6 +182,7 @@ export function installAppTestHooksConfig(
         alarmBehaviorSpec,
         alarmActionSpecs,
         normalizeGarageLabelDisplayMode,
+        normalizeGarageOptions,
         garageModeOptionValues,
         normalizeGarageMode,
         garageLabelDisplayMode,
@@ -216,6 +219,7 @@ export function installAppTestHooksConfig(
     }
     const {
         actionCardIsLocal,
+        clearActionModeOptions,
         actionCardStateEntity,
         actionCardStateUnit,
         actionCardStatePrecision,
@@ -226,6 +230,8 @@ export function installAppTestHooksConfig(
         switchConfirmationDefaultMessageForMode,
         switchConfirmationYesText,
         switchConfirmationNoText,
+        normalizeSwitchConfirmationOptions,
+        setSwitchConfirmationOptions,
         normalizeCardOnPattern,
         cardOnPattern,
         setCardOnPattern,
@@ -236,6 +242,7 @@ export function installAppTestHooksConfig(
         garageConfirmationYesText,
         garageConfirmationNoText,
         setGarageConfirmationOptions,
+        normalizeActionOptions,
         actionScriptConfirmationEnabled,
         actionScriptConfirmationMessage,
         actionScriptConfirmationYesText,
@@ -288,6 +295,12 @@ export function installAppTestHooksConfig(
             cardContractMigrationAlias: cardContractMigrationAlias,
             cardContractOptionSupportedFor: cardContractOptionSupportedFor,
             cardLargeNumbersEnabled: cardLargeNumbersEnabled,
+            cardBackgroundSupported: cardBackgroundSupported,
+            normalizeSwitchConfirmationOptions: normalizeSwitchConfirmationOptions,
+            setSwitchConfirmationOptions: setSwitchConfirmationOptions,
+            normalizeActionOptions: normalizeActionOptions,
+            normalizeGarageOptions: normalizeGarageOptions,
+            normalizeSubpageOptions: normalizeSubpageOptions,
             switchConfirmationEnabled: switchConfirmationEnabled,
             switchConfirmationMode: switchConfirmationMode,
             switchConfirmationMessage: switchConfirmationMessage,
@@ -405,6 +418,23 @@ export function installAppTestHooksConfig(
             imageIconEnabled: imageIconEnabled,
             imageModalMode: imageModalMode,
             imageSlotCapacity: imageSlotCapacity,
+            cardBackgroundImageLimit: cardBackgroundImageLimit,
+            cardBackgroundImageCountForTest: function (this: any, snapshot?: any, candidate?: any) {
+                var oldGrid: any = state.grid;
+                var oldButtons: any = state.buttons;
+                var oldSubpages: any = state.subpages;
+                state.grid = (snapshot && snapshot.grid) || [];
+                state.buttons = (snapshot && snapshot.buttons) || [];
+                state.subpages = (snapshot && snapshot.subpages) || {};
+                try {
+                    return cardBackgroundImageCountWithCandidate(candidate);
+                }
+                finally {
+                    state.grid = oldGrid;
+                    state.buttons = oldButtons;
+                    state.subpages = oldSubpages;
+                }
+            },
             imageSlotCapacityMessage: imageSlotCapacityMessage,
             imageCardCountForTest: function (this: any, snapshot?: any, candidate?: any) {
                 var oldGrid: any = state.grid;
@@ -443,6 +473,7 @@ export function installAppTestHooksConfig(
             actionCardStatePrecision: actionCardStatePrecision,
             actionCardStateDisplayMode: actionCardStateDisplayMode,
             actionCardIsLocal: actionCardIsLocal,
+            clearActionModeOptions: clearActionModeOptions,
             actionScriptConfirmationEnabled: actionScriptConfirmationEnabled,
             actionScriptConfirmationMessage: actionScriptConfirmationMessage,
             actionScriptConfirmationYesText: actionScriptConfirmationYesText,

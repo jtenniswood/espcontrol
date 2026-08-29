@@ -42,6 +42,7 @@ constexpr const char *SENSOR_TIME_UNIT_OPTION = card_runtime_option_name_time_un
 constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label();
 constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
+constexpr const char *CARD_BACKGROUND_IMAGE_OPTION = "bg_image";
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
 constexpr const char *MEDIA_COVER_ART_DETAILS_OPTION = card_runtime_option_name_cover_art_details();
 constexpr const char *MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION = card_runtime_option_name_cover_art_secondary_entity();
@@ -241,6 +242,41 @@ inline std::string cfg_option_value(const std::string &options, const char *name
 
 inline bool large_numbers_explicitly_disabled(const std::string &options) {
   return cfg_option_value(options, "large_numbers") == "off";
+}
+
+inline bool card_background_image_id_valid(const std::string &value) {
+  if (value.empty() || value.size() > 40) return false;
+  for (char ch : value) {
+    if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-')) return false;
+  }
+  return true;
+}
+
+inline std::string card_background_options_normalized(const std::string &options) {
+  std::string image = cfg_option_value(options, CARD_BACKGROUND_IMAGE_OPTION);
+  if (!card_background_image_id_valid(image)) return "";
+  return std::string(CARD_BACKGROUND_IMAGE_OPTION) + "=" + image;
+}
+
+inline bool card_background_supported_type(const std::string &type) {
+  return card_runtime_supports_background(type);
+}
+
+inline bool card_background_supported_card(const std::string &type,
+                                           const std::string &sensor) {
+  return card_background_supported_type(type) &&
+         !(type == "media" && sensor == "cover_art");
+}
+
+inline bool card_background_supported_card(const ParsedCfg &card) {
+  return card_background_supported_card(card.type, card.sensor);
+}
+
+inline void append_card_background_options(std::string &out, const std::string &options) {
+  std::string background = card_background_options_normalized(options);
+  if (background.empty()) return;
+  if (!out.empty()) out += ",";
+  out += background;
 }
 
 inline void append_large_numbers_option(std::string &out, const std::string &options) {
@@ -1314,6 +1350,7 @@ inline std::string normalize_saved_config_subpage_options(
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
+  const std::string original_options = p.options;
   migrate_saved_config_action_legacy(p);
   const bool was_legacy_text_sensor = p.type == "text_sensor";
   migrate_saved_config_sensor_legacy(p);
@@ -1374,6 +1411,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
                                 normalize_saved_config_sensor_fields,
                                 sensor_card_options_normalized);
+  if (card_background_supported_card(p)) {
+    append_card_background_options(p.options, original_options);
+  }
   return p;
 }
 

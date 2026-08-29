@@ -51,6 +51,7 @@ import type { BackupContractFeature } from "./backup_contract";
 import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
 import type { PreviewRenderFeature } from "./preview_render";
 import type { ButtonSettingsFeature } from "./button_settings";
+import type { CardImageService } from "./card_image_service";
 import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
 
 export interface AppBackupControllers {
@@ -59,6 +60,7 @@ export interface AppBackupControllers {
     readonly backupImport: BackupImportController<any, any, any>;
     readonly backupRestore: BackupRestoreController<any, any>;
     readonly backupFile: BackupFileController;
+    readonly cardImages: Pick<CardImageService, "backupAssetProvider">;
     readonly normalizeImportedPanelSettings: (settings: any) => any;
     readonly gridColsForImportedSettings: (settings: any) => number;
     readonly nativePanelConfig?: NativePanelConfigController;
@@ -72,7 +74,7 @@ export interface AppBackupControllers {
     readonly firmwareUpdate: FirmwareUpdateFeature;
     readonly clockBar: ClockBarFeature;
     readonly entityState: Pick<EntityStateFeature, "entityName" | "entityNameForSlot">;
-    readonly shell: Pick<ControlsShellFeature, "switchTab">;
+    readonly shell: Pick<ControlsShellFeature, "showBanner" | "switchTab">;
     readonly requestApi: ApplicationApiFeature;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput" | "updateTempPreview">;
     readonly grid: Pick<GridFeature, "applyImportedButtonOrder" | "cancelMainGridSave" | "serializeGrid">;
@@ -208,6 +210,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
     var backupImportController: BackupImportController<any, any, any> = controllers.backupImport;
     var backupRestoreController: BackupRestoreController<any, any> = controllers.backupRestore;
     var backupFileController: BackupFileController = controllers.backupFile;
+    var cardImageBackupAssetProvider = controllers.cardImages.backupAssetProvider;
     function downloadBackupConfig(this: any, data?: any) {
         backupFileController.download(data, backupExportFileName());
     }
@@ -309,10 +312,21 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         } as any);
-        downloadBackupConfig(addNativeConfigToBackup(data));
+        data = addNativeConfigToBackup(data);
+        var archiveName: any = backupExportFileName().replace(/\.json$/i, ".zip");
+        cardImageBackupAssetProvider.createArchiveEntries().then(function (imageEntries: any) {
+            backupFileController.downloadArchive(data, imageEntries, archiveName);
+            var imageCount: any = Math.max(0, imageEntries.length - 1);
+            controllers.shell.showBanner("Backup exported with " + imageCount + " image" +
+                (imageCount === 1 ? "" : "s") + ".", "success");
+        }).catch(function () {
+            backupFileController.downloadArchive(data, [], archiveName);
+            controllers.shell.showBanner(
+                "Backup exported without images because image storage is unavailable.", "warning");
+        });
     }
     function importConfig(this: any) {
-        backupFileController.import(function (data: any) {
+        backupFileController.import(function (data: any, archiveEntries?: any) {
                 function applyBackupRestorePlan(this: any, plannedImport: any) {
                 var importedSettings: any = plannedImport.importedSettings;
                 var importedGridCols: any = plannedImport.importedGridCols;
@@ -654,10 +668,65 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 switchTab("screen");
                 return nativeRestoreCompletion;
                 }
-                backupRestoreController.restore(data, {
-                    device: controllers.layout.deviceId,
-                    slots: controllers.layout.numSlots,
-                }, applyBackupRestorePlan);
+                function restoreConfiguration(this: any, imageIdMap?: any) {
+                    var started: any = backupRestoreController.restore(data, {
+                        device: controllers.layout.deviceId,
+                        slots: controllers.layout.numSlots,
+                    }, function (plannedImport: any) {
+                        if (imageIdMap) {
+                            cardImageBackupAssetProvider.remapImportedReferences(
+                                plannedImport.backupPlan, imageIdMap);
+                            // Rebuild the native payload from the remapped canonical cards.
+                            // The archived native payload contains the old asset IDs.
+                            plannedImport.backupPlan.config.native_config = null;
+                        }
+                        var completion: any = applyBackupRestorePlan(plannedImport);
+                        if (!imageIdMap) return completion;
+                        var configurationPersisted = false;
+                        return Promise.resolve(completion).then(function () {
+                            return requestApi.postQueueIdle();
+                        }).then(function () {
+                            if (requestApi.postQueueHadError()) {
+                                throw new Error("Configuration restore failed. Check the connection and try again.");
+                            }
+                            configurationPersisted = true;
+                            return cardImageBackupAssetProvider.commitRestore
+                                ? cardImageBackupAssetProvider.commitRestore()
+                                : undefined;
+                        }).catch(function (error: any) {
+                            // Once the remapped configuration is durable, its assets are
+                            // referenced. A failed commit must leave the durable device
+                            // session intact for recovery instead of deleting those assets.
+                            if (configurationPersisted && cardImageBackupAssetProvider.commitRestore) {
+                                // Retry once while the provider still owns the durable
+                                // session. If this also fails, its token remains intact
+                                // for device-side recovery.
+                                return Promise.resolve(cardImageBackupAssetProvider.commitRestore()).then(
+                                    function () { return undefined; },
+                                    function () { throw error; });
+                            }
+                            if (configurationPersisted) throw error;
+                            var rollback: any = cardImageBackupAssetProvider.rollbackRestore
+                                ? cardImageBackupAssetProvider.rollbackRestore()
+                                : Promise.resolve();
+                            return Promise.resolve(rollback).then(function () { throw error; });
+                        });
+                    });
+                    if (!started && imageIdMap && cardImageBackupAssetProvider.rollbackRestore) {
+                        void cardImageBackupAssetProvider.rollbackRestore();
+                    }
+                }
+                if (!archiveEntries) {
+                    restoreConfiguration();
+                    return;
+                }
+                cardImageBackupAssetProvider.restoreArchiveEntries(archiveEntries).then(
+                    function (imageIdMap: any) { restoreConfiguration(imageIdMap); },
+                    function (error: any) {
+                        controllers.shell.showBanner(
+                            error && error.message ? error.message : "Could not restore archived images.",
+                            "error");
+                    });
         });
     }
     return {
