@@ -679,10 +679,17 @@ int main() {
   apply_width_compensation(&compensated_obj, 95);
   assert(compensated_obj.transform_scale_x == width_compensation_scale(95));
   assert(compensated_obj.transform_scale_y == 256);
+  set_text_width_compensation_percent(100);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
   set_width_compensation_vertical_axis(true);
   apply_width_compensation(&compensated_obj, 95);
   assert(compensated_obj.transform_scale_x == 256);
   assert(compensated_obj.transform_scale_y == width_compensation_scale(95));
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
   set_width_compensation_vertical_axis(false);
   assert(clamp_percent_value(-1) == 0);
   assert(clamp_percent_value(101) == 100);

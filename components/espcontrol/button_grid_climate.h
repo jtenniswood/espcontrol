@@ -2363,7 +2363,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_text_color(ui.target_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->number_font) lv_obj_set_style_text_font(ui.target_lbl, ctx->number_font, LV_PART_MAIN);
-  apply_width_compensation(ui.target_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.target_lbl);
 
   auto create_range_target_label = [&]() {
     lv_obj_t *label = lv_label_create(ui.target_row);
@@ -2374,7 +2374,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     const lv_font_t *range_font = ctx->range_number_font
       ? ctx->range_number_font : ctx->number_font;
     if (range_font) lv_obj_set_style_text_font(label, range_font, LV_PART_MAIN);
-    apply_width_compensation(label, ctx->width_compensation_percent);
+    apply_text_width_compensation(label);
     lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(label, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
@@ -2399,7 +2399,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_text_color(ui.unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.unit_lbl, ctx->unit_font, LV_PART_MAIN);
-  apply_width_compensation(ui.unit_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.unit_lbl);
 
   ui.status_lbl = lv_label_create(ui.panel);
   lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);

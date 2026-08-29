@@ -1299,7 +1299,7 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
   lv_obj_set_style_text_color(ui.pin_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pin_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (pin_label_font) lv_obj_set_style_text_font(ui.pin_lbl, pin_label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.pin_lbl, action->card->width_compensation_percent);
+  apply_text_width_compensation(ui.pin_lbl);
   lv_coord_t pin_w = layout.panel_w - (layout.inset + layout.back_size) * 2;
   if (pin_w < 60) pin_w = layout.panel_w - layout.inset * 2;
   lv_obj_set_width(ui.pin_lbl, pin_w);
@@ -1420,7 +1420,7 @@ inline lv_obj_t *alarm_control_create_mode_button(
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (label_font) lv_obj_set_style_text_font(label, label_font, LV_PART_MAIN);
-  apply_width_compensation(label, ctx ? ctx->width_compensation_percent : 100);
+  apply_text_width_compensation(label);
   lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_align(label, LV_ALIGN_CENTER, 0, height / 5);
 
@@ -1461,7 +1461,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_style_text_color(ui.arming_title, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.arming_title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (title_font) lv_obj_set_style_text_font(ui.arming_title, title_font, LV_PART_MAIN);
-  apply_width_compensation(ui.arming_title, ctx ? ctx->width_compensation_percent : 100);
+  apply_text_width_compensation(ui.arming_title);
   lv_obj_set_width(ui.arming_title, layout.panel_w - layout.inset * 2);
   lv_obj_align(ui.arming_title, LV_ALIGN_CENTER, 0, status_center_y);
   lv_obj_update_layout(ui.arming_title);
@@ -1472,7 +1472,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_style_text_color(ui.arming_countdown, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.arming_countdown, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (countdown_font) lv_obj_set_style_text_font(ui.arming_countdown, countdown_font, LV_PART_MAIN);
-  apply_width_compensation(ui.arming_countdown, ctx ? ctx->width_compensation_percent : 100);
+  apply_text_width_compensation(ui.arming_countdown);
   lv_obj_set_width(ui.arming_countdown, layout.panel_w - layout.inset * 2);
   lv_obj_align(ui.arming_countdown, LV_ALIGN_CENTER, 0, countdown_y);
   lv_obj_add_flag(ui.arming_countdown, LV_OBJ_FLAG_HIDDEN);

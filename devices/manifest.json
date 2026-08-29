@@ -107,6 +107,7 @@
         "display": {
           "wrapTallLabels": true,
           "widthCompensationPercent": 95,
+          "textWidthCompensationPercent": 100,
           "volumeWidthCompensationPercent": 95,
           "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,
@@ -301,6 +302,7 @@
         "display": {
           "wrapTallLabels": true,
           "widthCompensationPercent": 95,
+          "textWidthCompensationPercent": 100,
           "volumeWidthCompensationPercent": 95,
           "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,

@@ -30,6 +30,15 @@ inline void set_width_compensation_vertical_axis(bool vertical) {
   width_compensation_vertical_axis() = vertical;
 }
 
+inline int &text_width_compensation_percent() {
+  static int percent = 100;
+  return percent;
+}
+
+inline void set_text_width_compensation_percent(int percent) {
+  text_width_compensation_percent() = normalize_width_compensation_percent(percent);
+}
+
 inline lv_coord_t compensated_width(lv_coord_t width, int percent) {
   if (width_compensation_vertical_axis()) return width;
   percent = normalize_width_compensation_percent(percent);
@@ -43,10 +52,15 @@ inline void apply_width_compensation(lv_obj_t *obj, int percent) {
   lv_obj_set_style_transform_scale_y(obj, width_compensation_vertical_axis() ? scale : 256, LV_PART_MAIN);
 }
 
+inline void apply_text_width_compensation(lv_obj_t *obj) {
+  apply_width_compensation(obj, text_width_compensation_percent());
+}
+
 inline void apply_slot_text_width_compensation(const BtnSlot &s, int percent) {
-  apply_width_compensation(s.text_lbl, percent);
-  apply_width_compensation(s.sensor_container, percent);
-  apply_width_compensation(s.subpage_lbl, percent);
+  (void) percent;
+  apply_text_width_compensation(s.text_lbl);
+  apply_text_width_compensation(s.sensor_container);
+  apply_text_width_compensation(s.subpage_lbl);
 }
 
 // ── Grid layout parsing ───────────────────────────────────────────────

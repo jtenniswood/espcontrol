@@ -874,7 +874,8 @@ inline lv_obj_t *control_modal_create_title(lv_obj_t *parent,
   lv_obj_set_style_text_color(title, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(title, font, LV_PART_MAIN);
-  apply_width_compensation(title, width_compensation_percent);
+  (void) width_compensation_percent;
+  apply_text_width_compensation(title);
   return title;
 }
 
@@ -922,7 +923,8 @@ inline lv_obj_t *control_modal_create_list_row(lv_obj_t *parent,
   lv_obj_set_style_text_color(value, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(value, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(value, font, LV_PART_MAIN);
-  apply_width_compensation(value, width_compensation_percent);
+  (void) width_compensation_percent;
+  apply_text_width_compensation(value);
   lv_obj_center(value);
   return btn;
 }

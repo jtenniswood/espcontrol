@@ -3485,7 +3485,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(ui.title_lbl, ctx->label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.title_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.title_lbl);
 
   ui.pct_row = lv_obj_create(ui.panel);
   lv_obj_set_size(ui.pct_row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -3504,7 +3504,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->number_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->number_font, LV_PART_MAIN);
-  apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.pct_lbl);
 
   ui.pct_unit_lbl = lv_label_create(ui.pct_row);
   lv_label_set_display_text(ui.pct_unit_lbl, "");
@@ -3512,7 +3512,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->unit_font, LV_PART_MAIN);
   lv_obj_set_style_translate_y(ui.pct_unit_lbl, MEDIA_VOLUME_UNIT_Y_REF_PX, LV_PART_MAIN);
-  apply_width_compensation(ui.pct_unit_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.pct_unit_lbl);
 
   ui.minus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Minus"),
     ctx->icon_font, DARK_CONTROL_NEUTRAL, SECONDARY_GREY, ctx->width_compensation_percent);

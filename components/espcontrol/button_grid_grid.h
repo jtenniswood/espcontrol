@@ -21,6 +21,7 @@ struct GridConfig {
   bool info_only = false;
   bool subpage_chevrons_enabled = true;
   int width_compensation_percent = 100;
+  int text_width_compensation_percent = 100;
   int volume_width_compensation_percent = 100;
   int media_artwork_width_compensation_percent = 100;
   DisplayModalProfile modal_profile;
@@ -93,6 +94,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.volume_icon = cfg.volume_icon_font;
   profile.width.vertical_axis = cfg.width_compensation_vertical;
   profile.width.main_percent = cfg.width_compensation_percent;
+  profile.width.text_percent = cfg.text_width_compensation_percent;
   profile.width.volume_percent = cfg.volume_width_compensation_percent;
   profile.large_numbers.font = cfg.sp_large_sensor_font;
   profile.large_numbers.unit_offset_percent = cfg.large_sensor_unit_offset_percent;
@@ -797,8 +799,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
         lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
       }
-      display_apply_main_width(ctx->title_lbl, display);
-      display_apply_main_width(ctx->artist_lbl, display);
+      display_apply_text_width(ctx->title_lbl, display);
+      display_apply_text_width(ctx->artist_lbl, display);
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
         title_font, padding,
@@ -814,8 +816,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
     const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
-    if (ctx->title_lbl) display_apply_main_width(ctx->title_lbl, display);
-    if (ctx->artist_lbl) display_apply_main_width(ctx->artist_lbl, display);
+    if (ctx->title_lbl) display_apply_text_width(ctx->title_lbl, display);
+    if (ctx->artist_lbl) display_apply_text_width(ctx->artist_lbl, display);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
       display_media_title_font(display), padding,
@@ -839,7 +841,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       ? ctx->content_pad_bottom
       : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
     if (ctx && ctx->media_value_lbl) {
-      display_apply_main_width(ctx->media_value_lbl, display);
+      display_apply_text_width(ctx->media_value_lbl, display);
       lv_obj_align(ctx->media_value_lbl, LV_ALIGN_TOP_LEFT, position_left, position_top);
       lv_obj_move_foreground(ctx->media_value_lbl);
     }

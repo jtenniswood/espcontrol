@@ -463,12 +463,18 @@ def test_seven_inch_width_compensation_rotates_with_screen() -> None:
         assert profile["firmware"]["display"]["widthCompensationPercent"] == 95, (
             f"{slug}: 7-inch pixel compensation must remain at 95%"
         )
+        assert profile["firmware"]["display"]["textWidthCompensationPercent"] == 100, (
+            f"{slug}: 7-inch text must retain its natural proportions"
+        )
         sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
         assert "cfg.width_compensation_percent = 95;" in sensors, (
             f"{slug}: generated firmware is missing 7-inch pixel compensation"
         )
         assert "cfg.width_compensation_vertical = portrait;" in sensors, (
             f"{slug}: generated firmware does not rotate the compensation axis in portrait"
+        )
+        assert "apply_text_width_compensation(id(display_time));" in sensors, (
+            f"{slug}: clock-bar text must use the independent text compensation policy"
         )
 
 

@@ -2336,7 +2336,8 @@ inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   lv_obj_t *value_lbl = lv_label_create(btn);
   if (value_font) lv_obj_set_style_text_font(value_lbl, value_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(value_lbl, text_color, LV_PART_MAIN);
-  apply_width_compensation(value_lbl, width_compensation_percent);
+  (void) width_compensation_percent;
+  apply_text_width_compensation(value_lbl);
   lv_label_set_display_text(value_lbl, "0:00");
   lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
@@ -2978,7 +2979,7 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
   lv_obj_set_style_text_line_space(ui.title_lbl, 0, LV_PART_MAIN);
   if (ctx->title_font) lv_obj_set_style_text_font(ui.title_lbl, ctx->title_font, LV_PART_MAIN);
   lv_label_set_long_mode(ui.title_lbl, LV_LABEL_LONG_WRAP);
-  apply_width_compensation(ui.title_lbl, ctx->width_compensation_percent);
+  apply_text_width_compensation(ui.title_lbl);
 
   ui.artist_lbl = lv_label_create(ui.content_box);
   if (ui.artist_lbl) {
@@ -2986,7 +2987,7 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
     lv_obj_set_style_text_align(ui.artist_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(ui.artist_lbl, ctx->label_font, LV_PART_MAIN);
     lv_label_set_long_mode(ui.artist_lbl, LV_LABEL_LONG_DOT);
-    apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
+    apply_text_width_compensation(ui.artist_lbl);
   }
 
   if (media_control_shuffle_supported(ctx)) {
@@ -3064,7 +3065,7 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
     lv_obj_set_style_text_color(ui.progress_time_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.progress_time_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->title_font) lv_obj_set_style_text_font(ui.progress_time_lbl, ctx->title_font, LV_PART_MAIN);
-    apply_width_compensation(ui.progress_time_lbl, ctx->width_compensation_percent);
+    apply_text_width_compensation(ui.progress_time_lbl);
   }
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
@@ -3183,7 +3184,7 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
     lv_obj_set_style_text_color(ui.volume_group_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.volume_group_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(ui.volume_group_lbl, ctx->label_font, LV_PART_MAIN);
-    apply_width_compensation(ui.volume_group_lbl, ctx->width_compensation_percent);
+    apply_text_width_compensation(ui.volume_group_lbl);
     lv_obj_add_flag(ui.volume_group_lbl, LV_OBJ_FLAG_HIDDEN);
   }
 
@@ -3193,7 +3194,7 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
     lv_obj_set_style_text_color(ui.volume_pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.volume_pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->number_font) lv_obj_set_style_text_font(ui.volume_pct_lbl, ctx->number_font, LV_PART_MAIN);
-    apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
+    apply_text_width_compensation(ui.volume_pct_lbl);
   }
 
   ui.volume_minus_btn = control_modal_create_round_button(
@@ -3976,7 +3977,7 @@ inline void media_control_create_power_tab_content(MediaControlCtx *ctx) {
     if (ctx->label_font) {
       lv_obj_set_style_text_font(ui.power_status_lbl, ctx->label_font, LV_PART_MAIN);
     }
-    apply_width_compensation(ui.power_status_lbl, ctx->width_compensation_percent);
+    apply_text_width_compensation(ui.power_status_lbl);
   }
   media_control_refresh_power(ctx);
 }
@@ -4318,13 +4319,13 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     control_modal_apply_step_buttons_layout(
       ui.volume_minus_btn, ui.volume_plus_btn, volume_buttons_layout);
     if (ui.volume_pct_lbl) {
-      apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
+      apply_text_width_compensation(ui.volume_pct_lbl);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,
         volume_layout.arc_center_y +
         control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX, volume_layout.short_side));
     }
     if (ui.volume_group_lbl && ui.volume_pct_lbl) {
-      apply_width_compensation(ui.volume_group_lbl, ctx->width_compensation_percent);
+      apply_text_width_compensation(ui.volume_group_lbl);
       lv_obj_align_to(ui.volume_group_lbl, ui.volume_pct_lbl,
         LV_ALIGN_OUT_TOP_MID, 0, -control_modal_scaled_px(4, volume_layout.short_side));
     }
@@ -4526,13 +4527,13 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       if (s.unit_lbl) lv_obj_add_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_obj_t *title_lbl = lv_label_create(s.btn);
       lv_obj_set_style_text_color(title_lbl, lv_color_white(), LV_PART_MAIN);
-      apply_width_compensation(title_lbl, width_compensation_percent);
+      apply_text_width_compensation(title_lbl);
       lv_obj_t *artist_lbl = lv_label_create(s.btn);
       lv_obj_set_style_text_color(artist_lbl, lv_color_white(), LV_PART_MAIN);
       if (media_artist_font) {
         lv_obj_set_style_text_font(artist_lbl, media_artist_font, LV_PART_MAIN);
       }
-      apply_width_compensation(artist_lbl, width_compensation_percent);
+      apply_text_width_compensation(artist_lbl);
       if (s.text_lbl) {
         lv_label_set_display_text(s.text_lbl, "");
         lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -4557,7 +4558,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     }
     lv_obj_t *title_lbl = lv_label_create(s.btn);
     lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
-    apply_width_compensation(title_lbl, width_compensation_percent);
+    apply_text_width_compensation(title_lbl);
     s.sensor_lbl = title_lbl;
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
