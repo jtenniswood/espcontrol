@@ -20,6 +20,8 @@ struct WifiQrModalUi {
   lv_obj_t *qr_view = nullptr;
   lv_obj_t *details_view = nullptr;
   lv_obj_t *qr = nullptr;
+  std::string qr_payload;
+  lv_coord_t qr_side = 0;
   std::vector<WifiQrTab> tabs;
   WifiQrTab tab = WifiQrTab::QR;
 };
@@ -123,7 +125,21 @@ inline void wifi_qr_layout_modal() {
     const lv_coord_t available_side =
       std::min<lv_coord_t>(content.width, content.height) - qr_padding * 2;
     const lv_coord_t side = std::max<lv_coord_t>(120, available_side);
-    lv_qrcode_set_size(ui.qr, side);
+    if (ui.qr_side != side) {
+      // Resizing a QR widget replaces and clears its canvas buffer, so the
+      // payload must be rendered again after every real size change.
+      lv_qrcode_set_size(ui.qr, side);
+      ui.qr_side = side;
+      if (lv_qrcode_update(ui.qr, ui.qr_payload.c_str(), ui.qr_payload.size()) !=
+          LV_RESULT_OK) {
+        lv_obj_del(ui.qr);
+        ui.qr = nullptr;
+      }
+    }
+  }
+
+  if (ui.qr) {
+    const lv_coord_t side = ui.qr_side;
     lv_obj_set_style_border_width(
       ui.qr, std::max<lv_coord_t>(4, side / 24), LV_PART_MAIN);
     lv_obj_center(ui.qr);
@@ -204,6 +220,7 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  ui.qr_payload = payload;
   const std::vector<std::string> configured_tabs =
     wifi_qr_tabs(cfg_option_value(config.options, "wifi_tabs"));
   for (const std::string &tab : configured_tabs) {
@@ -251,17 +268,14 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
     lv_qrcode_set_light_color(ui.qr, lv_color_white());
     // The white border preserves the scanner quiet zone inside the roomy tab inset.
     lv_obj_set_style_border_color(ui.qr, lv_color_white(), LV_PART_MAIN);
-    if (lv_qrcode_update(ui.qr, payload.c_str(), payload.size()) != LV_RESULT_OK) {
-      lv_obj_del(ui.qr);
-      ui.qr = nullptr;
-    }
   }
+
+  wifi_qr_apply_tab_visibility();
+  wifi_qr_layout_modal();
+
   if (!ui.qr && ui.qr_view) {
     lv_obj_t *message = wifi_qr_create_detail_label(ui.qr_view,
       espcontrol_i18n_key("unable_to_create_qr_code"), DARK_TEXT_PRIMARY);
     if (message) lv_obj_center(message);
   }
-
-  wifi_qr_apply_tab_visibility();
-  wifi_qr_layout_modal();
 }
