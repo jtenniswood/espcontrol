@@ -117,9 +117,9 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
     value_text = value_buf;
     label_text = calendar_month_name(state.month);
   }
-  if (ref.value_lbl) lv_label_set_text(ref.value_lbl, value_text);
-  if (ref.unit_lbl) lv_label_set_text(ref.unit_lbl, unit_text);
-  if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label_text);
+  if (ref.value_lbl) lv_label_set_display_text(ref.value_lbl, value_text);
+  if (ref.unit_lbl) lv_label_set_display_text(ref.unit_lbl, unit_text);
+  if (ref.label_lbl) lv_label_set_display_text(ref.label_lbl, label_text);
 }
 
 inline void refresh_calendar_cards() {
@@ -310,9 +310,9 @@ inline void apply_timezone_card_text(const TimezoneCardRef &ref,
     }
   }
 
-  if (ref.value_lbl) lv_label_set_text(ref.value_lbl, value_text);
-  if (ref.unit_lbl) lv_label_set_text(ref.unit_lbl, unit_text);
-  if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label.c_str());
+  if (ref.value_lbl) lv_label_set_display_text(ref.value_lbl, value_text);
+  if (ref.unit_lbl) lv_label_set_display_text(ref.unit_lbl, unit_text);
+  if (ref.label_lbl) lv_label_set_display_text(ref.label_lbl, label.c_str());
 }
 
 inline bool timezone_card_ref_ready(const TimezoneCardRef &ref) {

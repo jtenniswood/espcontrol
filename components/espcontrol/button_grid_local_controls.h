@@ -132,7 +132,7 @@ inline bool local_sensor_apply_value(const std::string &key, float value) {
     if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
     else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
     else snprintf(buffer, sizeof(buffer), "%.0f", value);
-    lv_label_set_text(control.sensor_lbl, buffer);
+    lv_label_set_display_text(control.sensor_lbl, buffer);
     applied = true;
   }
   return applied;
@@ -352,7 +352,7 @@ inline void apply_internal_relay_state(lv_obj_t *btn, lv_obj_t *icon_lbl,
     set_card_checked_state(btn, on);
   }
   if (icon_lbl && has_icon_on)
-    lv_label_set_text(icon_lbl, on ? icon_on : icon_off);
+    lv_label_set_display_text(icon_lbl, on ? icon_on : icon_off);
 }
 
 inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool on) {
@@ -367,11 +367,11 @@ inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool 
   if (w.sp_on_count[w.parent_idx] > 0) {
     set_card_checked_state(w.parent_btn, true);
     if (w.parent_has_alt_icon && w.parent_icon)
-      lv_label_set_text(w.parent_icon, w.parent_on_glyph);
+      lv_label_set_display_text(w.parent_icon, w.parent_on_glyph);
   } else {
     set_card_checked_state(w.parent_btn, false);
     if (w.parent_has_alt_icon && w.parent_icon)
-      lv_label_set_text(w.parent_icon, w.parent_off_glyph);
+      lv_label_set_display_text(w.parent_icon, w.parent_off_glyph);
   }
 }
 

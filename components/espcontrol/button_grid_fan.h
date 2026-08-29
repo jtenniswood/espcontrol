@@ -317,14 +317,14 @@ inline std::string fan_card_label(const ParsedCfg &p) {
 }
 
 inline void setup_fan_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
-  lv_label_set_text(s.text_lbl, fan_card_label(p).c_str());
+  lv_label_set_display_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
+  lv_label_set_display_text(s.text_lbl, fan_card_label(p).c_str());
   if (p.type != "fan_switch") apply_push_button_transition(s.btn);
 }
 
 inline void setup_fan_control_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
-  lv_label_set_text(s.text_lbl, fan_card_label(p).c_str());
+  lv_label_set_display_text(s.icon_lbl, find_icon(fan_card_icon_name(p)));
+  lv_label_set_display_text(s.text_lbl, fan_card_label(p).c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -447,9 +447,9 @@ inline void fan_apply_card_visual(FanCardCtx *ctx) {
 
   if (ctx->icon_lbl) {
     if ((ctx->type == "fan_switch" || ctx->type == "fan_control") && active && ctx->icon_on_glyph) {
-      lv_label_set_text(ctx->icon_lbl, ctx->icon_on_glyph);
+      lv_label_set_display_text(ctx->icon_lbl, ctx->icon_on_glyph);
     } else if (ctx->icon_off_glyph) {
-      lv_label_set_text(ctx->icon_lbl, ctx->icon_off_glyph);
+      lv_label_set_display_text(ctx->icon_lbl, ctx->icon_off_glyph);
     }
   }
 }
@@ -571,7 +571,7 @@ inline lv_obj_t *fan_control_create_tab_button(lv_obj_t *parent, const char *ico
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -603,7 +603,7 @@ inline lv_obj_t *fan_control_create_icon_button(lv_obj_t *parent, const char *ic
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -675,7 +675,7 @@ inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
   if (ui.speed_value_lbl) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d%%", pct);
-    lv_label_set_text(ui.speed_value_lbl, buf);
+    lv_label_set_display_text(ui.speed_value_lbl, buf);
   }
 }
 
@@ -960,7 +960,7 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
   }
   if (count == 0) {
     lv_obj_t *empty = lv_label_create(ui.preset_list);
-    lv_label_set_text(empty, espcontrol_i18n("No presets"));
+    lv_label_set_display_text(empty, espcontrol_i18n("No presets"));
     lv_label_set_long_mode(empty, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(empty, lv_pct(100));
     lv_obj_set_style_text_color(empty, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -1070,7 +1070,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
     if (ui.speed_value_lbl) {
       char buf[8];
       snprintf(buf, sizeof(buf), "%d%%", pct);
-      lv_label_set_text(ui.speed_value_lbl, buf);
+      lv_label_set_display_text(ui.speed_value_lbl, buf);
     }
     fan_control_refresh_card(ui.active);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -1176,7 +1176,7 @@ inline void fan_preset_open(FanCardCtx *ctx) {
 
   if (count == 0) {
     ui.empty_lbl = lv_label_create(ui.list);
-    lv_label_set_text(ui.empty_lbl, espcontrol_i18n("No presets"));
+    lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n("No presets"));
     lv_label_set_long_mode(ui.empty_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ui.empty_lbl, lv_pct(100));
     lv_obj_set_style_text_color(ui.empty_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);

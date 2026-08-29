@@ -257,7 +257,7 @@ inline void media_set_metadata_text(lv_obj_t *label, esphome::StringRef value,
                                     const char *fallback) {
   if (!label) return;
   std::string text = media_metadata_text(value, fallback);
-  lv_label_set_text(label, text.c_str());
+  lv_label_set_display_text(label, text.c_str());
 }
 
 inline bool media_external_source_input(std::string source) {
@@ -269,7 +269,7 @@ inline void media_apply_now_playing_artist_text(MediaNowPlayingCtx *ctx) {
   const char *text = ctx->external_source
     ? espcontrol_i18n("Source")
     : ctx->artist;
-  lv_label_set_text(ctx->artist_lbl, text);
+  lv_label_set_display_text(ctx->artist_lbl, text);
 }
 
 inline void media_position_now_playing_artist(MediaNowPlayingCtx *ctx) {
@@ -377,7 +377,7 @@ inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
     std::string label = ctx->label_shows_status
       ? media_status_text(ctx->state_text)
       : ctx->label;
-    lv_label_set_text(ctx->label_lbl, label.c_str());
+    lv_label_set_display_text(ctx->label_lbl, label.c_str());
   }
   if (ctx->top_shows_volume && ctx->volume_value_lbl) {
     if (ctx->volume_known) {
@@ -387,11 +387,11 @@ inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
         espcontrol::media::volume_display_value(
           ctx->volume_control_mode, ctx->current_pct,
           media_control_volume_max_pct(ctx)));
-      lv_label_set_text(ctx->volume_value_lbl, buf);
+      lv_label_set_display_text(ctx->volume_value_lbl, buf);
     } else {
-      lv_label_set_text(ctx->volume_value_lbl, "--");
+      lv_label_set_display_text(ctx->volume_value_lbl, "--");
     }
-    if (ctx->volume_unit_lbl) lv_label_set_text(ctx->volume_unit_lbl, "");
+    if (ctx->volume_unit_lbl) lv_label_set_display_text(ctx->volume_unit_lbl, "");
   }
 }
 
@@ -514,7 +514,7 @@ inline void media_apply_position(SliderCtx *ctx) {
   if (ctx->media_value_lbl) {
     char time_buf[16];
     media_format_time(seconds, time_buf, sizeof(time_buf));
-    lv_label_set_text(ctx->media_value_lbl, time_buf);
+    lv_label_set_display_text(ctx->media_value_lbl, time_buf);
   }
 
   int pct = 0;
@@ -984,7 +984,7 @@ inline void media_playback_apply_state_to_slider(MediaPlaybackState *state,
   ctx->media_playing = state->playing;
   if (ctx->media_status_lbl) {
     std::string label = media_status_text(state->available ? state->state_text : std::string("unavailable"));
-    lv_label_set_text(ctx->media_status_lbl, label.c_str());
+    lv_label_set_display_text(ctx->media_status_lbl, label.c_str());
   }
   if (!ctx->media_position) return;
 
@@ -1021,7 +1021,7 @@ inline void media_playback_apply_state_to_button(MediaPlaybackState *state,
   if (button.status_lbl && state->has_state) {
     std::string label = media_status_text(
       state->available ? state->state_text : std::string("unavailable"));
-    lv_label_set_text(button.status_lbl, label.c_str());
+    lv_label_set_display_text(button.status_lbl, label.c_str());
   }
 }
 
@@ -1107,7 +1107,7 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
       ctx->external_source_fallback && state->external_source && !state->source.empty()
         ? state->source
         : state->title.empty() ? std::string("--") : state->title;
-    lv_label_set_text(ctx->title_lbl, title.c_str());
+    lv_label_set_display_text(ctx->title_lbl, title.c_str());
     if (ctx->show_track_details || ctx->external_source_fallback) {
       lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
@@ -1187,8 +1187,8 @@ inline void media_playback_apply_state_to_volume(MediaPlaybackState *state,
   media_volume_refresh_controls(ctx);
   if (!ctx->available) media_volume_hide_modal();
   if (!state->volume_known) {
-    if (ctx->pct_lbl) lv_label_set_text(ctx->pct_lbl, "--");
-    if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+    if (ctx->pct_lbl) lv_label_set_display_text(ctx->pct_lbl, "--");
+    if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
     return;
   }
 
@@ -2067,14 +2067,14 @@ inline void setup_media_action_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   std::string mode = media_card_mode(p.sensor);
   if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
+    lv_label_set_display_text(icon_lbl, media_default_icon(mode, p.icon));
     lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
   }
   if (text_lbl) {
     std::string label = media_play_pause_show_state(p)
       ? espcontrol_i18n(std::string("Paused"))
       : media_action_label(p, mode);
-    lv_label_set_text(text_lbl, label.c_str());
+    lv_label_set_display_text(text_lbl, label.c_str());
     lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     configure_button_label_wrap(text_lbl);
   }
@@ -2127,12 +2127,12 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
       lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);
     }
     lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
-    if (reset_text) lv_label_set_text(title_lbl, "--");
+    if (reset_text) lv_label_set_display_text(title_lbl, "--");
     lv_obj_move_foreground(title_lbl);
   }
   if (artist_lbl) {
     const lv_font_t *font = lv_obj_get_style_text_font(artist_lbl, LV_PART_MAIN);
-    if (reset_text) lv_label_set_text(artist_lbl, "");
+    if (reset_text) lv_label_set_display_text(artist_lbl, "");
     lv_label_set_long_mode(artist_lbl, LV_LABEL_LONG_DOT);
     if (font && font->line_height > 0) lv_obj_set_size(artist_lbl, text_width, font->line_height);
     else lv_obj_set_width(artist_lbl, text_width);
@@ -2209,13 +2209,13 @@ inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
     lv_obj_move_foreground(sensor_container);
   }
   if (sensor_lbl) {
-    lv_label_set_text(sensor_lbl, "--");
+    lv_label_set_display_text(sensor_lbl, "--");
   }
   if (unit_lbl) {
-    lv_label_set_text(unit_lbl, "");
+    lv_label_set_display_text(unit_lbl, "");
   }
   if (text_lbl) {
-    lv_label_set_text(text_lbl, media_label(p).c_str());
+    lv_label_set_display_text(text_lbl, media_label(p).c_str());
     lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     configure_button_label_wrap(text_lbl);
     lv_obj_move_foreground(text_lbl);
@@ -2236,12 +2236,12 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   if (position) {
     if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     if (value_lbl) {
-      lv_label_set_text(value_lbl, "0:00");
+      lv_label_set_display_text(value_lbl, "0:00");
       lv_obj_move_foreground(value_lbl);
     }
     if (text_lbl) {
       lv_obj_clear_flag(text_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(text_lbl, media_position_show_state(p) ? espcontrol_i18n("Paused") : media_action_label(p, mode).c_str());
+      lv_label_set_display_text(text_lbl, media_position_show_state(p) ? espcontrol_i18n("Paused") : media_action_label(p, mode).c_str());
       lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
@@ -2249,12 +2249,12 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   } else {
     if (icon_lbl) {
       lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
+      lv_label_set_display_text(icon_lbl, media_default_icon(mode, p.icon));
       lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
       lv_obj_move_foreground(icon_lbl);
     }
     if (text_lbl) {
-      lv_label_set_text(text_lbl, media_label(p).c_str());
+      lv_label_set_display_text(text_lbl, media_label(p).c_str());
       lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, padding.left, -padding.bottom);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
@@ -2305,7 +2305,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (ctx->media_position && ctx->media_duration > 0.0f && ctx->media_value_lbl) {
       char time_buf[16];
       media_format_time(ctx->media_duration * val / 100.0f, time_buf, sizeof(time_buf));
-      lv_label_set_text(ctx->media_value_lbl, time_buf);
+      lv_label_set_display_text(ctx->media_value_lbl, time_buf);
     }
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
@@ -2337,7 +2337,7 @@ inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   if (value_font) lv_obj_set_style_text_font(value_lbl, value_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(value_lbl, text_color, LV_PART_MAIN);
   apply_width_compensation(value_lbl, width_compensation_percent);
-  lv_label_set_text(value_lbl, "0:00");
+  lv_label_set_display_text(value_lbl, "0:00");
   lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
   lv_obj_set_style_bg_color(
@@ -2369,11 +2369,11 @@ inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
       lv_obj_align(sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
       lv_obj_move_foreground(sensor_container);
     }
-    if (sensor_lbl) lv_label_set_text(sensor_lbl, "--");
-    if (unit_lbl) lv_label_set_text(unit_lbl, "");
+    if (sensor_lbl) lv_label_set_display_text(sensor_lbl, "--");
+    if (unit_lbl) lv_label_set_display_text(unit_lbl, "");
   } else if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(icon_lbl, media_default_icon(media_card_mode(p.sensor), p.icon));
+    lv_label_set_display_text(icon_lbl, media_default_icon(media_card_mode(p.sensor), p.icon));
     lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     if (sensor_container) lv_obj_add_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
@@ -2381,7 +2381,7 @@ inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
     std::string label = media_control_card_show_status_label(p)
       ? media_status_text("unknown")
       : media_control_card_label(p);
-    lv_label_set_text(text_lbl, label.c_str());
+    lv_label_set_display_text(text_lbl, label.c_str());
     lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     configure_button_label_wrap(text_lbl);
   }
@@ -2455,7 +2455,7 @@ inline void media_control_reset_track_position(MediaControlCtx *ctx) {
 inline void media_control_refresh_play_icon(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx || !ui.play_icon_lbl) return;
-  lv_label_set_text(ui.play_icon_lbl, ctx->playing ? find_icon("Pause") : find_icon("Play"));
+  lv_label_set_display_text(ui.play_icon_lbl, ctx->playing ? find_icon("Pause") : find_icon("Play"));
 }
 
 inline void media_control_refresh_progress_time_label(MediaControlCtx *ctx, float seconds) {
@@ -2463,7 +2463,7 @@ inline void media_control_refresh_progress_time_label(MediaControlCtx *ctx, floa
   if (!ctx || ui.active != ctx || !ui.progress_time_lbl) return;
   char position_buf[16];
   media_format_time(seconds, position_buf, sizeof(position_buf));
-  lv_label_set_text(ui.progress_time_lbl, position_buf);
+  lv_label_set_display_text(ui.progress_time_lbl, position_buf);
 }
 
 inline lv_obj_t *media_control_create_progress_fill(lv_obj_t *slider, lv_color_t fill_color) {
@@ -2640,7 +2640,7 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx) {
               : media_clamp_percent(ctx->current_pct));
   if (ui.volume_group_lbl) {
     if (grouped) {
-      lv_label_set_text(ui.volume_group_lbl, espcontrol_i18n("Group"));
+      lv_label_set_display_text(ui.volume_group_lbl, espcontrol_i18n("Group"));
       lv_obj_clear_flag(ui.volume_group_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
       lv_obj_add_flag(ui.volume_group_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -2649,7 +2649,7 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx) {
   if (ui.volume_pct_lbl) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", pct);
-    lv_label_set_text(ui.volume_pct_lbl, buf);
+    lv_label_set_display_text(ui.volume_pct_lbl, buf);
   }
   if (ui.volume_arc && !ctx->dragging_volume) {
     ui.updating_volume = true;
@@ -2673,7 +2673,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
     lv_color_hex(on ? ctx->accent_color : SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.power_btn, LV_OPA_COVER, LV_PART_MAIN);
   if (ui.power_icon_lbl) {
-    lv_label_set_text(ui.power_icon_lbl, find_icon("Power"));
+    lv_label_set_display_text(ui.power_icon_lbl, find_icon("Power"));
     lv_obj_set_style_text_color(
       ui.power_icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
@@ -2682,7 +2682,7 @@ inline void media_control_refresh_power(MediaControlCtx *ctx) {
       ? espcontrol_i18n(std::string("Unknown"))
       : (on ? espcontrol_i18n(std::string("On"))
             : espcontrol_i18n(std::string("Off")));
-    lv_label_set_text(ui.power_status_lbl, status.c_str());
+    lv_label_set_display_text(ui.power_status_lbl, status.c_str());
   }
   media_control_apply_availability(ui.power_btn, ui.power_btn, interactive);
 }
@@ -2721,7 +2721,7 @@ inline void media_control_refresh_playback_modes(MediaControlCtx *ctx) {
     const bool interactive = ctx->available && known &&
       media_control_repeat_supported(ctx);
     if (ui.repeat_icon_lbl) {
-      lv_label_set_text(
+      lv_label_set_display_text(
         ui.repeat_icon_lbl,
         find_icon(ctx->repeat_mode == espcontrol::media::RepeatMode::ONE
           ? "Repeat Once" : "Repeat"));
@@ -2736,8 +2736,8 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   if (!ctx || ui.active != ctx) return;
   std::string title = media_control_title_text(ctx);
   std::string artist = media_control_artist_text(ctx);
-  if (ui.title_lbl) lv_label_set_text(ui.title_lbl, title.c_str());
-  if (ui.artist_lbl) lv_label_set_text(ui.artist_lbl, artist.c_str());
+  if (ui.title_lbl) lv_label_set_display_text(ui.title_lbl, title.c_str());
+  if (ui.artist_lbl) lv_label_set_display_text(ui.artist_lbl, artist.c_str());
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
   media_control_refresh_volume(ctx);
@@ -3060,7 +3060,7 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
   ui.progress_time_lbl = lv_label_create(ui.content_box);
   if (ui.progress_time_lbl) {
     lv_obj_add_flag(ui.progress_time_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(ui.progress_time_lbl, "0:00");
+    lv_label_set_display_text(ui.progress_time_lbl, "0:00");
     lv_obj_set_style_text_color(ui.progress_time_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.progress_time_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->title_font) lv_obj_set_style_text_font(ui.progress_time_lbl, ctx->title_font, LV_PART_MAIN);
@@ -3179,7 +3179,7 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
 
   ui.volume_group_lbl = lv_label_create(ui.content_box);
   if (ui.volume_group_lbl) {
-    lv_label_set_text(ui.volume_group_lbl, espcontrol_i18n("Group"));
+    lv_label_set_display_text(ui.volume_group_lbl, espcontrol_i18n("Group"));
     lv_obj_set_style_text_color(ui.volume_group_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.volume_group_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(ui.volume_group_lbl, ctx->label_font, LV_PART_MAIN);
@@ -3189,7 +3189,7 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
 
   ui.volume_pct_lbl = lv_label_create(ui.content_box);
   if (ui.volume_pct_lbl) {
-    lv_label_set_text(ui.volume_pct_lbl, "0");
+    lv_label_set_display_text(ui.volume_pct_lbl, "0");
     lv_obj_set_style_text_color(ui.volume_pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.volume_pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->number_font) lv_obj_set_style_text_font(ui.volume_pct_lbl, ctx->number_font, LV_PART_MAIN);
@@ -3267,7 +3267,7 @@ inline void media_control_set_speaker_status(const char *text, bool error = fals
     return;
   }
   lv_obj_clear_flag(ui.speakers_status_lbl, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(ui.speakers_status_lbl, text ? text : "");
+  lv_label_set_display_text(ui.speakers_status_lbl, text ? text : "");
   lv_obj_set_style_text_color(
     ui.speakers_status_lbl,
     lv_color_hex(error ? 0xFF6B6B : DARK_TEXT_MUTED), LV_PART_MAIN);
@@ -3334,7 +3334,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
   if (row->name_label) {
     std::string name = row->friendly_name.empty()
       ? media_control_speaker_fallback_name(row->entity_id) : row->friendly_name;
-    lv_label_set_text(row->name_label, name.c_str());
+    lv_label_set_display_text(row->name_label, name.c_str());
     lv_obj_set_style_text_color(row->name_label, lv_color_hex(text_color), LV_PART_MAIN);
 #ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
     lv_obj_set_style_translate_y(
@@ -3344,7 +3344,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
 #endif
   }
   if (row->speaker_icon) {
-    lv_label_set_text(
+    lv_label_set_display_text(
       row->speaker_icon,
       find_icon(row->selected ? "Speaker Wireless" : "Speaker Off"));
     lv_obj_clear_flag(row->speaker_icon, LV_OBJ_FLAG_HIDDEN);
@@ -3381,7 +3381,7 @@ inline void media_control_refresh_speaker_row(MediaControlCtx *ctx,
     if (row->volume_known) snprintf(value, sizeof(value), "%d%%", row->volume_pct);
     else std::strncpy(value, "--", sizeof(value));
     value[sizeof(value) - 1] = '\0';
-    lv_label_set_text(row->volume_label, value);
+    lv_label_set_display_text(row->volume_label, value);
 #ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
     lv_obj_set_style_translate_y(
       row->volume_label, lv_obj_get_height(row->volume_label) / 2, LV_PART_MAIN);
@@ -3480,7 +3480,7 @@ inline void media_control_apply_group_volume_percent(MediaControlCtx *ctx, int p
     if (ui.active == ctx && ui.volume_pct_lbl) {
       char value[8];
       snprintf(value, sizeof(value), "%d", media_control_clamp_volume(ctx, pct));
-      lv_label_set_text(ui.volume_pct_lbl, value);
+      lv_label_set_display_text(ui.volume_pct_lbl, value);
     }
     return;
   }
@@ -3598,7 +3598,7 @@ inline lv_obj_t *media_control_create_speaker_volume_button(
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
   lv_obj_t *label = lv_label_create(btn);
-  lv_label_set_text(label, icon);
+  lv_label_set_display_text(label, icon);
   if (ctx->icon_font) lv_obj_set_style_text_font(label, ctx->icon_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(label, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
   lv_obj_center(label);
@@ -3710,7 +3710,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_coord_t icon_column_w = control_modal_scaled_px(32, speaker_layout.short_side);
   if (icon_column_w < 32) icon_column_w = 32;
   lv_obj_set_width(row->speaker_icon, icon_column_w);
-  lv_label_set_text(row->speaker_icon, find_icon("Speaker"));
+  lv_label_set_display_text(row->speaker_icon, find_icon("Speaker"));
   lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
   lv_obj_set_style_transform_zoom(
@@ -3777,7 +3777,7 @@ inline void media_control_add_speaker_candidate(MediaControlCtx *ctx,
   lv_coord_t icon_column_w = control_modal_scaled_px(36, speaker_layout.short_side);
   if (icon_column_w < 36) icon_column_w = 36;
   lv_obj_set_width(row->speaker_icon, icon_column_w);
-  lv_label_set_text(row->speaker_icon, find_icon("Speaker"));
+  lv_label_set_display_text(row->speaker_icon, find_icon("Speaker"));
   lv_obj_set_style_text_align(row->speaker_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->icon_font) lv_obj_set_style_text_font(row->speaker_icon, ctx->icon_font, LV_PART_MAIN);
   lv_obj_set_style_transform_zoom(
@@ -3969,7 +3969,7 @@ inline void media_control_create_power_tab_content(MediaControlCtx *ctx) {
 
   ui.power_status_lbl = lv_label_create(ui.content_box);
   if (ui.power_status_lbl) {
-    lv_label_set_text(ui.power_status_lbl, espcontrol_i18n("Unknown"));
+    lv_label_set_display_text(ui.power_status_lbl, espcontrol_i18n("Unknown"));
     lv_obj_set_style_text_color(
       ui.power_status_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.power_status_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -4149,11 +4149,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   }
   if (ui.title_lbl) {
     std::string title = media_control_title_text(ctx);
-    lv_label_set_text(ui.title_lbl, title.c_str());
+    lv_label_set_display_text(ui.title_lbl, title.c_str());
   }
   if (ui.artist_lbl) {
     std::string artist = media_control_artist_text(ctx);
-    lv_label_set_text(ui.artist_lbl, artist.c_str());
+    lv_label_set_display_text(ui.artist_lbl, artist.c_str());
   }
   const lv_font_t *title_font = ctx->title_font
     ? ctx->title_font
@@ -4534,7 +4534,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       }
       apply_width_compensation(artist_lbl, width_compensation_percent);
       if (s.text_lbl) {
-        lv_label_set_text(s.text_lbl, "");
+        lv_label_set_display_text(s.text_lbl, "");
         lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
       }
       ctx->title_lbl = title_lbl;

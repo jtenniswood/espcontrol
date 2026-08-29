@@ -402,11 +402,11 @@ inline void light_control_apply_card_visual(LightControlCtx *ctx) {
   set_card_checked_state(ctx->btn, ctx->on);
   if (ctx->icon_lbl) {
     const char *glyph = ctx->on && ctx->icon_on_glyph ? ctx->icon_on_glyph : ctx->icon_off_glyph;
-    if (glyph) lv_label_set_text(ctx->icon_lbl, glyph);
+    if (glyph) lv_label_set_display_text(ctx->icon_lbl, glyph);
   }
   if (ctx->label_lbl) {
     std::string title = light_control_title(ctx);
-    lv_label_set_text(ctx->label_lbl, title.c_str());
+    lv_label_set_display_text(ctx->label_lbl, title.c_str());
   }
 }
 
@@ -595,7 +595,7 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -774,7 +774,7 @@ inline lv_obj_t *light_control_create_power_button(lv_obj_t *parent, const lv_fo
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, find_icon(turn_on ? "Power" : "Circle Outline"));
+    lv_label_set_display_text(label, find_icon(turn_on ? "Power" : "Circle Outline"));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
     lv_obj_set_style_transform_zoom(label, turn_on ? 230 : 180, LV_PART_MAIN);
@@ -1130,8 +1130,8 @@ inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
 }
 
 inline void setup_light_control_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, light_control_icon_off(p));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Light") : p.label.c_str());
+  lv_label_set_display_text(s.icon_lbl, light_control_icon_off(p));
+  lv_label_set_display_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Light") : p.label.c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -1764,11 +1764,11 @@ inline void cover_control_apply_card_visual(CoverControlCtx *ctx,
     bool open_icon = ctx->current_position_known
       ? slider_clamp_pct(ctx->current_position) > 0
       : (!state_text.empty() ? garage_state_uses_open_icon(state_text) : ctx->current_position > 0);
-    lv_label_set_text(ctx->icon_lbl, open_icon ? ctx->icon_open_glyph : ctx->icon_closed_glyph);
+    lv_label_set_display_text(ctx->icon_lbl, open_icon ? ctx->icon_open_glyph : ctx->icon_closed_glyph);
   }
   if (ctx->label_lbl) {
     std::string title = cover_control_title(ctx);
-    lv_label_set_text(ctx->label_lbl, title.c_str());
+    lv_label_set_display_text(ctx->label_lbl, title.c_str());
   }
 }
 
@@ -1871,7 +1871,7 @@ inline lv_obj_t *cover_control_create_tab_button(lv_obj_t *parent, const char *i
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -1902,7 +1902,7 @@ inline lv_obj_t *cover_control_create_wide_icon_button(lv_obj_t *parent, const c
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -1938,7 +1938,7 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
 
   lv_obj_t *icon = lv_label_create(btn);
   if (icon) {
-    lv_label_set_text(icon, pct <= 50 ? find_icon("Blinds") : find_icon("Blinds Open"));
+    lv_label_set_display_text(icon, pct <= 50 ? find_icon("Blinds") : find_icon("Blinds Open"));
     lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (icon_font) lv_obj_set_style_text_font(icon, icon_font, LV_PART_MAIN);
@@ -1949,7 +1949,7 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
   if (label) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d%%", pct);
-    lv_label_set_text(label, buf);
+    lv_label_set_display_text(label, buf);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, lv_pct(100));
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -2704,13 +2704,13 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
 }
 
 inline void setup_cover_toggle_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
+  lv_label_set_display_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
+  lv_label_set_display_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
 }
 
 inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
+  lv_label_set_display_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
+  lv_label_set_display_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
   apply_push_button_transition(s.btn);
 }
 
@@ -2721,7 +2721,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     p.entity.c_str(), p.type.c_str());
   setup_toggle_visual(s, p);
   if (p.type == "cover")
-    lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
+    lv_label_set_display_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
 
   const CardPadding padding = capture_card_padding(s.btn);
 
@@ -2836,7 +2836,7 @@ inline void slider_set_value_safe(lv_obj_t *slider, int pct) {
 }
 
 inline void slider_set_icon_safe(lv_obj_t *icon_lbl, const char *icon) {
-  if (icon_lbl && icon) lv_label_set_text(icon_lbl, icon);
+  if (icon_lbl && icon) lv_label_set_display_text(icon_lbl, icon);
 }
 
 // Subscribe to HA state for a slider entity (light brightness, fan percentage, or cover position/tilt)
@@ -2949,12 +2949,12 @@ inline void light_temp_show_drag_kelvin(SliderCtx *ctx, int kelvin) {
   if (!ctx || !ctx->text_lbl) return;
   char buf[16];
   snprintf(buf, sizeof(buf), "%dK", light_temp_rounded_kelvin(ctx, kelvin));
-  lv_label_set_text(ctx->text_lbl, buf);
+  lv_label_set_display_text(ctx->text_lbl, buf);
 }
 
 inline void light_temp_restore_label(SliderCtx *ctx) {
   if (!ctx || !ctx->text_lbl) return;
-  lv_label_set_text(ctx->text_lbl, ctx->cached_label.c_str());
+  lv_label_set_display_text(ctx->text_lbl, ctx->cached_label.c_str());
 }
 
 // Subscribe to friendly_name and keep the SliderCtx cached_label in sync;
@@ -3044,7 +3044,7 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
 // Build the visual for a light temperature slider card.
 inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
   setup_toggle_visual(s, p);
-  lv_label_set_text(s.icon_lbl, light_temp_icon(p.icon));
+  lv_label_set_display_text(s.icon_lbl, light_temp_icon(p.icon));
   int min_k = 2000, max_k = 6500;
   parse_kelvin_range(p.unit, min_k, max_k);
   bool kcolor = (p.precision == "color");
@@ -3277,7 +3277,7 @@ inline void media_volume_apply_mic_button_state(MediaVolumeCtx *ctx) {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
   if (!ctx || !ui.mic_btn || !ui.mic_lbl || !media_volume_has_mic_control(ctx)) return;
   bool muted = ctx->mic_muted();
-  lv_label_set_text(ui.mic_lbl, muted ? "\U000F036D" : "\U000F036C");
+  lv_label_set_display_text(ui.mic_lbl, muted ? "\U000F036D" : "\U000F036C");
   lv_obj_set_style_text_color(ui.mic_lbl,
     lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
 }
@@ -3292,8 +3292,8 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
   pct = media_clamp_percent(pct);
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", pct);
-  lv_label_set_text(ctx->pct_lbl, buf);
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  lv_label_set_display_text(ctx->pct_lbl, buf);
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
 }
 
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
@@ -3436,9 +3436,9 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
   if (ui.pct_lbl) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", pct);
-    lv_label_set_text(ui.pct_lbl, buf);
+    lv_label_set_display_text(ui.pct_lbl, buf);
   }
-  if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "");
+  if (ui.pct_unit_lbl) lv_label_set_display_text(ui.pct_unit_lbl, "");
 }
 
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
@@ -3481,7 +3481,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   ui.title_lbl = lv_label_create(ui.panel);
-  lv_label_set_text(ui.title_lbl, espcontrol_i18n("Volume"));
+  lv_label_set_display_text(ui.title_lbl, espcontrol_i18n("Volume"));
   lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(ui.title_lbl, ctx->label_font, LV_PART_MAIN);
@@ -3507,7 +3507,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
 
   ui.pct_unit_lbl = lv_label_create(ui.pct_row);
-  lv_label_set_text(ui.pct_unit_lbl, "");
+  lv_label_set_display_text(ui.pct_unit_lbl, "");
   lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->unit_font, LV_PART_MAIN);

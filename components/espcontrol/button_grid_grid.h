@@ -311,10 +311,10 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
 inline void clear_unsupported_card_slot_visuals(BtnSlot &s) {
   // Slot widgets persist across dashboard reloads. An unsupported replacement
   // must not keep showing the icon, label, or value from the previous card.
-  if (s.icon_lbl) lv_label_set_text(s.icon_lbl, "");
-  if (s.text_lbl) lv_label_set_text(s.text_lbl, "");
-  if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, "");
-  if (s.unit_lbl) lv_label_set_text(s.unit_lbl, "");
+  if (s.icon_lbl) lv_label_set_display_text(s.icon_lbl, "");
+  if (s.text_lbl) lv_label_set_display_text(s.text_lbl, "");
+  if (s.sensor_lbl) lv_label_set_display_text(s.sensor_lbl, "");
+  if (s.unit_lbl) lv_label_set_display_text(s.unit_lbl, "");
 }
 
 inline bool info_only_hidden_card_type(const espcontrol::cards::Context &context) {
@@ -757,7 +757,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     if (!ctx) return;
     if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     if (s.text_lbl) {
-      lv_label_set_text(s.text_lbl, "");
+      lv_label_set_display_text(s.text_lbl, "");
       lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
     }
     if (ctx->title_lbl && ctx->artist_lbl) {
@@ -1177,7 +1177,7 @@ inline bool grid_refresh_subpage_layouts(
     lv_obj_set_grid_dsc_array(entry->screen, subpage_cols, subpage_rows);
     const std::string back_label = get_subpage_back_label(order);
     if (entry->back_slot.text_lbl != nullptr) {
-      lv_label_set_text(entry->back_slot.text_lbl, back_label.c_str());
+      lv_label_set_display_text(entry->back_slot.text_lbl, back_label.c_str());
     }
     set_grid_card_cell(
       entry->back_button, entry->screen,
@@ -2027,8 +2027,8 @@ inline void grid_phase2(
       cfg.subpage_chevron_font);
     display_apply_main_width(back_slot.icon_lbl, display);
     display_apply_slot_text_width(back_slot, display);
-    lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
-    lv_label_set_text(back_slot.text_lbl, sp_back_label.c_str());
+    lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
+    lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);
 

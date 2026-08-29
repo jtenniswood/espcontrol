@@ -107,8 +107,10 @@ When adding or changing card UI, prefer one of these existing pointers.
 Fonts only include the glyphs explicitly listed for that font.
 
 - Text fonts usually include `common/assets/text_glyphs.yaml`.
-- Text characters that Roboto does not provide use a small Noto Sans fallback
-  set from `common/assets/latin_extended_additional_glyphs.yaml`.
+- User-supplied `Ṣ` and `ṣ` characters that Roboto does not provide are
+  normalized to plain `S` and `s` only when text is rendered. Keep this
+  substitution at the display boundary so Home Assistant values and service
+  data remain unchanged.
 - Icon fonts use Material Design Icon glyph sets such as
   `common/assets/icon_glyphs.yaml`.
 - Number fonts intentionally include only digits and a few symbols such as
