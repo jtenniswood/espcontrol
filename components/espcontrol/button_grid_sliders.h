@@ -850,7 +850,8 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   int tab_count = static_cast<int>(visible_tabs.count);
   bool show_tab_bar = tab_count > 1;
   ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = light_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;
@@ -2165,13 +2166,13 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   int tab_count = static_cast<int>(visible_tabs.count);
   bool show_tab_bar = tab_count > 1;
   ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = cover_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;
     bool active = (visible_tabs.tabs[i] == ui.tab);
-    control_modal_layout_tab_button(
-      tab_btn, layout, tabs_layout, i, active, ctx->width_compensation_percent);
+    control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);
   }
 
   const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(

@@ -2006,7 +2006,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   int tab_count = tabs_layout.tab_count;
   bool show_tab_bar = tabs_layout.show_tab_bar;
   lv_coord_t tab_frame_h = tabs_layout.tab_frame_h;
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = climate_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;

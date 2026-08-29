@@ -81,6 +81,43 @@ def check_root(root: Path) -> list[str]:
                 if pattern.search(line):
                     rel = path.relative_to(root)
                     failures.append(f"{rel}:{line_no}: {message}")
+
+    tab_files = {
+        "button_grid_modal.h": 0,
+        "button_grid_sliders.h": 2,
+        "button_grid_fan.h": 1,
+        "button_grid_climate.h": 1,
+        "button_grid_media.h": 1,
+    }
+    tab_paths = {name: FIRMWARE_DIR.relative_to(ROOT) / name for name in tab_files}
+    resolved_tab_paths = {name: root / relative for name, relative in tab_paths.items()}
+    if all(path.exists() for path in resolved_tab_paths.values()):
+        modal_text = resolved_tab_paths["button_grid_modal.h"].read_text(encoding="utf-8")
+        if "apply_width_compensation(tab_row, width_compensation_percent);" not in modal_text:
+            failures.append(
+                "components/espcontrol/button_grid_modal.h: compensate the shared tab controller container"
+            )
+        tab_button_body = re.search(
+            r"inline void control_modal_layout_tab_button\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+            modal_text,
+            re.S,
+        )
+        if tab_button_body is None or "apply_width_compensation(tab_btn" in tab_button_body.group("body"):
+            failures.append(
+                "components/espcontrol/button_grid_modal.h: apply tab compensation once at the shared container"
+            )
+        compensated_call = re.compile(
+            r"control_modal_apply_tab_row\(\s*ui\.tab_row,\s*layout,\s*tabs_layout,\s*"
+            r"ctx->width_compensation_percent\s*\);"
+        )
+        for name, expected_count in tab_files.items():
+            if expected_count == 0:
+                continue
+            text = resolved_tab_paths[name].read_text(encoding="utf-8")
+            if len(compensated_call.findall(text)) != expected_count:
+                failures.append(
+                    f"components/espcontrol/{name}: pass display compensation to every modal tab controller"
+                )
     return failures
 
 

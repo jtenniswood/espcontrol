@@ -4087,7 +4087,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   ControlModalTabLayout tabs_layout = {};
   if (show_tabs) {
     tabs_layout = control_modal_calc_tab_layout(layout, media_control_tab_count, true);
-    control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+    control_modal_apply_tab_row(
+      ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   }
 
   struct MediaControlTabLayout {
