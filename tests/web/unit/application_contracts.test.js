@@ -397,7 +397,7 @@ describe("browserless application contracts", () => {
     const qrPreview = definitions.wifi_qr_card.renderPreview(qrCard, {});
     assert.equal(qrPreview.labelHtml, "");
     assert.equal(qrPreview.buttonClass, "sp-wifi-qr-card");
-    assert.match(qrPreview.iconHtml, /viewBox="0 0 37 37"/);
+    assert.match(qrPreview.iconHtml, /viewBox="3 3 31 31"/);
     assert.match(qrPreview.iconHtml, /shape-rendering="crispEdges"/);
     assert.doesNotMatch(qrPreview.iconHtml, /viewBox="0 0 21 21"/);
     definitions.wifi_qr_card.cardMetadata.mode.onChange.call(
