@@ -2769,7 +2769,7 @@ inline void slider_numeric_show_value(lv_obj_t *slider, SliderCtx *ctx) {
   const double value = espcontrol::number_slider::value_for_position(
     metadata, lv_slider_get_value(slider));
   const std::string formatted = espcontrol::number_slider::format_value(
-    value, metadata.step);
+    value, metadata);
   if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, formatted.c_str());
   if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
@@ -2936,7 +2936,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
           const double value = espcontrol::number_slider::value_for_position(metadata, val);
           c->numeric_dragging = false;
           slider_numeric_restore_visual(c);
-          send_numeric_slider_action(c->entity_id, value, metadata.step);
+          send_numeric_slider_action(c->entity_id, value, metadata);
         } else {
           send_slider_action(c->entity_id, val, c->cover_tilt);
         }
@@ -2980,9 +2980,9 @@ inline void slider_numeric_apply_metadata_value(lv_obj_t *slider, SliderCtx *ctx
                                                 int field,
                                                 esphome::StringRef value) {
   if (!slider || !ctx || !ctx->numeric) return;
-  float parsed = 0.0f;
+  double parsed = 0.0;
   const bool valid = !slider_attribute_missing_ref(value) &&
-                     parse_float_ref(value, parsed) && std::isfinite(parsed);
+                     parse_double_ref(value, parsed) && std::isfinite(parsed);
   bool *known = field == 0 ? &ctx->numeric_min_known
                            : (field == 1 ? &ctx->numeric_max_known
                                          : &ctx->numeric_step_known);
@@ -3122,8 +3122,8 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         }
         bool unavailable = ha_state_unavailable_ref(state);
         if (is_numeric) {
-          float numeric_value = 0.0f;
-          const bool valid = !unavailable && parse_float_ref(state, numeric_value) &&
+          double numeric_value = 0.0;
+          const bool valid = !unavailable && parse_double_ref(state, numeric_value) &&
                              std::isfinite(numeric_value);
           if (sctx) {
             sctx->available = valid;

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <string>
 
 namespace espcontrol::number_slider {
@@ -46,7 +47,7 @@ inline bool metadata_valid(const Metadata &metadata) {
          metadata.step > 0.0;
 }
 
-inline int legal_step_count(const Metadata &metadata) {
+inline long long legal_step_count(const Metadata &metadata) {
   if (!metadata_valid(metadata)) return 0;
   const double raw = (metadata.maximum - metadata.minimum) / metadata.step;
   if (!std::isfinite(raw) || raw <= 0.0) return 0;
@@ -56,12 +57,14 @@ inline int legal_step_count(const Metadata &metadata) {
   const double rounded = std::fabs(raw - nearest) < integer_tolerance
     ? nearest
     : std::floor(raw);
-  if (rounded > static_cast<double>(2147483647)) return 2147483647;
-  return std::max(1, static_cast<int>(rounded));
+  if (rounded >= static_cast<double>(std::numeric_limits<long long>::max()))
+    return std::numeric_limits<long long>::max();
+  return std::max(1LL, static_cast<long long>(rounded));
 }
 
 inline int slider_position_count(const Metadata &metadata) {
-  return std::min(legal_step_count(metadata), MAX_SLIDER_POSITIONS);
+  return static_cast<int>(
+    std::min(legal_step_count(metadata), static_cast<long long>(MAX_SLIDER_POSITIONS)));
 }
 
 inline int clamp_position(const Metadata &metadata, int position) {
@@ -71,8 +74,12 @@ inline int clamp_position(const Metadata &metadata, int position) {
 inline long long nearest_step_index(const Metadata &metadata, double value) {
   if (!metadata_valid(metadata) || !std::isfinite(value)) return 0;
   const long long count = legal_step_count(metadata);
-  long long index = std::llround((value - metadata.minimum) / metadata.step);
-  return std::max(0LL, std::min(count, index));
+  const double raw_index = (value - metadata.minimum) / metadata.step;
+  if (!std::isfinite(raw_index)) return value <= metadata.minimum ? 0 : count;
+  if (raw_index >= static_cast<double>(count))
+    return count;
+  if (raw_index <= 0.0) return 0;
+  return std::llround(raw_index);
 }
 
 inline double value_for_step_index(const Metadata &metadata, long long index) {
@@ -89,7 +96,7 @@ inline double snap_value(const Metadata &metadata, double value) {
 
 inline double value_for_position(const Metadata &metadata, int position) {
   const int positions = slider_position_count(metadata);
-  const int steps = legal_step_count(metadata);
+  const long long steps = legal_step_count(metadata);
   if (positions <= 0 || steps <= 0) return metadata.minimum;
   position = clamp_position(metadata, position);
   const long long step_index = positions == steps
@@ -100,7 +107,7 @@ inline double value_for_position(const Metadata &metadata, int position) {
 
 inline int position_for_value(const Metadata &metadata, double value) {
   const int positions = slider_position_count(metadata);
-  const int steps = legal_step_count(metadata);
+  const long long steps = legal_step_count(metadata);
   if (positions <= 0 || steps <= 0) return 0;
   const long long step_index = nearest_step_index(metadata, value);
   if (positions == steps) return static_cast<int>(step_index);
@@ -120,9 +127,15 @@ inline int decimal_places(double step) {
   return MAX_DECIMAL_PLACES;
 }
 
-inline std::string format_value(double value, double step) {
+inline int decimal_places(const Metadata &metadata) {
+  if (!metadata_valid(metadata)) return 0;
+  return std::max(decimal_places(metadata.step),
+                  decimal_places(std::fabs(metadata.minimum)));
+}
+
+inline std::string format_value(double value, const Metadata &metadata) {
   char buffer[48];
-  const int places = decimal_places(step);
+  const int places = decimal_places(metadata);
   if (std::fabs(value) < 0.5 * std::pow(10.0, -places)) value = 0.0;
   std::snprintf(buffer, sizeof(buffer), "%.*f", places, value);
   return buffer;

@@ -1816,6 +1816,12 @@ inline bool parse_float_ref(esphome::StringRef value, float &out) {
   return end != value.c_str();
 }
 
+inline bool parse_double_ref(esphome::StringRef value, double &out) {
+  char *end;
+  out = std::strtod(value.c_str(), &end);
+  return end != value.c_str();
+}
+
 inline bool numeric_state_positive_ref(esphome::StringRef state) {
   float value = 0.0f;
   return parse_float_ref(state, value) && std::isfinite(value) && value > 0.0f;

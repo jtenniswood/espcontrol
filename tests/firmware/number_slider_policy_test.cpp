@@ -34,7 +34,7 @@ int main() {
   if (position_for_value(fractional, -20.0) != 0) return EXIT_FAILURE;
   if (position_for_value(fractional, 20.0) != 80) return EXIT_FAILURE;
   if (!close_to(snap_value(fractional, 0.37), 0.25)) return EXIT_FAILURE;
-  if (format_value(-0.25, fractional.step) != "-0.25") return EXIT_FAILURE;
+  if (format_value(-0.25, fractional) != "-0.25") return EXIT_FAILURE;
 
   const Metadata non_zero_minimum{5.0, 8.0, 0.5};
   if (position_for_value(non_zero_minimum, 6.5) != 3) return EXIT_FAILURE;
@@ -48,15 +48,42 @@ int main() {
   if (!close_to(value_for_position(large_range, 10000), 15000.0)) return EXIT_FAILURE;
   if (position_for_value(large_range, 5000.0) != 5000) return EXIT_FAILURE;
 
+  const Metadata range_above_int_max{0.0, 3000000000.0, 1.0};
+  if (legal_step_count(range_above_int_max) != 3000000000LL) return EXIT_FAILURE;
+  if (slider_position_count(range_above_int_max) != MAX_SLIDER_POSITIONS)
+    return EXIT_FAILURE;
+  if (!close_to(value_for_position(range_above_int_max, MAX_SLIDER_POSITIONS),
+                3000000000.0)) return EXIT_FAILURE;
+  if (position_for_value(range_above_int_max, 3000000000.0) !=
+      MAX_SLIDER_POSITIONS) return EXIT_FAILURE;
+
+  const Metadata precise_offset{0.25, 10.25, 1.0};
+  if (decimal_places(precise_offset) != 2) return EXIT_FAILURE;
+  if (format_value(value_for_position(precise_offset, 0), precise_offset) != "0.25")
+    return EXIT_FAILURE;
+  if (format_value(value_for_position(precise_offset, 10), precise_offset) != "10.25")
+    return EXIT_FAILURE;
+
+  const Metadata precise_negative_offset{-0.25, 9.75, 1.0};
+  if (decimal_places(precise_negative_offset) != 2) return EXIT_FAILURE;
+  if (format_value(value_for_position(precise_negative_offset, 1),
+                   precise_negative_offset) != "0.75") return EXIT_FAILURE;
+
+  const Metadata high_significance{16777216.0, 16777217.0, 1.0};
+  if (legal_step_count(high_significance) != 1) return EXIT_FAILURE;
+  if (!close_to(value_for_position(high_significance, 1), 16777217.0))
+    return EXIT_FAILURE;
+
   if (decimal_places(1.0) != 0) return EXIT_FAILURE;
   if (decimal_places(0.1) != 1) return EXIT_FAILURE;
   if (decimal_places(0.125) != 3) return EXIT_FAILURE;
   if (decimal_places(0.0000001) != 6) return EXIT_FAILURE;
-  if (format_value(1.23456789, 0.0000001) != "1.234568") return EXIT_FAILURE;
+  const Metadata fine_step{0.0, 2.0, 0.0000001};
+  if (format_value(1.23456789, fine_step) != "1.234568") return EXIT_FAILURE;
   const Metadata float_metadata{0.0, 1.0, static_cast<double>(0.1f)};
   if (legal_step_count(float_metadata) != 10) return EXIT_FAILURE;
   if (decimal_places(float_metadata.step) != 1) return EXIT_FAILURE;
-  if (format_value(-0.00000001, 0.1) != "0.0") return EXIT_FAILURE;
+  if (format_value(-0.00000001, {0.0, 1.0, 0.1}) != "0.0") return EXIT_FAILURE;
   if (legal_step_count({0.0, 1000.0, static_cast<double>(0.1f)}) != 10000)
     return EXIT_FAILURE;
 

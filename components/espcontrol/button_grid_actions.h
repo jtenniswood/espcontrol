@@ -521,7 +521,7 @@ inline void send_cover_command_action(const CoverCommandCtx &ctx) {
 }
 
 inline bool send_numeric_slider_action(const std::string &entity_id, double value,
-                                       double step) {
+                                       const espcontrol::number_slider::Metadata &metadata) {
   const char *service = espcontrol::number_slider::service_for_entity(entity_id);
   if (!service) {
     ESP_LOGW("slider", "Ignoring numeric slider command for unsupported entity %s",
@@ -531,7 +531,7 @@ inline bool send_numeric_slider_action(const std::string &entity_id, double valu
   esphome::api::HomeassistantActionRequest req;
   if (!ha_action_begin(req, service, false, 2)) return false;
   ha_action_add_entity(req, entity_id);
-  const std::string formatted = espcontrol::number_slider::format_value(value, step);
+  const std::string formatted = espcontrol::number_slider::format_value(value, metadata);
   ha_action_add_data(req, "value", formatted.c_str());
   return ha_action_send(req);
 }
