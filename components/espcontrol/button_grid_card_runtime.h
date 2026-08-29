@@ -51,7 +51,8 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::GATE:
     case Type::LOCK: return Family::ACCESS;
     case Type::IMAGE: return Family::IMAGE;
-    case Type::WIFI_QR: return Family::WIFI_QR;
+    case Type::WIFI_QR:
+    case Type::WIFI_QR_CARD: return Family::WIFI_QR;
     case Type::INTERNAL: return Family::INTERNAL;
     case Type::LIGHT_CONTROL: return Family::LIGHT_CONTROL;
     case Type::LIGHT_TEMPERATURE: return Family::LIGHT_TEMPERATURE;

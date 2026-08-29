@@ -67,13 +67,18 @@ export function registerWifiQrCardTypes(
         var normalized: any = String(label || "").trim().toLowerCase().replace(/[\s\-\u2011]+/g, "");
         return normalized === "guestwifi" || normalized === "guestswifi";
     }
+    function isQrCard(this: any, b?: any) { return !!b && b.type === "wifi_qr_card"; }
     function normalizeWifiQrConfig(this: any, b?: any) {
         if (!b) return;
         var tabs: any = wifiQrTabs(b);
-        b.type = "wifi_qr";
+        var qrCard: any = isQrCard(b);
+        b.type = qrCard ? "wifi_qr_card" : "wifi_qr";
         b.entity = ""; b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
-        if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
-        if (!b.icon || b.icon === "Auto") b.icon = "Wifi";
+        if (qrCard) { b.label = ""; b.icon = "Auto"; }
+        else {
+            if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
+            if (!b.icon || b.icon === "Auto") b.icon = "Wifi";
+        }
         var ssid: any = wifiQrSsid(b);
         var password: any = wifiQrPassword(b);
         var security: any = wifiQrSecurity(b);
@@ -95,64 +100,78 @@ export function registerWifiQrCardTypes(
         setWifiQrTabs(b, tabs);
         normalizeWifiQrConfig(b);
     }
-    registry.register("wifi_qr", {
-        label: function (this: any) { return cardContractCardLabel("wifi_qr"); },
-        allowInSubpage: function (this: any) { return cardContractAllowInSubpage("wifi_qr"); },
-        hideLabel: true,
-        defaultConfig: function (this: any) { return cardContractDefaultConfig("wifi_qr"); },
-        cardMetadata: WIFI_QR_CARD_METADATA,
-        normalizeConfig: normalizeWifiQrConfig,
-        onSelect: normalizeWifiQrConfig,
-        renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
-            var networkDisclosure: any = helpers.disclosureSection("Wifi Network", helpers.idPrefix + "wifi-network", false);
-            panel.appendChild(networkDisclosure.panel);
-            var modalTabsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "wifi-modal-tabs", b && b._modalSettingsOpen === true);
-            renderModalTabSettings(modalTabsDisclosure.section, b, helpers, {
-                definitions: wifiQrTabDefinitions,
-                tabs: wifiQrTabs,
-                normalizeOptions: normalizeWifiQrTabOptions,
-                setTabs: setWifiQrTabs,
-                idPrefix: "wifi-tab-",
-                hideHeading: true,
-            });
-            panel.appendChild(modalTabsDisclosure.panel);
-            var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "wifi-card-settings", false);
-            panel.appendChild(cardSettingsDisclosure.panel);
-        },
-        renderSettings: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
-            normalizeWifiQrConfig(b);
-            var networkButton: any = panel.querySelector("#" + helpers.idPrefix + "wifi-network");
-            var networkSettings: any = networkButton && networkButton.nextElementSibling || panel;
-            var ssidField: any = helpers.textField("Network name (SSID)", helpers.idPrefix + "wifi-ssid", wifiQrSsid(b), "Guest Wifi");
-            var securityField: any = helpers.selectField("Security", helpers.idPrefix + "wifi-security", [["wpa", "WPA/WPA2 Personal"], ["open", "Open"]], wifiQrSecurity(b));
-            var passwordField: any = helpers.textField("Password", helpers.idPrefix + "wifi-password", wifiQrPassword(b), "8–63 characters, or 64 hexadecimal characters");
-            var hidden: any = helpers.toggleRow("Hidden network", helpers.idPrefix + "wifi-hidden", wifiQrHidden(b));
-            networkSettings.appendChild(ssidField.field); networkSettings.appendChild(securityField.field); networkSettings.appendChild(passwordField.field);
-            networkSettings.appendChild(hidden.row);
-            function hasCredentialBytes(this: any, value?: any) { return utf8Bytes(value).length > 0; }
-            helpers.requireField(ssidField.input, "Add a network name before saving.", undefined, hasCredentialBytes);
-            helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; }, hasCredentialBytes);
-            helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
-            function save(this: any) {
-                var ssid: any = ssidField.input.value;
-                var security: any = securityField.select.value;
-                var password: any = passwordField.input.value;
-                updateOptions(b, ssid, security, password, hidden.input.checked);
-                helpers.saveField("options", b.options);
-                passwordField.field.hidden = security === "open";
-                if (ssid && utf8Bytes(ssid).length > 32) ssidField.input.setCustomValidity("The network name must be 32 bytes or fewer.");
-                else ssidField.input.setCustomValidity("");
-                if (security === "wpa" && password && !validWifiQrPassword(password)) passwordField.input.setCustomValidity("Use 8–63 bytes, or exactly 64 hexadecimal characters.");
-                else passwordField.input.setCustomValidity("");
-                if (b.options.length > 255) ssidField.input.setCustomValidity("These credentials are too long to save on the panel.");
-            }
-            [ssidField.input, securityField.select, passwordField.input, hidden.input].forEach(function (this: any, input?: any) {
-                input.addEventListener("input", save); input.addEventListener("change", save); input.addEventListener("blur", save);
-            });
-            save();
-        },
-        renderPreview: function (this: any, b?: any, helpers?: any) {
-            return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wifi Sharing" });
-        },
-    });
+    function wifiQrDefinition(this: any, type?: any): any {
+        return {
+            label: function (this: any) { return cardContractCardLabel(type); },
+            allowInSubpage: function (this: any) { return cardContractAllowInSubpage(type); },
+            hideLabel: true,
+            defaultConfig: function (this: any) { return cardContractDefaultConfig(type); },
+            cardMetadata: WIFI_QR_CARD_METADATA,
+            normalizeConfig: normalizeWifiQrConfig,
+            onSelect: normalizeWifiQrConfig,
+            renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
+                var networkDisclosure: any = helpers.disclosureSection("Wifi Network", helpers.idPrefix + "wifi-network", false);
+                panel.appendChild(networkDisclosure.panel);
+                var modalTabsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "wifi-modal-tabs", b && b._modalSettingsOpen === true);
+                renderModalTabSettings(modalTabsDisclosure.section, b, helpers, {
+                    definitions: wifiQrTabDefinitions,
+                    tabs: wifiQrTabs,
+                    normalizeOptions: normalizeWifiQrTabOptions,
+                    setTabs: setWifiQrTabs,
+                    idPrefix: "wifi-tab-",
+                    hideHeading: true,
+                });
+                panel.appendChild(modalTabsDisclosure.panel);
+                if (!isQrCard(b)) {
+                    var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "wifi-card-settings", false);
+                    panel.appendChild(cardSettingsDisclosure.panel);
+                }
+            },
+            renderSettings: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
+                normalizeWifiQrConfig(b);
+                var networkButton: any = panel.querySelector("#" + helpers.idPrefix + "wifi-network");
+                var networkSettings: any = networkButton && networkButton.nextElementSibling || panel;
+                var ssidField: any = helpers.textField("Network name (SSID)", helpers.idPrefix + "wifi-ssid", wifiQrSsid(b), "Guest Wifi");
+                var securityField: any = helpers.selectField("Security", helpers.idPrefix + "wifi-security", [["wpa", "WPA/WPA2 Personal"], ["open", "Open"]], wifiQrSecurity(b));
+                var passwordField: any = helpers.textField("Password", helpers.idPrefix + "wifi-password", wifiQrPassword(b), "8–63 characters, or 64 hexadecimal characters");
+                var hidden: any = helpers.toggleRow("Hidden network", helpers.idPrefix + "wifi-hidden", wifiQrHidden(b));
+                networkSettings.appendChild(ssidField.field); networkSettings.appendChild(securityField.field); networkSettings.appendChild(passwordField.field);
+                networkSettings.appendChild(hidden.row);
+                function hasCredentialBytes(this: any, value?: any) { return utf8Bytes(value).length > 0; }
+                helpers.requireField(ssidField.input, "Add a network name before saving.", undefined, hasCredentialBytes);
+                helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; }, hasCredentialBytes);
+                if (!isQrCard(b)) helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
+                function save(this: any) {
+                    var ssid: any = ssidField.input.value;
+                    var security: any = securityField.select.value;
+                    var password: any = passwordField.input.value;
+                    updateOptions(b, ssid, security, password, hidden.input.checked);
+                    helpers.saveField("options", b.options);
+                    passwordField.field.hidden = security === "open";
+                    if (ssid && utf8Bytes(ssid).length > 32) ssidField.input.setCustomValidity("The network name must be 32 bytes or fewer.");
+                    else ssidField.input.setCustomValidity("");
+                    if (security === "wpa" && password && !validWifiQrPassword(password)) passwordField.input.setCustomValidity("Use 8–63 bytes, or exactly 64 hexadecimal characters.");
+                    else passwordField.input.setCustomValidity("");
+                    if (b.options.length > 255) ssidField.input.setCustomValidity("These credentials are too long to save on the panel.");
+                }
+                [ssidField.input, securityField.select, passwordField.input, hidden.input].forEach(function (this: any, input?: any) {
+                    input.addEventListener("input", save); input.addEventListener("change", save); input.addEventListener("blur", save);
+                });
+                save();
+            },
+            renderPreview: function (this: any, b?: any, helpers?: any) {
+                if (isQrCard(b)) {
+                    return {
+                        buttonClass: "sp-wifi-qr-card",
+                        iconHtml: '<svg class="sp-wifi-qr-preview" viewBox="0 0 21 21" aria-hidden="true">' +
+                            '<rect width="21" height="21" fill="#fff"/><path fill="#000" d="M1 1h7v7H1zm2 2v3h3V3zM13 1h7v7h-7zm2 2v3h3V3zM1 13h7v7H1zm2 2v3h3v-3zM10 1h2v2h-2zM9 4h3v2H9zM10 7h2v3h-2zM13 9h2v2h-2zM16 9h4v2h-4zM9 11h3v2H9zM14 12h2v3h-2zM17 12h3v2h-3zM9 14h2v3H9zM12 16h3v2h-3zM16 15h2v2h-2zM19 16h1v4h-4v-2h3zM9 19h5v1H9z"/></svg>',
+                        labelHtml: "",
+                    };
+                }
+                return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wifi Sharing" });
+            },
+        };
+    }
+    registry.register("wifi_qr", wifiQrDefinition("wifi_qr"));
+    registry.register("wifi_qr_card", wifiQrDefinition("wifi_qr_card"));
 }

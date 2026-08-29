@@ -36,6 +36,11 @@ int main() {
   assert(panel_config_contains_wifi_password(document.data(), size));
 
   size = write_document(
+      &document,
+      ";;;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,pass64=cGFzc3dvcmQ");
+  assert(panel_config_contains_wifi_password(document.data(), size));
+
+  size = write_document(
       &document, ";Connect;Wifi;Auto;;;wifi_qr;;ssid64=R3Vlc3Q,security=open");
   assert(!panel_config_contains_wifi_password(document.data(), size));
 

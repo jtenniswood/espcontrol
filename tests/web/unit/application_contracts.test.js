@@ -344,10 +344,10 @@ describe("browserless application contracts", () => {
     }
   });
 
-  test("keeps the Wifi Share card name editable", () => {
+  test("registers distinct Connect and QR Wifi cards", () => {
     const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
     const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
-    let definition;
+    const definitions = {};
     const modalTabs = {
       wifiQrTabDefinitions() { return [{ value: "qr", label: "QR Code" }, { value: "credentials", label: "Connection Details" }]; },
       wifiQrTabs(b) {
@@ -364,11 +364,12 @@ describe("browserless application contracts", () => {
     };
     registerWifiQrCardTypes({
       register(key, value) {
-        assert.equal(key, "wifi_qr");
-        definition = value;
+        definitions[key] = value;
       },
     }, modalTabs, { cardBadgePreview() {} });
-    assert.equal(definition.hideLabel, true);
+    assert.deepEqual(Object.keys(definitions), ["wifi_qr", "wifi_qr_card"]);
+    assert.equal(definitions.wifi_qr.hideLabel, true);
+    assert.equal(definitions.wifi_qr_card.hideLabel, true);
     assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
     assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
     assert.match(source, /disclosureSection\("Wifi Network"/);
@@ -379,11 +380,18 @@ describe("browserless application contracts", () => {
     assert.match(source, /requireField\(ssidField\.input,[^\n]+hasCredentialBytes\)/);
     assert.match(source, /requireField\(passwordField\.input,[^\n]+hasCredentialBytes\)/);
     const legacy = { label: "Guests Wifi", options: "" };
-    definition.normalizeConfig(legacy);
+    definitions.wifi_qr.normalizeConfig(legacy);
     assert.equal(legacy.label, "Connect");
     const custom = { label: "Visitors", options: "" };
-    definition.normalizeConfig(custom);
+    definitions.wifi_qr.normalizeConfig(custom);
     assert.equal(custom.label, "Visitors");
+    const qrCard = { type: "wifi_qr_card", label: "Remove me", icon: "Wifi", options: "" };
+    definitions.wifi_qr_card.normalizeConfig(qrCard);
+    assert.equal(qrCard.type, "wifi_qr_card");
+    assert.equal(qrCard.label, "");
+    assert.equal(qrCard.icon, "Auto");
+    assert.equal(definitions.wifi_qr_card.renderPreview(qrCard, {}).labelHtml, "");
+    assert.equal(definitions.wifi_qr_card.renderPreview(qrCard, {}).buttonClass, "sp-wifi-qr-card");
   });
 
   test("normalizes and preserves Wifi modal tab settings", () => {

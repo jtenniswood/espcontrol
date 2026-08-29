@@ -52,6 +52,7 @@ enum class CardTypeId : uint8_t {
   WEATHER,
   IMAGE,
   WIFI_QR,
+  WIFI_QR_CARD,
   WEATHER_FORECAST,
   UNKNOWN,
 };
@@ -163,6 +164,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "weather") return CardTypeId::WEATHER;
   if (type == "image") return CardTypeId::IMAGE;
   if (type == "wifi_qr") return CardTypeId::WIFI_QR;
+  if (type == "wifi_qr_card") return CardTypeId::WIFI_QR_CARD;
   if (type == "weather_forecast") return CardTypeId::WEATHER_FORECAST;
   return CardTypeId::UNKNOWN;
 }
@@ -209,6 +211,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::WEATHER: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::IMAGE: return {type, CardDriverId::IMAGE, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
+    case CardTypeId::WIFI_QR_CARD: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER_FORECAST: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     default: return {};
   }
@@ -594,7 +597,8 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "timezone") return "Date & Time";
   if (type == "weather") return "Weather";
   if (type == "image") return "Camera Card";
-  if (type == "wifi_qr") return "Wifi Sharing";
+  if (type == "wifi_qr") return "Connect Card";
+  if (type == "wifi_qr_card") return "QR Card";
   if (type == "weather_forecast") return "Weather Forecast";
   return type.empty() ? "Switch" : type.c_str();
 }
@@ -640,6 +644,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "weather") return true;
   if (type == "image") return true;
   if (type == "wifi_qr") return true;
+  if (type == "wifi_qr_card") return true;
   if (type == "weather_forecast") return true;
   return false;
 }
@@ -685,6 +690,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "wifi_qr") return "Wifi";
+  if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
   return "Auto";
 }
@@ -730,6 +736,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "wifi_qr") return "Auto";
+  if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
   return "Auto";
 }

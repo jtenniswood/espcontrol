@@ -150,6 +150,7 @@
       "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "wifi_qr": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
+      "wifi_qr_card": {"driver": "wifi_qr", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": false, "subpage": true}},
       "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}}
     }
   },
@@ -2324,7 +2325,7 @@
       }
     },
     "wifi_qr": {
-      "label": "Wifi Sharing",
+      "label": "Connect Card",
       "allowInSubpage": true,
       "domains": [],
       "options": [
@@ -2357,6 +2358,44 @@
         "sensor": "",
         "unit": "",
         "type": "wifi_qr",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "wifi_qr_card": {
+      "label": "QR Card",
+      "allowInSubpage": true,
+      "domains": [],
+      "options": [
+        { "name": "ssid64", "label": "Network name", "kind": "text", "omitDefault": true },
+        { "name": "security", "label": "Security", "kind": "choice", "values": ["wpa", "open"], "defaultValue": "wpa", "omitDefault": true },
+        { "name": "pass64", "label": "Password", "kind": "text", "omitDefault": true },
+        { "name": "hidden", "label": "Hidden network", "kind": "flag", "omitDefault": true },
+        { "name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials"], "defaultValue": "qr|credentials", "omitDefault": true }
+      ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "clear" },
+          "label": { "policy": "clear" },
+          "icon": { "policy": "default", "value": "Auto" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "wifi_qr_card" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "keep" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["ssid64", "security", "pass64", "hidden", "wifi_tabs"]
+      },
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "wifi_qr_card",
         "precision": "",
         "options": ""
       }
