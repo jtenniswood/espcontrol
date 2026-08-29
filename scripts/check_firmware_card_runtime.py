@@ -199,6 +199,18 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage setup through the shared card context"
             )
+        phase2_body = function_body(text, "grid_phase2") or ""
+        setup_subpage = phase2_body.find("setup_card_visual(sub_slot")
+        refresh_subpage = phase2_body.find("refresh_card_layout(sub_slot")
+        bind_subpage = phase2_body.find("image_driver_bind_subpage")
+        if not (
+            setup_subpage >= 0
+            and refresh_subpage > setup_subpage
+            and bind_subpage > refresh_subpage
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: refresh subpage card geometry after applying label clamps"
+            )
         if (
             "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "status_entity_driver_bind_data( s, p, context, palette)" not in compact_grid

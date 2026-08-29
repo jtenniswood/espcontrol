@@ -769,8 +769,8 @@ def test_card_label_line_clamp_matches_preview_on_subpages() -> None:
     assert "apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);" in grid, (
         "subpage back labels must follow the configured line limit"
     )
-    assert "apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);" in grid, (
-        "subpage card labels must follow the configured line limit"
+    assert "refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);" in grid, (
+        "subpage card labels must follow the configured line limit before card-specific geometry is restored"
     )
 
 
