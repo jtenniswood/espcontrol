@@ -5,7 +5,7 @@ device-specific ESPHome YAML.
 
 ## Edit First
 
-- `devices/catalog.json`
+- `product/v2/device_catalog.json`
 - `devices/<slug>/packages.yaml`
 - `devices/<slug>/dev.yaml`
 - `devices/<slug>/esphome.yaml`
@@ -23,7 +23,7 @@ shared behavior change.
 
 ## Checklist
 
-- [ ] Add or update the device entry in `devices/catalog.json`.
+- [ ] Add or update the device entry in `product/v2/device_catalog.json`.
 - [ ] Select profiles for shared capabilities instead of copying those fields
       into the device `config` block.
 - [ ] Use explicit `overrides` only when a device must replace an inherited

@@ -91,7 +91,7 @@ as boxes.
 
 - Device font definitions: `devices/<slug>/device/fonts.yaml`
 - Shared glyph sets: `common/assets/*glyphs.yaml`
-- Icon registry: `common/assets/icons.json`
+- Icon registry: `product/v2/icons.json`
 - Icon lookup in firmware: `components/espcontrol/icons.h`
 
 Use font role substitutions from device profiles instead of hardcoding one

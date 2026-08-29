@@ -121,7 +121,7 @@ In firmware, resolve an icon name to its glyph string with `find_icon("Some Name
 from `components/espcontrol/icons.h`, or embed a known codepoint directly as a
 UTF-8 escape. Only glyphs present in the compiled icon set will render.
 
-To make a new icon available, add it to `common/assets/icons.json` when it should
+To make a new icon available, add it to `product/v2/icons.json` when it should
 appear in the setup page, add the needed glyph to the relevant glyph set, and
 run:
 

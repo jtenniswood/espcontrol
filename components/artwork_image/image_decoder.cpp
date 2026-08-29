@@ -151,7 +151,13 @@ void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
   }
 }
 
-DownloadBuffer::DownloadBuffer(size_t size) : size_(size) {
+DownloadBuffer::DownloadBuffer(size_t size) : buffer_(nullptr), size_(size) {
+  // ArtworkImage intentionally starts with no staging allocation and grows on
+  // first use. A zero-sized allocator returning nullptr is therefore expected.
+  if (size == 0) {
+    this->reset();
+    return;
+  }
   this->buffer_ = this->allocator_.allocate(size);
   this->reset();
   if (!this->buffer_) {
@@ -161,14 +167,18 @@ DownloadBuffer::DownloadBuffer(size_t size) : size_(size) {
 }
 
 uint8_t *DownloadBuffer::data(size_t offset) {
-  if (offset > this->size_) {
-    ESP_LOGE(TAG, "Tried to access beyond download buffer bounds!!!");
-    return this->buffer_;
+  if (!this->buffer_ || offset > this->size_) {
+    ESP_LOGE(TAG, "Download buffer is unavailable or access is beyond its bounds");
+    return nullptr;
   }
   return this->buffer_ + offset;
 }
 
 size_t DownloadBuffer::read(size_t len) {
+  if (!this->buffer_) {
+    this->reset();
+    return 0;
+  }
   if (len > this->unread_) {
     ESP_LOGE(TAG, "Decoder consumed %zu bytes, but only %zu were buffered", len, this->unread_);
     len = this->unread_;

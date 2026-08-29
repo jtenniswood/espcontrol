@@ -9,11 +9,11 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
-const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
+const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(ROOT, "product", "v2", "card_contract.json"), "utf8"));
 
 function loadHooks(search, grid) {
   const params = new URLSearchParams(search || "");
@@ -37,8 +37,7 @@ function loadHooks(search, grid) {
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   if (grid) {
-    sandbox.GRID_COLS = grid.cols;
-    sandbox.GRID_ROWS = grid.rows;
+    sandbox.__ESPCONTROL_TEST_HOOKS__.config.setGridDimensions(grid.cols, grid.rows);
   }
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
@@ -446,16 +445,18 @@ assert.throws(
   (error) => String(error.cardTransferMessage || error.message).includes("does not support the image card type"),
   "S3 card transfer rejects disabled image cards inside subpages",
 );
-const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
-assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
-hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
-assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal", "cover art stores the optional controls action");
+const coverArtActionButton = { type: "media", sensor: "cover_art", options: "cover_art_action=play_pause" };
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, true);
-assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal,cover_art_details", "cover art preserves action with track details");
-hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
-assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art omits its default action without dropping track details");
+assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art removes its retired press action while preserving track details");
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
 assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
+hooks.setMediaSpeakerGroupEntity(coverArtActionButton, " sensor.cover_art_speakers ");
+hooks.setMediaVolumeMax(coverArtActionButton, "75");
+assert.strictEqual(
+  coverArtActionButton.options,
+  "speaker_group_entity=sensor.cover_art_speakers,volume_max=75",
+  "cover art stores the advanced settings used by its All Controls modal"
+);
 const speakerGroupButton = { type: "media", sensor: "speaker_group", options: "" };
 hooks.setMediaSpeakerGroupEntity(speakerGroupButton, " media_player.compatible_speakers ");
 hooks.setMediaVolumeMax(speakerGroupButton, "80");
@@ -2003,7 +2004,7 @@ assertButtonRoundTrip(hooks, "media cover art card", {
   unit: "",
   type: "media",
   precision: "",
-  options: "cover_art_action=control_modal,cover_art_details",
+  options: "cover_art_details",
 }, false);
 
 assertButtonMigration(hooks, "legacy cover art card alias becomes media subtype", "media_player.office;Artwork;Auto;Auto;;;media_cover_art;;cover_art_action=control_modal", {
@@ -2015,7 +2016,7 @@ assertButtonMigration(hooks, "legacy cover art card alias becomes media subtype"
   unit: "",
   type: "media",
   precision: "",
-  options: "cover_art_action=control_modal",
+  options: "",
 });
 
 assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art", {
@@ -2378,6 +2379,56 @@ assert.strictEqual(
   "fan_tabs=speed%7Cpower",
   "fan control tabs normalize invalid and duplicate values"
 );
+
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_light_entity=light.bedroom_fan"),
+  "fan_light_entity=light.bedroom_fan",
+  "configured fan light uses the automatic visible-tab default"
+);
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_light_entity=light.bedroom_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection"),
+  "fan_light_entity=light.bedroom_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection",
+  "configured fan light preserves an explicitly disabled Light tab"
+);
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_tabs=light%7Cspeed"),
+  "fan_tabs=speed",
+  "fan control drops Light when no separate light entity is configured"
+);
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_tabs=light"),
+  "fan_tabs=power",
+  "fan control keeps Power when removing its only Light tab"
+);
+const fanLightModal = { options: "" };
+hooks.setFanLightEntity(fanLightModal, "light.bedroom_fan");
+assert.strictEqual(fanLightModal.options, "fan_light_entity=light.bedroom_fan", "configuring a fan light enables its tab automatically");
+assert.deepStrictEqual(
+  Array.from(hooks.fanControlTabs(fanLightModal)),
+  ["power", "speed", "preset", "oscillation", "direction", "light"],
+  "configured fan light appears after the default fan tabs"
+);
+hooks.setFanControlTabs(fanLightModal, ["light", "speed", "power"]);
+assert.strictEqual(
+  fanLightModal.options,
+  "fan_light_entity=light.bedroom_fan,fan_tabs=light%7Cspeed%7Cpower",
+  "fan light tab can be reordered with the other fan tabs"
+);
+const lightOnlyFanModal = { options: "fan_light_entity=light.bedroom_fan,fan_tabs=light" };
+hooks.setFanLightEntity(lightOnlyFanModal, "");
+assert.strictEqual(
+  lightOnlyFanModal.options,
+  "fan_tabs=power",
+  "clearing a light-only fan tab preserves the Power fallback"
+);
+hooks.setFanControlTabs(fanLightModal, ["power", "speed", "preset", "oscillation", "direction"]);
+assert.strictEqual(
+  fanLightModal.options,
+  "fan_light_entity=light.bedroom_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection",
+  "fan light tab can be disabled without clearing its entity"
+);
+hooks.setFanLightEntity(fanLightModal, "");
+assert.strictEqual(fanLightModal.options, "", "clearing the fan light removes its tab setting");
 
 assertButtonRoundTrip(hooks, "fan oscillation card", {
   entity: "fan.bedroom",

@@ -15,13 +15,14 @@ outputs. For the hard edit/rebuild/check contract, use
 
 | Area | Path | Purpose |
 |---|---|---|
-| Product profiles | `devices/catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
-| Card metadata | `common/config/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
-| Entity names | `common/config/entity_names.json` | Shared Home Assistant entity names used by firmware and the setup page. |
-| Icons | `common/assets/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
+| Product profiles | `product/v2/device_catalog.json` | Supported displays, reusable profiles, slot counts, layout, firmware substitutions, font roles, and public device facts. |
+| Card metadata | `product/v2/card_contract.json` | Card type names, defaults, allowed domains, options, aliases, and subpage codes. |
+| Entity names | `product/v2/entity_names.json` | Shared Home Assistant entity names used by firmware and the setup page. |
+| Icons | `product/v2/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
 | Firmware UI | `components/espcontrol/*.h` | LVGL card grid, card renderers, modals, config parsing, Home Assistant bindings. |
-| Card asset service | `components/espcontrol/card_asset_service.*` and `card_asset_http_api.*` | Application-owned card-image storage, render-runtime lifetime, cache access, and thin HTTP transport. |
-| Configuration service | `components/espcontrol/configuration_service.*` and `configuration_store.*` | Versioned documents, one-time legacy import, compatibility dual-write, and atomic two-slot storage; not yet the production persistence path. |
+| Configuration service | `components/espcontrol/configuration_service.*` and `configuration_store.*` | One-time legacy import, compatibility dual-write, atomic two-slot storage, and generation-matched saves for browser conflict protection. It is the live production persistence path. |
+| Native panel document | `components/espcontrol/panel_config_document.h`, `panel_config_service_validator.h`, and `src/webserver/model/panel_config.ts` | Bounded, versioned `PanelConfig` binary codec shared by firmware and the browser. Its validator protects atomic service saves and loads; V1 carries current compact card strings unchanged while live storage and API migration run through the core-owned configuration service. |
+| Native configuration discovery | `components/espcontrol/panel_config_capabilities*.h` | `GET /api/v1/capabilities` advertises the native document, read/write API, and web-asset versions so the browser can select the compatible configuration path. |
 | Web setup page | `src/webserver/` | Browser UI for configuring cards, settings, backup/restore, and previews. |
 | Typed web state | `src/webserver/state/` | Device configuration and application state types, isolated state creation, direct module-owned state access, event aliases, and event parsing. Application state must not be published as a browser global. |
 | Typed device API | `src/webserver/api/` | Injectable HTTP transport and ordered request queue; UI modules retain user-facing reactions. |
@@ -45,9 +46,6 @@ full source-to-output ownership table lives in
 - `docs/public/webserver/*/www.js`
 - generated blocks inside `devices/*/packages.yaml`
 - generated blocks inside `devices/*/device/sensors.yaml`
-- `devices/*/device/card_asset_capabilities.yaml`
-- `common/device/card_background_images_*.yaml`
-- `common/device/partitions_*mb_card_images.csv`
 
 The central generator is:
 
@@ -78,15 +76,24 @@ source or a committed generated input.
 6. Firmware parses the saved compact config string and updates the on-device
    cards.
 
+`EspControlAppCore` owns the long-lived configuration, card runtime, Home
+Assistant binding and callback, display lifecycle, grid navigation, and
+modal-state services. The navigation and modal-state slots have fixed capacity so their
+LVGL-specific types remain in the UI layer with a bounded, reviewable memory
+budget. Firmware UI accesses those services only after the core starts; the
+standalone host-test fallbacks are excluded from firmware images.
+`EspControlApp` starts the core before WiFi so the 250-priority boot automations
+also use the core-owned Home Assistant binding.
+
 ## Build-Time Flow
 
 ```text
-common/config/card_contract.json
+product/v2/card_contract.json
   -> src/webserver/generated/card_contract.ts
   -> components/espcontrol/button_grid_contract_generated.h
   -> docs/generated/cards/capabilities.md
 
-common/config/entity_names.json
+product/v2/entity_names.json
   -> common/config/entity_names.yaml
   -> src/webserver/generated/entity_catalog.ts
 
@@ -94,9 +101,6 @@ devices/manifest.json
   -> docs/public/device-profiles.json
   -> docs/generated/screens/*.md
   -> generated package and sensor blocks
-  -> device/card_asset_capabilities.yaml
-  -> common/device/card_background_images_*.yaml
-  -> common/device/partitions_*mb_card_images.csv
 
 src/webserver/**
   -> docs/public/webserver/<slug>/www.js

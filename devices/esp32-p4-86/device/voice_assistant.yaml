@@ -11,7 +11,8 @@
 # =============================================================================
 
 external_components:
-  - source: github://n-IA-hane/esphome-audio-stack@3c30b96ad2540f676eadd30bdbb93104b105dee0
+  # v2026.7.0 fixes ESPHome 2026.7's portable integer format warnings.
+  - source: github://n-IA-hane/esphome-audio-stack@v2026.7.0
     components: [esp_audio_stack, esp_afe]
 
 esp_afe:
@@ -118,7 +119,28 @@ speaker:
     buffer_duration: 500ms
     task_stack_in_psram: true
 
+sendspin:
+  id: sendspin_hub
+  task_stack_in_psram: true
+
+media_source:
+  - platform: sendspin
+    id: sendspin_media_source
+    sendspin_id: sendspin_hub
+    task_stack_in_psram: true
+    buffer_size: 1000000
+    sample_rate: 48000
+
 media_player:
+  - platform: speaker_source
+    id: sendspin_output_player
+    name: SendSpin Player
+    icon: mdi:music-box-outline
+    media_pipeline:
+      speaker: voice_media_resampling_speaker
+      sources: [sendspin_media_source]
+      format: NONE
+
   - platform: speaker
     id: voice_media_player
     name: Voice Media Player
@@ -185,6 +207,7 @@ media_player:
                   voice_assistant.is_running:
               - not:
                   media_player.is_announcing:
+                    id: voice_media_player
           then:
             - mixer_speaker.apply_ducking:
                 id: voice_media_mixing_input
@@ -376,6 +399,7 @@ micro_wake_word:
                       or:
                         - voice_assistant.is_running:
                         - media_player.is_announcing:
+                            id: voice_media_player
                     then:
                       - if:
                           condition:
@@ -389,6 +413,7 @@ micro_wake_word:
                       - if:
                           condition:
                             media_player.is_playing:
+                              id: voice_media_player
                           then:
                             - if:
                                 condition:
@@ -743,6 +768,7 @@ script:
                   voice_assistant.is_running:
               - not:
                   media_player.is_announcing:
+                    id: voice_media_player
           timeout: 5s
       - if:
           condition:
@@ -778,6 +804,7 @@ script:
           condition:
             not:
               media_player.is_playing:
+                id: voice_media_player
           timeout: 2s
       - if:
           condition:
@@ -882,6 +909,7 @@ script:
       - if:
           condition:
             media_player.is_announcing:
+              id: voice_media_player
           then:
             - logger.log:
                 level: WARN
@@ -906,8 +934,10 @@ script:
             and:
               - not:
                   media_player.is_announcing:
+                    id: voice_media_player
               - not:
                   media_player.is_playing:
+                    id: voice_media_player
           then:
             - switch.turn_off: speaker_amplifier_enable
       - script.execute: apply_restored_voice_wake_word
@@ -1332,15 +1362,18 @@ voice_assistant:
           - wait_until:
               condition:
                 - media_player.is_announcing:
+                    id: voice_media_player
               timeout: 500ms
           - wait_until:
               condition:
                 not:
                   media_player.is_announcing:
+                    id: voice_media_player
               timeout: 90s
           - if:
               condition:
                 media_player.is_announcing:
+                  id: voice_media_player
               then:
                 - logger.log:
                     level: WARN
@@ -1360,8 +1393,10 @@ voice_assistant:
                 and:
                   - not:
                       media_player.is_announcing:
+                        id: voice_media_player
                   - not:
                       media_player.is_playing:
+                        id: voice_media_player
               then:
                 - switch.turn_off: speaker_amplifier_enable
           - script.execute: apply_restored_voice_wake_word

@@ -1,0 +1,33 @@
+{
+  "profiles": { "platform": "esp32-p4", "assets": "card-backgrounds-6", "modal": "compact-portrait", "fonts": "portrait-panel-p4", "network": "c6-firmware-update" },
+  "config": {
+    "slots": 6,
+    "capabilities": { "imageSlots": 6 },
+    "public": { "name": "Guition JC4880P443", "docsPath": "/screens/jc4880p443", "screenSize": "4.3 inches", "resolution": "480 x 800", "orientation": "Portrait" },
+    "layout": { "cols": 2, "rows": 3, "firmwareGrid": "3x2", "portraitCols": 3 },
+    "rotation": { "enabled": true, "options": ["0", "90", "180", "270"], "displayOffset": 180 },
+    "web": {
+      "dragMode": "displace", "dragAnimation": true,
+      "screen": { "width": "44%", "aspect": "480/800" },
+      "portrait": { "cols": 3, "rows": 2, "screen": { "width": "74%", "aspect": "800/480" } },
+      "topbar": { "height": 6.45, "padding": "1.2cqw 0.59cqw 0.59cqw", "fontSize": 4.5 },
+      "grid": { "top": 8.58, "compactTop": 1.5, "left": 1.5, "right": 1.5, "bottom": 1.5, "gap": 1.74, "fr": "1fr" },
+      "btn": { "radius": 1.18, "padding": 2.73, "iconSize": 14, "labelSize": 5.5, "coverArtTitleSize": 7.375, "coverArtArtistSize": 5, "labelLines": 2, "labelLinesDouble": 3 },
+      "emptyCell": { "radius": 1.18 },
+      "sensorBadge": { "top": 1.52, "right": 1.52, "fontSize": 3.22 },
+      "subpageBadge": { "bottom": 1.52, "right": 1.52, "fontSize": 4.03 }
+    },
+    "firmware": {
+      "display": {
+        "wrapTallLabels": false, "refreshRebuildsSubpages": true, "subpageChevronX": 3, "subpageChevronY": -2, "subpageChevronTextWidthPercent": 96,
+        "coverArt": {
+          "cover_art_size": "480", "cover_art_decode_size": "480", "cover_art_x": "0", "cover_art_y": "0", "cover_art_accent_x": "0", "cover_art_accent_y": "480", "cover_art_accent_width": "480", "cover_art_accent_height": "320", "cover_art_accent_bg_opa": "100%", "cover_art_accent_opa": "100%", "cover_art_panel_x": "24", "cover_art_panel_y": "514", "cover_art_panel_width": "432", "cover_art_panel_height": "262", "cover_art_panel_pad_top": "0", "cover_art_panel_pad_bottom": "0", "cover_art_panel_pad_left": "0", "cover_art_panel_pad_right": "0", "cover_art_panel_pad_row": "0", "cover_art_title_font": "font_cover_art_title", "cover_art_title_max_height": "130", "cover_art_title_line_space": "0", "cover_art_artist_font": "font_cover_art_artist", "cover_art_artist_pad_top": "10", "cover_art_artist_long_mode": "dot", "cover_art_time_font": "font_cover_art_time", "cover_art_time_pad_top": "14", "cover_art_progress_width": "480", "cover_art_progress_height": "4", "cover_art_text_color": "0xFFFFFF", "cover_art_square_overlay": "false", "cover_art_live_image_updates": "false"
+        }
+      },
+      "package": {
+        "firmwareVersion": "dev",
+        "substitutions": { "screen_width": "\"480\"", "screen_height": "\"800\"", "content_width": "\"440\"", "setup_icon_font_id": "font_icon_main", "setup_title_font_id": "font_text_title", "setup_body_font_id": "font_text_body", "setup_pad_row": "\"20\"", "setup_loading_pad_row": "\"40\"", "setup_action_button_width": "\"200\"", "setup_action_button_height": "\"56\"", "setup_action_button_radius": "\"12\"", "icon_font": "font_icon_main", "subpage_chevron_font": "font_icon_status", "label_font": "font_text_body", "media_title_font": "font_text_title", "unit_font": "font_text_body", "sensor_value_font": "font_number_value", "padding": "21px", "radius": "10px", "main_page_card_gap": "\"14\"", "main_page_pad_top": "\"50\"", "main_page_compact_pad_top": "\"5\"", "clock_bar_item_gap": "\"96\"", "clock_bar_visual_gap": "\"12\"", "clock_font_size": "\"160\"", "clock_cx": "\"240\"", "clock_cy": "\"400\"", "screen_saver_clock_min_brightness": "\"1\"", "screen_saver_clock_default_brightness": "\"35\"", "screen_schedule_clock_min_brightness": "\"1\"", "screen_schedule_clock_default_brightness": "\"10\"" }
+      }
+    }
+  }
+}

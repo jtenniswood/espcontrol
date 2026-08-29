@@ -129,8 +129,19 @@ void test_card_asset_service_deletes_only_after_references_persist() {
   expect(service.find(image.id, retained), "failed reference persistence must retain the image");
 
   adapter.fail_clear = false;
+  bool native_persistence_ready = false;
+  service.set_reference_persistence_callback(
+      [](void *context) { return *static_cast<bool *>(context); },
+      &native_persistence_ready);
+  expect(service.delete_with_references(image.id) ==
+             espcontrol::CardAssetDeleteResult::PERSISTENCE_FAILED,
+         "failed native configuration persistence should stop deletion");
+  expect(service.find(image.id, retained),
+         "failed native configuration persistence must retain the image");
+
+  native_persistence_ready = true;
   expect(service.delete_with_references(image.id) == espcontrol::CardAssetDeleteResult::SUCCESS,
-         "retry should clear references and delete the image");
+         "retry should persist every configuration source and delete the image");
   expect(adapter.cleared_id == image.id && !service.find(image.id, retained),
          "the exact image should be erased only after its references clear");
   expect(service.stop(), "asset service should stop after deletion transaction");

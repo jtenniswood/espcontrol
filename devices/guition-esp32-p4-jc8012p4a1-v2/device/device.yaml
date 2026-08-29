@@ -17,7 +17,6 @@ substitutions:
 esp32:
   variant: esp32p4
   flash_size: 16MB
-  partitions: ${partition_table_file}
   cpu_frequency: 360MHZ
   engineering_sample: true
   framework:
@@ -35,7 +34,6 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -322,6 +320,9 @@ touchscreen:
     id: my_touchscreen
     reset_pin: GPIO22
     interrupt_pin: GPIO21
+    # The controller signals a press reliably but may not interrupt again when
+    # the finger lifts. Poll briefly to deliver LVGL's release/click event.
+    touch_timeout: 50ms
     transform:
       swap_xy: false
       mirror_x: true

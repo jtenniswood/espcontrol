@@ -183,25 +183,15 @@ inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p) {
 }
 
 inline void send_local_sensor_update(const std::string &key, float value) {
-  for (auto &s : local_sensor_registry()) {
-    if (s.key != key || s.is_text) continue;
-    char buf[32];
-    if (s.precision == 1) snprintf(buf, sizeof(buf), "%.1f", value);
-    else if (s.precision == 2) snprintf(buf, sizeof(buf), "%.2f", value);
-    else snprintf(buf, sizeof(buf), "%.0f", value);
-    if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, buf);
-    return;
+  if (!local_sensor_apply_value(key, value)) {
+    ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
   }
-  ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
 }
 
 inline void send_local_sensor_update(const std::string &key, const char *value) {
-  for (auto &s : local_sensor_registry()) {
-    if (s.key != key || !s.is_text) continue;
-    if (s.text_lbl) set_wrapped_button_label_text(s.text_lbl, value ? value : "--");
-    return;
+  if (!local_sensor_apply_text(key, value ? value : "--")) {
+    ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
   }
-  ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
 }
 
 inline const char *door_window_closed_icon(const ParsedCfg &p) {

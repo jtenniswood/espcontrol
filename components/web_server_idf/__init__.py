@@ -13,4 +13,4 @@ AUTO_LOAD = ["web_server", "espcontrol"]
 
 async def to_code(config):
     # Increase the maximum supported size of headers section in HTTP request packet to be processed by the server
-    add_idf_sdkconfig_option("CONFIG_HTTPD_MAX_REQ_HDR_LEN", 1024)
+    add_idf_sdkconfig_option("CONFIG_HTTPD_MAX_REQ_HDR_LEN", 4096)

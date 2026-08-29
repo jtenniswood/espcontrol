@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cinttypes>
 #include <cstdio>
 #include <cstring>
 
@@ -794,7 +795,8 @@ bool CardImageStore::read_rgb565_cache(const std::string &id, uint32_t source_cr
   if (ram_index >= 0 && buffer != nullptr && size == this->ram_caches_[ram_index].size) {
     memcpy(buffer, this->ram_caches_[ram_index].data, size);
     this->ram_caches_[ram_index].last_used = ++this->ram_cache_clock_;
-    ESP_LOGI(TAG, "Loaded RGB565 card image %s from RAM in %u ms", id.c_str(), millis() - started);
+    ESP_LOGI(TAG, "Loaded RGB565 card image %s from RAM in %" PRIu32 " ms",
+             id.c_str(), millis() - started);
     return true;
   }
   int index = this->find_cache_index_(id, source_crc32, width, height);
@@ -810,7 +812,8 @@ bool CardImageStore::read_rgb565_cache(const std::string &id, uint32_t source_cr
     return false;
   }
   this->remember_rgb565_cache_(id, source_crc32, width, height, buffer, size);
-  ESP_LOGI(TAG, "Loaded RGB565 card image %s from flash in %u ms", id.c_str(), millis() - started);
+  ESP_LOGI(TAG, "Loaded RGB565 card image %s from flash in %" PRIu32 " ms",
+           id.c_str(), millis() - started);
   return true;
 }
 

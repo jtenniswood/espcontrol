@@ -20,11 +20,19 @@ firmware services. ESPHome calls the application boundary for setup, loop, and
 shutdown. Device YAML keeps the stable `espcontrol_app` ID and acts as a wiring
 and compatibility layer rather than owning service state.
 
-The first migrated service is `DisplayModeController`. Existing display
-behaviour and method names are unchanged; YAML reaches the controller through
-`id(espcontrol_app).display()`. Later service migrations extend this owner one
+`DisplayModeController` and the card-runtime registry are migrated services.
+Existing display behaviour and method names are unchanged; YAML reaches the
+controller through `id(espcontrol_app).display()`. Existing card helpers use a
+compatibility binding to the core-owned registry while they migrate to explicit
+service access. The configuration service is also core-owned; the ESPHome
+component injects its device-specific storage and legacy-text adapters before
+using it to register endpoints. Later service migrations extend this owner one
 focused pull request at a time and must not introduce generated `id(...)`
-references into compiled modules.
+references into compiled modules. Home Assistant callback ownership is likewise
+core-owned, while its transport-specific read coordinator remains an ESPHome
+wiring adapter during the compatibility migration. Grid navigation is stored in
+a fixed-capacity core-owned slot because its entries carry LVGL handles; the UI
+continues to define those entries while the core defines their lifetime.
 
 The card-background feature subsequently adds `CardAssetService` to the same
 owner. Image persistence and the card-background runtime are created and

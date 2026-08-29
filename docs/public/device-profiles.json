@@ -31,6 +31,35 @@
       "subpages": true
     },
     {
+      "slug": "guition-esp32-p4-jc1060p470-v2",
+      "installSlug": "guition-esp32-p4-jc1060p470-v2",
+      "name": "Guition JC1060P470 new panel (V2 label)",
+      "docsPath": "/screens/jc1060p470-v2",
+      "screenSize": "7 inches",
+      "resolution": "1024 x 600",
+      "orientation": "Landscape",
+      "slots": 15,
+      "imageSlots": 6,
+      "cardBackgrounds": {
+        "maxActive": 15,
+        "partitionBytes": 2097152,
+        "residentFrames": 15
+      },
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 3,
+        "cols": 5
+      },
+      "chipFamily": "ESP32-P4",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": true,
+      "subpages": true
+    },
+    {
       "slug": "guition-esp32-p4-jc4880p443",
       "installSlug": "guition-esp32-p4-jc4880p443",
       "name": "Guition JC4880P443",

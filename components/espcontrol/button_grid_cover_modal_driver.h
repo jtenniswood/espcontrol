@@ -39,8 +39,14 @@ inline bool cover_modal_driver_attach_interaction(
 }
 
 inline bool cover_modal_driver_refresh_layout(
-    BtnSlot &, const ParsedCfg &, const Context &context) {
-  return cover_modal_driver_matches(context);
+    BtnSlot &slot, const ParsedCfg &, const Context &context) {
+  if (!cover_modal_driver_matches(context)) return false;
+  // apply_card_label_line_clamp re-anchors the label to the button's padding,
+  // which the slider zeroed, so the label would otherwise sit flush at the
+  // bottom while the icon stays inset. Re-apply the slider inset so both match
+  // other cards, mirroring the position/tilt path in access_cover_driver.
+  refresh_slider_card_layout(slot);
+  return true;
 }
 
 inline bool cover_modal_driver_cleanup(

@@ -1,8 +1,60 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installScreenScheduleStateModule(): GlobalDescriptors {
-    // ── Screen Schedule State ──────────────────────────────────────────────
-    function formatDuration(this: any, seconds?: any) {
+import {
+    normalizeBrightnessMode,
+    normalizeHour,
+    normalizeScheduleWakeTimeout,
+    normalizeTimeOfDay,
+    scheduleModeOption,
+    scheduleSensorActivationOption,
+} from "../model/settings";
+import { setSelectValue } from "./ui_primitives";
+import type { ScreenScheduleController } from "../features/screen_schedule_controller";
+import type { UiRuntimeState } from "./state";
+
+export interface ScreenScheduleStateFeature {
+    readonly controller: ScreenScheduleController;
+    controllerState(): any;
+    applyControllerState(next: any): void;
+    formatDuration(seconds?: any): string;
+    formatHour(hour?: any): string;
+    syncUi(): void;
+}
+
+export function createScreenScheduleStateFeature(
+    screenScheduleController: ScreenScheduleController,
+    runtime: UiRuntimeState,
+    dependencies: {
+        syncClockScreensaverControls(): void;
+        updateSunInfo(): void;
+    },
+): ScreenScheduleStateFeature {
+    const els = runtime.els;
+    function controllerState() {
+        return {
+            trigger: state.scheduleTrigger,
+            sensorActivation: state.scheduleSensorActivation,
+            onHour: state.scheduleOnHour,
+            offHour: state.scheduleOffHour,
+            mode: state.scheduleMode,
+            wakeTimeout: state.scheduleWakeTimeout,
+            wakeBrightness: state.scheduleWakeBrightness,
+            dimmedBrightness: state.scheduleDimmedBrightness,
+            clockBrightness: state.scheduleClockBrightness,
+        };
+    }
+    function applyControllerState(next?: any) {
+        state.scheduleTrigger = next.trigger;
+        state.scheduleSensorActivation = next.sensorActivation;
+        state.scheduleOnHour = next.onHour;
+        state.scheduleOffHour = next.offHour;
+        state.scheduleMode = next.mode;
+        state.scheduleWakeTimeout = next.wakeTimeout;
+        state.scheduleWakeBrightness = next.wakeBrightness;
+        state.scheduleDimmedBrightness = next.dimmedBrightness;
+        state.scheduleClockBrightness = next.clockBrightness;
+        state.scheduleEnabled = next.trigger !== "disabled";
+    }
+    function formatDuration(seconds?: any) {
         seconds = normalizeScheduleWakeTimeout(seconds);
         if (seconds < 60)
             return seconds + " second" + (seconds === 1 ? "" : "s");
@@ -12,7 +64,7 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
         }
         return seconds + " seconds";
     }
-    function formatHour(this: any, hour?: any) {
+    function formatHour(hour?: any) {
         hour = normalizeHour(hour, 0);
         var suffix: any = hour < 12 ? "AM" : "PM";
         var h: any = hour % 12;
@@ -20,17 +72,9 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             h = 12;
         return h + ":00 " + suffix;
     }
-    function syncScreenScheduleUi(this: any) {
-        state.scheduleTrigger = normalizeScheduleTrigger(state.scheduleTrigger, state.scheduleEnabled);
-        state.scheduleEnabled = state.scheduleTrigger !== "disabled";
-        state.scheduleSensorActivation = normalizeScheduleSensorActivation(state.scheduleSensorActivation);
-        state.scheduleOnHour = normalizeHour(state.scheduleOnHour, 6);
-        state.scheduleOffHour = normalizeHour(state.scheduleOffHour, 23);
-        state.scheduleMode = normalizeScheduleMode(state.scheduleMode);
-        state.scheduleWakeTimeout = normalizeScheduleWakeTimeout(state.scheduleWakeTimeout);
-        state.scheduleWakeBrightness = normalizeScheduleWakeBrightness(state.scheduleWakeBrightness);
-        state.scheduleDimmedBrightness = normalizeScheduleDimmedBrightness(state.scheduleDimmedBrightness);
-        state.scheduleClockBrightness = normalizeScheduleClockBrightness(state.scheduleClockBrightness);
+    function syncUi() {
+        applyControllerState(screenScheduleController.normalize(controllerState()));
+        var uiState: any = screenScheduleController.uiState(controllerState());
         state.brightnessMode = normalizeBrightnessMode(state.brightnessMode);
         state.brightnessDawnTime = normalizeTimeOfDay(state.brightnessDawnTime, "06:00");
         state.brightnessDuskTime = normalizeTimeOfDay(state.brightnessDuskTime, "18:00");
@@ -56,7 +100,9 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
             els.setBrightnessManualTimes.className =
                 "sp-cond-field" + (state.brightnessMode === "fixed_times" ? " sp-visible" : "");
         }
-        updateSunInfo();
+        if (els.setDimBrightnessField || els.setSensorDimBrightnessField)
+            dependencies.syncClockScreensaverControls();
+        dependencies.updateSunInfo();
         if (els.setScheduleToggle)
             els.setScheduleToggle.checked = !!state.scheduleEnabled;
         if (els.setScheduleModeButtons) {
@@ -92,32 +138,35 @@ export function installScreenScheduleStateModule(): GlobalDescriptors {
         }
         if (els.setScheduleOffOptions) {
             els.setScheduleOffOptions.className =
-                "sp-cond-field" + (state.scheduleMode === "screen_off" ? " sp-visible" : "");
+                "sp-cond-field" + (uiState.screenOffOptionsVisible ? " sp-visible" : "");
         }
         if (els.setScheduleDimmedOptions) {
             els.setScheduleDimmedOptions.className =
-                "sp-cond-field" + (state.scheduleMode === "screen_dimmed" ? " sp-visible" : "");
+                "sp-cond-field" + (uiState.dimmedOptionsVisible ? " sp-visible" : "");
         }
         if (els.setScheduleClockOptions) {
             els.setScheduleClockOptions.className =
-                "sp-cond-field" + (state.scheduleMode === "clock" ? " sp-visible" : "");
+                "sp-cond-field" + (uiState.clockOptionsVisible ? " sp-visible" : "");
         }
         if (els.setScheduleTimes) {
-            els.setScheduleTimes.className = "sp-schedule-times" + (state.scheduleTrigger === "time" ? "" : " sp-hidden");
+            els.setScheduleTimes.className = "sp-schedule-times" + (uiState.timeControlsVisible ? "" : " sp-hidden");
         }
         if (els.setScheduleSensor) {
-            els.setScheduleSensor.className = "sp-schedule-times sp-schedule-sensor" + (state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
+            els.setScheduleSensor.className = "sp-schedule-times sp-schedule-sensor" + (uiState.sensorControlsVisible ? "" : " sp-hidden");
         }
         if (els.setScheduleActions) {
-            els.setScheduleActions.className = "sp-schedule-times" + (state.scheduleTrigger === "time" || state.scheduleTrigger === "sensor" ? "" : " sp-hidden");
+            els.setScheduleActions.className = "sp-schedule-times" + (uiState.actionsVisible ? "" : " sp-hidden");
         }
         if (els.setScheduleBadge) {
-            els.setScheduleBadge.className = "sp-card-badge" + (state.scheduleEnabled ? "" : " sp-hidden");
+            els.setScheduleBadge.className = "sp-card-badge" + (uiState.enabled ? "" : " sp-hidden");
         }
     }
     return {
-        "formatDuration": staticGlobal(formatDuration),
-        "formatHour": staticGlobal(formatHour),
-        "syncScreenScheduleUi": staticGlobal(syncScreenScheduleUi),
+        controller: screenScheduleController,
+        controllerState,
+        applyControllerState,
+        formatDuration,
+        formatHour,
+        syncUi,
     };
 }

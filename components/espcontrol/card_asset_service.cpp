@@ -118,6 +118,14 @@ void CardAssetService::set_reference_adapter(CardAssetReferenceAdapter *adapter)
   }
 }
 
+void CardAssetService::set_reference_persistence_callback(
+    ReferencePersistenceCallback callback, void *context) {
+  StateLock lock(this);
+  reference_persistence_callback_ = callback;
+  reference_persistence_context_ = context;
+  if (running_ && !pending_delete_id_.empty()) resume_pending_delete();
+}
+
 bool CardAssetService::load_pending_delete() {
   pending_delete_id_.clear();
 #ifdef ESP_PLATFORM
@@ -208,6 +216,8 @@ CardAssetDeleteResult CardAssetService::resume_pending_delete() {
                                                   : CardAssetDeleteResult::STORAGE_FAILED;
   }
   if (!reference_adapter_->clear_asset_references(id) ||
+      (reference_persistence_callback_ != nullptr &&
+       !reference_persistence_callback_(reference_persistence_context_)) ||
       reference_adapter_->references_asset(id)) {
     store_.cancel_erase(id);
     delete_running_ = false;

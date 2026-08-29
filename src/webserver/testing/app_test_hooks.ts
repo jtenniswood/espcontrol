@@ -1,6 +1,7 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppTestHooks(): GlobalDescriptors {
-    function registerEspControlTestHookGroup(this: any, groupName?: any, hooks?: any) {
+export type AppTestHookRegistrar = (groupName: string, hooks: Record<string, any>) => void;
+
+export function createAppTestHookRegistrar(): AppTestHookRegistrar {
+    return function registerEspControlTestHookGroup(groupName: string, hooks: Record<string, any>) {
         if (typeof globalThis === "undefined" || !globalThis.__ESPCONTROL_TEST_HOOKS__)
             return;
         var registry: any = globalThis.__ESPCONTROL_TEST_HOOKS__;
@@ -18,8 +19,5 @@ export function installAppTestHooks(): GlobalDescriptors {
             }
             registry.config[key] = registry.groups[groupName][key];
         }
-    }
-    return {
-        "registerEspControlTestHookGroup": staticGlobal(registerEspControlTestHookGroup),
     };
 }

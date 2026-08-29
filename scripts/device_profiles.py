@@ -9,10 +9,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+from product_model_v2 import load_product_model_v2, source_path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEVICE_MANIFEST = ROOT / "devices" / "manifest.json"
-DEVICE_CATALOG = ROOT / "devices" / "catalog.json"
+DEVICE_MANIFEST = source_path("deviceProfiles")
+DEVICE_CATALOG = source_path("deviceCatalog")
 COMMON_ASSETS = ROOT / "common" / "assets"
 DEVICES_DIR = ROOT / "devices"
 
@@ -253,28 +254,28 @@ def canonicalize_device(device: dict[str, Any]) -> dict[str, Any]:
 
 def compose_catalog_data(data: Any) -> dict[str, Any]:
     if not isinstance(data, dict):
-        raise DeviceProfileError("devices/catalog.json must contain a JSON object")
+        raise DeviceProfileError("product/v2/device_catalog.json must contain a JSON object")
     _reject_nulls(data, "catalog", "", "catalog")
     unknown_top = set(data) - {"settings", "profiles", "devices"}
     if unknown_top:
-        raise DeviceProfileError(f"devices/catalog.json has unknown fields: {', '.join(sorted(unknown_top))}")
+        raise DeviceProfileError(f"product/v2/device_catalog.json has unknown fields: {', '.join(sorted(unknown_top))}")
     settings = data.get("settings", {})
     profiles = data.get("profiles", {})
     devices = data.get("devices")
     if not isinstance(settings, dict):
-        raise DeviceProfileError("devices/catalog.json: settings must be an object")
+        raise DeviceProfileError("product/v2/device_catalog.json: settings must be an object")
     if not isinstance(profiles, dict):
-        raise DeviceProfileError("devices/catalog.json: profiles must be an object")
+        raise DeviceProfileError("product/v2/device_catalog.json: profiles must be an object")
     unknown_categories = set(profiles) - set(PROFILE_CATEGORIES)
     if unknown_categories:
         raise DeviceProfileError(
-            "devices/catalog.json: unknown profile categories: " + ", ".join(sorted(unknown_categories))
+            "product/v2/device_catalog.json: unknown profile categories: " + ", ".join(sorted(unknown_categories))
         )
     for category in PROFILE_CATEGORIES:
         if not isinstance(profiles.get(category, {}), dict):
-            raise DeviceProfileError(f"devices/catalog.json: profiles.{category} must be an object")
+            raise DeviceProfileError(f"product/v2/device_catalog.json: profiles.{category} must be an object")
     if not isinstance(devices, dict) or not devices:
-        raise DeviceProfileError("devices/catalog.json: devices must be a non-empty object")
+        raise DeviceProfileError("product/v2/device_catalog.json: devices must be a non-empty object")
 
     expanded: dict[str, Any] = {"settings": copy.deepcopy(settings), "devices": {}}
     for slug, entry in devices.items():
@@ -316,6 +317,8 @@ def compose_catalog_data(data: Any) -> dict[str, Any]:
 
 
 def load_catalog_data(path: Path = DEVICE_CATALOG) -> dict[str, Any]:
+    if path.resolve() == DEVICE_CATALOG.resolve():
+        return compose_catalog_data(load_product_model_v2().device_catalog_data())
     return compose_catalog_data(load_json(path))
 
 
@@ -812,6 +815,8 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
             errors.append(device_error(slug, "web.btn.borderWidth must be a number when set"))
         if "labelWeight" in btn and not is_positive_int(btn.get("labelWeight")):
             errors.append(device_error(slug, "web.btn.labelWeight must be a positive integer when set"))
+        if "mediaTitleSize" in btn and not is_number(btn.get("mediaTitleSize")):
+            errors.append(device_error(slug, "web.btn.mediaTitleSize must be a number when set"))
         for key in ("labelLines", "labelLinesDouble"):
             if not is_positive_int(btn.get(key)):
                 errors.append(device_error(slug, f"web.btn.{key} must be a positive integer"))
@@ -969,6 +974,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "climate_option_title_font": fonts.get("climateOptionTitle"),
         "climate_option_value_font": fonts.get("climateOptionValue"),
         "wrap_tall_labels": display["wrapTallLabels"],
+        "label_lines": profile["web"]["btn"]["labelLines"],
+        "label_lines_tall": profile["web"]["btn"]["labelLinesDouble"],
         "info_only": bool(display.get("infoOnly")),
         "display_mode": display.get("mode", "color"),
         "modal": copy.deepcopy(display["modal"]),

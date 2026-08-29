@@ -4,7 +4,7 @@ Use this when adding icon names, glyphs, or firmware font mappings.
 
 ## Edit First
 
-- `common/assets/icons.json`
+- `product/v2/icons.json`
 - `common/assets/*glyphs.yaml`
 - `devices/<slug>/device/fonts.yaml`
 
@@ -21,7 +21,7 @@ font role cannot solve the layout need.
 ## Checklist
 
 - [ ] Reuse existing font roles before adding any new size.
-- [ ] Add user-selectable icons to `common/assets/icons.json`.
+- [ ] Add user-selectable icons to `product/v2/icons.json`.
 - [ ] Add required icon glyphs to the relevant `common/assets/*glyphs.yaml`.
 - [ ] Add required text glyphs when labels use new characters.
 - [ ] Update `devices/<slug>/device/fonts.yaml` only for affected devices.

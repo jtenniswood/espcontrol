@@ -1,6 +1,40 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installConfigImageOptionsModule(): GlobalDescriptors {
+import {
+    configOptionEnabled,
+    configOptionValue,
+    setConfigOption,
+    setConfigOptionValue,
+} from "../model/config_primitives";
+import type { ApplicationLayoutState } from "./application_context";
+import type { ConfigMediaOptionsFeature } from "./config_media_options";
+import {
+    IMAGE_ICON_OPTION,
+    IMAGE_LABEL_OPTION,
+    IMAGE_MODAL_MODE_OPTION,
+    cardBackgroundImage,
+    cardContractOptionDefaultValue,
+    cardContractOptionSpec,
+} from "./config_option_core";
+export interface ConfigImageOptionsDependencies {
+    readonly layout: ApplicationLayoutState;
+    readonly mediaOptions: Pick<ConfigMediaOptionsFeature, "mediaEditorMode">;
+    readonly showBanner: (message: string, kind: "error") => void;
+}
+
+export function createConfigImageOptionsFeature(dependencies: ConfigImageOptionsDependencies) {
+    const layout = dependencies.layout;
+    const mediaEditorMode = dependencies.mediaOptions.mediaEditorMode;
+    const IMAGE_SLOT_CAPACITY = Math.max(0, Number(layout.config.imageSlotCapacity) || 0);
+    const CARD_BACKGROUND_IMAGE_LIMIT = Math.max(0, Number(layout.config.cardBackgroundImageLimit) || layout.numSlots);
+    let parseSubpage: ((value: string) => any) | undefined;
+    function connectSubpageParser(parser: (value: string) => any) {
+        parseSubpage = parser;
+    }
+    function parseSubpageConfig(value: string) {
+        if (!parseSubpage)
+            throw new Error("Image options used before the subpage parser was connected");
+        return parseSubpage(value);
+    }
     // ── Image Card Options ─────────────────────────────────────────────
     function imageModalModeValues(this: any) {
         var spec: any = cardContractOptionSpec("image", IMAGE_MODAL_MODE_OPTION);
@@ -23,7 +57,7 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
     function imageSlotCapacityMessage(this: any) {
         if (IMAGE_SLOT_CAPACITY <= 0)
             return "Image cards are not available on this display.";
-        var disabled: any = CFG.disabledCardTypes || [];
+        var disabled: readonly string[] = layout.config.disabledCardTypes || [];
         if (disabled.indexOf("image") !== -1 && disabled.indexOf("media_cover_art") === -1) {
             return "This display supports up to " + IMAGE_SLOT_CAPACITY +
                 " Media Cover Art card" + (IMAGE_SLOT_CAPACITY === 1 ? "." : "s.");
@@ -107,6 +141,12 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
             count++;
         return count;
     }
+    function canAddImageCards(this: any, extraCount?: any) {
+        extraCount = parseInt(extraCount || 0, 10);
+        if (!isFinite(extraCount) || extraCount <= 0)
+            return true;
+        return imageCardCountWithCandidate() + extraCount <= IMAGE_SLOT_CAPACITY;
+    }
     function cardBackgroundImageCountWithCandidate(this: any, candidate?: any) {
         var buttons: any = state.buttons;
         var grid: any = state.grid;
@@ -130,17 +170,11 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
             count++;
         return count;
     }
-    function canAddImageCards(this: any, extraCount?: any) {
-        extraCount = parseInt(extraCount || 0, 10);
-        if (!isFinite(extraCount) || extraCount <= 0)
-            return true;
-        return imageCardCountWithCandidate() + extraCount <= IMAGE_SLOT_CAPACITY;
-    }
     function showImageCardLimitBanner(this: any) {
-        showBanner(imageSlotCapacityMessage(), "error");
+        dependencies.showBanner(imageSlotCapacityMessage(), "error");
     }
     function showCardBackgroundImageLimitBanner(this: any) {
-        showBanner(cardBackgroundImageLimitMessage(), "error");
+        dependencies.showBanner(cardBackgroundImageLimitMessage(), "error");
     }
     function imageModalMode(this: any, b?: any) {
         return normalizeImageModalMode(configOptionValue(b && b.options, IMAGE_MODAL_MODE_OPTION));
@@ -190,29 +224,32 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         return b.options;
     }
     return {
-        "imageModalModeValues": staticGlobal(imageModalModeValues),
-        "normalizeImageModalMode": staticGlobal(normalizeImageModalMode),
-        "imageSlotCapacity": staticGlobal(imageSlotCapacity),
-        "cardBackgroundImageLimit": staticGlobal(cardBackgroundImageLimit),
-        "cardBackgroundImageLimitMessage": staticGlobal(cardBackgroundImageLimitMessage),
-        "imageSlotCapacityMessage": staticGlobal(imageSlotCapacityMessage),
-        "isImageCard": staticGlobal(isImageCard),
-        "activeGridSlots": staticGlobal(activeGridSlots),
-        "imageCardCountInButtons": staticGlobal(imageCardCountInButtons),
-        "imageCardCountInSubpage": staticGlobal(imageCardCountInSubpage),
-        "imageCardCountInClipboardEntry": staticGlobal(imageCardCountInClipboardEntry),
-        "imageCardCountInClipboardEntries": staticGlobal(imageCardCountInClipboardEntries),
-        "imageCardCountWithCandidate": staticGlobal(imageCardCountWithCandidate),
-        "cardBackgroundImageCountWithCandidate": staticGlobal(cardBackgroundImageCountWithCandidate),
-        "canAddImageCards": staticGlobal(canAddImageCards),
-        "showImageCardLimitBanner": staticGlobal(showImageCardLimitBanner),
-        "showCardBackgroundImageLimitBanner": staticGlobal(showCardBackgroundImageLimitBanner),
-        "imageModalMode": staticGlobal(imageModalMode),
-        "imageLabelEnabled": staticGlobal(imageLabelEnabled),
-        "imageIconEnabled": staticGlobal(imageIconEnabled),
-        "normalizeImageOptions": staticGlobal(normalizeImageOptions),
-        "setImageLabelEnabled": staticGlobal(setImageLabelEnabled),
-        "setImageIconEnabled": staticGlobal(setImageIconEnabled),
-        "setImageModalMode": staticGlobal(setImageModalMode),
+        connectSubpageParser,
+        imageModalModeValues,
+        normalizeImageModalMode,
+        imageSlotCapacity,
+        cardBackgroundImageLimit,
+        cardBackgroundImageLimitMessage,
+        imageSlotCapacityMessage,
+        isImageCard,
+        activeGridSlots,
+        imageCardCountInButtons,
+        imageCardCountInSubpage,
+        imageCardCountInClipboardEntry,
+        imageCardCountInClipboardEntries,
+        imageCardCountWithCandidate,
+        cardBackgroundImageCountWithCandidate,
+        canAddImageCards,
+        showImageCardLimitBanner,
+        showCardBackgroundImageLimitBanner,
+        imageModalMode,
+        imageLabelEnabled,
+        imageIconEnabled,
+        normalizeImageOptions,
+        setImageLabelEnabled,
+        setImageIconEnabled,
+        setImageModalMode,
     };
 }
+
+export type ConfigImageOptionsFeature = ReturnType<typeof createConfigImageOptionsFeature>;

@@ -1,6 +1,6 @@
 # Card Contract
 
-`common/config/card_contract.json` is the source of truth for card type metadata.
+`product/v2/card_contract.json` is the source of truth for card type metadata.
 It keeps the web setup page and firmware aligned.
 
 `contractVersion` versions the authored contract language. It is deliberately
@@ -91,8 +91,8 @@ subpages both resolve the same `Family` before choosing their surface-specific
 widget and lifecycle adapter. The registry test covers every authored contract
 type and checks that subpage capability still matches the contract.
 
-The generated web `CARD_RUNTIME_SPECS` registry is attached to matching
-`BUTTON_TYPES` registrations as `runtimeSpec`. Firmware receives matching
+The generated web `CARD_RUNTIME_SPECS` registry is attached to matching typed
+card-registry definitions as `runtimeSpec`. Firmware receives matching
 `CardTypeId`, `CardDriverId`, capability flags, and a canonical-config resolver
 in `button_grid_contract_generated.h`. Door/Window and Presence cards now use
 the shared handwritten `STATUS_ENTITY` lifecycle driver for main-grid and
@@ -252,7 +252,7 @@ is usually missing.
 
 ## Contract Change Checklist
 
-After editing `common/config/card_contract.json`:
+After editing `product/v2/card_contract.json`:
 
 ```bash
 python3 scripts/build.py
@@ -276,7 +276,7 @@ Treat saved card config as durable user data.
 - Do not rename card types without an alias or migration path.
 - Do not remove an option parser before existing values have a fallback.
 - Keep backup import/export working for older backups.
-- Add fixtures in `compatibility/fixtures/product_compatibility.json` when the
+- Add fixtures in `product/v2/product_compatibility.json` when the
   saved shape changes.
 
 Baseline migration decision: leading and trailing whitespace in saved Media playlist text values is not meaningful. Browser and firmware normalization trim it, and a padded `playlist` content type is treated as the default and omitted. Existing stored strings are still read without a new format and are not rewritten until an existing save or backup-import action persists the normalized value.
@@ -291,7 +291,7 @@ Action state, script-field, and confirmation text values also ignore leading and
 
 | Concern | Typical path |
 |---|---|
-| Type metadata and defaults | `common/config/card_contract.json` |
+| Type metadata and defaults | `product/v2/card_contract.json` |
 | Web settings and preview | `src/webserver/cards/<type>.ts` |
 | Web parsing/serialization | `src/webserver/application/config_codec.ts` |
 | Firmware parsing | `components/espcontrol/button_grid_config.h` |
@@ -306,7 +306,7 @@ A card type usually spans the contract, setup page, and firmware. Work in this
 order:
 
 1. Register the card and its runtime driver/capabilities in
-   `common/config/card_contract.json`.
+   `product/v2/card_contract.json`.
 2. Add web settings and preview behavior in `src/webserver/cards/<type>.ts`.
 3. If it stores options, update web parsing and option preservation in
    `src/webserver/application/config_codec.ts`.
@@ -407,8 +407,8 @@ var HELLO_CARD_METADATA = {
   preview: { badge: "hand-wave" },
 };
 
-export function registerHelloCardTypes(): void {
-registerButtonType("hello", {
+export function registerHelloCardTypes(registry: CardRegistry): void {
+registry.register("hello", {
   label: function () { return cardContractCardLabel("hello"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("hello"); },
   pickerKey: function () { return cardContractPickerKey("hello"); },

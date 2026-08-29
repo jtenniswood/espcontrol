@@ -1,0 +1,495 @@
+# =============================================================================
+# DEVICE - Guition ESP32-P4 JC1060P470 V2 (New Panel) hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 7" touch panel.
+# Includes the ESP32-P4 main SoC, MIPI DSI display, GT911 capacitive
+# touchscreen, and backlight PWM.
+#
+# This profile is for the 2026 "New Panel" revision only. Guition prints "V2"
+# in the SKU or material number on the label on the back of the case. Panels
+# without that "V2" marking need the original guition-esp32-p4-jc1060p470
+# profile; the wrong profile shows a white screen with a vertical noise band.
+# Everything except the MIPI-DSI init sequence and timings, and the ESP32-C6
+# SDIO clock (10 MHz, see network_coprocessor.yaml), matches that profile.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+
+# ---------------------------------------------------------------------------
+# ESP32-P4 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  variant: esp32p4
+  flash_size: 16MB
+  cpu_frequency: 360MHZ
+  engineering_sample: true
+  framework:
+    type: esp-idf
+    # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
+    #version: 5.5.2
+    # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
+    # incompletely in ESPHome containers and then fail while creating .bin files.
+    #platform_version: 55.03.37
+    advanced:
+      enable_idf_experimental_features: true
+      execute_from_psram: true
+      disable_vfs_support_termios: false
+      disable_vfs_support_select: false
+      disable_vfs_support_dir: false
+    sdkconfig_options:
+      CONFIG_SDMMC_HOST_DEFAULT: "y"
+      # Eight API clients add five sockets above ESPHome's three-client
+      # baseline. Reserve those five explicitly on top of the generated
+      # 14-socket web, artwork, mDNS, OTA, and API budget.
+      CONFIG_LWIP_MAX_SOCKETS: "19"
+      # HTTPS firmware checks need more stack on ESP32-P4; the default main
+      # task stack can trip the stack protector during mbedTLS setup.
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      # Native OTA can block loopTask while ESP-IDF erases the alternate app
+      # partition on this panel. Use the ESP-IDF maximum so the flash
+      # erase/prep step can finish before data upload continues.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"
+      # ESPHome 2026.5 / ESP-IDF 5.5.2 can make ESP-Hosted preallocate a
+      # large internal DMA buffer pool before ESPHome starts. On P4 display
+      # builds this can fail with "HS_MP: mempool create failed: no mem" and
+      # trigger OTA rollback, so use dynamic buffers and keep hosted task
+      # stacks in PSRAM.
+      CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
+      CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+      CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
+      CONFIG_LOG_DEFAULT_LEVEL: "2"
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, web_server_idf, artwork_image, card_image_store]
+    refresh: 1s
+
+espcontrol:
+  id: espcontrol_app
+  # The native document is imported from these restored entities on first boot.
+  # The legacy entities remain live during the compatibility releases.
+  panel_config:
+    device_profile: ${device_slug}
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3, subpage_1_config_ext_4, subpage_1_config_ext_5, subpage_1_config_ext_6, subpage_1_config_ext_7]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3, subpage_2_config_ext_4, subpage_2_config_ext_5, subpage_2_config_ext_6, subpage_2_config_ext_7]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3, subpage_3_config_ext_4, subpage_3_config_ext_5, subpage_3_config_ext_6, subpage_3_config_ext_7]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3, subpage_4_config_ext_4, subpage_4_config_ext_5, subpage_4_config_ext_6, subpage_4_config_ext_7]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3, subpage_5_config_ext_4, subpage_5_config_ext_5, subpage_5_config_ext_6, subpage_5_config_ext_7]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3, subpage_6_config_ext_4, subpage_6_config_ext_5, subpage_6_config_ext_6, subpage_6_config_ext_7]
+      - config: button_7_config
+        subpage_chunks: [subpage_7_config, subpage_7_config_ext, subpage_7_config_ext_2, subpage_7_config_ext_3, subpage_7_config_ext_4, subpage_7_config_ext_5, subpage_7_config_ext_6, subpage_7_config_ext_7]
+      - config: button_8_config
+        subpage_chunks: [subpage_8_config, subpage_8_config_ext, subpage_8_config_ext_2, subpage_8_config_ext_3, subpage_8_config_ext_4, subpage_8_config_ext_5, subpage_8_config_ext_6, subpage_8_config_ext_7]
+      - config: button_9_config
+        subpage_chunks: [subpage_9_config, subpage_9_config_ext, subpage_9_config_ext_2, subpage_9_config_ext_3, subpage_9_config_ext_4, subpage_9_config_ext_5, subpage_9_config_ext_6, subpage_9_config_ext_7]
+      - config: button_10_config
+        subpage_chunks: [subpage_10_config, subpage_10_config_ext, subpage_10_config_ext_2, subpage_10_config_ext_3, subpage_10_config_ext_4, subpage_10_config_ext_5, subpage_10_config_ext_6, subpage_10_config_ext_7]
+      - config: button_11_config
+        subpage_chunks: [subpage_11_config, subpage_11_config_ext, subpage_11_config_ext_2, subpage_11_config_ext_3, subpage_11_config_ext_4, subpage_11_config_ext_5, subpage_11_config_ext_6, subpage_11_config_ext_7]
+      - config: button_12_config
+        subpage_chunks: [subpage_12_config, subpage_12_config_ext, subpage_12_config_ext_2, subpage_12_config_ext_3, subpage_12_config_ext_4, subpage_12_config_ext_5, subpage_12_config_ext_6, subpage_12_config_ext_7]
+      - config: button_13_config
+        subpage_chunks: [subpage_13_config, subpage_13_config_ext, subpage_13_config_ext_2, subpage_13_config_ext_3, subpage_13_config_ext_4, subpage_13_config_ext_5, subpage_13_config_ext_6, subpage_13_config_ext_7]
+      - config: button_14_config
+        subpage_chunks: [subpage_14_config, subpage_14_config_ext, subpage_14_config_ext_2, subpage_14_config_ext_3, subpage_14_config_ext_4, subpage_14_config_ext_5, subpage_14_config_ext_6, subpage_14_config_ext_7]
+      - config: button_15_config
+        subpage_chunks: [subpage_15_config, subpage_15_config_ext, subpage_15_config_ext_2, subpage_15_config_ext_3, subpage_15_config_ext_4, subpage_15_config_ext_5, subpage_15_config_ext_6, subpage_15_config_ext_7]
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  build_flags:
+    - "-Wno-deprecated-declarations"
+    - "-DESPCONTROL_DISABLE_TODO=1"
+    # Force cached ESPHome objects to rebuild after the 2026.5
+    # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+    - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+    # Boot-loop fix marker shared with the original JC1060P470 profile; this
+    # panel revision runs the same firmware apart from the display init.
+    - "-DESPCONTROL_JC1060P470_BOOTFIX_20260522=1"
+    # Rebuild marker for the JC1060P470 OTA flash erase watchdog increase,
+    # also shared with the original JC1060P470 profile.
+    - "-DESPCONTROL_JC1060P470_OTA_WDT_20260526=1"
+    # Keep the ESP-IDF header warning suppressed without warning on C sources.
+    - "-Wno-literal-suffix"
+    - "-Wno-complain-wrong-lang"
+  on_boot:
+    - priority: 260
+      then:
+        - if:
+            condition:
+              lambda: |-
+                #ifdef USE_ESP32_CRASH_HANDLER
+                return esphome::esp32::crash_handler_has_data();
+                #else
+                return false;
+                #endif
+            then:
+              - lambda: |-
+                  #ifdef USE_ESP32_CRASH_HANDLER
+                  esphome::esp32::crash_handler_clear();
+                  #endif
+                  id(jc1060p470_v2_safe_mode).mark_successful();
+                  global_preferences->sync();
+                  ESP_LOGW("jc1060p470_v2", "Cleared saved crash report before API logging; rebooting once");
+              - delay: 500ms
+              - lambda: |-
+                  App.safe_reboot();
+    - priority: 250
+      then:
+        - lambda: |-
+            ESP_LOGI("jc1060p470_v2", "Bootfix marker 2026-05-22 active");
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+
+# The P4 panel has enough memory for additional native API clients. Allow
+# Home Assistant, ESPHome logs, and browser/configuration sessions to overlap
+# without rejecting connections at ESPHome's default five-client limit.
+api:
+  max_connections: 8
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: hex
+  speed: 200MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: jc1060p470_v2_safe_mode
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# ---------------------------------------------------------------------------
+# Power management (LDO channels for DSI PHY and SD card)
+# ---------------------------------------------------------------------------
+esp_ldo:
+  - channel: 3
+    id: dsi_phy_enable
+    voltage: 2.5V
+    adjustable: True
+  - channel: 4
+    id: sd_card_power
+    voltage: 2.7V
+    adjustable: True
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO23
+    id: gpio_backlight_pwm
+    frequency: ${backlight_pwm_frequency}
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  - id: bus_a
+    sda: GPIO07
+    scl: GPIO08
+    frequency: 400kHz
+    sda_pullup_enabled: False
+    scl_pullup_enabled: False
+
+i2c_device:
+  - id: i2cdev1
+    address: 0x18
+  - id: i2cdev2
+    address: 0x32
+  - id: i2cdev3
+    address: 0x36
+  - id: i2cdev4
+    address: 0x40
+
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    i2c_id: bus_a
+    reset_pin: GPIO22
+    interrupt_pin: GPIO21
+    on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (7" 1024x600 MIPI DSI panel, V2 "New Panel" revision)
+# ---------------------------------------------------------------------------
+# Identify the panel from the label on the back of the case: the 2026 batch
+# prints "V2" in the SKU or material number. Panels without that marking use the
+# bundled JC1060P470 model in the original guition-esp32-p4-jc1060p470 profile.
+display:
+  - platform: mipi_dsi
+    id: my_display
+    model: CUSTOM
+    color_order: RGB
+    # Panel LCD_RST is GPIO0 on the JC1060P470C_I_W_Y schematic (FPC1 pin 4);
+    # GPIO5 only reaches the expansion header. A wrong reset pin also suppresses
+    # ESPHome's software reset, so a warm reboot (flash, OTA, restart) would keep
+    # the previous firmware's panel registers until the next power cycle.
+    reset_pin:
+      number: GPIO0
+    # Initialise the panel before the backlight light restores its state
+    # (light setup runs at priority ~799); an un-initialised JD9165 shows a
+    # bright lavender field, so the backlight must not come on before init.
+    setup_priority: 850
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 1024
+      height: 600
+    pixel_mode: 16bit
+    color_depth: 16
+    lanes: 2
+    lane_bit_rate: 750Mbps
+    pclk_frequency: 52MHz
+    hsync_pulse_width: 24
+    hsync_back_porch: 136
+    hsync_front_porch: 160
+    vsync_pulse_width: 2
+    vsync_back_porch: 21
+    vsync_front_porch: 12
+    # JD9165 vendor init for the 2026 "New Panel" (Guition rear label "V2").
+    # Source: Guition JC1060P470C_I_W_Y.zip (2026-07-13), 1-Demo/.../JC1060P470C_I_W_Y_New_Panel/lvgl_demo_v8/src/lcd/esp_lcd_jd9165.{c,h}
+    # ESPHome appends PIXFMT/MADCTL/INVOFF/SLPOUT/DISPON, so do not add 0x3A,
+    # 0x36 or 0x29 here. The 0x11 at the end of the table IS deliberate; see the
+    # comment there before removing it.
+    init_sequence:
+      # Load-bearing: the JD9165 needs 120 ms after reset before it accepts the
+      # vendor table. ESPHome holds only SLPOUT until 120 ms after reset
+      # (mipi_dsi.cpp), not the vendor table, so the wait has to be declared
+      # here. Without it the panel comes up white on a warm reboot (A/B tested
+      # on hardware); a cold boot survives, having had power-on settling time.
+      - delay 120ms
+      - [0x30, 0x00]
+      - [0xF7, 0x49, 0x61, 0x02, 0x00]
+      - [0x30, 0x01]
+      - [0x04, 0x0C]
+      - [0x05, 0x08]
+      - [0x0B, 0x11]
+      - [0x20, 0x04]
+      - [0x1F, 0x05]
+      - [0x23, 0x38]
+      - [0x28, 0x18]
+      - [0x29, 0x29]
+      - [0x2A, 0x01]
+      - [0x2B, 0x29]
+      - [0x2C, 0x01]
+      - [0x30, 0x02]
+      - [0x00, 0x05]
+      - [0x01, 0x22]
+      - [0x02, 0x08]
+      - [0x03, 0x12]
+      - [0x04, 0x16]
+      - [0x05, 0x64]
+      - [0x06, 0x00]
+      - [0x07, 0x00]
+      - [0x08, 0x78]
+      - [0x09, 0x00]
+      - [0x0A, 0x04]
+      - [0x0B, 0x16, 0x17, 0x0B, 0x0D, 0x0D, 0x0D, 0x11, 0x10, 0x07, 0x07, 0x09]
+      - [0x0C, 0x09, 0x1E, 0x1E, 0x1C, 0x1C, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D]
+      - [0x0D, 0x0A, 0x05, 0x0B, 0x0D, 0x0D, 0x0D, 0x11, 0x10, 0x06, 0x06, 0x08]
+      - [0x0E, 0x08, 0x1F, 0x1F, 0x1D, 0x1D, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D]
+      - [0x0F, 0x0A, 0x05, 0x0D, 0x0B, 0x0D, 0x0D, 0x11, 0x10, 0x1D, 0x1D, 0x1F]
+      - [0x10, 0x1F, 0x08, 0x08, 0x06, 0x06, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D]
+      - [0x11, 0x16, 0x17, 0x0D, 0x0B, 0x0D, 0x0D, 0x11, 0x10, 0x1C, 0x1C, 0x1E]
+      - [0x12, 0x1E, 0x09, 0x09, 0x07, 0x07, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D, 0x0D]
+      - [0x13, 0x00, 0x00, 0x00, 0x00]
+      - [0x14, 0x00, 0x00, 0x41, 0x41]
+      - [0x15, 0x00, 0x00, 0x00, 0x00]
+      - [0x17, 0x00]
+      - [0x18, 0x85]
+      - [0x19, 0x06, 0x09]
+      - [0x1A, 0x05, 0x08]
+      - [0x1B, 0x0A, 0x04]
+      - [0x26, 0x00]
+      - [0x27, 0x00]
+      - [0x30, 0x06]
+      - [0x12, 0x3F, 0x25, 0x27, 0x35, 0x1D, 0x1B, 0x1B, 0x1A, 0x18, 0x0A, 0x2A, 0x21, 0x19, 0x30]
+      - [0x13, 0x3F, 0x26, 0x27, 0x35, 0x1E, 0x1C, 0x1C, 0x1A, 0x18, 0x0B, 0x2A, 0x21, 0x19, 0x30]
+      - [0x30, 0x0A]
+      - [0x02, 0x4F]
+      - [0x0B, 0x40]
+      - [0x30, 0x0D]
+      - [0x0D, 0x04]
+      - [0x10, 0x05]
+      - [0x11, 0x0C]
+      - [0x12, 0x05]
+      - [0x13, 0x0C]
+      - [0x30, 0x00]
+      # Deliberate SLPOUT, kept for vendor-timing fidelity rather than because
+      # it is required: Guition's driver waits 120 ms between sleep-out and
+      # display-on, while ESPHome appends its own SLPOUT and then DISPON only
+      # ~10 ms later. Issuing it here plus the delay gives DISPON that margin.
+      # Isolation testing showed the leading delay above is what actually
+      # rescues the warm boot; this pair alone does not, and dropping it alone
+      # still booted cleanly on the test unit. Retained because the full
+      # firmware's boot timing differs from that minimal test.
+      - [0x11]
+      - delay 120ms
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  displays: my_display
+  rotation: 180
+  byte_order: little_endian
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 270
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 0
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 90
+                      else:
+                        - lvgl.display.set_rotation: 180
+      - script.execute: cover_art_apply_responsive_layout
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "180"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: refresh_button_grid

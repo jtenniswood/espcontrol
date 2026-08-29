@@ -1,0 +1,65 @@
+{
+  "label": "Lights",
+  "allowInSubpage": true,
+  "pickerKey": "light_brightness",
+  "domains": [
+    "light"
+  ],
+  "behavior": {
+    "lightTemperature": {
+      "defaultRange": "2000-6500",
+      "min": 1000,
+      "max": 10000,
+      "minMax": 9900,
+      "step": 100,
+      "legacySensorValues": [
+        "kelvin"
+      ]
+    }
+  },
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "keep"
+      },
+      "icon": {
+        "policy": "keep"
+      },
+      "icon_on": {
+        "policy": "keep"
+      },
+      "sensor": {
+        "policy": "keep"
+      },
+      "unit": {
+        "policy": "keep"
+      },
+      "type": {
+        "policy": "default",
+        "value": "light_temperature"
+      },
+      "precision": {
+        "policy": "keep"
+      },
+      "options": {
+        "policy": "clear"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Lightbulb",
+    "icon_on": "Auto",
+    "sensor": "",
+    "unit": "2000-6500",
+    "type": "light_temperature",
+    "precision": "",
+    "options": ""
+  }
+}

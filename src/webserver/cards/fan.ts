@@ -1,5 +1,24 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerFanCardTypes(): GlobalDescriptors {
+import { iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerFanCardTypes(
+    registry: CardRegistry,
+    modalTabs: ConfigModalTabOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgeLabelHtml } = fields;
+    const {
+        fanControlTabDefinitions,
+        fanControlTabs,
+        fanLightEntity,
+        normalizeFanControlOptions,
+        setFanControlTabs,
+        setFanLightEntity,
+        renderModalTabSettings,
+    } = modalTabs;
     // Fan cards: grouped controls for Home Assistant fan entities.
     var FAN_CONTROL_TYPE_OPTIONS: any = [
         ["fan_control", "All Controls"],
@@ -76,7 +95,7 @@ export function registerFanCardTypes(): GlobalDescriptors {
         if (b.type === nextType)
             return;
         b.type = nextType;
-        var td: any = BUTTON_TYPES[nextType];
+        var td: any = registry.definitions[nextType];
         if (td && td.onSelect)
             td.onSelect(b);
         helpers.saveField("type", nextType);
@@ -106,7 +125,44 @@ export function registerFanCardTypes(): GlobalDescriptors {
             setTabs: setFanControlTabs,
             idPrefix: "fan-tab-",
             hideHeading: true,
+            tabAvailable: function (this: any, button?: any, tab?: any) {
+                return tab !== "light" || !!fanLightEntity(button);
+            },
         });
+        var lightDisclosure: any = helpers.disclosureSection(
+            "Optional Light", helpers.idPrefix + "fan-optional-light",
+            b._fanOptionalLightOpen === true);
+        var lightEntityField: any = helpers.renderCardEntityField(lightDisclosure.section, b, helpers, {
+            entity: {
+                label: "Light Entity",
+                idSuffix: "fan-light-entity",
+                value: function (this: any) { return fanLightEntity(b); },
+                placeholder: "e.g. light.bedroom_fan",
+                domains: ["light"],
+                bindName: null,
+                rerender: false,
+            },
+        });
+        function syncLightEntity(this: any) {
+            setFanLightEntity(b, lightEntityField.input.value);
+            b._modalSettingsOpen = true;
+            b._fanOptionalLightOpen = true;
+            helpers.saveField("options", b.options);
+        }
+        function saveLightEntity(this: any) {
+            syncLightEntity();
+            renderButtonSettings();
+        }
+        lightEntityField.input.addEventListener("input", syncLightEntity);
+        lightEntityField.input.addEventListener("change", saveLightEntity);
+        lightEntityField.input.addEventListener("blur", saveLightEntity);
+        lightEntityField.input.addEventListener("keydown", function (this: any, event?: any) {
+            if (event.key === "Enter") {
+                saveLightEntity();
+                this.blur();
+            }
+        });
+        modalSettingsDisclosure.section.appendChild(lightDisclosure.panel);
         panel.appendChild(modalSettingsDisclosure.panel);
     }
     function fanTypeFactory(this: any, opts?: any) {
@@ -191,21 +247,10 @@ export function registerFanCardTypes(): GlobalDescriptors {
             },
         };
     }
-    registerButtonType("fan_control", fanTypeFactory({ type: "fan_control", pickerKey: "fan_speed", hidden: true }));
-    registerButtonType("fan_speed", fanTypeFactory({ type: "fan_speed" }));
-    registerButtonType("fan_switch", fanTypeFactory({ type: "fan_switch", pickerKey: "fan_speed", hidden: true }));
-    registerButtonType("fan_oscillate", fanTypeFactory({ type: "fan_oscillate", pickerKey: "fan_speed", hidden: true }));
-    registerButtonType("fan_direction", fanTypeFactory({ type: "fan_direction", pickerKey: "fan_speed", hidden: true }));
-    registerButtonType("fan_preset", fanTypeFactory({ type: "fan_preset", pickerKey: "fan_speed", hidden: true }));
-    return {
-        "FAN_CONTROL_TYPE_OPTIONS": liveGlobal(() => FAN_CONTROL_TYPE_OPTIONS, (value?: any) => { FAN_CONTROL_TYPE_OPTIONS = value; }),
-        "normalizeFanControlType": staticGlobal(normalizeFanControlType),
-        "fanControlDefaultIcon": staticGlobal(fanControlDefaultIcon),
-        "fanControlBadgeIcon": staticGlobal(fanControlBadgeIcon),
-        "FAN_CARD_METADATA": liveGlobal(() => FAN_CARD_METADATA, (value?: any) => { FAN_CARD_METADATA = value; }),
-        "setFanControlType": staticGlobal(setFanControlType),
-        "renderFanControlTypeField": staticGlobal(renderFanControlTypeField),
-        "renderFanControlTabSettings": staticGlobal(renderFanControlTabSettings),
-        "fanTypeFactory": staticGlobal(fanTypeFactory),
-    };
+    registry.register("fan_control", fanTypeFactory({ type: "fan_control", pickerKey: "fan_speed", hidden: true }));
+    registry.register("fan_speed", fanTypeFactory({ type: "fan_speed" }));
+    registry.register("fan_switch", fanTypeFactory({ type: "fan_switch", pickerKey: "fan_speed", hidden: true }));
+    registry.register("fan_oscillate", fanTypeFactory({ type: "fan_oscillate", pickerKey: "fan_speed", hidden: true }));
+    registry.register("fan_direction", fanTypeFactory({ type: "fan_direction", pickerKey: "fan_speed", hidden: true }));
+    registry.register("fan_preset", fanTypeFactory({ type: "fan_preset", pickerKey: "fan_speed", hidden: true }));
 }

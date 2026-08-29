@@ -46,6 +46,7 @@ enum class CardAssetRestoreResult {
 // own store.
 class CardAssetService {
  public:
+  using ReferencePersistenceCallback = bool (*)(void *context);
   ~CardAssetService() = default;
 
   bool start();
@@ -54,6 +55,8 @@ class CardAssetService {
   bool running() const { return running_; }
 
   void set_reference_adapter(CardAssetReferenceAdapter *adapter);
+  void set_reference_persistence_callback(ReferencePersistenceCallback callback,
+                                          void *context = nullptr);
   bool supports_reference_transactions() const {
     return reference_adapter_ != nullptr && reference_adapter_->ready();
   }
@@ -163,6 +166,8 @@ class CardAssetService {
   esphome::card_image_store::CardImageStore store_{};
   std::unique_ptr<RuntimeHolderBase> card_background_runtime_{};
   CardAssetReferenceAdapter *reference_adapter_{nullptr};
+  ReferencePersistenceCallback reference_persistence_callback_{nullptr};
+  void *reference_persistence_context_{nullptr};
   std::string pending_delete_id_{};
   std::string restore_session_{};
   std::vector<std::string> staged_restore_ids_{};

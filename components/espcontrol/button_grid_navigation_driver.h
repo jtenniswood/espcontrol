@@ -147,13 +147,13 @@ inline bool navigation_driver_bind_main(
       *state.icon_off, *state.icon_on);
   } else if (kind == "lawn_mower") {
     subscribe_toggle_state(
-      slot.btn, slot.icon_lbl, slot.sensor_container,
+      slot.btn, slot.icon_lbl, slot.sensor_container, slot.text_lbl,
       state.has_sensor, state.sensor_text_mode, state.has_icon_on,
       state.icon_off, state.icon_on, nullptr, config.entity, false,
       lawn_mower_state_active_ref);
   } else {
     subscribe_toggle_state(
-      slot.btn, slot.icon_lbl, slot.sensor_container,
+      slot.btn, slot.icon_lbl, slot.sensor_container, slot.text_lbl,
       state.has_sensor, state.sensor_text_mode, state.has_icon_on,
       state.icon_off, state.icon_on, nullptr, config.entity, false);
   }

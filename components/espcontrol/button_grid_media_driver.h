@@ -227,11 +227,34 @@ inline void media_driver_bind_cover_art_route(
     const bool secondary_configured =
       !now_playing->secondary_entity.empty() &&
       now_playing->secondary_entity != now_playing->primary_entity;
+    const bool secondary_playback_active =
+      secondary_state && secondary_state->has_state &&
+      secondary_state->available &&
+      espcontrol::cover_art::media_entity_state_usable(
+        secondary_state->state_text);
+    const bool secondary_has_content =
+      media_playback_has_current_content(secondary_state);
     const bool use_secondary = espcontrol::cover_art::use_secondary_media_entity(
       primary_state && primary_state->external_source,
       secondary_configured,
-      secondary_state && secondary_state->available,
-      media_playback_has_current_content(secondary_state));
+      secondary_playback_active,
+      secondary_has_content);
+    if (primary_state && primary_state->external_source) {
+      ESP_LOGD(
+        "media_card",
+        "Secondary route entity=%s configured=%d state=%s active=%d content=%d title=%d artist=%d artwork=%u selected=%d",
+        now_playing->secondary_entity.empty()
+          ? "<none>" : now_playing->secondary_entity.c_str(),
+        secondary_configured,
+        secondary_state && secondary_state->has_state
+          ? secondary_state->state_text.c_str() : "<unknown>",
+        secondary_playback_active,
+        secondary_has_content,
+        secondary_state && !secondary_state->title.empty(),
+        secondary_state && !secondary_state->artist.empty(),
+        secondary_state ? static_cast<unsigned>(secondary_state->artwork_content_mask) : 0u,
+        use_secondary);
+    }
     const bool external_source_fallback =
       primary_state && primary_state->external_source && !use_secondary;
     const std::string next_entity = use_secondary
@@ -267,7 +290,7 @@ inline void media_driver_bind_cover_art_route(
         art->entity_id.clear();
       } else {
         art->entity_id = next_entity;
-        image_card_request_media_artwork(art);
+        image_card_schedule_media_artwork_refresh(art);
       }
     }
 
@@ -355,10 +378,8 @@ inline bool media_driver_bind_data(
       subscribe_media_cover_art(now_playing, config.entity);
     }
     MediaControlCtx *control = nullptr;
-    if (mode == "cover_art" &&
-        media_cover_art_press_action(config) == "control_modal") {
-      control = media_driver_create_control(
-        slot, config, context, environment);
+    if (mode == "cover_art") {
+      control = media_driver_create_control(slot, config, context, environment);
       if (control) control->highlight_playing = false;
     }
     if (mode == "cover_art") {
@@ -410,18 +431,10 @@ inline bool media_driver_handle_click(
   } else if (mode == "now_playing" && config.precision == "play_pause") {
     send_media_playback_action(config.entity, "play_pause");
   } else if (mode == "cover_art") {
-    if (media_cover_art_press_action(config) == "control_modal") {
-      MediaControlCtx *control = button
-        ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
-      if (!control) control = grid_media_control_runtime_for_owner(button);
-      if (control) media_control_open_modal(control);
-    } else {
-      ImageCardCtx *art = button
-        ? static_cast<ImageCardCtx *>(lv_obj_get_user_data(button)) : nullptr;
-      send_media_playback_action(
-        art && !art->entity_id.empty() ? art->entity_id : config.entity,
-        "play_pause");
-    }
+    MediaControlCtx *control = button
+      ? static_cast<MediaControlCtx *>(lv_obj_get_user_data(button)) : nullptr;
+    if (!control) control = grid_media_control_runtime_for_owner(button);
+    if (control) media_control_open_modal(control);
   } else if (media_playback_button_mode(mode)) {
     send_media_playback_action(config.entity, mode);
   }

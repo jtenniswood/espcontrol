@@ -1,0 +1,24 @@
+{
+  "profiles": {
+    "platform": "esp32-p4",
+    "display": "jc8012p4a1-1280x800",
+    "assets": "card-backgrounds-20",
+    "modal": "large-landscape",
+    "fonts": "large-panel-p4",
+    "network": "c6-firmware-update",
+    "artwork": "landscape-1280x800"
+  },
+  "config": {
+    "public": {
+      "name": "Guition JC8012P4A1",
+      "docsPath": "/screens/jc8012p4a1"
+    },
+    "firmware": {
+      "package": {
+        "extraPackages": {
+          "battery": "!include device/battery.yaml"
+        }
+      }
+    }
+  }
+}

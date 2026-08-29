@@ -14,3 +14,7 @@ web_server:
     type: digest
     username: ${espcontrol_web_username}
     password: ${espcontrol_web_password}
+
+espcontrol:
+  web_auth_username: ${espcontrol_web_username}
+  web_auth_password: ${espcontrol_web_password}

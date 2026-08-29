@@ -1,9 +1,56 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppStatusPreviewModule(): GlobalDescriptors {
+import { normalizeBrightnessMode } from "../model/settings";
+import type { UiRuntimeState } from "./state";
+import type { CoreFeature } from "./core";
+import type { ApplicationLayoutState } from "./application_context";
+import type { EnvironmentStateFeature } from "./environment_state";
+import type { ClockBarFeature } from "./clock_bar_state";
+
+export interface AppStatusPreviewFeature {
+    getTzId(timezone?: any): any;
+    formatGmtOffset(minutes?: any): any;
+    timezoneOffsetMinutes(timezoneId?: any, date?: any): any;
+    formatTimezoneOption(option?: any): any;
+    appendTimezoneOption(select?: any, option?: any): void;
+    updateClockText(): void;
+    updateClock(): void;
+    clockBarTemperatureActive(): any;
+    clockBarTemperatureItemId(index?: any): any;
+    clockBarTemperatureItemIndex(item?: any): any;
+    isClockBarTemperatureItem(item?: any): any;
+    clockBarTemperatureItemIds(): any;
+    clockBarItems(): any;
+    clockBarDefaultSection(item?: any): any;
+    clockBarItemActive(item?: any): any;
+    clockBarItemElement(item?: any): any;
+    clockBarItemLabel(item?: any): any;
+    createClockBarItemElement(item?: any, section?: any): any;
+    renderClockBarLayout(): void;
+    syncClockBarItemElement(item?: any): void;
+    updateClockBarItemUi(): void;
+    syncInput(element?: any, value?: any): void;
+    updateSunInfo(): void;
+    updateTempPreview(): void;
+    normalizeNetworkTransport(value?: any): any;
+    normalizeWifiStrengthPercent(value?: any): any;
+    networkPreviewIconSlug(transport?: any, strengthPercent?: any): any;
+    updateNetworkPreview(): void;
+    updateVoicePreview(): void;
+}
+
+export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: CoreFeature, layout: ApplicationLayoutState, environment: EnvironmentStateFeature, clockBar: ClockBarFeature): AppStatusPreviewFeature {
+    const { now: webserverNow } = core;
+    const { isHomeAssistantAutoTimezone, effectiveTimezoneOptionForWeb, voiceServicesUiState } = environment;
+    const els = runtime.els;
+    const {
+        clockBarTemperatureUnitSymbol,
+        temperatureVisible: clockBarTemperatureVisible,
+        visibleInPreview: clockBarVisibleInPreview,
+        primaryTemperatureEntity: primaryClockBarTemperatureEntity,
+    } = clockBar;
     // ── Clock (minute-aligned) ─────────────────────────────────────────────
     function getTzId(this: any, tz?: any) {
-        if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(tz))
+        if (isHomeAssistantAutoTimezone(tz))
             return "UTC";
         var idx: any = tz.indexOf(" (");
         return idx > 0 ? tz.substring(0, idx) : tz;
@@ -40,7 +87,7 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
         }
     }
     function formatTimezoneOption(this: any, opt?: any) {
-        if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(opt))
+        if (isHomeAssistantAutoTimezone(opt))
             return opt;
         var tzId: any = getTzId(opt);
         var offset: any = timezoneOffsetMinutes(tzId, webserverNow());
@@ -105,7 +152,7 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
     }
     function clockBarItems(this: any) {
         var items: any = ["temperature", "time"];
-        if (voiceServicesSupported())
+        if (voiceServicesUiState().clockBarItemVisible)
             items.push("voice");
         items.push("network");
         return items;
@@ -128,7 +175,7 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
         if (item === "time")
             return !!state.clockBarTimeOn;
         if (item === "voice")
-            return voiceServicesSupported() && !!state.voiceServicesOn;
+            return voiceServicesUiState().iconVisible;
         if (item === "network")
             return !!state.networkStatusOn;
         return false;
@@ -191,7 +238,7 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
         var layout: any = {
             left: ["temperature"],
             middle: ["time"],
-            right: voiceServicesSupported() ? ["voice", "network"] : ["network"],
+            right: voiceServicesUiState().clockBarItemVisible ? ["voice", "network"] : ["network"],
         };
         els.clockBarItems = {};
         els.temps = {};
@@ -239,34 +286,6 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
     function syncInput(this: any, el?: any, val?: any) {
         if (el && document.activeElement !== el)
             el.value = val;
-    }
-    function gridHasAny(this: any) {
-        for (var i: any = 0; i < NUM_SLOTS; i++) {
-            if ((state.grid[i] ?? 0) > 0)
-                return true;
-        }
-        return false;
-    }
-    function scheduleMigration(this: any) {
-        if (orderReceived || gridHasAny())
-            return;
-        clearTimeout(migrationTimer);
-        migrationTimer = setTimeout(function (this: any) {
-            if (orderReceived || gridHasAny())
-                return;
-            var pos: any = 0;
-            for (var i: any = 0; i < NUM_SLOTS; i++) {
-                if (state.buttons[i]?.entity && pos < NUM_SLOTS) {
-                    state.grid[pos] = i + 1;
-                    pos++;
-                }
-            }
-            if (pos > 0) {
-                renderPreview();
-                renderButtonSettings();
-                postText(entityName("button_order"), serializeGrid(state.grid));
-            }
-        }, 2000);
     }
     function updateSunInfo(this: any) {
         var el: any = els.sunInfo;
@@ -342,39 +361,37 @@ export function installAppStatusPreviewModule(): GlobalDescriptors {
             return;
         var show: any = clockBarVisibleInPreview();
         els.voicePreview.className = "sp-voice-preview mdi mdi-microphone" +
-            (show && voiceServicesSupported() && state.voiceServicesOn ? " sp-visible" : "");
+            (show && voiceServicesUiState().iconVisible ? " sp-visible" : "");
     }
     return {
-        "getTzId": staticGlobal(getTzId),
-        "formatGmtOffset": staticGlobal(formatGmtOffset),
-        "timezoneOffsetMinutes": staticGlobal(timezoneOffsetMinutes),
-        "formatTimezoneOption": staticGlobal(formatTimezoneOption),
-        "appendTimezoneOption": staticGlobal(appendTimezoneOption),
-        "updateClockText": staticGlobal(updateClockText),
-        "updateClock": staticGlobal(updateClock),
-        "clockBarTemperatureActive": staticGlobal(clockBarTemperatureActive),
-        "clockBarTemperatureItemId": staticGlobal(clockBarTemperatureItemId),
-        "clockBarTemperatureItemIndex": staticGlobal(clockBarTemperatureItemIndex),
-        "isClockBarTemperatureItem": staticGlobal(isClockBarTemperatureItem),
-        "clockBarTemperatureItemIds": staticGlobal(clockBarTemperatureItemIds),
-        "clockBarItems": staticGlobal(clockBarItems),
-        "clockBarDefaultSection": staticGlobal(clockBarDefaultSection),
-        "clockBarItemActive": staticGlobal(clockBarItemActive),
-        "clockBarItemElement": staticGlobal(clockBarItemElement),
-        "clockBarItemLabel": staticGlobal(clockBarItemLabel),
-        "createClockBarItemElement": staticGlobal(createClockBarItemElement),
-        "renderClockBarLayout": staticGlobal(renderClockBarLayout),
-        "syncClockBarItemElement": staticGlobal(syncClockBarItemElement),
-        "updateClockBarItemUi": staticGlobal(updateClockBarItemUi),
-        "syncInput": staticGlobal(syncInput),
-        "gridHasAny": staticGlobal(gridHasAny),
-        "scheduleMigration": staticGlobal(scheduleMigration),
-        "updateSunInfo": staticGlobal(updateSunInfo),
-        "updateTempPreview": staticGlobal(updateTempPreview),
-        "normalizeNetworkTransport": staticGlobal(normalizeNetworkTransport),
-        "normalizeWifiStrengthPercent": staticGlobal(normalizeWifiStrengthPercent),
-        "networkPreviewIconSlug": staticGlobal(networkPreviewIconSlug),
-        "updateNetworkPreview": staticGlobal(updateNetworkPreview),
-        "updateVoicePreview": staticGlobal(updateVoicePreview),
+        getTzId,
+        formatGmtOffset,
+        timezoneOffsetMinutes,
+        formatTimezoneOption,
+        appendTimezoneOption,
+        updateClockText,
+        updateClock,
+        clockBarTemperatureActive,
+        clockBarTemperatureItemId,
+        clockBarTemperatureItemIndex,
+        isClockBarTemperatureItem,
+        clockBarTemperatureItemIds,
+        clockBarItems,
+        clockBarDefaultSection,
+        clockBarItemActive,
+        clockBarItemElement,
+        clockBarItemLabel,
+        createClockBarItemElement,
+        renderClockBarLayout,
+        syncClockBarItemElement,
+        updateClockBarItemUi,
+        syncInput,
+        updateSunInfo,
+        updateTempPreview,
+        normalizeNetworkTransport,
+        normalizeWifiStrengthPercent,
+        networkPreviewIconSlug,
+        updateNetworkPreview,
+        updateVoicePreview,
     };
 }

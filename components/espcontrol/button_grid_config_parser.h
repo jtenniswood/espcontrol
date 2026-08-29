@@ -44,7 +44,6 @@ constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *CARD_BACKGROUND_IMAGE_OPTION = "bg_image";
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
-constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
 constexpr const char *MEDIA_COVER_ART_DETAILS_OPTION = card_runtime_option_name_cover_art_details();
 constexpr const char *MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION = card_runtime_option_name_cover_art_secondary_entity();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
@@ -52,7 +51,8 @@ constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|tempe
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
 constexpr const char *CLIMATE_CONTROL_TABS_OPTION = "climate_tabs";
 constexpr const char *CLIMATE_CONTROL_DEFAULT_TABS_VALUE = "temperature|mode|preset|fan|swing";
-constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
+constexpr const char *FAN_CONTROL_TABS_OPTION = card_runtime_option_name_fan_tabs();
+constexpr const char *FAN_LIGHT_ENTITY_OPTION = card_runtime_option_name_fan_light_entity();
 constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
 constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
@@ -426,9 +426,6 @@ inline std::string media_card_options_normalized(const std::string &options,
   }
   if (mode == "cover_art") {
     std::string out;
-    if (cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal") {
-      out = std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal";
-    }
     if (cfg_option_token_present(options, MEDIA_COVER_ART_DETAILS_OPTION)) {
       if (!out.empty()) out += ",";
       out += MEDIA_COVER_ART_DETAILS_OPTION;
@@ -439,6 +436,19 @@ inline std::string media_card_options_normalized(const std::string &options,
       if (!out.empty()) out += ",";
       out += std::string(MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION) + "=" +
              encode_compact_field(secondary_entity);
+    }
+    std::string speaker_group_entity = trim_saved_option_value(
+      cfg_option_value(options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));
+    if (!speaker_group_entity.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_SPEAKER_GROUP_ENTITY_OPTION) + "=" +
+             encode_compact_field(speaker_group_entity);
+    }
+    int max_pct = normalize_media_volume_max_percent(
+      cfg_option_value(options, VOLUME_MAX_OPTION));
+    if (max_pct < card_runtime_media_volume_max_default()) {
+      if (!out.empty()) out += ",";
+      out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
     }
     return out;
   }
@@ -600,7 +610,7 @@ inline std::string normalize_climate_control_tabs_value(const std::string &value
 
 inline bool fan_control_tab_token_valid(const std::string &value) {
   return value == "power" || value == "speed" || value == "preset" ||
-         value == "oscillation" || value == "direction";
+         value == "oscillation" || value == "direction" || value == "light";
 }
 
 inline std::string normalize_fan_control_tabs_value(const std::string &value) {
@@ -623,10 +633,33 @@ inline std::string normalize_fan_control_tabs_value(const std::string &value) {
 }
 
 inline std::string fan_control_card_options_normalized(const std::string &options) {
-  std::string tabs = normalize_fan_control_tabs_value(
-    cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
-  if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
-  return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  std::string light_entity = cfg_option_value(options, FAN_LIGHT_ENTITY_OPTION);
+  std::string tabs_value = cfg_option_value(options, FAN_CONTROL_TABS_OPTION);
+  std::string tabs = normalize_fan_control_tabs_value(tabs_value);
+  if (light_entity.empty()) {
+    std::vector<std::string> filtered;
+    for (const auto &tab : split_config_fields(tabs, '|')) {
+      if (tab != "light") filtered.push_back(tab);
+    }
+    tabs.clear();
+    for (const auto &tab : filtered) {
+      if (!tabs.empty()) tabs += "|";
+      tabs += tab;
+    }
+    if (tabs.empty()) tabs = "power";
+  }
+  std::string default_tabs = FAN_CONTROL_DEFAULT_TABS_VALUE;
+  if (!light_entity.empty()) default_tabs += "|light";
+  if (tabs_value.empty()) tabs = default_tabs;
+  std::string out;
+  if (!light_entity.empty()) {
+    out = std::string(FAN_LIGHT_ENTITY_OPTION) + "=" + encode_compact_field(light_entity);
+  }
+  if (tabs != default_tabs) {
+    if (!out.empty()) out += ",";
+    out += std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  }
+  return out;
 }
 
 inline bool image_card_label_enabled(const ParsedCfg &p) {
@@ -644,13 +677,6 @@ inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
 
 inline bool media_cover_art_enabled(const ParsedCfg &p) {
   return espcontrol::media::decode_config_v1(p).mode == espcontrol::media::Mode::COVER_ART;
-}
-
-inline std::string media_cover_art_press_action(const ParsedCfg &p) {
-  return espcontrol::media::decode_config_v1(p).cover_art_action ==
-             espcontrol::media::CoverArtAction::CONTROL_MODAL
-    ? "control_modal"
-    : "play_pause";
 }
 
 inline bool media_cover_art_details_enabled(const ParsedCfg &p) {
@@ -1424,13 +1450,15 @@ inline bool cfg_option_enabled(const std::string &options, const char *name) {
 
 inline int media_volume_max_percent(const ParsedCfg &p) {
   return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal" ||
+                               p.sensor == "cover_art" ||
                                p.sensor == "speaker_group")
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
 }
 
 inline std::string media_speaker_group_entity(const ParsedCfg &p) {
-  if (p.type != "media" || (p.sensor != "control_modal" && p.sensor != "speaker_group")) {
+  if (p.type != "media" || (p.sensor != "control_modal" && p.sensor != "cover_art" &&
+                            p.sensor != "speaker_group")) {
     return "";
   }
   return trim_saved_option_value(cfg_option_value(p.options, MEDIA_SPEAKER_GROUP_ENTITY_OPTION));

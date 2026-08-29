@@ -17,7 +17,7 @@ export type MediaCardMode =
 
 export type MediaStateDisplay = "label" | "state";
 export type MediaNowPlayingControl = "none" | "progress" | "play_pause";
-export type MediaCoverArtAction = "play_pause" | "control_modal";
+export type MediaCoverArtAction = "control_modal";
 export type MediaControlLabelDisplay = "label" | "status";
 export type MediaControlNumberDisplay = "icon" | "volume";
 
@@ -92,10 +92,7 @@ export function decodeMediaCardConfigV1(config: Partial<CardConfig>): MediaCardC
       mode === "now_playing" && (precision === "progress" || precision === "play_pause")
         ? precision
         : "none",
-    coverArtAction:
-      configOptionValue(options, "cover_art_action") === "control_modal"
-        ? "control_modal"
-        : "play_pause",
+    coverArtAction: "control_modal",
     showTrackDetails: configOptionEnabled(options, "cover_art_details"),
     secondaryEntity: configOptionValue(options, "cover_art_secondary_entity").trim(),
     controlLabelDisplay:

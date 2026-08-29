@@ -17,6 +17,7 @@ from threading import Thread
 
 import firmware_release
 import prepare_c6_firmware
+import prepare_release_web_assets
 
 
 SLUG = "guition-esp32-s3-4848s040"
@@ -27,7 +28,13 @@ PROJECT_NAME = "jtenniswood.espcontrol"
 ESPHOME_ENV = Path(__file__).resolve().parents[1] / ".github" / "esphome.env"
 RELEASE_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "release.yml"
 PAGES_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "pages.yml"
+FIRMWARE_COMPILE_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "firmware-compile.yml"
+NIGHTLY_FIRMWARE_WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "nightly-firmware.yml"
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_CONTRACT = ROOT / "product" / "release_contract.json"
+WEB_MANIFEST = ROOT / "docs" / "public" / "webserver" / "web-assets.json"
+WEB_ROOT = WEB_MANIFEST.parent
+SOURCE_REVISION = "a" * 40
 RELEASE_SKILL = (
     Path(__file__).resolve().parents[1]
     / ".agents"
@@ -116,7 +123,7 @@ def validate_esphome_env(path: Path) -> None:
     assert len(lines) == 1, f"{path}: expected exactly one ESPHOME_VERSION line"
     assert ESPHOME_ENV_RE.fullmatch(lines[0]), (
         f"{path}: expected ESPHOME_VERSION to be a stable numeric ESPHome release, "
-        "for example ESPHOME_VERSION=2026.6.5"
+        "for example ESPHOME_VERSION=2026.8.1"
     )
 
 
@@ -125,16 +132,16 @@ def test_esphome_env_format() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         valid = base / "valid.env"
-        valid.write_text("ESPHOME_VERSION=2026.6.5\n", encoding="utf-8")
+        valid.write_text("ESPHOME_VERSION=2026.8.1\n", encoding="utf-8")
         validate_esphome_env(valid)
 
         for value in (
             "",
-            "export ESPHOME_VERSION=2026.6.5\n",
-            "ESPHOME_VERSION=\"2026.6.5\"\n",
-            "ESPHOME_VERSION=2026.6.5-beta.1\n",
-            "OTHER_VERSION=2026.6.5\n",
-            "ESPHOME_VERSION=2026.6.5\nEXTRA=value\n",
+            "export ESPHOME_VERSION=2026.8.1\n",
+            "ESPHOME_VERSION=\"2026.8.1\"\n",
+            "ESPHOME_VERSION=2026.8.1-beta.1\n",
+            "OTHER_VERSION=2026.8.1\n",
+            "ESPHOME_VERSION=2026.8.1\nEXTRA=value\n",
         ):
             invalid = base / "invalid.env"
             invalid.write_text(value, encoding="utf-8")
@@ -155,11 +162,37 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "types: [published]" not in workflow, "public releases must not start an incomplete firmware build"
     assert "required: true" in workflow, "release workflow must require an explicit draft tag"
     assert "scripts/firmware_release.py verify-draft" in workflow
+    assert "scripts/firmware_release.py generate-release-manifest" in workflow
+    assert "scripts/firmware_release.py verify-release-manifest" in workflow
     assert "scripts/firmware_release.py verify-bundle" in workflow
     assert "scripts/firmware_release.py publish-draft" in workflow
+    assert "--source-revision" in workflow
     assert "scripts/firmware_release.py verify-recovery" in workflow
+    assert "scripts/check_release_contract.py --github-repository" in workflow
+    assert "GH_TOKEN: ${{ github.token }}" in workflow
+    assert "CMake ${CMAKE_VERSION} is older than the required version 3.20" in workflow
+    assert '"cmake==3.31.10"' in workflow
+    assert "npx playwright install --with-deps chromium" in workflow
     assert str(prepare_c6_firmware.C6_RELATIVE_PATH) in workflow
     assert "path: dist/firmware/" in workflow, "publishable firmware must use the dist boundary"
+
+
+def test_device_matrix_sparse_checkouts_include_product_model() -> None:
+    required_paths = (
+        "product/model_v2.json",
+        "scripts/product_model_v2.py",
+        "product/v2/icons.json",
+        "product/v2/card_contract.json",
+        "product/v2/entity_names.json",
+        "product/v2/translations/strings.*.txt",
+        "product/v2/product_compatibility.json",
+    )
+    for workflow_path in (FIRMWARE_COMPILE_WORKFLOW, NIGHTLY_FIRMWARE_WORKFLOW):
+        workflow = workflow_path.read_text(encoding="utf-8")
+        for required_path in required_paths:
+            assert required_path in workflow, (
+                f"{workflow_path.name} sparse device-matrix checkout is missing {required_path}"
+            )
 
 
 def test_pages_excludes_draft_prereleases() -> None:
@@ -174,6 +207,35 @@ def test_release_skill_creates_selected_tag_before_draft() -> None:
     assert skill.index('TAG="vX.Y.Z"') < tag_creation
     assert skill.index('TAG="vX.Y.Z-beta.N"') < tag_creation
     assert skill.index('gh release create "$TAG"', tag_creation) > tag_creation
+
+
+def test_release_preparation_adds_the_tag_before_tagging() -> None:
+    skill = RELEASE_SKILL.read_text(encoding="utf-8")
+    assert skill.index("prepare_release_web_assets.py") < skill.index('git tag -a "$TAG"')
+    assert skill.index("python3 scripts/build.py\n") < skill.index("python3 scripts/build.py --check")
+    assert "gh pr create --base main" in skill
+    assert "git push origin main" not in skill
+    with TemporaryDirectory() as tmp:
+        build_script = Path(tmp) / "build.py"
+        build_script.write_text(
+            'WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (\n    "dev",\n    "v1.0.0",\n)\n',
+            encoding="utf-8",
+        )
+        releases = [
+            {"tagName": "v1.0.0", "isDraft": False, "isPrerelease": False},
+            {"tagName": "v0.9.0", "isDraft": False, "isPrerelease": False},
+            {"tagName": "v1.1.0-beta.1", "isDraft": False, "isPrerelease": True},
+        ]
+        assert prepare_release_web_assets.prepare(build_script, "v1.1.0", releases) is True
+        assert prepare_release_web_assets.prepare(build_script, "v1.1.0", releases) is False
+        assert (
+            '    "dev",\n    "v1.1.0",\n    "v1.0.0",\n    "v0.9.0",\n'
+            '    "v1.1.0-beta.1",'
+        ) in build_script.read_text(encoding="utf-8")
+
+        assert prepare_release_web_assets.prepare(build_script, "v1.2.0-beta.1", releases) is True
+        assert '    "v1.2.0-beta.1",' in build_script.read_text(encoding="utf-8")
+        assert '    "v1.1.0-beta.1",' not in build_script.read_text(encoding="utf-8")
 
 
 def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> tuple[Path, Path, Path]:
@@ -216,10 +278,59 @@ def make_recovery_files(
     return recovery_manifest, recovery, c6_firmware, normal_factory, normal_ota
 
 
+def web_manifest_for(base: Path, device_profiles: list[str]) -> Path:
+    data = json.loads(WEB_MANIFEST.read_text(encoding="utf-8"))
+    data["bundles"][0]["deviceProfiles"] = device_profiles
+    data["bundles"][0]["firmwareVersions"] = [VERSION]
+    path = base.parent / "web-assets.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def record_release_provenance(
+    base: Path, slugs: list[str], recovery_slugs: list[str] | None = None
+) -> None:
+    web_manifest = web_manifest_for(base, slugs)
+    firmware_release.generate_release_manifest(
+        base,
+        slugs,
+        VERSION,
+        SOURCE_REVISION,
+        RELEASE_CONTRACT,
+        web_manifest,
+        WEB_ROOT,
+        recovery_slugs,
+    )
+
+
+def publish_release(
+    base: Path,
+    slugs: list[str],
+    notes: Path,
+    github: FakeGitHub,
+    recovery_slugs: list[str] | None = None,
+) -> None:
+    web_manifest = web_manifest_for(base, slugs)
+    firmware_release.publish_draft_release(
+        base,
+        slugs,
+        VERSION,
+        "owner/repo",
+        notes,
+        recovery_slugs,
+        SOURCE_REVISION,
+        RELEASE_CONTRACT,
+        web_manifest,
+        WEB_ROOT,
+        gh_runner=github,
+    )
+
+
 def test_recovery_manifest_and_payload_verification() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         recovery_manifest, recovery, c6, normal_factory, normal_ota = make_recovery_files(base)
+        web_manifest = web_manifest_for(base, [RECOVERY_SLUG])
         run_ok([
             "verify-recovery",
             "--slug", RECOVERY_SLUG,
@@ -229,6 +340,17 @@ def test_recovery_manifest_and_payload_verification() -> None:
             "--c6-firmware", str(c6),
             "--normal-factory", str(normal_factory),
             "--normal-ota", str(normal_ota),
+        ])
+        run_ok([
+            "generate-release-manifest",
+            "--version", VERSION,
+            "--dir", str(base),
+            "--slugs", RECOVERY_SLUG,
+            "--recovery-slugs", RECOVERY_SLUG,
+            "--source-revision", SOURCE_REVISION,
+            "--release-contract", str(RELEASE_CONTRACT),
+            "--web-manifest", str(web_manifest),
+            "--web-root", str(WEB_ROOT),
         ])
         run_ok([
             "verify-bundle",
@@ -339,6 +461,7 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     assert "/getting-started/c6-recovery" in install
     screen_docs = {
         "guition-esp32-p4-jc1060p470": ROOT / "docs/screens/jc1060p470.md",
+        "guition-esp32-p4-jc1060p470-v2": ROOT / "docs/screens/jc1060p470-v2.md",
         "guition-esp32-p4-jc4880p443": ROOT / "docs/screens/jc4880p443.md",
         "guition-esp32-p4-jc8012p4a1": ROOT / "docs/screens/jc8012p4a1.md",
         "guition-esp32-p4-jc8012p4a1-v2": ROOT / "docs/screens/jc8012p4a1-v2.md",
@@ -353,6 +476,24 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     s3_doc = (ROOT / "docs/screens/4848s040.md").read_text(encoding="utf-8")
     assert "C6RecoveryCallout" not in s3_doc
     assert "guition-esp32-s3-4848s040" not in selector
+
+
+def test_installers_preflight_public_manifest() -> None:
+    install_button = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallButton.vue"
+    ).read_text(encoding="utf-8")
+    install_selector = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallSelector.vue"
+    ).read_text(encoding="utf-8")
+    for component in (install_button, install_selector):
+        assert "fetch(manifestUrl" in component
+        assert "cache: 'no-store'" in component
+        assert "manifestAvailable.value = response.ok" in component
+        assert "response.status !== 404" in component
+        assert "!manifestAvailable" in component
+        assert "has not been published yet" in component
+        assert '@click="prepareInstaller"' in component
+    assert "if (checked.value && supported.value) prepareInstaller()" in install_selector
 
 
 def test_valid_files_and_directory() -> None:
@@ -505,6 +646,37 @@ def test_release_inventory_rejects_extra_files() -> None:
             raise AssertionError("release inventory accepted an unexpected build file")
 
 
+def test_release_provenance_rejects_a_different_source_revision() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        make_release_files(base)
+        record_release_provenance(base, [SLUG])
+        web_manifest = web_manifest_for(base, [SLUG])
+        firmware_release.verify_release_manifest(
+            base,
+            [SLUG],
+            VERSION,
+            SOURCE_REVISION,
+            RELEASE_CONTRACT,
+            web_manifest,
+            WEB_ROOT,
+        )
+        try:
+            firmware_release.verify_release_manifest(
+                base,
+                [SLUG],
+                VERSION,
+                "b" * 40,
+                RELEASE_CONTRACT,
+                web_manifest,
+                WEB_ROOT,
+            )
+        except firmware_release.FirmwareReleaseError:
+            pass
+        else:
+            raise AssertionError("release manifest accepted a different source revision")
+
+
 def test_draft_release_publishes_only_after_remote_asset_verification() -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -514,9 +686,8 @@ def test_draft_release_publishes_only_after_remote_asset_verification() -> None:
         notes = root / "release-notes.md"
         notes.write_text("Verified release notes\n", encoding="utf-8")
         github = FakeGitHub(VERSION)
-        firmware_release.publish_draft_release(
-            base, [SLUG], VERSION, "owner/repo", notes, gh_runner=github
-        )
+        record_release_provenance(base, [SLUG])
+        publish_release(base, [SLUG], notes, github)
         assert github.draft is False
         assert [call[:2] for call in github.calls] == [
             ["release", "view"],
@@ -536,11 +707,11 @@ def test_published_or_mismatched_asset_release_stays_unpublished() -> None:
         notes = root / "release-notes.md"
         notes.write_text("Verified release notes\n", encoding="utf-8")
 
+        record_release_provenance(base, [SLUG])
+
         already_published = FakeGitHub(VERSION, draft=False)
         try:
-            firmware_release.publish_draft_release(
-                base, [SLUG], VERSION, "owner/repo", notes, gh_runner=already_published
-            )
+            publish_release(base, [SLUG], notes, already_published)
         except firmware_release.FirmwareReleaseError:
             pass
         else:
@@ -549,9 +720,7 @@ def test_published_or_mismatched_asset_release_stays_unpublished() -> None:
 
         wrong_size = FakeGitHub(VERSION, wrong_size=True)
         try:
-            firmware_release.publish_draft_release(
-                base, [SLUG], VERSION, "owner/repo", notes, gh_runner=wrong_size
-            )
+            publish_release(base, [SLUG], notes, wrong_size)
         except firmware_release.FirmwareReleaseError:
             pass
         else:
@@ -609,6 +778,7 @@ def test_public_pages_verification() -> None:
 def main() -> int:
     test_esphome_env_format()
     test_release_workflow_uses_current_ota_output()
+    test_device_matrix_sparse_checkouts_include_product_model()
     test_pages_excludes_draft_prereleases()
     test_release_skill_creates_selected_tag_before_draft()
     test_valid_files_and_directory()
@@ -623,6 +793,7 @@ def main() -> int:
     test_recovery_manifest_and_payload_verification()
     test_c6_dependency_preparation_is_verified_and_atomic()
     test_recovery_sources_and_documentation_stay_complete()
+    test_installers_preflight_public_manifest()
     test_draft_release_publishes_only_after_remote_asset_verification()
     test_published_or_mismatched_asset_release_stays_unpublished()
     test_wrong_slug_path_fails()

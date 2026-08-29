@@ -1,21 +1,52 @@
-import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-import { CARD_RUNTIME_SPECS } from "../generated/card_contract";
-export function installCore(): GlobalDescriptors {
-    var DEVICE_ID: any = deviceId;
-    var CFG: any = deviceConfig;
-    var NUM_SLOTS: any = CFG.slots;
-    var TOTAL_SLOTS: any = NUM_SLOTS;
-    var GRID_COLS: any = CFG.cols;
-    var GRID_ROWS: any = CFG.rows;
+import * as EspControlModel from "../model";
+import type { ApplicationLayoutState } from "./application_context";
+import type { AppState } from "../state/types";
+import type { UiRuntimeState } from "./state";
+
+export interface CoreFeatureDependencies {
+    readonly state: AppState;
+    readonly document: Document;
+    readonly clockBarVisibleInPreview: () => boolean;
+    readonly postButtonOrder: (value: string) => void;
+    readonly saveSubpage: (homeSlot: string) => void;
+}
+
+export interface CoreFeature {
+    isPortraitRotation(value?: any): boolean;
+    activeLayout(): any;
+    screenWidthPercent(screen?: any): number | null;
+    previewLayoutScale(layout?: any): number;
+    layoutSection(layout?: any, key?: any): any;
+    scaledCqw(value?: any, scale?: any): string;
+    scaledCqwText(value?: any, scale?: any): string;
+    syncPreviewGridTop(layout?: any, scale?: any): void;
+    clockBarVisibleInPreview(): boolean;
+    syncPreviewStyleVars(layout?: any, scale?: any): void;
+    normalizeGridSpansForLayout(grid?: any, sizes?: any, maxSlots?: any, gridCols?: any, onChanged?: any): any;
+    syncPreviewOrientation(preservePendingGrid?: any): void;
+    subpageStateDisplayMode(button?: any): string;
+    mockNowIso: any;
+    useMockNowForTest: any;
+    mockNow(): Date;
+    now(): Date;
+    withMockNow<T>(callback: () => T): T;
+}
+
+export function createCoreFeature(
+    applicationLayout: ApplicationLayoutState,
+    serializeSubpageGrid: (subpage: any) => any,
+    runtime: UiRuntimeState,
+    dependencies: CoreFeatureDependencies,
+): CoreFeature {
+    const { state, document, clockBarVisibleInPreview, postButtonOrder, saveSubpage } = dependencies;
     function isPortraitRotation(this: any, value?: any) {
         value = String(value == null ? "0" : value);
         return value === "90" || value === "270";
     }
     function activeLayout(this: any) {
-        if (isPortraitRotation(state.screenRotation) && CFG.portrait)
-            return CFG.portrait;
-        return CFG;
+        if (isPortraitRotation(state.screenRotation) && applicationLayout.config.portrait)
+            return applicationLayout.config.portrait;
+        return applicationLayout.config;
     }
     function screenWidthPercent(this: any, screen?: any) {
         var width: any = screen && screen.width;
@@ -28,14 +59,14 @@ export function installCore(): GlobalDescriptors {
         return isFinite(pct) && pct > 0 ? pct : null;
     }
     function previewLayoutScale(this: any, layout?: any) {
-        var baseWidth: any = screenWidthPercent(CFG.screen);
-        var activeWidth: any = screenWidthPercent((layout && layout.screen) || CFG.screen);
+        var baseWidth: any = screenWidthPercent(applicationLayout.config.screen);
+        var activeWidth: any = screenWidthPercent((layout && layout.screen) || applicationLayout.config.screen);
         if (!baseWidth || !activeWidth)
             return 1;
         return baseWidth / activeWidth;
     }
     function layoutSection(this: any, layout?: any, key?: any) {
-        return (layout && layout[key]) || CFG[key] || {};
+        return (layout && layout[key]) || (applicationLayout.config as any)[key] || {};
     }
     function scaledCqw(this: any, value?: any, scale?: any) {
         value = parseFloat(value);
@@ -83,11 +114,16 @@ export function installCore(): GlobalDescriptors {
             r.removeProperty("--btn-border");
         r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
         r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+        r.setProperty("--media-title", scaledCqw(btn.mediaTitleSize || btn.labelSize * 1.75, scale));
         r.setProperty("--media-cover-title", scaledCqw(btn.coverArtTitleSize, scale));
         r.setProperty("--media-cover-artist", scaledCqw(btn.coverArtArtistSize, scale));
         r.setProperty("--btn-label-weight", String(btn.labelWeight || 400));
-        r.setProperty("--btn-lines", String(btn.labelLines || 1));
-        r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
+        var labelLines: any = btn.labelLines || 1;
+        var labelLinesDouble: any = btn.labelLinesDouble || labelLines;
+        r.setProperty("--btn-lines", String(labelLines));
+        r.setProperty("--btn-lines-dbl", String(labelLinesDouble));
+        r.setProperty("--btn-label-max-height", scaledCqw(btn.labelSize * 1.2 * labelLines, scale));
+        r.setProperty("--btn-label-max-height-dbl", scaledCqw(btn.labelSize * 1.2 * labelLinesDouble, scale));
         r.setProperty("--sensor-top", scaledCqw(sensorBadge.top, scale));
         r.setProperty("--sensor-right", scaledCqw(sensorBadge.right, scale));
         r.setProperty("--sensor-fs", scaledCqw(sensorBadge.fontSize, scale));
@@ -105,76 +141,42 @@ export function installCore(): GlobalDescriptors {
             onChanged(normalizedOrder);
         return normalizedOrder;
     }
-    function syncPreviewOrientation(this: any) {
+    function syncPreviewOrientation(this: any, preservePendingGrid?: any) {
         var layout: any = activeLayout();
-        var screen: any = layout.screen || CFG.screen;
+        var screen: any = layout.screen || applicationLayout.config.screen;
         var scale: any = previewLayoutScale(layout);
-        GRID_COLS = layout.cols || CFG.cols;
-        GRID_ROWS = layout.rows || Math.ceil(NUM_SLOTS / GRID_COLS);
+        applicationLayout.gridCols = layout.cols || applicationLayout.config.cols;
+        applicationLayout.gridRows = layout.rows || Math.ceil(applicationLayout.numSlots / applicationLayout.gridCols);
         var r: any = document.documentElement.style;
-        r.setProperty("--screen-w", screen.width || CFG.screen.width);
-        r.setProperty("--screen-aspect", screen.aspect || CFG.screen.aspect);
-        r.setProperty("--grid-cols", "repeat(" + GRID_COLS + "," + CFG.grid.fr + ")");
-        r.setProperty("--grid-rows", "repeat(" + GRID_ROWS + "," + CFG.grid.fr + ")");
+        r.setProperty("--screen-w", screen.width || applicationLayout.config.screen.width);
+        r.setProperty("--screen-aspect", screen.aspect || applicationLayout.config.screen.aspect);
+        r.setProperty("--grid-cols", "repeat(" + applicationLayout.gridCols + "," + applicationLayout.config.grid!.fr + ")");
+        r.setProperty("--grid-rows", "repeat(" + applicationLayout.gridRows + "," + applicationLayout.config.grid!.fr + ")");
         syncPreviewStyleVars(layout, scale);
-        var largeSensorUnitOffsetPercent: any = typeof CFG.largeSensorUnitOffsetPercent === "number"
-            ? CFG.largeSensorUnitOffsetPercent : -10;
+        var largeSensorUnitOffsetPercent: any = typeof applicationLayout.config.largeSensorUnitOffsetPercent === "number"
+            ? applicationLayout.config.largeSensorUnitOffsetPercent : -10;
         r.setProperty("--large-sensor-unit-offset-y", "calc(var(--btn-icon) * 2.5 * " + (largeSensorUnitOffsetPercent / 100) + ")");
-        if (state.grid && state.grid.length) {
-            normalizeGridSpansForLayout(state.grid, state.sizes, NUM_SLOTS, GRID_COLS, function (this: any, normalizedOrder?: any) {
-                if (orderReceived)
-                    postText(entityName("button_order"), normalizedOrder);
+        if (!preservePendingGrid && state.grid && state.grid.length) {
+            normalizeGridSpansForLayout(state.grid, state.sizes, applicationLayout.numSlots, applicationLayout.gridCols, function (this: any, normalizedOrder?: any) {
+                if (runtime.orderReceived)
+                    postButtonOrder(normalizedOrder);
             });
         }
-        if (orderReceived) {
+        if (!preservePendingGrid && runtime.orderReceived) {
             for (var homeSlot in state.subpages) {
                 var sp: any = state.subpages[homeSlot];
                 if (!sp || !sp.grid || !sp.grid.length)
                     continue;
                 var previousSubpageOrder: any = JSON.stringify(serializeSubpageGrid(sp));
-                normalizeGridSpansForLayout(sp.grid, sp.sizes, NUM_SLOTS, GRID_COLS);
+                normalizeGridSpansForLayout(sp.grid, sp.sizes, applicationLayout.numSlots, applicationLayout.gridCols);
                 sp.order = serializeSubpageGrid(sp);
                 if (JSON.stringify(sp.order) !== previousSubpageOrder) {
-                    saveSubpageEntity(homeSlot);
+                    saveSubpage(homeSlot);
                 }
             }
         }
     }
-    var ICON_EXCEPTIONS: any = GENERATED_ICON_EXCEPTIONS;
-    var ICON_NAMES: any = GENERATED_ICON_NAMES.slice();
-    // Convert an icon display name to its MDI CSS class slug (e.g. "Lightbulb" → "lightbulb")
-    function iconSlug(this: any, name?: any) {
-        return ICON_EXCEPTIONS[name] || name.toLowerCase().replace(/[^a-z0-9]/g, function (this: any, ch?: any) {
-            return ch === " " ? "-" : "";
-        }) || "cog";
-    }
-    var ICON_OPTIONS: any = ["Auto"].concat(ICON_NAMES).sort();
-    var DOMAIN_ICONS: any = GENERATED_DOMAIN_ICONS;
     // ── Button type plugin registry ──────────────────────────────────────
-    var BUTTON_TYPES: any = {};
-    function registerButtonType(this: any, key?: any, def?: any) {
-        // New button types should define cardMetadata for shared settings and preview plumbing.
-        BUTTON_TYPES[key] = Object.assign({
-            key: key,
-            label: key || "Toggle",
-            allowInSubpage: false,
-            hideLabel: false,
-            labelPlaceholder: null,
-            pickerKey: null,
-            isAvailable: null,
-            onSelect: null,
-            renderSettingsBeforeLabel: null,
-            renderSettings: null,
-            renderPreview: null,
-            contextMenuItems: null,
-            cardMetadata: null,
-            runtimeSpec: null,
-            defaultConfig: null,
-            normalizeConfig: null,
-        }, def, {
-            runtimeSpec: CARD_RUNTIME_SPECS[key] || null,
-        });
-    }
     function subpageStateDisplayMode(this: any, b?: any) {
         if (!b || !b.sensor)
             return "off";
@@ -201,35 +203,25 @@ export function installCore(): GlobalDescriptors {
         }
     }
     return {
-        "DEVICE_ID": liveGlobal(() => DEVICE_ID, (value?: any) => { DEVICE_ID = value; }),
-        "CFG": liveGlobal(() => CFG, (value?: any) => { CFG = value; }),
-        "NUM_SLOTS": liveGlobal(() => NUM_SLOTS, (value?: any) => { NUM_SLOTS = value; }),
-        "TOTAL_SLOTS": liveGlobal(() => TOTAL_SLOTS, (value?: any) => { TOTAL_SLOTS = value; }),
-        "GRID_COLS": liveGlobal(() => GRID_COLS, (value?: any) => { GRID_COLS = value; }),
-        "GRID_ROWS": liveGlobal(() => GRID_ROWS, (value?: any) => { GRID_ROWS = value; }),
-        "isPortraitRotation": staticGlobal(isPortraitRotation),
-        "activeLayout": staticGlobal(activeLayout),
-        "screenWidthPercent": staticGlobal(screenWidthPercent),
-        "previewLayoutScale": staticGlobal(previewLayoutScale),
-        "layoutSection": staticGlobal(layoutSection),
-        "scaledCqw": staticGlobal(scaledCqw),
-        "scaledCqwText": staticGlobal(scaledCqwText),
-        "syncPreviewGridTop": staticGlobal(syncPreviewGridTop),
-        "syncPreviewStyleVars": staticGlobal(syncPreviewStyleVars),
-        "normalizeGridSpansForLayout": staticGlobal(normalizeGridSpansForLayout),
-        "syncPreviewOrientation": staticGlobal(syncPreviewOrientation),
-        "ICON_EXCEPTIONS": liveGlobal(() => ICON_EXCEPTIONS, (value?: any) => { ICON_EXCEPTIONS = value; }),
-        "ICON_NAMES": liveGlobal(() => ICON_NAMES, (value?: any) => { ICON_NAMES = value; }),
-        "iconSlug": staticGlobal(iconSlug),
-        "ICON_OPTIONS": liveGlobal(() => ICON_OPTIONS, (value?: any) => { ICON_OPTIONS = value; }),
-        "DOMAIN_ICONS": liveGlobal(() => DOMAIN_ICONS, (value?: any) => { DOMAIN_ICONS = value; }),
-        "BUTTON_TYPES": liveGlobal(() => BUTTON_TYPES, (value?: any) => { BUTTON_TYPES = value; }),
-        "registerButtonType": staticGlobal(registerButtonType),
-        "subpageStateDisplayMode": staticGlobal(subpageStateDisplayMode),
-        "WEBSERVER_MOCK_NOW_ISO": liveGlobal(() => WEBSERVER_MOCK_NOW_ISO, (value?: any) => { WEBSERVER_MOCK_NOW_ISO = value; }),
-        "webserverUseMockNowForTest": liveGlobal(() => webserverUseMockNowForTest, (value?: any) => { webserverUseMockNowForTest = value; }),
-        "webserverMockNow": staticGlobal(webserverMockNow),
-        "webserverNow": staticGlobal(webserverNow),
-        "withWebserverMockNow": staticGlobal(withWebserverMockNow),
+        isPortraitRotation,
+        activeLayout,
+        screenWidthPercent,
+        previewLayoutScale,
+        layoutSection,
+        scaledCqw,
+        scaledCqwText,
+        syncPreviewGridTop,
+        clockBarVisibleInPreview,
+        syncPreviewStyleVars,
+        normalizeGridSpansForLayout,
+        syncPreviewOrientation,
+        subpageStateDisplayMode,
+        get mockNowIso() { return WEBSERVER_MOCK_NOW_ISO; },
+        set mockNowIso(value: any) { WEBSERVER_MOCK_NOW_ISO = value; },
+        get useMockNowForTest() { return webserverUseMockNowForTest; },
+        set useMockNowForTest(value: any) { webserverUseMockNowForTest = value; },
+        mockNow: webserverMockNow,
+        now: webserverNow,
+        withMockNow: withWebserverMockNow,
     };
 }

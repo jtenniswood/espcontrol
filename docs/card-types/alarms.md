@@ -65,25 +65,7 @@ Use the PIN settings to match how you want the wall panel to behave:
 
 ## Entry and Exit Delays
 
-If Home Assistant reports an alarm arming delay or pending entry delay, the panel shows the delay state in the alarm screen with a countdown timer. A progress bar under the timer gives a quick visual indication of how much delay time is left before the alarm changes state.
-
-The delay display follows the alarm entity updates from Home Assistant, so it works whether Home Assistant sends the total delay once or keeps sending updated remaining-time values during the countdown.
-
-### Alarm Audio
-
-The **ESP32-P4 86 Panel** can also provide audible entry and exit delay feedback. This is off by default, so updating does not make an existing alarm setup start sounding unexpectedly.
-
-Open **Settings → Alarm Audio** to configure:
-
-- **Alarm Delay Audio** — enables all alarm delay sounds.
-- **TTS Announcements** — speaks the configured entry or exit message through the panel using its Home Assistant Assist voice pipeline when Voice Services are enabled. No separate Home Assistant automation is required. Beeping waits briefly for that announcement and starts after it finishes.
-- **Entry Announcement** and **Exit Announcement** — the message spoken at the start of each delay.
-- **Beep Volume** — the local warning-beep volume.
-- **Faster Beeps During Final Seconds** — changes the final countdown period; the default is 10 seconds.
-
-The exit delay uses a lower single tone, while the entry delay uses a higher double tone. The tones are generated locally and sent directly to the panel's audio mixer, avoiding a fresh media-decoder startup for every beep. Beeps repeat every second and change to every 700 ms during the final countdown. They stop when the countdown reaches zero or the alarm leaves `arming`/`pending`, including when it is disarmed, armed, triggered, or unavailable. TTS is skipped silently when Voice Services are off; local beeps continue.
-
-Firmware compile checks confirm that the speaker panel and non-speaker panels build safely, but they cannot prove sound level, tone clarity, or media restoration. After installing the test firmware on an ESP32-P4 86 Panel, physically check both alarm delays, the faster final countdown, immediate stopping after disarm, Voice Services off, and normal media playback after the alarm clears.
+When Home Assistant reports an arming or entry delay, All Controls shows a countdown and progress bar. On the **ESP32-P4 86 Panel**, optional delay sounds are available under **Settings → Alarm Audio**. They are off by default.
 
 ## How It Works on the Panel
 

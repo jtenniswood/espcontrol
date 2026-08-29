@@ -2,6 +2,8 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text);
+
 // ── Internal relay controls ───────────────────────────────────────────
 //
 // Only devices that actually have relays register entries here. The shared
@@ -95,11 +97,55 @@ struct LocalSensorControl {
   int precision;
   lv_obj_t *sensor_lbl;
   lv_obj_t *text_lbl;
+  lv_obj_t *owner;
 };
 
 inline std::vector<LocalSensorControl> &local_sensor_registry() {
   static std::vector<LocalSensorControl> sensors;
   return sensors;
+}
+
+struct LocalSensorCallbackBinding {
+  std::string key;
+  bool is_text = false;
+};
+
+inline std::vector<LocalSensorCallbackBinding> &local_sensor_callback_bindings() {
+  static std::vector<LocalSensorCallbackBinding> bindings;
+  return bindings;
+}
+
+inline bool local_sensor_callback_registered(const std::string &key, bool is_text) {
+  for (const auto &binding : local_sensor_callback_bindings()) {
+    if (binding.key == key && binding.is_text == is_text) return true;
+  }
+  local_sensor_callback_bindings().push_back({key, is_text});
+  return false;
+}
+
+inline bool local_sensor_apply_value(const std::string &key, float value) {
+  if (std::isnan(value)) return false;
+  bool applied = false;
+  for (const auto &control : local_sensor_registry()) {
+    if (control.key != key || control.is_text || !control.sensor_lbl) continue;
+    char buffer[32];
+    if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
+    else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
+    else snprintf(buffer, sizeof(buffer), "%.0f", value);
+    lv_label_set_text(control.sensor_lbl, buffer);
+    applied = true;
+  }
+  return applied;
+}
+
+inline bool local_sensor_apply_text(const std::string &key, const std::string &value) {
+  bool applied = false;
+  for (const auto &control : local_sensor_registry()) {
+    if (control.key != key || !control.is_text || !control.text_lbl) continue;
+    set_wrapped_button_label_text(control.text_lbl, value);
+    applied = true;
+  }
+  return applied;
 }
 
 #ifdef USE_WEBSERVER
@@ -143,17 +189,22 @@ class LocalActionHandler : public esphome::web_server_idf::AsyncWebHandler {
   }
 };
 
-inline void register_local_action_endpoint() {
+inline void register_local_action_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
+  server.addHandler(new LocalActionHandler());
+  registered = true;
+  ESP_LOGI("espcontrol", "Local action endpoint registered");
+}
+
+inline void register_local_action_endpoint() {
   auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
+  if (server == nullptr) {
     ESP_LOGW("espcontrol", "register_local_action_endpoint: server not ready");
     return;
   }
-  server->addHandler(new LocalActionHandler());
-  registered = true;
-  ESP_LOGI("espcontrol", "Local action endpoint registered");
+  register_local_action_endpoint(*server);
 }
 
 class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
@@ -209,17 +260,22 @@ class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
   }
 };
 
-inline void register_local_sensor_endpoint() {
+inline void register_local_sensor_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
+  server.addHandler(new LocalSensorHandler());
+  registered = true;
+  ESP_LOGI("sensors", "Local sensor endpoint registered");
+}
+
+inline void register_local_sensor_endpoint() {
   auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
+  if (server == nullptr) {
     ESP_LOGW("sensors", "register_local_sensor_endpoint: server not ready");
     return;
   }
-  server->addHandler(new LocalSensorHandler());
-  registered = true;
-  ESP_LOGI("sensors", "Local sensor endpoint registered");
+  register_local_sensor_endpoint(*server);
 }
 #endif  // USE_WEBSERVER
 

@@ -9,6 +9,22 @@ int main() {
   static_assert(MAX_GRID_SLOTS == ESPCONTROL_MAX_GRID_SLOTS);
   static_assert(MAX_SUBPAGE_ITEMS == MAX_GRID_SLOTS * MAX_GRID_SLOTS);
 
+  const auto &registry_service = espcontrol::cards::card_runtime_registry_service();
+  const auto service_media = registry_service.context_for("media", "");
+  if (!service_media.known || service_media.family != espcontrol::cards::Family::MEDIA) {
+    return EXIT_FAILURE;
+  }
+
+  espcontrol::cards::CardRuntimeRegistryService explicit_registry;
+  espcontrol::cards::set_card_runtime_registry_service(&explicit_registry);
+  if (&espcontrol::cards::card_runtime_registry_service() != &explicit_registry) {
+    return EXIT_FAILURE;
+  }
+  espcontrol::cards::set_card_runtime_registry_service(nullptr);
+  if (&espcontrol::cards::card_runtime_registry_service() == &explicit_registry) {
+    return EXIT_FAILURE;
+  }
+
   if (string_ref_limited(esphome::StringRef("calendar"), 4) != "cale") return EXIT_FAILURE;
   if (string_ref_limited(esphome::StringRef("clock"), 32) != "clock") return EXIT_FAILURE;
   if (decode_html_entities("Earth, Wind &amp; Fire") != "Earth, Wind & Fire") {
@@ -225,6 +241,25 @@ int main() {
   if (option_select_compatibility.legacy_dispatch ||
       option_select_compatibility.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::ACTION) {
+    return EXIT_FAILURE;
+  }
+  // Modal-opening cards skip the temporary pressed-card repaint. Direct
+  // actions retain it so their interaction feedback remains unchanged.
+  if (!card_runtime_main_click_opens_modal(alarm) ||
+      !card_runtime_main_click_opens_modal(climate) ||
+      !card_runtime_main_click_opens_modal(cover_modal) ||
+      !card_runtime_main_click_opens_modal(fan_control) ||
+      !card_runtime_main_click_opens_modal(fan_preset) ||
+      !card_runtime_main_click_opens_modal(image) ||
+      !card_runtime_main_click_opens_modal(light_control) ||
+      !card_runtime_main_click_opens_modal(media_control) ||
+      !card_runtime_main_click_opens_modal(media_volume) ||
+      !card_runtime_main_click_opens_modal(media_cover_art) ||
+      !card_runtime_main_click_opens_modal(option_select) ||
+      card_runtime_main_click_opens_modal(media_play_pause) ||
+      card_runtime_main_click_opens_modal(media_transport) ||
+      card_runtime_main_click_opens_modal(media_position) ||
+      card_runtime_main_click_opens_modal(slider)) {
     return EXIT_FAILURE;
   }
   const auto todo = card_runtime_context("todo");

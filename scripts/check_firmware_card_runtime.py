@@ -45,7 +45,6 @@ LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
 GRID_HEADER = "button_grid_grid.h"
 ACTION_HEADER = "button_grid_actions.h"
 IMAGE_HEADER = "button_grid_image.h"
-CARD_BACKGROUND_HEADER = "button_grid_card_background.h"
 STATUS_ENTITY_HEADER = "button_grid_status_entity_driver.h"
 DATE_TIME_HEADER = "button_grid_date_time_driver.h"
 DATE_TIME_CARDS_HEADER = "button_grid_datetime_cards.h"
@@ -57,6 +56,7 @@ CLEANING_HEADER = "button_grid_cleaning_driver.h"
 ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
 COVER_MODAL_DRIVER_HEADER = "button_grid_cover_modal_driver.h"
 MEDIA_DRIVER_HEADER = "button_grid_media_driver.h"
+SUBPAGES_HEADER = "button_grid_subpages.h"
 LEGACY_COMPATIBILITY_DRIVER_HEADER = "button_grid_legacy_compatibility_driver.h"
 NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
 IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
@@ -475,47 +475,17 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
-        refresh_body = function_body(text, "image_card_refresh_due")
-        if refresh_body is None or "card_background_refresh_due();" not in refresh_body:
+        callback_body = function_body(text, "image_card_bind_callbacks")
+        callback_guards = (
+            "callbacks_bound_image != bound_image",
+            "has_on_finished_callbacks()",
+            "has_on_error_callbacks()",
+            "ctx->image == bound_image",
+        )
+        if callback_body is None or any(guard not in callback_body for guard in callback_guards):
             failures.append(
-                f"components/espcontrol/{IMAGE_HEADER}: tick scheduled card-background retries from the periodic image refresh"
+                f"components/espcontrol/{IMAGE_HEADER}: rebind image completion callbacks after image-card lifecycle changes"
             )
-        for misplaced_owner in (
-            "struct CardBackgroundImageCtx",
-            "card_background_controller()",
-            "card_background_activate_page(",
-            "card_background_schedule_cache_writes(",
-        ):
-            if misplaced_owner in text:
-                failures.append(
-                    f"components/espcontrol/{IMAGE_HEADER}: keep card-background runtime ownership in {CARD_BACKGROUND_HEADER}"
-                )
-    card_background_header = root / "components" / "espcontrol" / CARD_BACKGROUND_HEADER
-    if grid_header.exists():
-        if not card_background_header.exists():
-            failures.append(
-                f"components/espcontrol/{CARD_BACKGROUND_HEADER}: missing dedicated card-background runtime"
-            )
-        else:
-            background_text = card_background_header.read_text(encoding="utf-8")
-            for required_owner in (
-                "struct CardBackgroundImageCtx",
-                "card_background_controller()",
-                "card_background_activate_page(",
-                "card_background_schedule_cache_writes(",
-                "card_background_refresh_due(",
-            ):
-                if required_owner not in background_text:
-                    failures.append(
-                        f"components/espcontrol/{CARD_BACKGROUND_HEADER}: missing runtime owner {required_owner}"
-                    )
-            grid_text = grid_header.read_text(encoding="utf-8")
-            config_at = grid_text.find("struct GridConfig")
-            background_at = grid_text.find(f'#include "{CARD_BACKGROUND_HEADER}"')
-            if background_at < config_at or background_at < 0:
-                failures.append(
-                    f"components/espcontrol/{GRID_HEADER}: include {CARD_BACKGROUND_HEADER} after GridConfig"
-                )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")
@@ -878,6 +848,15 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"
         )
+    subpages_header = root / "components" / "espcontrol" / SUBPAGES_HEADER
+    if subpages_header.exists():
+        normalize_subpage = function_body(
+            subpages_header.read_text(encoding="utf-8"), "normalize_subpage_btn"
+        ) or ""
+        if 'b.sensor != "speaker_group"' not in normalize_subpage:
+            failures.append(
+                f"components/espcontrol/{SUBPAGES_HEADER}: preserve speaker-group media cards on subpages"
+            )
     compatibility_driver_header = (
         root / "components" / "espcontrol" / LEGACY_COMPATIBILITY_DRIVER_HEADER
     )
@@ -1286,10 +1265,7 @@ inline void setup_light_temp_visual() {
         ),
         (
             {"button_grid_image.h": "for (int i = 0; i < count; i++) {}\n"},
-            (
-                "reset every image-card context, including disabled slots",
-                "tick scheduled card-background retries from the periodic image refresh",
-            ),
+            ("reset every image-card context, including disabled slots",),
         ),
         (
             {
@@ -1461,19 +1437,23 @@ inline void setup_light_temp_visual() {
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"
-                    "inline void image_card_refresh_due() {}\n"
                 )
             },
-            ("tick scheduled card-background retries from the periodic image refresh",),
+            ("rebind image completion callbacks after image-card lifecycle changes",),
         ),
         (
             {
                 "button_grid_image.h": (
+                    "inline void image_card_bind_callbacks(ImageCardCtx *ctx) {\n"
+                    "  auto *bound_image = ctx->image;\n"
+                    "  bool changed = ctx->callbacks_bound_image != bound_image;\n"
+                    "  if (changed || !bound_image->has_on_finished_callbacks()) {\n"
+                    "    if (ctx->image == bound_image) {}\n"
+                    "  }\n"
+                    "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
+                    "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
-                    "}\n"
-                    "inline void image_card_refresh_due() {\n"
-                    "  card_background_refresh_due();\n"
                     "}\n"
                 )
             },

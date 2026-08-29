@@ -11,6 +11,7 @@ wifi:
   on_connect:
     - script.execute: network_status_refresh
     - script.execute: ntp_servers_apply_after_network
+    - lambda: 'id(espcontrol_app).home_assistant_endpoint().request_discovery();'
     - script.stop: wifi_reconnect_flow
     - script.execute: setup_screen_dim_cancel
     - lambda: |-
@@ -39,10 +40,6 @@ wifi:
           lambda: 'return !id(boot_grace_period);'
         then:
           - script.execute: wifi_reconnect_flow
-
-api:
-  on_client_connected:
-    - script.execute: ha_restore_after_api
 
 script:
   - id: ha_restore_after_api
@@ -109,6 +106,11 @@ script:
           condition:
             lambda: 'return !id(button_order).state.empty();'
           then:
+            - wait_until:
+                condition:
+                  lambda: |-
+                    return id(espcontrol_app).display().target_mode_is(
+                        espcontrol::DisplayMode::ACTIVE);
             - lvgl.page.show: main_page
             - script.execute: clock_bar_apply
             - script.execute: screensaver_idle_check

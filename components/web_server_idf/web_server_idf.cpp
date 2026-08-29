@@ -50,6 +50,9 @@ namespace esphome::web_server_idf {
 
 static const char *const TAG = "web_server_idf";
 
+extern "C" void espcontrol_register_web_server_handlers(
+    AsyncWebServer *server) __attribute__((weak));
+
 // Global instance to avoid guard variable (saves 8 bytes)
 // This is initialized at program startup before any threads
 namespace {
@@ -60,6 +63,8 @@ DefaultHeaders default_headers_instance;
 DefaultHeaders &DefaultHeaders::Instance() { return default_headers_instance; }
 
 namespace {
+static constexpr size_t MAX_FORM_URLENCODED_BODY_LENGTH = 1024;
+
 #ifdef ESPHOME_PROJECT_NAME
 static constexpr const char *ESPCONTROL_PROJECT_NAME = ESPHOME_PROJECT_NAME;
 #else
@@ -214,12 +219,22 @@ void AsyncWebServer::begin() {
   // The ESPControl web UI exposes many internal configuration entities. Larger
   // P4 panels can overflow the ESP-IDF default while serving entity details.
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // The S3 display has a much smaller internal-heap margin than P4 panels.
+  // Keep the configuration UI available while returning 4 KiB to the
+  // artwork/networking paths.
+  config.stack_size = 12288;
+  config.max_open_sockets = 3;
+#else
   config.stack_size = 16384;
   // Keep browser bursts from opening several web sessions at once. The config
   // UI fetches details sequentially, so two client sockets are enough and leave
   // more internal heap available for LVGL/display work on P4 panels.
   config.max_open_sockets = 5;
+#endif
   config.backlog_conn = 2;
+  ESP_LOGI(TAG, "HTTP server policy: stack=%u sockets=%u", (unsigned) config.stack_size,
+           (unsigned) config.max_open_sockets);
   config.server_port = this->port_;
   config.uri_match_fn = [](const char * /*unused*/, const char * /*unused*/, size_t /*unused*/) { return true; };
   // Always enable LRU purging to handle socket exhaustion gracefully.
@@ -231,6 +246,12 @@ void AsyncWebServer::begin() {
   config.close_fn = AsyncWebServer::safe_close_with_shutdown;
   if (httpd_start(&this->server_, &config) == ESP_OK) {
     global_async_web_server() = this;
+    // Let an external component add its static handlers before the generic
+    // dispatcher is exposed to browsers or API clients. Handlers added later
+    // can disrupt concurrent network activity on ESP32-P4 panels.
+    if (espcontrol_register_web_server_handlers != nullptr) {
+      espcontrol_register_web_server_handlers(this);
+    }
     const httpd_uri_t handler_get = {
         .uri = "",
         .method = HTTP_GET,
@@ -246,6 +267,17 @@ void AsyncWebServer::begin() {
         .user_ctx = this,
     };
     httpd_register_uri_handler(this->server_, &handler_post);
+
+    // Native configuration documents use PUT so browsers can make an
+    // optimistic, generation-guarded replacement without treating it as a
+    // form submission. Route it through the same raw-body dispatcher as POST.
+    const httpd_uri_t handler_put = {
+        .uri = "",
+        .method = HTTP_PUT,
+        .handler = AsyncWebServer::request_post_handler,
+        .user_ctx = this,
+    };
+    httpd_register_uri_handler(this->server_, &handler_put);
 
     const httpd_uri_t handler_options = {
         .uri = "",
@@ -305,14 +337,12 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
       return server->handle_multipart_upload_(r, content_type_char);
 #endif
     } else {
-      ESP_LOGW(TAG, "Unsupported content type for POST: %s", content_type_char);
-      // fallback to get handler to support backward compatibility
-      return AsyncWebServer::request_handler(r);
+      return static_cast<AsyncWebServer *>(r->user_ctx)->handle_raw_body_(r, content_type_char);
     }
   }
 
   // Handle regular form data
-  if (r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN) {
+  if (r->content_len > MAX_FORM_URLENCODED_BODY_LENGTH) {
     ESP_LOGW(TAG, "Request size is to big: %zu", r->content_len);
     httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
     return ESP_FAIL;
@@ -343,6 +373,34 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
 
   AsyncWebServerRequest req(r, std::move(post_query));
   return static_cast<AsyncWebServer *>(r->user_ctx)->request_handler_(&req);
+}
+
+esp_err_t AsyncWebServer::handle_raw_body_(httpd_req_t *r, const char *content_type) {
+  AsyncWebServerRequest req(r);
+  AsyncWebHandler *handler = nullptr;
+  for (auto *candidate : this->handlers_) {
+    if (candidate->canHandle(&req)) { handler = candidate; break; }
+  }
+  if (handler == nullptr) return this->request_handler_(&req);
+  if (!handler->canReceiveBody(&req)) return ESP_OK;
+  const size_t total = r->content_len;
+  if (total > handler->maximumBodySize()) {
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Request body is too large");
+    return ESP_FAIL;
+  }
+  std::vector<uint8_t> buffer(std::min<size_t>(1024, total));
+  for (size_t index = 0; index < total;) {
+    const int received = httpd_req_recv(r, reinterpret_cast<char *>(buffer.data()),
+                                        std::min(total - index, buffer.size()));
+    if (received <= 0) {
+      httpd_resp_send_err(r, received == HTTPD_SOCK_ERR_TIMEOUT ? HTTPD_408_REQ_TIMEOUT : HTTPD_400_BAD_REQUEST, nullptr);
+      return received == HTTPD_SOCK_ERR_TIMEOUT ? ESP_ERR_TIMEOUT : ESP_FAIL;
+    }
+    handler->handleBody(&req, buffer.data(), static_cast<size_t>(received), index, total);
+    index += static_cast<size_t>(received);
+  }
+  handler->handleRequest(&req);
+  return ESP_OK;
 }
 
 esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
@@ -1162,7 +1220,7 @@ void AsyncEventSourceResponse::loop() {
   process_buffer_();
   process_deferred_queue_();
   if (!this->entities_iterator_.completed())
-    this->entities_iterator_.advance();
+    this->entities_iterator_.try_advance(1);
 }
 
 bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t message_len, const char *event, uint32_t id,

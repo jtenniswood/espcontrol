@@ -17,6 +17,15 @@ struct SubpageBtn {
   std::string options;    // comma-delimited card options
 };
 
+inline bool subpage_btn_same_definition(const SubpageBtn &left,
+                                        const SubpageBtn &right) {
+  return left.entity == right.entity && left.label == right.label &&
+         left.icon == right.icon && left.icon_on == right.icon_on &&
+         left.sensor == right.sensor && left.unit == right.unit &&
+         left.type == right.type && left.precision == right.precision &&
+         left.options == right.options;
+}
+
 inline std::vector<std::string> split_subpage_fields(const std::string &value, char delim) {
   std::vector<std::string> out;
   size_t start = 0;
@@ -74,7 +83,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
                b.sensor != "next" && b.sensor != "volume" &&
                b.sensor != "position" && b.sensor != "now_playing" &&
                b.sensor != "cover_art" &&
-               b.sensor != "control_modal" && b.sensor != "playlist") {
+               b.sensor != "control_modal" && b.sensor != "speaker_group" &&
+               b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
@@ -559,6 +569,29 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
     }
     gp2++;
     st2 = cm + 1;
+  }
+}
+
+inline void normalize_subpage_order_spans(SubpageOrder &order, int num_slots,
+                                          int cols) {
+  int slot_limit = bounded_grid_slots(num_slots);
+  if (order.has_back_token) {
+    normalize_grid_span_for_position(order.back_pos, slot_limit, cols,
+                                     order.back_row_span,
+                                     order.back_col_span);
+  }
+  for (int position = 0; position < slot_limit; position++) {
+    int button_index = order.positions[position];
+    if (button_index < 1 || button_index > MAX_GRID_SLOTS) continue;
+    int rendered_position = order.has_back_token ? position : position + 1;
+    if (rendered_position >= slot_limit) {
+      order.positions[position] = 0;
+      continue;
+    }
+    int &row_span = order.row_span[button_index - 1];
+    int &col_span = order.col_span[button_index - 1];
+    normalize_grid_span_for_position(rendered_position, slot_limit, cols,
+                                     row_span, col_span);
   }
 }
 

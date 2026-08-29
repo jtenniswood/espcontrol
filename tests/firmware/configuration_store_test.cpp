@@ -124,6 +124,31 @@ bool newest_generation_wins() {
          loaded.slot == 1 && payload_equals(output, second, loaded);
 }
 
+bool conditional_commit_rejects_a_stale_generation() {
+  MemoryBackend backend(128);
+  ConfigurationStore store(backend);
+  const std::vector<uint8_t> first = bytes("first");
+  const std::vector<uint8_t> second = bytes("second");
+  if (!store.commit(first.data(), first.size()).ok()) return false;
+
+  const CommitResult rejected =
+      store.commit_if_generation(0, second.data(), second.size());
+  std::vector<uint8_t> output(first.size());
+  const LoadResult unchanged = store.load(output.data(), output.size());
+  if (rejected.status != StoreStatus::GENERATION_CONFLICT ||
+      rejected.generation != 1 ||
+      !payload_equals(output, first, unchanged)) {
+    return false;
+  }
+
+  const CommitResult committed =
+      store.commit_if_generation(1, second.data(), second.size());
+  output.resize(second.size());
+  const LoadResult loaded = store.load(output.data(), output.size());
+  return committed.ok() && committed.generation == 2 &&
+         payload_equals(output, second, loaded);
+}
+
 bool corrupt_newest_falls_back() {
   MemoryBackend backend(128);
   ConfigurationStore store(backend);
@@ -266,7 +291,8 @@ bool io_and_sync_errors_are_explicit() {
 int main() {
   const bool passed =
       empty_store_is_reported() && commit_and_load_round_trip() &&
-      newest_generation_wins() && corrupt_newest_falls_back() &&
+      newest_generation_wins() && conditional_commit_rejects_a_stale_generation() &&
+      corrupt_newest_falls_back() &&
       corrupt_stale_generation_cannot_promote_old_payload() &&
       partial_payload_write_preserves_previous() &&
       partial_header_write_preserves_previous() &&

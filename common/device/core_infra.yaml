@@ -16,67 +16,73 @@ api:
   reboot_timeout: 0s
   homeassistant_states: true
   homeassistant_services: true
+  # Keep ESPHome's platform default connection pool.  The panel can have a
+  # browser event stream open while Home Assistant reconnects, and diagnostic
+  # clients may overlap that reconnect.  Restricting the native API itself to
+  # three clients causes Home Assistant to be rejected outright. Individual
+  # constrained devices may still override this in their profile.
+  max_send_queue: 12
   on_client_connected:
-    - lambda: |-
-        register_local_sensor_endpoint();
-        ESP_LOGI("api", "API client connected: %s", client_info.c_str());
-        bool is_home_assistant = client_info.find("Home Assistant") != std::string::npos;
-        if (is_home_assistant && ha_api_connected()) {
-          id(ha_restore_after_api).execute();
-          if (!client_address.empty()) {
-            std::string host = client_address;
-            if (host.rfind("::ffff:", 0) == 0) host = host.substr(7);
-            if (host.find('.') != std::string::npos) {
-              size_t port_separator = host.find(':');
-              if (port_separator != std::string::npos) host = host.substr(0, port_separator);
-            } else if (host.find(':') != std::string::npos && host.front() != '[') {
-              host = "[" + host + "]";
-            }
-            int port = static_cast<int>(id(cover_art_home_assistant_artwork_port).state);
-            id(cover_art_home_assistant_base_url) =
-              id(cover_art_home_assistant_artwork_protocol).current_option() + "://" + host + ":" + std::to_string(port);
-            ESP_LOGI("api", "Using Home Assistant base URL: %s",
-                     id(cover_art_home_assistant_base_url).c_str());
-          } else {
-            ESP_LOGW("api", "Home Assistant API client address is empty; image proxy base URL not updated");
-          }
-          refresh_image_cards();
-          if (ha_api_state_connected()) {
-            refresh_weather_forecast_cards();
-            ha_flush_deferred_state_requests();
-          }
-        }
-        register_local_action_endpoint();
-    - delay: 2s
-    - lambda: |-
-        if (ha_api_connected()) refresh_image_cards();
-        if (ha_api_state_connected()) {
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
-    - delay: 8s
-    - lambda: |-
-        if (ha_api_connected()) refresh_image_cards();
-        if (ha_api_state_connected()) {
-          refresh_weather_forecast_cards();
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
-    - delay: 20s
-    - lambda: |-
-        if (ha_api_connected()) refresh_image_cards();
-        if (ha_api_state_connected()) {
-          refresh_weather_forecast_cards();
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
-    - delay: 25s
-    - lambda: |-
-        if (ha_api_state_connected()) {
-          refresh_weather_forecast_cards();
-          ha_flush_deferred_state_requests();
-        }
-        todo_reload_active_modal();
+    # ESPHome invokes this hook while it is completing the protocol handshake,
+    # before the Hello response is written.  Yield once before doing any panel
+    # work so a Home Assistant reconnect (or a diagnostic client) cannot delay
+    # or starve that response.
+    - delay: 1s
+    - if:
+        condition:
+          lambda: |-
+            bool is_home_assistant =
+                client_info.find("Home Assistant") != std::string::npos;
+            return is_home_assistant && ha_api_connected();
+        then:
+          - lambda: |-
+              ESP_LOGI("api", "Home Assistant connected: %s", client_info.c_str());
+              id(ha_restore_after_api).execute();
+              if (!client_address.empty()) {
+                id(cover_art_home_assistant_client_address) = client_address;
+              }
+              id(cover_art_api_wait_logged) = false;
+              id(cover_art_resolve_home_assistant_base_url).execute();
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_log_subscription_diagnostics("client-connected");
+                ha_flush_deferred_state_requests();
+              }
+          - delay: 2s
+          - lambda: |-
+              if (ha_api_connected()) refresh_image_cards();
+              if (ha_api_state_connected()) {
+                id(homeassistant_time).update();
+                ha_flush_deferred_state_requests();
+              }
+          - script.execute: cover_art_resubscribe
+          - script.execute: timezone_after_homeassistant_time_sync
+          - script.execute: backlight_recalc_sunrise_sunset
+          - script.execute: screen_schedule_check
+          - lambda: 'todo_reload_active_modal();'
+          - delay: 8s
+          - lambda: |-
+              if (ha_api_connected()) refresh_image_cards();
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_flush_deferred_state_requests();
+              }
+          - lambda: 'todo_reload_active_modal();'
+          - delay: 20s
+          - lambda: |-
+              if (ha_api_connected()) refresh_image_cards();
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_flush_deferred_state_requests();
+              }
+          - lambda: 'todo_reload_active_modal();'
+          - delay: 25s
+          - lambda: |-
+              if (ha_api_state_connected()) {
+                refresh_weather_forecast_cards();
+                ha_flush_deferred_state_requests();
+              }
+          - lambda: 'todo_reload_active_modal();'
   on_client_disconnected:
     - lambda: |-
         ESP_LOGW("api", "API client disconnected: %s", client_info.c_str());
@@ -84,10 +90,10 @@ api:
         if (!is_home_assistant && ha_api_state_connected()) {
           return;
         }
+        ha_invalidate_retained_state();
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
-
 interval:
   - interval: 5s
     then:
@@ -158,6 +164,25 @@ button:
 
 select:
   - platform: template
+    name: "${entity_home_assistant_artwork_endpoint_mode}"
+    internal: true
+    id: home_assistant_artwork_endpoint_mode
+    entity_category: config
+    icon: "mdi:lan-check"
+    optimistic: true
+    restore_value: true
+    initial_option: "Automatic"
+    options:
+      - "Automatic"
+      - "Manual"
+    web_server:
+      sorting_group_id: sg_connectivity
+    set_action:
+      - lambda: |-
+          id(home_assistant_artwork_endpoint_mode).publish_state(x);
+          id(cover_art_resolve_home_assistant_base_url).execute();
+
+  - platform: template
     name: "${entity_home_assistant_artwork_protocol}"
     internal: true
     id: cover_art_home_assistant_artwork_protocol
@@ -173,7 +198,8 @@ select:
       sorting_group_id: sg_connectivity
     set_action:
       - lambda: |-
-          refresh_image_cards();
+          id(cover_art_home_assistant_artwork_protocol).publish_state(x);
+          id(cover_art_resolve_home_assistant_base_url).execute();
 
 number:
   - platform: template
@@ -193,24 +219,16 @@ number:
       sorting_group_id: sg_connectivity
     set_action:
       - lambda: |-
-          std::string current = id(cover_art_home_assistant_base_url);
-          if (!current.empty()) {
-            size_t host_start = current.find("://");
-            host_start = host_start == std::string::npos ? 0 : host_start + 3;
-            std::string host = current.substr(host_start);
-            if (!host.empty() && host.front() == '[') {
-              size_t host_end = host.find(']');
-              if (host_end != std::string::npos) host = host.substr(0, host_end + 1);
-            } else {
-              size_t port_separator = host.find(':');
-              if (port_separator != std::string::npos) host = host.substr(0, port_separator);
-            }
-            if (!host.empty()) {
-              int port = static_cast<int>(x);
-              id(cover_art_home_assistant_base_url) =
-                id(cover_art_home_assistant_artwork_protocol).current_option() + "://" + host + ":" + std::to_string(port);
-              ESP_LOGI("api", "Using Home Assistant base URL: %s",
-                       id(cover_art_home_assistant_base_url).c_str());
-            }
-          }
-          refresh_image_cards();
+          id(cover_art_home_assistant_artwork_port).publish_state(x);
+          id(cover_art_resolve_home_assistant_base_url).execute();
+
+text_sensor:
+  - platform: template
+    name: "${entity_home_assistant_artwork_endpoint_status}"
+    internal: true
+    id: home_assistant_artwork_endpoint_status
+    entity_category: diagnostic
+    icon: "mdi:connection"
+    update_interval: 1s
+    lambda: |-
+      return id(espcontrol_app).home_assistant_endpoint().status();

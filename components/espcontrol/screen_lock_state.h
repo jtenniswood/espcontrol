@@ -40,6 +40,33 @@ inline void screen_lock_reset_registry() {
   screen_lock_clickable_objects().clear();
 }
 
+inline void screen_lock_apply();
+
+inline bool screen_lock_object_is_in_tree(lv_obj_t *obj, lv_obj_t *root) {
+  for (lv_obj_t *current = obj; current != nullptr;
+       current = lv_obj_get_parent(current)) {
+    if (current == root) return true;
+  }
+  return false;
+}
+
+inline void screen_lock_unregister_tree(lv_obj_t *root) {
+  if (!root) return;
+  auto &buttons = screen_lock_controlled_buttons();
+  buttons.erase(std::remove_if(buttons.begin(), buttons.end(),
+    [root](lv_obj_t *button) { return screen_lock_object_is_in_tree(button, root); }),
+    buttons.end());
+  auto &refs = screen_lock_card_refs();
+  refs.erase(std::remove_if(refs.begin(), refs.end(),
+    [root](const ScreenLockCardRef &ref) { return screen_lock_object_is_in_tree(ref.btn, root); }),
+    refs.end());
+  auto &clickable = screen_lock_clickable_objects();
+  clickable.erase(std::remove_if(clickable.begin(), clickable.end(),
+    [root](lv_obj_t *obj) { return screen_lock_object_is_in_tree(obj, root); }),
+    clickable.end());
+  screen_lock_apply();
+}
+
 inline bool screen_lock_button_is_lock_card(lv_obj_t *btn) {
   for (const auto &ref : screen_lock_card_refs()) {
     if (ref.btn == btn) return true;

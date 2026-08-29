@@ -70,28 +70,66 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
   }
 }
 
+// Generated metadata selects a handwritten driver here; it never carries card
+// behavior.
+class CardRuntimeRegistryService {
+ public:
+  Context context_for(const std::string &type, const std::string &mode,
+                      Surface surface = Surface::MAIN_GRID) const {
+    using namespace espcontrol::card_runtime;
+    Context context;
+    context.runtime = card_runtime_spec(card_type_id(type));
+    context.runtime.driver = resolve_card_driver(context.runtime.type, mode);
+    context.family = family_for_runtime_type(context.runtime.type);
+    context.surface = surface;
+    context.known = context.runtime.type != CardTypeId::UNKNOWN;
+    context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
+    // Todo was removed from the configurator but old saved cards remain
+    // supported through one explicit compatibility driver.
+    if (!context.known && type == "todo") {
+      context.family = Family::TODO;
+      context.known = true;
+      context.allow_in_subpage = true;
+      context.runtime.capabilities = static_cast<uint16_t>(
+          CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL |
+          CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE);
+      context.legacy_dispatch = true;
+    }
+    return context;
+  }
+
+  Registration registration_for(const std::string &type) const {
+    const Context context = context_for(type, "");
+    return registration(context.family, context.known, context.allow_in_subpage);
+  }
+};
+
+// The application core binds its owned registry during setup. Existing card
+// helpers continue to use this accessor while callers migrate to the explicit
+// core service. The local fallback keeps standalone parsing and host tests
+// independent of ESPHome application setup.
+inline const CardRuntimeRegistryService *&card_runtime_registry_binding() {
+  static const CardRuntimeRegistryService *service = nullptr;
+  return service;
+}
+
+inline void set_card_runtime_registry_service(
+    const CardRuntimeRegistryService *service) {
+  card_runtime_registry_binding() = service;
+}
+
+inline const CardRuntimeRegistryService &card_runtime_registry_service() {
+  if (const CardRuntimeRegistryService *service =
+          card_runtime_registry_binding()) {
+    return *service;
+  }
+  static const CardRuntimeRegistryService service;
+  return service;
+}
+
 inline Context context_for(const std::string &type, const std::string &mode,
                            Surface surface = Surface::MAIN_GRID) {
-  using namespace espcontrol::card_runtime;
-  Context context;
-  context.runtime = card_runtime_spec(card_type_id(type));
-  context.runtime.driver = resolve_card_driver(context.runtime.type, mode);
-  context.family = family_for_runtime_type(context.runtime.type);
-  context.surface = surface;
-  context.known = context.runtime.type != CardTypeId::UNKNOWN;
-  context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
-  // Todo was removed from the configurator but old saved cards remain
-  // supported through one explicit compatibility driver.
-  if (!context.known && type == "todo") {
-    context.family = Family::TODO;
-    context.known = true;
-    context.allow_in_subpage = true;
-    context.runtime.capabilities = static_cast<uint16_t>(
-        CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL |
-        CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE);
-    context.legacy_dispatch = true;
-  }
-  return context;
+  return card_runtime_registry_service().context_for(type, mode, surface);
 }
 
 }  // namespace espcontrol::cards
@@ -112,9 +150,7 @@ inline espcontrol::cards::Context card_runtime_context(
 }
 
 inline espcontrol::cards::Registration card_runtime_registration(const std::string &type) {
-  const auto context = card_runtime_context(type);
-  return espcontrol::cards::registration(
-      context.family, context.known, context.allow_in_subpage);
+  return espcontrol::cards::card_runtime_registry_service().registration_for(type);
 }
 
 inline espcontrol::cards::Family card_runtime_family(const std::string &type) {
@@ -136,6 +172,37 @@ inline bool card_runtime_passive(const espcontrol::cards::Context &context) {
   return card_runtime_information_only(context) &&
          !card_runtime_has_capability(
              context, espcontrol::card_runtime::CAPABILITY_ACTIONS);
+}
+
+// Opening a modal replaces the main card immediately, so a separate pressed
+// repaint of that card only adds work and makes the action feel slower. Keep
+// this limited to main-grid routes that actually present an overlay; toggles,
+// sliders, and transport actions retain their ordinary pressed feedback.
+inline bool card_runtime_main_click_opens_modal(
+    const espcontrol::cards::Context &context) {
+  using Driver = espcontrol::card_runtime::CardDriverId;
+  using Type = espcontrol::card_runtime::CardTypeId;
+  if (context.legacy_dispatch) {
+    return context.family == espcontrol::cards::Family::TODO;
+  }
+  switch (context.runtime.driver) {
+    case Driver::ALARM:
+    case Driver::CLIMATE:
+    case Driver::COVER_MODAL:
+    case Driver::FAN_CONTROL:
+    case Driver::IMAGE:
+    case Driver::LIGHT_CONTROL:
+    case Driver::MEDIA_CONTROL:
+    case Driver::MEDIA_GROUP:
+    case Driver::MEDIA_VOLUME:
+    case Driver::MEDIA_COVER_ART:
+    case Driver::OPTION_SELECT:
+      return true;
+    case Driver::FAN:
+      return context.runtime.type == Type::FAN_PRESET;
+    default:
+      return false;
+  }
 }
 
 inline const char *card_runtime_label(const std::string &type) {
@@ -234,10 +301,6 @@ constexpr const char *card_runtime_option_name_media_cover_art() {
   return CARD_CONTRACT_OPTION_NAME_MEDIA_COVER_ART;
 }
 
-constexpr const char *card_runtime_option_name_cover_art_action() {
-  return CARD_CONTRACT_OPTION_NAME_COVER_ART_ACTION;
-}
-
 constexpr const char *card_runtime_option_name_cover_art_details() {
   return CARD_CONTRACT_OPTION_NAME_COVER_ART_DETAILS;
 }
@@ -256,6 +319,10 @@ constexpr const char *card_runtime_option_name_cover_tabs() {
 
 constexpr const char *card_runtime_option_name_fan_tabs() {
   return CARD_CONTRACT_OPTION_NAME_FAN_TABS;
+}
+
+constexpr const char *card_runtime_option_name_fan_light_entity() {
+  return CARD_CONTRACT_OPTION_NAME_FAN_LIGHT_ENTITY;
 }
 
 constexpr const char *card_runtime_option_name_label_display() {

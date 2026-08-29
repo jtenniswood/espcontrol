@@ -14,8 +14,12 @@ substitutions:
   partition_table_file: "/config/common/device/partitions_16mb_card_images.csv"
   espcontrol_component_ref: "HEAD"
 
+esp32:
+  partitions: "../common/device/partitions_16mb_card_images.csv"
+
 packages:
   core: !include ../devices/guition-esp32-s3-4848s040/packages.yaml
+  api_encryption: !include ../common/addon/api_encryption_dynamic.yaml
 
 esphome:
   name_add_mac_suffix: true
@@ -29,8 +33,8 @@ dashboard_import:
 web_server:
   port: 80
   version: 3
-  js_url: ""
-  js_include: "../docs/public/webserver/www.js"
+  js_url: https://jtenniswood.github.io/espcontrol/webserver/www.js?device=${device_slug}&v=${firmware_version}&ui=20260714-shared
+  js_include: "../docs/public/webserver/embedded/www.js"
 
 wifi:
   ap:

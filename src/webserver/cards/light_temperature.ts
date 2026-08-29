@@ -1,5 +1,40 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerLightTemperatureCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export interface LightCardRegistration {
+    readonly controlTypeMetadata: any;
+    readonly renderControlTypeField: (panel?: any, button?: any, helpers?: any) => any;
+    readonly lightTempDefaultRange: (this: any) => any;
+    readonly lightTempParseRange: (this: any, unit?: any) => any;
+    readonly lightTempClampMin: (this: any, value?: any, absoluteMin?: any) => any;
+    readonly lightTempClampMax: (this: any, value?: any, minimum?: any) => any;
+    readonly lightTempLegacySensorValues: (this: any) => any;
+    readonly lightTempSensorNeedsCleanup: (this: any, value?: any) => any;
+}
+export function registerLightTemperatureCardTypes(
+    registry: CardRegistry,
+    modalTabs: ConfigModalTabOptionsFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): LightCardRegistration {
+    const { renderButtonSettings } = cardUi;
+    const { cardBadgePreview } = fields;
+    const {
+        lightControlTabDefinitions,
+        lightControlTabs,
+        normalizeLightControlOptions,
+        setLightControlTabs,
+        renderModalTabSettings,
+    } = modalTabs;
     // Light temperature slider card: controls color_temp_kelvin on a light entity.
     // Slider bottom = min kelvin (warm), top = max kelvin (cool).
     // Config fields: unit="min-max" (kelvin range),
@@ -147,7 +182,7 @@ export function registerLightTemperatureCardTypes(): GlobalDescriptors {
         if (b.type === nextType)
             return;
         b.type = nextType;
-        var td: any = BUTTON_TYPES[nextType];
+        var td: any = registry.definitions[nextType];
         if (td && td.onSelect)
             td.onSelect(b);
         helpers.saveField("type", nextType);
@@ -174,7 +209,7 @@ export function registerLightTemperatureCardTypes(): GlobalDescriptors {
         });
         panel.appendChild(modalSettingsDisclosure.panel);
     }
-    registerButtonType("light_temperature", {
+    registry.register("light_temperature", {
         label: function (this: any) { return cardContractCardLabel("light_temperature"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("light_temperature"); },
         hideLabel: true,
@@ -262,7 +297,7 @@ export function registerLightTemperatureCardTypes(): GlobalDescriptors {
             });
         },
     });
-    registerButtonType("light_control", {
+    registry.register("light_control", {
         label: function (this: any) { return cardContractCardLabel("light_control"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("light_control"); },
         hideLabel: true,
@@ -303,24 +338,13 @@ export function registerLightTemperatureCardTypes(): GlobalDescriptors {
         },
     });
     return {
-        "lightTempSpec": staticGlobal(lightTempSpec),
-        "lightTempDefaultRange": staticGlobal(lightTempDefaultRange),
-        "lightTempMinLimit": staticGlobal(lightTempMinLimit),
-        "lightTempMaxLimit": staticGlobal(lightTempMaxLimit),
-        "lightTempMinMaxLimit": staticGlobal(lightTempMinMaxLimit),
-        "lightTempStep": staticGlobal(lightTempStep),
-        "lightTempLegacySensorValues": staticGlobal(lightTempLegacySensorValues),
-        "lightTempSensorNeedsCleanup": staticGlobal(lightTempSensorNeedsCleanup),
-        "lightTempParseRange": staticGlobal(lightTempParseRange),
-        "lightTempClampMin": staticGlobal(lightTempClampMin),
-        "lightTempClampMax": staticGlobal(lightTempClampMax),
-        "LIGHT_CONTROL_TYPE_OPTIONS": liveGlobal(() => LIGHT_CONTROL_TYPE_OPTIONS, (value?: any) => { LIGHT_CONTROL_TYPE_OPTIONS = value; }),
-        "LIGHT_CONTROL_TYPE_METADATA": liveGlobal(() => LIGHT_CONTROL_TYPE_METADATA, (value?: any) => { LIGHT_CONTROL_TYPE_METADATA = value; }),
-        "LIGHT_TEMPERATURE_CARD_METADATA": liveGlobal(() => LIGHT_TEMPERATURE_CARD_METADATA, (value?: any) => { LIGHT_TEMPERATURE_CARD_METADATA = value; }),
-        "LIGHT_FULL_CONTROL_CARD_METADATA": liveGlobal(() => LIGHT_FULL_CONTROL_CARD_METADATA, (value?: any) => { LIGHT_FULL_CONTROL_CARD_METADATA = value; }),
-        "normalizeLightControlType": staticGlobal(normalizeLightControlType),
-        "setLightControlType": staticGlobal(setLightControlType),
-        "renderLightControlTypeField": staticGlobal(renderLightControlTypeField),
-        "renderLightControlTabSettings": staticGlobal(renderLightControlTabSettings),
+        controlTypeMetadata: LIGHT_CONTROL_TYPE_METADATA,
+        renderControlTypeField: renderLightControlTypeField,
+        lightTempDefaultRange,
+        lightTempParseRange,
+        lightTempClampMin,
+        lightTempClampMax,
+        lightTempLegacySensorValues,
+        lightTempSensorNeedsCleanup,
     };
 }

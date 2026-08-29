@@ -1,137 +1,108 @@
+import { state } from "../state/app_instance";
+import type { ApplicationLayoutState } from "./application_context";
+import type { ApplicationApiFeature } from "./api";
+import type { ConfigPersistenceFeature } from "./config_post_api";
 import {
-  deleteCardImageConfigurationFirst,
-  deleteCardImageWithDeviceTransaction,
   createCardImageBackupAssetProvider,
   createCardImagesFeature,
-  type CardImageItem,
+  deleteCardImageConfigurationFirst,
+  deleteCardImageWithDeviceTransaction,
   type CardImageHttpRequest,
 } from "../features/card_images";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-import { state } from "../state/app_instance";
+import {
+  cardBackgroundImage,
+  cardImageUrl,
+  normalizeCardBackgroundImageId,
+  setCardBackgroundImage,
+} from "./config_option_core";
 
-export function installCardImageServiceModule(): GlobalDescriptors {
-    var CARD_IMAGE_TARGET_SIZE: any = 200;
-    var CARD_IMAGE_UPLOAD_MAX_BYTES: any = 45 * 1024;
-    var CARD_IMAGE_MIN_QUALITY: any = 0.42;
-    var cardImagesFeature = createCardImagesFeature({
-        maxActiveBackgrounds: CARD_BACKGROUND_IMAGE_LIMIT,
-        fetch: function (url: string, request?: CardImageHttpRequest) {
-            return fetch(url, request as RequestInit);
-        },
-        normalizeId: function (value: unknown) { return normalizeCardBackgroundImageId(value); },
-        imageUrl: function (id: string) { return cardImageUrl(id); },
-        targetSize: function () { return CARD_IMAGE_TARGET_SIZE; },
-        uploadMaxBytes: function () { return CARD_IMAGE_UPLOAD_MAX_BYTES; },
-        minimumQuality: function () { return CARD_IMAGE_MIN_QUALITY; },
-    });
-    var cardImageBackupAssetProvider = createCardImageBackupAssetProvider(cardImagesFeature, {
-        normalizeId: function (value: unknown) { return normalizeCardBackgroundImageId(value); },
-        imageId: function (button: any) { return cardBackgroundImage(button); },
-        setImageId: function (button: any, id: string) {
-            setCardBackgroundImage(button, id);
-        },
-    });
-
-    function listCardImages(this: any, force?: any) {
-        return cardImagesFeature.list(!!force);
-    }
-
-    function cardImageLibraryInfo(this: any) {
-        return cardImagesFeature.info();
-    }
-
-    function countCardImageUsage(this: any, id?: any) {
-        id = normalizeCardBackgroundImageId(id);
-        if (!id)
-            return 0;
-        var count: any = 0;
-        function countButtons(this: any, buttons?: any) {
-            (buttons || []).forEach(function (this: any, button?: any) {
-                if (cardBackgroundImage(button) === id)
-                    count++;
-            });
-        }
-        countButtons(state.buttons);
-        Object.keys(state.subpages || {}).forEach(function (this: any, key?: any) {
-            var subpage: any = state.subpages[key];
-            countButtons(subpage && subpage.buttons);
-        });
-        return count;
-    }
-
-    function resizeCardImageFile(this: any, file?: any) {
-        return cardImagesFeature.resize(file);
-    }
-
-    function uploadCardImage(this: any, file?: any) {
-        return cardImagesFeature.upload(file);
-    }
-
-    function renameCardImage(this: any, id?: any, name?: any) {
-        return cardImagesFeature.rename(id, name);
-    }
-
-    function deleteCardImage(this: any, id?: any) {
-        return cardImagesFeature.delete(id);
-    }
-
-    function deleteCardImageSafely(this: any, id?: any) {
-        id = normalizeCardBackgroundImageId(id);
-        if (!id)
-            return Promise.reject(new Error("Invalid card image ID."));
-        // Refresh capabilities before choosing the deletion protocol. A browser can
-        // retain library state from older firmware across an OTA update; using that
-        // stale state would select the legacy configuration-first flow unnecessarily.
-        return listCardImages(true).then(function () {
-            if (cardImagesFeature.info().referenceTransactions) {
-                return deleteCardImageWithDeviceTransaction({
-                    waitForPendingPosts: function () { return postQueueIdle(); },
-                    resetPostError: function () { resetPostQueueError(); },
-                    deleteImage: function () { return deleteCardImage(id); },
-                    clearLocalReferences: function () { clearCardImageReferences(id, false); },
-                    rerender: function () {
-                        renderPreview();
-                        renderButtonSettings();
-                    },
-                });
-            }
-            return deleteCardImageConfigurationFirst({
-                waitForPendingPosts: function () { return postQueueIdle(); },
-                resetPostError: function () { resetPostQueueError(); },
-                clearReferences: function () { return clearCardImageReferences(id); },
-                postsHadError: function () { return postQueueHadError(); },
-                deleteImage: function () { return deleteCardImage(id); },
-                rerender: function () {
-                    renderPreview();
-                    renderButtonSettings();
-                },
-            });
-        });
-    }
-
-    return {
-        "_cardImageLibrary": liveGlobal(
-            () => cardImagesFeature.cachedImages(),
-            (value: unknown) => {
-                cardImagesFeature.replaceCachedImages(Array.isArray(value) ? value as CardImageItem[] : []);
-            },
-        ),
-        "_cardImageLibraryInfo": liveGlobal(
-            () => cardImagesFeature.info(),
-            () => { cardImagesFeature.invalidate(); },
-        ),
-        "CARD_IMAGE_TARGET_SIZE": liveGlobal(() => CARD_IMAGE_TARGET_SIZE, (value?: any) => { CARD_IMAGE_TARGET_SIZE = value; }),
-        "CARD_IMAGE_UPLOAD_MAX_BYTES": liveGlobal(() => CARD_IMAGE_UPLOAD_MAX_BYTES, (value?: any) => { CARD_IMAGE_UPLOAD_MAX_BYTES = value; }),
-        "CARD_IMAGE_MIN_QUALITY": liveGlobal(() => CARD_IMAGE_MIN_QUALITY, (value?: any) => { CARD_IMAGE_MIN_QUALITY = value; }),
-        "cardImagesFeature": staticGlobal(cardImagesFeature),
-        "cardImageBackupAssetProvider": staticGlobal(cardImageBackupAssetProvider),
-        "listCardImages": staticGlobal(listCardImages),
-        "cardImageLibraryInfo": staticGlobal(cardImageLibraryInfo),
-        "countCardImageUsage": staticGlobal(countCardImageUsage),
-        "resizeCardImageFile": staticGlobal(resizeCardImageFile),
-        "uploadCardImage": staticGlobal(uploadCardImage),
-        "renameCardImage": staticGlobal(renameCardImage),
-        "deleteCardImage": staticGlobal(deleteCardImage),
-        "deleteCardImageSafely": staticGlobal(deleteCardImageSafely),
-    };
+export interface CardImageServiceDependencies {
+  readonly layout: ApplicationLayoutState;
+  readonly requestApi: Pick<ApplicationApiFeature,
+    "postQueueIdle" | "resetPostQueueError" | "postQueueHadError">;
+  readonly persistence: Pick<ConfigPersistenceFeature, "clearCardImageReferences">;
+  fetch(url: string, request?: RequestInit): Promise<Response>;
+  renderPreview(): void;
+  renderButtonSettings(): void;
 }
+
+export function createCardImageService(dependencies: CardImageServiceDependencies) {
+  const targetSize = 200;
+  const uploadMaxBytes = 45 * 1024;
+  const minimumQuality = 0.42;
+  const maxActiveBackgrounds = Math.max(
+    0,
+    Number.parseInt(String(dependencies.layout.config.cardBackgroundImageLimit || dependencies.layout.numSlots), 10) || 0,
+  );
+  const cardImages = createCardImagesFeature({
+    maxActiveBackgrounds,
+    fetch: (url: string, request?: CardImageHttpRequest) =>
+      dependencies.fetch(url, request as RequestInit),
+    normalizeId: normalizeCardBackgroundImageId,
+    imageUrl: cardImageUrl,
+    targetSize: () => targetSize,
+    uploadMaxBytes: () => uploadMaxBytes,
+    minimumQuality: () => minimumQuality,
+  });
+  const backupAssetProvider = createCardImageBackupAssetProvider(cardImages, {
+    normalizeId: normalizeCardBackgroundImageId,
+    imageId: cardBackgroundImage,
+    setImageId: (button, id) => { setCardBackgroundImage(button, id); },
+  });
+
+  const countUsage = (value: unknown): number => {
+    const id = normalizeCardBackgroundImageId(value);
+    if (!id) return 0;
+    let count = 0;
+    const countButtons = (buttons: readonly any[] = []) => {
+      buttons.forEach((button) => { if (cardBackgroundImage(button) === id) count++; });
+    };
+    countButtons(state.buttons);
+    Object.values(state.subpages || {}).forEach((subpage: any) => countButtons(subpage?.buttons));
+    return count;
+  };
+
+  const rerender = () => {
+    dependencies.renderPreview();
+    dependencies.renderButtonSettings();
+  };
+
+  const deleteSafely = async (value: unknown): Promise<boolean> => {
+    const id = normalizeCardBackgroundImageId(value);
+    if (!id) throw new Error("Invalid card image ID.");
+    await cardImages.list(true);
+    if (cardImages.info().referenceTransactions) {
+      return deleteCardImageWithDeviceTransaction({
+        waitForPendingPosts: dependencies.requestApi.postQueueIdle,
+        resetPostError: dependencies.requestApi.resetPostQueueError,
+        deleteImage: () => cardImages.delete(id),
+        clearLocalReferences: () => { dependencies.persistence.clearCardImageReferences(id, false); },
+        rerender,
+      });
+    }
+    return deleteCardImageConfigurationFirst({
+      waitForPendingPosts: dependencies.requestApi.postQueueIdle,
+      resetPostError: dependencies.requestApi.resetPostQueueError,
+      clearReferences: () => dependencies.persistence.clearCardImageReferences(id),
+      postsHadError: dependencies.requestApi.postQueueHadError,
+      deleteImage: () => cardImages.delete(id),
+      rerender,
+    });
+  };
+
+  return {
+    feature: cardImages,
+    backupAssetProvider,
+    maxActiveBackgrounds,
+    list: (force?: boolean) => cardImages.list(!!force),
+    info: () => cardImages.info(),
+    countUsage,
+    resize: (file: Blob) => cardImages.resize(file),
+    upload: (file: Blob) => cardImages.upload(file),
+    rename: (id: unknown, name: unknown) => cardImages.rename(id, name),
+    delete: (id: unknown) => cardImages.delete(id),
+    deleteSafely,
+  };
+}
+
+export type CardImageService = ReturnType<typeof createCardImageService>;

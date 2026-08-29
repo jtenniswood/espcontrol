@@ -1,12 +1,12 @@
 ---
 title: Presence Cards
 description:
-  How to show person, room, motion, or presence sensors on your EspControl panel.
+  How to show room, motion, or occupancy sensors on your EspControl panel.
 ---
 
 # Presence
 
-A Presence card is a read-only card for showing whether someone or something is detected. It is useful for room presence sensors, motion sensors, people, device trackers, or template sensors that represent occupancy.
+A Presence card is a read-only card for showing whether someone or something is detected. It is useful for room presence sensors, motion sensors, and template sensors that represent occupancy.
 
 ## Setting Up a Presence Card
 
@@ -28,6 +28,5 @@ A Presence card is a read-only card for showing whether someone or something is 
 | Entity | What it shows |
 |---|---|
 | `binary_sensor.living_room_presence` | Room presence from a mmWave or motion sensor |
-| `person.jane` | Whether a person is home |
-| `device_tracker.phone` | Whether a tracked device is home |
-| `input_boolean.guest_mode` | A manual helper that marks a room or mode as occupied |
+| `sensor.office_occupancy` | Occupancy reported by a room sensor |
+| `text_sensor.guest_room_status` | A text-based occupancy status |
