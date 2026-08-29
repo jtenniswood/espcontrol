@@ -61,6 +61,11 @@ function casesFromManifest() {
       slots: device.slots,
       viewport: viewportFor(aspect.ratio),
       coverArtSquareOverlay: !!(device.web && device.web.coverArtSquareOverlay),
+      mediaCoverArtSupported: !(
+        device.web &&
+        Array.isArray(device.web.disabledCardTypes) &&
+        device.web.disabledCardTypes.includes("media_cover_art")
+      ),
       minVisibleCards: device.web && device.web.infoOnly ? 1 : 4,
       exerciseInteractions: slug === "guition-esp32-p4-jc8012p4a1",
       exerciseDeviceMocks: sharedFourInchSquareSlugs.has(slug),
@@ -2591,7 +2596,7 @@ async function assertEmptyCellSettings(page, posts, label) {
   );
 }
 
-async function assertNewMediaCardDefaults(page, posts, label) {
+async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSupported) {
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
     .first();
@@ -2606,15 +2611,17 @@ async function assertNewMediaCardDefaults(page, posts, label) {
 
   assert.strictEqual(
     await page.locator("#sp-inp-media-mode").inputValue(),
-    "cover_art",
-    `${label}: a new Media card should default to Cover Art`,
+    mediaCoverArtSupported ? "cover_art" : "play_pause",
+    `${label}: a new Media card should default to an available mode`,
   );
-  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
-  assert.strictEqual(
-    await page.locator("#sp-inp-label").inputValue(),
-    "Play/Pause",
-    `${label}: leaving Cover Art should refresh the generated label`,
-  );
+  if (mediaCoverArtSupported) {
+    await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+    assert.strictEqual(
+      await page.locator("#sp-inp-label").inputValue(),
+      "Play/Pause",
+      `${label}: leaving Cover Art should refresh the generated label`,
+    );
+  }
 
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
@@ -5663,7 +5670,9 @@ async function runCase(browser, testCase) {
     );
     await assertCardIconsTopLeft(page, testCase.name);
     await assertClockBarTypographyAndIconLayout(page, testCase.name);
-    await assertMediaCoverArtCompactPreview(page, testCase.name);
+    if (testCase.mediaCoverArtSupported) {
+      await assertMediaCoverArtCompactPreview(page, testCase.name);
+    }
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
@@ -5674,7 +5683,9 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCoverSettingsPanels(page, testCase.name);
-    await assertMediaCoverArtSettingsPanels(page, testCase.name);
+    if (testCase.mediaCoverArtSupported) {
+      await assertMediaCoverArtSettingsPanels(page, testCase.name);
+    }
     await assertAlarmSettingsPanels(page, testCase.name);
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     await assertSpeakerGroupEditorAndPreview(page, posts, testCase.name);
@@ -5687,7 +5698,12 @@ async function runCase(browser, testCase) {
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);
-    await assertNewMediaCardDefaults(page, posts, testCase.name);
+    await assertNewMediaCardDefaults(
+      page,
+      posts,
+      testCase.name,
+      testCase.mediaCoverArtSupported,
+    );
     if (testCase.exerciseInteractions) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);
