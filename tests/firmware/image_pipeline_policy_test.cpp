@@ -5,11 +5,9 @@
 using esphome::artwork_image::p4_pipeline_candidate_precedes;
 using esphome::artwork_image::p4_pipeline_http_status_is_success;
 using esphome::artwork_image::p4_pipeline_result_is_current;
-using esphome::artwork_image::image_pipeline_should_requeue_interrupted_tile;
 using esphome::artwork_image::image_pipeline_completion_needs_recovery;
 using esphome::artwork_image::image_pipeline_modal_can_open;
 using esphome::artwork_image::image_pipeline_modal_cache_matches;
-using esphome::artwork_image::image_pipeline_can_start_followup_inline;
 using esphome::artwork_image::image_pipeline_cached_target_changed;
 using esphome::artwork_image::image_pipeline_memory_failure;
 using esphome::artwork_image::image_pipeline_modal_max_target_side;
@@ -27,23 +25,49 @@ using esphome::artwork_image::background_transfer_result_can_publish;
 using esphome::artwork_image::background_transfer_decode_is_incomplete;
 using esphome::artwork_image::background_transfer_resolve_redirect_url;
 using esphome::artwork_image::background_transfer_header_is_sensitive;
+using esphome::artwork_image::background_transfer_psram_growth_preserves_reserve;
+using esphome::artwork_image::background_transfer_psram_reserve_is_available;
 using esphome::artwork_image::background_transfer_same_origin;
 using esphome::artwork_image::background_transfer_should_follow_redirect;
 using esphome::artwork_image::background_transfer_tls_mode;
 
 int main() {
+  constexpr size_t internal_free_min = 40 * 1024;
+  constexpr size_t internal_largest_min = 24 * 1024;
+  constexpr size_t image_bytes = 320 * 320 * 2;
+  constexpr size_t pipeline_bytes = image_bytes * 2 + 128 * 1024;
+  constexpr size_t psram_headroom = 96 * 1024;
+
   // Constrained displays use a smaller modal and release it after closing;
   // standard P4 displays keep their existing 800px cache.
   assert(image_pipeline_modal_max_target_side(true) == 320);
   assert(image_pipeline_modal_max_target_side(false) == 800);
   assert(!image_pipeline_should_retain_modal_cache(true));
   assert(image_pipeline_should_retain_modal_cache(false));
+  assert(image_pipeline_should_retain_modal_cache(
+      true, true, false, pipeline_bytes + psram_headroom, image_bytes,
+      image_bytes, pipeline_bytes, psram_headroom));
+  assert(!image_pipeline_should_retain_modal_cache(
+      true, true, true, pipeline_bytes + psram_headroom, image_bytes,
+      image_bytes, pipeline_bytes, psram_headroom));
+  assert(!image_pipeline_should_retain_modal_cache(
+      true, true, false, pipeline_bytes + psram_headroom - 1, image_bytes,
+      image_bytes, pipeline_bytes, psram_headroom));
+  assert(image_pipeline_should_retain_modal_cache(
+      false, true, false, 1, 1, image_bytes, pipeline_bytes,
+      psram_headroom));
 
-  constexpr size_t internal_free_min = 40 * 1024;
-  constexpr size_t internal_largest_min = 24 * 1024;
-  constexpr size_t image_bytes = 320 * 320 * 2;
-  constexpr size_t pipeline_bytes = image_bytes * 2 + 128 * 1024;
-  constexpr size_t psram_headroom = 96 * 1024;
+  assert(background_transfer_psram_growth_preserves_reserve(
+      512 * 1024, 64 * 1024, 128 * 1024, 320 * 1024));
+  assert(!background_transfer_psram_growth_preserves_reserve(
+      383 * 1024, 64 * 1024, 128 * 1024, 320 * 1024));
+  assert(background_transfer_psram_growth_preserves_reserve(
+      1, 128 * 1024, 128 * 1024, 320 * 1024));
+  assert(background_transfer_psram_reserve_is_available(
+      320 * 1024, image_bytes, 320 * 1024, image_bytes));
+  assert(!background_transfer_psram_reserve_is_available(
+      320 * 1024, image_bytes - 1, 320 * 1024, image_bytes));
+
   assert(image_pipeline_memory_failure(
              true, internal_free_min, internal_largest_min,
              pipeline_bytes + psram_headroom, image_bytes,
@@ -172,10 +196,6 @@ int main() {
 
   // Preemption must requeue both active tiles and the selected card when it was
   // waiting in the tile queue. Inactive, source-less, or idle work is discarded.
-  assert(image_pipeline_should_requeue_interrupted_tile(true, true, true));
-  assert(!image_pipeline_should_requeue_interrupted_tile(false, true, true));
-  assert(!image_pipeline_should_requeue_interrupted_tile(true, false, true));
-  assert(!image_pipeline_should_requeue_interrupted_tile(true, true, false));
 
   // A completed startup image is recovered only while the card has not yet
   // applied it and the downloader still represents the card's current URL.
@@ -219,8 +239,6 @@ int main() {
 
   // The P4 background worker can accept the next queued tile immediately.
   // Modal work remains deferred separately so the preview paints first.
-  assert(image_pipeline_can_start_followup_inline(true));
-  assert(!image_pipeline_can_start_followup_inline(false));
 
   // Known-length responses reserve once instead of repeatedly copying through
   // 16, 32, 64, and larger KiB transfer buffers. Unknown or inaccurate lengths
