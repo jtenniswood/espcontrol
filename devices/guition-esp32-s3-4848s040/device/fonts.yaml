@@ -31,7 +31,7 @@ font:
   - file: "gfonts://Roboto"
     id: font_text_body
     size: 22
-    bpp: 4
+    bpp: 2
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
       - file: "gfonts://Noto+Sans"
@@ -43,7 +43,7 @@ font:
   - file: "gfonts://Roboto"
     id: font_text_small
     size: 18
-    bpp: 4
+    bpp: 2
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
       - file: "gfonts://Noto+Sans"
@@ -55,7 +55,7 @@ font:
   - file: "gfonts://Roboto@Light"
     id: font_text_title
     size: 34
-    bpp: 4
+    bpp: 2
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
       - file: "gfonts://Noto+Sans@Light"
