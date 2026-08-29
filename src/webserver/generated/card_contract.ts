@@ -3774,6 +3774,95 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "wifi_qr": {
+    "label": "Wi-Fi Share",
+    "allowInSubpage": true,
+    "domains": [],
+    "options": [
+      {
+        "name": "ssid64",
+        "label": "Network name",
+        "kind": "text",
+        "omitDefault": true
+      },
+      {
+        "name": "security",
+        "label": "Security",
+        "kind": "choice",
+        "values": [
+          "wpa",
+          "open"
+        ],
+        "defaultValue": "wpa",
+        "omitDefault": true
+      },
+      {
+        "name": "pass64",
+        "label": "Password",
+        "kind": "text",
+        "omitDefault": true
+      },
+      {
+        "name": "hidden",
+        "label": "Hidden network",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "clear"
+        },
+        "label": {
+          "policy": "default_if_empty",
+          "value": "Guest Wi-Fi"
+        },
+        "icon": {
+          "policy": "default_if_empty",
+          "value": "Wifi"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "wifi_qr"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "keep"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "ssid64",
+        "security",
+        "pass64",
+        "hidden"
+      ]
+    },
+    "default": {
+      "entity": "",
+      "label": "Guest Wi-Fi",
+      "icon": "Wifi",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "wifi_qr",
+      "precision": "",
+      "options": ""
+    }
+  },
   "weather_forecast": {
     "label": "Weather Forecast",
     "allowInSubpage": true,
@@ -4289,6 +4378,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subpage": true
     }
   },
+  "wifi_qr": {
+    "driver": "wifi_qr",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": false,
+      "actions": true,
+      "numericControl": false,
+      "modal": true,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
+  },
   "weather_forecast": {
     "driver": "weather",
     "capabilities": {
@@ -4459,6 +4560,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "fan_tabs": "fan_tabs",
   "garage_mode": "garage_mode",
   "gate_mode": "gate_mode",
+  "hidden": "hidden",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
   "image_label": "image_label",
@@ -4475,13 +4577,16 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "media_now_playing_controls": "media_now_playing_controls",
   "number_display": "number_display",
   "on_pattern": "on_pattern",
+  "pass64": "pass64",
   "pin_arm": "pin_arm",
   "pin_disarm": "pin_disarm",
   "playlist_content_id": "playlist_content_id",
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "script_fields": "script_fields",
+  "security": "security",
   "speaker_group_entity": "speaker_group_entity",
+  "ssid64": "ssid64",
   "state_entity": "state_entity",
   "state_high_label": "state_high_label",
   "state_input": "state_input",

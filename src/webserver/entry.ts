@@ -106,6 +106,7 @@ import { registerFanCardTypes } from "./cards/fan";
 import { registerGarageCardTypes } from "./cards/garage";
 import { registerGateCardTypes } from "./cards/gate";
 import { registerImageCardTypes } from "./cards/image";
+import { registerWifiQrCardTypes } from "./cards/wifi_qr";
 import { registerInternalCardTypes } from "./cards/internal";
 import { registerLawnMowerCardTypes } from "./cards/lawn_mower";
 import { registerLightTemperatureCardTypes } from "./cards/light_temperature";
@@ -175,6 +176,7 @@ function registerCards(context: ApplicationContext) {
     fields,
     cardUi,
   );
+  registerWifiQrCardTypes(registry, fields);
   registerInternalCardTypes(
     registry,
     context.configuration.internalRelayOptions,

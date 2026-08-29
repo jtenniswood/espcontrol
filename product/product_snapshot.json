@@ -10,7 +10,7 @@
   },
   "summary": {
     "deviceProfiles": 7,
-    "cardTypes": 40,
+    "cardTypes": 41,
     "entityNames": 101,
     "icons": 334,
     "structuralIcons": 19,
@@ -1489,7 +1489,8 @@
         "sensor",
         "subpage",
         "weather",
-        "image"
+        "image",
+        "wifi_qr"
       ],
       "capabilities": [
         "informationOnly",
@@ -1992,6 +1993,18 @@
             "numericControl": false,
             "modal": true,
             "runtimeAllocation": true,
+            "subpage": true
+          }
+        },
+        "wifi_qr": {
+          "driver": "wifi_qr",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
+            "actions": true,
+            "numericControl": false,
+            "modal": true,
+            "runtimeAllocation": false,
             "subpage": true
           }
         },
@@ -5619,6 +5632,95 @@
           "sensor": "",
           "unit": "",
           "type": "image",
+          "precision": "",
+          "options": ""
+        }
+      },
+      "wifi_qr": {
+        "label": "Wi-Fi Share",
+        "allowInSubpage": true,
+        "domains": [],
+        "options": [
+          {
+            "name": "ssid64",
+            "label": "Network name",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "security",
+            "label": "Security",
+            "kind": "choice",
+            "values": [
+              "wpa",
+              "open"
+            ],
+            "defaultValue": "wpa",
+            "omitDefault": true
+          },
+          {
+            "name": "pass64",
+            "label": "Password",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "hidden",
+            "label": "Hidden network",
+            "kind": "flag",
+            "omitDefault": true
+          }
+        ],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "clear"
+            },
+            "label": {
+              "policy": "default_if_empty",
+              "value": "Guest Wi-Fi"
+            },
+            "icon": {
+              "policy": "default_if_empty",
+              "value": "Wifi"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "wifi_qr"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "keep"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": [
+            "ssid64",
+            "security",
+            "pass64",
+            "hidden"
+          ]
+        },
+        "default": {
+          "entity": "",
+          "label": "Guest Wi-Fi",
+          "icon": "Wifi",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "wifi_qr",
           "precision": "",
           "options": ""
         }

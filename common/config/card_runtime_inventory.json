@@ -3,7 +3,7 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "todo"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "todo", "wifi_qr"]
   },
   "types": {
     "": {
@@ -312,6 +312,11 @@
       "classification": "canonical", "canonicalType": "image", "webRegistration": "image", "firmwareFamily": "IMAGE",
       "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["modal"], "modalOwner": "image" },
       "modes": [{ "name": "image", "config": { "entity": "camera.example" } }]
+    },
+    "wifi_qr": {
+      "classification": "canonical", "canonicalType": "wifi_qr", "webRegistration": "wifi_qr", "firmwareFamily": "WIFI_QR",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["modal"], "modalOwner": "wifi_qr" },
+      "modes": [{ "name": "share", "config": { "type": "wifi_qr", "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ" } }]
     },
     "weather_forecast": {
       "classification": "accepted_legacy_input", "canonicalType": "weather", "webRegistration": "weather_forecast", "firmwareFamily": "WEATHER",
