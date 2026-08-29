@@ -744,6 +744,11 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover lifecycle guard {needle}"
                 )
+        bind_slider_body = function_body(text, "access_cover_driver_bind_slider") or ""
+        if "subscribe_friendly_name_preserving_layout" not in bind_slider_body:
+            failures.append(
+                f"components/espcontrol/{ACCESS_COVER_HEADER}: preserve slider label padding when the cover friendly name arrives"
+            )
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover driver"
