@@ -88,10 +88,13 @@ export function readStoredZip(bytes: Uint8Array): BackupArchiveEntries {
     if (offset + 30 > bytes.length) throw new Error("Invalid ZIP backup.");
     const flags = view.getUint16(offset + 6, true);
     const compression = view.getUint16(offset + 8, true);
+    const expectedChecksum = view.getUint32(offset + 14, true);
     const size = view.getUint32(offset + 18, true);
+    const uncompressedSize = view.getUint32(offset + 22, true);
     const nameLength = view.getUint16(offset + 26, true);
     const extraLength = view.getUint16(offset + 28, true);
     if ((flags & 8) || compression !== 0) throw new Error("Unsupported ZIP backup format.");
+    if (size !== uncompressedSize) throw new Error("Invalid ZIP backup.");
     const nameStart = offset + 30;
     const dataStart = nameStart + nameLength + extraLength;
     const dataEnd = dataStart + size;
@@ -100,7 +103,9 @@ export function readStoredZip(bytes: Uint8Array): BackupArchiveEntries {
     if (!name || Object.prototype.hasOwnProperty.call(entries, name)) {
       throw new Error("Invalid ZIP backup.");
     }
-    entries[name] = bytes.slice(dataStart, dataEnd);
+    const body = bytes.slice(dataStart, dataEnd);
+    if (crc32(body) !== expectedChecksum) throw new Error("ZIP backup contains a corrupted entry.");
+    entries[name] = body;
     offset = dataEnd;
   }
   if (!entries["backup.json"]) throw new Error("ZIP backup is missing backup.json.");

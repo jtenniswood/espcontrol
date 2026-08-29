@@ -341,6 +341,34 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: reset image-card contexts before deleting subpage screens"
             )
+        background_required = (
+            "apply_card_background_image(s, p, cfg);",
+            "sync_card_background_image(s, p, cfg);",
+            "card_background_move_content_foreground(s);",
+            "reset_card_background_image_pool(cfg);",
+            "card_background_activate_page(cfg, main_page_obj);",
+            "card_background_unregister_page(entry.screen);",
+        )
+        for needle in background_required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: missing card background lifecycle guard {needle}"
+                )
+        for relative in (
+            "common/addon/connectivity.yaml",
+            "common/addon/connectivity_deployed.yaml",
+            "common/addon/connectivity_ethernet.yaml",
+        ):
+            connectivity_path = root / relative
+            if not connectivity_path.exists():
+                continue
+            connectivity = connectivity_path.read_text(encoding="utf-8")
+            if "lvgl.page.show: main_page" in connectivity or (
+                "button_grid_load_screen(id(main_page));" not in connectivity
+            ):
+                failures.append(
+                    f"{relative}: reconnect must activate the main page through the card background lifecycle"
+                )
     action_header = root / "components" / "espcontrol" / ACTION_HEADER
     if action_header.exists():
         text = action_header.read_text(encoding="utf-8")

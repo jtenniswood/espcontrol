@@ -47,6 +47,7 @@ enum class CardAssetRestoreResult {
 class CardAssetService {
  public:
   using ReferencePersistenceCallback = bool (*)(void *context);
+  static constexpr uint32_t RESTORE_SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
   ~CardAssetService() = default;
 
   bool start();
@@ -172,6 +173,8 @@ class CardAssetService {
   std::string restore_session_{};
   std::vector<std::string> staged_restore_ids_{};
   bool restore_recovery_needed_{false};
+  bool restore_committed_{false};
+  uint32_t restore_session_last_activity_ms_{0};
   bool delete_running_{false};
   bool running_{false};
 #ifdef USE_ESP32
@@ -185,6 +188,7 @@ class CardAssetService {
   bool load_restore_session();
   bool save_restore_session();
   bool clear_restore_session();
+  void recover_abandoned_restore_session();
 
 #ifdef ESP_PLATFORM
   uint32_t last_resume_attempt_{0};

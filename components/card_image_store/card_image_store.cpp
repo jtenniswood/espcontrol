@@ -112,8 +112,41 @@ std::string CardImageStore::normalize_name(const std::string &value) {
   std::string out;
   out.reserve(std::min(value.size(), CARD_IMAGE_NAME_MAX_LENGTH));
   bool previous_space = false;
-  for (char raw : value) {
+  for (size_t index = 0; index < value.size();) {
+    char raw = value[index];
     unsigned char ch = static_cast<unsigned char>(raw);
+    if (ch >= 0x80) {
+      size_t sequence_size = 0;
+      if (ch >= 0xC2 && ch <= 0xDF) {
+        sequence_size = 2;
+      } else if (ch >= 0xE0 && ch <= 0xEF) {
+        sequence_size = 3;
+      } else if (ch >= 0xF0 && ch <= 0xF4) {
+        sequence_size = 4;
+      }
+      bool valid = sequence_size > 0 && index + sequence_size <= value.size();
+      for (size_t offset = 1; valid && offset < sequence_size; offset++) {
+        unsigned char continuation = static_cast<unsigned char>(value[index + offset]);
+        valid = continuation >= 0x80 && continuation <= 0xBF;
+      }
+      if (valid && sequence_size == 3) {
+        unsigned char second = static_cast<unsigned char>(value[index + 1]);
+        valid = !((ch == 0xE0 && second < 0xA0) || (ch == 0xED && second > 0x9F));
+      } else if (valid && sequence_size == 4) {
+        unsigned char second = static_cast<unsigned char>(value[index + 1]);
+        valid = !((ch == 0xF0 && second < 0x90) || (ch == 0xF4 && second > 0x8F));
+      }
+      if (!valid) {
+        index++;
+        continue;
+      }
+      if (out.size() + sequence_size > CARD_IMAGE_NAME_MAX_LENGTH) break;
+      out.append(value, index, sequence_size);
+      index += sequence_size;
+      previous_space = false;
+      continue;
+    }
+    index++;
     if (ch < 0x20 || ch == 0x7F || raw == ',' || raw == ';') continue;
     if (std::isspace(ch)) {
       if (!out.empty() && !previous_space) out.push_back(' ');
@@ -914,14 +947,21 @@ esp_err_t CardImageStore::erase(const std::string &id) {
   if (index < 0) return ESP_ERR_NOT_FOUND;
   for (const auto &reader : this->readers_) if (reader.first == id && reader.second > 0) return ESP_ERR_INVALID_STATE;
   const auto image = this->images_[index];
-  esp_err_t err = esp_partition_erase_range(this->partition_(), image.offset, record_size(image.size));
-  if (err == ESP_OK) {
-    this->images_.erase(this->images_.begin() + index);
-    this->erase_caches_for_id_(id);
-    if (this->index_region_available_()) this->persist_index_();
-    if (this->erase_reservation_ == id) this->erase_reservation_.clear();
+  this->images_.erase(this->images_.begin() + index);
+  this->erase_caches_for_id_(id);
+  if (this->index_region_available_() && !this->persist_index_()) {
+    this->images_.insert(this->images_.begin() + index, image);
+    ESP_LOGE(TAG, "Could not persist card image deletion for %s", id.c_str());
+    return ESP_FAIL;
   }
-  return err;
+  esp_err_t err = esp_partition_erase_range(this->partition_(), image.offset, record_size(image.size));
+  if (err != ESP_OK) {
+    // The durable index already removed the record. Treat the flash payload as
+    // orphaned data so a later allocation can erase and reuse the space.
+    ESP_LOGW(TAG, "Could not erase orphaned card image payload for %s", id.c_str());
+  }
+  if (this->erase_reservation_ == id) this->erase_reservation_.clear();
+  return ESP_OK;
 }
 
 std::shared_ptr<http_request::HttpContainer> CardImageStore::open(const std::string &id) {

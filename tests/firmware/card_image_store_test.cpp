@@ -286,6 +286,58 @@ void test_card_asset_service_retries_restore_recovery_without_pending_delete() {
   expect(service.stop(), "asset service should stop after restore recovery");
 }
 
+void test_card_asset_service_rolls_back_abandoned_restore() {
+  flash.reset();
+  espcontrol::CardAssetService service;
+  expect(service.start(), "asset service should start for restore timeout recovery");
+  TestReferenceAdapter adapter;
+  adapter.referenced = false;
+  service.set_reference_adapter(&adapter);
+
+  const std::string session = service.begin_restore_session();
+  const auto bytes = jpeg_bytes();
+  CardImageUpload upload;
+  expect(service.begin_upload(bytes.size(), upload) == ESP_OK,
+         "timeout fixture should reserve image storage");
+  expect(service.write_upload(upload, bytes.data(), bytes.size()) == ESP_OK,
+         "timeout fixture should write image bytes");
+  CardImageInfo image;
+  expect(service.commit_upload(upload, image) == ESP_OK,
+         "timeout fixture should commit the staged image");
+  expect(service.stage_restored_asset(session, image.id),
+         "timeout fixture should track the staged image");
+
+  for (uint32_t elapsed = 0;
+       elapsed <= espcontrol::CardAssetService::RESTORE_SESSION_IDLE_TIMEOUT_MS; ++elapsed) {
+    service.loop();
+  }
+  CardImageInfo found;
+  expect(!service.find(image.id, found),
+         "an abandoned restore should roll back after its inactivity timeout");
+  const std::string referenced_session = service.begin_restore_session();
+  expect(!referenced_session.empty(),
+         "timeout recovery should make the service available for another restore");
+  CardImageUpload referenced_upload;
+  expect(service.begin_upload(bytes.size(), referenced_upload) == ESP_OK,
+         "referenced timeout fixture should reserve image storage");
+  expect(service.write_upload(referenced_upload, bytes.data(), bytes.size()) == ESP_OK,
+         "referenced timeout fixture should write image bytes");
+  CardImageInfo referenced_image;
+  expect(service.commit_upload(referenced_upload, referenced_image) == ESP_OK,
+         "referenced timeout fixture should commit the staged image");
+  adapter.referenced = true;
+  adapter.expected_id = referenced_image.id;
+  expect(service.stage_restored_asset(referenced_session, referenced_image.id),
+         "referenced timeout fixture should track the staged image");
+  for (uint32_t elapsed = 0;
+       elapsed <= espcontrol::CardAssetService::RESTORE_SESSION_IDLE_TIMEOUT_MS; ++elapsed) {
+    service.loop();
+  }
+  expect(service.find(referenced_image.id, found),
+         "timeout recovery must retain an image referenced by durable configuration");
+  expect(service.stop(), "asset service should stop after timeout recovery");
+}
+
 std::vector<uint8_t> jpeg_bytes(size_t size) {
   expect(size >= 4, "JPEG fixture must include start and end markers");
   std::vector<uint8_t> bytes(size, 0x42);
@@ -518,6 +570,38 @@ void test_failed_journal_write_retains_original_name() {
   }
   TestCardImageStore rebooted;
   expect(rebooted.list()[0].name == id, "failed write should retain the persisted name");
+}
+
+void test_failed_delete_index_write_retains_image() {
+  flash.reset();
+  std::string id;
+  {
+    TestCardImageStore store;
+    CardImageInfo uploaded = upload(store);
+    id = uploaded.id;
+    flash.fail_write_at = next_index_offset();
+    expect(store.erase(id) == ESP_FAIL,
+           "failed journal write should fail image deletion");
+    flash.fail_write_at.reset();
+    CardImageInfo retained;
+    expect(store.find(id, retained),
+           "failed deletion persistence must retain the in-memory image");
+  }
+  TestCardImageStore rebooted;
+  CardImageInfo retained;
+  expect(rebooted.find(id, retained),
+         "failed deletion persistence must retain the image after reboot");
+}
+
+void test_name_normalization_preserves_utf8_boundaries() {
+  const std::string glyph = "\xE7\x8C\xAB";
+  std::string input;
+  for (size_t index = 0; index < 14; ++index) input += glyph;
+  const std::string normalized = CardImageStore::normalize_name(input);
+  expect(normalized.size() == 39,
+         "UTF-8 names should stop before a code point crosses the byte limit");
+  expect(normalized == input.substr(0, 39),
+         "UTF-8 name truncation should preserve complete code points");
 }
 
 void test_rename_survives_one_damaged_journal_slot() {
@@ -784,12 +868,15 @@ int main() {
   test_card_asset_service_stages_restore_until_commit_or_rollback();
   test_card_asset_service_stages_every_indexed_image();
   test_card_asset_service_retries_restore_recovery_without_pending_delete();
+  test_card_asset_service_rolls_back_abandoned_restore();
   test_overlapping_uploads_reserve_distinct_flash_spans();
   test_upload_survives_reboot_and_rename();
   test_interrupted_upload_is_reclaimed();
   test_failed_index_write_rolls_back_upload();
   test_failed_journal_erase_retains_original_name();
   test_failed_journal_write_retains_original_name();
+  test_failed_delete_index_write_retains_image();
+  test_name_normalization_preserves_utf8_boundaries();
   test_rename_survives_one_damaged_journal_slot();
   test_older_index_preserves_names_when_newest_record_is_corrupt();
   test_legacy_index_migrates_on_rename();

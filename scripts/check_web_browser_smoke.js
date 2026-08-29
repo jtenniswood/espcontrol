@@ -15,6 +15,9 @@ const {
   decodePanelConfig,
   encodePanelConfig,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
+const { readStoredZip } = loadTypeScriptModule(
+  path.join(ROOT, "src", "webserver", "features", "backup_file_controller.ts"),
+);
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
@@ -5007,7 +5010,8 @@ async function assertNativeProfileJourney(browser, testCase) {
     const download = await downloadPromise;
     const downloadPath = await download.path();
     assert(downloadPath, `${testCase.name}: backup export creates a file`);
-    const backup = JSON.parse(fs.readFileSync(downloadPath, "utf8"));
+    const archive = readStoredZip(new Uint8Array(fs.readFileSync(downloadPath)));
+    const backup = JSON.parse(Buffer.from(archive["backup.json"]).toString("utf8"));
     assert.strictEqual(backup.version, 2, `${testCase.name}: backup export uses v2`);
     assert.strictEqual(
       backup.native_config.device_profile,

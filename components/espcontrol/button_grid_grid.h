@@ -570,6 +570,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
 
   if (context.known) screen_lock_register_controlled_button(s.btn);
+  apply_card_background_image(s, p, cfg);
 
   if (espcontrol::cards::image_driver_setup_visual(s, p, context)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
@@ -910,6 +911,10 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
   display_apply_main_width(s.icon_lbl, display);
   display_apply_slot_text_width(s, display);
+  sync_card_background_image(s, p, cfg);
+  if (card_background_configured_for_card(p)) {
+    card_background_move_content_foreground(s);
+  }
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -951,6 +956,7 @@ inline void grid_refresh_layout(
   // still point at now-invalid cells from the previous descriptor.
   for (int i = 0; i < NS; i++)
     lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
+  for (int i = 0; i < NS; i++) clear_card_background_image(slots[i]);
   configure_grid_layout(main_page_obj, NS, COLS);
   int ROWS = (NS + COLS - 1) / COLS;
 
@@ -1007,8 +1013,12 @@ inline void grid_phase1(
   ESP_LOGI("sensors", "Phase 1: visual setup start (%lu ms)", esphome::millis());
   set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
+  button_grid_screen_load_callback() = [cfg](lv_obj_t *page) {
+    card_background_activate_page(cfg, page);
+  };
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   display_activate_profile(display);
+  reset_card_background_image_pool(cfg);
   // Clear image references before visual setup removes their old LVGL widgets.
   espcontrol::cards::image_driver_reset_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
@@ -1086,6 +1096,7 @@ inline void grid_phase1(
     setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
     refresh_card_layout(s, p, cfg, row_span, col_span);
   }
+  if (main_page_obj) card_background_activate_page(cfg, main_page_obj);
   screen_lock_apply();
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }
@@ -1799,6 +1810,9 @@ inline void grid_phase2(
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   grid_log_memory("start");
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
+  button_grid_screen_load_callback() = [cfg](lv_obj_t *page) {
+    card_background_activate_page(cfg, page);
+  };
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   display_activate_profile(display);
   set_switch_confirmation_message_font(display_switch_confirmation_message_font(display));
@@ -1837,6 +1851,9 @@ inline void grid_phase2(
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
   espcontrol::cards::image_driver_reset_pool(cfg);
+  for (auto &entry : navigation_subpages()) {
+    card_background_unregister_page(entry.screen);
+  }
   navigation_clear_subpages();
   clear_subpage_vacuum_card_text_refs();
 

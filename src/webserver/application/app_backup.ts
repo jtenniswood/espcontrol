@@ -682,16 +682,30 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         }
                         var completion: any = applyBackupRestorePlan(plannedImport);
                         if (!imageIdMap) return completion;
+                        var configurationPersisted = false;
                         return Promise.resolve(completion).then(function () {
                             return requestApi.postQueueIdle();
                         }).then(function () {
                             if (requestApi.postQueueHadError()) {
                                 throw new Error("Configuration restore failed. Check the connection and try again.");
                             }
+                            configurationPersisted = true;
                             return cardImageBackupAssetProvider.commitRestore
                                 ? cardImageBackupAssetProvider.commitRestore()
                                 : undefined;
                         }).catch(function (error: any) {
+                            // Once the remapped configuration is durable, its assets are
+                            // referenced. A failed commit must leave the durable device
+                            // session intact for recovery instead of deleting those assets.
+                            if (configurationPersisted && cardImageBackupAssetProvider.commitRestore) {
+                                // Retry once while the provider still owns the durable
+                                // session. If this also fails, its token remains intact
+                                // for device-side recovery.
+                                return Promise.resolve(cardImageBackupAssetProvider.commitRestore()).then(
+                                    function () { return undefined; },
+                                    function () { throw error; });
+                            }
+                            if (configurationPersisted) throw error;
                             var rollback: any = cardImageBackupAssetProvider.rollbackRestore
                                 ? cardImageBackupAssetProvider.rollbackRestore()
                                 : Promise.resolve();

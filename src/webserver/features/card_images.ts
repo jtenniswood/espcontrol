@@ -471,12 +471,16 @@ export function createCardImageBackupAssetProvider(
       const existing = await cardImages.list(true);
       const info = cardImages.info();
       if (!info.available) throw new Error("Card image storage is unavailable on this display.");
-      const existingIds = new Set(existing.map((image) => image.id));
+      const existingById = new Map(existing.map((image) => [image.id, image]));
+      const existingIds = new Set(existingById.keys());
       const needsUpload = archived.some((image) => !existingIds.has(image.item.id));
       activeRestoreSession = needsUpload ? await cardImages.beginRestore() : null;
       for (const image of archived) {
         if (existingIds.has(image.item.id)) {
           references[image.item.id] = image.item.id;
+          if (existingById.get(image.item.id)?.name !== image.item.name) {
+            await cardImages.rename(image.item.id, image.item.name);
+          }
           continue;
         }
         const restored = await cardImages.uploadBytes(

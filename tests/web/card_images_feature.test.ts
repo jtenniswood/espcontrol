@@ -127,18 +127,22 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   const existingRequests: string[] = [];
   const existingProvider = providerFor(async (url, request) => {
     existingRequests.push(`${request?.method || "GET"} ${url}`);
+    if (request?.method === "POST" && url === "/api/card-images/existing-1/rename") {
+      return response({ json: { id: "existing-1", name: "Archived", size: 4 } });
+    }
     return response({ json: {
       available: true,
       free_bytes: 0,
-      images: [{ id: "existing-1", name: "Existing", size: 4 }],
+      images: [{ id: "existing-1", name: "Current", size: 4 }],
     } });
   }).provider;
   deepEqual(
-    await existingProvider.restoreArchiveEntries(manifestEntries([{ id: "existing-1", name: "Existing" }])),
+    await existingProvider.restoreArchiveEntries(manifestEntries([{ id: "existing-1", name: "Archived" }])),
     { "existing-1": "existing-1" },
     "restore reuses an image that is already present",
   );
-  deepEqual(existingRequests, ["GET /api/card-images"], "existing images require no upload or rename");
+  deepEqual(existingRequests, ["GET /api/card-images", "POST /api/card-images/existing-1/rename"],
+    "existing images reuse their bytes and restore the archived display name");
 
   const capacityRequests: string[] = [];
   const capacityProvider = providerFor(async (url, request) => {

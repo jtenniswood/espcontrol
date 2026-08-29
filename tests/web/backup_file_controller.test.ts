@@ -47,4 +47,14 @@ export function runBackupFileControllerTests(): void {
   ]));
   equal((restored as { version: number }).version, 3, "reads configuration from ZIP backups");
   equal(archivedImage, 3, "passes archived assets to the restore journey");
+
+  const corrupted = createStoredZip([
+    { name: "backup.json", bytes: new TextEncoder().encode('{"version":4}') },
+  ]);
+  const corruptedByte = 31 + "backup.json".length;
+  corrupted[corruptedByte] = (corrupted[corruptedByte] || 0) ^ 0x01;
+  controller.import(() => { throw new Error("must not restore a corrupted ZIP"); });
+  selected?.("backup.zip", corrupted);
+  equal(events.at(-1), "error:ZIP backup contains a corrupted entry.",
+    "rejects ZIP entries whose contents do not match their CRC");
 }
