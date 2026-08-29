@@ -1182,6 +1182,7 @@ inline void setup_image_card(BtnSlot &s) {
   lv_obj_set_style_text_color(loading_icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
   lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  apply_icon_width_compensation(loading_icon);
 
   lv_obj_t *loading_label = lv_label_create(loading);
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
@@ -1997,6 +1998,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   lv_obj_set_style_text_color(loading_icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
   lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  apply_icon_width_compensation(loading_icon);
 
   lv_obj_t *loading_label = lv_label_create(ui.loading_widget);
   if (!loading_label) {

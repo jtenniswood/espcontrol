@@ -83,6 +83,8 @@ class StringRef {
 
 struct lv_obj_t {
   int flags = 0;
+  int transform_scale_x = 256;
+  int transform_scale_y = 256;
   std::string text;
   void *user_data = nullptr;
 };
@@ -141,8 +143,12 @@ constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
 inline lv_obj_t *lv_scr_act() { return lv_active_screen; }
-inline void lv_obj_set_style_transform_scale_x(lv_obj_t *, int, int) {}
-inline void lv_obj_set_style_transform_scale_y(lv_obj_t *, int, int) {}
+inline void lv_obj_set_style_transform_scale_x(lv_obj_t *obj, int scale, int) {
+  if (obj) obj->transform_scale_x = scale;
+}
+inline void lv_obj_set_style_transform_scale_y(lv_obj_t *obj, int scale, int) {
+  if (obj) obj->transform_scale_y = scale;
+}
 inline void lv_obj_set_style_bg_color(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {}
@@ -668,6 +674,30 @@ int main() {
   assert(normalize_width_compensation_percent(25) == 50);
   assert(normalize_width_compensation_percent(175) == 150);
   assert(width_compensation_scale(100) == 256);
+  lv_obj_t compensated_obj;
+  set_width_compensation_vertical_axis(false);
+  apply_width_compensation(&compensated_obj, 95);
+  assert(compensated_obj.transform_scale_x == width_compensation_scale(95));
+  assert(compensated_obj.transform_scale_y == 256);
+  set_icon_width_compensation_percent(95);
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 171);
+  assert(compensated_obj.transform_scale_y == 180);
+  set_text_width_compensation_percent(100);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
+  set_width_compensation_vertical_axis(true);
+  apply_width_compensation(&compensated_obj, 95);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == width_compensation_scale(95));
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 180);
+  assert(compensated_obj.transform_scale_y == 171);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
+  set_width_compensation_vertical_axis(false);
   assert(clamp_percent_value(-1) == 0);
   assert(clamp_percent_value(101) == 100);
   int brightness_pct = -1;
