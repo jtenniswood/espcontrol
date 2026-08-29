@@ -1,5 +1,6 @@
 #pragma once
 
+#include "media_playback_modes.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
 
@@ -519,72 +520,72 @@ inline void send_cover_command_action(const CoverCommandCtx &ctx) {
     cover_command_use_tilt(p.sensor, ctx.supported_features_known, ctx.supported_features));
 }
 
-inline void send_numeric_slider_action(const std::string &entity_id, double value,
+inline bool send_numeric_slider_action(const std::string &entity_id, double value,
                                        double step) {
   const char *service = espcontrol::number_slider::service_for_entity(entity_id);
   if (!service) {
     ESP_LOGW("slider", "Ignoring numeric slider command for unsupported entity %s",
              entity_id.c_str());
-    return;
+    return false;
   }
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, service, false, 2)) return;
+  if (!ha_action_begin(req, service, false, 2)) return false;
   ha_action_add_entity(req, entity_id);
   const std::string formatted = espcontrol::number_slider::format_value(value, step);
   ha_action_add_data(req, "value", formatted.c_str());
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 // Send HA action for a percentage slider change or its on-card toggle.
-inline void send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
+inline bool send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
   esphome::api::HomeassistantActionRequest req;
   if (value < 0) {
     if (espcontrol::number_slider::is_numeric_entity(entity_id)) {
       ESP_LOGW("slider", "Numeric slider %s has no toggle action", entity_id.c_str());
-      return;
+      return false;
     }
     if (!is_cover_entity(entity_id) && !is_fan_entity(entity_id) &&
         !espcontrol::number_slider::has_domain(entity_id, "light")) {
       ESP_LOGW("slider", "Ignoring slider toggle for unsupported entity %s",
                entity_id.c_str());
-      return;
+      return false;
     }
-    if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return;
+    if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return false;
     ha_action_add_entity(req, entity_id);
   } else if (is_cover_entity(entity_id)) {
     if (!ha_action_begin(req,
       cover_tilt ? "cover.set_cover_tilt_position" : "cover.set_cover_position",
-      false, 2)) return;
+      false, 2)) return false;
     ha_action_add_entity(req, entity_id);
-    char buf[8];
+    char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, cover_tilt ? "tilt_position" : "position", buf);
   } else if (is_fan_entity(entity_id)) {
     if (value == 0) {
-      if (!ha_action_begin(req, "fan.turn_off", false, 1)) return;
+      if (!ha_action_begin(req, "fan.turn_off", false, 1)) return false;
       ha_action_add_entity(req, entity_id);
     } else {
-      if (!ha_action_begin(req, "fan.turn_on", false, 2)) return;
+      if (!ha_action_begin(req, "fan.turn_on", false, 2)) return false;
       ha_action_add_entity(req, entity_id);
-      char buf[8];
+      char buf[12];
       snprintf(buf, sizeof(buf), "%d", value);
       ha_action_add_data(req, "percentage", buf);
     }
   } else if (espcontrol::number_slider::has_domain(entity_id, "light") && value == 0) {
-    if (!ha_action_begin(req, "light.turn_off", false, 1)) return;
+    if (!ha_action_begin(req, "light.turn_off", false, 1)) return false;
     ha_action_add_entity(req, entity_id);
   } else if (espcontrol::number_slider::has_domain(entity_id, "light")) {
-    if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+    if (!ha_action_begin(req, "light.turn_on", false, 2)) return false;
     ha_action_add_entity(req, entity_id);
-    char buf[8];
+    char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, "brightness_pct", buf);
   } else {
     ESP_LOGW("slider", "Ignoring slider command for unsupported entity %s",
              entity_id.c_str());
-    return;
+    return false;
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 // Parse "min-max" kelvin range from the unit config field (e.g. "2000-6500").
@@ -692,6 +693,22 @@ inline void send_media_player_action(const std::string &entity_id,
     ha_action_add_data(req, value_key, value);
   }
   ha_action_send(req);
+}
+
+inline void send_media_shuffle_action(const std::string &entity_id,
+                                      bool enabled) {
+  send_media_player_action(
+    entity_id, "media_player.shuffle_set", "shuffle",
+    enabled ? "true" : "false");
+}
+
+inline void send_media_repeat_action(
+    const std::string &entity_id,
+    espcontrol::media::RepeatMode mode) {
+  const char *value = espcontrol::media::repeat_mode_value(mode);
+  if (!value) return;
+  send_media_player_action(
+    entity_id, "media_player.repeat_set", "repeat", value);
 }
 
 inline void send_media_volume_action(const std::string &entity_id, int value) {
@@ -820,11 +837,31 @@ inline bool media_fast_press_consume(int slot_num) {
   return sent;
 }
 
+inline bool button_press_opens_modal(const ParsedCfg &config, lv_obj_t *button) {
+  const auto context = card_runtime_context(config);
+  if (card_runtime_main_click_opens_modal(context)) return true;
+
+  using Driver = espcontrol::card_runtime::CardDriverId;
+  if (context.runtime.driver == Driver::ACTION) {
+    return action_script_confirmation_enabled(config);
+  }
+  if (context.runtime.driver == Driver::TOGGLE && button &&
+      !is_button_entity(config.entity)) {
+    return switch_confirmation_required(
+      config, lv_obj_has_state(button, LV_STATE_CHECKED));
+  }
+  return false;
+}
+
 inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
-  (void) btn_obj;
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
   ParsedCfg p = parse_cfg(cfg);
+  if (btn_obj && button_press_opens_modal(p, btn_obj)) {
+    // The modal replaces this card on release. Clearing the state inside the
+    // press event avoids scheduling a pointless pressed-card repaint first.
+    lv_obj_clear_state(btn_obj, LV_STATE_PRESSED);
+  }
   if (p.type != "media") return;
   std::string mode = media_card_mode(p.sensor);
   if (!media_fast_press_mode(mode) || p.entity.empty()) return;

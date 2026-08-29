@@ -10,13 +10,6 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  # Set on config changes so the next button-grid refresh rebuilds each tile's
-  # widgets in place (applying card type/entity changes) instead of rebooting.
-  # Reset by the refresh script after it runs.
-  - id: config_apply_reconstruct
-    type: bool
-    restore_value: no
-    initial_value: 'false'
   - id: media_player_sleep_prevention_default_on_migrated
     type: bool
     restore_value: yes
@@ -72,16 +65,6 @@ esphome:
         - script.execute: clock_bar_apply
 
 script:
-  - id: schedule_card_config_refresh
-    mode: restart
-    then:
-      - if:
-          condition:
-            lambda: 'return id(screen_rotation_ready);'
-          then:
-            - lambda: 'id(config_apply_reconstruct) = true;'
-            - script.execute: refresh_button_grid
-
   - id: clock_bar_hide
     mode: restart
     then:
@@ -202,9 +185,7 @@ script:
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
-                                    visible &&
-                                      id(espcontrol_app).display().target_mode_is(
-                                          espcontrol::DisplayMode::ACTIVE),
+                                    visible,
                                     id(indoor_temp_enable).state,
                                     id(outdoor_temp_enable).state,
                                     id(indoor_temp), id(outdoor_temp));
@@ -674,6 +655,9 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: refresh_button_grid
 
   # Optional media player that keeps the screensaver awake while playing.
   - platform: template
@@ -770,6 +754,52 @@ text:
 
 number:
   - platform: template
+    name: "${entity_screen_saver_daytime_dimmed_brightness}"
+    internal: true
+    id: screensaver_dimmed_brightness_day
+    min_value: 1
+    max_value: 100
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-7"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::DIMMED);'
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
+
+  - platform: template
+    name: "${entity_screen_saver_nighttime_dimmed_brightness}"
+    internal: true
+    id: screensaver_dimmed_brightness_night
+    min_value: 1
+    max_value: 100
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-4"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::DIMMED);'
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
+
+  - platform: template
     name: "${entity_screen_saver_daytime_clock_brightness}"
     internal: true
     id: clock_brightness_day
@@ -817,6 +847,8 @@ number:
             then:
               - script.execute: clock_screensaver_refresh_brightness
 
+  # Retained for Manual brightness mode and to migrate existing panels to
+  # separate automatic day/night dimmed-screen settings.
   - platform: template
     name: "${entity_screen_saver_dimmed_brightness}"
     internal: true

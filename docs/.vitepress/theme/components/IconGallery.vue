@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import iconsData from '../../../../common/assets/icons.json'
+import iconsData from '../../../../product/v2/icons.json'
 
 const GROUP_ORDER = [
   'Lighting',
@@ -48,9 +48,12 @@ const GROUP_ORDER = [
 
 const ICON_GROUPS = {
   'Ceiling Light': 'Lighting',
+  'Ceiling Light Multiple Outline': 'Lighting',
   'Ceiling Lights Multiple': 'Lighting',
   'Chandelier': 'Lighting',
   'Desk Lamp': 'Lighting',
+  'Desk Lamp Off': 'Lighting',
+  'Desk Lamp On': 'Lighting',
   'Downlight': 'Lighting',
   'Floor Lamp': 'Lighting',
   'Flood Light Down': 'Lighting',
@@ -61,6 +64,8 @@ const ICON_GROUPS = {
   'LED Strip Variant Off': 'Lighting',
   'Light Switch': 'Lighting',
   'Lightbulb': 'Lighting',
+  'Lightbulb Auto': 'Lighting',
+  'Lightbulb Auto Outline': 'Lighting',
   'Lightbulb Group': 'Lighting',
   'Lightbulb Group Outline': 'Lighting',
   'Lightbulb Night': 'Lighting',
@@ -72,12 +77,16 @@ const ICON_GROUPS = {
   'Lightbulb Spot Off': 'Lighting',
   'Lightbulb Variant': 'Lighting',
   'Lightbulb Variant Outline': 'Lighting',
+  'Home Lightbulb': 'Lighting',
+  'Home Lightbulb Outline': 'Lighting',
   'Outdoor Lamp': 'Lighting',
   'Palette': 'Lighting',
   'Spotlight': 'Lighting',
   'Spotlight Beam': 'Lighting',
   'String Lights': 'Lighting',
   'String Lights Off': 'Lighting',
+  'Track Light': 'Lighting',
+  'Track Light Off': 'Lighting',
   'Wall Sconce': 'Lighting',
 
   'Air Conditioner': 'Climate & Air',
@@ -292,8 +301,11 @@ const ICON_GROUPS = {
   'Remote Right': 'Media & Entertainment',
   'Remote Up': 'Media & Entertainment',
   'Speaker': 'Media & Entertainment',
+  'Speaker Multiple': 'Media & Entertainment',
+  'Speaker Off': 'Media & Entertainment',
   'Speaker Pause': 'Media & Entertainment',
   'Speaker Play': 'Media & Entertainment',
+  'Speaker Wireless': 'Media & Entertainment',
   'Skip Next': 'Media & Entertainment',
   'Skip Previous': 'Media & Entertainment',
   'Television': 'Media & Entertainment',
@@ -309,6 +321,7 @@ const ICON_GROUPS = {
   'Pool': 'Water & Outdoors',
   'Shower': 'Water & Outdoors',
   'Sprinkler': 'Water & Outdoors',
+  'Sprinkler Variant': 'Water & Outdoors',
   'Water': 'Water & Outdoors',
   'Water Alert': 'Water & Outdoors',
   'Water Boiler': 'Water & Outdoors',
@@ -335,6 +348,7 @@ const ICON_GROUPS = {
   'Vacuum Outline': 'Network & Tech',
 
   'Bathtub': 'Rooms & Furniture',
+  'Bathtub Outline': 'Rooms & Furniture',
   'Bed': 'Rooms & Furniture',
   'Bed King': 'Rooms & Furniture',
   'Bed Queen': 'Rooms & Furniture',

@@ -17,17 +17,27 @@ target_include_directories(button_grid_foundations_test PRIVATE
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
 
-add_executable(card_reconciler_test card_reconciler_test.cpp)
-target_compile_features(card_reconciler_test PRIVATE cxx_std_17)
-target_compile_options(card_reconciler_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(card_reconciler_test PRIVATE ../../components/espcontrol)
-add_test(NAME card_reconciler_test COMMAND card_reconciler_test)
+add_executable(grid_navigation_service_test
+  grid_navigation_service_test.cpp
+  ../../components/espcontrol/espcontrol_app_core.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+)
+target_compile_features(grid_navigation_service_test PRIVATE cxx_std_17)
+target_compile_options(grid_navigation_service_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(grid_navigation_service_test PRIVATE ../../components/espcontrol)
+add_test(NAME grid_navigation_service_test COMMAND grid_navigation_service_test)
 
-add_executable(card_instance_test card_instance_test.cpp)
-target_compile_features(card_instance_test PRIVATE cxx_std_17)
-target_compile_options(card_instance_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(card_instance_test PRIVATE ../../components/espcontrol)
-add_test(NAME card_instance_test COMMAND card_instance_test)
+add_executable(control_modal_service_test
+  control_modal_service_test.cpp
+  ../../components/espcontrol/espcontrol_app_core.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+)
+target_compile_features(control_modal_service_test PRIVATE cxx_std_17)
+target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
+add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
 
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
@@ -46,6 +56,18 @@ target_compile_features(media_volume_capability_test PRIVATE cxx_std_17)
 target_compile_options(media_volume_capability_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(media_volume_capability_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_volume_capability_test COMMAND media_volume_capability_test)
+
+add_executable(media_power_capability_test media_power_capability_test.cpp)
+target_compile_features(media_power_capability_test PRIVATE cxx_std_17)
+target_compile_options(media_power_capability_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_power_capability_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_power_capability_test COMMAND media_power_capability_test)
+
+add_executable(media_playback_modes_test media_playback_modes_test.cpp)
+target_compile_features(media_playback_modes_test PRIVATE cxx_std_17)
+target_compile_options(media_playback_modes_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_playback_modes_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_playback_modes_test COMMAND media_playback_modes_test)
 
 add_executable(media_metadata_policy_test media_metadata_policy_test.cpp)
 target_compile_features(media_metadata_policy_test PRIVATE cxx_std_17)
@@ -80,14 +102,6 @@ target_compile_options(configuration_store_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_store_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_store_test COMMAND configuration_store_test)
 
-add_executable(nvs_configuration_capacity_test
-  nvs_configuration_capacity_test.cpp
-)
-target_compile_features(nvs_configuration_capacity_test PRIVATE cxx_std_17)
-target_compile_options(nvs_configuration_capacity_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(nvs_configuration_capacity_test PRIVATE ../../components/espcontrol)
-add_test(NAME nvs_configuration_capacity_test COMMAND nvs_configuration_capacity_test)
-
 add_executable(configuration_service_test
   configuration_service_test.cpp
   ../../components/espcontrol/configuration_service.cpp
@@ -98,59 +112,85 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
-add_executable(configuration_document_api_test
-  configuration_document_api_test.cpp
-  ../../components/espcontrol/configuration_service.cpp
+add_executable(panel_config_document_test panel_config_document_test.cpp)
+target_compile_features(panel_config_document_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_document_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_document_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_document_test COMMAND panel_config_document_test)
+
+add_executable(panel_config_capabilities_test
+  panel_config_capabilities_test.cpp
+)
+target_compile_features(panel_config_capabilities_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_capabilities_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_capabilities_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_capabilities_test COMMAND panel_config_capabilities_test)
+
+add_executable(panel_config_http_etag_test panel_config_http_etag_test.cpp)
+target_compile_features(panel_config_http_etag_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_http_etag_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_http_etag_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_http_etag_test COMMAND panel_config_http_etag_test)
+
+add_executable(panel_config_write_status_test panel_config_write_status_test.cpp)
+target_compile_features(panel_config_write_status_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_write_status_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_write_status_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_write_status_test COMMAND panel_config_write_status_test)
+
+add_executable(panel_config_storage_backend_test
+  panel_config_storage_backend_test.cpp
   ../../components/espcontrol/configuration_store.cpp
 )
-target_compile_features(configuration_document_api_test PRIVATE cxx_std_17)
-target_compile_options(configuration_document_api_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(configuration_document_api_test PRIVATE ../../components/espcontrol)
-add_test(NAME configuration_document_api_test COMMAND configuration_document_api_test)
+target_compile_features(panel_config_storage_backend_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_storage_backend_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_storage_backend_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_backend_test)
 
-add_executable(configuration_entity_document_test
-  configuration_entity_document_test.cpp
-  ../../components/espcontrol/configuration_entity_document.cpp
+add_executable(panel_config_legacy_adapter_test
+  panel_config_legacy_adapter_test.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_runtime_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
 )
-target_compile_features(configuration_entity_document_test PRIVATE cxx_std_17)
-target_compile_options(configuration_entity_document_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(configuration_entity_document_test PRIVATE ../../components/espcontrol)
-add_test(NAME configuration_entity_document_test COMMAND configuration_entity_document_test)
-
-add_executable(configuration_upload_session_test
-  configuration_upload_session_test.cpp
-)
-target_compile_features(configuration_upload_session_test PRIVATE cxx_std_17)
-target_compile_options(configuration_upload_session_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(configuration_upload_session_test PRIVATE ../../components/espcontrol)
-add_test(NAME configuration_upload_session_test COMMAND configuration_upload_session_test)
+target_compile_features(panel_config_legacy_adapter_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_legacy_adapter_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_legacy_adapter_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_legacy_adapter_test COMMAND panel_config_legacy_adapter_test)
 
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
 )
 target_compile_features(espcontrol_app_core_test PRIVATE cxx_std_17)
 target_compile_options(espcontrol_app_core_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(espcontrol_app_core_test PRIVATE ../../components/espcontrol)
 add_test(NAME espcontrol_app_core_test COMMAND espcontrol_app_core_test)
 
-add_executable(ha_state_broker_test ha_state_broker_test.cpp)
-target_compile_features(ha_state_broker_test PRIVATE cxx_std_17)
-target_compile_options(ha_state_broker_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(ha_state_broker_test PRIVATE ../../components/espcontrol)
-add_test(NAME ha_state_broker_test COMMAND ha_state_broker_test)
-
-add_executable(web_event_stream_policy_test web_event_stream_policy_test.cpp)
-target_compile_features(web_event_stream_policy_test PRIVATE cxx_std_17)
-target_compile_options(web_event_stream_policy_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(web_event_stream_policy_test PRIVATE ../../components/web_server_idf)
-add_test(NAME web_event_stream_policy_test COMMAND web_event_stream_policy_test)
+add_executable(ha_read_coordinator_test
+  ha_read_coordinator_test.cpp
+  ../../components/espcontrol/espcontrol_app_core.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+)
+target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
+target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
 
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
 target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(artwork_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME artwork_controller_test COMMAND artwork_controller_test)
+
+add_executable(home_assistant_endpoint_policy_test home_assistant_endpoint_policy_test.cpp)
+target_compile_features(home_assistant_endpoint_policy_test PRIVATE cxx_std_17)
+target_compile_options(home_assistant_endpoint_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(home_assistant_endpoint_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME home_assistant_endpoint_policy_test COMMAND home_assistant_endpoint_policy_test)
 
 add_executable(image_service_test image_service_test.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)

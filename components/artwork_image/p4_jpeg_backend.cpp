@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <inttypes.h>
 
 #include "driver/jpeg_decode.h"
 #include "driver/ppa.h"
@@ -96,7 +97,8 @@ static bool scale_cover(const uint8_t *source, uint32_t stride_pixels, uint32_t 
   uint32_t scale_x_steps = p4::exact_scale_steps(crop_width, target_width);
   uint32_t scale_y_steps = p4::exact_scale_steps(crop_height, target_height);
   if (scale_x_steps == 0 || scale_y_steps == 0) {
-    ESP_LOGD(TAG, "PPA cannot exactly scale %ux%u to %ux%u; using CPU scaling",
+    ESP_LOGD(TAG, "PPA cannot exactly scale %" PRIu32 "x%" PRIu32 " to %" PRIu32 "x%" PRIu32
+                  "; using CPU scaling",
              crop_width, crop_height, target_width, target_height);
     return false;
   }
@@ -184,7 +186,8 @@ bool try_decode_p4_jpeg(const uint8_t *data, size_t size, int target_width, int 
   frame.height = scaled ? target_height : info.height;
   frame.stride_bytes = static_cast<size_t>(scaled ? target_width : padded_width) * 2;
   frame.ppa_scaled = scaled;
-  ESP_LOGI(TAG, "Hardware JPEG decoded %ux%u in %lu ms (PPA scale: %s)", info.width, info.height,
+  ESP_LOGI(TAG, "Hardware JPEG decoded %" PRIu32 "x%" PRIu32 " in %lu ms (PPA scale: %s)",
+           info.width, info.height,
            static_cast<unsigned long>(millis() - started_at), scaled ? "yes" : "no");
   return true;
 }

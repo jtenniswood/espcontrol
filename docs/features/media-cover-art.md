@@ -29,4 +29,4 @@ If cover art is shown for `TV` or `Line-in` instead of hidden, the artist line s
 
 Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.
 
-If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Media cover art downloads use this port when loading artwork from Home Assistant.
+By default, the panel builds artwork links from the Home Assistant API connection address. If Home Assistant is behind a reverse proxy, open **Settings > System > Home Assistant Settings** and set **Artwork Base URL (optional)** to the full address the panel can reach, such as `https://home.example.com`. It can include a custom port or path prefix. Leave this field blank to keep automatic detection; in that mode, **Home Assistant Protocol** and **Home Assistant Port** control the generated link.

@@ -34,7 +34,10 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
+      # Eight API clients add five sockets above ESPHome's three-client
+      # baseline. Reserve those five explicitly on top of the generated
+      # 14-socket web, artwork, mDNS, OTA, and API budget.
+      CONFIG_LWIP_MAX_SOCKETS: "19"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -67,6 +70,43 @@ external_components:
 
 espcontrol:
   id: espcontrol_app
+  # The native document is imported from these restored entities on first boot.
+  # The legacy entities remain live during the compatibility releases.
+  panel_config:
+    device_profile: ${device_slug}
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3, subpage_1_config_ext_4, subpage_1_config_ext_5, subpage_1_config_ext_6, subpage_1_config_ext_7]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3, subpage_2_config_ext_4, subpage_2_config_ext_5, subpage_2_config_ext_6, subpage_2_config_ext_7]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3, subpage_3_config_ext_4, subpage_3_config_ext_5, subpage_3_config_ext_6, subpage_3_config_ext_7]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3, subpage_4_config_ext_4, subpage_4_config_ext_5, subpage_4_config_ext_6, subpage_4_config_ext_7]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3, subpage_5_config_ext_4, subpage_5_config_ext_5, subpage_5_config_ext_6, subpage_5_config_ext_7]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3, subpage_6_config_ext_4, subpage_6_config_ext_5, subpage_6_config_ext_6, subpage_6_config_ext_7]
+      - config: button_7_config
+        subpage_chunks: [subpage_7_config, subpage_7_config_ext, subpage_7_config_ext_2, subpage_7_config_ext_3, subpage_7_config_ext_4, subpage_7_config_ext_5, subpage_7_config_ext_6, subpage_7_config_ext_7]
+      - config: button_8_config
+        subpage_chunks: [subpage_8_config, subpage_8_config_ext, subpage_8_config_ext_2, subpage_8_config_ext_3, subpage_8_config_ext_4, subpage_8_config_ext_5, subpage_8_config_ext_6, subpage_8_config_ext_7]
+      - config: button_9_config
+        subpage_chunks: [subpage_9_config, subpage_9_config_ext, subpage_9_config_ext_2, subpage_9_config_ext_3, subpage_9_config_ext_4, subpage_9_config_ext_5, subpage_9_config_ext_6, subpage_9_config_ext_7]
+      - config: button_10_config
+        subpage_chunks: [subpage_10_config, subpage_10_config_ext, subpage_10_config_ext_2, subpage_10_config_ext_3, subpage_10_config_ext_4, subpage_10_config_ext_5, subpage_10_config_ext_6, subpage_10_config_ext_7]
+      - config: button_11_config
+        subpage_chunks: [subpage_11_config, subpage_11_config_ext, subpage_11_config_ext_2, subpage_11_config_ext_3, subpage_11_config_ext_4, subpage_11_config_ext_5, subpage_11_config_ext_6, subpage_11_config_ext_7]
+      - config: button_12_config
+        subpage_chunks: [subpage_12_config, subpage_12_config_ext, subpage_12_config_ext_2, subpage_12_config_ext_3, subpage_12_config_ext_4, subpage_12_config_ext_5, subpage_12_config_ext_6, subpage_12_config_ext_7]
+      - config: button_13_config
+        subpage_chunks: [subpage_13_config, subpage_13_config_ext, subpage_13_config_ext_2, subpage_13_config_ext_3, subpage_13_config_ext_4, subpage_13_config_ext_5, subpage_13_config_ext_6, subpage_13_config_ext_7]
+      - config: button_14_config
+        subpage_chunks: [subpage_14_config, subpage_14_config_ext, subpage_14_config_ext_2, subpage_14_config_ext_3, subpage_14_config_ext_4, subpage_14_config_ext_5, subpage_14_config_ext_6, subpage_14_config_ext_7]
+      - config: button_15_config
+        subpage_chunks: [subpage_15_config, subpage_15_config_ext, subpage_15_config_ext_2, subpage_15_config_ext_3, subpage_15_config_ext_4, subpage_15_config_ext_5, subpage_15_config_ext_6, subpage_15_config_ext_7]
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -117,6 +157,12 @@ esphome:
       then:
         - lambda: 'id(screen_rotation_ready) = true;'
         - script.execute: apply_screen_rotation
+
+# The P4 panel has enough memory for additional native API clients. Allow
+# Home Assistant, ESPHome logs, and browser/configuration sessions to overlap
+# without rejecting connections at ESPHome's default five-client limit.
+api:
+  max_connections: 8
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)

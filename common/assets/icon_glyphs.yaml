@@ -15,6 +15,9 @@
 - "\U000F0200"  # mdi-ethernet (Setup screens)
 - "\U000F07D0"  # mdi-home-assistant (Setup screens)
 - "\U000F02E9"  # mdi-image (Image card loading state)
+- "\U000F049D"  # mdi-shuffle (Media modal shuffle control)
+- "\U000F0456"  # mdi-repeat (Media modal repeat control)
+- "\U000F0458"  # mdi-repeat-once (Media modal repeat-one state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
 - "\U000F0141"  # mdi-chevron-left
 - "\U000F0142"  # mdi-chevron-right
@@ -51,6 +54,7 @@
 - "\U000F008E"  # mdi-battery-outline
 - "\U000F0091"  # mdi-battery-unknown
 - "\U000F1818"  # mdi-bathtub
+- "\U000F1819"  # mdi-bathtub-outline
 - "\U000F02E3"  # mdi-bed
 - "\U000F0FD2"  # mdi-bed-king
 - "\U000F0FD0"  # mdi-bed-queen
@@ -70,6 +74,7 @@
 - "\U000F1797"  # mdi-ceiling-fan
 - "\U000F0769"  # mdi-ceiling-light
 - "\U000F18DD"  # mdi-ceiling-light-multiple
+- "\U000F18DE"  # mdi-ceiling-light-multiple-outline
 - "\U000F1793"  # mdi-chandelier
 - "\U000F012C"  # mdi-check
 - "\U000F0F48"  # mdi-chair-rolling
@@ -87,6 +92,8 @@
 - "\U000F09E7"  # mdi-delete-outline
 - "\U000F1239"  # mdi-desk
 - "\U000F095F"  # mdi-desk-lamp
+- "\U000F1B1F"  # mdi-desk-lamp-off
+- "\U000F1B20"  # mdi-desk-lamp-on
 - "\U000F0AAC"  # mdi-dishwasher
 - "\U000F11B9"  # mdi-dishwasher-off
 - "\U000F0A43"  # mdi-dog
@@ -132,6 +139,8 @@
 - "\U000F0438"  # mdi-radiator
 - "\U000F0AD8"  # mdi-radiator-off
 - "\U000F02DC"  # mdi-home
+- "\U000F1251"  # mdi-home-lightbulb
+- "\U000F1252"  # mdi-home-lightbulb-outline
 - "\U000F1A43"  # mdi-heat-pump
 - "\U000F1A45"  # mdi-heat-wave
 - "\U000F1AAF"  # mdi-heating-coil
@@ -155,6 +164,8 @@
 - "\U000F097E"  # mdi-light-switch
 - "\U000F1987"  # mdi-light-flood-down
 - "\U000F0335"  # mdi-lightbulb
+- "\U000F1800"  # mdi-lightbulb-auto
+- "\U000F1801"  # mdi-lightbulb-auto-outline
 - "\U000F1253"  # mdi-lightbulb-group
 - "\U000F1254"  # mdi-lightbulb-group-outline
 - "\U000F1A4C"  # mdi-lightbulb-night
@@ -248,11 +259,15 @@
 - "\U000F0A72"  # mdi-solar-power
 - "\U000F1A73"  # mdi-solar-power-variant
 - "\U000F04C3"  # mdi-speaker
+- "\U000F0D38"  # mdi-speaker-multiple
+- "\U000F071F"  # mdi-speaker-wireless
+- "\U000F04C4"  # mdi-speaker-off
 - "\U000F1B73"  # mdi-speaker-pause
 - "\U000F1B72"  # mdi-speaker-play
 - "\U000F04C8"  # mdi-spotlight
 - "\U000F04C9"  # mdi-spotlight-beam
 - "\U000F105F"  # mdi-sprinkler
+- "\U000F1060"  # mdi-sprinkler-variant
 - "\U000F04DB"  # mdi-stop
 - "\U000F12BA"  # mdi-string-lights
 - "\U000F12BB"  # mdi-string-lights-off
@@ -278,6 +293,8 @@
 - "\U000F1A80"  # mdi-thermometer-water
 - "\U000F051B"  # mdi-timer-outline
 - "\U000F09AB"  # mdi-toilet
+- "\U000F0914"  # mdi-track-light
+- "\U000F1B01"  # mdi-track-light-off
 - "\U000F0D3E"  # mdi-transmission-tower
 - "\U000F0A79"  # mdi-trash-can
 - "\U000F0A7A"  # mdi-trash-can-outline

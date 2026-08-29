@@ -1,5 +1,33 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerGarageCardTypes(): GlobalDescriptors {
+import { cardContractDomains } from "../generated/card_contract";
+import type { CoverLikeCardRegistration } from "./cover_like_card";
+import type { ConfigAccessClimateAlarmOptionsFeature } from "../application/config_access_climate_alarm_options";
+import type { ConfigConfirmationOptionsFeature } from "../application/config_confirmation_options";
+import {
+    SWITCH_CONFIRM_DEFAULT_MESSAGE,
+    SWITCH_CONFIRM_DEFAULT_NO,
+    SWITCH_CONFIRM_DEFAULT_YES,
+} from "../application/config_option_core";
+export function registerGarageCardTypes(
+    registerCard: CoverLikeCardRegistration["register"],
+    accessOptions: ConfigAccessClimateAlarmOptionsFeature,
+    confirmationOptions: ConfigConfirmationOptionsFeature,
+): void {
+    const {
+        normalizeGarageOptions,
+        garageModeOptionValues,
+        normalizeGarageMode,
+        garageLabelDisplayMode,
+        setGarageLabelDisplayMode,
+    } = accessOptions;
+    const {
+        garageConfirmationDefaultMessageForMode,
+        garageConfirmationEnabled,
+        garageConfirmationMessage,
+        garageConfirmationMode,
+        garageConfirmationNoText,
+        garageConfirmationYesText,
+        setGarageConfirmationOptions,
+    } = confirmationOptions;
     // Garage door card: cover toggle or one-tap open/close commands.
     var GARAGE_MODE_OPTIONS: any = [
         ["", "Toggle"],
@@ -8,12 +36,6 @@ export function registerGarageCardTypes(): GlobalDescriptors {
     ];
     function garageCommandMode(this: any, mode?: any) {
         return mode === "open" || mode === "close";
-    }
-    function garageModeOptionValues(this: any) {
-        return coverLikeModeValues("garage", "garage_mode", GARAGE_MODE_OPTIONS);
-    }
-    function normalizeGarageMode(this: any, mode?: any) {
-        return normalizeCoverLikeMode(mode, garageModeOptionValues());
     }
     function garageModeDefaultIcon(this: any, mode?: any) {
         return mode === "open" ? "Garage Open" : "Garage";
@@ -30,7 +52,7 @@ export function registerGarageCardTypes(): GlobalDescriptors {
     }
     var GARAGE_CARD_METADATA: any = {
         mode: {
-            label: "Interaction",
+            label: "Type",
             idSuffix: "garage-interaction",
             options: GARAGE_MODE_OPTIONS,
             value: function (this: any, b?: any) {
@@ -97,7 +119,7 @@ export function registerGarageCardTypes(): GlobalDescriptors {
             badge: "garage",
         },
     };
-    registerCoverLikeCardType({
+    registerCard({
         type: "garage",
         optionName: "garage_mode",
         metadata: GARAGE_CARD_METADATA,
@@ -121,14 +143,4 @@ export function registerGarageCardTypes(): GlobalDescriptors {
             setOptions: setGarageConfirmationOptions,
         },
     });
-    return {
-        "GARAGE_MODE_OPTIONS": liveGlobal(() => GARAGE_MODE_OPTIONS, (value?: any) => { GARAGE_MODE_OPTIONS = value; }),
-        "garageCommandMode": staticGlobal(garageCommandMode),
-        "garageModeOptionValues": staticGlobal(garageModeOptionValues),
-        "normalizeGarageMode": staticGlobal(normalizeGarageMode),
-        "garageModeDefaultIcon": staticGlobal(garageModeDefaultIcon),
-        "garageModeDefaultLabel": staticGlobal(garageModeDefaultLabel),
-        "garageUsesDefaultIcon": staticGlobal(garageUsesDefaultIcon),
-        "GARAGE_CARD_METADATA": liveGlobal(() => GARAGE_CARD_METADATA, (value?: any) => { GARAGE_CARD_METADATA = value; }),
-    };
 }

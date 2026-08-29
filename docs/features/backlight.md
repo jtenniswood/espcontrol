@@ -40,7 +40,7 @@ For example, select **Fixed times**, then set Dawn to `07:00` and Dusk to `22:00
 
 ## Screensaver
 
-When the screensaver uses **Screen Dimmed**, it keeps the normal screen visible at the saved dim brightness. When the screensaver clock is active, it can use separate daytime and nighttime clock brightness values. If the screensaver is set to Display Off, the backlight turns off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk without showing that pattern. On wake, brightness returns to the saved Manual level or the correct automatic level for the current time.
+When the screensaver uses **Screen Dimmed**, Manual mode keeps the normal screen visible at its saved dim brightness. Automatic and Timed modes use their own daytime and nighttime dimmed-screen levels and change at the same boundary as the main backlight. When the screensaver clock is active, it can use separate daytime and nighttime clock brightness values. If the screensaver is set to Display Off, the backlight turns off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk without showing that pattern. On wake, brightness returns to the saved Manual level or the correct automatic level for the current time.
 
 ## Screen Schedule
 

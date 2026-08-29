@@ -36,7 +36,6 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
-      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -47,6 +46,11 @@ esp32:
       # Keep hosted task stacks in PSRAM so the display and audio paths retain
       # enough internal memory for DMA-capable allocations.
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+      # Stream C6 receive data through bounded queues, limiting inbound web
+      # traffic bursts on the P4's hosted-SDIO transport.
+      CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_STREAMING_MODE: "y"
+      CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE: "10"
+      CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE: "10"
       # The ESP32-C6 hosted WiFi link shares scarce internal/DMA memory with
       # the full-duplex TDM audio path. Keep network bursts small while testing
       # dual-mic SE/AEC stability.
@@ -77,13 +81,13 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image]
+    components: [espcontrol, web_server_idf, artwork_image, sendspin]
     refresh: 1s
 
 espcontrol:
   id: espcontrol_app
 network:
-  enable_high_performance: false
+  enable_high_performance: true
 
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
@@ -175,6 +179,12 @@ packages:
 # The Waveshare USB-C debug port is exposed through a USB-UART bridge.
 logger:
   hardware_uart: UART0
+  logs:
+    sendspin.hub: DEBUG
+    sendspin.player: DEBUG
+    sendspin.sync_task: DEBUG
+    sendspin.media_source: DEBUG
+    speaker_source_media_player: DEBUG
 
 # ---------------------------------------------------------------------------
 # Power management (LDO channel for DSI PHY)

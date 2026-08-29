@@ -87,6 +87,9 @@ constexpr int CARD_SIZE_MAX_TALL_COL_SPAN = 2;
 constexpr char CARD_SIZE_PORTRAIT_LARGE_TOKEN = 'p';
 constexpr int CARD_SIZE_PORTRAIT_LARGE_ROW_SPAN = 4;
 constexpr int CARD_SIZE_PORTRAIT_LARGE_COL_SPAN = 3;
+constexpr char CARD_SIZE_LANDSCAPE_LARGE_TOKEN = 'l';
+constexpr int CARD_SIZE_LANDSCAPE_LARGE_ROW_SPAN = 3;
+constexpr int CARD_SIZE_LANDSCAPE_LARGE_COL_SPAN = 4;
 
 inline bool card_span_matches(int row_span, int col_span, int expected_rows, int expected_cols) {
   return row_span == expected_rows && col_span == expected_cols;
@@ -134,6 +137,9 @@ inline void grid_token_spans(char suffix, int &row_span, int &col_span) {
   } else if (suffix == CARD_SIZE_PORTRAIT_LARGE_TOKEN) {
     row_span = CARD_SIZE_PORTRAIT_LARGE_ROW_SPAN;
     col_span = CARD_SIZE_PORTRAIT_LARGE_COL_SPAN;
+  } else if (suffix == CARD_SIZE_LANDSCAPE_LARGE_TOKEN) {
+    row_span = CARD_SIZE_LANDSCAPE_LARGE_ROW_SPAN;
+    col_span = CARD_SIZE_LANDSCAPE_LARGE_COL_SPAN;
   }
 }
 
@@ -142,7 +148,7 @@ inline bool grid_token_has_span_suffix(char suffix) {
     suffix == CARD_SIZE_LARGE_TOKEN || suffix == CARD_SIZE_EXTRA_TALL_TOKEN ||
     suffix == CARD_SIZE_EXTRA_WIDE_TOKEN || suffix == CARD_SIZE_EXTRA_LARGE_TOKEN ||
     suffix == CARD_SIZE_MAX_WIDE_TOKEN || suffix == CARD_SIZE_MAX_TALL_TOKEN ||
-    suffix == CARD_SIZE_PORTRAIT_LARGE_TOKEN;
+    suffix == CARD_SIZE_PORTRAIT_LARGE_TOKEN || suffix == CARD_SIZE_LANDSCAPE_LARGE_TOKEN;
 }
 
 inline int parse_positive_int_span(const std::string &value, size_t start, size_t end) {
@@ -193,6 +199,31 @@ inline void parse_order_string(const std::string &order_str, int num_slots, Orde
   }
 }
 
+// Saved layouts can originate on a larger display or an older web editor.
+// Downgrade any card that extends beyond the active grid before passing its
+// cell coordinates to LVGL.
+inline void normalize_grid_span_for_position(int position, int num_slots,
+                                             int cols, int &row_span,
+                                             int &col_span) {
+  int slot_limit = bounded_grid_slots(num_slots);
+  if (position < 0 || position >= slot_limit || cols <= 0) {
+    row_span = 1;
+    col_span = 1;
+    return;
+  }
+  if (row_span < 1) row_span = 1;
+  if (col_span < 1) col_span = 1;
+  int rows = (slot_limit + cols - 1) / cols;
+  int row = position / cols;
+  int col = position % cols;
+  int last_cell = position + (row_span - 1) * cols + col_span - 1;
+  if (row + row_span > rows || col + col_span > cols ||
+      last_cell >= slot_limit) {
+    row_span = 1;
+    col_span = 1;
+  }
+}
+
 // Zero out grid cells that are covered by a neighbouring multi-cell button
 inline void clear_spanned_cells(const OrderResult &order, int num_slots, int cols, OrderResult &result) {
   int slot_limit = bounded_grid_slots(num_slots);
@@ -206,6 +237,9 @@ inline void clear_spanned_cells(const OrderResult &order, int num_slots, int col
     int idx = result.positions[p] - 1;
     int row_span = result.row_span[idx] > 0 ? result.row_span[idx] : 1;
     int col_span = result.col_span[idx] > 0 ? result.col_span[idx] : 1;
+    normalize_grid_span_for_position(p, slot_limit, cols, row_span, col_span);
+    result.row_span[idx] = row_span;
+    result.col_span[idx] = col_span;
     int col = p % cols;
     for (int r = 0; r < row_span; r++) {
       for (int c = 0; c < col_span; c++) {
@@ -274,7 +308,11 @@ inline void set_grid_card_cell(lv_obj_t *btn,
   lv_grid_align_t row_align = row_span > 1 ? LV_GRID_ALIGN_START : LV_GRID_ALIGN_STRETCH;
   lv_obj_set_grid_cell(btn, col_align, col, col_span, row_align, row, row_span);
 
-  if (!grid || card_span_is_single(row_span, col_span)) return;
+  if (!grid) return;
+  if (card_span_is_single(row_span, col_span)) {
+    clock_bar_unregister_responsive_grid_card(btn);
+    return;
+  }
   clock_bar_register_responsive_grid_card(
     grid, btn, col, row, col_span, row_span, cols, rows);
 }

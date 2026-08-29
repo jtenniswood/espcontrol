@@ -37,7 +37,7 @@ jobs:
             --paginate \
             --jq '.[].filename' > changed-files.txt
 
-          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_manifest|generate_device_slots|prepare_c6_firmware)\.py|package(-lock)?\.json)$' changed-files.txt; then
+          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|product/(model_v2\.json|v2/.*)|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_manifest|generate_device_slots|prepare_c6_firmware|product_model_v2)\.py|package(-lock)?\.json)$' changed-files.txt; then
             echo "compile_required=true" >> "$GITHUB_OUTPUT"
           else
             echo "compile_required=false" >> "$GITHUB_OUTPUT"
@@ -57,11 +57,23 @@ jobs:
             builds/*.yaml
             common/assets/*.yaml
             common/assets/fonts/*
-            devices/catalog.json
+            common/assets/icons.json
+            product/v2/card_contract.json
+            common/config/entity_names.json
+            common/config/strings.*.txt
+            compatibility/fixtures/product_compatibility.json
+            product/v2/device_catalog.json
             devices/manifest.json
             devices/*/device/fonts.yaml
+            product/model_v2.json
+            product/v2/icons.json
+            product/v2/entity_names.json
+            product/v2/translations/strings.*.txt
+            product/v2/product_compatibility.json
+            product/v2/**
             scripts/device_matrix.py
             scripts/device_profiles.py
+            scripts/product_model_v2.py
           sparse-checkout-cone-mode: false
 
       - name: Generate device matrix

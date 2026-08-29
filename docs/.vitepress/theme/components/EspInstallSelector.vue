@@ -46,7 +46,15 @@
         Your browser does not support WebSerial. Use Chrome or Edge on desktop.
       </div>
       <div v-else-if="loadError" class="installer-status warning">
-        Failed to load installer. {{ loadError }}
+        <span>{{ loadError }}</span>
+        <button type="button" class="retry-button" @click="prepareInstaller">Try again</button>
+      </div>
+      <div v-else-if="checkingManifest" class="installer-status">
+        Checking the latest firmware...
+      </div>
+      <div v-else-if="!manifestAvailable" class="installer-status warning">
+        WebInstall firmware for this panel has not been published yet. Use its manual ESPHome
+        setup or check again after the next EspControl release.
       </div>
       <div v-else-if="!ready" class="installer-status">
         Loading installer...
@@ -74,7 +82,7 @@ const devices = [
     slug: 'guition-esp32-p4-jc8012p4a1',
     name: 'JC8012P4A1 original panel',
     revision: 'Rear case 2627 or lower',
-    size: '10.1 in',
+    size: '10.1 inch',
     resolution: '1280 x 800',
     orientation: 'Landscape',
     slots: 20,
@@ -87,7 +95,7 @@ const devices = [
     slug: 'guition-esp32-p4-jc8012p4a1-v2',
     name: 'JC8012P4A1 new panel',
     revision: 'Rear case 2628 or higher',
-    size: '10.1 in',
+    size: '10.1 inch',
     resolution: '1280 x 800',
     orientation: 'Landscape',
     slots: 20,
@@ -98,8 +106,22 @@ const devices = [
   },
   {
     slug: 'guition-esp32-p4-jc1060p470',
-    name: 'JC1060P470',
-    size: '7 in',
+    name: 'JC1060P470 original panel',
+    revision: 'Unmarked case; board date before 2622',
+    size: '7 inch',
+    resolution: '1024 x 600',
+    orientation: 'Landscape',
+    slots: 15,
+    cols: 5,
+    rows: 3,
+    aspect: '1024 / 600',
+    shape: 'landscape'
+  },
+  {
+    slug: 'guition-esp32-p4-jc1060p470-v2',
+    name: 'JC1060P470 new panel',
+    revision: 'Case marked V2; board date 2622 or newer',
+    size: '7 inch',
     resolution: '1024 x 600',
     orientation: 'Landscape',
     slots: 15,
@@ -111,7 +133,7 @@ const devices = [
   {
     slug: 'guition-esp32-p4-jc4880p443',
     name: 'JC4880P443',
-    size: '4.3 in',
+    size: '4.3 inch',
     resolution: '480 x 800',
     orientation: 'Portrait',
     slots: 6,
@@ -123,7 +145,7 @@ const devices = [
   {
     slug: 'esp32-p4-86',
     name: 'ESP32-P4 86 Panel',
-    size: '4 in',
+    size: '4 inch P4',
     resolution: '720 x 720',
     orientation: 'Square',
     slots: 9,
@@ -135,7 +157,7 @@ const devices = [
   {
     slug: 'guition-esp32-s3-4848s040',
     name: '4848S040',
-    size: '4 in',
+    size: '4 inch S3',
     resolution: '480 x 480',
     orientation: 'Square',
     slots: 9,
@@ -150,25 +172,57 @@ const selected = ref(devices[0])
 const checked = ref(false)
 const supported = ref(false)
 const ready = ref(false)
-const loadError = ref(null)
+const checkingManifest = ref(false)
+const manifestAvailable = ref(false)
+const loadError = ref('')
+let manifestRequest = 0
 
 const manifestUrl = computed(() => withBase(`/firmware/${selected.value.slug}/manifest.json`))
 
-function selectDevice(device) {
-  selected.value = device
-}
+async function prepareInstaller() {
+  const request = ++manifestRequest
+  checkingManifest.value = true
+  manifestAvailable.value = false
+  ready.value = false
+  loadError.value = ''
 
-onMounted(async () => {
-  checked.value = true
-  supported.value = 'serial' in navigator
-  if (!supported.value) return
+  try {
+    const response = await fetch(manifestUrl.value, { cache: 'no-store' })
+    if (request !== manifestRequest) return
+    manifestAvailable.value = response.ok
+    if (!response.ok && response.status !== 404) {
+      loadError.value = `Could not check for WebInstall firmware (HTTP ${response.status}).`
+    }
+  } catch {
+    if (request !== manifestRequest) return
+    manifestAvailable.value = false
+    loadError.value = 'Could not check for WebInstall firmware. Check your connection.'
+  } finally {
+    if (request === manifestRequest) checkingManifest.value = false
+  }
+
+  if (request !== manifestRequest || !manifestAvailable.value) return
 
   try {
     await import('https://unpkg.com/esp-web-tools@10/dist/web/install-button.js')
-    ready.value = true
+    if (request === manifestRequest) ready.value = true
   } catch (err) {
-    loadError.value = err?.message || 'Network or script load error.'
+    if (request === manifestRequest) {
+      loadError.value = `Failed to load the USB installer. ${err?.message || ''}`.trim()
+    }
   }
+}
+
+function selectDevice(device) {
+  selected.value = device
+  if (checked.value && supported.value) prepareInstaller()
+}
+
+onMounted(() => {
+  checked.value = true
+  supported.value = 'serial' in navigator
+  if (!supported.value) return
+  prepareInstaller()
 })
 </script>
 
@@ -358,6 +412,17 @@ onMounted(async () => {
 .installer-status.warning {
   background-color: var(--vp-c-warning-soft);
   color: var(--vp-c-warning-1);
+}
+
+.retry-button {
+  margin-left: 10px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 2px 10px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 @media (max-width: 640px) {

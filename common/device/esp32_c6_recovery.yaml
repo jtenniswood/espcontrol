@@ -11,6 +11,6 @@ external_components:
 
 c6_recovery:
   id: c6_offline_recovery
-  version: "2.12.9"
-  path: "../.firmware-deps/esp32-c6/2.12.9/network_adapter_esp32c6.bin"
-  sha256: "9d8cec9dcca632e9ded31de555a5b49c70316d30b87ae06bd933fd35a5a11513"
+  version: "2.12.12"
+  path: "../.firmware-deps/esp32-c6/2.12.12/network_adapter_esp32c6.bin"
+  sha256: "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94"

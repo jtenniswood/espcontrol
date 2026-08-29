@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Onboarding Docs"
+  short_description: "Bold audit for clearer device onboarding"
+  default_prompt: "Use $review-onboarding-docs to critique our documentation and recommend five high-impact improvements."

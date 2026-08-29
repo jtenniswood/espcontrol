@@ -17,6 +17,18 @@ constexpr size_t PAYLOAD_SIZE_OFFSET = 12;
 constexpr size_t CHECKSUM_OFFSET = 16;
 constexpr size_t CHECKSUM_CHUNK_SIZE = 64;
 
+class CommitLockGuard {
+ public:
+  explicit CommitLockGuard(std::atomic_flag &lock) : lock_(lock) {
+    while (lock_.test_and_set(std::memory_order_acquire)) {
+    }
+  }
+  ~CommitLockGuard() { lock_.clear(std::memory_order_release); }
+
+ private:
+  std::atomic_flag &lock_;
+};
+
 uint16_t read_u16(const uint8_t *data) {
   return static_cast<uint16_t>(data[0]) |
          (static_cast<uint16_t>(data[1]) << 8);
@@ -142,7 +154,8 @@ ConfigurationStore::SlotMetadata ConfigurationStore::inspect_slot(
   return metadata;
 }
 
-LoadResult ConfigurationStore::inspect() {
+LoadResult ConfigurationStore::load(uint8_t *output,
+                                    size_t output_capacity) {
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);
 
@@ -163,35 +176,44 @@ LoadResult ConfigurationStore::inspect() {
     return {read_failed ? StoreStatus::READ_FAILED : StoreStatus::EMPTY};
   }
 
+  if (selected->payload_size > output_capacity) {
+    return {StoreStatus::BUFFER_TOO_SMALL, selected->generation,
+            selected->payload_size, selected->slot};
+  }
+  if (selected->payload_size > 0 && output == nullptr) {
+    return {StoreStatus::INVALID_ARGUMENT, selected->generation,
+            selected->payload_size, selected->slot};
+  }
+  if (selected->payload_size > 0 &&
+      !backend_.read(selected->slot, CONFIGURATION_ENVELOPE_HEADER_SIZE,
+                     output, selected->payload_size)) {
+    return {StoreStatus::READ_FAILED, selected->generation,
+            selected->payload_size, selected->slot};
+  }
+
   return {StoreStatus::OK, selected->generation, selected->payload_size,
           selected->slot};
 }
 
-LoadResult ConfigurationStore::load(uint8_t *output,
-                                    size_t output_capacity) {
-  const LoadResult selected = inspect();
-  if (!selected.ok()) return selected;
-
-  if (selected.payload_size > output_capacity) {
-    return {StoreStatus::BUFFER_TOO_SMALL, selected.generation,
-            selected.payload_size, selected.slot};
-  }
-  if (selected.payload_size > 0 && output == nullptr) {
-    return {StoreStatus::INVALID_ARGUMENT, selected.generation,
-            selected.payload_size, selected.slot};
-  }
-  if (selected.payload_size > 0 &&
-      !backend_.read(selected.slot, CONFIGURATION_ENVELOPE_HEADER_SIZE,
-                     output, selected.payload_size)) {
-    return {StoreStatus::READ_FAILED, selected.generation,
-            selected.payload_size, selected.slot};
-  }
-
-  return selected;
-}
-
 CommitResult ConfigurationStore::commit(const uint8_t *payload,
                                         size_t payload_size) {
+  return commit_internal(false, 0, payload, payload_size);
+}
+
+CommitResult ConfigurationStore::commit_if_generation(
+    uint32_t expected_generation, const uint8_t *payload,
+    size_t payload_size) {
+  return commit_internal(true, expected_generation, payload, payload_size);
+}
+
+CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
+                                                 uint32_t expected_generation,
+                                                 const uint8_t *payload,
+                                                 size_t payload_size) {
+  // A conditional save may originate from concurrent HTTP callbacks. Keep the
+  // slot inspection, generation check, write, and verification together so a
+  // stale request cannot pass the check before another save is published.
+  CommitLockGuard lock(commit_lock_);
   if (payload_size > 0 && payload == nullptr) {
     return {StoreStatus::INVALID_ARGUMENT};
   }
@@ -223,6 +245,17 @@ CommitResult ConfigurationStore::commit(const uint8_t *payload,
     target_slot = first.slot;
     next_generation = second.generation + 1;
   }
+  const uint32_t current_generation =
+      first_valid && second_valid
+          ? (generation_is_newer(second.generation, first.generation)
+                 ? second.generation
+                 : first.generation)
+          : (first_valid ? first.generation
+                         : (second_valid ? second.generation : 0));
+  if (enforce_generation && expected_generation != current_generation) {
+    return {StoreStatus::GENERATION_CONFLICT, current_generation,
+            payload_size, target_slot};
+  }
 
   // Keep the target unpublished until both its payload and metadata are
   // durable. A torn metadata write cannot accidentally promote stale size or
@@ -230,20 +263,6 @@ CommitResult ConfigurationStore::commit(const uint8_t *payload,
   std::array<uint8_t, sizeof(uint32_t)> invalid_magic{};
   if (!backend_.write(target_slot, MAGIC_OFFSET, invalid_magic.data(),
                       invalid_magic.size())) {
-    return {StoreStatus::WRITE_FAILED, next_generation, payload_size,
-            target_slot};
-  }
-  if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
-            target_slot};
-  }
-
-  // The target is safely unpublished, so reclaim any backend chunks left by
-  // an older, longer payload before writing the replacement. This prevents
-  // alternating large and small NVS documents from permanently consuming
-  // keys beyond their current logical size.
-  if (!backend_.truncate(
-          target_slot, CONFIGURATION_ENVELOPE_HEADER_SIZE + payload_size)) {
     return {StoreStatus::WRITE_FAILED, next_generation, payload_size,
             target_slot};
   }

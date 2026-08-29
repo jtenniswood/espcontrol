@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "description": "Canonical cross-runtime PanelConfig v1 codec fixture.",
+  "document": {
+    "deviceProfile": "esp32-p4-86",
+    "buttons": { "1": "light.kitchen;Kitchen" },
+    "subpages": { "2": "1|Living room|light.sofa" },
+    "settings": { "button_on_color": "0073FF", "button_order": "1,2,3" }
+  },
+  "encoded_hex": "45504346010010007100000005000000010b0065737033322d70342d3836021600016c696768742e6b69746368656e3b4b69746368656e03190002317c4c6976696e6720726f6f6d7c6c696768742e736f66610416000f627574746f6e5f6f6e5f636f6c6f723030373346460412000c627574746f6e5f6f72646572312c322c33"
+}

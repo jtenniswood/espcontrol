@@ -1,48 +1,62 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installFirmwareVersionStateModule(): GlobalDescriptors {
+import { isSpecificFirmwareVersion } from "./firmware_metadata";
+import type { UiRuntimeState } from "./state";
+
+export interface FirmwareVersionFeature {
+    render(): void;
+    set(version?: any): void;
+    display(version?: any): string;
+    label(): string;
+}
+
+export function createFirmwareVersionFeature(
+    runtime: UiRuntimeState,
+    dependencies: {
+        syncVersionSelect(): void;
+        renderUpdateStatus(): void;
+        stopInstallRefreshIfComplete(): void;
+    },
+): FirmwareVersionFeature {
+    const els = runtime.els;
     // ── Firmware Version State ─────────────────────────────────────────────
-    var FIRMWARE_CHECKING_VERSION_LABEL: any = "Checking version...";
-    var FIRMWARE_DEV_VERSION_LABEL: any = "Dev build";
-    var FIRMWARE_UNKNOWN_VERSION_LABEL: any = "Version unknown";
-    function renderFirmwareVersion(this: any) {
+    const checkingLabel = "Checking version...";
+    const devLabel = "Dev build";
+    const unknownLabel = "Version unknown";
+    function render() {
         if (!els.fwVersionLabel)
             return;
-        els.fwVersionLabel.textContent = firmwareVersionLabel();
+        els.fwVersionLabel.textContent = label();
     }
-    function setFirmwareVersion(this: any, version?: any) {
+    function set(version?: any) {
         version = String(version == null ? "" : version).trim();
         if (!version)
             return;
         if (isSpecificFirmwareVersion(state.firmwareVersion) && !isSpecificFirmwareVersion(version))
             return;
-        state.firmwareVersion = displayFirmwareVersion(version);
-        renderFirmwareVersion();
-        syncFirmwareVersionSelect();
-        renderFirmwareUpdateStatus();
-        stopFirmwareInstallRefreshIfComplete();
+        state.firmwareVersion = display(version);
+        render();
+        dependencies.syncVersionSelect();
+        dependencies.renderUpdateStatus();
+        dependencies.stopInstallRefreshIfComplete();
     }
-    function displayFirmwareVersion(this: any, version?: any) {
+    function display(version?: any) {
         version = String(version == null ? "" : version).trim();
         if (!version)
-            return FIRMWARE_UNKNOWN_VERSION_LABEL;
-        if (version === FIRMWARE_UNKNOWN_VERSION_LABEL)
-            return FIRMWARE_UNKNOWN_VERSION_LABEL;
-        return isSpecificFirmwareVersion(version) ? version : FIRMWARE_DEV_VERSION_LABEL;
+            return unknownLabel;
+        if (version === unknownLabel)
+            return unknownLabel;
+        return isSpecificFirmwareVersion(version) ? version : devLabel;
     }
-    function firmwareVersionLabel(this: any) {
+    function label() {
         if (!state.firmwareVersion && state.firmwareVersionRefreshPending) {
-            return FIRMWARE_CHECKING_VERSION_LABEL;
+            return checkingLabel;
         }
-        return displayFirmwareVersion(state.firmwareVersion);
+        return display(state.firmwareVersion);
     }
     return {
-        "FIRMWARE_CHECKING_VERSION_LABEL": liveGlobal(() => FIRMWARE_CHECKING_VERSION_LABEL, (value?: any) => { FIRMWARE_CHECKING_VERSION_LABEL = value; }),
-        "FIRMWARE_DEV_VERSION_LABEL": liveGlobal(() => FIRMWARE_DEV_VERSION_LABEL, (value?: any) => { FIRMWARE_DEV_VERSION_LABEL = value; }),
-        "FIRMWARE_UNKNOWN_VERSION_LABEL": liveGlobal(() => FIRMWARE_UNKNOWN_VERSION_LABEL, (value?: any) => { FIRMWARE_UNKNOWN_VERSION_LABEL = value; }),
-        "renderFirmwareVersion": staticGlobal(renderFirmwareVersion),
-        "setFirmwareVersion": staticGlobal(setFirmwareVersion),
-        "displayFirmwareVersion": staticGlobal(displayFirmwareVersion),
-        "firmwareVersionLabel": staticGlobal(firmwareVersionLabel),
+        render,
+        set,
+        display,
+        label,
     };
 }

@@ -12,6 +12,7 @@ import {
   structuredSubpageFromParsed,
   validateBackupEnvelope,
   type NormalizedBackupEnvelope,
+  type PanelConfigBackupPayload,
   type ParsedSubpageConfig,
   type SlotSizeMap,
 } from "../model";
@@ -33,6 +34,7 @@ export interface BackupFeatureSnapshot {
   readonly sizes?: SlotSizeMap;
   readonly settings?: Record<string, unknown>;
   readonly screen?: Record<string, unknown>;
+  readonly native_config?: PanelConfigBackupPayload | null;
 }
 
 export interface BackupTargetDevice {

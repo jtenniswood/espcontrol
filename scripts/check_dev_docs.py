@@ -41,7 +41,7 @@ class CheckMatrixRow:
 
 SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     SourceTruthRow(
-        "common/config/card_contract.json",
+        "product/v2/card_contract.json",
         (
             "src/webserver/generated/card_contract.ts",
             "components/espcontrol/button_grid_contract_generated.h",
@@ -61,13 +61,13 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`npm run check:card-runtime-coverage` and `npm run check:saved-config-parity`",
     ),
     SourceTruthRow(
-        "common/config/entity_names.json",
+        "product/v2/entity_names.json",
         ("common/config/entity_names.yaml", "src/webserver/generated/entity_catalog.ts"),
         "python3 scripts/build.py entities",
         "`python3 scripts/build.py entities --check` and `npm run check:product`",
     ),
     SourceTruthRow(
-        "devices/catalog.json",
+        "product/v2/device_catalog.json",
         ("devices/manifest.json",),
         "python3 scripts/generate_device_manifest.py",
         "`python3 scripts/generate_device_manifest.py --check` and `npm run check:product`",
@@ -85,7 +85,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`python3 scripts/generate_device_slots.py --check` and `npm run check:product`",
     ),
     SourceTruthRow(
-        "common/assets/icons.json",
+        "product/v2/icons.json",
         (
             "generated sections inside `common/assets/icon_glyphs.yaml`",
             "generated sections inside `components/espcontrol/icons.h`",
@@ -101,7 +101,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "compile the affected firmware before publishing",
     ),
     SourceTruthRow(
-        "common/config/strings.*.txt",
+        "product/v2/translations/strings.*.txt",
         ("components/espcontrol/i18n_generated.h",),
         "python3 scripts/build.py i18n",
         "`python3 scripts/build.py i18n --check` and `npm run check:product`",
@@ -119,13 +119,13 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`npm run check:web-smoke` and `npm run check:product`",
     ),
     SourceTruthRow(
-        "compatibility/fixtures/product_compatibility.json",
+        "product/v2/product_compatibility.json",
         ("no generated output; protects saved config, backup, layout, and migration behavior",),
         "none",
         "`npm run check:backup-contract` and `npm run check:product`",
     ),
     SourceTruthRow(
-        "`devices/catalog.json`, `common/config/card_contract.json`, `common/config/entity_names.json`, `common/assets/icons.json`, `compatibility/fixtures/product_compatibility.json`",
+        "`product/v2/device_catalog.json`, `product/v2/card_contract.json`, `product/v2/entity_names.json`, `product/v2/icons.json`, `product/v2/product_compatibility.json`",
         ("product/product_snapshot.json",),
         "python3 scripts/check_product_snapshot.py --update",
         "`npm run check:product-snapshot` and `npm run check:product`",
@@ -179,7 +179,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
 
 CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
     CheckMatrixRow(
-        "`common/config/card_contract.json`",
+        "`product/v2/card_contract.json`",
         "Card metadata, defaults, domains, picker grouping, option definitions, generated card capability docs",
         "`npm run check:card-contract-outputs`",
         "`npm run check:product` when firmware, web, backup, or release-facing generated output changes",
@@ -203,7 +203,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:fast` or compile affected firmware when display layout or device behavior changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
+        "`src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h`, `product/v2/product_compatibility.json`",
         "Saved card strings, backup/import/export shape, migration compatibility",
         "`npm run check:backup-contract` and `npm run check:firmware-parser`",
         "`npm run check:product` when compact config, backup, or migration behavior changes",
@@ -215,13 +215,13 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product`; compile affected firmware before publishing new or changed device support",
     ),
     CheckMatrixRow(
-        "`common/assets/icons.json`, `common/assets/*glyphs.yaml`, `devices/<slug>/device/fonts.yaml`",
+        "`product/v2/icons.json`, `common/assets/*glyphs.yaml`, `devices/<slug>/device/fonts.yaml`",
         "Icon names, glyph coverage, firmware font roles, device font mappings",
         "`python3 scripts/check_icon_groups.py`",
         "`npm run check:product`; compile affected firmware when a visible font role or small-screen layout changes",
     ),
     CheckMatrixRow(
-        "`common/config/entity_names.json`, entity name consumers",
+        "`product/v2/entity_names.json`, entity name consumers",
         "Shared Home Assistant entity names consumed by firmware YAML and the web setup page",
         "`python3 scripts/build.py entities --check`",
         "`npm run check:product` when generated entity files or web behavior changes",
@@ -233,7 +233,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when authored product sources also changed",
     ),
     CheckMatrixRow(
-        "`common/config/strings.*.txt`",
+        "`product/v2/translations/strings.*.txt`",
         "Firmware translations and generated i18n header",
         "`python3 scripts/build.py i18n --check`",
         "`npm run check:product` when translated UI strings affect release output",
@@ -317,7 +317,7 @@ def source_truth_table() -> str:
 
 
 def contract_cards() -> dict[str, dict]:
-    return read_json("common/config/card_contract.json")["cards"]  # type: ignore[index]
+    return read_json("product/v2/card_contract.json")["cards"]  # type: ignore[index]
 
 
 def package_scripts() -> set[str]:
@@ -329,10 +329,10 @@ def web_registration_map() -> dict[str, str]:
     out: dict[str, str] = {}
     for path in sorted((ROOT / "src/webserver/cards").glob("*.ts")):
         text = path.read_text()
-        for match in re.finditer(r"registerButtonType\(\s*([\"'])(.*?)\1", text):
+        for match in re.finditer(r"registry\.register\(\s*([\"'])(.*?)\1", text):
             out[match.group(2)] = rel(path)
         for match in re.finditer(
-            r"registerCoverLikeCardType\(\s*\{.*?\btype\s*:\s*([\"'])(.*?)\1",
+            r"registerCard\(\s*\{.*?\btype\s*:\s*([\"'])(.*?)\1",
             text,
             flags=re.DOTALL,
         ):
@@ -437,10 +437,10 @@ def generated_card_map() -> str:
     return "\n\n".join((
         "## Generated Public Documentation Map\n\n"
         "This table is generated by `python3 scripts/check_dev_docs.py --update` from "
-        "`common/config/card_contract.json` and the public documentation mapping in that script.\n\n"
+        "`product/v2/card_contract.json` and the public documentation mapping in that script.\n\n"
         + markdown_table(("Public card page", "Covered saved type"), public_rows),
         "## Generated Matrix\n\n"
-        "This table is generated from the card contract, `registerButtonType(...)` calls in "
+        "This table is generated from the card contract and typed `registry.register(...)` calls in "
         "`src/webserver/cards/`, and matching firmware header references under "
         "`components/espcontrol/`.\n\n"
         + markdown_table((

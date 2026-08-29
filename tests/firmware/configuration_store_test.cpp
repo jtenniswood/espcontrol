@@ -60,12 +60,6 @@ class MemoryBackend final : public StorageBackend {
     return true;
   }
 
-  bool truncate(uint8_t slot, size_t size) override {
-    if (slot >= slots_.size() || size > slots_[slot].size()) return false;
-    std::fill(slots_[slot].begin() + size, slots_[slot].end(), 0xFF);
-    return true;
-  }
-
   bool sync() override {
     ++sync_calls_;
     return fail_sync_call_ == 0 || sync_calls_ != fail_sync_call_;
@@ -78,9 +72,6 @@ class MemoryBackend final : public StorageBackend {
   }
   void fail_sync_on_call(size_t call) { fail_sync_call_ = call; }
   void corrupt(uint8_t slot, size_t offset) { slots_[slot][offset] ^= 0x55; }
-  uint8_t byte_at(uint8_t slot, size_t offset) const {
-    return slots_[slot][offset];
-  }
 
  private:
   std::array<std::vector<uint8_t>, CONFIGURATION_SLOT_COUNT> slots_;
@@ -133,21 +124,29 @@ bool newest_generation_wins() {
          loaded.slot == 1 && payload_equals(output, second, loaded);
 }
 
-bool shorter_commit_truncates_the_reused_slot() {
-  MemoryBackend backend(256);
+bool conditional_commit_rejects_a_stale_generation() {
+  MemoryBackend backend(128);
   ConfigurationStore store(backend);
-  const std::vector<uint8_t> large(160, 0x5A);
-  const std::vector<uint8_t> short_value(8, 0x21);
-  const CommitResult first = store.commit(large.data(), large.size());
-  const CommitResult second = store.commit(large.data(), large.size());
-  if (!first.ok() || !second.ok() || first.slot == second.slot) return false;
-  const size_t obsolete_offset =
-      CONFIGURATION_ENVELOPE_HEADER_SIZE + short_value.size();
-  if (backend.byte_at(first.slot, obsolete_offset) == 0xFF) return false;
-  const CommitResult shortened =
-      store.commit(short_value.data(), short_value.size());
-  return shortened.ok() && shortened.slot == first.slot &&
-         backend.byte_at(shortened.slot, obsolete_offset) == 0xFF;
+  const std::vector<uint8_t> first = bytes("first");
+  const std::vector<uint8_t> second = bytes("second");
+  if (!store.commit(first.data(), first.size()).ok()) return false;
+
+  const CommitResult rejected =
+      store.commit_if_generation(0, second.data(), second.size());
+  std::vector<uint8_t> output(first.size());
+  const LoadResult unchanged = store.load(output.data(), output.size());
+  if (rejected.status != StoreStatus::GENERATION_CONFLICT ||
+      rejected.generation != 1 ||
+      !payload_equals(output, first, unchanged)) {
+    return false;
+  }
+
+  const CommitResult committed =
+      store.commit_if_generation(1, second.data(), second.size());
+  output.resize(second.size());
+  const LoadResult loaded = store.load(output.data(), output.size());
+  return committed.ok() && committed.generation == 2 &&
+         payload_equals(output, second, loaded);
 }
 
 bool corrupt_newest_falls_back() {
@@ -242,9 +241,9 @@ bool failed_publication_sync_preserves_previous() {
   const std::vector<uint8_t> replacement = bytes("replacement-value");
   if (!store.commit(stable.data(), stable.size()).ok()) return false;
 
-  // Each commit has five sync points. Fail the final publication sync of the
+  // Each commit has four sync points. Fail the final publication sync of the
   // second commit after its marker bytes have already become readable.
-  backend.fail_sync_on_call(10);
+  backend.fail_sync_on_call(8);
   const CommitResult failed =
       store.commit(replacement.data(), replacement.size());
 
@@ -292,7 +291,7 @@ bool io_and_sync_errors_are_explicit() {
 int main() {
   const bool passed =
       empty_store_is_reported() && commit_and_load_round_trip() &&
-      newest_generation_wins() && shorter_commit_truncates_the_reused_slot() &&
+      newest_generation_wins() && conditional_commit_rejects_a_stale_generation() &&
       corrupt_newest_falls_back() &&
       corrupt_stale_generation_cannot_promote_old_payload() &&
       partial_payload_write_preserves_previous() &&

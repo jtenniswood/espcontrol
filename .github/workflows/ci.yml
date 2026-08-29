@@ -107,7 +107,10 @@ jobs:
             components/espcontrol/icons.h \
             src/webserver/entry.ts \
             docs/public/webserver/www.js \
-            docs/public/webserver/*/www.js; then
+            docs/public/webserver/*/www.js \
+            docs/public/webserver/embedded/www.js \
+            docs/public/webserver/web-assets.json \
+            docs/public/webserver/bundles; then
             echo "Generated icon files are already up to date."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -120,7 +123,10 @@ jobs:
             components/espcontrol/icons.h \
             src/webserver/entry.ts \
             docs/public/webserver/www.js \
-            docs/public/webserver/*/www.js
+            docs/public/webserver/*/www.js \
+            docs/public/webserver/embedded/www.js \
+            docs/public/webserver/web-assets.json \
+            docs/public/webserver/bundles
           git commit -m "Build generated icon files"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -144,6 +150,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+
+      - name: Install pinned timezone data
+        shell: bash
+        run: |
+          TZDATA_VENV="${RUNNER_TEMP}/espcontrol-tzdata"
+          python3 -m venv "${TZDATA_VENV}"
+          "${TZDATA_VENV}/bin/python" -m pip install --disable-pip-version-check "tzdata==2026.3"
+          TZDATA_SITE="$("${TZDATA_VENV}/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
+          echo "PYTHONPATH=${TZDATA_SITE}${PYTHONPATH:+:${PYTHONPATH}}" >> "${GITHUB_ENV}"
+          echo "PYTHONTZPATH=${TZDATA_SITE}/tzdata/zoneinfo" >> "${GITHUB_ENV}"
 
       - name: Ensure CMake is available
         shell: bash

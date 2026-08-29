@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "productModelVersion": 2,
+  "panelConfigDocumentVersion": 1,
+  "webAssetVersion": 1,
+  "panelConfigCompatibility": {
+    "phase": "dual-write",
+    "dualWriteStableReleases": 2,
+    "readImportOnlyStableReleases": 1
+  }
+}

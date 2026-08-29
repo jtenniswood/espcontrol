@@ -1,7 +1,32 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerDoorWindowCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { iconSlug } from "../application/ui_primitives";
+import type { CardRegistry } from "../application/card_registry";
+import type { ConfigSensorOptionsFeature } from "../application/config_sensor_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerDoorWindowCardTypes(
+    registry: CardRegistry,
+    sensorOptions: ConfigSensorOptionsFeature,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardBadgePreview } = fields;
+    const {
+        normalizeDoorWindowSubtype,
+        doorWindowActiveColorEnabled,
+        normalizeDoorWindowOptions,
+        doorWindowClosedIcon,
+        doorWindowOpenIcon,
+        setDoorWindowActiveColorEnabled,
+    } = sensorOptions;
     // Read-only door/window card: shows a binary sensor with subtype-specific icons.
-    var DOOR_WINDOW_CARD_METADATA: any = {
+    const DOOR_WINDOW_CARD_METADATA: any = {
         mode: {
             label: "Type",
             idSuffix: "door-window-type",
@@ -35,7 +60,7 @@ export function registerDoorWindowCardTypes(): GlobalDescriptors {
             checked: doorWindowActiveColorEnabled,
         },
     };
-    registerButtonType("door_window", {
+    registry.register("door_window", {
         label: function (this: any) { return cardContractCardLabel("door_window"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("door_window"); },
         pickerKey: function (this: any) { return cardContractPickerKey("door_window"); },
@@ -120,7 +145,4 @@ export function registerDoorWindowCardTypes(): GlobalDescriptors {
             });
         },
     });
-    return {
-        "DOOR_WINDOW_CARD_METADATA": liveGlobal(() => DOOR_WINDOW_CARD_METADATA, (value?: any) => { DOOR_WINDOW_CARD_METADATA = value; }),
-    };
 }

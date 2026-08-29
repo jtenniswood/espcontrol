@@ -22,9 +22,9 @@ export interface MenuPosition {
 export interface CardTypeDefinition {
   readonly key?: string;
   readonly label?: string | (() => string);
-  readonly pickerKey?: string | (() => string);
+  readonly pickerKey?: string | null | (() => string | null);
   readonly allowInSubpage?: boolean | (() => boolean);
-  readonly isAvailable?: (context: { isSub: boolean }) => boolean;
+  readonly isAvailable?: ((context: { isSub: boolean }) => boolean) | null;
 }
 
 export interface CardPickerOption {
@@ -73,7 +73,6 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
   media_control: { icon: "music", description: "Open all media controls and volume in a modal." },
-  media_cover_art: { icon: "album", description: "Show the current track artwork." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
@@ -87,7 +86,6 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   climate: "climate_control",
   light_brightness: "light_control",
   media_control: "media",
-  media_cover_art: "media",
 };
 
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {
@@ -99,6 +97,18 @@ export function registryValue<T>(definition: Record<string, unknown> | null | un
   const candidate = definition[key];
   const value = typeof candidate === "function" ? (candidate as () => unknown)() : candidate;
   return value == null ? fallback : value as T;
+}
+
+export function buttonConfigDisabledForDevice(
+  definitions: Readonly<Record<string, CardTypeDefinition>>,
+  disabledCardTypes: readonly string[],
+  button: { readonly type?: string | null } | null | undefined,
+): boolean {
+  const type = button?.type || "";
+  if (disabledCardTypes.includes(type)) return true;
+  const definition = definitions[type] as Record<string, unknown> | undefined;
+  const pickerKey = registryValue(definition, "pickerKey", "");
+  return !!pickerKey && disabledCardTypes.includes(pickerKey);
 }
 
 export function infoOnlyCardVisible(key: string, infoOnly: boolean): boolean {

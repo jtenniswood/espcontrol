@@ -23,6 +23,33 @@ int main() {
   assert(!media_entity_state_usable("idle"));
   assert(!media_entity_state_usable("off"));
   assert(!media_entity_state_usable(" unavailable "));
+  assert(media_artwork_content_current(true, true, "playing", true));
+  assert(media_artwork_content_current(true, true, "paused", true));
+  assert(media_artwork_content_current(true, true, "buffering", true));
+  assert(!media_artwork_content_current(true, true, "idle", true));
+  assert(!media_artwork_content_current(true, true, "off", true));
+  assert(!media_artwork_content_current(true, false, "playing", true));
+  assert(!media_artwork_content_current(false, true, "playing", true));
+  assert(!media_artwork_content_current(true, true, "playing", false));
+  assert(media_state_change_invalidates_retained_content(false, "unknown", "idle"));
+  assert(media_state_change_invalidates_retained_content(true, "playing", "idle"));
+  assert(media_state_change_invalidates_retained_content(true, "paused", "off"));
+  assert(media_state_change_invalidates_retained_content(true, "idle", "off"));
+  assert(!media_state_change_invalidates_retained_content(true, "idle", "idle"));
+  assert(!media_state_change_invalidates_retained_content(true, "idle", "playing"));
+  assert(!media_state_change_invalidates_retained_content(true, "paused", "buffering"));
+  assert(!media_card_artwork_should_clear(false, true, "unknown", false));
+  assert(!media_card_artwork_should_clear(true, true, "playing", false));
+  assert(!media_card_artwork_should_clear(true, true, "paused", false));
+  assert(!media_card_artwork_should_clear(true, true, "buffering", false));
+  assert(media_card_artwork_should_clear(true, true, "idle", false));
+  assert(!media_card_artwork_should_clear(true, true, "idle", true));
+  assert(media_card_artwork_should_clear(true, true, "off", false));
+  assert(media_card_artwork_should_clear(true, false, "playing", true));
+  assert(media_entity_content_available(true, true, true));
+  assert(!media_entity_content_available(true, true, false));
+  assert(!media_entity_content_available(true, false, true));
+  assert(!media_entity_content_available(false, true, true));
   assert(!use_secondary_media_entity(false, true, true, true));
   assert(!use_secondary_media_entity(true, false, true, true));
   assert(!use_secondary_media_entity(true, true, false, true));
@@ -43,6 +70,8 @@ int main() {
   assert(ten.split && ten.art_size == 800 && ten.panel_x == 840);
   auto ten_v2 = cover_art_layout("guition-esp32-p4-jc8012p4a1-v2", "90", 800, 1280, 800, 506);
   assert(ten_v2.screen_height == 1280 && ten_v2.panel_y == 834);
+  auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
+  assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
   auto four = cover_art_layout("guition-esp32-p4-jc4880p443", "90", 800, 480, 480, 220);
   assert(four.screen_width == 800);
   auto square = cover_art_layout("esp32-p4-86", "0", 720, 720, 800, 495);
@@ -158,7 +187,57 @@ for required in (
     if required not in jpeg_decoder:
         raise SystemExit("P4 JPEG workspace must be released after image buffer allocation failure")
 
+if 'if (err == ESP_ERR_NOT_SUPPORTED) {' not in jpeg_decoder:
+    raise SystemExit("P4 JPEG unsupported-format fallback must be handled explicitly")
+if 'ESP_LOGD(TAG, "ESP32-P4 JPEG format is not hardware-supported; using software decoder");' not in jpeg_decoder:
+    raise SystemExit("P4 JPEG unsupported-format fallback must be debug-level")
+if 'ESP_LOGW(TAG, "ESP32-P4 JPEG hardware rejected image (error %d); using software decoder", err);' not in jpeg_decoder:
+    raise SystemExit("P4 JPEG unexpected hardware failures must remain warnings")
+
 image_cards = (ROOT / "components" / "espcontrol" / "button_grid_image.h").read_text(encoding="utf-8")
+for required in (
+    "RefreshBatch media_artwork_refresh",
+    "RefreshTrigger media_artwork_trigger",
+    "IMAGE_CARD_MEDIA_ARTWORK_TRIGGER_DEBOUNCE_MS = 75",
+    "IMAGE_CARD_MEDIA_ARTWORK_RESPONSE_DEBOUNCE_MS = 300",
+    "if (ctx->media_artwork_refresh.active())",
+    "media_artwork_refresh.begin(",
+    "media_artwork_refresh.complete()",
+    "Ignoring stale media artwork response",
+):
+    if required not in image_cards:
+        raise SystemExit(f"Media artwork refresh-batch contract missing: {required}")
+image_grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+if "image_card_schedule_media_artwork_refresh(art)" not in image_grid:
+    raise SystemExit("Media artwork subscriptions must use the trigger scheduler")
+screen_cover_art = (ROOT / "common" / "device" / "screen_cover_art.yaml").read_text(encoding="utf-8")
+for required in (
+    "artwork_refresh.begin(",
+    "artwork_refresh.receive(",
+    "artwork_refresh.finish();",
+    "cover_art_request_paired_artwork",
+    "cover_art_schedule_paired_artwork",
+    "ARTWORK_TRIGGER_DEBOUNCE_MS",
+    "cover_art_artwork_trigger).schedule(force_refresh)",
+    "cover_art_artwork_trigger).consume()",
+    "Ignoring stale %s artwork response",
+):
+    if required not in screen_cover_art:
+        raise SystemExit(f"Cover-art screensaver refresh-batch contract missing: {required}")
+deferred_retry_start = screen_cover_art.index("  - id: cover_art_deferred_request_artwork")
+trigger_scheduler_start = screen_cover_art.index("  - id: cover_art_schedule_paired_artwork")
+deferred_retry = screen_cover_art[deferred_retry_start:trigger_scheduler_start]
+if "script.execute: cover_art_request_paired_artwork" not in deferred_retry:
+    raise SystemExit("Cover-art failed reads must retry the paired request immediately")
+if "id: cover_art_schedule_paired_artwork" in deferred_retry:
+    raise SystemExit("Cover-art failed reads must not use the trigger debounce")
+image_decoder = (ROOT / "components" / "artwork_image" / "image_decoder.cpp").read_text(encoding="utf-8")
+for required in (
+    "if (!this->buffer_ || offset > this->size_)",
+    "return nullptr;",
+):
+    if required not in image_decoder:
+        raise SystemExit(f"Artwork download-buffer null-safety contract missing: {required}")
 overlay_tint_start = image_cards.find("inline void image_card_apply_media_overlay_tint(")
 overlay_tint_end = image_cards.find("\ninline void image_card_apply_downloaded", overlay_tint_start)
 if overlay_tint_start < 0 or overlay_tint_end < 0:
@@ -175,15 +254,18 @@ for required in (
     ".sp-btn-big.sp-media-cover-control-fonts .sp-media-cover-details-title{font-size:calc(var(--btn-label)*1.75)}",
     ".sp-btn-extra-large .sp-media-cover-details-title,.sp-btn-portrait-large .sp-media-cover-details-title{font-size:var(--media-cover-title)}",
     ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist,.sp-btn-portrait-large .sp-media-cover-details-row .sp-media-now-artist{font-size:var(--media-cover-artist)}",
+    ".sp-btn-extra-large .sp-media-cover-details-row .sp-media-now-artist{font-weight:300}",
     ".sp-btn-big.sp-media-cover-details-card,.sp-btn-extra-large.sp-media-cover-details-card,.sp-btn-portrait-large.sp-media-cover-details-card{justify-content:flex-start}",
+    ".sp-btn-big .sp-media-cover-details-row{margin-top:calc(var(--btn-pad)*.5)}",
     ".sp-btn-big .sp-media-cover-details-title{-webkit-line-clamp:2}",
     ".sp-btn-wide .sp-media-cover-details-title,.sp-btn-extra-wide .sp-media-cover-details-title{-webkit-line-clamp:2}",
+    ".sp-btn-extra-large .sp-media-cover-details-title{-webkit-line-clamp:5}",
 ):
     if required not in web_styles:
         raise SystemExit(f"Large cover art web font-selection contract missing: {required}")
 web_media = (ROOT / "src" / "webserver" / "cards" / "media.ts").read_text(encoding="utf-8")
 for required in (
-    'DEVICE_ID === "guition-esp32-p4-jc4880p443"',
+    'deviceId === "guition-esp32-p4-jc4880p443"',
     '" sp-media-cover-control-fonts"',
 ):
     if required not in web_media:
@@ -238,8 +320,8 @@ resubscribe_end = cover_art.find("\n  - id:", resubscribe_start + 1)
 if resubscribe_start < 0 or resubscribe_end < 0:
     raise SystemExit("Cover art subscription lifecycle contract missing")
 resubscribe = cover_art[resubscribe_start:resubscribe_end]
-if "ha_get_" in resubscribe:
-    raise SystemExit("Cover art must use live subscriptions instead of retained one-shot reads")
+if "cover_art_request_paired_artwork" not in cover_art:
+    raise SystemExit("Cover art must retain paired artwork refresh requests")
 cover_art_subscription_order = []
 for handler, attribute in (
     ("handle_media_content_type", "media_content_type"),
@@ -356,8 +438,12 @@ for required in (
     "return row_span >= 2 && col_span >= 2;",
     "inline bool media_cover_art_uses_compact_large_fonts(int row_span, int col_span)",
     "return row_span == 2 && col_span == 2;",
-    "inline bool media_cover_art_limits_title_to_two_lines(int row_span,",
-    "return row_span == 1 || (row_span == 2 && col_span == 2);",
+    "inline lv_coord_t media_cover_art_artist_gap(lv_coord_t top_padding,",
+    "return top_padding / 2;",
+    "ctx->artist_gap = media_cover_art_artist_gap(",
+    "inline int media_cover_art_title_line_limit(int row_span, int col_span)",
+    "if (row_span == 3 && col_span == 3) return 5;",
+    "if (row_span == 1 || (row_span == 2 && col_span == 2)) return 2;",
     "inline void media_position_now_playing_artist(MediaNowPlayingCtx *ctx)",
     "LV_ALIGN_OUT_BOTTOM_LEFT, 0, ctx->artist_gap",
     "ctx->artist_below_title = media_cover_art_uses_screensaver_fonts(",
@@ -379,7 +465,7 @@ for required in (
     "lv_obj_t *artist_lbl = lv_label_create(s.btn);",
     "ctx->artist_lbl = artist_lbl;",
     "lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);",
-    "media_cover_art_limits_title_to_two_lines(row_span, col_span)",
+    "media_cover_art_title_line_limit(row_span, col_span)",
 ):
     if required not in cover_details:
         raise SystemExit(f"Cover art track-details layout contract missing: {required}")
@@ -388,7 +474,9 @@ if "ctx->artist_lbl = s.text_lbl;" in cover_details:
 
 for required in (
     "bool highlight_playing = true;",
-    "ctx->btn, ctx->highlight_playing && ctx->available && ctx->playing);",
+    "set_card_checked_state(ctx->btn, ctx->available &&",
+    "ctx->group_only ? media_control_group_size(ctx) > 1",
+    ": ctx->highlight_playing && ctx->playing));",
 ):
     if required not in media:
         raise SystemExit(f"Media control playing-highlight contract missing: {required}")
@@ -405,8 +493,44 @@ for required in (
         raise SystemExit(f"2x2 cover art must reuse All Controls fonts: {required}")
 
 grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
-if "media_cover_art_limits_title_to_two_lines(row_span, col_span)" not in grid:
-    raise SystemExit("Cover art layout refresh must keep track titles limited to two lines")
+layout = (ROOT / "components" / "espcontrol" / "button_grid_layout.h").read_text(encoding="utf-8")
+subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
+subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
+sliders = (ROOT / "components" / "espcontrol" / "button_grid_sliders.h").read_text(encoding="utf-8")
+climate = (ROOT / "components" / "espcontrol" / "button_grid_climate.h").read_text(encoding="utf-8")
+if "lv_obj_set_width(label, lv_pct(100));" not in layout:
+    raise SystemExit("Firmware card labels must retain their full width below top-left icons")
+if "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" not in grid:
+    raise SystemExit("Firmware card setup must place main icons in the top-left corner")
+if "lv_obj_align(slot.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" not in subpages:
+    raise SystemExit("Dynamic subpage cards must place main icons in the top-left corner")
+if "lv_obj_align(slot.subpage_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 2);" not in subpages:
+    raise SystemExit("Dynamic subpage cards must retain the bottom-right navigation chevron")
+if "lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);" not in media:
+    raise SystemExit("Media cards must refresh main icons in the top-left corner")
+if sliders.count("lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, padding.left, padding.top);") < 2:
+    raise SystemExit("Slider and light-temperature cards must keep main icons in the top-left corner")
+if "lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" not in climate:
+    raise SystemExit("Climate cards must keep main icons in the top-left corner")
+if "configure_button_label_wrap(text_lbl);" not in subscriptions:
+    raise SystemExit("Toggle state updates must restore full-width label wrapping when icons reappear")
+for required in (
+    "configure_button_label_wrap(entry->back_slot.text_lbl);",
+    "configure_button_label_wrap(back_slot.text_lbl);",
+    "configure_button_label_wrap(sub_slot.text_lbl);",
+):
+    if required not in grid:
+        raise SystemExit(f"Subpage label clamps must restore full-width wrapping: {required}")
+if "image_card_align_label_stack(label, btn, icon);" not in image_cards:
+    raise SystemExit("Image loading-state relayouts must retain the label stack")
+if "lv_obj_align(icon, LV_ALIGN_TOP_LEFT, -parent_x, -parent_y);" not in image_cards:
+    raise SystemExit("Image card icons must stay in the top-left corner")
+if "media_cover_art_title_line_limit(row_span, col_span)" not in grid:
+    raise SystemExit("Cover art layout refresh must preserve the per-size track-title limit")
+if "ctx->artist_gap = media_cover_art_artist_gap(" not in grid:
+    raise SystemExit("Cover art layout refresh must preserve the size-aware artist gap")
+if "media_cover_art_artist_gap(\n        ctx->content_padding.top, row_span, col_span)" not in grid:
+    raise SystemExit("Cover art layout refresh must use the captured content padding for the artist gap")
 for required in (
     "display.modal.layout_family == DisplayModalLayoutFamily::COMPACT_PORTRAIT",
     "compact_portrait\n        ? display_media_control_title_font(display)",
@@ -414,15 +538,16 @@ for required in (
 ):
     if required not in grid:
         raise SystemExit(f"2x2 cover art refresh must reuse All Controls fonts: {required}")
-if "if (ha_api_state_connected()) refresh_image_cards();" not in grid:
+if "if (ha_api_state_connected()) {" not in grid or "refresh_image_cards();" not in grid:
     raise SystemExit("Grid startup must refresh bound cover artwork after Home Assistant state is ready")
 for required in (
     "lv_obj_set_height(title_lbl, LV_SIZE_CONTENT);",
     "lv_obj_set_style_max_height(",
-    "title_lbl, font->line_height * 2 + TITLE_LINE_SPACE, LV_PART_MAIN);",
+    "font->line_height * title_line_limit +",
+    "TITLE_LINE_SPACE * (title_line_limit - 1)",
 ):
     if required not in media:
-        raise SystemExit(f"Two-line cover art title must flex to its content height: {required}")
+        raise SystemExit(f"Limited cover art titles must flex to their configured line count: {required}")
 media_art_start = grid.find("inline void subscribe_media_cover_art(")
 media_art_end = grid.find("\ninline void setup_card_visual(", media_art_start)
 if media_art_start < 0 or media_art_end < 0:
@@ -431,7 +556,10 @@ media_art = grid[media_art_start:media_art_end]
 for required in (
     'std::string("entity_picture")',
     'std::string("entity_picture_local")',
-    "image_card_request_media_artwork(art)",
+    "image_card_schedule_media_artwork_refresh(art)",
+    "media_artwork_content_current(",
+    "media_card_artwork_should_clear(",
+    "image_card_clear_media_artwork(art)",
 ):
     if required not in media_art:
         raise SystemExit(f"Media card cover art subscription contract missing: {required}")
@@ -440,4 +568,74 @@ if "subscribe_image_card_entity_state" in media_art:
         "Media card cover art must not add a general entity-state subscription "
         "on top of its picture subscriptions"
     )
+now_playing_refresh_start = media.find(
+    "inline void media_playback_refresh_stable_artwork("
+)
+now_playing_refresh_end = media.find(
+    "inline void media_playback_apply_state_to_now_playing_snapshot(",
+    now_playing_refresh_start,
+)
+if now_playing_refresh_start < 0 or now_playing_refresh_end < 0:
+    raise SystemExit("Media cover-art playback-state contract missing")
+now_playing_refresh = media[now_playing_refresh_start:now_playing_refresh_end]
+for required in (
+    "media_card_artwork_should_clear(",
+    "ctx->artwork_refresh_signature.clear();",
+    "image_card_clear_media_artwork(ctx->cover_art);",
+):
+    if required not in now_playing_refresh:
+        raise SystemExit(
+            f"Stopped media must clear stale card artwork: {required}"
+        )
+current_content_start = media.find(
+    "inline bool media_playback_has_current_content("
+)
+current_content_end = media.find("\n}", current_content_start)
+if current_content_start < 0 or current_content_end < 0:
+    raise SystemExit("Secondary media content routing contract missing")
+current_content = media[current_content_start:current_content_end]
+for required in (
+    "media_entity_content_available(",
+    "!state->title.empty()",
+    "!state->artist.empty()",
+    "state->has_current_content_id",
+    "state->artwork_content_mask != 0",
+):
+    if required not in current_content:
+        raise SystemExit(
+            f"Secondary media content routing contract missing: {required}"
+        )
+for stale_gate in (
+    "media_entity_state_usable(",
+    "state->has_current_content_type",
+):
+    if stale_gate in current_content:
+        raise SystemExit(
+            f"Secondary routing must follow actual metadata, not {stale_gate}"
+        )
+state_subscription_start = media.find(
+    "inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {"
+)
+state_subscription_end = media.find(
+    "inline void media_playback_subscribe_metadata(", state_subscription_start
+)
+if state_subscription_start < 0 or state_subscription_end < 0:
+    raise SystemExit("Playback-state retained metadata contract missing")
+state_subscription = media[state_subscription_start:state_subscription_end]
+for required in (
+    "media_state_change_invalidates_retained_content(",
+    "media_playback_invalidate_retained_content(state);",
+):
+    if required not in state_subscription:
+        raise SystemExit(
+            f"Stopped playback must invalidate retained metadata: {required}"
+        )
+for required in (
+    "espcontrol::cover_art::media_entity_state_usable(next)",
+    'subscribe_secondary_content_probe(std::string("media_artist"), 16u)',
+):
+    if required not in resubscribe:
+        raise SystemExit(
+            f"Full-screen secondary media routing contract missing: {required}"
+        )
 print("Cover art policy, layout, and state contract checks passed.")

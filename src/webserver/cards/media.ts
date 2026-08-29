@@ -1,48 +1,74 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerMediaCardTypes(): GlobalDescriptors {
+import { configOptionEnabled, configOptionValue } from "../model/config_primitives";
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigMediaOptionsFeature } from "../application/config_media_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+import type { SettingsUiFeature } from "../features/settings";
+import {
+    MEDIA_COVER_ART_OPTION,
+    MEDIA_PLAYLIST_CONTENT_TYPE_OPTION,
+} from "../application/config_option_core";
+import { CARD_SIZE_SINGLE } from "../model/grid";
+export function registerMediaCardTypes(
+    registry: CardRegistry,
+    mediaOptions: ConfigMediaOptionsFeature,
+    deviceId: string,
+    fields: ControlsFieldsFeature,
+    settingsUi: Pick<SettingsUiFeature, "infoPanel">,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings, renderPreview } = cardUi;
+    const { cardBadgeLabelHtml, cardLargeNumbersActiveForCardSize, cardSensorPreviewHtml } = fields;
+    const { infoPanel } = settingsUi;
+    const {
+        mediaBehaviorSpec,
+        mediaCoverArtCardsSupported,
+        mediaModeOptionValues,
+        mediaDefaultMode,
+        mediaEditorMode,
+        mediaEditorValidMode,
+        mediaNowPlayingControlValues,
+        mediaNowPlayingControls,
+        mediaStateDisplayModeSupported,
+        mediaPlaylistSourceOptions,
+        mediaPlaylistSourceDefinition,
+        mediaPlaylistContentIdPlaceholder,
+        parseMediaPlaylistContentId,
+        buildMediaPlaylistContentId,
+        mediaPlaylistContentTypeKnown,
+        mediaPlaylistContentTypeOptions,
+        normalizeMediaOptions,
+        mediaCoverArtDetailsEnabled,
+        setMediaCoverArtDetailsEnabled,
+        mediaCoverArtSecondaryEntity,
+        setMediaCoverArtSecondaryEntity,
+        mediaVolumeMax,
+        setMediaVolumeMax,
+        mediaSpeakerGroupEntity,
+        setMediaSpeakerGroupEntity,
+        mediaLabelDisplayMode,
+        setMediaLabelDisplayMode,
+        mediaNumberDisplayMode,
+        setMediaNumberDisplayMode,
+        mediaPlaylistContentId,
+        mediaPlaylistContentType,
+        setMediaPlaylistContentId,
+        setMediaPlaylistContentType,
+        mediaPlaylistPlayerSource,
+        setMediaPlaylistPlayerSource,
+    } = mediaOptions;
     // Media player card: playback buttons, volume, track position, or now-playing details.
-    function mediaBehaviorSpec(this: any) {
-        var card: any = cardContractCard("media");
-        return card && card.behavior && card.behavior.media || {};
-    }
-    function mediaCoverArtCardsSupported(this: any) {
-        var disabled: any = CFG.disabledCardTypes || [];
-        return disabled.indexOf("media_cover_art") === -1;
-    }
-    function mediaModeOptionValues(this: any) {
-        var spec: any = cardContractOptionSpec("media", "media_mode");
-        var values: any = spec && spec.values ? spec.values.slice() :
-            ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"];
-        return mediaCoverArtCardsSupported() ? values : values.filter(function (this: any, value?: any) {
-            return value !== "cover_art";
-        });
-    }
-    function mediaDefaultMode(this: any) {
-        return mediaBehaviorSpec().defaultMode || "play_pause";
-    }
-    function mediaEditorMode(this: any, value?: any) {
-        value = String(value || "");
-        var legacy: any = mediaBehaviorSpec().legacyModes || {};
-        value = legacy[value] || value;
-        return mediaModeOptionValues().indexOf(value) >= 0 ? value : mediaDefaultMode();
-    }
-    function mediaEditorValidMode(this: any, value?: any) {
-        return mediaEditorMode(value);
-    }
-    function mediaNowPlayingControls(this: any, b?: any) {
-        if (!b || b.sensor !== "now_playing")
-            return "";
-        return mediaNowPlayingControlValues().indexOf(b.precision || "") >= 0 ? b.precision : "";
-    }
-    function mediaNowPlayingControlValues(this: any) {
-        var spec: any = cardContractOptionSpec("media", "media_now_playing_controls");
-        return spec && spec.values ? spec.values.slice() : ["", "progress", "play_pause"];
-    }
-    function mediaStateDisplayModeSupported(this: any, mode?: any) {
-        var modes: any = mediaBehaviorSpec().stateDisplayModes || ["play_pause", "position"];
-        return modes.indexOf(mediaEditorMode(mode)) >= 0;
-    }
     function mediaNowPlayingProgressEnabled(this: any, b?: any) {
         return mediaNowPlayingControls(b) === "progress";
     }
@@ -65,19 +91,21 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             "Media Control",
             "Media Control Modal",
             "All Controls",
+            "Speaker Group",
         ].indexOf(label) >= 0;
     }
     function mediaModeOptions(this: any) {
         var options: any = [
             ["control_modal", "All Controls"],
-            ["play_pause", "Play/Pause Button"],
-            ["previous", "Previous Button"],
-            ["next", "Next Button"],
-            ["volume", "Volume Button"],
+            ["cover_art", "Cover Art"],
+            ["playlist", "Track, Album or Playlist"],
+            ["speaker_group", "Speaker Group"],
+            ["play_pause", "Play/Pause"],
+            ["previous", "Previous"],
+            ["next", "Next"],
+            ["volume", "Volume"],
             ["position", "Track Position"],
             ["now_playing", "Now Playing"],
-            ["cover_art", "Cover Art"],
-            ["playlist", "Media Content"],
         ];
         return mediaCoverArtCardsSupported() ? options : options.filter(function (this: any, option?: any) {
             return option[0] !== "cover_art";
@@ -118,14 +146,6 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 ["play_pause", "Play/Pause"],
             ],
         },
-        coverArtAction: {
-            label: "Press Action",
-            inputId: "media-cover-art-action",
-            options: [
-                ["play_pause", "Play/Pause"],
-                ["control_modal", "All Controls"],
-            ],
-        },
         controlLabelDisplay: {
             label: "Label",
             inputId: "media-control-label-display",
@@ -154,102 +174,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             badge: "speaker",
         },
     };
-    var MEDIA_PLAYLIST_SOURCE_DEFINITIONS: any = [
-        { value: "spotify", label: "Spotify", prefix: "spotify" },
-        { value: "apple_music", label: "Apple Music", prefix: "apple_music" },
-        { value: "youtube_music", label: "YouTube Music", prefix: "youtube_music" },
-        { value: "plex", label: "Plex", prefix: "plex" },
-        { value: "jellyfin", label: "Jellyfin", prefix: "jellyfin" },
-        { value: "media_source", label: "Home Assistant Media Source", prefix: "media-source" },
-        { value: "url", label: "Web URL", prefix: "" },
-        { value: "__custom", label: "Custom / full URI", prefix: "" },
-    ];
-    function mediaPlaylistSourceOptions(this: any) {
-        return MEDIA_PLAYLIST_SOURCE_DEFINITIONS.map(function (this: any, source?: any) {
-            return [source.value, source.label];
-        });
-    }
-    function mediaPlaylistSourceDefinition(this: any, value?: any) {
-        value = String(value || "");
-        for (var i: any = 0; i < MEDIA_PLAYLIST_SOURCE_DEFINITIONS.length; i++) {
-            if (MEDIA_PLAYLIST_SOURCE_DEFINITIONS[i].value === value)
-                return MEDIA_PLAYLIST_SOURCE_DEFINITIONS[i];
-        }
-        return MEDIA_PLAYLIST_SOURCE_DEFINITIONS[0];
-    }
-    function mediaPlaylistContentIdPlaceholder(this: any, source?: any, contentType?: any) {
-        source = String(source || "spotify");
-        contentType = String(contentType || "playlist");
-        if (source === "spotify")
-            return "e.g. 1LG2Lnt9EDQS1DqoE8E2uO";
-        if (source === "media_source")
-            return "e.g. music/morning-mix";
-        if (source === "url")
-            return "e.g. https://example.com/music/stream.mp3";
-        if (source === "__custom")
-            return "e.g. spotify:" + contentType + ":1LG2Lnt9EDQS1DqoE8E2uO";
-        return "Enter the " + contentType + " ID";
-    }
-    function parseMediaPlaylistContentId(this: any, value?: any, contentType?: any) {
-        value = String(value || "").trim();
-        contentType = String(contentType || "playlist").trim() || "playlist";
-        if (!value)
-            return { source: "spotify", id: "" };
-        if (/^https?:\/\//i.test(value))
-            return { source: "url", id: value };
-        var spotifyMatch: any = value.match(/^spotify:([^:]+):(.+)$/i);
-        if (spotifyMatch)
-            return { source: "spotify", contentType: spotifyMatch[1], id: spotifyMatch[2] };
-        var mediaSourceMatch: any = value.match(/^media-source:\/\/(.+)$/i);
-        if (mediaSourceMatch)
-            return { source: "media_source", id: mediaSourceMatch[1] };
-        var colonMatch: any = value.match(/^([a-z][a-z0-9_-]*):([^:]+):(.+)$/i);
-        if (colonMatch) {
-            var prefix: any = colonMatch[1].toLowerCase();
-            for (var i: any = 0; i < MEDIA_PLAYLIST_SOURCE_DEFINITIONS.length; i++) {
-                var source: any = MEDIA_PLAYLIST_SOURCE_DEFINITIONS[i];
-                if (source.prefix && source.prefix.toLowerCase() === prefix) {
-                    return { source: source.value, contentType: colonMatch[2], id: colonMatch[3] };
-                }
-            }
-        }
-        return { source: "__custom", id: value };
-    }
-    function buildMediaPlaylistContentId(this: any, source?: any, contentType?: any, id?: any) {
-        source = String(source || "spotify");
-        contentType = String(contentType || "playlist").trim() || "playlist";
-        id = String(id || "").trim();
-        if (!id)
-            return "";
-        if (source === "__custom" || source === "url")
-            return id;
-        if (source === "media_source")
-            return "media-source://" + id.replace(/^\/+/, "");
-        var definition: any = mediaPlaylistSourceDefinition(source);
-        return definition.prefix + ":" + contentType + ":" + id;
-    }
-    function mediaPlaylistContentTypeKnown(this: any, value?: any) {
-        return mediaPlaylistContentTypeOptions().some(function (this: any, option?: any) { return option[0] === value; });
-    }
-    function mediaPlaylistContentTypeOptions(this: any) {
-        return [
-            ["playlist", "Playlist"],
-            ["music", "Music"],
-            ["album", "Album"],
-            ["artist", "Artist"],
-            ["track", "Track"],
-            ["channel", "Channel"],
-            ["episode", "Episode"],
-            ["podcast", "Podcast"],
-            ["tvshow", "TV Show"],
-            ["video", "Video"],
-            ["movie", "Movie"],
-            ["app", "App"],
-            ["url", "URL"],
-            ["__custom", "Custom"],
-        ];
-    }
-    registerButtonType("media", {
+    registry.register("media", {
         label: function (this: any) { return cardContractCardLabel("media"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("media"); },
         pickerKey: function (this: any) { return cardContractPickerKey("media"); },
@@ -260,7 +185,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
         cardMetadata: MEDIA_CARD_METADATA,
         onSelect: function (this: any, b?: any) {
             b.entity = "";
-            b.sensor = "play_pause";
+            b.sensor = "cover_art";
             b.unit = "";
             b.precision = (b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "";
             b.icon = "Auto";
@@ -287,6 +212,8 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     return "Music";
                 if (mode === "control_modal")
                     return "Play Pause";
+                if (mode === "speaker_group")
+                    return "Speaker Multiple";
                 if (mode === "playlist")
                     return "Music";
                 return "Play Pause";
@@ -310,6 +237,8 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     return "Play/Pause";
                 if (mode === "control_modal")
                     return "All Controls";
+                if (mode === "speaker_group")
+                    return "Speaker Group";
                 if (mode === "cover_art")
                     return "Cover Art";
                 if (mode === "playlist")
@@ -369,11 +298,20 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
+                        if (b.sensor === "speaker_group") {
+                            if (mediaLabelIsGenerated(b.label)) {
+                                b.label = mediaActionLabel(b.sensor);
+                                helpers.saveField("label", b.label);
+                            }
+                            b.icon = "Auto";
+                            helpers.saveField("icon", b.icon);
+                        }
                         if (b.sensor === "cover_art" && mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
                         }
-                        if (oldMode === "control_modal" && b.sensor !== "control_modal" &&
+                        if ((oldMode === "control_modal" || oldMode === "speaker_group" || oldMode === "cover_art") &&
+                            b.sensor !== "control_modal" && b.sensor !== "speaker_group" &&
                             mediaLabelIsGenerated(b.label)) {
                             b.label = mediaActionLabel(b.sensor);
                             helpers.saveField("label", b.label);
@@ -384,6 +322,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                             helpers.saveField("options", b.options);
                         }
                         helpers.saveField("sensor", b.sensor);
+                        renderPreview();
                         renderButtonSettings();
                     },
                 }),
@@ -435,6 +374,10 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 b.label = "All Controls";
                 helpers.saveField("label", b.label);
             }
+            if (b.sensor === "speaker_group" && mediaLabelIsGenerated(b.label)) {
+                b.label = "Speaker Group";
+                helpers.saveField("label", b.label);
+            }
             if (b.sensor === "playlist") {
                 if (!b.label || b.label === "Media")
                     b.label = "Playlist";
@@ -455,6 +398,76 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     }),
                 }
                 : MEDIA_CARD_METADATA);
+            function renderSpeakerDiscoveryEntityField(this: any, target?: any) {
+            if (b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
+                target = target || panel;
+                var groupEntityField: any = helpers.textField(
+                    "Speaker Discovery Entity (optional)",
+                    helpers.idPrefix + "speaker-group-entity",
+                    mediaSpeakerGroupEntity(b),
+                    "Default: sensor.speaker_group", "", false);
+                var groupEntityHintText: any = "Leave this blank to use sensor.speaker_group. Only enter another helper if you have more than one speaker helper or have changed the default entity name.";
+                var groupEntityHint: any = document.createElement("button");
+                groupEntityHint.type = "button";
+                groupEntityHint.className = "mdi mdi-information-outline sp-field-info-button";
+                groupEntityHint.setAttribute("aria-label", "About the speaker discovery entity");
+                groupEntityHint.setAttribute("aria-expanded", "false");
+                var groupEntityTooltip: any = document.createElement("div");
+                groupEntityTooltip.className = "sp-field-info-text";
+                groupEntityTooltip.id = helpers.idPrefix + "speaker-group-entity-tooltip";
+                groupEntityTooltip.setAttribute("aria-live", "polite");
+                groupEntityTooltip.textContent = groupEntityHintText;
+                groupEntityHint.setAttribute("aria-describedby", groupEntityTooltip.id);
+                var groupEntityHintHovered: any = false;
+                var groupEntityHintFocused: any = false;
+                var groupEntityHintTapped: any = false;
+                function setGroupEntityTooltipVisible(this: any, visible?: any) {
+                    groupEntityTooltip.classList.toggle("sp-visible", !!visible);
+                    groupEntityHint.setAttribute("aria-expanded", visible ? "true" : "false");
+                }
+                function syncGroupEntityTooltipVisibility(this: any) {
+                    setGroupEntityTooltipVisible(groupEntityHintHovered || groupEntityHintFocused || groupEntityHintTapped);
+                }
+                groupEntityHint.addEventListener("mouseenter", function (this: any) {
+                    groupEntityHintHovered = true;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("mouseleave", function (this: any) {
+                    groupEntityHintHovered = false;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("focus", function (this: any) {
+                    groupEntityHintFocused = true;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("click", function (this: any) {
+                    if (document.activeElement !== groupEntityHint)
+                        groupEntityHintTapped = !groupEntityHintTapped;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("blur", function (this: any) {
+                    groupEntityHintFocused = false;
+                    groupEntityHintTapped = false;
+                    syncGroupEntityTooltipVisibility();
+                });
+                groupEntityHint.addEventListener("keydown", function (this: any, event?: any) {
+                    if (event.key === "Escape") {
+                        groupEntityHintFocused = false;
+                        groupEntityHintTapped = false;
+                        setGroupEntityTooltipVisible(false);
+                    }
+                });
+                groupEntityField.field.querySelector("label").appendChild(groupEntityHint);
+                groupEntityField.field.insertBefore(groupEntityTooltip, groupEntityField.input);
+                target.appendChild(groupEntityField.field);
+                groupEntityField.input.pattern = "(?:media_player|sensor)\\.[A-Za-z0-9_]+";
+                groupEntityField.input.addEventListener("change", function (this: any) {
+                    setMediaSpeakerGroupEntity(b, groupEntityField.input.value);
+                    groupEntityField.input.value = mediaSpeakerGroupEntity(b);
+                    helpers.saveField("options", b.options);
+                });
+            }
+            }
             var displayMode: any = helpers.renderCardSegmentControl(panel, b, helpers, {
                 segment: Object.assign({}, MEDIA_CARD_METADATA.displayMode, {
                     inputId: helpers.idPrefix + "media-display",
@@ -515,17 +528,8 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     "Card Settings",
                     helpers.idPrefix + "media-cover-art-card-settings",
                     false);
+                cardSettingsDisclosure.panel.classList.add("sp-media-card-settings");
                 var cardSettings: any = cardSettingsDisclosure.section;
-                helpers.renderCardSegmentControl(cardSettings, b, helpers, {
-                    segment: Object.assign({}, MEDIA_CARD_METADATA.coverArtAction, {
-                        inputId: helpers.idPrefix + "media-cover-art-action",
-                        value: function (this: any) { return mediaCoverArtAction(b); },
-                        onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
-                            setMediaCoverArtAction(button, value);
-                            cardHelpers.saveField("options", button.options);
-                        },
-                    }),
-                });
                 var detailsToggle: any = helpers.toggleRow(
                     "Show Track Details",
                     helpers.idPrefix + "media-cover-art-details",
@@ -539,7 +543,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 panel.appendChild(cardSettingsDisclosure.panel);
 
                 var secondaryPlayerDisclosure: any = helpers.disclosureSection(
-                    "External sources",
+                    "External Sources",
                     helpers.idPrefix + "media-cover-art-secondary-player",
                     false);
                 var secondaryPlayerSettings: any = secondaryPlayerDisclosure.section;
@@ -574,6 +578,26 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 panel.appendChild(secondaryPlayerDisclosure.panel);
             }
             if (b.sensor === "control_modal") {
+                var numberDisplay: any = helpers.renderCardSegmentControl(panel, b, helpers, {
+                    segment: Object.assign({}, MEDIA_CARD_METADATA.controlNumberDisplay, {
+                        inputId: helpers.idPrefix + "media-control-number-display",
+                        value: function (this: any) { return mediaNumberDisplayMode(b); },
+                        onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
+                            setMediaNumberDisplayMode(button, value);
+                            cardHelpers.saveField("options", button.options);
+                            renderButtonSettings();
+                        },
+                    }),
+                });
+                numberDisplay.segment.classList.add("sp-segment-scroll");
+                if (mediaNumberDisplayMode(b) === "icon") {
+                    helpers.renderCardIconPicker(panel, b, helpers, {
+                        pickerIdSuffix: "icon-picker",
+                        idSuffix: "icon",
+                        field: "icon",
+                        fallback: "Play Pause",
+                    });
+                }
                 var labelDisplay: any = helpers.renderCardSegmentControl(panel, b, helpers, {
                     segment: Object.assign({}, MEDIA_CARD_METADATA.controlLabelDisplay, {
                         inputId: helpers.idPrefix + "media-control-label-display",
@@ -595,26 +619,6 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                         rerender: true,
                     });
                 }
-                var numberDisplay: any = helpers.renderCardSegmentControl(panel, b, helpers, {
-                    segment: Object.assign({}, MEDIA_CARD_METADATA.controlNumberDisplay, {
-                        inputId: helpers.idPrefix + "media-control-number-display",
-                        value: function (this: any) { return mediaNumberDisplayMode(b); },
-                        onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
-                            setMediaNumberDisplayMode(button, value);
-                            cardHelpers.saveField("options", button.options);
-                            renderButtonSettings();
-                        },
-                    }),
-                });
-                numberDisplay.segment.classList.add("sp-segment-scroll");
-                if (mediaNumberDisplayMode(b) === "icon") {
-                    helpers.renderCardIconPicker(panel, b, helpers, {
-                        pickerIdSuffix: "icon-picker",
-                        idSuffix: "icon",
-                        field: "icon",
-                        fallback: "Play Pause",
-                    });
-                }
             }
             if (b.sensor !== "now_playing" &&
                 b.sensor !== "cover_art" &&
@@ -630,9 +634,18 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     rerender: true,
                 });
             }
-            if (b.sensor === "volume") {
-                helpers.renderCardLargeNumbersToggle(panel, b, helpers, MEDIA_CARD_METADATA);
-                var maxField: any = helpers.renderCardNumberField(panel, b, helpers, {
+            var mediaAdvancedSettings: any = panel;
+            if (b.sensor === "control_modal" || b.sensor === "cover_art") {
+                var mediaAdvancedDisclosure: any = helpers.disclosureSection(
+                    "Advanced",
+                    helpers.idPrefix + "media-advanced",
+                    false);
+                mediaAdvancedSettings = mediaAdvancedDisclosure.section;
+                panel.appendChild(mediaAdvancedDisclosure.panel);
+            }
+            if (b.sensor === "volume" || b.sensor === "control_modal" || b.sensor === "speaker_group" || b.sensor === "cover_art") {
+                if (b.sensor === "volume") helpers.renderCardLargeNumbersToggle(panel, b, helpers, MEDIA_CARD_METADATA);
+                var maxField: any = helpers.renderCardNumberField(mediaAdvancedSettings, b, helpers, {
                     label: "Maximum Volume",
                     idSuffix: "volume-max",
                     min: 1,
@@ -652,10 +665,10 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             }
             var playlistCardSettings: any = null;
             if (b.sensor === "playlist") {
-                var playlistSourceDisclosure: any = helpers.disclosureSection("Source", helpers.idPrefix + "playlist-source-settings", true);
+                var playlistSourceDisclosure: any = helpers.disclosureSection("Source", helpers.idPrefix + "playlist-source-settings", false);
                 var playlistSourceSettings: any = playlistSourceDisclosure.section;
                 panel.appendChild(playlistSourceDisclosure.panel);
-                var playlistCardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "playlist-card-settings", true);
+                var playlistCardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "playlist-card-settings", false);
                 playlistCardSettings = playlistCardSettingsDisclosure.section;
                 panel.appendChild(playlistCardSettingsDisclosure.panel);
                 var playlistInfo: any = document.createElement("div");
@@ -772,6 +785,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     fallback: "Speaker",
                 });
             }
+            renderSpeakerDiscoveryEntityField(mediaAdvancedSettings);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             function modeInfo(this: any, value?: any) {
@@ -791,6 +805,8 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                     return { mode: "cover_art", label: "Cover Art", icon: "music" };
                 if (value === "control_modal")
                     return { mode: "control_modal", label: "All Controls", icon: "play-pause" };
+                if (value === "speaker_group")
+                    return { mode: "speaker_group", label: "Speaker Group", icon: "speaker-multiple" };
                 if (value === "playlist")
                     return { mode: "playlist", label: "Playlist", icon: "music" };
                 return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
@@ -805,6 +821,14 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                         ? cardSensorPreviewHtml(b, helpers, "42", null)
                         : '<span class="sp-btn-icon mdi mdi-' + controlIcon + '"></span>',
                     labelHtml: cardBadgeLabelHtml(helpers, mediaLabelDisplayMode(b) === "status" ? "Playing" : label, MEDIA_CARD_METADATA.preview.badge),
+                };
+            }
+            if (mode === "speaker_group") {
+                var groupIcon: any = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : info.icon;
+                return {
+                    buttonClass: "sp-media-group-active",
+                    iconHtml: '<span class="sp-btn-icon mdi mdi-' + groupIcon + '"></span>',
+                    labelHtml: cardBadgeLabelHtml(helpers, label, MEDIA_CARD_METADATA.preview.badge),
                 };
             }
             if (mode === "volume") {
@@ -831,17 +855,18 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             if (mode === "cover_art") {
                 var coverArtColor: any = WEB_UI_COLORS.tertiary;
                 if (mediaCoverArtDetailsEnabled(b)) {
-                    var controlFontClass: any = DEVICE_ID === "guition-esp32-p4-jc4880p443"
+                    var singleCoverArtCard: any = ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_SINGLE;
+                    var controlFontClass: any = deviceId === "guition-esp32-p4-jc4880p443"
                         ? " sp-media-cover-control-fonts"
                         : "";
                     return {
-                        buttonClass: "sp-image-card sp-media-cover-details-card" + controlFontClass,
+                        buttonClass: "sp-image-card sp-media-cover-details-card" + controlFontClass +
+                            (singleCoverArtCard ? " sp-media-cover-details-single" : ""),
                         iconHtml: '<span class="sp-image-preview sp-media-cover-artwork" style="background-color:#' +
                             helpers.escHtml(coverArtColor) + '"></span>' +
                             '<span class="sp-media-cover-tint"></span>' +
                             '<span class="sp-media-now-title sp-media-cover-details-title">Track Title</span>',
-                        labelHtml: '<span class="sp-btn-label-row sp-media-cover-details-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span>' +
-                            '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+                        labelHtml: '<span class="sp-btn-label-row sp-media-cover-details-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span></span>',
                     };
                 }
                 return {
@@ -870,8 +895,7 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 }
                 return {
                     iconHtml: progressBg + '<span class="sp-media-now-title">Track Title</span>',
-                    labelHtml: '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span>' +
-                        '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+                    labelHtml: '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">Artist Name</span></span>',
                 };
             }
             return {
@@ -880,10 +904,12 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             };
         },
     });
-    registerButtonType("media_cover_art", {
+    registry.register("media_cover_art", {
         label: "Cover Art",
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("media"); },
-        pickerKey: "media_cover_art",
+        // Retain the old registration only to normalize any saved alias. Cover Art is
+        // selected from the Media card's Type field and is not a top-level card type.
+        pickerKey: "media",
         hidden: true,
         hideLabel: true,
         cardMetadata: MEDIA_CARD_METADATA,
@@ -893,27 +919,13 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             config.label = "Cover Art";
             return config;
         },
+        normalizeConfig: function (this: any, config?: any) {
+            config.type = "media";
+            config.sensor = "cover_art";
+            config.unit = "";
+            config.precision = "";
+            config.icon_on = "Auto";
+            config.options = normalizeMediaOptions(config.options, config.sensor);
+        },
     });
-    return {
-        "mediaBehaviorSpec": staticGlobal(mediaBehaviorSpec),
-        "mediaModeOptionValues": staticGlobal(mediaModeOptionValues),
-        "mediaDefaultMode": staticGlobal(mediaDefaultMode),
-        "mediaEditorMode": staticGlobal(mediaEditorMode),
-        "mediaEditorValidMode": staticGlobal(mediaEditorValidMode),
-        "mediaNowPlayingControls": staticGlobal(mediaNowPlayingControls),
-        "mediaNowPlayingControlValues": staticGlobal(mediaNowPlayingControlValues),
-        "mediaStateDisplayModeSupported": staticGlobal(mediaStateDisplayModeSupported),
-        "mediaNowPlayingProgressEnabled": staticGlobal(mediaNowPlayingProgressEnabled),
-        "mediaNowPlayingPlayPauseEnabled": staticGlobal(mediaNowPlayingPlayPauseEnabled),
-        "mediaLabelIsGenerated": staticGlobal(mediaLabelIsGenerated),
-        "MEDIA_CARD_METADATA": liveGlobal(() => MEDIA_CARD_METADATA, (value?: any) => { MEDIA_CARD_METADATA = value; }),
-        "MEDIA_PLAYLIST_SOURCE_DEFINITIONS": liveGlobal(() => MEDIA_PLAYLIST_SOURCE_DEFINITIONS, (value?: any) => { MEDIA_PLAYLIST_SOURCE_DEFINITIONS = value; }),
-        "mediaPlaylistSourceOptions": staticGlobal(mediaPlaylistSourceOptions),
-        "mediaPlaylistSourceDefinition": staticGlobal(mediaPlaylistSourceDefinition),
-        "mediaPlaylistContentIdPlaceholder": staticGlobal(mediaPlaylistContentIdPlaceholder),
-        "parseMediaPlaylistContentId": staticGlobal(parseMediaPlaylistContentId),
-        "buildMediaPlaylistContentId": staticGlobal(buildMediaPlaylistContentId),
-        "mediaPlaylistContentTypeKnown": staticGlobal(mediaPlaylistContentTypeKnown),
-        "mediaPlaylistContentTypeOptions": staticGlobal(mediaPlaylistContentTypeOptions),
-    };
 }

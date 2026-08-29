@@ -1,0 +1,30 @@
+{
+  "profiles": {
+    "platform": "esp32-p4",
+    "display": "jc1060p470-1024x600",
+    "modal": "wide-landscape",
+    "fonts": "large-panel-p4",
+    "network": [
+      "c6-firmware-update",
+      "network-coprocessor",
+      "ethernet-selection"
+    ],
+    "artwork": "landscape-1024x600"
+  },
+  "config": {
+    "public": {
+      "name": "Guition JC1060P470",
+      "docsPath": "/screens/jc1060p470"
+    }
+  },
+  "overrides": {
+    "firmware": {
+      "package": {
+        "backlightPwmFrequency": {
+          "wifi": "1000Hz",
+          "ethernet": "20000Hz"
+        }
+      }
+    }
+  }
+}

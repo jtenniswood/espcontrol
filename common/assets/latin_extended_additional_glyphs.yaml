@@ -1,0 +1,3 @@
+# Latin Extended Additional letters missing from the Google Fonts Roboto file.
+# Noto Sans supplies these as fallback glyphs for names and media metadata.
+- "Ṣṣ"

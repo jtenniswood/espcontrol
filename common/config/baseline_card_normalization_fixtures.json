@@ -70,6 +70,11 @@
     "expected": { "entity": "fan.office", "label": "Fan", "icon": "Fan", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_control", "precision": "", "options": "fan_tabs=speed%7Cpower" }
   },
   {
+    "name": "fan control keeps optional light and disabled tab choice",
+    "input": "fan.office;Fan;Auto;Auto;sensor.x;W;fan_control;2;fan_light_entity=light.office_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection",
+    "expected": { "entity": "fan.office", "label": "Fan", "icon": "Fan", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_control", "precision": "", "options": "fan_light_entity=light.office_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection" }
+  },
+  {
     "name": "gate stop command clears ignored fields",
     "input": "cover.gate;Gate;Gate;Gate Open;stop;W;gate;2;label_display=status,unknown=1",
     "expected": { "entity": "cover.gate", "label": "Gate", "icon": "Gate", "icon_on": "Auto", "sensor": "stop", "unit": "", "type": "gate", "precision": "", "options": "label_display=status" }

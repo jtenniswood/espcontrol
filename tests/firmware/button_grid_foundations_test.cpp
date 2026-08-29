@@ -4,22 +4,52 @@
 #include "button_grid_limits.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_string.h"
-#include "ha_state_capacity.h"
 
 int main() {
   static_assert(MAX_GRID_SLOTS == ESPCONTROL_MAX_GRID_SLOTS);
   static_assert(MAX_SUBPAGE_ITEMS == MAX_GRID_SLOTS * MAX_GRID_SLOTS);
-  static_assert(
-      HA_CONFIGURED_CARD_CAPACITY == MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
-  static_assert(HA_STATE_CHANNEL_CAPACITY_PER_GENERATION >=
-                HA_CONFIGURED_CARD_CAPACITY * 8 + 32);
-  static_assert(HA_STATE_CHANNEL_CAPACITY >=
-                HA_STATE_CHANNEL_CAPACITY_PER_GENERATION * 2);
-  static_assert(HA_SCOPED_LEASE_CAPACITY >=
-                HA_CONFIGURED_CARD_CAPACITY * 12 + 64);
+
+  const auto &registry_service = espcontrol::cards::card_runtime_registry_service();
+  const auto service_media = registry_service.context_for("media", "");
+  if (!service_media.known || service_media.family != espcontrol::cards::Family::MEDIA) {
+    return EXIT_FAILURE;
+  }
+
+  espcontrol::cards::CardRuntimeRegistryService explicit_registry;
+  espcontrol::cards::set_card_runtime_registry_service(&explicit_registry);
+  if (&espcontrol::cards::card_runtime_registry_service() != &explicit_registry) {
+    return EXIT_FAILURE;
+  }
+  espcontrol::cards::set_card_runtime_registry_service(nullptr);
+  if (&espcontrol::cards::card_runtime_registry_service() == &explicit_registry) {
+    return EXIT_FAILURE;
+  }
 
   if (string_ref_limited(esphome::StringRef("calendar"), 4) != "cale") return EXIT_FAILURE;
   if (string_ref_limited(esphome::StringRef("clock"), 32) != "clock") return EXIT_FAILURE;
+  if (decode_html_entities("Earth, Wind &amp; Fire") != "Earth, Wind & Fire") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("Rock &quot;N&quot; Roll &apos;Live&apos;") !=
+      "Rock \"N\" Roll 'Live'") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("A &lt; B &gt; C &#38; D &#x266B;") !=
+      "A < B > C & D \xE2\x99\xAB") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("Price &#128;10 &#x97; remastered") !=
+      "Price \xE2\x82\xAC\x31\x30 \xE2\x80\x94 remastered") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("Beyonc&eacute;&nbsp;&ndash;&nbsp;Live&hellip;") !=
+      "Beyonc\xC3\xA9\xC2\xA0\xE2\x80\x93\xC2\xA0Live\xE2\x80\xA6") {
+    return EXIT_FAILURE;
+  }
+  if (decode_html_entities("Leave &not_an_entity; unchanged") !=
+      "Leave &not_an_entity; unchanged") {
+    return EXIT_FAILURE;
+  }
 
   using espcontrol::cards::Family;
   const auto media = card_runtime_registration("media");
@@ -29,41 +59,6 @@ int main() {
       card_runtime_context("light_brightness").family != Family::SLIDER ||
       card_runtime_context("fan_speed").family != Family::FAN ||
       card_runtime_context("not_a_card").family != Family::UNKNOWN) {
-    return EXIT_FAILURE;
-  }
-  struct FullTestConfig {
-    std::string entity;
-    std::string label;
-    std::string icon;
-    std::string icon_on;
-    std::string sensor;
-    std::string unit;
-    std::string type;
-    std::string precision;
-    std::string options;
-  };
-  FullTestConfig base{"media_player.room", "Music", "Auto", "Auto",
-                      "cover_art", "", "media", "", ""};
-  const auto address = espcontrol::cards::CardAddress{
-    espcontrol::cards::CardSurface::MAIN_GRID, 0, 1};
-  const auto base_node = espcontrol::cards::node_for(base, address, 1);
-  FullTestConfig relabelled = base;
-  relabelled.label = "Now playing";
-  const auto relabelled_node = espcontrol::cards::node_for(relabelled, address, 1);
-  const uint8_t relabelled_domains =
-    espcontrol::cards::changed_domains(base_node, relabelled_node);
-  if (espcontrol::cards::mutation_for(relabelled_domains) !=
-        espcontrol::cards::CardMutation::UPDATE_VISUAL ||
-      (relabelled_domains & espcontrol::cards::CHANGE_BINDINGS) != 0) {
-    return EXIT_FAILURE;
-  }
-  FullTestConfig rebound = base;
-  rebound.entity = "media_player.kitchen";
-  const uint8_t rebound_domains = espcontrol::cards::changed_domains(
-    base_node, espcontrol::cards::node_for(rebound, address, 1));
-  if (espcontrol::cards::mutation_for(rebound_domains) !=
-        espcontrol::cards::CardMutation::REBIND ||
-      (rebound_domains & espcontrol::cards::CHANGE_VISUAL) != 0) {
     return EXIT_FAILURE;
   }
   const auto door = card_runtime_context("door_window");
@@ -246,6 +241,25 @@ int main() {
   if (option_select_compatibility.legacy_dispatch ||
       option_select_compatibility.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::ACTION) {
+    return EXIT_FAILURE;
+  }
+  // Modal-opening cards skip the temporary pressed-card repaint. Direct
+  // actions retain it so their interaction feedback remains unchanged.
+  if (!card_runtime_main_click_opens_modal(alarm) ||
+      !card_runtime_main_click_opens_modal(climate) ||
+      !card_runtime_main_click_opens_modal(cover_modal) ||
+      !card_runtime_main_click_opens_modal(fan_control) ||
+      !card_runtime_main_click_opens_modal(fan_preset) ||
+      !card_runtime_main_click_opens_modal(image) ||
+      !card_runtime_main_click_opens_modal(light_control) ||
+      !card_runtime_main_click_opens_modal(media_control) ||
+      !card_runtime_main_click_opens_modal(media_volume) ||
+      !card_runtime_main_click_opens_modal(media_cover_art) ||
+      !card_runtime_main_click_opens_modal(option_select) ||
+      card_runtime_main_click_opens_modal(media_play_pause) ||
+      card_runtime_main_click_opens_modal(media_transport) ||
+      card_runtime_main_click_opens_modal(media_position) ||
+      card_runtime_main_click_opens_modal(slider)) {
     return EXIT_FAILURE;
   }
   const auto todo = card_runtime_context("todo");

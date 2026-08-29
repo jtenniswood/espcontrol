@@ -1,5 +1,33 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installClockBarPostApiModule(): GlobalDescriptors {
+import type { EntityStateFeature } from "./entity_state";
+import type { ApplicationApiFeature } from "./api";
+export interface ClockBarPostApiFeature {
+    postClockBrightnessDay(value?: any): void;
+    postClockBrightnessNight(value?: any): void;
+    postClockScreensaver(on?: any): any;
+    postClockBar(on?: any): void;
+    postClockBarTemperatureEntities(value?: any): any;
+    postClockBarTime(on?: any): void;
+    postClockBarNightMode(on?: any): void;
+    postNetworkStatusIcon(on?: any): void;
+    postBatteryStatus(on?: any): void;
+    voiceServicesPostUrls(on?: any): any;
+    postVoiceServices(on?: any): void;
+    postAlarmDelayAudio(on?: any): void;
+    postAlarmDelayTts(on?: any): void;
+    postAlarmDelayEntryAnnouncement(value?: any): void;
+    postAlarmDelayExitAnnouncement(value?: any): void;
+    postAlarmDelayBeepVolume(value?: any): void;
+    postAlarmDelayFinalCountdown(value?: any): void;
+    postTemperatureDegreeSymbol(on?: any): void;
+    postSubpageChevron(on?: any): void;
+}
+
+export function createClockBarPostApiFeature(
+    entityState: Pick<EntityStateFeature, "entityName" | "entityObjectIds" | "entityPostUrls">,
+    requestApi: Pick<ApplicationApiFeature, "post" | "postOptional" | "postTextWithObjectIds" | "postNumberWithObjectIds" | "postSwitchWithObjectIds">,
+): ClockBarPostApiFeature {
+    const { entityName, entityObjectIds, entityPostUrls } = entityState;
+    const { post, postOptional, postTextWithObjectIds, postNumberWithObjectIds, postSwitchWithObjectIds } = requestApi;
     // ── Clock Bar Post API ────────────────────────────────────────────────
     function postClockBrightnessDay(this: any, value?: any) {
         postNumberWithObjectIds(entityName("screen_saver_daytime_clock_brightness"), entityObjectIds("screen_saver_daytime_clock_brightness"), value);
@@ -17,7 +45,7 @@ export function installClockBarPostApiModule(): GlobalDescriptors {
     function postClockBarTemperatureEntities(this: any, value?: any) {
         var name: any = entityName("clock_bar_temperature_entities");
         var objectIds: any = entityObjectIds("clock_bar_temperature_entities");
-        return postOptionalTextWithObjectIds(name, objectIds, value);
+        return postOptional(entityPostUrls("text", name, objectIds, "set?value=" + encodeURIComponent(value)));
     }
     var CLOCK_BAR_TIME_UNAVAILABLE: any = "Clock bar time setting is not available on this firmware. Update the device firmware, then reload this page.";
     function postClockBarTime(this: any, on?: any) {
@@ -40,7 +68,7 @@ export function installClockBarPostApiModule(): GlobalDescriptors {
         return entityPostUrls("switch", entityName("voice_services"), entityObjectIds("voice_services"), on ? "turn_on" : "turn_off");
     }
     function postVoiceServices(this: any, on?: any) {
-        return postSwitchWithObjectIds(entityName("voice_services"), entityObjectIds("voice_services"), on, VOICE_SERVICES_UNAVAILABLE);
+        post(voiceServicesPostUrls(on), null, VOICE_SERVICES_UNAVAILABLE);
     }
     function postAlarmDelayAudio(this: any, on?: any) {
         postSwitchWithObjectIds(entityName("alarm_delay_audio"), entityObjectIds("alarm_delay_audio"), on);
@@ -69,32 +97,24 @@ export function installClockBarPostApiModule(): GlobalDescriptors {
         postSwitchWithObjectIds(entityName("screen_subpage_chevron"), entityObjectIds("screen_subpage_chevron"), on, SUBPAGE_CHEVRON_UNAVAILABLE);
     }
     return {
-        "postClockBrightnessDay": staticGlobal(postClockBrightnessDay),
-        "postClockBrightnessNight": staticGlobal(postClockBrightnessNight),
-        "postClockScreensaver": staticGlobal(postClockScreensaver),
-        "CLOCK_BAR_UNAVAILABLE": liveGlobal(() => CLOCK_BAR_UNAVAILABLE, (value?: any) => { CLOCK_BAR_UNAVAILABLE = value; }),
-        "postClockBar": staticGlobal(postClockBar),
-        "postClockBarTemperatureEntities": staticGlobal(postClockBarTemperatureEntities),
-        "CLOCK_BAR_TIME_UNAVAILABLE": liveGlobal(() => CLOCK_BAR_TIME_UNAVAILABLE, (value?: any) => { CLOCK_BAR_TIME_UNAVAILABLE = value; }),
-        "postClockBarTime": staticGlobal(postClockBarTime),
-        "CLOCK_BAR_NIGHT_MODE_UNAVAILABLE": liveGlobal(() => CLOCK_BAR_NIGHT_MODE_UNAVAILABLE, (value?: any) => { CLOCK_BAR_NIGHT_MODE_UNAVAILABLE = value; }),
-        "postClockBarNightMode": staticGlobal(postClockBarNightMode),
-        "NETWORK_STATUS_ICON_UNAVAILABLE": liveGlobal(() => NETWORK_STATUS_ICON_UNAVAILABLE, (value?: any) => { NETWORK_STATUS_ICON_UNAVAILABLE = value; }),
-        "postNetworkStatusIcon": staticGlobal(postNetworkStatusIcon),
-        "BATTERY_STATUS_UNAVAILABLE": liveGlobal(() => BATTERY_STATUS_UNAVAILABLE, (value?: any) => { BATTERY_STATUS_UNAVAILABLE = value; }),
-        "postBatteryStatus": staticGlobal(postBatteryStatus),
-        "VOICE_SERVICES_UNAVAILABLE": liveGlobal(() => VOICE_SERVICES_UNAVAILABLE, (value?: any) => { VOICE_SERVICES_UNAVAILABLE = value; }),
-        "voiceServicesPostUrls": staticGlobal(voiceServicesPostUrls),
-        "postVoiceServices": staticGlobal(postVoiceServices),
-        "postAlarmDelayAudio": staticGlobal(postAlarmDelayAudio),
-        "postAlarmDelayTts": staticGlobal(postAlarmDelayTts),
-        "postAlarmDelayEntryAnnouncement": staticGlobal(postAlarmDelayEntryAnnouncement),
-        "postAlarmDelayExitAnnouncement": staticGlobal(postAlarmDelayExitAnnouncement),
-        "postAlarmDelayBeepVolume": staticGlobal(postAlarmDelayBeepVolume),
-        "postAlarmDelayFinalCountdown": staticGlobal(postAlarmDelayFinalCountdown),
-        "TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE": liveGlobal(() => TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE, (value?: any) => { TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE = value; }),
-        "postTemperatureDegreeSymbol": staticGlobal(postTemperatureDegreeSymbol),
-        "SUBPAGE_CHEVRON_UNAVAILABLE": liveGlobal(() => SUBPAGE_CHEVRON_UNAVAILABLE, (value?: any) => { SUBPAGE_CHEVRON_UNAVAILABLE = value; }),
-        "postSubpageChevron": staticGlobal(postSubpageChevron),
+        postClockBrightnessDay,
+        postClockBrightnessNight,
+        postClockScreensaver,
+        postClockBar,
+        postClockBarTemperatureEntities,
+        postClockBarTime,
+        postClockBarNightMode,
+        postNetworkStatusIcon,
+        postBatteryStatus,
+        voiceServicesPostUrls,
+        postVoiceServices,
+        postAlarmDelayAudio,
+        postAlarmDelayTts,
+        postAlarmDelayEntryAnnouncement,
+        postAlarmDelayExitAnnouncement,
+        postAlarmDelayBeepVolume,
+        postAlarmDelayFinalCountdown,
+        postTemperatureDegreeSymbol,
+        postSubpageChevron,
     };
 }

@@ -9,13 +9,13 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
-const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
+const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(ROOT, "product", "v2", "card_contract.json"), "utf8"));
 
-function loadHooks(search) {
+function loadHooks(search, grid) {
   const params = new URLSearchParams(search || "");
   const sandbox = {
     __ESPCONTROL_TEST_HOOKS__: {},
@@ -36,6 +36,9 @@ function loadHooks(search) {
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
+  if (grid) {
+    sandbox.__ESPCONTROL_TEST_HOOKS__.config.setGridDimensions(grid.cols, grid.rows);
+  }
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
 
@@ -130,7 +133,10 @@ function assertNormalizationFixtures(hooks, groups) {
 }
 
 const hooks = loadHooks();
+const portraitHooks = loadHooks("?device=guition-esp32-p4-jc1060p470", { cols: 3, rows: 5 });
 const tenInchHooks = loadHooks("?device=guition-esp32-p4-jc8012p4a1");
+const fourInchHooks = loadHooks("?device=esp32-p4-86");
+const fourPointThreeInchHooks = loadHooks("?device=guition-esp32-p4-jc4880p443");
 const s3Hooks = loadHooks("?device=guition-esp32-s3-4848s040");
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const cardNormalizationFixtures = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
@@ -344,11 +350,12 @@ assert.strictEqual(hooks.internalRelayDefaultIcon("push"), "Gesture Tap", "inter
 assert.strictEqual(hooks.internalRelayDefaultOnIcon(), "Lightbulb", "internal relay on icon is spec-backed");
 assert.deepStrictEqual(
   Array.from(hooks.mediaModeOptionValues()),
-  ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
+  ["control_modal", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
   "media mode options are spec-backed"
 );
 assert.strictEqual(hooks.mediaEditorMode("controls"), "play_pause", "legacy media controls mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("cover_art"), "cover_art", "cover art media mode maps through spec");
+assert.strictEqual(hooks.mediaEditorMode("speaker_group"), "speaker_group", "speaker group media mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mode falls back through spec");
 assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_art" }), true, "cover art cards require square sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
@@ -358,14 +365,51 @@ assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "media", sens
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 6), 1, "cover art rejects non-square sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 8), 8, "camera cards keep max-wide size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 9), 9, "camera cards keep max-tall size");
+assert.strictEqual(hooks.cardSupportsLandscapeLargeSize({ type: "image" }), true, "landscape 7-inch camera cards support Massive Wide");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 11), 11, "landscape 7-inch image cards keep Massive Wide");
+assert.strictEqual(hooks.cardSupportsPortraitLargeSize({ type: "image" }), false, "landscape 7-inch camera cards hide Massive");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 10), 1, "landscape 7-inch image cards reject Massive");
+assert.strictEqual(portraitHooks.cardSupportsPortraitLargeSize({ type: "image" }), true, "portrait 7-inch camera cards support Massive");
+assert.strictEqual(portraitHooks.normalizeCardSizeForConfig({ type: "image" }, 10), 10, "portrait 7-inch image cards keep Massive");
+assert.strictEqual(portraitHooks.cardSupportsLandscapeLargeSize({ type: "image" }), false, "portrait 7-inch camera cards hide Massive Wide");
+assert.strictEqual(portraitHooks.normalizeCardSizeForConfig({ type: "image" }, 11), 1, "portrait 7-inch image cards reject Massive Wide");
+assert.strictEqual(tenInchHooks.cardSupportsLandscapeLargeSize({ type: "image" }), true, "10-inch camera cards support landscape-large size");
+assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "image" }, 11), 11, "10-inch image cards keep 4x3 size");
+assert.strictEqual(fourInchHooks.normalizeCardSizeForConfig({ type: "image" }, 11), 1, "4-inch image cards reject 4x3 size");
 assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "image" }, 10), 10, "10-inch image cards keep 3x4 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 8), 1, "non-camera cards reject max-wide size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 9), 1, "non-camera cards reject max-tall size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 10), 1, "ordinary cards reject portrait-large size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 11), 1, "ordinary cards reject landscape-large size");
 assert.strictEqual(
-  Array.from(tenInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 10 && option.label === "Portrait (3x4)"),
+  Array.from(tenInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 10 && option.label === "Massive (4x3)"),
   true,
-  "10-inch cover art size menu exposes Portrait (3x4)",
+  "10-inch cover art size menu exposes Massive (4x3)",
+);
+assert.strictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 11 && option.label === "Massive Wide (3x4)"),
+  true,
+  "landscape 7-inch camera size menu exposes Massive Wide (3x4)",
+);
+assert.strictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 10),
+  false,
+  "landscape 7-inch camera size menu hides Massive (4x3)",
+);
+assert.strictEqual(
+  Array.from(portraitHooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 10 && option.label === "Massive (4x3)"),
+  true,
+  "portrait 7-inch camera size menu exposes Massive (4x3)",
+);
+assert.strictEqual(
+  Array.from(portraitHooks.cardSizeMenuOptions({ type: "image" })).some((option) => option.size === 11),
+  false,
+  "portrait 7-inch camera size menu hides Massive Wide (3x4)",
+);
+assert.strictEqual(
+  Array.from(fourPointThreeInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 7),
+  false,
+  "4.3-inch cover art size menu hides Extra Large (3x3)",
 );
 const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],
@@ -376,6 +420,10 @@ const transferredCoverArt = tenInchHooks.cardTransferEntriesFromEnvelopeForTest(
   cards: [{ type: "media", sensor: "cover_art", entity: "media_player.office", label: "Cover Art", size: 10 }],
 }, false);
 assert.strictEqual(transferredCoverArt.entries[0].size, 10, "card transfer keeps supported 3x4 cover art size");
+const transferredLandscapeCamera = hooks.cardTransferEntriesFromEnvelopeForTest({
+  cards: [{ type: "image", entity: "camera.office", label: "Office", size: 11 }],
+}, false);
+assert.strictEqual(transferredLandscapeCamera.entries[0].size, 11, "landscape 7-inch card transfer keeps supported Massive Wide camera size");
 const transferredSubpage = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{
     type: "subpage",
@@ -417,16 +465,27 @@ assert.throws(
   (error) => String(error.cardTransferMessage || error.message).includes("does not support the image card type"),
   "S3 card transfer rejects disabled image cards inside subpages",
 );
-const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
-assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
-hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
-assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal", "cover art stores the optional controls action");
+const coverArtActionButton = { type: "media", sensor: "cover_art", options: "cover_art_action=play_pause" };
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, true);
-assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal,cover_art_details", "cover art preserves action with track details");
-hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
-assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art omits its default action without dropping track details");
+assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art removes its retired press action while preserving track details");
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
 assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
+hooks.setMediaSpeakerGroupEntity(coverArtActionButton, " sensor.cover_art_speakers ");
+hooks.setMediaVolumeMax(coverArtActionButton, "75");
+assert.strictEqual(
+  coverArtActionButton.options,
+  "speaker_group_entity=sensor.cover_art_speakers,volume_max=75",
+  "cover art stores the advanced settings used by its All Controls modal"
+);
+const speakerGroupButton = { type: "media", sensor: "speaker_group", options: "" };
+hooks.setMediaSpeakerGroupEntity(speakerGroupButton, " media_player.compatible_speakers ");
+hooks.setMediaVolumeMax(speakerGroupButton, "80");
+assert.strictEqual(
+  speakerGroupButton.options,
+  "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+  "speaker group stores its helper and maximum volume in canonical order"
+);
+assert.strictEqual(hooks.mediaSpeakerGroupEntity(speakerGroupButton), "media_player.compatible_speakers", "speaker group helper is normalized");
 assert.deepStrictEqual(
   Array.from(hooks.mediaNowPlayingControlValues()),
   ["", "progress", "play_pause"],
@@ -1911,8 +1970,20 @@ assertButtonRoundTrip(hooks, "media cover art card", {
   unit: "",
   type: "media",
   precision: "",
-  options: "cover_art_action=control_modal,cover_art_details",
+  options: "cover_art_details",
 }, false);
+
+assertButtonMigration(hooks, "legacy cover art card alias becomes media subtype", "media_player.office;Artwork;Auto;Auto;;;media_cover_art;;cover_art_action=control_modal", {
+  entity: "media_player.office",
+  label: "Artwork",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+});
 
 assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art", {
   entity: "media_player.office",
@@ -1935,6 +2006,30 @@ assertButtonRoundTrip(hooks, "media control modal card", {
   unit: "",
   type: "media",
   precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "media control modal card with speaker helper", {
+  entity: "media_player.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
+}, false);
+
+assertButtonRoundTrip(hooks, "standalone speaker group card", {
+  entity: "media_player.living_room",
+  label: "Speaker Group",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "speaker_group",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80",
 }, false);
 
 assertButtonRoundTrip(hooks, "media control modal card label display", {
@@ -2250,6 +2345,56 @@ assert.strictEqual(
   "fan_tabs=speed%7Cpower",
   "fan control tabs normalize invalid and duplicate values"
 );
+
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_light_entity=light.bedroom_fan"),
+  "fan_light_entity=light.bedroom_fan",
+  "configured fan light uses the automatic visible-tab default"
+);
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_light_entity=light.bedroom_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection"),
+  "fan_light_entity=light.bedroom_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection",
+  "configured fan light preserves an explicitly disabled Light tab"
+);
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_tabs=light%7Cspeed"),
+  "fan_tabs=speed",
+  "fan control drops Light when no separate light entity is configured"
+);
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_tabs=light"),
+  "fan_tabs=power",
+  "fan control keeps Power when removing its only Light tab"
+);
+const fanLightModal = { options: "" };
+hooks.setFanLightEntity(fanLightModal, "light.bedroom_fan");
+assert.strictEqual(fanLightModal.options, "fan_light_entity=light.bedroom_fan", "configuring a fan light enables its tab automatically");
+assert.deepStrictEqual(
+  Array.from(hooks.fanControlTabs(fanLightModal)),
+  ["power", "speed", "preset", "oscillation", "direction", "light"],
+  "configured fan light appears after the default fan tabs"
+);
+hooks.setFanControlTabs(fanLightModal, ["light", "speed", "power"]);
+assert.strictEqual(
+  fanLightModal.options,
+  "fan_light_entity=light.bedroom_fan,fan_tabs=light%7Cspeed%7Cpower",
+  "fan light tab can be reordered with the other fan tabs"
+);
+const lightOnlyFanModal = { options: "fan_light_entity=light.bedroom_fan,fan_tabs=light" };
+hooks.setFanLightEntity(lightOnlyFanModal, "");
+assert.strictEqual(
+  lightOnlyFanModal.options,
+  "fan_tabs=power",
+  "clearing a light-only fan tab preserves the Power fallback"
+);
+hooks.setFanControlTabs(fanLightModal, ["power", "speed", "preset", "oscillation", "direction"]);
+assert.strictEqual(
+  fanLightModal.options,
+  "fan_light_entity=light.bedroom_fan,fan_tabs=power%7Cspeed%7Cpreset%7Coscillation%7Cdirection",
+  "fan light tab can be disabled without clearing its entity"
+);
+hooks.setFanLightEntity(fanLightModal, "");
+assert.strictEqual(fanLightModal.options, "", "clearing the fan light removes its tab setting");
 
 assertButtonRoundTrip(hooks, "fan oscillation card", {
   entity: "fan.bedroom",
@@ -3229,7 +3374,7 @@ assertSubpageRoundTrip(hooks, "alarm action subpage", {
 }, true);
 
 assertSubpageRoundTrip(hooks, "media subpage", {
-  order: ["1", "B", "2", "3", "4", "5", "6", "7", "8"],
+  order: ["1", "B", "2", "3", "4", "5", "6", "7", "8", "9"],
   buttons: [
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
@@ -3239,6 +3384,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Cover Art", icon: "Auto", sensor: "cover_art", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Morning Mix", icon: "Music", sensor: "playlist", type: "media", options: "playlist_content_id=spotify%3Aplaylist%3A12345" }),
+    buttonShape({ entity: "media_player.living_room", label: "Speaker Group", icon: "Auto", sensor: "speaker_group", type: "media", options: "speaker_group_entity=media_player.compatible_speakers,volume_max=80" }),
   ],
 }, true);
 

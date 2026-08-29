@@ -7,13 +7,14 @@ export const FALLBACK_TIMEZONE_OPTION = "UTC (GMT+0)";
 export const NTP_SERVER_DEFAULTS = ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"] as const;
 export const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   cs: "Čeština (Czech)", da: "Dansk (Danish)", de: "Deutsch (German)", en: "English",
-  es: "Español (Spanish)", fi: "Suomi (Finnish)", fr: "Français (French)", hu: "Magyar (Hungarian)",
+  es: "Español (Spanish)", fi: "Suomi (Finnish)", fr: "Français (French)",
+  he: "עברית (Hebrew)", hu: "Magyar (Hungarian)",
   it: "Italiano (Italian)", nb: "Norsk bokmål (Norwegian Bokmål)", nl: "Nederlands (Dutch)",
   pl: "Polski (Polish)", pt: "Português (Portuguese)", "pt-br": "Português (Brasil) (Brazilian Portuguese)",
   ro: "Română (Romanian)", ru: "Русский (Russian)", sk: "Slovenčina (Slovak)", sl: "Slovenščina (Slovenian)",
   sv: "Svenska (Swedish)", tr: "Türkçe (Turkish)", uk: "Українська (Ukrainian)",
 };
-const LANGUAGE_OPTIONS = ["en", "cs", "da", "de", "es", "fi", "fr", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "ru", "sk", "sl", "sv", "tr", "uk"];
+const LANGUAGE_OPTIONS = ["en", "cs", "da", "de", "es", "fi", "fr", "he", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "ru", "sk", "sl", "sv", "tr", "uk"];
 
 function emptyCardConfig(): CardConfig {
   return { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" };
@@ -45,14 +46,16 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     coverArtScreensaverOn: false, coverArtMediaPlayerEntity: "", coverArtSecondaryMediaPlayerEntity: "", coverArtAttributeConditions: "",
     coverArtFilteringEnabled: false, coverArtDelay: 10, coverArtTrackOverlayDuration: 5,
     coverArtHideExternalInputOn: true, homeAssistantArtworkProtocol: "http", coverArtHomeAssistantPort: 8123,
+    homeAssistantArtworkEndpointMode: "Automatic", homeAssistantArtworkEndpointStatus: "Discovering",
     screensaverMode: "disabled", _screensaverModeReceived: false, screensaverAction: "off",
     _screensaverActionReceived: false, clockScreensaverOn: false, clockBrightnessDay: 35,
     clockBrightnessNight: 35, clockBrightnessSplitReceived: false, screensaverDimmedBrightness: 10,
+    screensaverDimmedBrightnessDay: 10, screensaverDimmedBrightnessNight: 10,
     screensaverTimeout: 300, screensaverTimeoutMin: 60, screensaverTimeoutMax: 3600,
     screensaverTimeoutLimitsLoaded: false, homeScreenTimeout: 60, brightnessDayVal: 100,
     brightnessNightVal: 75, brightnessMode: "sunrise_sunset", manualBrightnessVal: 100, brightnessDawnTime: "06:00",
     brightnessDuskTime: "18:00", scheduleTrigger: "disabled", _scheduleTriggerReceived: false,
-    scheduleEnabled: false, scheduleSensorActivation: "off", scheduleOnHour: 6, scheduleOffHour: 23, scheduleMode: "screen_off",
+    scheduleEnabled: false, scheduleSensorActivation: "off", scheduleSensorEntity: "", scheduleOnHour: 6, scheduleOffHour: 23, scheduleMode: "screen_off",
     scheduleWakeTimeout: 60, scheduleWakeBrightness: 10, scheduleDimmedBrightness: 10,
     scheduleClockBrightness: 10, scheduleClockTextColor: "FFFFFF", timezone: AUTO_TIMEZONE_OPTION,
     activeTimezone: FALLBACK_TIMEZONE_OPTION, timezoneOptions: defaultTimezoneOptionsForDevice(deviceConfig),
@@ -62,6 +65,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     screenRotation: deviceConfig.features?.screenRotationDefault || "0",
     screenRotationOptions: deviceConfig.features?.screenRotationOptions?.slice() || ["0", "90", "180", "270"],
     screenRotationDeviceOptions: null, screenRotationInitialReady: !deviceConfig.features?.screenRotation,
+    screenRotationInitialFallbackActive: false,
     screenRotationInitialTimer: null,
     pendingButtonOrderRaw: null, sunrise: "", sunset: "", firmwareVersion: "", firmwareLatestVersion: "",
     firmwareUpdateState: "", firmwareReleaseUrl: "", firmwareChecking: false,

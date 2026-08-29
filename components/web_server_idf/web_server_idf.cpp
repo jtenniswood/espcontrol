@@ -1,6 +1,5 @@
 #ifdef USE_ESP32
 
-#include <algorithm>
 #include <array>
 #include <cstdarg>
 #include <memory>
@@ -19,11 +18,9 @@
 #endif
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <esp_heap_caps.h>
 
 #include "utils.h"
 #include "web_server_idf.h"
-#include "event_stream_policy.h"
 
 #ifdef USE_WEBSERVER_OTA
 #include <multipart_parser.h>
@@ -50,6 +47,9 @@ namespace esphome::web_server_idf {
 
 static const char *const TAG = "web_server_idf";
 
+extern "C" void espcontrol_register_web_server_handlers(
+    AsyncWebServer *server) __attribute__((weak));
+
 // Global instance to avoid guard variable (saves 8 bytes)
 // This is initialized at program startup before any threads
 namespace {
@@ -60,6 +60,8 @@ DefaultHeaders default_headers_instance;
 DefaultHeaders &DefaultHeaders::Instance() { return default_headers_instance; }
 
 namespace {
+static constexpr size_t MAX_FORM_URLENCODED_BODY_LENGTH = 1024;
+
 #ifdef ESPHOME_PROJECT_NAME
 static constexpr const char *ESPCONTROL_PROJECT_NAME = ESPHOME_PROJECT_NAME;
 #else
@@ -214,12 +216,22 @@ void AsyncWebServer::begin() {
   // The ESPControl web UI exposes many internal configuration entities. Larger
   // P4 panels can overflow the ESP-IDF default while serving entity details.
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // The S3 display has a much smaller internal-heap margin than P4 panels.
+  // Keep the configuration UI available while returning 4 KiB to the
+  // artwork/networking paths.
+  config.stack_size = 12288;
+  config.max_open_sockets = 3;
+#else
   config.stack_size = 16384;
   // Keep browser bursts from opening several web sessions at once. The config
   // UI fetches details sequentially, so two client sockets are enough and leave
   // more internal heap available for LVGL/display work on P4 panels.
   config.max_open_sockets = 5;
+#endif
   config.backlog_conn = 2;
+  ESP_LOGI(TAG, "HTTP server policy: stack=%u sockets=%u", (unsigned) config.stack_size,
+           (unsigned) config.max_open_sockets);
   config.server_port = this->port_;
   config.uri_match_fn = [](const char * /*unused*/, const char * /*unused*/, size_t /*unused*/) { return true; };
   // Always enable LRU purging to handle socket exhaustion gracefully.
@@ -231,6 +243,12 @@ void AsyncWebServer::begin() {
   config.close_fn = AsyncWebServer::safe_close_with_shutdown;
   if (httpd_start(&this->server_, &config) == ESP_OK) {
     global_async_web_server() = this;
+    // Let an external component add its static handlers before the generic
+    // dispatcher is exposed to browsers or API clients. Handlers added later
+    // can disrupt concurrent network activity on ESP32-P4 panels.
+    if (espcontrol_register_web_server_handlers != nullptr) {
+      espcontrol_register_web_server_handlers(this);
+    }
     const httpd_uri_t handler_get = {
         .uri = "",
         .method = HTTP_GET,
@@ -246,6 +264,17 @@ void AsyncWebServer::begin() {
         .user_ctx = this,
     };
     httpd_register_uri_handler(this->server_, &handler_post);
+
+    // Native configuration documents use PUT so browsers can make an
+    // optimistic, generation-guarded replacement without treating it as a
+    // form submission. Route it through the same raw-body dispatcher as POST.
+    const httpd_uri_t handler_put = {
+        .uri = "",
+        .method = HTTP_PUT,
+        .handler = AsyncWebServer::request_post_handler,
+        .user_ctx = this,
+    };
+    httpd_register_uri_handler(this->server_, &handler_put);
 
     const httpd_uri_t handler_options = {
         .uri = "",
@@ -280,14 +309,12 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
       return server->handle_multipart_upload_(r, content_type_char);
 #endif
     } else {
-      ESP_LOGW(TAG, "Unsupported content type for POST: %s", content_type_char);
-      // fallback to get handler to support backward compatibility
-      return AsyncWebServer::request_handler(r);
+      return static_cast<AsyncWebServer *>(r->user_ctx)->handle_raw_body_(r, content_type_char);
     }
   }
 
   // Handle regular form data
-  if (r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN) {
+  if (r->content_len > MAX_FORM_URLENCODED_BODY_LENGTH) {
     ESP_LOGW(TAG, "Request size is to big: %zu", r->content_len);
     httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
     return ESP_FAIL;
@@ -318,6 +345,34 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
 
   AsyncWebServerRequest req(r, std::move(post_query));
   return static_cast<AsyncWebServer *>(r->user_ctx)->request_handler_(&req);
+}
+
+esp_err_t AsyncWebServer::handle_raw_body_(httpd_req_t *r, const char *content_type) {
+  AsyncWebServerRequest req(r);
+  AsyncWebHandler *handler = nullptr;
+  for (auto *candidate : this->handlers_) {
+    if (candidate->canHandle(&req)) { handler = candidate; break; }
+  }
+  if (handler == nullptr) return this->request_handler_(&req);
+  if (!handler->canReceiveBody(&req)) return ESP_OK;
+  const size_t total = r->content_len;
+  if (total > handler->maximumBodySize()) {
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Request body is too large");
+    return ESP_FAIL;
+  }
+  std::vector<uint8_t> buffer(std::min<size_t>(1024, total));
+  for (size_t index = 0; index < total;) {
+    const int received = httpd_req_recv(r, reinterpret_cast<char *>(buffer.data()),
+                                        std::min(total - index, buffer.size()));
+    if (received <= 0) {
+      httpd_resp_send_err(r, received == HTTPD_SOCK_ERR_TIMEOUT ? HTTPD_408_REQ_TIMEOUT : HTTPD_400_BAD_REQUEST, nullptr);
+      return received == HTTPD_SOCK_ERR_TIMEOUT ? ESP_ERR_TIMEOUT : ESP_FAIL;
+    }
+    handler->handleBody(&req, buffer.data(), static_cast<size_t>(received), index, total);
+    index += static_cast<size_t>(received);
+  }
+  handler->handleRequest(&req);
+  return ESP_OK;
 }
 
 esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
@@ -905,8 +960,6 @@ void AsyncResponseStream::printf(const char *fmt, ...) {
 
 #ifdef USE_WEBSERVER
 AsyncEventSource::~AsyncEventSource() {
-  if (global_async_event_source() == this)
-    global_async_event_source() = nullptr;
   for (auto *ses : this->sessions_) {
     delete ses;  // NOLINT(cppcoreguidelines-owning-memory)
   }
@@ -931,7 +984,7 @@ bool AsyncEventSource::loop() {
   for (size_t i = 0; i < this->sessions_.size();) {
     auto *ses = this->sessions_[i];
     // If the session has a dead socket (marked by destroy callback)
-    if (event_stream_session_can_delete(ses->fd_.load())) {
+    if (ses->fd_.load() == 0) {
       ESP_LOGD(TAG, "Removing dead event source session");
       delete ses;  // NOLINT(cppcoreguidelines-owning-memory)
       // Remove by swapping with last element (O(1) removal, order doesn't matter for sessions)
@@ -948,27 +1001,10 @@ bool AsyncEventSource::loop() {
 void AsyncEventSource::try_send_nodefer(const char *message, size_t message_len, const char *event, uint32_t id,
                                         uint32_t reconnect) {
   for (auto *ses : this->sessions_) {
-    if (event_stream_session_can_send(ses->fd_.load(),
-                                      ses->close_pending_.load())) {
+    if (ses->fd_.load() != 0) {  // Skip dead sessions
       ses->try_send_nodefer(message, message_len, event, id, reconnect);
     }
   }
-}
-
-bool AsyncEventSource::queue_latest_nodefer(const char *message,
-                                            size_t message_len,
-                                            const char *event, uint32_t id,
-                                            uint32_t reconnect) {
-  bool accepted = true;
-  for (auto *ses : this->sessions_) {
-    if (event_stream_session_can_send(ses->fd_.load(),
-                                      ses->close_pending_.load()) &&
-        !ses->queue_latest_nodefer(message, message_len, event, id,
-                                  reconnect)) {
-      accepted = false;
-    }
-  }
-  return accepted;
 }
 
 void AsyncEventSource::deferrable_send_state(void *source, const char *event_type,
@@ -977,8 +1013,7 @@ void AsyncEventSource::deferrable_send_state(void *source, const char *event_typ
   if (this->empty())
     return;
   for (auto *ses : this->sessions_) {
-    if (event_stream_session_can_send(ses->fd_.load(),
-                                      ses->close_pending_.load())) {
+    if (ses->fd_.load() != 0) {  // Skip dead sessions
       ses->deferrable_send_state(source, event_type, message_generator);
     }
   }
@@ -1013,10 +1048,7 @@ AsyncEventSourceResponse::AsyncEventSourceResponse(const AsyncWebServerRequest *
   // Configure reconnect timeout and send config
   // this should always go through since the tcp send buffer is empty on connect
   auto message = ws->get_config_json();
-  if (!this->try_send_nodefer(message.c_str(), message.size(), "ping", millis(), 30000)) {
-    this->request_stream_close_("initial configuration event");
-    return;
-  }
+  this->try_send_nodefer(message.c_str(), message.size(), "ping", millis(), 30000);
 
 #ifdef USE_WEBSERVER_SORTING
   for (auto &group : ws->sorting_groups_) {
@@ -1030,10 +1062,7 @@ AsyncEventSourceResponse::AsyncEventSourceResponse(const AsyncWebServerRequest *
 
     // a (very) large number of these should be able to be queued initially without defer
     // since the only thing in the send buffer at this point is the initial ping/config
-    if (!this->try_send_nodefer(message.c_str(), message.size(), "sorting_group")) {
-      this->request_stream_close_("initial sorting group event");
-      return;
-    }
+    this->try_send_nodefer(message.c_str(), message.size(), "sorting_group");
   }
 #endif
 
@@ -1048,7 +1077,6 @@ AsyncEventSourceResponse::AsyncEventSourceResponse(const AsyncWebServerRequest *
 
 void AsyncEventSourceResponse::destroy(void *ptr) {
   auto *rsp = static_cast<AsyncEventSourceResponse *>(ptr);
-  rsp->close_pending_.store(true);
   int fd = rsp->fd_.exchange(0);  // Atomically get and clear fd
   ESP_LOGD(TAG, "Event source connection closed (fd: %d)", fd);
   // Mark as dead - will be cleaned up in the main loop
@@ -1058,89 +1086,16 @@ void AsyncEventSourceResponse::destroy(void *ptr) {
 }
 
 // helper for allowing only unique entries in the queue
-bool AsyncEventSourceResponse::deq_push_back_with_dedup_(void *source, message_generator_t *message_generator) {
+void AsyncEventSourceResponse::deq_push_back_with_dedup_(void *source, message_generator_t *message_generator) {
   DeferredEvent item(source, message_generator);
 
   // Use range-based for loop instead of std::find_if to reduce template instantiation overhead and binary size
   for (auto &event : this->deferred_queue_) {
     if (event == item) {
-      return true;  // Already in queue, no need to update since items are equal
-    }
-  }
-  if (this->deferred_queue_.size() == this->deferred_queue_.capacity()) {
-    size_t next_capacity = this->deferred_queue_.capacity() == 0 ? 1 : this->deferred_queue_.capacity() * 2;
-    if (!this->can_grow_event_storage_(next_capacity * sizeof(DeferredEvent), "deferred event queue")) {
-      return false;
+      return;  // Already in queue, no need to update since items are equal
     }
   }
   this->deferred_queue_.push_back(item);
-  return true;
-}
-
-bool AsyncEventSourceResponse::can_grow_event_storage_(size_t allocation_bytes, const char *stage) {
-  const uint32_t caps = MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL;
-  const size_t free_bytes = heap_caps_get_free_size(caps);
-  const size_t largest_block = heap_caps_get_largest_free_block(caps);
-  const bool available = event_stream_allocation_available(
-      free_bytes, largest_block, allocation_bytes);
-  if (!available) {
-    const uint32_t now = millis();
-    if (now - this->last_low_heap_warning_ >= 5000) {
-      this->last_low_heap_warning_ = now;
-      ESP_LOGW(TAG, "Closing event stream while allocating %s: need=%u free=%u largest=%u",
-               stage, static_cast<unsigned>(allocation_bytes),
-               static_cast<unsigned>(free_bytes), static_cast<unsigned>(largest_block));
-    }
-    this->request_stream_close_(stage);
-  }
-  return available;
-}
-
-void AsyncEventSourceResponse::request_stream_close_(const char *reason) {
-  const int fd = this->fd_.load();
-  bool expected = false;
-  if (fd == 0 || !this->close_pending_.compare_exchange_strong(expected, true)) {
-    return;
-  }
-  ESP_LOGW(TAG, "Restarting browser event stream after %s could not be sent",
-           reason ? reason : "an event");
-  std::vector<DeferredEvent>().swap(this->deferred_queue_);
-  std::string().swap(this->event_buffer_);
-  this->latest_event_.clear();
-  this->event_bytes_sent_ = 0;
-  const esp_err_t result = httpd_sess_trigger_close(this->hd_, fd);
-  if (result != ESP_OK) {
-    ESP_LOGW(TAG, "Could not schedule EventSource close for fd %d: %s", fd,
-             esp_err_to_name(result));
-    this->close_pending_.store(false);
-  }
-}
-
-bool AsyncEventSourceResponse::queue_latest_nodefer(
-    const char *message, size_t message_len, const char *event, uint32_t id,
-    uint32_t reconnect) {
-  if (!event_stream_session_can_send(this->fd_.load(),
-                                     this->close_pending_.load())) {
-    return false;
-  }
-  if (this->try_send_nodefer(message, message_len, event, id, reconnect)) {
-    return true;
-  }
-  if (!event_stream_session_can_send(this->fd_.load(),
-                                     this->close_pending_.load())) {
-    return false;
-  }
-  return this->latest_event_.store(message, message_len, event, id, reconnect);
-}
-
-void AsyncEventSourceResponse::process_latest_event_() {
-  if (!this->latest_event_.pending()) return;
-  if (this->try_send_nodefer(
-          this->latest_event_.message(), this->latest_event_.message_len(),
-          this->latest_event_.event(), this->latest_event_.id(),
-          this->latest_event_.reconnect())) {
-    this->latest_event_.clear();
-  }
 }
 
 void AsyncEventSourceResponse::process_deferred_queue_() {
@@ -1172,16 +1127,16 @@ void AsyncEventSourceResponse::process_buffer_() {
   if (bytes_sent == HTTPD_SOCK_ERR_TIMEOUT) {
     // EAGAIN/EWOULDBLOCK - socket buffer full, try again later
     // NOTE: Similar logic exists in web_server/web_server.cpp in DeferredUpdateEventSource::process_deferred_queue_()
-    // The implementations differ due to platform-specific APIs
-    // (HTTPD_SOCK_ERR_TIMEOUT vs DISCARDED), but the failure counting and
-    // timeout logic should be kept in sync. If you change this logic, also
+    // The implementations differ due to platform-specific APIs (HTTPD_SOCK_ERR_TIMEOUT vs DISCARDED, fd_.store(0) vs
+    // close()), but the failure counting and timeout logic should be kept in sync. If you change this logic, also
     // update the Arduino implementation.
     this->consecutive_send_failures_++;
     if (this->consecutive_send_failures_ >= MAX_CONSECUTIVE_SEND_FAILURES) {
       // Too many failures, connection is likely dead
       ESP_LOGW(TAG, "Closing stuck EventSource connection after %" PRIu16 " failed sends",
                this->consecutive_send_failures_);
-      this->request_stream_close_("stuck socket buffer");
+      this->fd_.store(0);  // Mark for cleanup
+      this->deferred_queue_.clear();
     }
     return;
   }
@@ -1212,29 +1167,19 @@ void AsyncEventSourceResponse::process_buffer_() {
 }
 
 void AsyncEventSourceResponse::loop() {
-  if (!event_stream_session_can_send(this->fd_.load(),
-                                     this->close_pending_.load())) return;
   process_buffer_();
-  process_latest_event_();
   process_deferred_queue_();
-  if (event_stream_session_can_send(this->fd_.load(),
-                                    this->close_pending_.load()) &&
-      !this->entities_iterator_.completed())
-    this->entities_iterator_.advance();
+  if (!this->entities_iterator_.completed())
+    this->entities_iterator_.try_advance(1);
 }
 
 bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t message_len, const char *event, uint32_t id,
                                                 uint32_t reconnect) {
-  if (!event_stream_session_can_send(this->fd_.load(),
-                                     this->close_pending_.load())) {
+  if (this->fd_.load() == 0) {
     return false;
   }
 
   process_buffer_();
-  if (!event_stream_session_can_send(this->fd_.load(),
-                                     this->close_pending_.load())) {
-    return false;
-  }
   if (!event_buffer_.empty()) {
     // there is still pending event data to send first
     return false;
@@ -1243,33 +1188,6 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   // 8 spaces are standing in for the hexidecimal chunk length to print later
   const char chunk_len_header[] = "        " CRLF_STR;
   const int chunk_len_header_len = sizeof(chunk_len_header) - 1;
-
-  // Reserve once before appending. On memory-constrained displays, growing a
-  // std::string after the browser connects can otherwise call abort() when the
-  // internal heap is fragmented. A conservative newline allowance keeps every
-  // append below the reserved capacity; if the allocation is not currently
-  // safe, the caller defers or drops this state update instead of rebooting.
-  size_t line_breaks = 0;
-  if (message != nullptr) {
-    for (size_t index = 0; index < message_len; index++) {
-      if (message[index] == '\n' || message[index] == '\r') line_breaks++;
-    }
-  }
-  size_t required_capacity = static_cast<size_t>(chunk_len_header_len) + CRLF_LEN;
-  if (reconnect) required_capacity += 32;
-  if (id) required_capacity += 32;
-  if (event && *event) required_capacity += sizeof("event: ") - 1 + strlen(event) + CRLF_LEN;
-  if (message != nullptr) {
-    required_capacity += message_len + (line_breaks + 1) * (sizeof("data: ") - 1 + CRLF_LEN) + CRLF_LEN;
-  }
-  if (required_capacity > event_buffer_.capacity()) {
-    size_t allocation_bytes = required_capacity + 1;
-    if (event_buffer_.capacity() <= (SIZE_MAX - 1) / 2) {
-      allocation_bytes = std::max(allocation_bytes, event_buffer_.capacity() * 2 + 1);
-    }
-    if (!this->can_grow_event_storage_(allocation_bytes, "event stream buffer")) return false;
-    event_buffer_.reserve(required_capacity);
-  }
 
   event_buffer_.append(chunk_len_header);
 
@@ -1417,19 +1335,11 @@ void AsyncEventSourceResponse::deferrable_send_state(void *source, const char *e
   if (!event_buffer_.empty() || !deferred_queue_.empty()) {
     // outgoing event buffer or deferred queue still not empty which means downstream tcp send buffer full, no point
     // trying to send first
-    if (!deq_push_back_with_dedup_(source, message_generator) &&
-        event_stream_session_can_send(this->fd_.load(),
-                                      this->close_pending_.load())) {
-      this->request_stream_close_("deferred state event");
-    }
+    deq_push_back_with_dedup_(source, message_generator);
   } else {
     auto message = message_generator(web_server_, source);
     if (!this->try_send_nodefer(message.c_str(), message.size(), "state")) {
-      if (!deq_push_back_with_dedup_(source, message_generator) &&
-          event_stream_session_can_send(this->fd_.load(),
-                                        this->close_pending_.load())) {
-        this->request_stream_close_("state event");
-      }
+      deq_push_back_with_dedup_(source, message_generator);
     }
   }
 }

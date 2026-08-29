@@ -49,16 +49,16 @@ This layout is best on the 4-inch square **4848S040** and **ESP32-P4 86 Panel**,
 3. Select an empty space and choose **Media > Cover Art**.
 4. Enter the same Home Assistant `media_player` entity.
 5. Turn on **Show Track Details** if you want the title and artist over the artwork.
-6. Set **Press Action** to **All Controls**. Tapping the artwork will then open playback and volume controls.
+6. Tapping the artwork opens playback and volume controls.
 7. Right-click the card, choose **Size**, then choose **Extra Large (3x3)**.
 8. Open **Settings > Display > Clock Bar** and turn off **Show Clock Bar** so the artwork can use the full display height.
-9. Wait a few seconds for the automatic update and cover art to settle.
+9. Select **Apply Configuration**.
 
 On rectangular panels, use the largest square Cover Art card that suits the grid. It will not fill the entire rectangular screen, so automatic cover art is usually the better choice when you want a true full-screen now-playing view.
 
 If **Cover Art** or **Extra Large (3x3)** is missing, update the panel to current EspControl firmware and reload its web page.
 
-See [Media cards](/card-types/media#cover-art) for the other card sizes and press actions.
+See [Media cards](/card-types/media#cover-art) for the other card sizes and Cover Art settings.
 
 ## Match the Old Idle Screen
 
@@ -79,7 +79,7 @@ Use [Night Schedule](/features/screen-schedule) as well if the panel should alwa
 | Full-screen album art during playback | **Settings > Sleep & Schedule > Media Cover Art** |
 | Always-visible artwork | **Media > Cover Art** card |
 | Title and artist overlay | **Show Track Details For** or **Show Track Details** |
-| Playback and volume panel | Cover Art **Press Action > All Controls**, or a **Media > All Controls** card |
+| Playback and volume panel | Tap a Cover Art card, or add a **Media > All Controls** card |
 | Clock after playback stops | **Screensaver > Timer > Clock** |
 | Screen off after playback stops | **Screensaver > Timer > Display Off** |
 | Scheduled overnight screen off | **Night Schedule** |

@@ -40,7 +40,7 @@ The shared controller introduced by later work uses these values:
 | Type | Values | Meaning |
 |---|---|---|
 | `DisplayMode` | `ACTIVE`, `SETUP_DIMMED`, `DIMMED`, `CLOCK`, `COVER_ART`, `DISPLAY_OFF` | The one presentation mode that should be visible. |
-| `DisplayRequestSource` | `BOOT_GUARD`, `IDLE_TIMER`, `PRESENCE_SENSOR`, `SCREEN_SCHEDULE`, `MANUAL_SLEEP`, `MEDIA_PLAYBACK`, `SETUP_TIMEOUT`, `USER_WAKE` | The event or policy currently requesting a mode. |
+| `DisplayRequestSource` | `ONBOARDING`, `BOOT_GUARD`, `IDLE_TIMER`, `PRESENCE_SENSOR`, `SCREEN_SCHEDULE`, `MANUAL_SLEEP`, `MEDIA_PLAYBACK`, `SETUP_TIMEOUT`, `USER_WAKE` | The event or policy currently requesting a mode. |
 | `DisplayTakeoverKind` | `INTERACTIVE`, `CRITICAL` | Image-style modal or alarm takeover. |
 | `DisplayTransition` | previous mode, target mode, winning source, generation | The complete decision handed to the effect adapter. |
 
@@ -71,14 +71,15 @@ first matching row wins.
 | Priority | Condition | Winning result | Existing behaviour to preserve |
 |---:|---|---|---|
 | 1 | Critical alarm takeover | `ACTIVE`, alarm overlay foreground | Alarm arming delay or triggered state prevents ordinary display transitions. |
-| 2 | Manual sleep | `DISPLAY_OFF` / `MANUAL_SLEEP` | Closes ordinary and interactive modals; next deliberate user wake clears it. |
-| 3 | Temporary user wake | `ACTIVE` / `USER_WAKE` | Uses configured wake brightness until the existing 10–3600 second timeout expires. |
-| 4 | Night schedule | Off, `CLOCK`, or `ACTIVE` / `SCREEN_SCHEDULE` | Off and clock close image modals; Screen Dimmed keeps the active UI at `schedule_dimmed_brightness`. An enabled time-based schedule fails dark until local time is valid, whether or not a saved sleep marker exists. |
-| 5 | Interactive takeover | `ACTIVE`, image modal foreground | Automatic idle or presence sleep is deferred. Manual sleep and scheduled off or clock may close it. |
-| 6 | Eligible media playback | `COVER_ART` / `MEDIA_PLAYBACK` | Eligibility still includes entity, attribute, external-input, voice, schedule, and alarm checks. |
-| 7 | Idle timer or absence | Configured `DIMMED`, `CLOCK`, or `DISPLAY_OFF` | Presence detected defers sensor sleep. Media sleep prevention and alarm takeover defer idle sleep. |
-| 8 | Setup timeout | `SETUP_DIMMED` / `SETUP_TIMEOUT` | Static setup page dims to 50% after 120 seconds unless schedule or boot guard requires off. |
-| 9 | No request | `ACTIVE` / default | Normal UI at normal calculated brightness. |
+| 2 | First-time onboarding | `ACTIVE` / `ONBOARDING` | WiFi, Home Assistant, and tile-configuration instructions remain fully visible while the grid is empty. Saved sleep, schedule, and setup-timeout policy cannot hide or dim setup. |
+| 3 | Manual sleep | `DISPLAY_OFF` / `MANUAL_SLEEP` | Closes ordinary and interactive modals; next deliberate user wake clears it. |
+| 4 | Temporary user wake | `ACTIVE` / `USER_WAKE` | Uses configured wake brightness until the existing 10–3600 second timeout expires. |
+| 5 | Night schedule | Off, `CLOCK`, or `ACTIVE` / `SCREEN_SCHEDULE` | Off and clock close image modals; Screen Dimmed keeps the active UI at `schedule_dimmed_brightness`. An enabled time-based schedule fails dark until local time is valid, whether or not a saved sleep marker exists. |
+| 6 | Interactive takeover | `ACTIVE`, image modal foreground | Automatic idle or presence sleep is deferred. Manual sleep and scheduled off or clock may close it. |
+| 7 | Eligible media playback | `COVER_ART` / `MEDIA_PLAYBACK` | Eligibility still includes entity, attribute, external-input, voice, schedule, and alarm checks. |
+| 8 | Idle timer or absence | Configured `DIMMED`, `CLOCK`, or `DISPLAY_OFF` | Presence detected defers sensor sleep. Media sleep prevention and alarm takeover defer idle sleep. |
+| 9 | Setup timeout outside onboarding | `SETUP_DIMMED` / `SETUP_TIMEOUT` | Static setup pages may still use the existing burn-in dim path. |
+| 10 | No request | `ACTIVE` / default | Normal UI at normal calculated brightness. |
 
 When requests have equal priority, the most recently changed request may trigger
 resolution, but the result is derived from current inputs rather than a saved
@@ -151,6 +152,7 @@ tests. `gN` denotes a transition generation.
 | Sequence | Events | Expected decisions and checks |
 |---|---|---|
 | Default boot | Boot, valid time, schedule normal | Resolve `ACTIVE`; normal UI and normal brightness; idle timer starts. |
+| First-time onboarding | Boot without WiFi or configured tiles; schedule, sleep, or setup-timeout requests change | `ONBOARDING` keeps the current setup instructions fully visible without a dimming timeout; adding the first tile clears onboarding and resolves live policy. |
 | Fail-dark boot | Enabled time-based schedule; boot; time invalid; repeat before and after upgrading saved settings | `BOOT_GUARD` requests `DISPLAY_OFF` in both cases; PWM remains off. When time becomes valid, clear boot guard and resolve the live schedule. |
 | Idle dim | `ACTIVE`; idle timeout; configured action Dim | `IDLE_TIMER` requests `DIMMED` at `g1`; normal UI remains beneath the dim guard; dim brightness applies. |
 | Idle clock | `ACTIVE`; idle timeout; configured action Clock | `IDLE_TIMER` requests `CLOCK`; full-screen clock alone is visible at day/night clock brightness. |
@@ -170,7 +172,7 @@ tests. `gN` denotes a transition generation.
 | Media changes during interactive modal | Open image modal; eligible playback starts or stops; close modal | Modal remains visible. On close, current media eligibility decides whether `COVER_ART` wins. |
 | Critical alarm takeover | Any mode; alarm enters arming delay or triggered; other requests change; alarm clears | `CRITICAL` selects active UI with alarm overlay. No lower request changes presentation. On release, resolve all current requests. |
 | Rapid opposing requests | Idle requests off `g1`; touch requests active `g2`; schedule requests clock `g3`; old fade callback from `g1` fires | Final mode is `CLOCK` from `g3`; callbacks from `g1` and `g2` are rejected and cannot change widgets or PWM. |
-| Setup timeout | Static setup page; 120 seconds; schedule inactive | `SETUP_TIMEOUT` selects `SETUP_DIMMED` at 50%. A schedule or boot-guard off request outranks it. |
+| Setup timeout | Static setup page on an already configured device; 120 seconds | `SETUP_TIMEOUT` selects `SETUP_DIMMED` at 50%. First-time onboarding suppresses this timeout so installation instructions remain fully visible. |
 | Home Assistant reconnect | Any stable mode; API disconnect/reconnect; entities and time refresh | Re-resolve updated schedule, presence, media, and alarm inputs without publishing new entities or losing saved settings. |
 
 ## Required test mapping for later stages

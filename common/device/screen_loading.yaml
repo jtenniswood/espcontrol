@@ -90,11 +90,13 @@ esphome:
               - script.execute: display_mode_reconcile
               - script.wait: display_mode_apply_transition
               - lambda: |-
-                  lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
-                  lv_label_set_text(id(loading_status_title), espcontrol_i18n("WiFi Setup"));
-                  std::string msg = std::string(espcontrol_i18n("Connect to WiFi")) +
-                                    "\n${friendly_name}\n" +
-                                    espcontrol_i18n("Open 192.168.4.1");
+                  lv_label_set_text(id(loading_status_icon), "${icon_wifi_startup}");
+                  lv_label_set_text(id(loading_status_title), espcontrol_i18n("Configure your WiFi"));
+                  std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
+                  if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
+                  std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
+                                    " '" + hotspot_ssid + "' " +
+                                    espcontrol_i18n_key("to_configure_your_network_settings");
                   lv_label_set_text(id(loading_status_label), msg.c_str());
         - if:
             condition:
@@ -143,4 +145,6 @@ esphome:
                           - script.execute: wifi_reconnect_flow
             else:
               - lambda: 'id(boot_grace_period) = false;'
-              - script.execute: wifi_show_hotspot_setup
+              # The loading page already contains the live hotspot name and
+              # connection instructions. Keep that proven-visible page active
+              # until WiFi connects instead of replacing it during late boot.

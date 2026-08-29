@@ -20,7 +20,6 @@ DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
-CARD_RECONCILER_HEADER = ROOT / "components" / "espcontrol" / "card_reconciler.h"
 CARD_REGISTRY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_registry.h"
 SAVED_CONFIG_VACUUM_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_vacuum_generated.h"
 SAVED_CONFIG_SENSOR_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_sensor_generated.h"
@@ -84,6 +83,7 @@ class StringRef {
 struct lv_obj_t {
   int flags = 0;
   std::string text;
+  void *user_data = nullptr;
 };
 constexpr int MAX_GRID_SLOTS = 25;
 inline int bounded_grid_slots(int num_slots) {
@@ -101,7 +101,7 @@ struct BtnSlot {
   lv_obj_t *subpage_lbl = nullptr;
 };
 struct lv_disp_t {};
-struct lv_font_t {};
+struct lv_font_t { int line_height = 16; };
 using lv_coord_t = int;
 using lv_style_selector_t = int;
 using lv_color_t = int;
@@ -148,6 +148,10 @@ inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {
 inline void lv_obj_set_style_text_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_text_align(lv_obj_t *, int, lv_style_selector_t) {}
 inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
+inline const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *, lv_style_selector_t) {
+  static const lv_font_t font;
+  return &font;
+}
 inline void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_add_state(lv_obj_t *, int) {}
@@ -167,6 +171,7 @@ inline int lv_obj_get_style_pad_bottom(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_column(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_row(lv_obj_t *, int) { return 0; }
 inline lv_obj_t *lv_obj_get_parent(lv_obj_t *) { return nullptr; }
+inline void *lv_obj_get_user_data(lv_obj_t *obj) { return obj ? obj->user_data : nullptr; }
 inline lv_disp_t *lv_disp_get_default() { return lv_test_disp_available ? &lv_test_default_disp : nullptr; }
 inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
 inline int lv_disp_get_ver_res(lv_disp_t *) { return lv_test_ver_res; }
@@ -179,6 +184,7 @@ inline void lv_obj_set_grid_cell(lv_obj_t *, int, int, int, int, int, int) {}
 inline void lv_obj_set_style_pad_top(lv_obj_t *, int, int) {}
 inline void lv_obj_update_layout(lv_obj_t *) {}
 inline void lv_label_set_text(lv_obj_t *obj, const char *text) { if (obj) obj->text = text ? text : ""; }
+inline const char *lv_label_get_text(lv_obj_t *obj) { return obj ? obj->text.c_str() : ""; }
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
 inline void lv_obj_move_foreground(lv_obj_t *) {}
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
@@ -205,6 +211,8 @@ int main() {
   assert(row_span == 1 && col_span == 3);
   grid_token_spans('p', row_span, col_span);
   assert(row_span == 4 && col_span == 3);
+  grid_token_spans('l', row_span, col_span);
+  assert(row_span == 3 && col_span == 4);
   grid_token_spans('q', row_span, col_span);
   assert(row_span == 3 && col_span == 3);
   grid_token_spans('h', row_span, col_span);
@@ -214,6 +222,8 @@ int main() {
   assert(grid_token_has_span_suffix('q'));
   assert(grid_token_has_span_suffix('h'));
   assert(grid_token_has_span_suffix('v'));
+  assert(grid_token_has_span_suffix('p'));
+  assert(grid_token_has_span_suffix('l'));
 
   assert(clock_bar_equal_fr_track_size(434, 3, 0) == 145);
   assert(clock_bar_equal_fr_track_size(434, 3, 1) == 145);
@@ -241,6 +251,11 @@ int main() {
     true, &main_page, espcontrol::DisplayMode::ACTIVE, false);
   assert(awake_clock_bar.reserve_space);
   assert(awake_clock_bar.visible);
+
+  auto dimmed_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, espcontrol::DisplayMode::DIMMED, false);
+  assert(dimmed_clock_bar.reserve_space);
+  assert(dimmed_clock_bar.visible);
 
   auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
     true, &main_page, espcontrol::DisplayMode::CLOCK, false);
@@ -506,11 +521,14 @@ int main() {
   assert(cover_art.precision == "");
   assert(cover_art.options == "");
   assert(media_cover_art_enabled(cover_art));
-  auto cover_art_details = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;cover_art_action=control_modal,cover_art_details");
+  auto cover_art_details = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;cover_art_action=play_pause,cover_art_details");
   assert(media_cover_art_enabled(cover_art_details));
   assert(media_cover_art_details_enabled(cover_art_details));
-  assert(media_cover_art_press_action(cover_art_details) == "control_modal");
-  assert(cover_art_details.options == "cover_art_action=control_modal,cover_art_details");
+  assert(cover_art_details.options == "cover_art_details");
+  auto cover_art_advanced = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
+  assert(cover_art_advanced.options == "speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
+  assert(media_speaker_group_entity(cover_art_advanced) == "sensor.cover_art_speakers");
+  assert(media_volume_max_percent(cover_art_advanced) == 75);
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");
@@ -692,7 +710,7 @@ int main() {
   assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;
-  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,99", 9, parsed);
+  parse_order_string("1,2d,3w,4b,5t,6x,7h,8v,9l,99", 10, parsed);
   assert(parsed.positions[0] == 1);
   assert(parsed.positions[1] == 2);
   assert(parsed.row_span[1] == 2 && parsed.col_span[1] == 1);
@@ -702,6 +720,7 @@ int main() {
   assert(parsed.row_span[5] == 1 && parsed.col_span[5] == 3);
   assert(parsed.row_span[6] == 2 && parsed.col_span[6] == 3);
   assert(parsed.row_span[7] == 3 && parsed.col_span[7] == 2);
+  assert(parsed.row_span[8] == 3 && parsed.col_span[8] == 4);
 
   OrderResult overlap;
   parse_order_string("1b,2,3,4,5,6", 9, overlap);
@@ -710,6 +729,33 @@ int main() {
   assert(cleared.positions[1] == 0);
   assert(cleared.positions[3] == 0);
   assert(cleared.positions[4] == 0);
+
+  // A 10-inch portrait-large tile must not retain its 4x3 span when restored
+  // onto the 7-inch 5x3 grid from the reported backup layout.
+  OrderResult cross_device;
+  parse_order_string("1,7,6p,,,8,2,,,,3,4,,,,9,5", 15, cross_device);
+  OrderResult cross_device_safe;
+  clear_spanned_cells(cross_device, 15, 5, cross_device_safe);
+  assert(cross_device_safe.positions[2] == 6);
+  assert(cross_device_safe.row_span[5] == 1);
+  assert(cross_device_safe.col_span[5] == 1);
+
+  // Spans that fit the target grid remain unchanged.
+  OrderResult fitting_span;
+  parse_order_string("1,2w", 6, fitting_span);
+  OrderResult fitting_span_safe;
+  clear_spanned_cells(fitting_span, 6, 3, fitting_span_safe);
+  assert(fitting_span_safe.row_span[1] == 1);
+  assert(fitting_span_safe.col_span[1] == 2);
+
+  // Legacy subpages reserve the first cell for Back. A wide card at source
+  // position 4 is rendered at position 5, where it fits a five-column grid.
+  int subpage_row_span = 1;
+  int subpage_col_span = 2;
+  normalize_grid_span_for_position(5, 15, 5, subpage_row_span,
+                                   subpage_col_span);
+  assert(subpage_row_span == 1);
+  assert(subpage_col_span == 2);
 
   return 0;
 }
@@ -791,7 +837,7 @@ def runtime_capability_enum_name(value: str) -> str:
 
 
 def generated_card_runtime_assertions() -> str:
-    contract = json.loads((ROOT / "common" / "config" / "card_contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "product" / "v2" / "card_contract.json").read_text(encoding="utf-8"))
     runtime = contract["runtime"]
     lines = [
         "  struct RuntimeConfig {",
@@ -870,7 +916,6 @@ def main() -> int:
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
-        shutil.copy2(CARD_RECONCILER_HEADER, tmp_path / "card_reconciler.h")
         shutil.copy2(CARD_REGISTRY_HEADER, tmp_path / "button_grid_card_registry.h")
         shutil.copy2(SAVED_CONFIG_VACUUM_HEADER, tmp_path / "button_grid_saved_config_vacuum_generated.h")
         shutil.copy2(SAVED_CONFIG_SENSOR_HEADER, tmp_path / "button_grid_saved_config_sensor_generated.h")
@@ -931,6 +976,7 @@ def main() -> int:
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "check_firmware_media_group.py")], check=True)
     return 0
 
 

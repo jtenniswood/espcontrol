@@ -34,6 +34,50 @@ inline std::string normalize_media_kind_token(std::string value) {
   return value;
 }
 
+inline const char *media_content_id_external_source(std::string content_id) {
+  content_id = normalize_media_kind_token(std::move(content_id));
+  if (content_id.rfind("x_rincon_stream:", 0) == 0) return "Line-in";
+  if (content_id.rfind("x_sonos_htastream:", 0) == 0 ||
+      content_id.rfind("x_rincon_htastream:", 0) == 0 ||
+      content_id.find(":spdif") != std::string::npos) {
+    return "TV";
+  }
+  return "";
+}
+
+inline bool media_content_id_external_input(const std::string &content_id) {
+  return media_content_id_external_source(content_id)[0] != '\0';
+}
+
+inline const char *media_source_external_label(std::string source) {
+  source = normalize_media_kind_token(std::move(source));
+  if (source == "line_in") return "Line-in";
+  if (source == "tv" || source.rfind("hdmi", 0) == 0) return "TV";
+  return "";
+}
+
+inline bool media_content_id_should_replace_external_source(
+    bool source_observed_for_state, bool retained_source_external,
+    bool retained_source_present) {
+  return !source_observed_for_state || !retained_source_external ||
+         !retained_source_present;
+}
+
+inline bool media_content_id_should_override_source_update(
+    bool content_id_observed_for_state, const std::string &content_id,
+    const std::string &source_update) {
+  if (!content_id_observed_for_state) return false;
+  const char *content_label = media_content_id_external_source(content_id);
+  return content_label[0] != '\0' &&
+         std::string(content_label) != media_source_external_label(source_update);
+}
+
+inline bool media_content_id_should_clear_external_source(
+    const std::string &content_id, bool current_source_external) {
+  return current_source_external && !content_id.empty() &&
+         !media_content_id_external_input(content_id);
+}
+
 inline MediaItemKind media_item_kind_from_token(std::string token) {
   token = normalize_media_kind_token(std::move(token));
   if (token == "track") return MediaItemKind::TRACK;

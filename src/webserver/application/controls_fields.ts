@@ -1,5 +1,68 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installControlsFieldsModule(): GlobalDescriptors {
+import { setConfigOption, setConfigOptionValue } from "../model/config_primitives";
+import { CARD_SIZE_LARGE, CARD_SIZE_SINGLE } from "../model/grid";
+import { escHtml, iconSlug } from "./ui_primitives";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import {
+    SENSOR_LARGE_NUMBERS_OPTION,
+    largeNumbersExplicitlyDisabled,
+} from "./config_option_core";
+export interface ControlsFieldsFeature {
+    makeCollapsibleCard(...args: any[]): any;
+    fieldLabel(text?: any, forId?: any): any;
+    textInput(...args: any[]): any;
+    fieldWithControl(...args: any[]): any;
+    optionValue(...args: any[]): any;
+    optionLabel(...args: any[]): any;
+    selectField(...args: any[]): any;
+    segmentControl(...args: any[]): any;
+    disclosureSection(...args: any[]): any;
+    markCardPrimaryField(...args: any[]): any;
+    cardSettingsDisclosureIn(...args: any[]): any;
+    groupCardSettingsFields(...args: any[]): any;
+    colorField(...args: any[]): any;
+    toggleRow(label?: any, id?: any, checked?: any): any;
+    cardMetadataValue(...args: any[]): any;
+    cardLargeNumbersSupportsCardSize(...args: any[]): any;
+    cardLargeNumbersMetadata(...args: any[]): any;
+    cardLargeNumbersActiveForCardSize(...args: any[]): any;
+    cardLargeNumbersHidePreviewLabel(...args: any[]): any;
+    applyCardMetadataFields(...args: any[]): any;
+    renderCardModeSelector(...args: any[]): any;
+    renderCardLargeNumbersToggle(...args: any[]): any;
+    syncCardLargeNumbersToggle(...args: any[]): any;
+    renderCardEntityField(...args: any[]): any;
+    renderCardTextField(...args: any[]): any;
+    renderCardNumberField(...args: any[]): any;
+    renderCardIconPicker(...args: any[]): any;
+    renderCardOptionToggle(...args: any[]): any;
+    renderCardIconPair(...args: any[]): any;
+    renderCardActiveColorToggle(...args: any[]): any;
+    renderBasicCardFields(...args: any[]): any;
+    renderCardSegmentControl(...args: any[]): any;
+    cardSensorPreviewHtml(...args: any[]): any;
+    cardBadgeLabelHtml(...args: any[]): any;
+    cardIconHtml(...args: any[]): any;
+    cardIconSlug(...args: any[]): any;
+    cardBadgePreview(...args: any[]): any;
+    condField(...args: any[]): any;
+    createRangeSlider(...args: any[]): any;
+}
+
+export function createControlsFieldsFeature(
+    cardRegistry: CardRegistry,
+    sensorOptions: ConfigSensorOptionsFeature,
+    shell: Pick<ControlsShellFeature, "createDisclosureChevron">,
+    requestApi: Pick<ApplicationApiFeature, "postNumber">,
+): ControlsFieldsFeature {
+    const { createDisclosureChevron } = shell;
+    const {
+        cardLargeNumbersSupported,
+        cardLargeNumbersEnabled,
+        setSensorLargeNumbersEnabled,
+    } = sensorOptions;
     // ── Settings helpers ───────────────────────────────────────────────────
     function makeCollapsibleCard(this: any, title?: any, bodyElement?: any, defaultCollapsed?: any, badgeElement?: any, actionElement?: any) {
         var card: any = document.createElement("div");
@@ -139,6 +202,64 @@ export function installControlsFieldsModule(): GlobalDescriptors {
             section: section,
         };
     }
+    function markCardPrimaryField(this: any, field?: any, kind?: any) {
+        if (field && kind)
+            field.setAttribute("data-sp-card-primary", kind);
+        return field;
+    }
+    function cardSettingsDisclosureIn(this: any, panel?: any) {
+        var children: any = panel ? Array.prototype.slice.call(panel.children || []) : [];
+        for (var i: any = 0; i < children.length; i++) {
+            var child: any = children[i];
+            if (!child.classList || !child.classList.contains("sp-disclosure"))
+                continue;
+            var button: any = child.querySelector(".sp-disclosure-button");
+            var label: any = button && button.firstElementChild;
+            if (label && String(label.textContent || "").trim() === "Card Settings") {
+                return {
+                    panel: child,
+                    button: button,
+                    section: child.querySelector(".sp-disclosure-body"),
+                };
+            }
+        }
+        return null;
+    }
+    function groupCardSettingsFields(this: any, panel?: any, idPrefix?: any) {
+        if (!panel)
+            return null;
+        var primaryKinds: any = {
+            card: false,
+            type: false,
+            entity: false,
+        };
+        var movable: any = [];
+        var firstDisclosure: any = null;
+        Array.prototype.slice.call(panel.children || []).forEach(function (this: any, child?: any) {
+            if (child.classList && child.classList.contains("sp-disclosure")) {
+                if (!firstDisclosure)
+                    firstDisclosure = child;
+                return;
+            }
+            var kind: any = child.getAttribute && child.getAttribute("data-sp-card-primary");
+            if (Object.prototype.hasOwnProperty.call(primaryKinds, kind) && !primaryKinds[kind]) {
+                primaryKinds[kind] = true;
+                return;
+            }
+            movable.push(child);
+        });
+        if (!movable.length)
+            return cardSettingsDisclosureIn(panel);
+        var disclosure: any = cardSettingsDisclosureIn(panel);
+        if (!disclosure) {
+            disclosure = disclosureSection("Card Settings", (idPrefix || "sp-inp-") + "card-settings", false);
+            panel.insertBefore(disclosure.panel, firstDisclosure);
+        }
+        movable.forEach(function (this: any, child?: any) {
+            disclosure.section.appendChild(child);
+        });
+        return disclosure;
+    }
     function colorField(this: any, id?: any, value?: any, onChange?: any) {
         var row: any = document.createElement("div");
         row.className = "sp-color-row";
@@ -221,7 +342,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         return cardSize === CARD_SIZE_LARGE;
     }
     function cardLargeNumbersMetadata(this: any, b?: any) {
-        var typeDef: any = BUTTON_TYPES[(b && b.type) || ""] || null;
+        var typeDef: any = cardRegistry.definitions[(b && b.type) || ""] || null;
         return typeDef && typeDef.cardMetadata ? typeDef.cardMetadata : {};
     }
     function cardLargeNumbersActiveForCardSize(this: any, b?: any, helpers?: any, metadata?: any) {
@@ -262,6 +383,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
                 mode.onChange.call(this, b, helpers);
         });
         panel.appendChild(field.field);
+        markCardPrimaryField(field.field, "type");
         return field;
     }
     function renderCardLargeNumbersToggle(this: any, panel?: any, b?: any, helpers?: any, metadata?: any) {
@@ -300,6 +422,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         var domains: any = cardMetadataValue(entity.domains, b, helpers) || [];
         var field: any = helpers.entityField(cardMetadataValue(entity.label, b, helpers) || "Entity", helpers.idPrefix + (entity.idSuffix || "entity"), value || "", cardMetadataValue(entity.placeholder, b, helpers) || "", domains, bindName, entity.rerender !== false, cardMetadataValue(entity.requiredMessage, b, helpers) || "");
         panel.appendChild(field.field);
+        markCardPrimaryField(field.field, "entity");
         return field;
     }
     function renderCardTextField(this: any, panel?: any, b?: any, helpers?: any, metadata?: any) {
@@ -398,6 +521,8 @@ export function installControlsFieldsModule(): GlobalDescriptors {
                 segment.onSelect(b, helpers, value, button, control);
         });
         panel.appendChild(helpers.fieldWithControl(segment.label || "Type", segment.inputId || null, control.segment));
+        if (segment.primary)
+            markCardPrimaryField(control.segment.parentNode, segment.primary === true ? "type" : segment.primary);
         return control;
     }
     function cardSensorPreviewHtml(this: any, b?: any, helpers?: any, value?: any, unit?: any, extraClass?: any, valueClass?: any) {
@@ -408,10 +533,10 @@ export function installControlsFieldsModule(): GlobalDescriptors {
             (unit != null ? '<span class="sp-sensor-unit">' + helpers.escHtml(unit) + '</span>' : "") +
             '</span>';
     }
-    function cardBadgeLabelHtml(this: any, helpers?: any, label?: any, badgeIcon?: any) {
+    function cardBadgeLabelHtml(this: any, helpers?: any, label?: any, _badgeIcon?: any) {
         return '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
             helpers.escHtml(label) +
-            '</span><span class="sp-type-badge mdi mdi-' + badgeIcon + '"></span></span>';
+            '</span></span>';
     }
     function cardIconHtml(this: any, iconSlugName?: any, extraHtml?: any) {
         return '<span class="sp-btn-icon mdi mdi-' + iconSlugName + '"></span>' + (extraHtml || "");
@@ -456,7 +581,7 @@ export function installControlsFieldsModule(): GlobalDescriptors {
             if (typeof postName === "function")
                 postName(this.value);
             else if (postName)
-                postNumber(postName, this.value);
+                requestApi.postNumber(postName, this.value);
         });
         row.appendChild(range);
         row.appendChild(val);
@@ -464,41 +589,16 @@ export function installControlsFieldsModule(): GlobalDescriptors {
         return { wrap: wrap, range: range, val: val };
     }
     return {
-        "makeCollapsibleCard": staticGlobal(makeCollapsibleCard),
-        "fieldLabel": staticGlobal(fieldLabel),
-        "textInput": staticGlobal(textInput),
-        "fieldWithControl": staticGlobal(fieldWithControl),
-        "optionValue": staticGlobal(optionValue),
-        "optionLabel": staticGlobal(optionLabel),
-        "selectField": staticGlobal(selectField),
-        "segmentControl": staticGlobal(segmentControl),
-        "disclosureSection": staticGlobal(disclosureSection),
-        "colorField": staticGlobal(colorField),
-        "toggleRow": staticGlobal(toggleRow),
-        "cardMetadataValue": staticGlobal(cardMetadataValue),
-        "cardLargeNumbersSupportsCardSize": staticGlobal(cardLargeNumbersSupportsCardSize),
-        "cardLargeNumbersMetadata": staticGlobal(cardLargeNumbersMetadata),
-        "cardLargeNumbersActiveForCardSize": staticGlobal(cardLargeNumbersActiveForCardSize),
-        "cardLargeNumbersHidePreviewLabel": staticGlobal(cardLargeNumbersHidePreviewLabel),
-        "applyCardMetadataFields": staticGlobal(applyCardMetadataFields),
-        "renderCardModeSelector": staticGlobal(renderCardModeSelector),
-        "renderCardLargeNumbersToggle": staticGlobal(renderCardLargeNumbersToggle),
-        "syncCardLargeNumbersToggle": staticGlobal(syncCardLargeNumbersToggle),
-        "renderCardEntityField": staticGlobal(renderCardEntityField),
-        "renderCardTextField": staticGlobal(renderCardTextField),
-        "renderCardNumberField": staticGlobal(renderCardNumberField),
-        "renderCardIconPicker": staticGlobal(renderCardIconPicker),
-        "renderCardOptionToggle": staticGlobal(renderCardOptionToggle),
-        "renderCardIconPair": staticGlobal(renderCardIconPair),
-        "renderCardActiveColorToggle": staticGlobal(renderCardActiveColorToggle),
-        "renderBasicCardFields": staticGlobal(renderBasicCardFields),
-        "renderCardSegmentControl": staticGlobal(renderCardSegmentControl),
-        "cardSensorPreviewHtml": staticGlobal(cardSensorPreviewHtml),
-        "cardBadgeLabelHtml": staticGlobal(cardBadgeLabelHtml),
-        "cardIconHtml": staticGlobal(cardIconHtml),
-        "cardIconSlug": staticGlobal(cardIconSlug),
-        "cardBadgePreview": staticGlobal(cardBadgePreview),
-        "condField": staticGlobal(condField),
-        "createRangeSlider": staticGlobal(createRangeSlider),
+        makeCollapsibleCard, fieldLabel, textInput, fieldWithControl, optionValue, optionLabel,
+        selectField, segmentControl, disclosureSection, markCardPrimaryField,
+        cardSettingsDisclosureIn, groupCardSettingsFields, colorField, toggleRow,
+        cardMetadataValue, cardLargeNumbersSupportsCardSize, cardLargeNumbersMetadata,
+        cardLargeNumbersActiveForCardSize, cardLargeNumbersHidePreviewLabel,
+        applyCardMetadataFields, renderCardModeSelector, renderCardLargeNumbersToggle,
+        syncCardLargeNumbersToggle, renderCardEntityField, renderCardTextField,
+        renderCardNumberField, renderCardIconPicker, renderCardOptionToggle,
+        renderCardIconPair, renderCardActiveColorToggle, renderBasicCardFields,
+        renderCardSegmentControl, cardSensorPreviewHtml, cardBadgeLabelHtml,
+        cardIconHtml, cardIconSlug, cardBadgePreview, condField, createRangeSlider,
     };
 }

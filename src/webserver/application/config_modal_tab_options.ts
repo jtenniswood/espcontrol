@@ -1,5 +1,29 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installConfigModalTabOptionsModule(): GlobalDescriptors {
+import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
+import {
+    CLIMATE_CONTROL_TABS_OPTION,
+    COVER_CONTROL_TABS_OPTION,
+    FAN_CONTROL_TABS_OPTION,
+    FAN_LIGHT_ENTITY_OPTION,
+    LIGHT_CONTROL_TABS_OPTION,
+    cardContractOptionDefaultValue,
+    cardContractOptionSpec,
+} from "./config_option_core";
+import { normalizeCoverMode } from "./config_cover_contract";
+export interface ConfigModalTabOptionsDependencies {
+    readonly document: Document;
+    readonly renderButtonSettings: () => void;
+}
+
+export function createConfigModalTabOptionsFeature(
+    dependencies: ConfigModalTabOptionsDependencies,
+) {
+    let normalizeClimateOptionsForTabs: (options: any, includeControlTabs: boolean) => any =
+        (options) => options || "";
+    function connectClimateOptionsNormalizer(
+        normalizer: (options: any, includeControlTabs: boolean) => any,
+    ) {
+        normalizeClimateOptionsForTabs = normalizer;
+    }
     // ── Modal Tab Options ──────────────────────────────────────────────
     function lightControlTabDefinitions(this: any) {
         var labels: any = {
@@ -156,7 +180,7 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
         b.options = climateControlTabsAreDefault(tabs)
             ? setConfigOptionValue(b.options, CLIMATE_CONTROL_TABS_OPTION, "")
             : setConfigOptionValue(b.options, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
-        b.options = normalizeClimateOptions(b.options, true);
+        b.options = normalizeClimateOptionsForTabs(b.options, true);
         return b.options;
     }
     function fanControlTabDefinitions(this: any) {
@@ -166,38 +190,72 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
             { value: "preset", label: "Preset" },
             { value: "oscillation", label: "Oscillation" },
             { value: "direction", label: "Direction" },
+            { value: "light", label: "Light" },
         ];
     }
     function fanControlDefaultTabs(this: any) {
-        return fanControlTabDefinitions().map(function (this: any, tab?: any) { return tab.value; });
+        return ["power", "speed", "preset", "oscillation", "direction"];
     }
     function normalizeFanControlTabs(this: any, value?: any) {
         return normalizeTabList(value, fanControlTabDefinitions(), fanControlDefaultTabs(), "power");
     }
     function fanControlTabs(this: any, b?: any) {
-        return normalizeFanControlTabs(configOptionValue(b && b.options, FAN_CONTROL_TABS_OPTION));
+        var configuredTabs: any = configOptionValue(b && b.options, FAN_CONTROL_TABS_OPTION);
+        var tabs: any = normalizeFanControlTabs(configuredTabs);
+        if (!configuredTabs && fanLightEntity(b))
+            tabs.push("light");
+        return tabs;
     }
     function fanControlTabsAreDefault(this: any, tabs?: any) {
         return tabListIsDefault(normalizeFanControlTabs((tabs || []).join("|")), fanControlDefaultTabs());
     }
+    function fanLightEntity(this: any, b?: any) {
+        return String(configOptionValue(b && b.options, FAN_LIGHT_ENTITY_OPTION) || "").trim();
+    }
     function normalizeFanControlOptions(this: any, options?: any) {
-        var tabs: any = normalizeFanControlTabs(configOptionValue(options, FAN_CONTROL_TABS_OPTION));
-        return fanControlTabsAreDefault(tabs)
-            ? ""
-            : setConfigOptionValue("", FAN_CONTROL_TABS_OPTION, tabs.join("|"));
+        var lightEntity: any = String(configOptionValue(options, FAN_LIGHT_ENTITY_OPTION) || "").trim();
+        var configuredTabs: any = configOptionValue(options, FAN_CONTROL_TABS_OPTION);
+        var tabs: any = normalizeFanControlTabs(configuredTabs);
+        if (!lightEntity)
+            tabs = tabs.filter(function (this: any, tab?: any) { return tab !== "light"; });
+        if (!lightEntity && tabs.length === 0)
+            tabs = ["power"];
+        var defaultTabs: any = fanControlDefaultTabs();
+        if (lightEntity)
+            defaultTabs = defaultTabs.concat(["light"]);
+        var out: any = "";
+        if (lightEntity)
+            out = setConfigOptionValue(out, FAN_LIGHT_ENTITY_OPTION, lightEntity);
+        var effectiveTabs: any = configuredTabs ? tabs : defaultTabs;
+        if (!tabListIsDefault(effectiveTabs, defaultTabs))
+            out = setConfigOptionValue(out, FAN_CONTROL_TABS_OPTION, effectiveTabs.join("|"));
+        return out;
     }
     function setFanControlTabs(this: any, b?: any, tabs?: any) {
         if (!b)
             return "";
         tabs = normalizeFanControlTabs((tabs || []).join("|"));
-        b.options = fanControlTabsAreDefault(tabs)
-            ? setConfigOptionValue(b.options, FAN_CONTROL_TABS_OPTION, "")
-            : setConfigOptionValue(b.options, FAN_CONTROL_TABS_OPTION, tabs.join("|"));
+        b.options = setConfigOptionValue(b.options, FAN_CONTROL_TABS_OPTION, tabs.join("|"));
+        b.options = normalizeFanControlOptions(b.options);
+        return b.options;
+    }
+    function setFanLightEntity(this: any, b?: any, entity?: any) {
+        if (!b)
+            return "";
+        var previous: any = fanLightEntity(b);
+        var next: any = String(entity || "").trim();
+        b.options = setConfigOptionValue(b.options, FAN_LIGHT_ENTITY_OPTION, next);
+        if (next && !previous) {
+            var tabs: any = fanControlTabs(b);
+            if (tabs.indexOf("light") < 0)
+                tabs.push("light");
+            b.options = setConfigOptionValue(b.options, FAN_CONTROL_TABS_OPTION, tabs.join("|"));
+        }
         b.options = normalizeFanControlOptions(b.options);
         return b.options;
     }
     function renderModalTabSettings(this: any, panel?: any, b?: any, helpers?: any, config?: any) {
-        var section: any = document.createElement("div");
+        var section: any = dependencies.document.createElement("div");
         panel.appendChild(section);
         b.options = config.normalizeOptions(b.options);
         var tabs: any = config.tabs(b);
@@ -216,12 +274,12 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
                 orderedDefinitions.push(definition);
         });
         if (!config.hideHeading) {
-            var heading: any = document.createElement("div");
+            var heading: any = dependencies.document.createElement("div");
             heading.className = "sp-field";
             heading.appendChild(helpers.fieldLabel("Modal Tabs"));
             section.appendChild(heading);
         }
-        var list: any = document.createElement("div");
+        var list: any = dependencies.document.createElement("div");
         list.className = "sp-light-tab-list";
         section.appendChild(list);
         function listRows(this: any) {
@@ -243,7 +301,7 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
             config.setTabs(b, nextTabs);
             b._modalSettingsOpen = true;
             helpers.saveField("options", b.options);
-            renderButtonSettings();
+            dependencies.renderButtonSettings();
         }
         function moveRow(this: any, row?: any, direction?: any) {
             var sibling: any = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
@@ -260,46 +318,53 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
         orderedDefinitions.forEach(function (this: any, definition?: any) {
             var tabIndex: any = tabs.indexOf(definition.value);
             var visible: any = tabIndex >= 0;
-            var row: any = document.createElement("div");
+            var available: any = !config.tabAvailable || config.tabAvailable(b, definition.value);
+            var row: any = dependencies.document.createElement("div");
             row.className = "sp-light-tab-row";
+            row.classList.toggle("sp-disabled", !available);
             row.setAttribute("data-tab", definition.value);
-            row.draggable = true;
-            var controls: any = document.createElement("div");
+            row.draggable = available;
+            var controls: any = dependencies.document.createElement("div");
             controls.className = "sp-light-tab-controls";
-            var drag: any = document.createElement("button");
+            var drag: any = dependencies.document.createElement("button");
             drag.type = "button";
             drag.className = "sp-light-tab-drag mdi mdi-drag";
             drag.setAttribute("aria-label", "Drag " + definition.label);
             drag.tabIndex = -1;
-            var moveUp: any = document.createElement("button");
+            var moveUp: any = dependencies.document.createElement("button");
             moveUp.type = "button";
             moveUp.className = "sp-light-tab-move mdi mdi-chevron-up";
             moveUp.setAttribute("aria-label", "Move " + definition.label + " up");
-            var moveDown: any = document.createElement("button");
+            var moveDown: any = dependencies.document.createElement("button");
             moveDown.type = "button";
             moveDown.className = "sp-light-tab-move mdi mdi-chevron-down";
             moveDown.setAttribute("aria-label", "Move " + definition.label + " down");
+            moveUp.disabled = !available;
+            moveDown.disabled = !available;
             controls.appendChild(drag);
             controls.appendChild(moveUp);
             controls.appendChild(moveDown);
             row.appendChild(controls);
-            var label: any = document.createElement("label");
+            var label: any = dependencies.document.createElement("label");
             label.className = "sp-light-tab-label";
             label.htmlFor = helpers.idPrefix + config.idPrefix + definition.value;
             label.textContent = definition.label;
             row.appendChild(label);
-            var toggle: any = document.createElement("label");
+            var toggle: any = dependencies.document.createElement("label");
             toggle.className = "sp-toggle";
-            var input: any = document.createElement("input");
+            var input: any = dependencies.document.createElement("input");
             input.type = "checkbox";
             input.id = helpers.idPrefix + config.idPrefix + definition.value;
             input.checked = visible;
-            var track: any = document.createElement("span");
+            input.disabled = !available;
+            var track: any = dependencies.document.createElement("span");
             track.className = "sp-toggle-track";
             toggle.appendChild(input);
             toggle.appendChild(track);
             row.appendChild(toggle);
             input.addEventListener("change", function (this: any) {
+                if (!available)
+                    return;
                 if (!this.checked) {
                     var visibleCount: any = listRows().filter(function (this: any, item?: any) {
                         var itemInput: any = item.querySelector("input[type=checkbox]");
@@ -315,6 +380,8 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
             moveUp.addEventListener("click", function (this: any) { moveRow(row, -1); });
             moveDown.addEventListener("click", function (this: any) { moveRow(row, 1); });
             row.addEventListener("dragstart", function (this: any, event?: any) {
+                if (!available)
+                    return;
                 row.classList.add("sp-dragging");
                 event.dataTransfer.effectAllowed = "move";
                 event.dataTransfer.setData("text/plain", definition.value);
@@ -340,36 +407,41 @@ export function installConfigModalTabOptionsModule(): GlobalDescriptors {
         return section;
     }
     return {
-        "lightControlTabDefinitions": staticGlobal(lightControlTabDefinitions),
-        "lightControlDefaultTabs": staticGlobal(lightControlDefaultTabs),
-        "normalizeLightControlTabs": staticGlobal(normalizeLightControlTabs),
-        "lightControlTabs": staticGlobal(lightControlTabs),
-        "lightControlTabsAreDefault": staticGlobal(lightControlTabsAreDefault),
-        "normalizeLightControlOptions": staticGlobal(normalizeLightControlOptions),
-        "setLightControlTabs": staticGlobal(setLightControlTabs),
-        "coverControlTabDefinitions": staticGlobal(coverControlTabDefinitions),
-        "coverControlDefaultTabs": staticGlobal(coverControlDefaultTabs),
-        "normalizeTabList": staticGlobal(normalizeTabList),
-        "tabListIsDefault": staticGlobal(tabListIsDefault),
-        "normalizeCoverControlTabs": staticGlobal(normalizeCoverControlTabs),
-        "coverControlTabs": staticGlobal(coverControlTabs),
-        "coverControlTabsAreDefault": staticGlobal(coverControlTabsAreDefault),
-        "normalizeCoverOptions": staticGlobal(normalizeCoverOptions),
-        "normalizeCoverOptionsForMode": staticGlobal(normalizeCoverOptionsForMode),
-        "setCoverControlTabs": staticGlobal(setCoverControlTabs),
-        "climateControlTabDefinitions": staticGlobal(climateControlTabDefinitions),
-        "climateControlDefaultTabs": staticGlobal(climateControlDefaultTabs),
-        "normalizeClimateControlTabs": staticGlobal(normalizeClimateControlTabs),
-        "climateControlTabs": staticGlobal(climateControlTabs),
-        "climateControlTabsAreDefault": staticGlobal(climateControlTabsAreDefault),
-        "setClimateControlTabs": staticGlobal(setClimateControlTabs),
-        "fanControlTabDefinitions": staticGlobal(fanControlTabDefinitions),
-        "fanControlDefaultTabs": staticGlobal(fanControlDefaultTabs),
-        "normalizeFanControlTabs": staticGlobal(normalizeFanControlTabs),
-        "fanControlTabs": staticGlobal(fanControlTabs),
-        "fanControlTabsAreDefault": staticGlobal(fanControlTabsAreDefault),
-        "normalizeFanControlOptions": staticGlobal(normalizeFanControlOptions),
-        "setFanControlTabs": staticGlobal(setFanControlTabs),
-        "renderModalTabSettings": staticGlobal(renderModalTabSettings),
+        connectClimateOptionsNormalizer,
+        lightControlTabDefinitions,
+        lightControlDefaultTabs,
+        normalizeLightControlTabs,
+        lightControlTabs,
+        lightControlTabsAreDefault,
+        normalizeLightControlOptions,
+        setLightControlTabs,
+        coverControlTabDefinitions,
+        coverControlDefaultTabs,
+        normalizeTabList,
+        tabListIsDefault,
+        normalizeCoverControlTabs,
+        coverControlTabs,
+        coverControlTabsAreDefault,
+        normalizeCoverOptions,
+        normalizeCoverOptionsForMode,
+        setCoverControlTabs,
+        climateControlTabDefinitions,
+        climateControlDefaultTabs,
+        normalizeClimateControlTabs,
+        climateControlTabs,
+        climateControlTabsAreDefault,
+        setClimateControlTabs,
+        fanControlTabDefinitions,
+        fanControlDefaultTabs,
+        normalizeFanControlTabs,
+        fanControlTabs,
+        fanControlTabsAreDefault,
+        fanLightEntity,
+        normalizeFanControlOptions,
+        setFanControlTabs,
+        setFanLightEntity,
+        renderModalTabSettings,
     };
 }
+
+export type ConfigModalTabOptionsFeature = ReturnType<typeof createConfigModalTabOptionsFeature>;

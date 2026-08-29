@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
+#include <vector>
 
 #include "configuration_store.h"
 
@@ -9,6 +11,14 @@ namespace espcontrol::configuration {
 
 constexpr uint16_t CURRENT_CONFIGURATION_DOCUMENT_VERSION = 1;
 constexpr size_t CONFIGURATION_DOCUMENT_HEADER_SIZE = 8;
+
+// Release-controlled compatibility phases. The read/import-only phase is used
+// after the two dual-write releases: older panels can still be upgraded, but
+// native saves no longer overwrite their legacy text entities.
+enum class LegacyConfigurationMode : uint8_t {
+  DUAL_WRITE,
+  READ_IMPORT_ONLY,
+};
 
 enum class LegacyStatus : uint8_t {
   OK,
@@ -36,18 +46,31 @@ class LegacyConfigurationAdapter {
                       size_t document_size) = 0;
 };
 
+// Applies a validated native document to the currently running panel. This is
+// deliberately separate from the legacy mirror: a panel can update its live
+// grid without writing the legacy preference-backed entities.
+class ConfigurationRuntimeAdapter {
+ public:
+  virtual ~ConfigurationRuntimeAdapter() = default;
+
+  virtual bool apply(uint16_t document_version, const uint8_t *document,
+                     size_t document_size) = 0;
+};
+
 enum class ServiceStatus : uint8_t {
   OK,
   IMPORTED_LEGACY,
+  SYNCED_LEGACY,
   EMPTY,
   INVALID_ARGUMENT,
   BUFFER_TOO_SMALL,
   UNSUPPORTED_VERSION,
   INVALID_DOCUMENT,
-  REVISION_CONFLICT,
+  GENERATION_CONFLICT,
   STORE_FAILED,
   LEGACY_READ_FAILED,
   LEGACY_MIRROR_FAILED,
+  RUNTIME_APPLY_FAILED,
 };
 
 struct ServiceLoadResult {
@@ -76,8 +99,21 @@ struct ServiceSaveResult {
   bool ok() const { return status == ServiceStatus::OK; }
   bool durable() const {
     return status == ServiceStatus::OK ||
-           status == ServiceStatus::LEGACY_MIRROR_FAILED;
+           status == ServiceStatus::LEGACY_MIRROR_FAILED ||
+           status == ServiceStatus::RUNTIME_APPLY_FAILED;
   }
+};
+
+// A service integration can select the native document it understands without
+// changing the durable two-slot store. Leaving this unset preserves the
+// compatibility service's existing v1 envelope behaviour during migration.
+class ConfigurationDocumentValidator {
+ public:
+  virtual ~ConfigurationDocumentValidator() = default;
+
+  virtual bool supports_version(uint16_t document_version) const = 0;
+  virtual bool validate(uint16_t document_version, const uint8_t *document,
+                        size_t document_size) const = 0;
 };
 
 // Owns the transition between legacy preference fields and the versioned,
@@ -87,38 +123,31 @@ struct ServiceSaveResult {
 class ConfigurationService {
  public:
   ConfigurationService(ConfigurationStore &store,
-                       LegacyConfigurationAdapter &legacy)
-      : store_(store), legacy_(legacy) {}
-  ConfigurationService(ConfigurationStore &store,
-                       LegacyConfigurationAdapter &legacy, uint8_t *scratch,
-                       size_t scratch_capacity)
-      : store_(store),
-        legacy_(legacy),
-        scratch_(scratch),
-        scratch_capacity_(scratch_capacity) {}
+                       LegacyConfigurationAdapter &legacy,
+      const ConfigurationDocumentValidator *validator = nullptr,
+      uint8_t *scratch_buffer = nullptr, size_t scratch_capacity = 0,
+      LegacyConfigurationMode legacy_mode = LegacyConfigurationMode::DUAL_WRITE)
+      : store_(store), legacy_(legacy), validator_(validator),
+        scratch_buffer_(scratch_buffer), scratch_capacity_(scratch_capacity),
+        legacy_mode_(legacy_mode) {}
 
   ServiceLoadResult load(uint8_t *output, size_t output_capacity);
+  // Restores the durable document and publishes it to the live panel as one
+  // operation. This prevents an HTTP save from landing between a boot read
+  // and its corresponding live apply.
+  ServiceLoadResult load_and_apply_runtime(uint8_t *output,
+                                           size_t output_capacity);
+  // During compatibility releases the text entities remain authoritative.
+  // Refresh the native shadow on boot so editor changes made through the
+  // legacy API survive a later native-only firmware upgrade.
+  ServiceLoadResult refresh_legacy_shadow(uint8_t *output,
+                                          size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
                          size_t document_size);
-  // Commits only when expected_revision still matches the durable snapshot.
-  // Revision zero represents an empty store. On conflict, generation contains
-  // the current durable revision so the caller can fetch a fresh snapshot.
-  ServiceSaveResult save_if_revision(uint32_t expected_revision,
-                                     uint16_t document_version,
-                                     const uint8_t *document,
-                                     size_t document_size);
-  ServiceSaveResult save_current_if_revision(uint32_t expected_revision,
-                                             const uint8_t *document,
-                                             size_t document_size) {
-    return save_if_revision(expected_revision,
-                            CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
-                            document_size);
-  }
-  // Saves a current-version document only when its bytes differ from the
-  // durable snapshot. `changed` is set after a successful new commit.
-  ServiceSaveResult save_current_if_changed(const uint8_t *document,
-                                            size_t document_size,
-                                            bool *changed);
+  ServiceSaveResult save_if_generation(uint32_t expected_generation,
+                                       uint16_t document_version,
+                                       const uint8_t *document,
+                                       size_t document_size);
   ServiceSaveResult save_current(const uint8_t *document,
                                  size_t document_size) {
     return save(CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
@@ -126,25 +155,50 @@ class ConfigurationService {
   }
 
   size_t maximum_document_size() const;
-
-  // Installs the fixed transaction workspace before the service is first
-  // used. Firmware supplies this from PSRAM; host tools may keep the vector
-  // fallback by leaving it unset.
-  void use_scratch(uint8_t *scratch, size_t scratch_capacity) {
-    scratch_ = scratch;
+  bool legacy_writes_enabled() const {
+    return legacy_mode_ == LegacyConfigurationMode::DUAL_WRITE;
+  }
+  void set_scratch_buffer(uint8_t *scratch_buffer, size_t scratch_capacity) {
+    scratch_buffer_ = scratch_buffer;
     scratch_capacity_ = scratch_capacity;
+  }
+  void set_runtime_adapter(ConfigurationRuntimeAdapter *runtime) {
+    runtime_ = runtime;
   }
 
  private:
+  ServiceLoadResult load_unlocked(uint8_t *output, size_t output_capacity);
+  ServiceLoadResult refresh_legacy_shadow_unlocked(uint8_t *output,
+                                                   size_t output_capacity);
+  ServiceSaveResult save_unlocked(uint16_t document_version,
+                                  const uint8_t *document,
+                                  size_t document_size);
+  ServiceSaveResult save_if_generation_unlocked(
+      uint32_t expected_generation, uint16_t document_version,
+      const uint8_t *document, size_t document_size);
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
                                size_t document_size);
-  ServiceLoadResult ensure_snapshot_exists();
+  CommitResult commit_document_if_generation(uint32_t expected_generation,
+                                             uint16_t document_version,
+                                             const uint8_t *document,
+                                             size_t document_size);
+  bool supports_version(uint16_t document_version) const;
+  bool document_is_valid(uint16_t document_version, const uint8_t *document,
+                         size_t document_size) const;
+  uint8_t *encoded_buffer(size_t required_size,
+                          std::vector<uint8_t> *fallback) const;
 
   ConfigurationStore &store_;
   LegacyConfigurationAdapter &legacy_;
-  uint8_t *scratch_{nullptr};
+  const ConfigurationDocumentValidator *validator_{nullptr};
+  uint8_t *scratch_buffer_{nullptr};
   size_t scratch_capacity_{0};
+  ConfigurationRuntimeAdapter *runtime_{nullptr};
+  LegacyConfigurationMode legacy_mode_{LegacyConfigurationMode::DUAL_WRITE};
+  // The service scratch buffer is shared by load and commit paths. Keep the
+  // complete operations mutually exclusive across ESPHome and HTTP tasks.
+  std::mutex operation_mutex_{};
 };
 
 }  // namespace espcontrol::configuration

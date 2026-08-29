@@ -19,6 +19,7 @@ COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
 SCREEN_CLOCK_PATH = ROOT / "common" / "device" / "screen_clock.yaml"
 ARTWORK_IMAGE_PATH = ROOT / "components" / "artwork_image" / "artwork_image.cpp"
 BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
+BACKLIGHT_SCHEDULE_PATH = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
@@ -124,6 +125,7 @@ HA_BOUNDARY_ALLOWLIST = {
     "button_grid_ha.h",
 }
 DIRECT_HA_PATTERNS = (
+    (re.compile(r"\bha_get_(?:state|attribute)\s*\("), "use retained Home Assistant reads instead of one-shot helpers"),
     (re.compile(r"\bglobal_api_server\b"), "access Home Assistant API through button_grid_ha.h helpers"),
     (re.compile(r"(?:->|\.)send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
     (re.compile(r"(?:->|\.)subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
@@ -138,6 +140,13 @@ STATE_HELPER_PATTERN = re.compile(
 ATTRIBUTE_HELPER_PATTERN = re.compile(
     r"inline\s+bool\s+ha_subscribe_attribute\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
+)
+SUBSCRIPTION_TRACKING_PATTERN = re.compile(
+    r"subscriptions_\.push_back\(\s*\{\s*callback_ref\s*,\s*scope(?:\s*,\s*owner)?"
+    r"(?:\s*,\s*channel)?(?:\s*,\s*retain_latest)?\s*\}\s*\)"
+)
+DEFERRED_CALLBACK_FANOUT_PATTERN = re.compile(
+    r"for\s*\(\s*const\s+auto\s*&\s*callback(?:_ref)?\s*:\s*\*callback_refs\s*\)"
 )
 TODO_GET_ITEMS_HELPER_PATTERN = re.compile(
     r"inline\s+bool\s+todo_begin_get_items_request\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -185,9 +194,7 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     coordinator_path = firmware_dir / "ha_read_coordinator.h"
     coordinator_text = coordinator_path.read_text(encoding="utf-8") if coordinator_path.exists() else ""
-    broker_path = firmware_dir / "ha_state_broker.h"
-    broker_text = broker_path.read_text(encoding="utf-8") if broker_path.exists() else ""
-    read_boundary_text = text + "\n" + coordinator_text + "\n" + broker_text
+    read_boundary_text = text + "\n" + coordinator_text
     errors: list[str] = []
 
     state_helper = STATE_HELPER_PATTERN.search(text)
@@ -226,50 +233,60 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: send Home Assistant actions only after state subscription is ready")
     elif "HA_ACTION_INTERNAL_FREE_MIN_BYTES" not in action_send_match.group("body"):
         errors.append(f"{rel}: defer Home Assistant actions when S3 internal heap is critically low")
-    uses_broker = "ha_state_broker().get(" in text
-    if uses_broker:
-        if (
-            "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
-            or 'ha_internal_heap_available("Home Assistant state request"' not in text
-        ):
-            errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
-        if "deliver_cached_once()" not in broker_text or "dispatch_depth_ == 0" not in broker_text:
-            errors.append(f"{rel}: queue nested cached Home Assistant reads until the current callback returns")
-        if (
-            "ensure_channel(entity_id, attribute)" not in broker_text
-            or "channels_[channel].has_value" not in broker_text
-            or "channel.entity_id == entity_id" not in broker_text
-        ):
-            errors.append(f"{rel}: fan out duplicate Home Assistant reads through one cached channel")
-        if "ScopedStateSubscriptions" not in broker_text or "Bank pending_" not in broker_text:
-            errors.append(f"{rel}: track Home Assistant subscription leases for atomic generation cleanup")
-        if "release_matching(active_, replace_scopes_)" not in broker_text or "broker_.prune()" not in broker_text:
-            errors.append(f"{rel}: release retired Home Assistant subscription leases after generation commit")
-        if "std::array<Channel, MaxChannels>" not in broker_text or "std::array<Subscriber, MaxSubscribers>" not in broker_text:
-            errors.append(f"{rel}: keep Home Assistant broker storage fixed-capacity")
-    else:
-        if (
-            "ha_read_coordinator().get(" not in text
-            or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
-            or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
-        ):
-            errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
-        if (
-            "if (callback_depth_ != 0)" not in coordinator_text
-            or "return queue(entity_id, attribute" not in coordinator_text
-            or "return attach_get(entity_id" not in coordinator_text
-        ):
-            errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
-        if (
-            "request.callbacks.push_back(std::move(callback))" not in read_boundary_text
-            or "request.entity_id == entity_id" not in read_boundary_text
-            or "for (auto &callback : request.callbacks)" not in read_boundary_text
-        ):
-            errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
-        if "subscriptions_.push_back({callback_ref, scope, false})" not in coordinator_text:
-            errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
-        if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
-            errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
+    if (
+        "ha_read_coordinator().read_retained(" not in text
+        or "HA_READ_INTERNAL_FREE_MIN_BYTES" not in text
+        or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
+    ):
+        errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
+    if (
+        "get_home_assistant_state" in read_boundary_text
+        or "transport_.get(" in coordinator_text
+        or "ha_get_state" in text
+        or "ha_get_attribute" in text
+    ):
+        errors.append(f"{rel}: never register accumulating one-shot Home Assistant state reads")
+    if (
+        "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
+        or "!channel_reuses_reads(channel)" not in coordinator_text
+    ):
+        errors.append(f"{rel}: fail retained reads closed without an active retained subscription")
+    if (
+        "if (callback_depth_ != 0)" not in coordinator_text
+        or "queue_callback_ref(request.callbacks, std::move(callback))" not in coordinator_text
+        or "request.channel == channel" not in coordinator_text
+        or "queue_on_subscription_channel(channel, std::move(callback_ref))" not in coordinator_text
+        or "for (const auto &callback_ref : callbacks)" not in coordinator_text
+    ):
+        errors.append(f"{rel}: queue and fan out bounded reentrant retained reads")
+    if not SUBSCRIPTION_TRACKING_PATTERN.search(coordinator_text):
+        errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
+    if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
+        errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
+    if (
+        "subscription_channels_" not in coordinator_text
+        or "invoke_subscription_channel" not in coordinator_text
+        or "size_t channel = find_subscription_channel(entity_id, attribute, true);" not in coordinator_text
+        or "transport_.subscribe(" not in coordinator_text
+    ):
+        errors.append(f"{rel}: reuse one Home Assistant transport subscription across grid rebuilds")
+    if (
+        "inline void ha_reannounce_state_subscriptions()" not in text
+        or "client->get_name()" not in text
+        or "client->on_subscribe_home_assistant_states_request();" not in text
+    ):
+        errors.append(f"{rel}: re-announce runtime card subscriptions to the connected Home Assistant client")
+    if (
+        "ha_log_subscription_diagnostics" not in text
+        or "get_state_subs().size()" not in text
+        or "pending_read_count()" not in text
+        or "subscription_channel_count()" not in text
+        or "retained_channel_count()" not in text
+    ):
+        errors.append(f"{rel}: expose count-only Home Assistant subscription diagnostics")
+    grid_path = firmware_dir / "button_grid_grid.h"
+    if grid_path.exists() and "ha_reannounce_state_subscriptions();" not in grid_path.read_text(encoding="utf-8"):
+        errors.append(f"{grid_path.relative_to(root)}: re-announce subscriptions after runtime grid rebuilds")
 
     return errors
 
@@ -924,6 +941,9 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
 
+    if re.search(r"\bha_get_(?:state|attribute)\s*\(", text):
+        errors.append(f"{rel}: use retained Home Assistant reads instead of one-shot helpers")
+
     required_state = (
         ("cover_art_runtime).refresh_needed", "track/source metadata changes as stale artwork"),
         ("cover_art_runtime).effective_download_url", "keep source artwork URLs separate from downloader URLs"),
@@ -998,8 +1018,33 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     if cached_body and "id(cover_art_runtime).select_source(chosen);" not in cached_body:
         errors.append(f"{rel}: mark changed cached artwork URLs as stale before downloading")
     resubscribe_body = yaml_script_body(text, "cover_art_resubscribe") or ""
-    if resubscribe_body and "if (!url.empty() && url != id(cover_art_runtime).source_url)" not in resubscribe_body:
+    for attribute in ("entity_picture", "entity_picture_local"):
+        retained_subscription = re.search(
+            rf'ha_subscribe_attribute\(\s*cover_entity,\s*std::string\("{attribute}"\),'
+            rf'[\s\S]{{0,700}}?HA_SUBSCRIPTION_SCOPE_COVER_ART,\s*true\s*\)',
+            resubscribe_body,
+        )
+        if not retained_subscription:
+            errors.append(
+                f"{rel}: retain {attribute} so artwork refreshes never register one-shot callbacks"
+            )
+    artwork_refresh_body = (
+        resubscribe_body +
+        (yaml_script_body(text, "cover_art_request_paired_artwork") or "")
+    )
+    if artwork_refresh_body and "if (!url.empty() && url != id(cover_art_runtime).source_url)" not in artwork_refresh_body:
         errors.append(f"{rel}: mark changed Home Assistant artwork attributes as stale")
+
+    base_url_body = yaml_script_body(text, "cover_art_resolve_home_assistant_base_url") or ""
+    if (
+        "rebuild_relative_artwork_url" not in base_url_body
+        or "id(cover_art_runtime).sources.remote_url" not in base_url_body
+        or "id(cover_art_runtime).sources.local_url" not in base_url_body
+        or "id(cover_art_remote_source_relative)" not in base_url_body
+        or "id(cover_art_local_source_relative)" not in base_url_body
+        or "id(cover_art_process_cached_artwork).execute();" not in base_url_body
+    ):
+        errors.append(f"{rel}: rebuild cached full-screen artwork URLs when the Home Assistant base URL changes")
 
     apply_body = yaml_script_body(text, "cover_art_apply_downloaded_image")
     if not apply_body:
@@ -1094,6 +1139,18 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
     if "url.empty() && id(cover_art_delayed_playback_stopped).is_running()" not in text:
         errors.append(f"{rel}: keep cached artwork when Home Assistant clears it during a brief playback transition")
+    else:
+        cached_guard = text.find(
+            "url.empty() && id(cover_art_delayed_playback_stopped).is_running()"
+        )
+        relative_markers = (
+            text.find("id(cover_art_local_source_relative) = relative;"),
+            text.find("id(cover_art_remote_source_relative) = relative;"),
+        )
+        if any(marker < 0 or marker < cached_guard for marker in relative_markers):
+            errors.append(
+                f"{rel}: retain cached artwork's relative marker during a brief playback transition"
+            )
 
     stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
     if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
@@ -1378,35 +1435,6 @@ def firmware_media_sleep_prevention_subscription_errors(paths: tuple[Path, ...],
     return errors
 
 
-def firmware_phase3_live_rebind_errors(
-    firmware_dir: Path, core_infra_path: Path, root: Path
-) -> list[str]:
-    errors: list[str] = []
-    grid_path = firmware_dir / "button_grid_grid.h"
-    grid_text = grid_path.read_text(encoding="utf-8")
-    if "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_PHASE3);" not in grid_text:
-        errors.append(
-            f"{grid_path.relative_to(root)}: replace previous phase-3 Home Assistant leases before rebinding"
-        )
-
-    core_text = core_infra_path.read_text(encoding="utf-8")
-    apply_match = re.search(
-        r'(?ms)    name: "Apply Configuration".*?(?=\nselect:)', core_text
-    )
-    if not apply_match:
-        errors.append(f"{core_infra_path.relative_to(root)}: missing Apply Configuration action")
-        return errors
-    apply_body = apply_match.group(0)
-    refresh_index = apply_body.find("- script.execute: refresh_button_grid")
-    wait_index = apply_body.find("- script.wait: refresh_button_grid")
-    phase3_index = apply_body.find("grid_phase3(")
-    if not (0 <= refresh_index < wait_index < phase3_index):
-        errors.append(
-            f"{core_infra_path.relative_to(root)}: refresh phase-3 subscriptions after the live grid rebuild completes"
-        )
-    return errors
-
-
 def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_media.h"
     if not path.exists():
@@ -1461,6 +1489,273 @@ def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Pa
             or f'std::string("{attr}")' not in progress_helper
         ):
             errors.append(f"{rel}: full media modal builds should still subscribe {attr}")
+    return errors
+
+
+def firmware_media_group_lifecycle_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    required = (
+        (
+            "media_group_parse_entity_list(value.c_str(), value.size())",
+            "parse complete Home Assistant speaker lists without a fixed-size copy",
+        ),
+        (
+            "if (!row->pending) row->selected =",
+            "preserve pending speaker selections until Home Assistant responds",
+        ),
+        (
+            "row->volume_pct < media_control_volume_max_pct(ctx)",
+            "apply the configured maximum only to speaker volume increases",
+        ),
+        (
+            "row->available = item.available",
+            "use the startup speaker-discovery subscription for row availability",
+        ),
+        (
+            "media_playback_subscribe_speaker_discovery(state, ctx->speaker_group_entity);",
+            "register speaker discovery during normal startup subscriptions",
+        ),
+        (
+            "media_group_parse_discovery_items(raw)",
+            "hydrate speaker names and volumes from the discovery helper",
+        ),
+        (
+            "std::vector<MediaSpeakerDiscoveryState>().swap(state->speaker_discoveries);",
+            "restore speaker discovery when the grid rebuilds its startup subscriptions",
+        ),
+        (
+            "media_control_sync_speaker_candidates",
+            "synchronize speaker rows when the helper inventory changes",
+        ),
+        (
+            "lv_obj_del(row->row)",
+            "delete speaker rows removed from the helper inventory",
+        ),
+        (
+            "MEDIA_GROUP_ACTION_TIMEOUT_MS",
+            "bound pending speaker actions so a lost response does not disable a row indefinitely",
+        ),
+        (
+            'ha_cancel_action_response_callback(call_id, "grouping timeout")',
+            "cancel stale grouping callbacks when a speaker action times out",
+        ),
+        (
+            "lv_timer_del(ui.speaker_action_timer)",
+            "release the modal-scoped speaker action timer",
+        ),
+        (
+            "lv_obj_get_width(ui.speaker_list)",
+            "size speaker rows added by live discovery updates to the current list width",
+        ),
+    )
+    for token, message in required:
+        if token not in text:
+            errors.append(f"{rel}: {message}")
+    if (
+        text.count("media_group_parse_entity_list(value.c_str(), value.size())") < 1
+        or "media_group_parse_discovery_items(raw)" not in text
+    ):
+        errors.append(f"{rel}: parse both current members and discovery candidates without truncation")
+    if "inline void media_control_refresh_speaker_state" in text:
+        subscribe_body = text.split("inline void media_control_refresh_speaker_state", 1)[1]
+        subscribe_body = subscribe_body.split("\n}\n\ninline void media_control_add_speaker_candidate", 1)[0]
+        for token in (
+            "ha_read_retained_state(entity_id, state_callback)",
+            'ha_read_retained_attribute(entity_id, std::string("friendly_name"), name_callback)',
+            'ha_read_retained_attribute(entity_id, std::string("volume_level"), volume_callback)',
+        ):
+            if token not in subscribe_body:
+                errors.append(f"{rel}: rehydrate a speaker row recreated during a live helper edit")
+                break
+        if (
+            "if (!parse_float_ref(value, level) || !std::isfinite(level))" not in subscribe_body
+            or "row->volume_known = false" not in subscribe_body
+        ):
+            errors.append(f"{rel}: disable group volume when a speaker reports an invalid volume")
+    if "inline void media_control_add_speaker_candidate" in text:
+        add_body = text.split("inline void media_control_add_speaker_candidate", 1)[1]
+        add_body = add_body.split("\n}\n\ninline void media_control_sync_speaker_candidates", 1)[0]
+        if "media_control_refresh_speaker_state(ctx, row)" in add_body:
+            errors.append(
+                f"{rel}: defer live speaker reads until after LVGL finishes constructing the list"
+            )
+        low_heap_marker = "#ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL"
+        full_heap_marker = "#else"
+        if low_heap_marker not in add_body or full_heap_marker not in add_body:
+            errors.append(f"{rel}: keep a compact speaker-row layout for low-heap S3 displays")
+        else:
+            compact_body = add_body.split(low_heap_marker, 1)[1].split(full_heap_marker, 1)[0]
+            if "row->content_box = lv_obj_create" in compact_body or "row->text_box = lv_obj_create" in compact_body:
+                errors.append(
+                    f"{rel}: avoid nested containers in the S3 speaker list"
+                )
+            if "media_control_create_speaker_volume_button" not in compact_body:
+                errors.append(f"{rel}: preserve per-speaker volume controls in the S3 speaker list")
+    if "inline void media_control_create_speakers_tab_content" in text:
+        create_body = text.split("inline void media_control_create_speakers_tab_content", 1)[1]
+        create_body = create_body.split("\n}\n\ninline void media_control_create_power_tab_content", 1)[0]
+        layout_pos = create_body.find("lv_obj_update_layout(ui.speaker_list);")
+        refresh_pos = create_body.find("media_control_refresh_speakers(ctx);")
+        if layout_pos < 0 or refresh_pos < 0 or layout_pos > refresh_pos:
+            errors.append(
+                f"{rel}: resolve the speaker-list layout before sizing flat S3 rows"
+            )
+    return errors
+
+
+def firmware_media_power_binding_errors(firmware_dir: Path, root: Path) -> list[str]:
+    media_path = firmware_dir / "button_grid_media.h"
+    capability_path = firmware_dir / "media_power_capability.h"
+    errors: list[str] = []
+    if not media_path.exists() or not capability_path.exists():
+        return [
+            "components/espcontrol: keep media Power capability and Home Assistant binding helpers"
+        ]
+
+    media_text = media_path.read_text(encoding="utf-8")
+    capability_text = capability_path.read_text(encoding="utf-8")
+    media_required = (
+        'std::string("supported_features")',
+        "media_playback_subscribe_volume(state)",
+        "media_control_send_power_action",
+        'send_media_player_action(ctx->entity_id, "media_player.turn_on")',
+        'send_media_player_action(ctx->entity_id, "media_player.turn_off")',
+    )
+    capability_required = (
+        "SUPPORT_TURN_ON = 128",
+        "SUPPORT_TURN_OFF = 256",
+        "power_toggle_supported",
+        "PowerCommand power_command",
+        'state == "off" ? PowerCommand::TURN_ON : PowerCommand::TURN_OFF',
+    )
+    if any(needle not in media_text for needle in media_required) or any(
+        needle not in capability_text for needle in capability_required
+    ):
+        errors.append(
+            "components/espcontrol: keep media Power gated by supported_features and dispatch explicit turn_on/turn_off actions"
+        )
+
+    match = MEDIA_CONTROL_STATE_PATTERN.search(media_text)
+    if match:
+        always_on = match.group("body").split(
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL", 1
+        )[0]
+        if "media_playback_subscribe_volume(state)" not in always_on:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: keep media Power capabilities subscribed on low-heap displays"
+            )
+    return errors
+
+
+def firmware_media_playback_mode_binding_errors(
+    firmware_dir: Path, root: Path
+) -> list[str]:
+    media_path = firmware_dir / "button_grid_media.h"
+    actions_path = firmware_dir / "button_grid_actions.h"
+    capability_path = firmware_dir / "media_playback_modes.h"
+    if not media_path.exists() or not actions_path.exists() or not capability_path.exists():
+        return [
+            "components/espcontrol: keep Shuffle and Repeat capability, subscription, and action helpers"
+        ]
+
+    media_text = media_path.read_text(encoding="utf-8")
+    actions_text = actions_path.read_text(encoding="utf-8")
+    capability_text = capability_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    capability_required = (
+        "SUPPORT_SHUFFLE_SET = 32768",
+        "SUPPORT_REPEAT_SET = 262144",
+        "parse_shuffle_state",
+        "parse_repeat_mode",
+        "next_repeat_mode",
+        "RepeatMode::OFF) return RepeatMode::ALL",
+        "RepeatMode::ALL) return RepeatMode::ONE",
+        "RepeatMode::ONE) return RepeatMode::OFF",
+    )
+    if any(needle not in capability_text for needle in capability_required):
+        errors.append(
+            "components/espcontrol/media_playback_modes.h: preserve Shuffle and Repeat feature detection, parsing, and repeat cycling"
+        )
+
+    action_required = (
+        "send_media_shuffle_action",
+        '"media_player.shuffle_set", "shuffle"',
+        'enabled ? "true" : "false"',
+        "send_media_repeat_action",
+        '"media_player.repeat_set", "repeat", value',
+        "repeat_mode_value(mode)",
+    )
+    if any(needle not in actions_text for needle in action_required):
+        errors.append(
+            "components/espcontrol/button_grid_actions.h: preserve Home Assistant Shuffle and Repeat services and payloads"
+        )
+
+    media_required = (
+        "bool shuffle_subscribed = false;",
+        "bool repeat_subscribed = false;",
+        "bool shuffle_known = false;",
+        "RepeatMode::UNKNOWN",
+        'std::string("shuffle")',
+        'std::string("repeat")',
+        "parse_shuffle_state",
+        "parse_repeat_mode",
+        "media_playback_subscribe_modes(state)",
+        "!ui.active->shuffle_known",
+        "!media_control_shuffle_supported(ui.active)",
+        "!media_control_repeat_supported(ui.active)",
+        "next_repeat_mode",
+    )
+    if any(needle not in media_text for needle in media_required):
+        errors.append(
+            "components/espcontrol/button_grid_media.h: keep capability-gated Shuffle and Repeat subscriptions and actions"
+        )
+
+    subscribe_marker = "inline void media_playback_subscribe_modes"
+    next_marker = "inline void media_playback_subscribe_content"
+    if subscribe_marker not in media_text or next_marker not in media_text:
+        errors.append(
+            "components/espcontrol/button_grid_media.h: keep dedicated Shuffle and Repeat subscriptions"
+        )
+    else:
+        subscribe_body = media_text.split(subscribe_marker, 1)[1].split(next_marker, 1)[0]
+        if "state->controls.empty()" not in subscribe_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: do not subscribe volume-only media entities to Shuffle and Repeat attributes"
+            )
+        if subscribe_body.count("media_playback_generation_valid(state, generation)") < 2:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: generation-guard both playback-mode subscriptions"
+            )
+        if "if (subscription_added) ha_reannounce_state_subscriptions();" not in subscribe_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: re-announce dynamically added playback-mode subscriptions"
+            )
+
+    capabilities_marker = 'std::string("supported_features")'
+    if capabilities_marker in media_text:
+        capabilities_body = media_text.split(capabilities_marker, 1)[1].split(
+            "inline void media_playback_subscribe_modes", 1
+        )[0]
+        if "!state->controls.empty()" not in capabilities_body:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: gate capability-triggered playback-mode subscriptions on All Controls consumers"
+            )
+
+    match = MEDIA_CONTROL_STATE_PATTERN.search(media_text)
+    if match:
+        always_on = match.group("body").split(
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL", 1
+        )[0]
+        if "media_playback_subscribe_modes(state)" not in always_on:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: keep Shuffle and Repeat subscribed on low-heap displays"
+            )
     return errors
 
 
@@ -2037,10 +2332,10 @@ def firmware_image_card_startup_errors(
     if (
         "image_card_request_current_picture" not in text
         or "if (ctx->media_artwork)" not in text
-        or "image_card_request_media_artwork(ctx);" not in text
+        or "image_card_request_media_artwork(ctx, true);" not in text
         or "image_card_refresh_current_picture(ctx);" not in text
         or "ctx->media_artwork_retry_mask = 0;" not in text
-        or "ctx->media_artwork_sources.clear();" not in text
+        or "ctx->pending_fallback_picture.clear();" not in text
         or "artwork_picture_response_clears_retry" not in text
         or "inline void image_card_refresh_due()" not in text
         or text.count("image_card_request_current_picture(ctx);") < 2
@@ -2053,7 +2348,7 @@ def firmware_image_card_startup_errors(
         errors.append(f"{rel}: retry image-card startup quickly after Home Assistant API connects")
     if "if (!ha_api_connected()) return;" not in text:
         errors.append(f"{rel}: arm image-card refresh from the Home Assistant API connection")
-    if "if (!ha_api_connected())" not in text or "ha_get_attribute(" not in text:
+    if "if (!ha_api_connected())" not in text or "ha_read_retained_attribute(" not in text:
         errors.append(f"{rel}: request image-card attributes once the Home Assistant API is connected")
     if '"access_token"' not in text or "image_card_proxy_path_with_token" not in text:
         errors.append(f"{rel}: load Home Assistant image-card proxy URLs with the entity access token")
@@ -2081,10 +2376,20 @@ def firmware_image_card_startup_errors(
     if core_infra_path.exists():
         core_rel = core_infra_path.relative_to(root)
         core_text = core_infra_path.read_text(encoding="utf-8")
+        port_action = re.search(
+            r'(?ms)^  - platform: template\n    name: "Home Assistant Artwork Port".*?'
+            r'^    set_action:\n      - lambda: \|-\n(?P<body>.*?)(?=^  - platform: |\Z)',
+            core_text,
+        )
         if "is_home_assistant && ha_api_connected()" not in core_text:
             errors.append(f"{core_rel}: start image-card refresh when Home Assistant API connects")
-        if core_text.count("refresh_image_cards();") < 4:
-            errors.append(f"{core_rel}: refresh image cards through Home Assistant connect retries")
+        if (
+            core_text.count("refresh_image_cards();") < 3
+            or "id(cover_art_resolve_home_assistant_base_url).execute();" not in core_text
+            or not port_action
+            or "id(cover_art_home_assistant_artwork_port).publish_state(x);" not in port_action.group("body")
+        ):
+            errors.append(f"{core_rel}: resolve artwork URLs with the newly selected port")
     return errors
 
 
@@ -2370,6 +2675,42 @@ def firmware_display_backlight_manual_sleep_errors(
     return errors
 
 
+def firmware_display_backlight_mode_restore_errors(
+    schedule_path: Path,
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    if not schedule_path.exists():
+        return errors
+
+    rel = schedule_path.relative_to(root)
+    text = schedule_path.read_text(encoding="utf-8")
+    handler_body = yaml_script_body(text, "display_backlight_handle_state")
+    if handler_body is None:
+        errors.append(f"{rel}: missing shared display_backlight_handle_state script")
+        return errors
+
+    setup_guard = "!App.is_setup_complete()"
+    mode_guard = "!id(brightness_mode_runtime_ready)"
+    marker_clear = "id(backlight_expected_internal_level_valid) = false;"
+    state_read = "id(display_backlight).remote_values.is_on()"
+    guard_index = handler_body.find(setup_guard)
+    mode_index = handler_body.find(mode_guard)
+    state_index = handler_body.find(state_read)
+    if (
+        guard_index == -1
+        or mode_index == -1
+        or marker_clear not in handler_body
+        or state_index == -1
+        or guard_index > state_index
+        or mode_index > state_index
+    ):
+        errors.append(
+            f"{rel}: ignore restored Display Backlight state until startup and brightness mode setup complete"
+        )
+    return errors
+
+
 def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> list[str]:
     if not display_path.exists():
         return []
@@ -2381,6 +2722,33 @@ def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> li
     if "id(espcontrol_app).display().target_mode()" not in body:
         return [f"{rel}: resolve clock bar visibility from the pending display target"]
     return []
+
+
+def firmware_clock_bar_navigation_errors(
+    connectivity_paths: tuple[Path, ...], root: Path
+) -> list[str]:
+    errors: list[str] = []
+    for path in connectivity_paths:
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        body = yaml_script_body(path.read_text(encoding="utf-8"), "navigate_after_api")
+        if body is None:
+            errors.append(f"{rel}: missing navigate_after_api script")
+            continue
+        active_guard = body.find("target_mode_is(")
+        active_mode = body.find("DisplayMode::ACTIVE", active_guard)
+        page_show = body.find("lvgl.page.show: main_page")
+        if (
+            active_guard == -1
+            or active_mode == -1
+            or page_show == -1
+            or active_guard > page_show
+        ):
+            errors.append(
+                f"{rel}: guard late home-page navigation behind the active display mode"
+            )
+    return errors
 
 
 def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) -> list[str]:
@@ -2463,8 +2831,13 @@ def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) 
     dimmed_body = yaml_script_body(text, "show_dimmed_view")
     if dimmed_body is None:
         errors.append(f"{rel}: missing show_dimmed_view script")
-    elif "lv_obj_move_foreground(id(dim_screensaver_touch_guard))" not in dimmed_body:
-        errors.append(f"{rel}: raise the dim screensaver touch guard above any existing top-layer elements")
+    else:
+        if "lv_obj_move_foreground(id(dim_screensaver_touch_guard))" not in dimmed_body:
+            errors.append(f"{rel}: raise the dim screensaver touch guard above any existing top-layer elements")
+        if "script.execute: clock_bar_hide" in dimmed_body or "script.wait: clock_bar_hide" in dimmed_body:
+            errors.append(f"{rel}: keep the complete clock bar visible over the dimmed home screen")
+        if "script.execute: clock_bar_apply" not in dimmed_body:
+            errors.append(f"{rel}: reapply the clock bar after raising the dim screensaver touch guard")
 
     return errors
 
@@ -2616,6 +2989,24 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     f"{schedule_rel}: publish the live fail-dark schedule before the loading screen can light the panel"
                 )
 
+            if brightness_body is None or (
+                "const bool onboarding" not in brightness_body
+                or "DisplayRequestSource::ONBOARDING" not in brightness_body
+                or "if (!onboarding && screen_schedule_waiting_for_time(" not in brightness_body
+                or "if (onboarding) {" not in brightness_body
+                or "pct = 90;" not in brightness_body
+            ):
+                errors.append(
+                    f"{schedule_rel}: keep onboarding visible at full setup brightness despite restored schedule policy"
+                )
+            if (
+                "return !id(espcontrol_app).display().target_source_is(\n"
+                "                         espcontrol::DisplayRequestSource::ONBOARDING)" not in schedule_text
+            ):
+                errors.append(
+                    f"{schedule_rel}: bypass the periodic fail-dark check while onboarding owns the display"
+                )
+
             loading_path = backlight_path.parent.parent / "device" / "screen_loading.yaml"
             if loading_path.exists():
                 loading_rel = loading_path.relative_to(root)
@@ -2627,13 +3018,64 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
                     errors.append(
                         f"{loading_rel}: bypass the boot guard before showing WiFi setup"
                     )
-                if reconcile_body is None or (
-                    "id(connectivity_setup_display_active)" not in reconcile_body
-                    or "!connectivity_setup" not in reconcile_body
+                if "script.execute: wifi_show_hotspot_setup" in loading_text:
+                    errors.append(
+                        f"{loading_rel}: keep the visible first-boot WiFi instructions active until setup connects"
+                    )
+                if (
+                    'text: $icon_wifi_startup' not in loading_text
+                    or 'lv_label_set_text(id(loading_status_icon), "${icon_wifi_startup}");'
+                    not in loading_text
                 ):
                     errors.append(
-                        f"{rel}: let connectivity setup override boot guard and scheduled night requests"
+                        f"{loading_rel}: keep the standard mdi-wifi icon on the first-boot setup screen"
                     )
+                for setup_text_path in (
+                    loading_path,
+                    root / "common" / "device" / "screen_wifi_setup.yaml",
+                    root / "common" / "addon" / "connectivity.yaml",
+                ):
+                    setup_copy = setup_text_path.read_text(encoding="utf-8")
+                    if (
+                        r'''hotspot_ssid + "'\n" +''' in setup_copy
+                        or r'''hotspot_ssid + "' " +''' not in setup_copy
+                    ):
+                        errors.append(
+                            f"{setup_text_path.relative_to(root)}: let WiFi setup instructions wrap to the screen width"
+                        )
+                if reconcile_body is None or (
+                    "id(connectivity_setup_display_active)" not in reconcile_body
+                    or "id(button_order).state.empty()" not in reconcile_body
+                    or "setup_page_active" not in reconcile_body
+                    or "(id(button_order).state.empty() && setup_page_active)" not in reconcile_body
+                    or "lv_scr_act() == id(loading_page)->obj" in reconcile_body
+                    or "!onboarding" not in reconcile_body
+                    or "DisplayRequestSource::ONBOARDING" not in reconcile_body
+                    or "controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT)" not in reconcile_body
+                ):
+                    errors.append(
+                        f"{rel}: keep first-time onboarding fully visible over dimming, boot guard, and scheduled night requests"
+                    )
+
+                button_order_path = root / "common" / "config" / "button_order.yaml"
+                if button_order_path.exists():
+                    button_order_text = button_order_path.read_text(encoding="utf-8")
+                    if (
+                        "lv_scr_act() == id(button_setup_page)->obj" not in button_order_text
+                        or """            then:
+              - delay: 750ms
+              - script.execute: refresh_button_grid
+              - script.wait: refresh_button_grid
+              - script.execute: navigate_after_api
+              - script.wait: navigate_after_api
+              - script.execute: display_mode_reconcile
+            else:
+              - script.execute: display_mode_reconcile
+""" not in button_order_text
+                    ):
+                        errors.append(
+                            f"{button_order_path.relative_to(root)}: keep onboarding active until the first configured grid is visible"
+                        )
         sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
         if sleep_body is None:
             errors.append(f"{schedule_rel}: missing screen_schedule_sleep script")
@@ -2683,7 +3125,16 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             reconcile_index = wake_body.find("script.execute: screen_schedule_check")
             sensor_guard_index = wake_body.find("screen_schedule_sensor_trigger(")
             wake_action_index = wake_body.find("script.execute: screensaver_wake")
-            if not (0 <= reconcile_index < sensor_guard_index < wake_action_index):
+            separate_schedule_sensor = "id(schedule_presence_detected)" in text
+            if separate_schedule_sensor and (
+                reconcile_index != -1 or sensor_guard_index != -1
+            ):
+                errors.append(
+                    f"{rel}: keep the Screensaver sensor independent from the Night Schedule sensor"
+                )
+            elif not separate_schedule_sensor and not (
+                0 <= reconcile_index < sensor_guard_index < wake_action_index
+            ):
                 errors.append(
                     f"{rel}: reconcile sensor-triggered night schedule before presence wake behavior"
                 )
@@ -2717,11 +3168,91 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
         reconcile_index = presence_sleep_body.find("script.execute: screen_schedule_check")
         sensor_guard_index = presence_sleep_body.find("screen_schedule_sensor_trigger(")
         sleep_action_index = presence_sleep_body.find("script.execute: screensaver_sleep_sensor")
-        if not (0 <= reconcile_index < sensor_guard_index < sleep_action_index):
+        separate_schedule_sensor = "id(schedule_presence_detected)" in text
+        if separate_schedule_sensor and (
+            reconcile_index != -1 or sensor_guard_index != -1
+        ):
+            errors.append(
+                f"{rel}: keep the Screensaver sleep sensor independent from the Night Schedule sensor"
+            )
+        elif not separate_schedule_sensor and not (
+            0 <= reconcile_index < sensor_guard_index < sleep_action_index
+        ):
             errors.append(
                 f"{rel}: reconcile sensor-triggered night schedule before presence sleep behavior"
             )
 
+    return errors
+
+
+def firmware_separate_schedule_sensor_errors(
+    backlight_path: Path,
+    display_path: Path,
+    cover_art_path: Path,
+    grid_header_path: Path,
+    sensor_paths: tuple[Path, ...],
+    root: Path,
+) -> list[str]:
+    """Require independent screensaver and Night Schedule sensor bindings."""
+    errors: list[str] = []
+    schedule_path = backlight_path.with_name("backlight_schedule.yaml")
+    required_schedule_markers = (
+        "id: screen_schedule_sensor_entity_migrated",
+        "id: screen_schedule_sensor_entity",
+        "id(screen_schedule_sensor_entity_migrated)",
+        "call.set_value(id(presence_sensor_entity).state)",
+        "id(schedule_presence_detected)",
+    )
+    if not schedule_path.exists():
+        errors.append(f"{schedule_path.relative_to(root)}: define the dedicated Night Schedule sensor")
+    else:
+        schedule_text = schedule_path.read_text(encoding="utf-8")
+        for marker in required_schedule_markers:
+            if marker not in schedule_text:
+                errors.append(
+                    f"{schedule_path.relative_to(root)}: retain {marker} for the dedicated Night Schedule sensor"
+                )
+
+    if display_path.exists():
+        display_text = display_path.read_text(encoding="utf-8")
+        if "id: presence_sensor_entity" not in display_text:
+            errors.append(f"{display_path.relative_to(root)}: retain the Screensaver presence sensor")
+        if "script.execute: refresh_button_grid" not in display_text:
+            errors.append(f"{display_path.relative_to(root)}: refresh subscriptions when the Screensaver sensor changes")
+
+    if backlight_path.exists():
+        backlight_text = backlight_path.read_text(encoding="utf-8")
+        if "id: schedule_presence_detected" not in backlight_text:
+            errors.append(f"{backlight_path.relative_to(root)}: keep separate schedule sensor state")
+        if "id(presence_detected)" not in backlight_text:
+            errors.append(f"{backlight_path.relative_to(root)}: keep Screensaver presence state")
+
+    if cover_art_path.exists() and "id(schedule_presence_detected)" not in cover_art_path.read_text(encoding="utf-8"):
+        errors.append(f"{cover_art_path.relative_to(root)}: use the Night Schedule sensor when blocking cover art")
+
+    if not grid_header_path.exists():
+        errors.append(f"{grid_header_path.relative_to(root)}: bind both sensor subscriptions in grid_phase3")
+    else:
+        grid_text = grid_header_path.read_text(encoding="utf-8")
+        for marker in (
+            "schedule_presence_entity",
+            "schedule_presence_detected_ptr",
+            "schedule_presence_changed_callback",
+            "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_PHASE3)",
+        ):
+            if marker not in grid_text:
+                errors.append(f"{grid_header_path.relative_to(root)}: retain {marker} for independent, refreshable sensor subscriptions")
+
+    for sensor_path in sensor_paths:
+        sensor_text = sensor_path.read_text(encoding="utf-8")
+        if (
+            "id(screen_schedule_sensor_entity).state" not in sensor_text
+            or "&id(schedule_presence_detected)" not in sensor_text
+            or "id(screen_schedule_check).execute();" not in sensor_text
+        ):
+            errors.append(
+                f"{sensor_path.relative_to(root)}: pass and immediately apply the dedicated Night Schedule sensor"
+            )
     return errors
 
 
@@ -2933,18 +3464,8 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
             errors.append(f"{rel}: wait for Home Assistant state subscription, not any API client")
         if "on_client_connected:" in text and "ha_api_state_connected()" not in text:
             errors.append(f"{rel}: only navigate after a Home Assistant state connection is ready")
-        api_connected_match = re.search(
-            r"(?ms)^api:\n(?P<body>.*?)(?:^\S|\Z)",
-            text,
-        )
-        if api_connected_match and "on_client_connected:" in api_connected_match.group("body"):
-            api_connected_body = api_connected_match.group("body")
-            if "ha_reconnect_flow" in api_connected_body:
-                errors.append(f"{rel}: do not manage a Home Assistant waiting screen on reconnect")
-            if "script.execute: ha_restore_after_api" not in api_connected_body:
-                errors.append(f"{rel}: continue initial setup when Home Assistant connects")
-            if "wait_until:" in api_connected_body or "timeout: 2s" in api_connected_body:
-                errors.append(f"{rel}: do not delay initial setup when Home Assistant connects")
+        if "on_client_connected:" in text:
+            errors.append(f"{rel}: keep API connection recovery centralised in core_infra.yaml")
         restore_body = yaml_script_body(text, "ha_restore_after_api")
         if restore_body is None:
             errors.append(f"{rel}: define the Home Assistant initial-setup continuation script")
@@ -2970,6 +3491,8 @@ def firmware_ha_connection_screen_errors(core_infra_path: Path, root: Path) -> l
         errors.append(f"{rel}: do not start a display flow when Home Assistant disconnects")
     if "on_client_connected:" not in text or "id(ha_restore_after_api).execute();" not in text:
         errors.append(f"{rel}: continue initial setup when Home Assistant connects")
+    if "- delay: 1s" not in text:
+        errors.append(f"{rel}: yield before API connection recovery work")
     if "apply_registered_ha_control_availability" in text:
         errors.append(f"{rel}: do not dim registered cards when HA disconnects")
     return errors
@@ -2989,14 +3512,49 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
         or "restore_mode: RESTORE_DEFAULT_ON" not in text
     ):
         errors.append(f"{rel}: expose a persistent default-on C6 automatic update switch")
-    if (
-        "on_update_available:" not in text
-        or "switch.is_on: c6_auto_update_switch" not in text
-        or not re.search(r"(?ms)on_update_available:.*?update\.perform:\s*\n\s*id:\s*esp32_c6_update", text)
+    automatic_script = re.search(
+        r"(?ms)^script:\s*.*?id:\s*c6_check_and_install_update\b(?P<body>.*?)(?:^update:|\Z)",
+        text,
+    )
+    if not automatic_script:
+        errors.append(f"{rel}: define the C6 automatic check/install script")
+    else:
+        automatic_body = automatic_script.group("body")
+        required_steps = (
+            r"update\.check:\s*\n\s*id:\s*esp32_c6_update",
+            r"wait_until:\s*\n\s*condition:\s*\n\s*update\.is_available:\s*esp32_c6_update"
+            r"\s*\n\s*timeout:\s*30s",
+            r"switch\.is_on:\s*c6_auto_update_switch",
+            r"update\.is_available:\s*esp32_c6_update",
+            r"update\.perform:\s*\n\s*id:\s*esp32_c6_update",
+        )
+        if any(not re.search(pattern, automatic_body) for pattern in required_steps):
+            errors.append(
+                f"{rel}: check C6 firmware before conditionally installing an available update"
+            )
+    if "on_update_available:" in text:
+        errors.append(f"{rel}: do not rely on ESPHome's unfired C6 update-available trigger")
+    if "update_interval: never" not in text:
+        errors.append(f"{rel}: let EspControl own C6 update scheduling")
+    if not re.search(
+        r"(?ms)on_turn_on:.*?script\.execute:\s*c6_check_and_install_update", text
     ):
-        errors.append(f"{rel}: automatically install available C6 firmware when enabled")
-    if not re.search(r"(?ms)on_turn_on:.*?update\.check:\s*\n\s*id:\s*esp32_c6_update", text):
-        errors.append(f"{rel}: check for C6 firmware immediately when automatic updates are enabled")
+        errors.append(f"{rel}: check C6 firmware immediately when automatic updates are enabled")
+    if not re.search(
+        r"(?ms)^interval:\s*.*?interval:\s*24h.*?startup_delay:\s*1min"
+        r".*?script\.execute:\s*c6_check_and_install_update",
+        text,
+    ):
+        errors.append(f"{rel}: check C6 firmware one minute after boot and every 24 hours")
+    if not re.search(
+        r"(?ms)^wifi:\s*.*?on_connect:.*?millis\(\)\s*>=\s*60000"
+        r".*?script\.wait:\s*c6_check_and_install_update"
+        r".*?script\.execute:\s*c6_check_and_install_update",
+        text,
+    ):
+        errors.append(
+            f"{rel}: queue a C6 firmware retry after late or recovered WiFi"
+        )
     latest_match = re.search(
         r"(?ms)id:\s*c6_update_latest_firmware\b(?P<body>.*?)(?:^button:|\Z)",
         text,
@@ -3041,8 +3599,10 @@ def run_scan() -> int:
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
-    errors.extend(firmware_phase3_live_rebind_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_group_lifecycle_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_power_binding_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_playback_mode_binding_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
@@ -3061,10 +3621,26 @@ def run_scan() -> int:
             BACKLIGHT_PATH, DEVICE_DEVICE_PATHS, ROOT
         )
     )
+    errors.extend(
+        firmware_display_backlight_mode_restore_errors(
+            BACKLIGHT_SCHEDULE_PATH, ROOT
+        )
+    )
     errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
+    errors.extend(firmware_clock_bar_navigation_errors(CONNECTIVITY_PATHS, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_override_errors(BACKLIGHT_PATH, ROOT))
+    errors.extend(
+        firmware_separate_schedule_sensor_errors(
+            BACKLIGHT_PATH,
+            DISPLAY_CONFIG_PATH,
+            COVER_ART_PATH,
+            FIRMWARE_DIR / "button_grid_grid.h",
+            DEVICE_SENSOR_PATHS,
+            ROOT,
+        )
+    )
     errors.extend(firmware_climate_step_errors(FIRMWARE_DIR, ROOT))
     errors.extend(
         firmware_s3_api_errors(
@@ -3522,6 +4098,135 @@ def expect_media_control_low_heap_metadata_errors(name: str, text: str, expected
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_media_power_binding_errors(
+    name: str, media_text: str, capability_text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(media_text, encoding="utf-8")
+        (firmware_dir / "media_power_capability.h").write_text(
+            capability_text, encoding="utf-8"
+        )
+
+        errors = firmware_media_power_binding_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_power_binding_text() -> tuple[str, str]:
+    media_text = (
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"supported_features\"), cb);\n"
+        "}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  media_playback_subscribe_volume(state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n"
+        "inline void media_control_send_power_action(MediaControlCtx *ctx) {\n"
+        "  send_media_player_action(ctx->entity_id, \"media_player.turn_on\");\n"
+        "  send_media_player_action(ctx->entity_id, \"media_player.turn_off\");\n"
+        "}\n"
+    )
+    capability_text = (
+        "constexpr int SUPPORT_TURN_ON = 128;\n"
+        "constexpr int SUPPORT_TURN_OFF = 256;\n"
+        "inline bool power_toggle_supported() {}\n"
+        "inline PowerCommand power_command() {\n"
+        "  return state == \"off\" ? PowerCommand::TURN_ON : PowerCommand::TURN_OFF;\n"
+        "}\n"
+    )
+    return media_text, capability_text
+
+
+def expect_media_playback_mode_binding_errors(
+    name: str,
+    media_text: str,
+    actions_text: str,
+    capability_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(media_text, encoding="utf-8")
+        (firmware_dir / "button_grid_actions.h").write_text(actions_text, encoding="utf-8")
+        (firmware_dir / "media_playback_modes.h").write_text(
+            capability_text, encoding="utf-8"
+        )
+
+        errors = firmware_media_playback_mode_binding_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_playback_mode_binding_text() -> tuple[str, str, str]:
+    media_text = (
+        "struct MediaPlaybackState {\n"
+        "  bool shuffle_subscribed = false;\n"
+        "  bool repeat_subscribed = false;\n"
+        "  bool shuffle_known = false;\n"
+        "  RepeatMode repeat_mode = RepeatMode::UNKNOWN;\n"
+        "};\n"
+        "inline void media_playback_subscribe_modes(MediaPlaybackState *state) {\n"
+        "  if (state->controls.empty()) return;\n"
+        "  bool subscription_added = false;\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"shuffle\"), [state, generation]() {\n"
+        "    if (!media_playback_generation_valid(state, generation)) return;\n"
+        "    parse_shuffle_state(value, enabled);\n"
+        "  });\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"repeat\"), [state, generation]() {\n"
+        "    if (!media_playback_generation_valid(state, generation)) return;\n"
+        "    parse_repeat_mode(value);\n"
+        "  });\n"
+        "  if (subscription_added) ha_reannounce_state_subscriptions();\n"
+        "}\n"
+        "inline void media_playback_subscribe_content(MediaPlaybackState *state) {}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  media_playback_subscribe_modes(state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n"
+        "if (!ui.active->shuffle_known || !media_control_shuffle_supported(ui.active)) return;\n"
+        "if (!media_control_repeat_supported(ui.active)) return;\n"
+        "next_repeat_mode(ui.active->repeat_mode);\n"
+        "ha_subscribe_attribute(entity_id, std::string(\"supported_features\"), [state]() {\n"
+        "  if (!state->controls.empty()) media_playback_subscribe_modes(state);\n"
+        "});\n"
+    )
+    actions_text = (
+        "inline void send_media_shuffle_action(bool enabled) {\n"
+        "  send_media_player_action(entity_id, \"media_player.shuffle_set\", \"shuffle\",\n"
+        "    enabled ? \"true\" : \"false\");\n"
+        "}\n"
+        "inline void send_media_repeat_action(RepeatMode mode) {\n"
+        "  const char *value = repeat_mode_value(mode);\n"
+        "  send_media_player_action(entity_id, \"media_player.repeat_set\", \"repeat\", value);\n"
+        "}\n"
+    )
+    capability_text = (
+        "constexpr int SUPPORT_SHUFFLE_SET = 32768;\n"
+        "constexpr int SUPPORT_REPEAT_SET = 262144;\n"
+        "inline bool parse_shuffle_state() {}\n"
+        "inline RepeatMode parse_repeat_mode() {}\n"
+        "inline RepeatMode next_repeat_mode(RepeatMode mode) {\n"
+        "  if (mode == RepeatMode::OFF) return RepeatMode::ALL;\n"
+        "  if (mode == RepeatMode::ALL) return RepeatMode::ONE;\n"
+        "  if (mode == RepeatMode::ONE) return RepeatMode::OFF;\n"
+        "}\n"
+    )
+    return media_text, actions_text, capability_text
+
+
 def expect_cover_art_low_heap_progress_errors(
     name: str,
     media_text: str,
@@ -3686,6 +4391,38 @@ def expect_display_backlight_manual_sleep_errors(
         errors = firmware_display_backlight_manual_sleep_errors(
             backlight_path, tuple(device_paths), root
         )
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_display_backlight_mode_restore_errors(
+    name: str,
+    schedule_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "backlight_schedule.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(schedule_text, encoding="utf-8")
+        errors = firmware_display_backlight_mode_restore_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_clock_bar_navigation_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "addon" / "connectivity.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        errors = firmware_clock_bar_navigation_errors((path,), root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3991,6 +4728,39 @@ def run_self_test() -> int:
         {"guition-esp32-p4-jc8012p4a1-v2": valid_simple_backlight},
         ("preserve display takeover recovery before manual sleep handling",),
     )
+    valid_backlight_state_handler = (
+        "script:\n"
+        "  - id: display_backlight_handle_state\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          if (!App.is_setup_complete() || !id(brightness_mode_runtime_ready)) {\n"
+        "            id(backlight_expected_internal_level_valid) = false;\n"
+        "            return;\n"
+        "          }\n"
+        "          if (!id(display_backlight).remote_values.is_on()) return;\n"
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state waits for startup",
+        valid_backlight_state_handler,
+        (),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state requires ESPHome setup",
+        valid_backlight_state_handler.replace("!App.is_setup_complete() || ", ""),
+        ("ignore restored Display Backlight state",),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state requires brightness mode setup",
+        valid_backlight_state_handler.replace(" || !id(brightness_mode_runtime_ready)", ""),
+        ("ignore restored Display Backlight state",),
+    )
+    expect_display_backlight_mode_restore_errors(
+        "restored backlight state clears pending internal marker",
+        valid_backlight_state_handler.replace(
+            "            id(backlight_expected_internal_level_valid) = false;\n", ""
+        ),
+        ("ignore restored Display Backlight state",),
+    )
     expect_screen_wake_button_errors(
         "missing Screen: Wake button",
         "script:\n  - id: screensaver_wake\n",
@@ -4136,7 +4906,7 @@ def run_self_test() -> int:
         ("send Home Assistant actions only after state subscription is ready",),
     )
     expect_ha_boundary_errors(
-        "one-off state read before state connection",
+        "retained state read without channel validation",
         {
             "button_grid_ha.h": (
                 "inline bool ha_subscribe_state() {\n  return true;\n}\n"
@@ -4145,17 +4915,17 @@ def run_self_test() -> int:
                 "inline bool ha_action_send() {\n"
                 "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
                 "}\n"
-                "inline bool ha_get_attribute() {\n"
+                "inline bool ha_read_retained_attribute() {\n"
                 "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
                 "  if (ha_state_callback_depth() != 0) return true;\n"
                 "  return true;\n"
                 "}\n"
             )
         },
-        ("queue one-off Home Assistant reads until state subscription is ready",),
+        ("fail retained reads closed without an active retained subscription",),
     )
     expect_ha_boundary_errors(
-        "duplicate deferred state reads",
+        "unbounded reentrant retained reads",
         {
             "button_grid_ha.h": (
                 "inline bool ha_subscribe_state() {\n  return true;\n}\n"
@@ -4164,18 +4934,18 @@ def run_self_test() -> int:
                 "inline bool ha_action_send() {\n"
                 "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
                 "}\n"
-                "inline bool ha_get_state() {\n"
+                "inline bool ha_read_retained_state() {\n"
                 "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  return true;\n"
                 "}\n"
-                "inline bool ha_get_attribute() {\n"
+                "inline bool ha_read_retained_attribute() {\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  return true;\n"
                 "}\n"
             )
         },
-        ("fan out duplicate deferred Home Assistant reads",),
+        ("queue and fan out bounded reentrant retained reads",),
     )
     expect_ha_boundary_errors(
         "subscription callback bodies retained",
@@ -4193,14 +4963,14 @@ def run_self_test() -> int:
                 "inline bool ha_action_send() {\n"
                 "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
                 "}\n"
-                "inline bool ha_get_state() {\n"
+                "inline bool ha_read_retained_state() {\n"
                 "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  request.callback = std::move(callback);\n"
                 "  request.entity_id == entity_id;\n"
                 "  return true;\n"
                 "}\n"
-                "inline bool ha_get_attribute() {\n"
+                "inline bool ha_read_retained_attribute() {\n"
                 "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
                 "  return true;\n"
                 "}\n"
@@ -5128,6 +5898,15 @@ def run_self_test() -> int:
         "# cover_art_runtime).effective_download_url\n"
         "  - id: cover_art_album\n"
         "script:\n"
+        "  - id: cover_art_resolve_home_assistant_base_url\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          auto rebuild_relative_artwork_url = [](std::string &url) { return !url.empty(); };\n"
+        "          id(cover_art_remote_source_relative);\n"
+        "          id(cover_art_local_source_relative);\n"
+        "          id(cover_art_runtime).sources.remote_url.clear();\n"
+        "          id(cover_art_runtime).sources.local_url.clear();\n"
+        "          id(cover_art_process_cached_artwork).execute();\n"
         "  - id: cover_art_download\n"
         "    then:\n"
         "      - if:\n"
@@ -5196,6 +5975,8 @@ def run_self_test() -> int:
         "          if (!url.empty() && url != id(cover_art_runtime).source_url) {\n"
         "            id(cover_art_runtime).refresh_needed = true;\n"
         "          }\n"
+        "          ha_subscribe_attribute(cover_entity, std::string(\"entity_picture\"), callback, HA_SUBSCRIPTION_SCOPE_COVER_ART, true);\n"
+        "          ha_subscribe_attribute(cover_entity, std::string(\"entity_picture_local\"), callback, HA_SUBSCRIPTION_SCOPE_COVER_ART, true);\n"
         "          ha_subscribe_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n"
         "          // Live subscriptions supply both initial values and updates.\n",
         (),
@@ -5216,8 +5997,7 @@ def run_self_test() -> int:
             "cancel pending playback grace during an immediate stop",
         ),
     )
-    expect_cover_art_playback_grace_errors(
-        "cover art playback grace present",
+    valid_cover_art_playback_grace = (
         "script:\n"
         "  - id: cover_art_resubscribe\n"
         "    then:\n"
@@ -5231,6 +6011,8 @@ def run_self_test() -> int:
         "          id(cover_art_delay_timer).stop();\n"
         "          id(cover_art_delayed_playback_stopped).execute();\n"
         "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
+        "          id(cover_art_local_source_relative) = relative;\n"
+        "          id(cover_art_remote_source_relative) = relative;\n"
         "  - id: cover_art_delayed_playback_stopped\n"
         "    mode: restart\n"
         "    then:\n"
@@ -5243,8 +6025,26 @@ def run_self_test() -> int:
         "            - script.execute: cover_art_playback_stopped\n"
         "  - id: cover_art_playback_stopped\n"
         "    then:\n"
-        "      - script.stop: cover_art_delayed_playback_stopped\n",
+        "      - script.stop: cover_art_delayed_playback_stopped\n"
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace present",
+        valid_cover_art_playback_grace,
         (),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace missing local relative marker",
+        valid_cover_art_playback_grace.replace(
+            "          id(cover_art_local_source_relative) = relative;\n", ""
+        ),
+        ("retain cached artwork's relative marker",),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace missing remote relative marker",
+        valid_cover_art_playback_grace.replace(
+            "          id(cover_art_remote_source_relative) = relative;\n", ""
+        ),
+        ("retain cached artwork's relative marker",),
     )
     expect_cover_art_disable_errors(
         "independent media sleep prevention when cover art is disabled",
@@ -5544,6 +6344,79 @@ def run_self_test() -> int:
         "",
         "",
         ("keep takeover restore from showing cover art during stop grace",),
+    )
+    valid_media_power, valid_media_power_capability = valid_media_power_binding_text()
+    expect_media_power_binding_errors(
+        "media Power binding",
+        valid_media_power,
+        valid_media_power_capability,
+        (),
+    )
+    expect_media_power_binding_errors(
+        "low heap media Power subscription removed",
+        valid_media_power.replace(
+            "  media_playback_subscribe_volume(state);\n"
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n",
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+            "  media_playback_subscribe_volume(state);\n",
+        ),
+        valid_media_power_capability,
+        ("low-heap displays",),
+    )
+    valid_modes, valid_mode_actions, valid_mode_capability = (
+        valid_media_playback_mode_binding_text()
+    )
+    expect_media_playback_mode_binding_errors(
+        "media Shuffle and Repeat bindings",
+        valid_modes,
+        valid_mode_actions,
+        valid_mode_capability,
+        (),
+    )
+    expect_media_playback_mode_binding_errors(
+        "low heap media playback-mode subscription removed",
+        valid_modes.replace(
+            "  media_playback_subscribe_modes(state);\n"
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n",
+            "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+            "  media_playback_subscribe_modes(state);\n",
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("low-heap displays",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "repeat service payload removed",
+        valid_modes,
+        valid_mode_actions.replace('"media_player.repeat_set"', '"media_player.repeat"'),
+        valid_mode_capability,
+        ("services and payloads",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "volume-only playback-mode guard removed",
+        valid_modes.replace("  if (state->controls.empty()) return;\n", ""),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("volume-only media entities",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "capability callback All Controls guard removed",
+        valid_modes.replace(
+            "  if (!state->controls.empty()) media_playback_subscribe_modes(state);\n",
+            "  media_playback_subscribe_modes(state);\n",
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("capability-triggered",),
+    )
+    expect_media_playback_mode_binding_errors(
+        "playback-mode subscription re-announcement removed",
+        valid_modes.replace(
+            "  if (subscription_added) ha_reannounce_state_subscriptions();\n", ""
+        ),
+        valid_mode_actions,
+        valid_mode_capability,
+        ("re-announce dynamically added",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",
@@ -6110,7 +6983,7 @@ def run_self_test() -> int:
     expect_image_card_startup_errors(
         "image card missing startup reconnect refresh",
         "inline void image_card_request_picture(ImageCardCtx *ctx) {\n"
-        "  bool requested = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  bool requested = ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
         "}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->url = image_card_cache_bust_url(ctx->source_url);\n"
@@ -6132,7 +7005,7 @@ def run_self_test() -> int:
             "request bounded Home Assistant image card proxy downloads",
             "recognize Home Assistant camera and image proxy URLs",
             "start image-card refresh when Home Assistant API connects",
-            "refresh image cards through Home Assistant connect retries",
+            "resolve artwork URLs with the newly selected port",
         ),
     )
     expect_image_card_startup_errors(
@@ -6152,20 +7025,20 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_picture(ImageCardCtx *ctx) {\n"
         "  if (!ha_api_connected()) return;\n"
-        "  ha_get_attribute(ctx->entity_id, std::string(\"access_token\"), callback);\n"
+        "  ha_read_retained_attribute(ctx->entity_id, std::string(\"access_token\"), callback);\n"
         "  image_card_proxy_path_with_token(proxy_path, token);\n"
-        "  ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
         "}\n"
         "inline void image_card_request_media_artwork(ImageCardCtx *ctx) {\n"
         "  uint8_t request_mask = artwork_source_request_mask(ctx->media_artwork_retry_mask);\n"
-        "  bool remote_queued = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
-        "  bool local_queued = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture_local\"), callback);\n"
+        "  bool remote_queued = ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  bool local_queued = ha_read_retained_attribute(ctx->entity_id, std::string(\"entity_picture_local\"), callback);\n"
         "  ctx->media_artwork_retry_mask = artwork_source_failed_mask(request_mask, remote_queued, local_queued);\n"
         "  if (ctx->media_artwork_retry_mask != 0) image_card_schedule_picture_retry(ctx, 250);\n"
         "}\n"
         "inline void image_card_request_current_picture(ImageCardCtx *ctx) {\n"
         "  if (ctx->media_artwork) {\n"
-        "    image_card_request_media_artwork(ctx);\n"
+        "    image_card_request_media_artwork(ctx, ctx->media_artwork_retry_mask != 0);\n"
         "  } else {\n"
         "    image_card_request_picture(ctx);\n"
         "  }\n"
@@ -6173,9 +7046,13 @@ def run_self_test() -> int:
         "inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {\n"
         "  if (ctx->media_artwork) {\n"
         "    ctx->media_artwork_retry_mask = 0;\n"
-        "    ctx->media_artwork_sources.clear();\n"
+        "    ctx->pending_fallback_picture.clear();\n"
         "  }\n"
-        "  image_card_request_current_picture(ctx);\n"
+        "  if (ctx->media_artwork) {\n"
+        "    image_card_request_media_artwork(ctx, true);\n"
+        "  } else {\n"
+        "    image_card_request_current_picture(ctx);\n"
+        "  }\n"
         "}\n"
         "inline void image_card_handle_picture(ImageCardCtx *ctx) {\n"
         "  if (artwork_picture_response_clears_retry(ctx->media_artwork, ctx->media_artwork_retry_mask)) {\n"
@@ -6217,7 +7094,7 @@ def run_self_test() -> int:
         "  on_client_connected:\n"
         "    - lambda: |-\n"
         "        if (is_home_assistant && ha_api_connected()) {\n"
-        "        refresh_image_cards();\n"
+        "        id(cover_art_resolve_home_assistant_base_url).execute();\n"
         "        }\n"
         "    - delay: 2s\n"
         "    - lambda: |-\n"
@@ -6227,7 +7104,13 @@ def run_self_test() -> int:
         "        refresh_image_cards();\n"
         "    - delay: 20s\n"
         "    - lambda: |-\n"
-        "        refresh_image_cards();\n",
+        "        refresh_image_cards();\n"
+        "number:\n"
+        "  - platform: template\n"
+        "    name: \"Home Assistant Artwork Port\"\n"
+        "    set_action:\n"
+        "      - lambda: |-\n"
+        "          id(cover_art_home_assistant_artwork_port).publish_state(x);\n",
         (),
     )
     valid_shared_wake_guard_widget = (
@@ -6379,6 +7262,28 @@ def run_self_test() -> int:
         "",
         ("clear the shared wake guard after a stuck touch timeout",),
     )
+    expect_clock_bar_navigation_errors(
+        "late navigation requires active display mode",
+        "script:\n"
+        "  - id: navigate_after_api\n"
+        "    then:\n"
+        "      - lvgl.page.show: main_page\n",
+        ("guard late home-page navigation",),
+    )
+    expect_clock_bar_navigation_errors(
+        "active navigation remains available",
+        "script:\n"
+        "  - id: navigate_after_api\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(espcontrol_app).display().target_mode_is(\n"
+        "                  espcontrol::DisplayMode::ACTIVE);\n"
+        "          then:\n"
+        "            - lvgl.page.show: main_page\n",
+        (),
+    )
     expect_clock_screensaver_overlay_errors(
         "clock screensaver closes active UI before showing",
         "script:\n"
@@ -6408,12 +7313,17 @@ def run_self_test() -> int:
         "          lv_obj_move_foreground(id(clock_screensaver));\n"
         "  - id: show_dimmed_view\n"
         "    then:\n"
+        "      - script.execute: clock_bar_hide\n"
         "      - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'\n"
+        "      - script.execute: clock_bar_apply\n"
         "interval:\n"
         "  - interval: 1s\n"
         "    then:\n"
         "      - script.execute: clock_screensaver_keep_on_top\n",
-        ("overlay the existing UI without closing it",),
+        (
+            "overlay the existing UI without closing it",
+            "keep the complete clock bar visible over the dimmed home screen",
+        ),
     )
     expect_clock_screensaver_overlay_errors(
         "clock screensaver overlays active UI",
@@ -6445,6 +7355,7 @@ def run_self_test() -> int:
         "  - id: show_dimmed_view\n"
         "    then:\n"
         "      - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'\n"
+        "      - script.execute: clock_bar_apply\n"
         "interval:\n"
         "  - interval: 1s\n"
         "    then:\n"
@@ -6861,9 +7772,6 @@ def run_self_test() -> int:
         "    - if:\n"
         "        condition:\n"
         "          lambda: 'return ha_api_state_connected();'\n"
-        "api:\n"
-        "  on_client_connected:\n"
-        "    - script.execute: ha_restore_after_api\n"
         "script:\n"
         "  - id: ha_restore_after_api\n"
         "    mode: restart\n"

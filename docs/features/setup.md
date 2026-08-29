@@ -57,7 +57,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
-Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
+Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains All Controls, Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains All Controls, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
 For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).
 
@@ -91,9 +91,10 @@ Right-click a card and open **Size** to choose:
 - **Extra Wide** - spans three columns.
 - **Large** - spans a 2 x 2 area.
 - **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
-- **Max wide** - spans a 3 x 2 area and is available for Camera cards.
+- **Max Wide** - spans a 3 x 2 area and is available for Camera cards.
 - **Max tall** - spans a 2 x 3 area and is available for Camera cards.
-- **Portrait** - spans a 3 x 4 area and is available for Camera and Media cover-art cards on both 10.1-inch panels.
+- **Massive Wide (3x4)** - spans three rows by four columns and is available for Camera cards when the current screen orientation has room.
+- **Massive (4x3)** - spans four rows by three columns and is available for Camera and Media cover-art cards when the current screen orientation has room.
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 
@@ -103,11 +104,13 @@ The **Settings** tab also includes display, brightness, screensaver, backup, and
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
 
-Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
+Open **Settings > System > Home Assistant Settings** to manage the address used for camera/image cards and media artwork downloads. **Automatic** connection mode discovers the HTTP endpoint advertised by the connected Home Assistant instance, including port `80` used by new Home Assistant OS installations and port `8123` commonly used by existing installations and Home Assistant Container.
 
-## Changes Apply Automatically
+If automatic discovery is unavailable because multicast traffic is blocked between network segments, select **Manual** and enter the protocol and port shown under **Home Assistant > Settings > System > Network**. Automatic mode keeps these values as its fallback. EspControl never rewrites complete artwork URLs supplied by media services or external CDNs.
 
-Edits take effect on the panel by themselves after a short delay — no apply step and no display restart. Visual changes normally appear in about one to two seconds. When a card starts using a different Home Assistant entity, the panel briefly refreshes its Home Assistant connection so the new state can arrive; state and cover art can take a few more seconds to settle.
+## Apply Configuration
+
+After making changes, tap **Apply Configuration** at the bottom of the page. The panel restarts and loads your new settings — you'll see a message while it reconnects.
 
 ## Restart From Home Assistant
 
@@ -134,4 +137,4 @@ actions:
       entity_id: button.your_panel_restart
 ```
 
-Setup-page changes apply automatically; use the Home Assistant **Restart** entity when you need to restart the display itself.
+The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.

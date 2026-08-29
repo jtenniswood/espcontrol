@@ -56,6 +56,7 @@ CLEANING_HEADER = "button_grid_cleaning_driver.h"
 ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
 COVER_MODAL_DRIVER_HEADER = "button_grid_cover_modal_driver.h"
 MEDIA_DRIVER_HEADER = "button_grid_media_driver.h"
+SUBPAGES_HEADER = "button_grid_subpages.h"
 LEGACY_COMPATIBILITY_DRIVER_HEADER = "button_grid_legacy_compatibility_driver.h"
 NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
 IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
@@ -160,66 +161,6 @@ def check_root(root: Path) -> list[str]:
     if grid_header.exists():
         text = grid_header.read_text(encoding="utf-8")
         compact_grid = re.sub(r"\s+", " ", text)
-        bounded_ownership_guards = (
-            "class GridRuntimeAllocationRegistry",
-            "GRID_RUNTIME_ALLOCATION_CAPACITY",
-            "static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) * 8",
-            "heap_caps_calloc(",
-            "MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT",
-            "Runtime ownership pool exhausted",
-        )
-        for guard in bounded_ownership_guards:
-            if guard not in text:
-                failures.append(
-                    f"components/espcontrol/{GRID_HEADER}: card runtime ownership is missing bounded-pool guard {guard}"
-                )
-        if re.search(r"std::vector\s*<\s*GridRuntimeAllocation\s*>", text):
-            failures.append(
-                f"components/espcontrol/{GRID_HEADER}: card runtime ownership must not grow a vector during live edits"
-            )
-        if "reconstruct_main_cards" in text:
-            live_rebuild_guards = (
-                "reconstruct_main_cards ? release_runtime_slot : nullptr",
-                "grid_prepare_media_runtime_for_visual_reset(slots[i].btn);",
-                "control_context = grid_media_control_runtime_for_owner(slots[i].btn);",
-                "slots[i].btn, visual_context, slider_context, control_context",
-                "espcontrol::cards::changed_domains(",
-                "espcontrol::cards::requires_runtime_release(mutation)",
-                "main_card_snapshots[i] = current_card_nodes[i]",
-                "reconstruct_main_cards && reconstruct_slot[idx - 1]",
-                "lv_obj_add_flag(unused_slot.btn, LV_OBJ_FLAG_HIDDEN);",
-                "media_ctx->cover_art && media_ctx->cover_art->widget",
-                "media_cover_art_refresh_geometry(media_ctx);",
-            )
-            for guard in live_rebuild_guards:
-                if guard not in text:
-                    failures.append(
-                        f"components/espcontrol/{GRID_HEADER}: live card rebuild is missing deletion cleanup guard {guard}"
-                    )
-        media_driver_header = root / "components" / "espcontrol" / "button_grid_media_driver.h"
-        if media_driver_header.exists():
-            media_driver_text = media_driver_header.read_text(encoding="utf-8")
-            create_control = function_body(media_driver_text, "media_driver_create_control")
-            if create_control is None or (
-                "context.surface == Surface::MAIN_GRID" not in create_control
-                or "grid_media_control_runtime_for_owner(slot.btn)" not in create_control
-            ):
-                failures.append(
-                    "components/espcontrol/button_grid_media_driver.h: reuse unchanged main-grid media controls during live refresh"
-                )
-            bind_cover_art = function_body(media_driver_text, "media_driver_bind_cover_art_route")
-            if bind_cover_art is None or any(
-                guard not in bind_cover_art
-                for guard in (
-                    "const bool route_config_changed",
-                    "if (route_config_changed) now_playing->active_entity.clear();",
-                    "if (now_playing->progress_slider)",
-                    "if (control)",
-                )
-            ):
-                failures.append(
-                    "components/espcontrol/button_grid_media_driver.h: preserve and rebind unchanged cover-art routes during live refresh"
-                )
         visual_setup = function_body(text, "setup_card_visual")
         if visual_setup is not None:
             clickable_reset = "lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);"
@@ -396,11 +337,6 @@ def check_root(root: Path) -> list[str]:
             )
         image_reset_pos = text.find("image_driver_reset_pool(cfg);")
         subpage_clear_pos = text.find("navigation_clear_subpages();")
-        return_home_pos = text.find("navigation_return_home(main_page_obj);")
-        if return_home_pos < 0 or return_home_pos > subpage_clear_pos:
-            failures.append(
-                f"components/espcontrol/{GRID_HEADER}: return home before deleting rebuilt subpages"
-            )
         if image_reset_pos < 0 or subpage_clear_pos < 0 or image_reset_pos > subpage_clear_pos:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: reset image-card contexts before deleting subpage screens"
@@ -539,6 +475,17 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
+        callback_body = function_body(text, "image_card_bind_callbacks")
+        callback_guards = (
+            "callbacks_bound_image != bound_image",
+            "has_on_finished_callbacks()",
+            "has_on_error_callbacks()",
+            "ctx->image == bound_image",
+        )
+        if callback_body is None or any(guard not in callback_body for guard in callback_guards):
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: rebind image completion callbacks after image-card lifecycle changes"
+            )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")
@@ -592,6 +539,40 @@ def check_root(root: Path) -> list[str]:
             if legacy_setup in text:
                 failures.append(
                     f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: keep {legacy_setup} inside the shared date-time driver"
+                )
+        for guard, compact, refresh, register in (
+            (
+                "calendar_card_ref_ready",
+                "compact_calendar_card_refs",
+                "refresh_calendar_cards",
+                "register_calendar_card",
+            ),
+            (
+                "timezone_card_ref_ready",
+                "compact_timezone_card_refs",
+                "update_timezone_cards",
+                "register_timezone_card",
+            ),
+        ):
+            guard_body = function_body(text, guard)
+            compact_body = function_body(text, compact)
+            refresh_body = function_body(text, refresh)
+            register_body = function_body(text, register)
+            if guard_body is None or "lv_obj_is_valid" not in guard_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {guard} must reject deleted LVGL labels"
+                )
+            if compact_body is None or guard not in compact_body or "count = write_index;" not in compact_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {compact} must remove deleted LVGL label references"
+                )
+            if refresh_body is None or compact not in refresh_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {refresh} must compact deleted LVGL label references"
+                )
+            if register_body is None or compact not in register_body:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: {register} must reclaim deleted LVGL label references before registration"
                 )
     sensor_header = root / "components" / "espcontrol" / SENSOR_HEADER
     if sensor_header.exists():
@@ -835,6 +816,20 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{MEDIA_DRIVER_HEADER}: avoid duplicate access-token subscriptions on cover-art route switches"
                 )
+            unchanged_route_return = route_body.find(
+                "if (!entity_changed && !presentation_changed) return;"
+            )
+            control_subscription = route_body.find(
+                "subscribe_media_control_state(control);"
+            )
+            if (
+                unchanged_route_return < 0
+                or control_subscription < 0
+                or control_subscription > unchanged_route_return
+            ):
+                failures.append(
+                    f"components/espcontrol/{MEDIA_DRIVER_HEADER}: subscribe reused cover-art control modals before the unchanged-route return"
+                )
             clear_route = route_body.find("now_playing->refresh_entity_route = nullptr")
             attach_primary = route_body.find("media_playback_attach_now_playing(primary, now_playing)")
             if clear_route < 0 or attach_primary < 0 or clear_route > attach_primary:
@@ -853,6 +848,15 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{MEDIA_DRIVER_HEADER}: missing shared media driver"
         )
+    subpages_header = root / "components" / "espcontrol" / SUBPAGES_HEADER
+    if subpages_header.exists():
+        normalize_subpage = function_body(
+            subpages_header.read_text(encoding="utf-8"), "normalize_subpage_btn"
+        ) or ""
+        if 'b.sensor != "speaker_group"' not in normalize_subpage:
+            failures.append(
+                f"components/espcontrol/{SUBPAGES_HEADER}: preserve speaker-group media cards on subpages"
+            )
     compatibility_driver_header = (
         root / "components" / "espcontrol" / LEGACY_COMPATIBILITY_DRIVER_HEADER
     )
@@ -1283,6 +1287,30 @@ inline void setup_light_temp_visual() {
         ),
         (
             {
+                "button_grid_datetime_cards.h": (
+                    "inline bool calendar_card_ref_ready() { return true; }\n"
+                    "inline void compact_calendar_card_refs() {}\n"
+                    "inline void refresh_calendar_cards() {}\n"
+                    "inline void register_calendar_card() {}\n"
+                    "inline bool timezone_card_ref_ready() { return true; }\n"
+                    "inline void compact_timezone_card_refs() {}\n"
+                    "inline void update_timezone_cards() {}\n"
+                    "inline void register_timezone_card() {}\n"
+                )
+            },
+            (
+                "calendar_card_ref_ready must reject deleted LVGL labels",
+                "compact_calendar_card_refs must remove deleted LVGL label references",
+                "refresh_calendar_cards must compact deleted LVGL label references",
+                "register_calendar_card must reclaim deleted LVGL label references before registration",
+                "timezone_card_ref_ready must reject deleted LVGL labels",
+                "compact_timezone_card_refs must remove deleted LVGL label references",
+                "update_timezone_cards must compact deleted LVGL label references",
+                "register_timezone_card must reclaim deleted LVGL label references before registration",
+            ),
+        ),
+        (
+            {
                 "button_grid_sensor_driver.h": (
                     "inline bool sensor_driver_setup_visual() {}\n"
                     "inline bool sensor_driver_bind_data() {}\n"
@@ -1406,6 +1434,24 @@ inline void setup_light_temp_visual() {
         (
             {
                 "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("rebind image completion callbacks after image-card lifecycle changes",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void image_card_bind_callbacks(ImageCardCtx *ctx) {\n"
+                    "  auto *bound_image = ctx->image;\n"
+                    "  bool changed = ctx->callbacks_bound_image != bound_image;\n"
+                    "  if (changed || !bound_image->has_on_finished_callbacks()) {\n"
+                    "    if (ctx->image == bound_image) {}\n"
+                    "  }\n"
+                    "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
+                    "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"

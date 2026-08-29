@@ -1,11 +1,11 @@
-diff --git a/components/espcontrol/ha_state_broker.h b/components/espcontrol/ha_state_broker.h
---- a/components/espcontrol/ha_state_broker.h
-+++ b/components/espcontrol/ha_state_broker.h
-@@ -156,6 +156,6 @@ class StateBroker {
-     for (std::size_t index = 0; index < channels_.size(); ++index) {
-       const Channel &channel = channels_[index];
--      if (channel.active && channel.entity_id == entity_id &&
-+      if (channel.active && channel.entity_id != entity_id &&
-           channel.attribute == attribute) {
-         return index;
+diff --git a/components/espcontrol/ha_read_coordinator.h b/components/espcontrol/ha_read_coordinator.h
+--- a/components/espcontrol/ha_read_coordinator.h
++++ b/components/espcontrol/ha_read_coordinator.h
+@@ -237,6 +237,6 @@ class HaReadCoordinator {
+     for (auto &request : deferred_) {
+       if (request.generation == generation_ &&
+-          request.channel == channel) {
++          request.channel != channel) {
+         return queue_callback_ref(request.callbacks, std::move(callback));
        }
+     }

@@ -1,11 +1,92 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installPreviewContextMenuModule(): GlobalDescriptors {
+import {
+    CARD_SIZE_EXTRA_LARGE,
+    CARD_SIZE_EXTRA_TALL,
+    CARD_SIZE_EXTRA_WIDE,
+    CARD_SIZE_LANDSCAPE_LARGE,
+    CARD_SIZE_LARGE,
+    CARD_SIZE_MAX_TALL,
+    CARD_SIZE_MAX_WIDE,
+    CARD_SIZE_PORTRAIT_LARGE,
+    CARD_SIZE_SINGLE,
+    CARD_SIZE_TALL,
+    CARD_SIZE_WIDE,
+} from "../model/grid";
+import { mdiIcon } from "./ui_primitives";
+import { clampMenuPosition } from "../features/preview";
+import { resizeGridSlot } from "../features/preview_grid";
+import type { ApplicationLayoutState } from "./application_context";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { ClockBarFeature } from "./clock_bar_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { AppStatusPreviewFeature } from "./app_status_preview";
+import type { GridFeature } from "./grid";
+import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+import type { PreviewRenderFeature } from "./preview_render";
+import type { PreviewClipboardFeature } from "./preview_clipboard";
+export interface PreviewContextMenuDependencies {
+    readonly document: Document;
+    readonly window: Window;
+    readonly layout: ApplicationLayoutState;
+    readonly cards: CardRegistry;
+    readonly codec: ConfigCodecFeature;
+    readonly clockBar: Pick<ClockBarFeature, "setItemVisible">;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
+    readonly statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">;
+    readonly grid: Pick<GridFeature, "ctx" | "scheduleMainGridSave">;
+    readonly selection: Pick<ButtonSettingsSelectionFeature, "hideSettingsOverlay" | "openClockBarTemperatureSettings">;
+    readonly preview: Pick<PreviewRenderFeature, "registryValue">;
+    readonly clipboard: Pick<PreviewClipboardFeature, "copyButtons" | "copySlot" | "cutButtons" | "cutSlot" | "pasteButton" | "pasteSubpageButton" | "showCopyCode" | "showPasteCode">;
+    readonly renderPreview: () => void;
+    readonly renderButtonSettings: () => void;
+    readonly openCardSettings: (slot: number) => void;
+    readonly openVoiceServicesSettings: () => void;
+    readonly addSlot: (position: number) => void;
+    readonly addSubpageSlot: (position: number) => void;
+    readonly duplicateButton: (slot: number) => void;
+    readonly duplicateSubpageButton: (slot: number) => void;
+    readonly deleteSlot: (slot: number) => void;
+    readonly deleteButtons: (slots: number[]) => void;
+}
+export interface PreviewContextMenuFeature {
+    hide(): void;
+    contains(target?: any): boolean;
+    cardSizeOptions(slot?: any, context?: any): any[];
+    showSelection(event?: any): void;
+    showClockBar(event?: any, item?: any): void;
+    showCard(event?: any, slot?: any): void;
+    showBack(event?: any): void;
+    showEmpty(event?: any, position?: any): void;
+}
+
+export function createPreviewContextMenuFeature(dependencies: PreviewContextMenuDependencies): PreviewContextMenuFeature {
+    const document = dependencies.document;
+    const window = dependencies.window;
+    const { isConfigLocked } = dependencies.shell;
+    const { setItemVisible: setClockBarItemVisible } = dependencies.clockBar;
+    const { clockBarItemActive, clockBarItemLabel, clockBarItems, isClockBarTemperatureItem, updateClockBarItemUi } = dependencies.statusPreview;
+    const { ctx, scheduleMainGridSave } = dependencies.grid;
+    const { hideSettingsOverlay, openClockBarTemperatureSettings } = dependencies.selection;
+    const { registryValue: buttonTypeRegistryValue } = dependencies.preview;
+    const { copyButtons, copySlot, cutButtons, cutSlot, pasteButton, pasteSubpageButton, showCopyCode: showCopyCardCode, showPasteCode: showPasteCardCode } = dependencies.clipboard;
+    const { renderPreview, renderButtonSettings, openCardSettings, openVoiceServicesSettings, addSlot, addSubpageSlot, duplicateButton, duplicateSubpageButton, deleteSlot, deleteButtons } = dependencies;
+    const {
+        cardRequiresSquareSize,
+        cardSupportsMaxSize,
+        cardSupportsPortraitLargeSize,
+        cardSupportsLandscapeLargeSize,
+        normalizeCardSizeForConfig,
+        getSubpage,
+        serializeSubpageGrid,
+        exitSubpage,
+        saveSubpageConfig,
+    } = dependencies.codec;
     // ── Preview Context Menu ──────────────────────────────────────────
     // ── Context menu (unified) ─────────────────────────────────────────────
     var ctxMenu: any = null;
     function positionMenu(this: any, menu?: any, e?: any) {
-        var position: any = PreviewFeature.clampMenuPosition({ x: e.clientX, y: e.clientY }, menu.offsetWidth, menu.offsetHeight, window.innerWidth, window.innerHeight);
+        var position: any = clampMenuPosition({ x: e.clientX, y: e.clientY }, menu.offsetWidth, menu.offsetHeight, window.innerWidth, window.innerHeight);
         menu.style.left = position.x + "px";
         menu.style.top = position.y + "px";
     }
@@ -80,51 +161,22 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         var curSz: any = c.sizes[slot] || 1;
         if (curSz === targetSz)
             return;
-        var oldCells: any = coveredCells(slotPos, curSz, c.maxSlots, false);
-        for (var oi: any = 0; oi < oldCells.length; oi++) {
-            if (c.grid[oldCells[oi]] === -1)
-                c.grid[oldCells[oi]] = 0;
-        }
-        if (targetSz > 1 && !sizeFitsAt(slotPos, targetSz, c.maxSlots)) {
-            delete c.sizes[slot];
+        var resized: any = resizeGridSlot(c.grid, c.sizes, slot, slotPos, targetSz, c.maxSlots, dependencies.layout.gridCols, !c.isSub);
+        if (!resized.accepted)
             return;
-        }
-        var need: any = coveredCells(slotPos, targetSz, c.maxSlots, false);
-        for (var i: any = 0; i < need.length; i++) {
-            var p: any = need[i];
-            if (c.grid[p] > 0 || c.grid[p] === -2) {
-                if (c.isSub && c.grid[p] > 0)
-                    return;
-                var displaced: any = c.grid[p];
-                c.grid[p] = 0;
-                if (c.isSub) {
-                    for (var j: any = 0; j < c.maxSlots; j++) {
-                        if (c.grid[j] === 0 && need.indexOf(j) === -1) {
-                            c.grid[j] = displaced;
-                            break;
-                        }
-                    }
-                }
-                else {
-                    var fc: any = firstFreeCell(p + 1);
-                    if (fc >= 0)
-                        c.grid[fc] = displaced;
-                }
-            }
-        }
-        for (var i: any = 0; i < need.length; i++)
-            c.grid[need[i]] = -1;
-        if (targetSz === 1)
-            delete c.sizes[slot];
-        else
-            c.sizes[slot] = targetSz;
+        c.grid.splice(0, c.grid.length);
+        Array.prototype.push.apply(c.grid, resized.grid);
+        for (var sizeSlot in c.sizes)
+            delete c.sizes[sizeSlot];
+        for (var resizedSlot in resized.sizes)
+            c.sizes[resizedSlot] = resized.sizes[resizedSlot];
         if (c.isSub) {
             var sp: any = getSubpage(state.editingSubpage);
             sp.order = serializeSubpageGrid(sp);
             saveSubpageConfig(state.editingSubpage);
         }
         else {
-            postText(entityName("button_order"), serializeGrid(state.grid));
+            scheduleMainGridSave();
         }
         renderPreview();
         renderButtonSettings();
@@ -146,14 +198,16 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
             options.push({ size: CARD_SIZE_EXTRA_WIDE, label: "Extra Wide (1x3)" });
         }
         options.push({ size: CARD_SIZE_LARGE, label: "Large (2x2)" });
-        if (cardRequiresSquareSize(b))
+        if (cardRequiresSquareSize(b) && dependencies.layout.gridCols >= 3 && dependencies.layout.gridRows >= 3)
             options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
         if (cardSupportsMaxSize(b)) {
-            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max wide (3x2)" });
+            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
         }
+        if (cardSupportsLandscapeLargeSize(b))
+            options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Massive Wide (3x4)" });
         if (cardSupportsPortraitLargeSize(b))
-            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Portrait (3x4)" });
+            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Massive (4x3)" });
         return options;
     }
     function addSingleCardMenuItems(this: any, slot?: any) {
@@ -164,7 +218,7 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         var c: any = ctx();
         var b: any = c.buttons[slot - 1];
         addCtxItem("pencil", "Edit Card", function (this: any) { openCardSettings(slot); });
-        var ctxTypeDef: any = BUTTON_TYPES[(b && b.type) || ""];
+        var ctxTypeDef: any = dependencies.cards.definitions[(b && b.type) || ""];
         if (ctxTypeDef && ctxTypeDef.contextMenuItems &&
             (!c.isSub || buttonTypeRegistryValue(ctxTypeDef, "allowInSubpage", false))) {
             ctxTypeDef.contextMenuItems(slot, b, { addCtxItem: addCtxItem });
@@ -331,23 +385,13 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         ctxMenu = null;
     }
     return {
-        "ctxMenu": liveGlobal(() => ctxMenu, (value?: any) => { ctxMenu = value; }),
-        "positionMenu": staticGlobal(positionMenu),
-        "addCtxItem": staticGlobal(addCtxItem),
-        "addCtxDivider": staticGlobal(addCtxDivider),
-        "addCtxSubmenu": staticGlobal(addCtxSubmenu),
-        "addSubItem": staticGlobal(addSubItem),
-        "resizeSlot": staticGlobal(resizeSlot),
-        "addBulkCardMenuItems": staticGlobal(addBulkCardMenuItems),
-        "cardSizeMenuOptions": staticGlobal(cardSizeMenuOptions),
-        "addSingleCardMenuItems": staticGlobal(addSingleCardMenuItems),
-        "addClockBarMenuItems": staticGlobal(addClockBarMenuItems),
-        "showSelectionMenu": staticGlobal(showSelectionMenu),
-        "showClockBarContextMenu": staticGlobal(showClockBarContextMenu),
-        "showContextMenu": staticGlobal(showContextMenu),
-        "showBackContextMenu": staticGlobal(showBackContextMenu),
-        "addBackButtonMenuItems": staticGlobal(addBackButtonMenuItems),
-        "showEmptySlotMenu": staticGlobal(showEmptySlotMenu),
-        "hideContextMenu": staticGlobal(hideContextMenu),
+        hide: hideContextMenu,
+        contains: (target) => !!(ctxMenu && ctxMenu.contains(target)),
+        cardSizeOptions: cardSizeMenuOptions,
+        showSelection: showSelectionMenu,
+        showClockBar: showClockBarContextMenu,
+        showCard: showContextMenu,
+        showBack: showBackContextMenu,
+        showEmpty: showEmptySlotMenu,
     };
 }

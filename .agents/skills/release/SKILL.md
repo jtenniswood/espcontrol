@@ -69,21 +69,39 @@ patch            v1.2.3 -> v1.2.4
 If there is no existing stable release, treat the first stable release as
 `v1.0.0` unless the user asks for a different full tag.
 
-### 3. Create the Tag and Draft Release
+### 3. Prepare Web-Asset Compatibility
 
-Choose the exact tag before creating it.
+Before creating the tag, add it to the immutable web bundle's compatibility
+list. This makes the hosted bridge select the declared bundle for the new
+firmware instead of falling back to the editor embedded in the device.
 
-Stable release:
+Set the selected tag before preparing the bundle, for example:
 
 ```bash
+# Stable release:
 TAG="vX.Y.Z"
+# Pre-release: TAG="vX.Y.Z-beta.N"
 ```
-
-Pre-release:
 
 ```bash
-TAG="vX.Y.Z-beta.N"
+git switch -c "jtenniswood/prepare-web-assets-${TAG#v}"
+python3 scripts/prepare_release_web_assets.py "$TAG"
+python3 scripts/build.py
+python3 scripts/build.py --check
+npm run check:release-preflight
+git add scripts/build.py docs/public/webserver
+git commit -m "Prepare web assets for $TAG"
+git push -u origin HEAD
+gh pr create --base main --title "Prepare web assets for $TAG" --body "Adds $TAG to the declared immutable web bundle compatibility list."
 ```
+
+Do this before tagging: the tag must point at the source revision that already
+declares its compatible web bundle. Have that preparation PR reviewed and
+merged, then return to `main` and pull the merged revision before creating the
+release tag. The helper retains `dev`, the five current stable releases, and
+the latest pre-release only.
+
+### 4. Create the Tag and Draft Release
 
 Push that exact release tag so every workflow job can check out one immutable
 source revision. Then create a draft release for the existing tag. Do not
@@ -127,7 +145,7 @@ gh release view "$TAG" --json isDraft,tagName,url
 Do not close GitHub issues as part of this workflow unless the user explicitly
 asks; they prefer to test before issues are closed.
 
-### 4. Start and Watch the Release Action
+### 5. Start and Watch the Release Action
 
 Dispatch `Build Release` with the draft tag. Manual dispatch is the only
 supported release path because a draft release must remain private during the
@@ -151,7 +169,7 @@ gh run watch <run-id> --exit-status
 If the workflow fails, the release should remain a draft. Report the failed job
 and do not publish it manually.
 
-### 5. Verify Outputs
+### 6. Verify Outputs
 
 After `Build Release` succeeds, confirm the release is public and has the
 expected assets:
@@ -171,6 +189,9 @@ esp32-p4-86.ota.bin
 guition-esp32-p4-jc1060p470.factory.bin
 guition-esp32-p4-jc1060p470.manifest.json
 guition-esp32-p4-jc1060p470.ota.bin
+guition-esp32-p4-jc1060p470-v2.factory.bin
+guition-esp32-p4-jc1060p470-v2.manifest.json
+guition-esp32-p4-jc1060p470-v2.ota.bin
 guition-esp32-p4-jc4880p443.factory.bin
 guition-esp32-p4-jc4880p443.manifest.json
 guition-esp32-p4-jc4880p443.ota.bin

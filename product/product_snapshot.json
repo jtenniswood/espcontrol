@@ -3,17 +3,17 @@
   "generatedBy": "scripts/check_product_snapshot.py --update",
   "sources": {
     "deviceProfiles": "devices/manifest.json",
-    "cardContract": "common/config/card_contract.json",
-    "entityNames": "common/config/entity_names.json",
-    "icons": "common/assets/icons.json",
-    "compatibilityFixtures": "compatibility/fixtures/product_compatibility.json"
+    "cardContract": "product/v2/card_contract.json",
+    "entityNames": "product/v2/entity_names.json",
+    "icons": "product/v2/icons.json",
+    "compatibilityFixtures": "product/v2/product_compatibility.json"
   },
   "summary": {
-    "deviceProfiles": 6,
+    "deviceProfiles": 7,
     "cardTypes": 40,
-    "entityNames": 96,
-    "icons": 320,
-    "structuralIcons": 16,
+    "entityNames": 101,
+    "icons": 334,
+    "structuralIcons": 19,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -121,15 +121,214 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
+          "wrapTallLabels": true,
+          "volumeWidthCompensationPercent": 95,
+          "refreshRebuildsSubpages": true,
+          "mediaArtworkWidthCompensationPercent": 98,
           "modal": {
             "layoutFamily": "wide-landscape",
             "density": "comfortable",
             "memoryTier": "standard",
             "baseTouchTarget": 57
           },
+          "coverArt": {
+            "cover_art_size": "600",
+            "cover_art_decode_size": "600",
+            "cover_art_x": "0",
+            "cover_art_y": "0",
+            "cover_art_accent_x": "585",
+            "cover_art_accent_y": "0",
+            "cover_art_accent_width": "439",
+            "cover_art_accent_height": "600",
+            "cover_art_accent_bg_opa": "100%",
+            "cover_art_accent_opa": "100%",
+            "cover_art_panel_x": "615",
+            "cover_art_panel_y": "34",
+            "cover_art_panel_width": "377",
+            "cover_art_panel_height": "430",
+            "cover_art_panel_pad_top": "0",
+            "cover_art_panel_pad_bottom": "0",
+            "cover_art_panel_pad_left": "0",
+            "cover_art_panel_pad_right": "0",
+            "cover_art_panel_pad_row": "0",
+            "cover_art_title_font": "font_cover_art_title",
+            "cover_art_title_max_height": "260",
+            "cover_art_title_line_space": "-8",
+            "cover_art_artist_font": "font_cover_art_artist",
+            "cover_art_artist_pad_top": "10",
+            "cover_art_artist_long_mode": "dot",
+            "cover_art_time_font": "font_cover_art_time",
+            "cover_art_time_pad_top": "14",
+            "cover_art_progress_width": "1024",
+            "cover_art_progress_height": "4",
+            "cover_art_text_color": "0xFFFFFF",
+            "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false"
+          }
+        },
+        "package": {
+          "firmwareVersion": "dev",
+          "substitutions": {
+            "screen_width": "\"1024\"",
+            "screen_height": "\"600\"",
+            "content_width": "\"550\"",
+            "setup_icon_font_id": "font_icon_main",
+            "setup_title_font_id": "font_text_title",
+            "setup_body_font_id": "font_text_body",
+            "setup_pad_row": "\"20\"",
+            "setup_loading_pad_row": "\"40\"",
+            "setup_action_button_width": "\"200\"",
+            "setup_action_button_height": "\"56\"",
+            "setup_action_button_radius": "\"12\"",
+            "icon_font": "font_icon_main",
+            "subpage_chevron_font": "font_icon_status",
+            "label_font": "font_text_body",
+            "media_title_font": "font_text_title",
+            "unit_font": "font_text_body",
+            "sensor_value_font": "font_number_value",
+            "padding": "16px",
+            "radius": "10px",
+            "main_page_card_gap": "\"10\"",
+            "main_page_pad_top": "\"42\"",
+            "main_page_compact_pad_top": "\"5\"",
+            "clock_bar_item_gap": "\"80\"",
+            "clock_bar_visual_gap": "\"10\"",
+            "clock_font_size": "\"200\"",
+            "clock_cx": "\"512\"",
+            "clock_cy": "\"300\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
+          },
+          "deviceFontPackageKey": "fonts_device",
+          "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
+          "ethernetSelectable": true,
+          "backlightPwmFrequency": {
+            "wifi": "1000Hz",
+            "ethernet": "20000Hz"
+          }
+        }
+      },
+      "settings": {
+        "largeSensorUnitOffsetPercent": -10
+      }
+    },
+    "guition-esp32-p4-jc1060p470-v2": {
+      "slug": "guition-esp32-p4-jc1060p470-v2",
+      "slots": 15,
+      "capabilities": {
+        "imageSlots": 6
+      },
+      "public": {
+        "name": "Guition JC1060P470 new panel (V2 label)",
+        "docsPath": "/screens/jc1060p470-v2",
+        "screenSize": "7 inches",
+        "resolution": "1024 x 600",
+        "orientation": "Landscape"
+      },
+      "layout": {
+        "cols": 5,
+        "rows": 3,
+        "firmwareGrid": "3x5",
+        "portraitCols": 3
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ],
+        "displayOffset": 180,
+        "rotateWidthCompensation": true
+      },
+      "internalRelays": [],
+      "web": {
+        "dragMode": "swap",
+        "dragAnimation": true,
+        "screen": {
+          "width": "100%",
+          "aspect": "1024/600"
+        },
+        "portrait": {
+          "cols": 3,
+          "rows": 5,
+          "screen": {
+            "width": "59%",
+            "aspect": "600/1024"
+          }
+        },
+        "topbar": {
+          "height": 3.2,
+          "padding": "0.39cqw",
+          "fontSize": 1.95
+        },
+        "grid": {
+          "top": 4.4,
+          "compactTop": 0.49,
+          "left": 0.49,
+          "right": 0.49,
+          "bottom": 0.49,
+          "gap": 0.76,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 0.78,
+          "padding": 1.37,
+          "iconSize": 4.69,
+          "labelSize": 1.8,
+          "coverArtTitleSize": 7.421875,
+          "coverArtArtistSize": 3.90625,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 0.78
+        },
+        "sensorBadge": {
+          "top": 1,
+          "right": 1,
+          "fontSize": 1.6
+        },
+        "subpageBadge": {
+          "bottom": 1,
+          "right": 1,
+          "fontSize": 2
+        }
+      },
+      "firmware": {
+        "build": {
+          "chip": "ESP32-P4"
+        },
+        "fonts": {
+          "icon": "font_icon_main",
+          "sensor": "font_number_value",
+          "largeSensor": "font_number_value_large",
+          "mediaTitle": "font_text_title",
+          "mediaControlTitle": "font_cover_art_title",
+          "mediaCoverArtTitle": "font_cover_art_title",
+          "mediaCoverArtArtist": "font_cover_art_artist",
+          "volumeNumber": "font_number_value_large",
+          "volumeLabel": "font_text_large",
+          "climateCardIcon": "font_icon_card",
+          "subpageChevron": "font_icon_status",
+          "climateOptionTitle": "font_text_body",
+          "climateOptionValue": "font_text_body"
+        },
+        "display": {
           "wrapTallLabels": true,
           "volumeWidthCompensationPercent": 95,
+          "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,
+          "modal": {
+            "layoutFamily": "wide-landscape",
+            "density": "comfortable",
+            "memoryTier": "standard",
+            "baseTouchTarget": 57
+          },
           "coverArt": {
             "cover_art_size": "600",
             "cover_art_decode_size": "600",
@@ -512,6 +711,7 @@
           "wrapTallLabels": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "refreshRebuildsSubpages": true,
           "modal": {
             "layoutFamily": "large-landscape",
             "density": "spacious",
@@ -705,6 +905,7 @@
           "wrapTallLabels": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "refreshRebuildsSubpages": true,
           "modal": {
             "layoutFamily": "large-landscape",
             "density": "spacious",
@@ -899,6 +1100,7 @@
             "baseTouchTarget": 69
           },
           "wrapTallLabels": false,
+          "refreshRebuildsSubpages": true,
           "coverArt": {
             "cover_art_size": "720",
             "cover_art_decode_size": "720",
@@ -1068,7 +1270,8 @@
           "radius": 1.67,
           "padding": 2.92,
           "iconSize": 9.58,
-          "labelSize": 3.96,
+          "labelSize": 4.583333,
+          "mediaTitleSize": 7.083333,
           "coverArtTitleSize": 14.583333,
           "coverArtArtistSize": 8.333333,
           "labelLines": 2,
@@ -1115,6 +1318,7 @@
             "baseTouchTarget": 46
           },
           "wrapTallLabels": false,
+          "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96,
@@ -1270,6 +1474,7 @@
         "light_control",
         "media",
         "media_control",
+        "media_group",
         "media_play_pause",
         "media_transport",
         "media_volume",
@@ -1647,6 +1852,7 @@
           "defaultDriver": "media_play_pause",
           "modes": {
             "control_modal": "media_control",
+            "speaker_group": "media_group",
             "play_pause": "media_play_pause",
             "previous": "media_transport",
             "next": "media_transport",
@@ -3486,9 +3692,23 @@
         ],
         "options": [
           {
+            "name": "fan_light_entity",
+            "label": "Light Entity",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
             "name": "fan_tabs",
             "label": "Visible Tabs",
             "kind": "text",
+            "values": [
+              "power",
+              "speed",
+              "preset",
+              "oscillation",
+              "direction",
+              "light"
+            ],
             "defaultValue": "power|speed|preset|oscillation|direction",
             "omitDefault": true
           }
@@ -3529,6 +3749,7 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "fan_light_entity",
             "fan_tabs"
           ],
           "optionHook": "normalize_fan_options"
@@ -4227,6 +4448,7 @@
             "kind": "choice",
             "values": [
               "control_modal",
+              "speaker_group",
               "play_pause",
               "previous",
               "next",
@@ -4288,25 +4510,6 @@
             ]
           },
           {
-            "name": "cover_art_action",
-            "label": "Press Action",
-            "kind": "choice",
-            "values": [
-              "play_pause",
-              "control_modal"
-            ],
-            "defaultValue": "play_pause",
-            "omitDefault": true,
-            "applicability": [
-              {
-                "source": "field",
-                "name": "sensor",
-                "operator": "equals",
-                "value": "cover_art"
-              }
-            ]
-          },
-          {
             "name": "cover_art_details",
             "label": "Show Track Details",
             "kind": "flag",
@@ -4350,7 +4553,27 @@
                 "operator": "in",
                 "value": [
                   "control_modal",
+                  "cover_art",
+                  "speaker_group",
                   "volume"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "speaker_group_entity",
+            "label": "Speaker Discovery Entity",
+            "kind": "text",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "in",
+                "value": [
+                  "control_modal",
+                  "cover_art",
+                  "speaker_group"
                 ]
               }
             ]
@@ -4496,9 +4719,9 @@
           "canonicalOptionOrder": [
             "label_display",
             "number_display",
-            "cover_art_action",
             "cover_art_details",
             "cover_art_secondary_entity",
+            "speaker_group_entity",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",
@@ -6084,6 +6307,17 @@
         ]
       },
       {
+        "key": "screen_schedule_sensor_entity",
+        "domain": "text",
+        "name": "Screen Schedule Sensor Entity",
+        "objectIds": [
+          "screen_schedule_sensor_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "screen_saver_media_player_sleep_prevention",
         "domain": "switch",
         "name": "Screen Saver: Media Player Sleep Prevention",
@@ -6202,6 +6436,28 @@
         ]
       },
       {
+        "key": "home_assistant_artwork_endpoint_mode",
+        "domain": "select",
+        "name": "Home Assistant Artwork Connection",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_mode"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "home_assistant_artwork_endpoint_status",
+        "domain": "text_sensor",
+        "name": "Home Assistant Artwork Endpoint",
+        "objectIds": [
+          "home_assistant_artwork_endpoint_status"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "home_assistant_artwork_protocol",
         "domain": "select",
         "name": "Home Assistant Artwork Protocol",
@@ -6252,6 +6508,28 @@
         "key": "screen_saver_clock_brightness",
         "domain": "number",
         "name": "Screen Saver: Clock Brightness",
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_daytime_dimmed_brightness",
+        "domain": "number",
+        "name": "Screen Saver: Daytime Dimmed Brightness",
+        "objectIds": [
+          "screen_saver__daytime_dimmed_brightness"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_nighttime_dimmed_brightness",
+        "domain": "number",
+        "name": "Screen Saver: Nighttime Dimmed Brightness",
+        "objectIds": [
+          "screen_saver__nighttime_dimmed_brightness"
+        ],
         "groups": [
           "settings"
         ]
@@ -6856,6 +7134,24 @@
         "comment": "Image card loading state"
       },
       {
+        "name": "Shuffle",
+        "codepoint": "F049D",
+        "mdi": "shuffle",
+        "comment": "Media modal shuffle control"
+      },
+      {
+        "name": "Repeat",
+        "codepoint": "F0456",
+        "mdi": "repeat",
+        "comment": "Media modal repeat control"
+      },
+      {
+        "name": "Repeat Once",
+        "codepoint": "F0458",
+        "mdi": "repeat-once",
+        "comment": "Media modal repeat-one state"
+      },
+      {
         "name": "Image Card Unavailable",
         "codepoint": "F02ED",
         "mdi": "image-broken",
@@ -7039,6 +7335,11 @@
         "mdi": "bathtub"
       },
       {
+        "name": "Bathtub Outline",
+        "codepoint": "F1819",
+        "mdi": "bathtub-outline"
+      },
+      {
         "name": "Bed",
         "codepoint": "F02E3",
         "mdi": "bed"
@@ -7134,6 +7435,11 @@
         "mdi": "ceiling-light-multiple"
       },
       {
+        "name": "Ceiling Light Multiple Outline",
+        "codepoint": "F18DE",
+        "mdi": "ceiling-light-multiple-outline"
+      },
+      {
         "name": "Chandelier",
         "codepoint": "F1793",
         "mdi": "chandelier"
@@ -7217,6 +7523,16 @@
         "name": "Desk Lamp",
         "codepoint": "F095F",
         "mdi": "desk-lamp"
+      },
+      {
+        "name": "Desk Lamp Off",
+        "codepoint": "F1B1F",
+        "mdi": "desk-lamp-off"
+      },
+      {
+        "name": "Desk Lamp On",
+        "codepoint": "F1B20",
+        "mdi": "desk-lamp-on"
       },
       {
         "name": "Dishwasher",
@@ -7444,6 +7760,16 @@
         "mdi": "home"
       },
       {
+        "name": "Home Lightbulb",
+        "codepoint": "F1251",
+        "mdi": "home-lightbulb"
+      },
+      {
+        "name": "Home Lightbulb Outline",
+        "codepoint": "F1252",
+        "mdi": "home-lightbulb-outline"
+      },
+      {
         "name": "Heat Pump",
         "codepoint": "F1A43",
         "mdi": "heat-pump"
@@ -7562,6 +7888,16 @@
         "name": "Lightbulb",
         "codepoint": "F0335",
         "mdi": "lightbulb"
+      },
+      {
+        "name": "Lightbulb Auto",
+        "codepoint": "F1800",
+        "mdi": "lightbulb-auto"
+      },
+      {
+        "name": "Lightbulb Auto Outline",
+        "codepoint": "F1801",
+        "mdi": "lightbulb-auto-outline"
       },
       {
         "name": "Lightbulb Group",
@@ -8034,6 +8370,21 @@
         "mdi": "speaker"
       },
       {
+        "name": "Speaker Multiple",
+        "codepoint": "F0D38",
+        "mdi": "speaker-multiple"
+      },
+      {
+        "name": "Speaker Wireless",
+        "codepoint": "F071F",
+        "mdi": "speaker-wireless"
+      },
+      {
+        "name": "Speaker Off",
+        "codepoint": "F04C4",
+        "mdi": "speaker-off"
+      },
+      {
         "name": "Speaker Pause",
         "codepoint": "F1B73",
         "mdi": "speaker-pause"
@@ -8057,6 +8408,11 @@
         "name": "Sprinkler",
         "codepoint": "F105F",
         "mdi": "sprinkler"
+      },
+      {
+        "name": "Sprinkler Variant",
+        "codepoint": "F1060",
+        "mdi": "sprinkler-variant"
       },
       {
         "name": "Stop",
@@ -8187,6 +8543,16 @@
         "name": "Toilet",
         "codepoint": "F09AB",
         "mdi": "toilet"
+      },
+      {
+        "name": "Track Light",
+        "codepoint": "F0914",
+        "mdi": "track-light"
+      },
+      {
+        "name": "Track Light Off",
+        "codepoint": "F1B01",
+        "mdi": "track-light-off"
       },
       {
         "name": "Transmission Tower",
@@ -8657,6 +9023,7 @@
       "deviceProfiles": {
         "requiredSlugs": [
           "guition-esp32-p4-jc1060p470",
+          "guition-esp32-p4-jc1060p470-v2",
           "guition-esp32-p4-jc4880p443",
           "guition-esp32-p4-jc8012p4a1",
           "guition-esp32-p4-jc8012p4a1-v2",

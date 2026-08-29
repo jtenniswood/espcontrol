@@ -1,6 +1,45 @@
-import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installControlsShellModule(): GlobalDescriptors {
+import type { AppState } from "../state/types";
+import type { UiRuntimeState } from "./state";
+
+export interface ControlsShellDependencies {
+    readonly document: Document;
+    readonly state: AppState;
+    readonly schedule: typeof setTimeout;
+    readonly cancelSchedule: (handle: any) => void;
+    readonly buildSettingsPage: (parent: HTMLElement) => void;
+    readonly closeSettings: () => void;
+    readonly postButtonPress: (name: string) => Promise<Response>;
+    readonly waitForReboot: () => void;
+    readonly hideContextMenu: () => void;
+    readonly hideSettingsOverlay: () => void;
+    readonly clearPlaceholder: () => void;
+    readonly updatePreviewHint: () => void;
+    readonly renderPreview: () => void;
+}
+
+export interface ControlsShellFeature {
+    readonly createMdiIcon: (name?: any, className?: any) => HTMLElement;
+    readonly createActionButton: (className?: any, label?: any, iconName?: any, ariaLabel?: any) => HTMLButtonElement;
+    readonly createDisclosureChevron: (className?: any) => HTMLElement;
+    readonly showBanner: (msg?: any, type?: any) => void;
+    readonly buildUI: () => void;
+    readonly buildHeader: (parent?: any) => void;
+    readonly buildScreenPage: (parent?: any) => void;
+    readonly buildApplyBar: () => HTMLElement;
+    readonly switchTab: (tab?: any) => void;
+    readonly syncTabChrome: () => void;
+    readonly isConfigLocked: () => boolean;
+    readonly syncConfigLockUi: () => void;
+    readonly setConfigLocked: (locked?: any, reason?: any) => void;
+}
+
+export function createControlsShellFeature(
+    runtime: UiRuntimeState,
+    dependencies: ControlsShellDependencies,
+): ControlsShellFeature {
+    const els = runtime.els;
+    const document = dependencies.document;
+    const state = dependencies.state;
     // ── Build UI ───────────────────────────────────────────────────────────
     function createMdiIcon(this: any, name?: any, className?: any) {
         var icon: any = document.createElement("span");
@@ -42,8 +81,8 @@ export function installControlsShellModule(): GlobalDescriptors {
         els.banner.textContent = msg;
         els.banner.className = "sp-banner sp-" + type;
         if (type === "error" || type === "success" || type === "warning") {
-            clearTimeout(els._bannerTimer);
-            els._bannerTimer = setTimeout(function (this: any) {
+            dependencies.cancelSchedule(els._bannerTimer);
+            els._bannerTimer = dependencies.schedule(function (this: any) {
                 els.banner.className = "sp-banner";
             }, 6000);
         }
@@ -57,7 +96,7 @@ export function installControlsShellModule(): GlobalDescriptors {
         els.banner = banner;
         buildHeader(root);
         buildScreenPage(root);
-        buildSettingsPage(root);
+        dependencies.buildSettingsPage(root);
         var app: any = document.querySelector("esp-app");
         if (app) {
             app.parentNode.insertBefore(root, app);
@@ -148,7 +187,7 @@ export function installControlsShellModule(): GlobalDescriptors {
             '<path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"></path>' +
             '</svg>';
         closeBtn.setAttribute("aria-label", "Close settings");
-        closeBtn.addEventListener("click", closeSettings);
+        closeBtn.addEventListener("click", dependencies.closeSettings);
         modal.appendChild(closeBtn);
         var config: any = document.createElement("div");
         config.className = "sp-config";
@@ -157,12 +196,45 @@ export function installControlsShellModule(): GlobalDescriptors {
         overlay.appendChild(modal);
         overlay.addEventListener("click", function (this: any, e?: any) {
             if (e.target === overlay)
-                closeSettings();
+                dependencies.closeSettings();
         });
         page.appendChild(overlay);
         els.settingsOverlay = overlay;
+        page.appendChild(buildApplyBar());
         parent.appendChild(page);
         els.screenPage = page;
+    }
+    // ── Shell controls ───────────────────────────────────────────────────
+    function buildApplyBar(this: any) {
+        var bar: any = document.createElement("div");
+        bar.className = "sp-apply-bar";
+        var btn: any = document.createElement("button");
+        btn.className = "sp-apply-btn";
+        btn.textContent = "Apply Configuration";
+        btn.addEventListener("click", function (this: any) {
+            if (isConfigLocked())
+                return;
+            if (document.activeElement && "blur" in document.activeElement) {
+                (document.activeElement as HTMLElement).blur();
+            }
+            setConfigLocked(true, "Restarting device\u2026");
+            dependencies.schedule(function (this: any) {
+                dependencies.postButtonPress("Apply Configuration").then(function (this: any, response?: any) {
+                    if (response && response.ok) {
+                        dependencies.waitForReboot();
+                    }
+                    else if (response) {
+                        setConfigLocked(false);
+                    }
+                });
+            }, 600);
+        });
+        bar.appendChild(btn);
+        var note: any = document.createElement("div");
+        note.className = "sp-apply-note";
+        note.textContent = "Restarts the device to apply changes";
+        bar.appendChild(note);
+        return bar;
     }
     function switchTab(this: any, tab?: any) {
         state.activeTab = tab;
@@ -179,7 +251,7 @@ export function installControlsShellModule(): GlobalDescriptors {
     function syncTabChrome(this: any) {
         var support: any = document.querySelector(".sp-support-btn");
         if (support)
-            support.classList.toggle("sp-support-hidden", state.activeTab === "settings");
+            support.classList.remove("sp-support-hidden");
     }
     function isConfigLocked(this: any) {
         return !!state.configLocked;
@@ -191,44 +263,54 @@ export function installControlsShellModule(): GlobalDescriptors {
         if (els.previewMain) {
             els.previewMain.setAttribute("aria-disabled", isConfigLocked() ? "true" : "false");
         }
-        updatePreviewHint();
+        if (els.root) {
+            var text: any = "Waiting for device\u2026";
+            if ((state.configLockReason || "").indexOf("Restarting") !== -1)
+                text = "Restarting\u2026";
+            els.root.querySelectorAll(".sp-apply-btn").forEach(function (this: any, btn?: any) {
+                btn.disabled = isConfigLocked();
+                btn.textContent = isConfigLocked() ? text : "Apply Configuration";
+            });
+        }
+        dependencies.updatePreviewHint();
     }
     function setConfigLocked(this: any, locked?: any, reason?: any) {
         var nextLocked: any = !!locked;
         state.configLocked = nextLocked;
         state.configLockReason = nextLocked ? (reason || "Reconnecting to device\u2026") : "";
         if (nextLocked) {
-            hideContextMenu();
-            hideSettingsOverlay();
+            dependencies.hideContextMenu();
+            dependencies.hideSettingsOverlay();
             state.settingsDraft = null;
             state.selectedSlots = [];
             state.lastClickedSlot = -1;
             state.subpageSelectedSlots = [];
             state.subpageLastClicked = -1;
-            if (dragSrcEl) {
-                dragSrcEl.classList.remove("sp-dragging");
-                dragSrcEl = null;
+            if (runtime.dragSrcEl) {
+                runtime.dragSrcEl.classList.remove("sp-dragging");
+                runtime.dragSrcEl = null;
             }
-            dragSrcPos = -1;
-            previewDropIdx = -1;
-            clearPlaceholder();
+            runtime.dragSrcPos = -1;
+            runtime.previewDropIdx = -1;
+            dependencies.clearPlaceholder();
         }
         syncConfigLockUi();
         if (els.previewMain)
-            renderPreview();
+            dependencies.renderPreview();
     }
     return {
-        "createMdiIcon": staticGlobal(createMdiIcon),
-        "createActionButton": staticGlobal(createActionButton),
-        "createDisclosureChevron": staticGlobal(createDisclosureChevron),
-        "showBanner": staticGlobal(showBanner),
-        "buildUI": staticGlobal(buildUI),
-        "buildHeader": staticGlobal(buildHeader),
-        "buildScreenPage": staticGlobal(buildScreenPage),
-        "switchTab": staticGlobal(switchTab),
-        "syncTabChrome": staticGlobal(syncTabChrome),
-        "isConfigLocked": staticGlobal(isConfigLocked),
-        "syncConfigLockUi": staticGlobal(syncConfigLockUi),
-        "setConfigLocked": staticGlobal(setConfigLocked),
+        createMdiIcon,
+        createActionButton,
+        createDisclosureChevron,
+        showBanner,
+        buildUI,
+        buildHeader,
+        buildScreenPage,
+        buildApplyBar,
+        switchTab,
+        syncTabChrome,
+        isConfigLocked,
+        syncConfigLockUi,
+        setConfigLocked,
     };
 }

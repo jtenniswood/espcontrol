@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_H = ROOT / "components" / "espcontrol" / "sun_calc.h"
 AUTO_TIMEZONE_OPTION = "Auto (Home Assistant)"
+CASABLANCA_PERMANENT_UTC_FROM = datetime(2026, 9, 20, 1, tzinfo=timezone.utc)
 
 ZONEINFO_ALIASES = {
     "Asia/Rangoon": "Asia/Yangon",
@@ -178,6 +179,10 @@ def posix_offset_minutes(posix: str, dt: datetime) -> int:
 
 
 def iana_offset_minutes(tz_id: str, dt: datetime) -> int:
+    # tzdata releases before the 2026 Morocco decision do not yet contain this
+    # transition. Keep validation stable while the firmware carries the rule.
+    if tz_id == "Africa/Casablanca" and dt >= CASABLANCA_PERMANENT_UTC_FROM:
+        return 0
     return posix_offset_minutes(ZONEINFO_ALIASES.get(tz_id, tz_id), dt)
 
 
@@ -197,33 +202,25 @@ def expected_casablanca_pauses() -> list[tuple[tuple[int, ...], tuple[int, ...]]
     end = datetime(2051, 1, 1, tzinfo=timezone.utc)
     pauses: list[tuple[tuple[int, ...], tuple[int, ...]]] = []
     pause_start: datetime | None = None
-    old_tz = os.environ.get("TZ")
-    try:
-        os.environ["TZ"] = "Africa/Casablanca"
-        time.tzset()
-        prev = timedelta(minutes=local_offset_minutes(start))
-        if prev == timedelta(0):
-            pause_start = start
-        dt = start + timedelta(hours=1)
-        while dt <= end:
-            offset = timedelta(minutes=local_offset_minutes(dt))
-            if offset != prev:
-                transition = dt
-                if prev != timedelta(0) and offset == timedelta(0):
-                    pause_start = transition
-                elif prev == timedelta(0) and offset != timedelta(0):
-                    if pause_start is None:
-                        raise AssertionError("Casablanca pause end without start")
-                    pauses.append((utc_point(pause_start), utc_point(transition)))
-                    pause_start = None
-                prev = offset
-            dt += timedelta(hours=1)
-    finally:
-        if old_tz is None:
-            os.environ.pop("TZ", None)
-        else:
-            os.environ["TZ"] = old_tz
-        time.tzset()
+    prev = timedelta(minutes=iana_offset_minutes("Africa/Casablanca", start))
+    if prev == timedelta(0):
+        pause_start = start
+    dt = start + timedelta(hours=1)
+    while dt <= end:
+        offset = timedelta(minutes=iana_offset_minutes("Africa/Casablanca", dt))
+        if offset != prev:
+            transition = dt
+            if prev != timedelta(0) and offset == timedelta(0):
+                pause_start = transition
+            elif prev == timedelta(0) and offset != timedelta(0):
+                if pause_start is None:
+                    raise AssertionError("Casablanca pause end without start")
+                pauses.append((utc_point(pause_start), utc_point(transition)))
+                pause_start = None
+        prev = offset
+        dt += timedelta(hours=1)
+    if pause_start is not None:
+        pauses.append((utc_point(pause_start), utc_point(end)))
     return pauses
 
 

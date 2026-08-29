@@ -13,7 +13,7 @@ You will find it in the **Settings** tab on the [Setup](/features/setup) page, u
 ## Settings
 
 - **Mode** - choose **Disabled**, **Time**, or **Sensor**. Time uses the daytime and night-time hours. Sensor uses the configured sensor entity and activation state.
-- **Sensor Entity** - shown only for **Sensor**. Choose the Home Assistant binary sensor, sensor, or `input_boolean` that controls the schedule.
+- **Sensor Entity** - shown only for **Sensor**. Choose the Home Assistant binary sensor, sensor, or `input_boolean` that controls the schedule. This is separate from the Screensaver **Presence Entity**, so each feature can follow a different sensor.
 - **Activate Night Schedule When** - shown only for **Sensor**. Choose **Sensor Is Off** (the default) or **Sensor Is On**. The selected state applies the night-time action; the opposite state returns the panel to normal mode.
 - **Daytime** - the first hour when the screen should be awake. The default is **6:00 AM**.
 - **Night Time** - the first hour when the night schedule starts. The default is **11:00 PM**.
@@ -25,6 +25,10 @@ You will find it in the **Settings** tab on the [Setup](/features/setup) page, u
 - **Clock Text Color** - shown only for **Clock**. It controls the colour of the overnight schedule clock text.
 
 Time and Sensor modes share the same night-time action and brightness settings. Switching between them keeps those settings, including the sensor activation choice.
+
+## Updating an Existing Panel
+
+When a panel first starts this firmware version, its existing Screensaver **Presence Entity** is copied into the new **Screen Schedule Sensor Entity** setting. This keeps its previous setup working straight away. After that first copy, the two settings are independent: changing one never changes the other. Backups made before this setting existed use the same compatibility copy when imported.
 
 When the schedule is disabled, the panel uses the normal [screensaver](/features/screensaver) and [backlight](/features/backlight) rules.
 
