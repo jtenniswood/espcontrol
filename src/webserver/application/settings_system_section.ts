@@ -86,7 +86,7 @@ export function createSettingsSystemSectionFeature(
         backupBody.appendChild(backupRow);
         var backupWarning: any = document.createElement("p");
         backupWarning.className = "sp-setting-note";
-        backupWarning.textContent = "Backup files include any Wi-Fi Share passwords. Keep exported files private.";
+        backupWarning.textContent = "Backup files include any Wifi Share passwords. Keep exported files private.";
         backupBody.appendChild(backupWarning);
         var backupCard: any = makeCollapsibleCard("Backup", backupBody, true);
         var fwBody: any = document.createElement("div");

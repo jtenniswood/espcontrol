@@ -5,10 +5,10 @@
 
 int main() {
   std::string payload, ssid, password;
-  assert(wifi_qr_build_payload("R3Vlc3QgV2ktRmk", "wpa", "UGFzczt3b3JkOjEyMw", true, &payload, &ssid, &password));
-  assert(ssid == "Guest Wi-Fi");
+  assert(wifi_qr_build_payload("R3Vlc3QgV2lmaQ", "wpa", "UGFzczt3b3JkOjEyMw", true, &payload, &ssid, &password));
+  assert(ssid == "Guest Wifi");
   assert(password == "Pass;word:123");
-  assert(payload == "WIFI:T:WPA;S:Guest Wi-Fi;P:Pass\\;word\\:123;H:true;;");
+  assert(payload == "WIFI:T:WPA;S:Guest Wifi;P:Pass\\;word\\:123;H:true;;");
   assert(wifi_qr_build_payload("Q2Fmw6k", "open", "", false, &payload, &ssid));
   assert(ssid == "Café");
   assert(wifi_qr_build_payload("R3Vlc3Q", "open", "", false, &payload, &ssid));

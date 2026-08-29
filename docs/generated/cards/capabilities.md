@@ -48,5 +48,5 @@ This generated reference lists stable setup facts from the shared card contract.
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
 | Camera Card | image | camera, image | Yes | Own picker item | Show Label; Show Icon; Expanded Image: fill, fit | Visible |
-| Wi-Fi Share | wifi_qr | None | Yes | Own picker item | Network name; Security: wpa, open; Password; Hidden network | Visible |
+| Wifi Share | wifi_qr | None | Yes | Own picker item | Network name; Security: wpa, open; Password; Hidden network | Visible |
 | Weather Forecast | weather_forecast | weather | Yes | Own picker item | None | Hidden |

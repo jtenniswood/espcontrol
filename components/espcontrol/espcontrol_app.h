@@ -28,7 +28,7 @@ class EspControlApp : public esphome::Component {
   float get_setup_priority() const override {
     // The native configuration wiring binds restored ESPHome text entities.
     // Those entities, and the P4 display services they can refresh, are only
-    // ready once Wi-Fi setup has completed. Starting the owner earlier makes
+    // ready once Wifi setup has completed. Starting the owner earlier makes
     // P4 firmware reset before ESPHome can confirm a new OTA boot.
     return esphome::setup_priority::AFTER_WIFI;
   }

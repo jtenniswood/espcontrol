@@ -85,7 +85,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
         onSelect: normalizeWifiQrConfig,
         renderSettings: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
             normalizeWifiQrConfig(b);
-            var ssidField: any = helpers.textField("Network name (SSID)", helpers.idPrefix + "wifi-ssid", wifiQrSsid(b), "Guest Wi-Fi");
+            var ssidField: any = helpers.textField("Network name (SSID)", helpers.idPrefix + "wifi-ssid", wifiQrSsid(b), "Guest Wifi");
             var securityField: any = helpers.selectField("Security", helpers.idPrefix + "wifi-security", [["wpa", "WPA/WPA2 Personal"], ["open", "Open"]], wifiQrSecurity(b));
             var passwordField: any = helpers.textField("Password", helpers.idPrefix + "wifi-password", wifiQrPassword(b), "8–63 characters, or 64 hexadecimal characters");
             passwordField.input.type = "password";
@@ -94,7 +94,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
             panel.appendChild(ssidField.field); panel.appendChild(securityField.field); panel.appendChild(passwordField.field);
             panel.appendChild(reveal.row); panel.appendChild(hidden.row);
             helpers.requireField(ssidField.input, "Add a network name before saving.");
-            helpers.requireField(passwordField.input, "Add a Wi-Fi password before saving.", function () { return securityField.select.value === "wpa"; });
+            helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; });
             helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
             function save(this: any) {
                 var ssid: any = ssidField.input.value;
@@ -116,7 +116,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
             save();
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
-            return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wi-Fi Share" });
+            return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wifi Share" });
         },
     });
 }

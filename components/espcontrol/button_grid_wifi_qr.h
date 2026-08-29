@@ -189,7 +189,7 @@ inline lv_obj_t *wifi_qr_create_detail_label(lv_obj_t *parent, const char *text,
 inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   std::string payload, ssid, password;
   if (!wifi_qr_payload_from_config(config, &payload, &ssid, &password)) {
-    ESP_LOGW("wifi_qr", "Wi-Fi Share card has invalid credentials");
+    ESP_LOGW("wifi_qr", "Wifi Share card has invalid credentials");
     return;
   }
 
@@ -204,9 +204,9 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
 
   ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.qr_tab = wifi_qr_create_tab_button(
-    ui.tab_row, find_icon("Wi-Fi QR Tab"), WifiQrTab::QR);
+    ui.tab_row, find_icon("Wifi QR Tab"), WifiQrTab::QR);
   ui.details_tab = wifi_qr_create_tab_button(
-    ui.tab_row, find_icon("Wi-Fi Password Tab"), WifiQrTab::DETAILS);
+    ui.tab_row, find_icon("Wifi Password Tab"), WifiQrTab::DETAILS);
 
   ui.qr_view = wifi_qr_create_view(ui.panel);
   ui.details_view = wifi_qr_create_view(ui.panel);

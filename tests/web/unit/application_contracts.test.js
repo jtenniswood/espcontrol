@@ -343,7 +343,7 @@ describe("browserless application contracts", () => {
     }
   });
 
-  test("keeps the Wi-Fi Share card name editable", () => {
+  test("keeps the Wifi Share card name editable", () => {
     const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
     const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
     let definition;

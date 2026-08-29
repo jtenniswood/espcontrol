@@ -16,7 +16,7 @@ docs/.vitepress/dist/
 __pycache__/
 builds/.esphome/
 
-# Local ESPHome/Wi-Fi credentials must never be committed.
+# Local ESPHome/Wifi credentials must never be committed.
 secrets.yaml
 secrets.yml
 *.secrets.yaml
