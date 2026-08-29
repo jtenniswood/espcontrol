@@ -108,8 +108,9 @@ inline void wifi_qr_layout_modal() {
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
   const int tab_count = std::max<int>(1, ui.tabs.size());
+  const bool show_tab_bar = ui.tabs.size() > 1;
   const ControlModalTabLayout tabs_layout =
-    control_modal_calc_tab_layout(layout, tab_count, true);
+    control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
   control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
   for (size_t index = 0; index < ui.tabs.size(); ++index) {
     const WifiQrTab tab = ui.tabs[index];
@@ -118,8 +119,15 @@ inline void wifi_qr_layout_modal() {
       button, layout, tabs_layout, index, ui.tab == tab);
   }
 
+  // With only one enabled tab there is no selector separating the Back button
+  // from the content. Reserve the button's full height plus a normal inset so
+  // the QR quiet zone and credentials never sit beneath its touch target.
+  const lv_coord_t content_safe_top = show_tab_bar
+    ? 0
+    : layout.back_inset_y + layout.back_size + layout.inset;
   const espcontrol::modal::ContentLayout content =
-    control_modal_calc_content_layout(layout, tabs_layout, true, 120);
+    control_modal_calc_content_layout(
+      layout, tabs_layout, show_tab_bar, 120, content_safe_top);
   for (lv_obj_t *view : {ui.qr_view, ui.details_view}) {
     if (!view) continue;
     lv_obj_set_size(view, content.width, content.height);
