@@ -594,7 +594,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "timezone") return "Date & Time";
   if (type == "weather") return "Weather";
   if (type == "image") return "Camera Card";
-  if (type == "wifi_qr") return "Wifi Share";
+  if (type == "wifi_qr") return "Wifi Sharing";
   if (type == "weather_forecast") return "Weather Forecast";
   return type.empty() ? "Switch" : type.c_str();
 }

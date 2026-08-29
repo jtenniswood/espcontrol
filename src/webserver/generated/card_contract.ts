@@ -3775,7 +3775,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     }
   },
   "wifi_qr": {
-    "label": "Wifi Share",
+    "label": "Wifi Sharing",
     "allowInSubpage": true,
     "domains": [],
     "options": [

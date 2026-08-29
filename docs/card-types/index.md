@@ -36,7 +36,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Show another city or timezone | [World Clock](/card-types/timezones) | No entity required |
 | Show current weather or daily high/low temperatures | [Weather](/card-types/weather) | `weather` |
 | Show a still image from Home Assistant | [Camera](/card-types/cameras) | `camera` or `image` |
-| Let visitors scan guest Wifi details | [Wifi Share](/card-types/wifi-share) | No entity required |
+| Let visitors scan guest Wifi details | [Wifi Sharing](/card-types/wifi-share) | No entity required |
 | Control media playback, volume, progress, or now-playing display | [Media](/card-types/media) | `media_player` |
 | Control a thermostat or HVAC entity | [Climate](/card-types/climate) | `climate` |
 | Control a built-in relay on the panel itself | [Internal Switches](/card-types/internal-relays) | Built-in relay |
@@ -55,7 +55,7 @@ Some cards do not need a Home Assistant entity:
 - **Action > Local Action** runs a registered callback on the panel itself.
 - **Date & Time**, **World Clock**, **Screen Lock**, and **Subpage** can work from the panel itself.
 - **Internal Switches** controls built-in relay hardware on supported panels.
-- **Wifi Share** stores separately configured guest-network credentials on the panel.
+- **Wifi Sharing** stores separately configured guest-network credentials on the panel.
 
 ## Grouped Card Types
 

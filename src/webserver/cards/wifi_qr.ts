@@ -152,7 +152,7 @@ export function registerWifiQrCardTypes(
             save();
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
-            return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wifi Share" });
+            return cardBadgePreview(b, helpers, { label: b.label || "Connect", iconFallback: "Wifi", badge: "Wifi Sharing" });
         },
     });
 }
