@@ -344,6 +344,7 @@ describe("browserless application contracts", () => {
   });
 
   test("keeps the Wi-Fi Share card name editable", () => {
+    const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
     const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
     let definition;
     registerWifiQrCardTypes({
@@ -352,8 +353,9 @@ describe("browserless application contracts", () => {
         definition = value;
       },
     }, { cardBadgePreview() {} });
-    assert.equal(definition.hideLabel, undefined);
-    assert.equal(definition.labelPlaceholder, "Guest Wi-Fi");
+    assert.equal(definition.hideLabel, true);
+    assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
+    assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
   });
 
   test("registers garage and gate through the explicit cover-card factory", () => {

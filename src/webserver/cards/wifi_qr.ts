@@ -78,7 +78,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
     registry.register("wifi_qr", {
         label: function (this: any) { return cardContractCardLabel("wifi_qr"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("wifi_qr"); },
-        labelPlaceholder: "Guest Wi-Fi",
+        hideLabel: true,
         defaultConfig: function (this: any) { return cardContractDefaultConfig("wifi_qr"); },
         cardMetadata: WIFI_QR_CARD_METADATA,
         normalizeConfig: normalizeWifiQrConfig,
@@ -95,7 +95,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
             panel.appendChild(reveal.row); panel.appendChild(hidden.row);
             helpers.requireField(ssidField.input, "Add a network name before saving.");
             helpers.requireField(passwordField.input, "Add a Wi-Fi password before saving.", function () { return securityField.select.value === "wpa"; });
-            helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false, label: false });
+            helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
             function save(this: any) {
                 var ssid: any = ssidField.input.value;
                 var security: any = securityField.select.value;
