@@ -110,16 +110,16 @@ def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str,
         )
 
 
-def test_s3_exposes_one_camera_without_media_cover_art(profiles: dict[str, dict]) -> None:
+def test_s3_exposes_camera_and_media_cover_art(profiles: dict[str, dict]) -> None:
     slug = "guition-esp32-s3-4848s040"
     profile = profiles[slug]
     disabled = set(web_config(profile).get("disabledCardTypes", []))
-    assert image_slot_capacity(profile) == 1, f"{slug}: S3 must expose exactly one image slot"
+    assert image_slot_capacity(profile) == 2, f"{slug}: S3 must expose exactly two shared image slots"
     assert "image" not in disabled, f"{slug}: S3 Camera Cards must be available"
-    assert "media_cover_art" in disabled, f"{slug}: S3 Media Cover Art must remain unavailable"
+    assert "media_cover_art" not in disabled, f"{slug}: S3 Media Cover Art must be available"
     capability = public_device_capability(profile)
-    assert capability["imageCardTypes"] == ["image"], (
-        f"{slug}: public capability must expose only Camera Cards"
+    assert capability["imageCardTypes"] == ["image", "media_cover_art"], (
+        f"{slug}: public capability must expose Camera and Media Cover Art cards"
     )
 
 
@@ -882,7 +882,7 @@ def main() -> int:
     test_web_server_request_limits()
     test_s3_low_heap_policy()
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
-    test_s3_exposes_one_camera_without_media_cover_art(profiles)
+    test_s3_exposes_camera_and_media_cover_art(profiles)
     test_generated_yaml(profiles)
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()
