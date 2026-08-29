@@ -1080,11 +1080,17 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: reset artwork retry state when playback resumes without a visible image")
     if playback_started_body and "espcontrol::cover_art::display_allowed(" in playback_started_body:
         errors.append(f"{rel}: let the playback-start event activate cover art before mirrored playback state settles")
-    if (
-        "cover_art_artist_label" in text
-        and "if (!id(cover_art_artist).empty()) return id(cover_art_artist);" not in text
+    sync_text_body = yaml_script_body(text, "cover_art_sync_track_text")
+    source_display_normalized = sync_text_body is not None and re.search(
+        r"normalize_display_text\(\s*decode_html_entities\(id\(cover_art_media_source\)\)\)",
+        sync_text_body,
+    )
+    if sync_text_body is not None and (
+        "normalize_display_text(id(cover_art_title))" not in sync_text_body
+        or "normalize_display_text(id(cover_art_artist))" not in sync_text_body
+        or source_display_normalized is None
     ):
-        errors.append(f"{rel}: prefer a real artist name over the external-source fallback label")
+        errors.append(f"{rel}: normalize decoded cover art metadata only at the label boundary")
     pause_body = yaml_script_body(text, "cover_art_pause_after_touch")
     if pause_body is not None and (
         "target_mode_is(espcontrol::DisplayMode::COVER_ART)" not in pause_body
@@ -5890,6 +5896,17 @@ def run_self_test() -> int:
         ("restart its countdown after every touch",),
     )
     expect_cover_art_refresh_errors(
+        "cover art metadata bypasses display normalization",
+        "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return id(cover_art_title);\n"
+        "          return id(cover_art_artist);\n"
+        "          return id(cover_art_media_source);\n",
+        ("normalize decoded cover art metadata only at the label boundary",),
+    )
+    expect_cover_art_refresh_errors(
         "stale cover refresh guard present",
         "globals:\n"
         "  - id: cover_art_runtime\n"
@@ -5898,6 +5915,13 @@ def run_self_test() -> int:
         "# cover_art_runtime).effective_download_url\n"
         "  - id: cover_art_album\n"
         "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return normalize_display_text(id(cover_art_title));\n"
+        "          return normalize_display_text(id(cover_art_artist));\n"
+        "          return normalize_display_text(\n"
+        "            decode_html_entities(id(cover_art_media_source)));\n"
         "  - id: cover_art_resolve_home_assistant_base_url\n"
         "    then:\n"
         "      - lambda: |-\n"
