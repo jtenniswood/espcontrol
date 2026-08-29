@@ -51,11 +51,15 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
         var bytes: any = utf8Bytes(password).length;
         return (bytes >= 8 && bytes <= 63) || (bytes === 64 && /^[0-9a-fA-F]{64}$/.test(String(password || "")));
     }
+    function isLegacyWifiQrTitle(this: any, label?: any) {
+        var normalized: any = String(label || "").trim().toLowerCase().replace(/[\s\-\u2011]+/g, "");
+        return normalized === "guestwifi" || normalized === "guestswifi";
+    }
     function normalizeWifiQrConfig(this: any, b?: any) {
         if (!b) return;
         b.type = "wifi_qr";
         b.entity = ""; b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
-        if (!b.label) b.label = "Connect";
+        if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
         if (!b.icon || b.icon === "Auto") b.icon = "Wifi";
         var ssid: any = wifiQrSsid(b);
         var password: any = wifiQrPassword(b);
@@ -83,16 +87,22 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
         cardMetadata: WIFI_QR_CARD_METADATA,
         normalizeConfig: normalizeWifiQrConfig,
         onSelect: normalizeWifiQrConfig,
+        renderSettingsBeforeLabel: function (this: any, panel?: any, _b?: any, _slot?: any, helpers?: any) {
+            var networkDisclosure: any = helpers.disclosureSection("Wifi Network", helpers.idPrefix + "wifi-network", false);
+            panel.appendChild(networkDisclosure.panel);
+            var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "wifi-card-settings", false);
+            panel.appendChild(cardSettingsDisclosure.panel);
+        },
         renderSettings: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
             normalizeWifiQrConfig(b);
+            var networkButton: any = panel.querySelector("#" + helpers.idPrefix + "wifi-network");
+            var networkSettings: any = networkButton && networkButton.nextElementSibling || panel;
             var ssidField: any = helpers.textField("Network name (SSID)", helpers.idPrefix + "wifi-ssid", wifiQrSsid(b), "Guest Wifi");
             var securityField: any = helpers.selectField("Security", helpers.idPrefix + "wifi-security", [["wpa", "WPA/WPA2 Personal"], ["open", "Open"]], wifiQrSecurity(b));
             var passwordField: any = helpers.textField("Password", helpers.idPrefix + "wifi-password", wifiQrPassword(b), "8–63 characters, or 64 hexadecimal characters");
-            passwordField.input.type = "password";
-            var reveal: any = helpers.toggleRow("Show password", helpers.idPrefix + "wifi-reveal", false);
             var hidden: any = helpers.toggleRow("Hidden network", helpers.idPrefix + "wifi-hidden", wifiQrHidden(b));
-            panel.appendChild(ssidField.field); panel.appendChild(securityField.field); panel.appendChild(passwordField.field);
-            panel.appendChild(reveal.row); panel.appendChild(hidden.row);
+            networkSettings.appendChild(ssidField.field); networkSettings.appendChild(securityField.field); networkSettings.appendChild(passwordField.field);
+            networkSettings.appendChild(hidden.row);
             helpers.requireField(ssidField.input, "Add a network name before saving.");
             helpers.requireField(passwordField.input, "Add a Wifi password before saving.", function () { return securityField.select.value === "wpa"; });
             helpers.renderBasicCardFields(panel, b, helpers, WIFI_QR_CARD_METADATA, { entity: false });
@@ -112,7 +122,6 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
             [ssidField.input, securityField.select, passwordField.input, hidden.input].forEach(function (this: any, input?: any) {
                 input.addEventListener("input", save); input.addEventListener("change", save); input.addEventListener("blur", save);
             });
-            reveal.input.addEventListener("change", function (this: any) { passwordField.input.type = this.checked ? "text" : "password"; });
             save();
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {

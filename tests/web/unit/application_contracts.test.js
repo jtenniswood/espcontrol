@@ -356,6 +356,14 @@ describe("browserless application contracts", () => {
     assert.equal(definition.hideLabel, true);
     assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
     assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
+    assert.match(source, /disclosureSection\("Wifi Network"/);
+    assert.doesNotMatch(source, /Show password|wifi-reveal|input\.type\s*=\s*"password"/);
+    const legacy = { label: "Guests Wifi", options: "" };
+    definition.normalizeConfig(legacy);
+    assert.equal(legacy.label, "Connect");
+    const custom = { label: "Visitors", options: "" };
+    definition.normalizeConfig(custom);
+    assert.equal(custom.label, "Visitors");
   });
 
   test("registers garage and gate through the explicit cover-card factory", () => {
