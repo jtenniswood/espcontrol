@@ -51,6 +51,10 @@ export function registerWifiQrCardTypes(
         labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Connect", bindName: "label", rerender: true },
         icon: { pickerIdSuffix: "wifi-icon-picker", idSuffix: "wifi-icon", field: "icon", fallback: "Wifi" },
     };
+    // A valid QR for representative (non-user) Wifi credentials. Keeping this
+    // static avoids adding a QR generator to the already large web preview.
+    const WIFI_QR_PREVIEW_SVG = '<svg class="sp-wifi-qr-preview" viewBox="0 0 37 37" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<path fill="#fff" d="M0 0h37v37H0z"/><path stroke="#000" d="M4 4.5h7m1 0h1m1 0h1m3 0h2m3 0h1m2 0h7M4 5.5h1m5 0h1m1 0h1m1 0h2m1 0h2m1 0h4m2 0h1m5 0h1M4 6.5h1m1 0h3m1 0h1m2 0h1m2 0h5m1 0h1m3 0h1m1 0h3m1 0h1M4 7.5h1m1 0h3m1 0h1m1 0h2m1 0h3m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M4 8.5h1m1 0h3m1 0h1m2 0h1m1 0h2m1 0h2m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1M4 9.5h1m5 0h1m2 0h1m1 0h2m4 0h1m4 0h1m5 0h1M4 10.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M12 11.5h1m1 0h2m3 0h2m1 0h2M4 12.5h1m1 0h2m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m2 0h1m2 0h1m1 0h2M4 13.5h1m2 0h1m6 0h1m1 0h1m1 0h1m3 0h3m1 0h4m2 0h1M4 14.5h1m1 0h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h3m1 0h2m1 0h1m3 0h2M5 15.5h3m1 0h1m1 0h1m3 0h2m1 0h2m4 0h2m1 0h1m3 0h1M7 16.5h1m1 0h7m1 0h1m1 0h2m3 0h1m4 0h4M8 17.5h2m1 0h1m1 0h2m1 0h1m4 0h2m1 0h2m1 0h3m2 0h1M4 18.5h2m1 0h1m1 0h3m1 0h1m2 0h1m3 0h3m2 0h8M4 19.5h1m2 0h3m1 0h2m2 0h4m1 0h2m1 0h4m1 0h3M5 20.5h3m2 0h4m1 0h1m1 0h2m2 0h1m3 0h1m2 0h1m2 0h1M5 21.5h1m2 0h2m4 0h1m2 0h2m1 0h1m3 0h3M4 22.5h1m5 0h3m1 0h1m4 0h3m2 0h1m2 0h2m2 0h1M6 23.5h4m2 0h1m2 0h1m2 0h1m1 0h2m3 0h2m2 0h4M5 24.5h1m4 0h2m1 0h3m1 0h1m5 0h8M12 25.5h1m1 0h4m1 0h2m3 0h1m3 0h3M4 26.5h7m1 0h1m3 0h2m4 0h1m1 0h1m1 0h1m1 0h2m1 0h1M4 27.5h1m5 0h1m1 0h4m3 0h1m1 0h1m1 0h2m3 0h1m2 0h2M4 28.5h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h2m4 0h5M4 29.5h1m1 0h3m1 0h1m1 0h2m1 0h4m1 0h3m5 0h1m1 0h1M4 30.5h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h8m1 0h1m2 0h3m1 0h1M4 31.5h1m5 0h1m3 0h1m3 0h1m1 0h1m6 0h1m3 0h2M4 32.5h7m1 0h5m4 0h1m1 0h5m2 0h1"/></svg>';
     function utf8Bytes(this: any, value?: any): any[] {
         return Array.prototype.slice.call(new TextEncoder().encode(String(value || "")));
     }
@@ -192,8 +196,7 @@ export function registerWifiQrCardTypes(
                 if (isQrCard(b)) {
                     return {
                         buttonClass: "sp-wifi-qr-card",
-                        iconHtml: '<svg class="sp-wifi-qr-preview" viewBox="0 0 21 21" aria-hidden="true">' +
-                            '<rect width="21" height="21" fill="#fff"/><path fill="#000" d="M1 1h7v7H1zm2 2v3h3V3zM13 1h7v7h-7zm2 2v3h3V3zM1 13h7v7H1zm2 2v3h3v-3zM10 1h2v2h-2zM9 4h3v2H9zM10 7h2v3h-2zM13 9h2v2h-2zM16 9h4v2h-4zM9 11h3v2H9zM14 12h2v3h-2zM17 12h3v2h-3zM9 14h2v3H9zM12 16h3v2h-3zM16 15h2v2h-2zM19 16h1v4h-4v-2h3zM9 19h5v1H9z"/></svg>',
+                        iconHtml: WIFI_QR_PREVIEW_SVG,
                         labelHtml: "",
                     };
                 }

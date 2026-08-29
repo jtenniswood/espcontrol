@@ -394,8 +394,12 @@ describe("browserless application contracts", () => {
     assert.equal(qrCard.type, "wifi_qr_card");
     assert.equal(qrCard.label, "");
     assert.equal(qrCard.icon, "Auto");
-    assert.equal(definitions.wifi_qr_card.renderPreview(qrCard, {}).labelHtml, "");
-    assert.equal(definitions.wifi_qr_card.renderPreview(qrCard, {}).buttonClass, "sp-wifi-qr-card");
+    const qrPreview = definitions.wifi_qr_card.renderPreview(qrCard, {});
+    assert.equal(qrPreview.labelHtml, "");
+    assert.equal(qrPreview.buttonClass, "sp-wifi-qr-card");
+    assert.match(qrPreview.iconHtml, /viewBox="0 0 37 37"/);
+    assert.match(qrPreview.iconHtml, /shape-rendering="crispEdges"/);
+    assert.doesNotMatch(qrPreview.iconHtml, /viewBox="0 0 21 21"/);
     definitions.wifi_qr_card.cardMetadata.mode.onChange.call(
       { value: "wifi_qr" }, qrCard, { saveField() {} },
     );
