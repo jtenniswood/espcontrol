@@ -2215,7 +2215,10 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         or "image_pipeline_modal_max_target_side" not in text
     ):
         errors.append(f"{rel}: cap constrained-display image card modals at 320 pixels")
-    if "IMAGE_CARD_MAX_CONTEXTS = 6" not in text:
+    if (
+        "#define ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS 6" not in text
+        or "IMAGE_CARD_MAX_CONTEXTS = ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS" not in text
+    ):
         errors.append(f"{rel}: support six concurrent image cards on P4 displays")
     if "image_card_limit_target_size" not in text:
         errors.append(f"{rel}: scale image card modal downloads to a display-appropriate size")
@@ -2235,7 +2238,11 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         or "modal_image->release()" not in text
     ):
         errors.append(f"{rel}: release constrained modal image buffers after closing")
-    if "ctx->image->cancel_update();" not in text:
+    if (
+        "image_card_preempt_active_tile_for_modal" not in text
+        or "candidate->image->request_is_active()" not in text
+        or "candidate->image->cancel_update();" not in text
+    ):
         errors.append(f"{rel}: cancel in-flight image downloads before opening image card modals")
     if "Deferring image refresh while modal is open" not in text:
         errors.append(f"{rel}: defer image downloads while image card modals are open")
@@ -6923,7 +6930,10 @@ def run_self_test() -> int:
     )
     expect_image_card_quality_errors(
         "image card modal requests capped image",
-        "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
+        "#ifndef ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS\n"
+        "#define ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS 6\n"
+        "#endif\n"
+        "constexpr int IMAGE_CARD_MAX_CONTEXTS = ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
         "constexpr int IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 320;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
@@ -6970,6 +6980,10 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_modal_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);\n"
+        "  image_card_preempt_active_tile_for_modal();\n"
+        "}\n"
+        "inline void image_card_preempt_active_tile_for_modal() {\n"
+        "  if (candidate->image->request_is_active()) candidate->image->cancel_update();\n"
         "}\n"
         "inline void image_card_show_modal_download_failure(ImageCardCtx *ctx) {\n"
         "  if (image_card_modal_has_preview(ctx)) {\n"
