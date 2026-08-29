@@ -359,6 +359,7 @@ def check_root(root: Path) -> list[str]:
             "reset_card_background_image_pool(cfg);",
             "card_background_activate_page(cfg, main_page_obj);",
             "card_background_unregister_page(entry.screen);",
+            "button_grid_load_screen((lv_obj_t *)lv_event_get_user_data(e));",
         )
         for needle in background_required:
             if needle not in text:
