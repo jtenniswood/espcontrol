@@ -4,6 +4,11 @@
 #include "wifi_qr_codec.h"
 
 int main() {
+  assert((wifi_qr_tabs("") == std::vector<std::string>{"qr", "credentials"}));
+  assert((wifi_qr_tabs("credentials|qr") == std::vector<std::string>{"credentials", "qr"}));
+  assert((wifi_qr_tabs("credentials") == std::vector<std::string>{"credentials"}));
+  assert((wifi_qr_tabs("invalid") == std::vector<std::string>{"qr"}));
+  assert((wifi_qr_tabs("credentials|credentials|qr") == std::vector<std::string>{"credentials", "qr"}));
   std::string payload, ssid, password;
   assert(wifi_qr_build_payload("R3Vlc3QgV2lmaQ", "wpa", "UGFzczt3b3JkOjEyMw", true, &payload, &ssid, &password));
   assert(ssid == "Guest Wifi");

@@ -20,6 +20,7 @@ struct WifiQrModalUi {
   lv_obj_t *qr_view = nullptr;
   lv_obj_t *details_view = nullptr;
   lv_obj_t *qr = nullptr;
+  std::vector<WifiQrTab> tabs;
   WifiQrTab tab = WifiQrTab::QR;
 };
 
@@ -95,13 +96,16 @@ inline void wifi_qr_layout_modal() {
     ui.overlay, ui.panel, layout, control_modal_card_radius(nullptr));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
+  const int tab_count = std::max<int>(1, ui.tabs.size());
   const ControlModalTabLayout tabs_layout =
-    control_modal_calc_tab_layout(layout, 2, true);
+    control_modal_calc_tab_layout(layout, tab_count, true);
   control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
-  control_modal_layout_tab_button(
-    ui.qr_tab, layout, tabs_layout, 0, ui.tab == WifiQrTab::QR);
-  control_modal_layout_tab_button(
-    ui.details_tab, layout, tabs_layout, 1, ui.tab == WifiQrTab::DETAILS);
+  for (size_t index = 0; index < ui.tabs.size(); ++index) {
+    const WifiQrTab tab = ui.tabs[index];
+    lv_obj_t *button = tab == WifiQrTab::QR ? ui.qr_tab : ui.details_tab;
+    control_modal_layout_tab_button(
+      button, layout, tabs_layout, index, ui.tab == tab);
+  }
 
   const espcontrol::modal::ContentLayout content =
     control_modal_calc_content_layout(layout, tabs_layout, true, 120);
@@ -200,16 +204,25 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
-  ui.tab = WifiQrTab::QR;
+  const std::vector<std::string> configured_tabs =
+    wifi_qr_tabs(cfg_option_value(config.options, "wifi_tabs"));
+  for (const std::string &tab : configured_tabs) {
+    ui.tabs.push_back(tab == "credentials" ? WifiQrTab::DETAILS : WifiQrTab::QR);
+  }
+  ui.tab = ui.tabs.front();
 
   ui.tab_row = control_modal_create_tab_row(ui.panel);
-  ui.qr_tab = wifi_qr_create_tab_button(
-    ui.tab_row, find_icon("Wifi QR Tab"), WifiQrTab::QR);
-  ui.details_tab = wifi_qr_create_tab_button(
-    ui.tab_row, find_icon("Wifi Password Tab"), WifiQrTab::DETAILS);
+  for (WifiQrTab tab : ui.tabs) {
+    lv_obj_t *button = wifi_qr_create_tab_button(ui.tab_row,
+      find_icon(tab == WifiQrTab::QR ? "Wifi QR Tab" : "Wifi Password Tab"), tab);
+    if (tab == WifiQrTab::QR) ui.qr_tab = button;
+    else ui.details_tab = button;
+  }
 
-  ui.qr_view = wifi_qr_create_view(ui.panel);
-  ui.details_view = wifi_qr_create_view(ui.panel);
+  if (std::find(ui.tabs.begin(), ui.tabs.end(), WifiQrTab::QR) != ui.tabs.end())
+    ui.qr_view = wifi_qr_create_view(ui.panel);
+  if (std::find(ui.tabs.begin(), ui.tabs.end(), WifiQrTab::DETAILS) != ui.tabs.end())
+    ui.details_view = wifi_qr_create_view(ui.panel);
   if (ui.details_view) {
     lv_obj_set_flex_flow(ui.details_view, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_flex_main_place(ui.details_view, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);

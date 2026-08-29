@@ -22,6 +22,7 @@ describe("browserless application contracts", () => {
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
   const { createEntityStateFeature } = loadTypescriptTest("src/webserver/application/entity_state.ts");
+  const { createConfigModalTabOptionsFeature } = loadTypescriptTest("src/webserver/application/config_modal_tab_options.ts");
 
   test("plans clipboard transfers", () => {
     runClipboardFeatureTests();
@@ -347,16 +348,32 @@ describe("browserless application contracts", () => {
     const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
     const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
     let definition;
+    const modalTabs = {
+      wifiQrTabDefinitions() { return [{ value: "qr", label: "QR Code" }, { value: "credentials", label: "Connection Details" }]; },
+      wifiQrTabs(b) {
+        const match = String(b && b.options || "").match(/(?:^|,)wifi_tabs=([^,]+)/);
+        return match ? match[1].split("|") : ["qr", "credentials"];
+      },
+      normalizeWifiQrTabOptions(options) { return options || ""; },
+      setWifiQrTabs(b, tabs) {
+        b.options = String(b.options || "").replace(/(?:^|,)wifi_tabs=[^,]+/, "");
+        if (tabs.join("|") !== "qr|credentials") b.options += (b.options ? "," : "") + "wifi_tabs=" + tabs.join("|");
+        return b.options;
+      },
+      renderModalTabSettings() {},
+    };
     registerWifiQrCardTypes({
       register(key, value) {
         assert.equal(key, "wifi_qr");
         definition = value;
       },
-    }, { cardBadgePreview() {} });
+    }, modalTabs, { cardBadgePreview() {} });
     assert.equal(definition.hideLabel, true);
     assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
     assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
     assert.match(source, /disclosureSection\("Wifi Network"/);
+    assert.match(source, /disclosureSection\("Modal Settings"/);
+    assert.match(source, /wifiQrTabDefinitions/);
     assert.doesNotMatch(source, /Show password|wifi-reveal|input\.type\s*=\s*"password"/);
     const legacy = { label: "Guests Wifi", options: "" };
     definition.normalizeConfig(legacy);
@@ -364,6 +381,17 @@ describe("browserless application contracts", () => {
     const custom = { label: "Visitors", options: "" };
     definition.normalizeConfig(custom);
     assert.equal(custom.label, "Visitors");
+  });
+
+  test("normalizes and preserves Wifi modal tab settings", () => {
+    const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|credentials|invalid")), ["credentials"]);
+    const card = { options: "ssid64=R3Vlc3Q" };
+    modalTabs.setWifiQrTabs(card, ["credentials"]);
+    assert.equal(card.options, "ssid64=R3Vlc3Q,wifi_tabs=credentials");
+    modalTabs.setWifiQrTabs(card, ["qr", "credentials"]);
+    assert.equal(card.options, "ssid64=R3Vlc3Q");
   });
 
   test("registers garage and gate through the explicit cover-card factory", () => {

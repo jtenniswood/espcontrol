@@ -3807,6 +3807,17 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "label": "Hidden network",
         "kind": "flag",
         "omitDefault": true
+      },
+      {
+        "name": "wifi_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "values": [
+          "qr",
+          "credentials"
+        ],
+        "defaultValue": "qr|credentials",
+        "omitDefault": true
       }
     ],
     "normalization": {
@@ -3848,7 +3859,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "ssid64",
         "security",
         "pass64",
-        "hidden"
+        "hidden",
+        "wifi_tabs"
       ]
     },
     "default": {
@@ -4603,7 +4615,8 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",
-  "webhook_headers": "webhook_headers"
+  "webhook_headers": "webhook_headers",
+  "wifi_tabs": "wifi_tabs"
 };
 
 function cardContractListContains(list: readonly string[] | undefined, value: string): boolean {

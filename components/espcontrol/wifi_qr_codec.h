@@ -1,10 +1,31 @@
 #pragma once
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 // The codec is deliberately independent of LVGL so payload rules can be host-tested.
+inline std::vector<std::string> wifi_qr_tabs(const std::string &value) {
+  const std::string configured = value.empty() ? "qr|credentials" : value;
+  std::vector<std::string> tabs;
+  size_t start = 0;
+  while (start <= configured.size()) {
+    const size_t end = configured.find('|', start);
+    const std::string tab = configured.substr(start,
+      end == std::string::npos ? std::string::npos : end - start);
+    if ((tab == "qr" || tab == "credentials") &&
+        std::find(tabs.begin(), tabs.end(), tab) == tabs.end()) {
+      tabs.push_back(tab);
+    }
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  if (tabs.empty()) tabs.push_back("qr");
+  return tabs;
+}
+
 inline bool wifi_qr_valid_utf8_bytes(const std::string &value) {
   int remaining = 0;
   for (unsigned char byte : value) {

@@ -5669,6 +5669,17 @@
             "label": "Hidden network",
             "kind": "flag",
             "omitDefault": true
+          },
+          {
+            "name": "wifi_tabs",
+            "label": "Visible Tabs",
+            "kind": "text",
+            "values": [
+              "qr",
+              "credentials"
+            ],
+            "defaultValue": "qr|credentials",
+            "omitDefault": true
           }
         ],
         "normalization": {
@@ -5710,7 +5721,8 @@
             "ssid64",
             "security",
             "pass64",
-            "hidden"
+            "hidden",
+            "wifi_tabs"
           ]
         },
         "default": {

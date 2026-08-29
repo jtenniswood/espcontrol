@@ -10,16 +10,28 @@ import {
     setConfigOptionValue,
 } from "../model/config_primitives";
 import type { CardRegistry } from "../application/card_registry";
+import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 
 // Credentials are encoded only to keep the compact card format unambiguous.
 // This is deliberately not encryption: exported backups contain the password.
-export function registerWifiQrCardTypes(registry: CardRegistry, fields: ControlsFieldsFeature): void {
+export function registerWifiQrCardTypes(
+    registry: CardRegistry,
+    modalTabs: ConfigModalTabOptionsFeature,
+    fields: ControlsFieldsFeature,
+): void {
     const SSID_OPTION = "ssid64";
     const SECURITY_OPTION = "security";
     const PASSWORD_OPTION = "pass64";
     const HIDDEN_OPTION = "hidden";
     const { cardBadgePreview } = fields;
+    const {
+        wifiQrTabDefinitions,
+        wifiQrTabs,
+        normalizeWifiQrTabOptions,
+        setWifiQrTabs,
+        renderModalTabSettings,
+    } = modalTabs;
     const WIFI_QR_CARD_METADATA: any = {
         labelField: { label: "Card title", idSuffix: "wifi-label", placeholder: "Connect", bindName: "label", rerender: true },
         icon: { pickerIdSuffix: "wifi-icon-picker", idSuffix: "wifi-icon", field: "icon", fallback: "Wifi" },
@@ -57,6 +69,7 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
     }
     function normalizeWifiQrConfig(this: any, b?: any) {
         if (!b) return;
+        var tabs: any = wifiQrTabs(b);
         b.type = "wifi_qr";
         b.entity = ""; b.sensor = ""; b.unit = ""; b.precision = ""; b.icon_on = "Auto";
         if (!b.label || isLegacyWifiQrTitle(b.label)) b.label = "Connect";
@@ -69,14 +82,17 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
         else if (password) options = setConfigOptionValue(options, PASSWORD_OPTION, base64urlEncode(password));
         if (wifiQrHidden(b)) options = setConfigOption(options, HIDDEN_OPTION, true);
         b.options = options;
+        setWifiQrTabs(b, tabs);
     }
     function updateOptions(this: any, b?: any, ssid?: any, security?: any, password?: any, hidden?: any) {
         if (!b) return;
+        var tabs: any = wifiQrTabs(b);
         b.options = "";
         if (ssid) b.options = setConfigOptionValue(b.options, SSID_OPTION, base64urlEncode(ssid));
         if (security === "open") b.options = setConfigOptionValue(b.options, SECURITY_OPTION, "open");
         else if (password) b.options = setConfigOptionValue(b.options, PASSWORD_OPTION, base64urlEncode(password));
         if (hidden) b.options = setConfigOption(b.options, HIDDEN_OPTION, true);
+        setWifiQrTabs(b, tabs);
         normalizeWifiQrConfig(b);
     }
     registry.register("wifi_qr", {
@@ -87,9 +103,19 @@ export function registerWifiQrCardTypes(registry: CardRegistry, fields: Controls
         cardMetadata: WIFI_QR_CARD_METADATA,
         normalizeConfig: normalizeWifiQrConfig,
         onSelect: normalizeWifiQrConfig,
-        renderSettingsBeforeLabel: function (this: any, panel?: any, _b?: any, _slot?: any, helpers?: any) {
+        renderSettingsBeforeLabel: function (this: any, panel?: any, b?: any, _slot?: any, helpers?: any) {
             var networkDisclosure: any = helpers.disclosureSection("Wifi Network", helpers.idPrefix + "wifi-network", false);
             panel.appendChild(networkDisclosure.panel);
+            var modalTabsDisclosure: any = helpers.disclosureSection("Modal Settings", helpers.idPrefix + "wifi-modal-tabs", b && b._modalSettingsOpen === true);
+            renderModalTabSettings(modalTabsDisclosure.section, b, helpers, {
+                definitions: wifiQrTabDefinitions,
+                tabs: wifiQrTabs,
+                normalizeOptions: normalizeWifiQrTabOptions,
+                setTabs: setWifiQrTabs,
+                idPrefix: "wifi-tab-",
+                hideHeading: true,
+            });
+            panel.appendChild(modalTabsDisclosure.panel);
             var cardSettingsDisclosure: any = helpers.disclosureSection("Card Settings", helpers.idPrefix + "wifi-card-settings", false);
             panel.appendChild(cardSettingsDisclosure.panel);
         },

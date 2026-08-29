@@ -2331,7 +2331,8 @@
         { "name": "ssid64", "label": "Network name", "kind": "text", "omitDefault": true },
         { "name": "security", "label": "Security", "kind": "choice", "values": ["wpa", "open"], "defaultValue": "wpa", "omitDefault": true },
         { "name": "pass64", "label": "Password", "kind": "text", "omitDefault": true },
-        { "name": "hidden", "label": "Hidden network", "kind": "flag", "omitDefault": true }
+        { "name": "hidden", "label": "Hidden network", "kind": "flag", "omitDefault": true },
+        { "name": "wifi_tabs", "label": "Visible Tabs", "kind": "text", "values": ["qr", "credentials"], "defaultValue": "qr|credentials", "omitDefault": true }
       ],
       "normalization": {
         "fields": {
@@ -2346,7 +2347,7 @@
           "options": { "policy": "keep" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["ssid64", "security", "pass64", "hidden"]
+        "canonicalOptionOrder": ["ssid64", "security", "pass64", "hidden", "wifi_tabs"]
       },
       "default": {
         "entity": "",
