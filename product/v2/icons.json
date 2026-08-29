@@ -36,12 +36,6 @@
       "comment": "Firmware update entities"
     },
     {
-      "name": "Wi-Fi Startup",
-      "codepoint": "F05A9",
-      "mdi": "wifi",
-      "comment": "Setup screens"
-    },
-    {
       "name": "Wi-Fi",
       "codepoint": "F0928",
       "mdi": "wifi-strength-4",
@@ -1750,6 +1744,11 @@
       "name": "Weather Windy Variant",
       "codepoint": "F059E",
       "mdi": "weather-windy-variant"
+    },
+    {
+      "name": "Wifi",
+      "codepoint": "F05A9",
+      "mdi": "wifi"
     },
     {
       "name": "Wind Power",

@@ -96,8 +96,8 @@ export const GENERATED_ICON_NAMES: readonly string[] = [
     "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
     "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
     "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
-    "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
-    "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
+    "Weather Windy", "Weather Windy Variant", "Wifi", "Wind Power", "Wind Turbine", "Wind Turbine Alert",
+    "Wind Turbine Check", "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
   ];
 // --- GENERATED:ICONS END ---
 

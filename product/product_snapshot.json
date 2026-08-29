@@ -12,8 +12,8 @@
     "deviceProfiles": 7,
     "cardTypes": 41,
     "entityNames": 101,
-    "icons": 334,
-    "structuralIcons": 19,
+    "icons": 335,
+    "structuralIcons": 18,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -7173,12 +7173,6 @@
         "comment": "Firmware update entities"
       },
       {
-        "name": "Wi-Fi Startup",
-        "codepoint": "F05A9",
-        "mdi": "wifi",
-        "comment": "Setup screens"
-      },
-      {
         "name": "Wi-Fi",
         "codepoint": "F0928",
         "mdi": "wifi-strength-4",
@@ -8887,6 +8881,11 @@
         "name": "Weather Windy Variant",
         "codepoint": "F059E",
         "mdi": "weather-windy-variant"
+      },
+      {
+        "name": "Wifi",
+        "codepoint": "F05A9",
+        "mdi": "wifi"
       },
       {
         "name": "Wind Power",

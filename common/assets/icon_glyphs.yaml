@@ -5,7 +5,6 @@
 - "\U000F01DA"  # mdi-download (Firmware install update entity)
 - "\U000F04F9"  # mdi-tag (Firmware version entity)
 - "\U000F06B0"  # mdi-update (Firmware update entities)
-- "\U000F05A9"  # mdi-wifi (Setup screens)
 - "\U000F0928"  # mdi-wifi-strength-4 (Setup screens)
 - "\U000F092F"  # mdi-wifi-strength-outline (Network status)
 - "\U000F091F"  # mdi-wifi-strength-1 (Network status)
@@ -342,6 +341,7 @@
 - "\U000F0F38"  # mdi-weather-tornado
 - "\U000F059D"  # mdi-weather-windy
 - "\U000F059E"  # mdi-weather-windy-variant
+- "\U000F05A9"  # mdi-wifi
 - "\U000F1A88"  # mdi-wind-power
 - "\U000F0DA5"  # mdi-wind-turbine
 - "\U000F19AB"  # mdi-wind-turbine-alert
