@@ -243,18 +243,22 @@ assert.strictEqual(
 );
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.imageSlotCapacityMessage(),
-  "This display supports up to 1 Media Cover Art card.",
-  "S3 explains its constrained cover-art capacity",
+  "This display supports up to 1 Camera Card across the main page and subpages.",
+  "S3 explains its constrained Camera Card capacity",
 );
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.buttonTypeVisibleInPickerFor("image", false),
-  false,
-  "S3 keeps general Image cards hidden",
+  true,
+  "S3 exposes Camera Cards",
 );
 assert.strictEqual(
   hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.buttonTypeVisibleInPickerFor("media_cover_art", false),
   false,
-  "S3 exposes Cover Art only through the Media subtype list",
+  "S3 keeps Media Cover Art out of the main card picker",
+);
+assert(
+  !Array.from(hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.mediaModeOptionValues()).includes("cover_art"),
+  "S3 hides Media Cover Art from the Media subtype list",
 );
 assertGeneratedConfigValue("guition-esp32-s3-4848s040", generated, "mediaTitleSize", 7.083333);
 assert(previewStylesSource.includes(".sp-media-now-title{font-size:var(--media-title)"), "media titles use their dedicated preview size");
