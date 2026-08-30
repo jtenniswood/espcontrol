@@ -1169,8 +1169,8 @@ inline bool image_card_modal_cache_matches(ImageCardCtx *ctx) {
   ImageCardModalCache &cache = image_card_modal_cache();
   return esphome::artwork_image::image_pipeline_modal_cache_matches(
       cache.ready, cache.image == ctx->modal_image,
-      cache.entity_id == ctx->entity_id, cache.source_url == ctx->source_url) &&
-         !image_card_modal_cache_expired();
+      cache.entity_id == ctx->entity_id, cache.source_url == ctx->source_url,
+      image_card_constrained_memory_profile(), image_card_modal_cache_expired());
 }
 
 inline bool image_card_modal_has_preview(ImageCardCtx *ctx) {
