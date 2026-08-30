@@ -1072,14 +1072,27 @@ inline bool media_playback_has_current_content(const MediaPlaybackState *state) 
 
 inline void media_cover_art_set_idle_placeholder(MediaNowPlayingCtx *ctx,
                                                  bool visible) {
-  if (!ctx || !ctx->cover_art_mode || !ctx->icon_lbl) return;
-  if (visible) {
-    lv_label_set_display_text(ctx->icon_lbl, find_icon("Music"));
-    lv_obj_align(ctx->icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
-    lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(ctx->icon_lbl);
-  } else {
-    lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (!ctx || !ctx->cover_art_mode) return;
+  if (ctx->icon_lbl) {
+    if (visible) {
+      lv_label_set_display_text(ctx->icon_lbl, find_icon("Music"));
+      lv_obj_align(ctx->icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+      lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_move_foreground(ctx->icon_lbl);
+    } else {
+      lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  if (ctx->idle_lbl) {
+    if (visible) {
+      lv_label_set_display_text(ctx->idle_lbl, espcontrol_i18n("Idle"));
+      lv_obj_align(ctx->idle_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+      configure_button_label_wrap(ctx->idle_lbl);
+      lv_obj_clear_flag(ctx->idle_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_move_foreground(ctx->idle_lbl);
+    } else {
+      lv_obj_add_flag(ctx->idle_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
   }
 }
 
@@ -4540,6 +4553,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
     ctx->btn = s.btn;
     ctx->icon_lbl = s.icon_lbl;
+    ctx->idle_lbl = s.text_lbl;
     ctx->content_padding = padding;
     ctx->cover_art_mode = mode == "cover_art";
     ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);

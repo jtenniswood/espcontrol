@@ -99,6 +99,7 @@ struct SliderCtx {
 
 struct MediaNowPlayingCtx {
   lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *idle_lbl = nullptr;
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
