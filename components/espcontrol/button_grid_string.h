@@ -15,6 +15,34 @@ inline std::string string_ref_limited(esphome::StringRef value, size_t max_len) 
   return std::string(value.c_str(), len);
 }
 
+// Roboto does not provide the precomposed Latin S-with-dot-below glyphs used
+// by some user-supplied names and media metadata. Keep protocol/configuration
+// values untouched and apply this compact ASCII fallback only at display time.
+inline std::string normalize_display_text(const std::string &text) {
+  static constexpr char UPPER_S_DOT_BELOW[] = "\xE1\xB9\xA2";  // U+1E62
+  static constexpr char LOWER_S_DOT_BELOW[] = "\xE1\xB9\xA3";  // U+1E63
+
+  if (text.find(UPPER_S_DOT_BELOW) == std::string::npos &&
+      text.find(LOWER_S_DOT_BELOW) == std::string::npos) {
+    return text;
+  }
+
+  std::string normalized;
+  normalized.reserve(text.size());
+  for (size_t index = 0; index < text.size();) {
+    if (text.compare(index, 3, UPPER_S_DOT_BELOW) == 0) {
+      normalized.push_back('S');
+      index += 3;
+    } else if (text.compare(index, 3, LOWER_S_DOT_BELOW) == 0) {
+      normalized.push_back('s');
+      index += 3;
+    } else {
+      normalized.push_back(text[index++]);
+    }
+  }
+  return normalized;
+}
+
 inline bool append_html_code_point(std::string &output, uint32_t code_point) {
   if (code_point == 0 || code_point > 0x10FFFF ||
       (code_point >= 0xD800 && code_point <= 0xDFFF)) {

@@ -3,6 +3,7 @@
 #include <array>
 
 #include "panel_config_capabilities.h"
+#include "panel_config_http_context.h"
 
 int main() {
   using namespace espcontrol::configuration;
@@ -33,5 +34,15 @@ int main() {
                                            &capabilities_size) &&
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"write\":true") != nullptr;
-  return passed && read_capability_is_advertised ? EXIT_SUCCESS : EXIT_FAILURE;
+  set_panel_config_http_context_initialization_complete(false);
+  const bool startup_capability_is_retryable =
+      !panel_config_http_context_initialization_complete();
+  set_panel_config_http_context_initialization_complete(true);
+  const bool completed_initialization_is_observable =
+      panel_config_http_context_initialization_complete();
+  return passed && read_capability_is_advertised &&
+                 startup_capability_is_retryable &&
+                 completed_initialization_is_observable
+             ? EXIT_SUCCESS
+             : EXIT_FAILURE;
 }

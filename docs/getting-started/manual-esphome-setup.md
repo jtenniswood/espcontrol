@@ -11,7 +11,7 @@ The normal [browser install](/getting-started/install) is the easiest route. Use
 ## What You Need
 
 - A supported ESP32 panel.
-- ESPHome 2026.7.4 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
+- ESPHome 2026.8.1 or newer, using Device Builder in Home Assistant or the ESPHome command line on your computer.
 - A USB-C data cable for the first install.
 - Your WiFi name and password, unless you are using an advanced wired Ethernet option.
 
@@ -27,7 +27,8 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 | --- | --- |
 | 10.1-inch JC8012P4A1 original panel, rear case `2627` or lower | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
 | 10.1-inch JC8012P4A1 new panel, rear case `2628` or higher | `devices/guition-esp32-p4-jc8012p4a1-v2/packages.yaml` |
-| 7-inch JC1060P470 | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
+| 7-inch JC1060P470 V1 / original panel, no version marking on case or board date code before `2622` | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
+| 7-inch JC1060P470 V2 / new panel, case marked `V2` or board date code `2622` or higher | `devices/guition-esp32-p4-jc1060p470-v2/packages.yaml` |
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
 | 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
 | 4-inch 4848S040 | `devices/guition-esp32-s3-4848s040/packages.yaml` |
@@ -51,11 +52,19 @@ wifi:
   password: !secret wifi_password
 
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1sec
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc1060p470/packages.yaml
     refresh: 1sec
 ```
+
+The `api_encryption` package lets Home Assistant create a unique encryption key for the display the first time it connects. Home Assistant stores that key and, with Home Assistant and ESPHome Device Builder 2026.8 or newer, passes the same key to Device Builder when you adopt or rebuild the display. You do not need to create or share a key yourself.
+
+Wireless OTA updates preserve the key stored on the display. A full USB erase can remove it, so Home Assistant may ask you to pair the display again afterward. For the underlying behavior, see the [ESPHome native API documentation](https://esphome.io/components/api/), the [Home Assistant key-handoff fix](https://github.com/home-assistant/core/pull/178039), and the [Device Builder adoption fix](https://github.com/esphome/device-builder/pull/2496).
 
 If you do not use ESPHome secrets, replace the two `!secret` lines with your WiFi details:
 
@@ -84,6 +93,10 @@ substitutions:
   espcontrol_web_password: !secret espcontrol_web_password
 
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1sec
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc1060p470/packages.yaml
@@ -117,6 +130,7 @@ Use this template for Ethernet-capable models. Do not add a `wifi:` block. Chang
 | Panel | Ethernet package file |
 | --- | --- |
 | 7-inch JC1060P470 Ethernet model | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
+| 7-inch JC1060P470 new panel Ethernet model | `devices/guition-esp32-p4-jc1060p470-v2/packages.yaml` |
 | ESP32-P4 86 Panel ETH-2RO | `devices/esp32-p4-86/packages.yaml` |
 
 ```yaml
@@ -127,6 +141,10 @@ substitutions:
   disable_updates: "true"
 
 packages:
+  api_encryption:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: common/addon/api_encryption_dynamic.yaml
+    refresh: 1sec
   setup:
     url: https://github.com/jtenniswood/espcontrol/
     file: devices/guition-esp32-p4-jc1060p470/packages.yaml

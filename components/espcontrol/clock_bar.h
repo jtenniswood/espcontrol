@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "esphome/components/lvgl/lvgl_esphome.h"
+#include "display_text.h"
 #include "display_mode_controller.h"
 #include "temperature_unit.h"
 
@@ -275,11 +276,14 @@ inline ClockBarVisibility clock_bar_resolve_visibility(
     espcontrol::DisplayMode display_mode,
     bool schedule_inactive) {
   ClockBarVisibility result;
-  // Full-screen screensavers hide the clock bar, but the grid should keep the
-  // same top padding so waking does not briefly resize the cards.
+  // Full-screen screensavers hide the clock bar, but the dimmed screensaver
+  // keeps the normal UI visible and should preserve its complete clock bar.
+  // Keep the same top padding in hidden modes so waking does not briefly
+  // resize the cards.
   result.reserve_space = enabled && !schedule_inactive;
   result.visible = result.reserve_space &&
-      display_mode == espcontrol::DisplayMode::ACTIVE &&
+      (display_mode == espcontrol::DisplayMode::ACTIVE ||
+       display_mode == espcontrol::DisplayMode::DIMMED) &&
       clock_bar_active_on_button_grid_page(main_page_obj);
   return result;
 }
@@ -443,7 +447,7 @@ inline void refresh_clock_bar_temperature_label_values(
       else format_fixed_decimal(value_buf, sizeof(value_buf), value, 0);
       char buf[24];
       format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
-      lv_label_set_text(label, buf);
+      lv_label_set_display_text(label, buf);
       clock_bar_set_widget_hidden(label, !show_on_screen);
     };
     if (outdoor_enabled) set_legacy_temperature(outdoor);
@@ -472,7 +476,7 @@ inline void refresh_clock_bar_temperature_label_values(
     else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 0);
     char buf[24];
     format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
-    lv_label_set_text(label, buf);
+    lv_label_set_display_text(label, buf);
     clock_bar_set_widget_hidden(label, false);
   }
 }

@@ -25,6 +25,25 @@ interface MigrationFixture {
         readonly subpage_slots: readonly string[];
       };
     };
+    readonly ten_inch_legacy_restore: {
+      readonly backup: Record<string, unknown>;
+      readonly expected: {
+        readonly button_order: string;
+        readonly button_entities: readonly string[];
+        readonly subpage_slot: string;
+        readonly subpage_entities: readonly string[];
+      };
+    };
+    readonly ten_inch_native_restore: {
+      readonly backup: Record<string, unknown>;
+      readonly expected: {
+        readonly record_count: number;
+        readonly slot_16: string;
+        readonly slot_20: string;
+        readonly button_order: string;
+        readonly subpage_slots: readonly string[];
+      };
+    };
   };
 }
 
@@ -65,6 +84,20 @@ const feature = createBackupFeature({
   serializeSubpageConfig: serializeSubpage,
   buildSubpageGrid(subpage) {
     const result = buildSubpageGrid(subpage, 6, 3);
+    subpage.sizes = result.sizes;
+    return result.grid;
+  },
+});
+
+const tenInchFeature = createBackupFeature({
+  deviceId: "guition-esp32-p4-jc8012p4a1",
+  gridCols: 5,
+  numSlots: 20,
+  normalizeButtonConfig: (button: CardConfig) => cloneCardConfig(button),
+  parseSubpageConfig: parseLegacySubpageConfig,
+  serializeSubpageConfig: serializeSubpage,
+  buildSubpageGrid(subpage) {
+    const result = buildSubpageGrid(subpage, 20, 5);
     subpage.sizes = result.sizes;
     return result.grid;
   },
@@ -158,4 +191,39 @@ export function runBackupFeatureTests(migrationFixture?: MigrationFixture): void
     scenario.expected.button_entities, "backup restore preserves button records");
   deepEqual(Object.keys(restored.subpages), scenario.expected.subpage_slots,
     "backup restore preserves structured subpages");
+
+  const legacyTenInch = migrationFixture.scenarios.ten_inch_legacy_restore;
+  const legacyPlan = tenInchFeature.planBackupImport(legacyTenInch.backup, {
+    device: "guition-esp32-p4-jc8012p4a1",
+    slots: 20,
+  });
+  equal(legacyPlan.buttons.length, 20, "legacy 10-inch restore retains all twenty slots");
+  equal(legacyPlan.button_order, legacyTenInch.expected.button_order,
+    "legacy 10-inch restore retains its card order");
+  deepEqual(
+    legacyPlan.buttons.slice(0, legacyTenInch.expected.button_entities.length)
+      .map((button) => button.entity),
+    legacyTenInch.expected.button_entities,
+    "legacy 10-inch restore retains its configured cards",
+  );
+  const restoredSubpage = legacyPlan.subpages[legacyTenInch.expected.subpage_slot];
+  deepEqual(restoredSubpage?.buttons.map((button) => button.entity),
+    legacyTenInch.expected.subpage_entities,
+    "legacy 10-inch restore retains the Devices subpage contents");
+
+  const nativeTenInch = migrationFixture.scenarios.ten_inch_native_restore;
+  const normalizedNativeTenInch = tenInchFeature.normalizeBackupConfig(nativeTenInch.backup);
+  const nativeTenInchDocument = decodePanelConfig(
+    decodePanelConfigBackupPayload(normalizedNativeTenInch.native_config),
+  );
+  equal(Object.keys(nativeTenInchDocument.buttons).length, nativeTenInch.expected.record_count,
+    "native 10-inch restore retains all twenty button records");
+  equal(nativeTenInchDocument.buttons[16], nativeTenInch.expected.slot_16,
+    "native 10-inch restore retains the slot 16 placeholder");
+  equal(nativeTenInchDocument.buttons[20], nativeTenInch.expected.slot_20,
+    "native 10-inch restore retains the slot 20 placeholder");
+  equal(nativeTenInchDocument.settings.button_order, nativeTenInch.expected.button_order,
+    "native 10-inch restore retains its card order");
+  deepEqual(Object.keys(nativeTenInchDocument.subpages), nativeTenInch.expected.subpage_slots,
+    "newer 10-inch backup remains empty when its source omitted subpages");
 }

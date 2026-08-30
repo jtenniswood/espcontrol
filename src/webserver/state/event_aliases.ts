@@ -32,7 +32,8 @@ export const SSE_ALIAS_GROUPS = {
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
   homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
   homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
-  homeAssistantArtworkBaseUrl: ["text-home_assistant_artwork_base_url", "text-cover_art_home_assistant_artwork_base_url_override"],
+  homeAssistantArtworkEndpointMode: ["select-home_assistant_artwork_endpoint_mode"],
+  homeAssistantArtworkEndpointStatus: ["text_sensor-home_assistant_artwork_endpoint_status"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleSensorActivation: ["select-screen__schedule_sensor_activation", "select-screen_schedule_sensor_activation", "select-schedule_sensor_activation"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
@@ -85,7 +86,8 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, "switch-screen_saver__hide_cover_art_on_external_input");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, "select-home_assistant_artwork_protocol");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, "number-home_assistant_artwork_port");
-  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkBaseUrl, "text-home_assistant_artwork_base_url");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointMode, "select-home_assistant_artwork_endpoint_mode");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkEndpointStatus, "text_sensor-home_assistant_artwork_endpoint_status");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleTrigger, "text-screen__schedule_trigger");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleSensorActivation, "select-screen__schedule_sensor_activation");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, "number-screen__schedule_wake_timeout");

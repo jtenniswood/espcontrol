@@ -1,0 +1,41 @@
+{
+  "label": "Lock",
+  "allowInSubpage": true,
+  "domains": ["lock"],
+  "options": [
+    {
+      "name": "lock_mode",
+      "label": "Type",
+      "kind": "choice",
+      "values": ["", "lock", "unlock"],
+      "defaultValue": "",
+      "storageField": "sensor",
+      "omitDefault": false
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "keep" },
+      "icon": { "policy": "keep" },
+      "icon_on": { "policy": "hook", "hook": "normalize_access_fields" },
+      "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+      "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "lock" },
+      "precision": { "policy": "clear" },
+      "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": []
+  },
+  "behavior": {
+    "lock": {
+      "commandServices": { "lock": "lock.lock", "unlock": "lock.unlock" },
+      "toggleServices": { "locked": "lock.unlock", "default": "lock.lock" }
+    }
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Lock", "icon_on": "Lock Open",
+    "sensor": "", "unit": "", "type": "lock", "precision": "", "options": ""
+  }
+}

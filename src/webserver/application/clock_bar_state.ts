@@ -1,8 +1,61 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installClockBarStateModule(): GlobalDescriptors {
+import { normalizeTemperatureUnit } from "../model/settings";
+import type { ClockBarController } from "../features/clock_bar_controller";
+import type { UiRuntimeState } from "./state";
+import type { CoreFeature } from "./core";
+import type { EnvironmentStateFeature } from "./environment_state";
+
+export interface ClockBarFeature {
+    controllerState(): any;
+    applyControllerState(next?: any): void;
+    uiState(): any;
+    setEnabled(enabled?: any): void;
+    setNightModeEnabled(enabled?: any): void;
+    visibleInPreview(): boolean;
+    temperatureUnitSymbol(): string;
+    clockBarTemperatureUnitSymbol(): string;
+    normalizeTemperatureEntries(value?: any): string[];
+    normalizeTemperatureEntities(value?: any): string[];
+    serializeTemperatureEntities(list?: any): string;
+    temperatureEntities(): string[];
+    primaryTemperatureEntity(): string;
+    temperatureVisible(): boolean;
+    applyTemperatureEntities(list?: any, postDevice?: any): void;
+    saveTemperatureSettings(entity?: any, degreeSymbolOn?: any): void;
+    setItemVisible(item?: any, visible?: any): void;
+    syncTemperatureUi(): void;
+    syncUi(): void;
+}
+
+export function createClockBarFeature(
+    clockBarController: ClockBarController,
+    runtime: UiRuntimeState,
+    core: Pick<CoreFeature, "syncPreviewGridTop">,
+    environment: EnvironmentStateFeature,
+    dependencies: {
+        hideSettingsOverlay(): void;
+        timezoneId(value?: any): string;
+        postTemperatureEntities(value: string): void;
+        postSwitch(name: string, value: boolean): void;
+        entityName(key: string): string;
+        postText(name: string, value: string): void;
+        updateTemperaturePreview(): void;
+        updateItemUi(): void;
+        postTemperatureDegreeSymbol(value: boolean): void;
+        isTemperatureItem(item?: any): boolean;
+        postTime(value: boolean): void;
+        postVoiceServices(value: boolean): void;
+        postNetworkStatus(value: boolean): void;
+        renderSelectionBar(): void;
+        updateNetworkPreview(): void;
+        updateVoicePreview(): void;
+    },
+): ClockBarFeature {
+    const { syncPreviewGridTop } = core;
+    const els = runtime.els;
+    const { effectiveTimezoneOptionForWeb, voiceServicesUiState, setVoiceServicesEnabled } = environment;
     // ── Clock Bar State ───────────────────────────────────────────────────
-    var _clockBarController: any = createClockBarController();
+    var clockBarControllerInstance: ClockBarController = clockBarController;
     function clockBarControllerState(this: any) {
         return {
             enabled: !!state.clockBarOn,
@@ -18,23 +71,26 @@ export function installClockBarStateModule(): GlobalDescriptors {
         state.clockBarSelectedItem = next.selectedItem;
     }
     function clockBarUiState(this: any) {
-        return _clockBarController.uiState(clockBarControllerState());
+        return clockBarControllerInstance.uiState(clockBarControllerState());
     }
     function setClockBarEnabled(this: any, enabled?: any) {
         var current: any = clockBarControllerState();
-        var next: any = _clockBarController.setEnabled(current, enabled);
+        var next: any = clockBarControllerInstance.setEnabled(current, enabled);
         // The editor belongs to the selected preview item. Close it before the
         // controller removes that selection, otherwise its modal can outlive
         // the Clock Bar that contained the item.
         if (!next.enabled && current.selectedItem)
-            hideSettingsOverlay();
+            dependencies.hideSettingsOverlay();
         applyClockBarControllerState(next);
+    }
+    function setNightModeEnabled(enabled?: any) {
+        applyClockBarControllerState(clockBarControllerInstance.setNightModeEnabled(clockBarControllerState(), enabled));
     }
     function clockBarVisibleInPreview(this: any) {
         return clockBarUiState().previewVisible;
     }
     function timezonePrefersFahrenheit(this: any, timezone?: any) {
-        var tz: any = getTzId(effectiveTimezoneOptionForWeb(timezone || state.timezone));
+        var tz: any = dependencies.timezoneId(effectiveTimezoneOptionForWeb(timezone || state.timezone));
         var fahrenheitZones: any = {
             "America/Adak": true,
             "America/Anchorage": true,
@@ -64,7 +120,7 @@ export function installClockBarStateModule(): GlobalDescriptors {
     function clockBarTemperatureUnitSymbol(this: any) {
         return state.temperatureDegreeSymbolOn ? "\u00B0" : "";
     }
-    var MAX_CLOCK_BAR_TEMPERATURES: any = 1;
+    const maxTemperatures = 1;
     function defaultClockBarTemperatureEntity(this: any, index?: any) {
         if (index === 0)
             return "sensor.outdoor_temperature";
@@ -74,7 +130,7 @@ export function installClockBarStateModule(): GlobalDescriptors {
         var input: any = Array.isArray(value) ? value : String(value || "").split(/[|,\n]/);
         return input.map(function (this: any, entry?: any) {
             return String(entry || "").trim();
-        }).slice(0, MAX_CLOCK_BAR_TEMPERATURES);
+        }).slice(0, maxTemperatures);
     }
     function normalizeClockBarTemperatureEntities(this: any, value?: any) {
         var input: any = normalizeClockBarTemperatureEntries(value);
@@ -83,7 +139,7 @@ export function installClockBarStateModule(): GlobalDescriptors {
             if (entry && out.indexOf(entry) === -1)
                 out.push(entry);
         });
-        return out.slice(0, MAX_CLOCK_BAR_TEMPERATURES);
+        return out.slice(0, maxTemperatures);
     }
     function serializeClockBarTemperatureEntities(this: any, list?: any) {
         return normalizeClockBarTemperatureEntities(list).join("|");
@@ -122,15 +178,15 @@ export function installClockBarStateModule(): GlobalDescriptors {
         state.outdoorEntity = configured[0] || "";
         state.indoorEntity = "";
         if (postDevice) {
-            postClockBarTemperatureEntities(serializeClockBarTemperatureEntities(state.clockBarTemperatureEntities));
-            postSwitch(entityName("outdoor_temp_enable"), state._outdoorOn);
-            postSwitch(entityName("indoor_temp_enable"), state._indoorOn);
-            postText(entityName("outdoor_temp_entity"), state.outdoorEntity);
-            postText(entityName("indoor_temp_entity"), state.indoorEntity);
+            dependencies.postTemperatureEntities(serializeClockBarTemperatureEntities(state.clockBarTemperatureEntities));
+            dependencies.postSwitch(dependencies.entityName("outdoor_temp_enable"), state._outdoorOn);
+            dependencies.postSwitch(dependencies.entityName("indoor_temp_enable"), state._indoorOn);
+            dependencies.postText(dependencies.entityName("outdoor_temp_entity"), state.outdoorEntity);
+            dependencies.postText(dependencies.entityName("indoor_temp_entity"), state.indoorEntity);
         }
         syncTemperatureUi();
-        updateTempPreview();
-        updateClockBarItemUi();
+        dependencies.updateTemperaturePreview();
+        dependencies.updateItemUi();
     }
     function saveClockBarTemperatureSettings(this: any, entity?: any, degreeSymbolOn?: any) {
         entity = String(entity || "").trim();
@@ -142,45 +198,45 @@ export function installClockBarStateModule(): GlobalDescriptors {
         state.outdoorEntity = entity;
         state.indoorEntity = "";
         state.temperatureDegreeSymbolOn = !!degreeSymbolOn;
-        postClockBarTemperatureEntities(serializeClockBarTemperatureEntities(state.clockBarTemperatureEntities));
-        postSwitch(entityName("outdoor_temp_enable"), state._outdoorOn);
-        postSwitch(entityName("indoor_temp_enable"), false);
-        postText(entityName("outdoor_temp_entity"), state.outdoorEntity);
-        postText(entityName("indoor_temp_entity"), "");
-        postTemperatureDegreeSymbol(state.temperatureDegreeSymbolOn);
+        dependencies.postTemperatureEntities(serializeClockBarTemperatureEntities(state.clockBarTemperatureEntities));
+        dependencies.postSwitch(dependencies.entityName("outdoor_temp_enable"), state._outdoorOn);
+        dependencies.postSwitch(dependencies.entityName("indoor_temp_enable"), false);
+        dependencies.postText(dependencies.entityName("outdoor_temp_entity"), state.outdoorEntity);
+        dependencies.postText(dependencies.entityName("indoor_temp_entity"), "");
+        dependencies.postTemperatureDegreeSymbol(state.temperatureDegreeSymbolOn);
         syncTemperatureUi();
         syncClockBarUi();
     }
     function setClockBarItemVisible(this: any, item?: any, visible?: any) {
         visible = !!visible;
-        if (isClockBarTemperatureItem(item)) {
+        if (dependencies.isTemperatureItem(item)) {
             var entity: any = primaryClockBarTemperatureEntity();
             if (visible && !entity) {
                 entity = defaultClockBarTemperatureEntity(0);
                 state.clockBarTemperatureEntities = [entity];
                 state._clockBarTemperatureEntitiesReceived = true;
                 state.outdoorEntity = entity;
-                postClockBarTemperatureEntities(entity);
-                postText(entityName("outdoor_temp_entity"), entity);
+                dependencies.postTemperatureEntities(entity);
+                dependencies.postText(dependencies.entityName("outdoor_temp_entity"), entity);
             }
             state._clockBarTemperatureVisibilityReceived = true;
             state._outdoorOn = visible && !!entity;
             state._indoorOn = false;
-            postSwitch(entityName("outdoor_temp_enable"), state._outdoorOn);
-            postSwitch(entityName("indoor_temp_enable"), false);
-            postText(entityName("indoor_temp_entity"), "");
+            dependencies.postSwitch(dependencies.entityName("outdoor_temp_enable"), state._outdoorOn);
+            dependencies.postSwitch(dependencies.entityName("indoor_temp_enable"), false);
+            dependencies.postText(dependencies.entityName("indoor_temp_entity"), "");
         }
         else if (item === "time") {
             state.clockBarTimeOn = visible;
-            postClockBarTime(state.clockBarTimeOn);
+            dependencies.postTime(state.clockBarTimeOn);
         }
         else if (item === "voice" && voiceServicesUiState().clockBarItemVisible) {
-            applyVoiceServicesState(_voiceServicesController.setEnabled(voiceServicesState(), visible));
-            postVoiceServices(state.voiceServicesOn);
+            setVoiceServicesEnabled(visible);
+            dependencies.postVoiceServices(state.voiceServicesOn);
         }
         else if (item === "network") {
             state.networkStatusOn = visible;
-            postNetworkStatusIcon(state.networkStatusOn);
+            dependencies.postNetworkStatus(state.networkStatusOn);
         }
         syncClockBarUi();
         syncTemperatureUi();
@@ -199,11 +255,11 @@ export function installClockBarStateModule(): GlobalDescriptors {
     }
     function syncClockBarUi(this: any) {
         var before: any = clockBarControllerState();
-        applyClockBarControllerState(_clockBarController.reconcile(before));
+        applyClockBarControllerState(clockBarControllerInstance.reconcile(before));
         var uiState: any = clockBarUiState();
         var visible: any = uiState.previewVisible;
         if (!visible && before.selectedItem) {
-            hideSettingsOverlay();
+            dependencies.hideSettingsOverlay();
         }
         syncPreviewGridTop();
         if (els.topbar)
@@ -235,36 +291,31 @@ export function installClockBarStateModule(): GlobalDescriptors {
         if (els.setSubpageChevronToggle) {
             els.setSubpageChevronToggle.checked = !!state.subpageChevronsOn;
         }
-        updateClockBarItemUi();
-        renderSelectionBar(ctx());
-        updateNetworkPreview();
-        updateVoicePreview();
-        updateTempPreview();
+        dependencies.updateItemUi();
+        dependencies.renderSelectionBar();
+        dependencies.updateNetworkPreview();
+        dependencies.updateVoicePreview();
+        dependencies.updateTemperaturePreview();
     }
     return {
-        "_clockBarController": liveGlobal(() => _clockBarController, (value?: any) => { _clockBarController = value; }),
-        "clockBarControllerState": staticGlobal(clockBarControllerState),
-        "applyClockBarControllerState": staticGlobal(applyClockBarControllerState),
-        "clockBarUiState": staticGlobal(clockBarUiState),
-        "setClockBarEnabled": staticGlobal(setClockBarEnabled),
-        "clockBarVisibleInPreview": staticGlobal(clockBarVisibleInPreview),
-        "timezonePrefersFahrenheit": staticGlobal(timezonePrefersFahrenheit),
-        "temperatureUnitSymbol": staticGlobal(temperatureUnitSymbol),
-        "clockBarTemperatureUnitSymbol": staticGlobal(clockBarTemperatureUnitSymbol),
-        "MAX_CLOCK_BAR_TEMPERATURES": liveGlobal(() => MAX_CLOCK_BAR_TEMPERATURES, (value?: any) => { MAX_CLOCK_BAR_TEMPERATURES = value; }),
-        "defaultClockBarTemperatureEntity": staticGlobal(defaultClockBarTemperatureEntity),
-        "normalizeClockBarTemperatureEntries": staticGlobal(normalizeClockBarTemperatureEntries),
-        "normalizeClockBarTemperatureEntities": staticGlobal(normalizeClockBarTemperatureEntities),
-        "serializeClockBarTemperatureEntities": staticGlobal(serializeClockBarTemperatureEntities),
-        "legacyClockBarTemperatureEntities": staticGlobal(legacyClockBarTemperatureEntities),
-        "clockBarTemperatureEntries": staticGlobal(clockBarTemperatureEntries),
-        "clockBarTemperatureEntities": staticGlobal(clockBarTemperatureEntities),
-        "primaryClockBarTemperatureEntity": staticGlobal(primaryClockBarTemperatureEntity),
-        "clockBarTemperatureVisible": staticGlobal(clockBarTemperatureVisible),
-        "applyClockBarTemperatureEntities": staticGlobal(applyClockBarTemperatureEntities),
-        "saveClockBarTemperatureSettings": staticGlobal(saveClockBarTemperatureSettings),
-        "setClockBarItemVisible": staticGlobal(setClockBarItemVisible),
-        "syncTemperatureUi": staticGlobal(syncTemperatureUi),
-        "syncClockBarUi": staticGlobal(syncClockBarUi),
+        controllerState: clockBarControllerState,
+        applyControllerState: applyClockBarControllerState,
+        uiState: clockBarUiState,
+        setEnabled: setClockBarEnabled,
+        setNightModeEnabled,
+        visibleInPreview: clockBarVisibleInPreview,
+        temperatureUnitSymbol,
+        clockBarTemperatureUnitSymbol,
+        normalizeTemperatureEntries: normalizeClockBarTemperatureEntries,
+        normalizeTemperatureEntities: normalizeClockBarTemperatureEntities,
+        serializeTemperatureEntities: serializeClockBarTemperatureEntities,
+        temperatureEntities: clockBarTemperatureEntities,
+        primaryTemperatureEntity: primaryClockBarTemperatureEntity,
+        temperatureVisible: clockBarTemperatureVisible,
+        applyTemperatureEntities: applyClockBarTemperatureEntities,
+        saveTemperatureSettings: saveClockBarTemperatureSettings,
+        setItemVisible: setClockBarItemVisible,
+        syncTemperatureUi,
+        syncUi: syncClockBarUi,
     };
 }

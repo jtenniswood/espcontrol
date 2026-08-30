@@ -121,7 +121,7 @@ export {
   normalizeHour,
   normalizeHomeAssistantArtworkPort,
   normalizeHomeAssistantArtworkProtocol,
-  normalizeHomeAssistantArtworkBaseUrl,
+  normalizeHomeAssistantArtworkEndpointMode,
   normalizeBrightnessMode,
   normalizeLanguage,
   normalizeNtpServer,

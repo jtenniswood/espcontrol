@@ -40,19 +40,17 @@ inline bool weather_driver_setup_visual(
   if (weather_driver_shows_forecast(config)) {
     lv_obj_add_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(slot.sensor_lbl, "--/--");
-    lv_label_set_text(slot.unit_lbl, display_temperature_unit_symbol());
+    lv_label_set_display_text(slot.sensor_lbl, "--/--");
+    lv_label_set_display_text(slot.unit_lbl, display_temperature_unit_symbol());
     const std::string day = weather_driver_forecast_day(config);
     const std::string label = config.label.empty()
       ? (day == "today"
           ? espcontrol_i18n(std::string("Today"))
           : espcontrol_i18n(std::string("Tomorrow")))
       : config.label;
-    lv_label_set_text(slot.text_lbl, label.c_str());
-    apply_width_compensation(
-      slot.sensor_container, display_main_width_percent(display));
-    apply_width_compensation(
-      slot.text_lbl, display_main_width_percent(display));
+    lv_label_set_display_text(slot.text_lbl, label.c_str());
+    display_apply_text_width(slot.sensor_container, display);
+    display_apply_text_width(slot.text_lbl, display);
     register_weather_forecast_card(
       slot.btn, slot.sensor_lbl, slot.unit_lbl, slot.text_lbl,
       config.entity, day, config.label);
@@ -61,10 +59,10 @@ inline bool weather_driver_setup_visual(
 
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(slot.icon_lbl, find_icon("Weather Cloudy"));
-  lv_label_set_text(slot.sensor_lbl, "");
-  lv_label_set_text(slot.unit_lbl, "");
-  lv_label_set_text(slot.text_lbl, espcontrol_i18n("Cloudy"));
+  lv_label_set_display_text(slot.icon_lbl, find_icon("Weather Cloudy"));
+  lv_label_set_display_text(slot.sensor_lbl, "");
+  lv_label_set_display_text(slot.unit_lbl, "");
+  lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Cloudy"));
   return true;
 }
 

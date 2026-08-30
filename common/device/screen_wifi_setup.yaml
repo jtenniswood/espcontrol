@@ -48,7 +48,7 @@ lvgl:
                   widgets:
                     - label:
                         text_font: $setup_icon_font_id
-                        text: $icon_wifi
+                        text: $icon_wifi_startup
                         text_color: 0xFFFFFF
                         text_align: center
                     - label:
@@ -71,7 +71,10 @@ script:
     mode: restart
     then:
       - lambda: |-
-          lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("WiFi Setup"));
-          lv_label_set_text(
-              id(wifi_setup_instructions),
-              espcontrol_i18n("Connect to the setup hotspot\nthen open 192.168.4.1"));
+          lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("Configure your WiFi"));
+          std::string hotspot_ssid = wifi::global_wifi_component->get_ap().get_ssid().str();
+          if (hotspot_ssid.empty()) hotspot_ssid = "${friendly_name}";
+          std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
+                            " '" + hotspot_ssid + "' " +
+                            espcontrol_i18n_key("to_configure_your_network_settings");
+          lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());

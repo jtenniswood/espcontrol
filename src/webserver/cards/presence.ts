@@ -1,7 +1,28 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerPresenceCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry } from "../application/card_registry";
+import type { ConfigSensorOptionsFeature } from "../application/config_sensor_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerPresenceCardTypes(
+    registry: CardRegistry,
+    sensorOptions: ConfigSensorOptionsFeature,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardBadgePreview } = fields;
+    const {
+        presenceActiveColorEnabled,
+        normalizePresenceOptions,
+        setPresenceActiveColorEnabled,
+    } = sensorOptions;
     // Read-only presence card: shows a sensor where Detected is active and Clear is inactive.
-    var PRESENCE_CARD_METADATA: any = {
+    const PRESENCE_CARD_METADATA: any = {
         entity: {
             label: "Sensor Entity",
             idSuffix: "sensor",
@@ -38,7 +59,7 @@ export function registerPresenceCardTypes(): GlobalDescriptors {
             checked: presenceActiveColorEnabled,
         },
     };
-    registerButtonType("presence", {
+    registry.register("presence", {
         label: function (this: any) { return cardContractCardLabel("presence"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("presence"); },
         pickerKey: function (this: any) { return cardContractPickerKey("presence"); },
@@ -71,7 +92,4 @@ export function registerPresenceCardTypes(): GlobalDescriptors {
             });
         },
     });
-    return {
-        "PRESENCE_CARD_METADATA": liveGlobal(() => PRESENCE_CARD_METADATA, (value?: any) => { PRESENCE_CARD_METADATA = value; }),
-    };
 }

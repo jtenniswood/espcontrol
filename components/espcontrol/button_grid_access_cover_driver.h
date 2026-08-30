@@ -129,7 +129,7 @@ inline void access_cover_driver_bind_slider(
     config.entity,
     context.runtime.driver == card_runtime::CardDriverId::COVER_TILT);
   if (config.label.empty()) {
-    subscribe_friendly_name(slot.text_lbl, config.entity);
+    subscribe_friendly_name_preserving_layout(slot.text_lbl, config.entity);
   }
 }
 

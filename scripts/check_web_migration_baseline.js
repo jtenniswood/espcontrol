@@ -64,7 +64,7 @@ const currentPanel = {
   ntpDefaults: ["pool.ntp.org", "time.nist.gov", "time.google.com"],
   ntpServer1: "pool.ntp.org", ntpServer2: "time.nist.gov", ntpServer3: "time.google.com",
   screensaverMode: "off", screensaverAction: "main", coverArtHomeAssistantProtocol: "http",
-  coverArtHomeAssistantPort: 80, coverArtHomeAssistantBaseUrl: "", updateFrequency: "Daily", screenRotation: "0",
+  coverArtHomeAssistantPort: 80, updateFrequency: "Daily", screenRotation: "0",
   autoUpdate: true, updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   screenRotationOptions: ["0", "90", "180", "270"],
 };

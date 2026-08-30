@@ -63,6 +63,12 @@ target_compile_options(media_power_capability_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(media_power_capability_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_power_capability_test COMMAND media_power_capability_test)
 
+add_executable(media_playback_modes_test media_playback_modes_test.cpp)
+target_compile_features(media_playback_modes_test PRIVATE cxx_std_17)
+target_compile_options(media_playback_modes_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_playback_modes_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_playback_modes_test COMMAND media_playback_modes_test)
+
 add_executable(media_metadata_policy_test media_metadata_policy_test.cpp)
 target_compile_features(media_metadata_policy_test PRIVATE cxx_std_17)
 target_compile_options(media_metadata_policy_test PRIVATE -Wall -Wextra -Werror)
@@ -120,6 +126,12 @@ target_compile_options(panel_config_http_etag_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(panel_config_http_etag_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_http_etag_test COMMAND panel_config_http_etag_test)
 
+add_executable(panel_config_write_status_test panel_config_write_status_test.cpp)
+target_compile_features(panel_config_write_status_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_write_status_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_write_status_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_write_status_test COMMAND panel_config_write_status_test)
+
 add_executable(panel_config_storage_backend_test
   panel_config_storage_backend_test.cpp
   ../../components/espcontrol/configuration_store.cpp
@@ -132,6 +144,8 @@ add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_bac
 add_executable(panel_config_legacy_adapter_test
   panel_config_legacy_adapter_test.cpp
   ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_runtime_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
 )
 target_compile_features(panel_config_legacy_adapter_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_legacy_adapter_test PRIVATE -Wall -Wextra -Werror)
@@ -165,6 +179,12 @@ target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
 target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(artwork_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME artwork_controller_test COMMAND artwork_controller_test)
+
+add_executable(home_assistant_endpoint_policy_test home_assistant_endpoint_policy_test.cpp)
+target_compile_features(home_assistant_endpoint_policy_test PRIVATE cxx_std_17)
+target_compile_options(home_assistant_endpoint_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(home_assistant_endpoint_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME home_assistant_endpoint_policy_test COMMAND home_assistant_endpoint_policy_test)
 
 add_executable(image_service_test image_service_test.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)

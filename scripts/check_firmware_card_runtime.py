@@ -185,7 +185,7 @@ def check_root(root: Path) -> list[str]:
                 )
         unsupported_clear_body = function_body(text, "clear_unsupported_card_slot_visuals")
         if unsupported_clear_body is None or any(
-            f"lv_label_set_text(s.{label}, \"\");" not in unsupported_clear_body
+            f"lv_label_set_display_text(s.{label}, \"\");" not in unsupported_clear_body
             for label in ("icon_lbl", "text_lbl", "sensor_lbl", "unit_lbl")
         ):
             failures.append(
@@ -198,6 +198,18 @@ def check_root(root: Path) -> list[str]:
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage setup through the shared card context"
+            )
+        phase2_body = function_body(text, "grid_phase2") or ""
+        setup_subpage = phase2_body.find("setup_card_visual(sub_slot")
+        refresh_subpage = phase2_body.find("refresh_card_layout(sub_slot")
+        bind_subpage = phase2_body.find("image_driver_bind_subpage")
+        if not (
+            setup_subpage >= 0
+            and refresh_subpage > setup_subpage
+            and bind_subpage > refresh_subpage
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: refresh subpage card geometry after applying label clamps"
             )
         if (
             "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
@@ -475,6 +487,17 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
+        callback_body = function_body(text, "image_card_bind_callbacks")
+        callback_guards = (
+            "callbacks_bound_image != bound_image",
+            "has_on_finished_callbacks()",
+            "has_on_error_callbacks()",
+            "ctx->image == bound_image",
+        )
+        if callback_body is None or any(guard not in callback_body for guard in callback_guards):
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: rebind image completion callbacks after image-card lifecycle changes"
+            )
     status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
     if status_entity_header.exists():
         text = status_entity_header.read_text(encoding="utf-8")
@@ -733,6 +756,11 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover lifecycle guard {needle}"
                 )
+        bind_slider_body = function_body(text, "access_cover_driver_bind_slider") or ""
+        if "subscribe_friendly_name_preserving_layout" not in bind_slider_body:
+            failures.append(
+                f"components/espcontrol/{ACCESS_COVER_HEADER}: preserve slider label padding when the cover friendly name arrives"
+            )
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover driver"
@@ -1423,6 +1451,24 @@ inline void setup_light_temp_visual() {
         (
             {
                 "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("rebind image completion callbacks after image-card lifecycle changes",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void image_card_bind_callbacks(ImageCardCtx *ctx) {\n"
+                    "  auto *bound_image = ctx->image;\n"
+                    "  bool changed = ctx->callbacks_bound_image != bound_image;\n"
+                    "  if (changed || !bound_image->has_on_finished_callbacks()) {\n"
+                    "    if (ctx->image == bound_image) {}\n"
+                    "  }\n"
+                    "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
+                    "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"

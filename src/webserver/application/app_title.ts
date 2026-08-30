@@ -1,43 +1,47 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installAppTitleModule(): GlobalDescriptors {
-    // ── Page title ─────────────────────────────────────────────────────────
-    function applyPageTitle(this: any, title?: any) {
-        var text: any = typeof title === "string" ? title.trim() : "";
-        document.title = text || "EspControl";
+export interface AppTitleFeature {
+    applyPageTitle(title?: unknown): void;
+    handleWebServerPingEvent(event?: { data?: string }): void;
+    loadPageTitleFromEventStream(): void;
+}
+
+export interface AppTitleDependencies {
+    readonly document: Document;
+    readonly eventStreamEnabled: () => boolean;
+    readonly eventSourceAvailable: () => boolean;
+    readonly createEventSource: () => EventSource;
+}
+
+export function createAppTitleFeature(dependencies: AppTitleDependencies): AppTitleFeature {
+    function applyPageTitle(title?: unknown) {
+        const text = typeof title === "string" ? title.trim() : "";
+        dependencies.document.title = text || "EspControl";
     }
-    function handleWebServerPingEvent(this: any, e?: any) {
-        var data: any = null;
+    function handleWebServerPingEvent(event?: { data?: string }) {
+        let data: any = null;
         try {
-            data = e && e.data ? JSON.parse(e.data) : null;
+            data = event?.data ? JSON.parse(event.data) : null;
         }
         catch (_) {
-            applyPageTitle("");
+            applyPageTitle();
             return;
         }
-        if (data && Object.prototype.hasOwnProperty.call(data, "title")) {
+        if (data && Object.prototype.hasOwnProperty.call(data, "title"))
             applyPageTitle(data.title);
-        }
     }
-    function loadPageTitleFromEventStream(this: any) {
-        if (eventStreamEnabled() || typeof EventSource !== "function")
+    function loadPageTitleFromEventStream() {
+        if (dependencies.eventStreamEnabled() || !dependencies.eventSourceAvailable())
             return;
-        var source: any = new EventSource("/events");
-        var closeTimer: any = setTimeout(function (this: any) {
-            source.close();
-        }, 5000);
-        source.addEventListener("ping", function (this: any, e?: any) {
-            handleWebServerPingEvent(e);
+        const source = dependencies.createEventSource();
+        const closeTimer = setTimeout(() => source.close(), 5000);
+        source.addEventListener("ping", (event) => {
+            handleWebServerPingEvent(event as MessageEvent);
             clearTimeout(closeTimer);
             source.close();
         });
-        source.addEventListener("error", function (this: any) {
+        source.addEventListener("error", () => {
             clearTimeout(closeTimer);
             source.close();
         });
     }
-    return {
-        "applyPageTitle": staticGlobal(applyPageTitle),
-        "handleWebServerPingEvent": staticGlobal(handleWebServerPingEvent),
-        "loadPageTitleFromEventStream": staticGlobal(loadPageTitleFromEventStream),
-    };
+    return { applyPageTitle, handleWebServerPingEvent, loadPageTitleFromEventStream };
 }

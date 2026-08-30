@@ -44,7 +44,7 @@ inline bool image_driver_refresh_layout(
     }
   }
   if (slot.text_lbl && !lv_obj_has_flag(slot.text_lbl, LV_OBJ_FLAG_HIDDEN)) {
-    image_card_align_label_stack(slot.text_lbl, slot.btn);
+    image_card_align_label_stack(slot.text_lbl, slot.btn, slot.icon_lbl);
   }
   if (slot.icon_lbl && !lv_obj_has_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN)) {
     image_card_align_icon(slot.icon_lbl, slot.btn);

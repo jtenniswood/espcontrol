@@ -3,6 +3,8 @@
 // =============================================================================
 #pragma once
 
+#include "display_text.h"
+
 #include <cmath>
 #include <cstdlib>
 #include <string>
@@ -44,15 +46,15 @@ inline const char *network_status_wifi_icon(float pct) {
 inline void network_status_set_wifi_icon(lv_obj_t *label, float pct, bool connected) {
   if (!label) return;
   if (!connected) {
-    lv_label_set_text(label, NETWORK_ICON_WIFI_OFF_OUTLINE);
+    lv_label_set_display_text(label, NETWORK_ICON_WIFI_OFF_OUTLINE);
     return;
   }
-  lv_label_set_text(label, network_status_wifi_icon(pct));
+  lv_label_set_display_text(label, network_status_wifi_icon(pct));
 }
 
 inline void network_status_set_ethernet_icon(lv_obj_t *label) {
   if (!label) return;
-  lv_label_set_text(label, NETWORK_ICON_ETHERNET);
+  lv_label_set_display_text(label, NETWORK_ICON_ETHERNET);
 }
 
 inline void network_status_update_visibility(lv_obj_t *button, lv_obj_t *main_page_obj,
@@ -150,7 +152,7 @@ inline lv_obj_t *network_status_add_center_label(lv_obj_t *parent,
                                                  lv_coord_t width,
                                                  uint32_t color) {
   lv_obj_t *label = lv_label_create(parent);
-  lv_label_set_text(label, text ? text : "");
+  lv_label_set_display_text(label, text ? text : "");
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
   lv_obj_set_width(label, width);
   lv_obj_set_style_text_color(label, lv_color_hex(color), LV_PART_MAIN);

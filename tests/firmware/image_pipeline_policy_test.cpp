@@ -18,8 +18,84 @@ using esphome::artwork_image::p4_pipeline_transfer_capacity;
 using esphome::artwork_image::cover_alignment_edge_overscan;
 using esphome::artwork_image::p4_cover_scale_plan;
 using esphome::artwork_image::p4_jpeg_hardware_target_supported;
+using esphome::artwork_image::BackgroundTransferTlsMode;
+using esphome::artwork_image::background_transfer_result_can_publish;
+using esphome::artwork_image::background_transfer_decode_is_incomplete;
+using esphome::artwork_image::background_transfer_resolve_redirect_url;
+using esphome::artwork_image::background_transfer_header_is_sensitive;
+using esphome::artwork_image::background_transfer_same_origin;
+using esphome::artwork_image::background_transfer_should_follow_redirect;
+using esphome::artwork_image::background_transfer_tls_mode;
 
 int main() {
+  // Public HTTPS cannot inherit the explicitly permitted local insecure mode.
+  assert(background_transfer_tls_mode(true, false, true) ==
+         BackgroundTransferTlsMode::VERIFIED_HTTPS);
+  assert(background_transfer_tls_mode(true, true, false) ==
+         BackgroundTransferTlsMode::VERIFIED_HTTPS);
+  assert(background_transfer_tls_mode(true, true, true) ==
+         BackgroundTransferTlsMode::INSECURE_LOCAL_HTTPS);
+  assert(background_transfer_tls_mode(false, true, true) ==
+         BackgroundTransferTlsMode::PLAIN_HTTP);
+
+  // Redirects are resolved before creating the next client, allowing its TLS
+  // policy to be recalculated for the destination host.
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "https://cdn.example/art.jpg") ==
+         "https://cdn.example/art.jpg");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "//cdn.example/art.jpg") ==
+         "https://cdn.example/art.jpg");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "/media/art.jpg?token=1") ==
+         "https://ha.local/media/art.jpg?token=1");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/images/current", "../art.jpg") ==
+         "https://ha.local/api/art.jpg");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image?old=1", "?new=1") ==
+         "https://ha.local/api/image?new=1");
+  assert(background_transfer_resolve_redirect_url(
+             "https://ha.local/api/image", "ftp://cdn.example/art.jpg").empty());
+  assert(background_transfer_should_follow_redirect(true, true));
+  assert(!background_transfer_should_follow_redirect(false, true));
+  assert(!background_transfer_should_follow_redirect(true, false));
+  assert(background_transfer_same_origin(
+      "https://HA.local/api/image", "https://ha.local:443/media/art.jpg"));
+  assert(!background_transfer_same_origin(
+      "https://ha.local/api/image", "https://cdn.example/art.jpg"));
+  assert(!background_transfer_same_origin(
+      "https://ha.local/api/image", "http://ha.local/api/image"));
+  assert(background_transfer_header_is_sensitive("Authorization"));
+  assert(background_transfer_header_is_sensitive("Cookie"));
+  assert(background_transfer_header_is_sensitive("X-Auth-Token"));
+  assert(!background_transfer_header_is_sensitive("Accept"));
+
+  // A synchronous decoder that cannot finish from the complete buffered body
+  // is malformed/truncated and must release the serialized artwork request.
+  assert(!background_transfer_decode_is_incomplete(true, false));
+  assert(!background_transfer_decode_is_incomplete(false, true));
+  assert(background_transfer_decode_is_incomplete(false, false));
+
+  // Stale generations, cancellation, connection failure, allocation failure,
+  // and oversized responses are never published to the image decoder.
+  constexpr size_t transfer_limit = 2 * 1024 * 1024;
+  assert(background_transfer_result_can_publish(
+      7, 7, false, true, true, true, false, 4096, transfer_limit));
+  assert(background_transfer_result_can_publish(
+      7, 7, false, true, true, true, true, 0, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 6, false, true, true, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, true, true, true, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, false, false, true, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, false, true, false, true, false, 4096, transfer_limit));
+  assert(!background_transfer_result_can_publish(
+      7, 7, false, true, true, true, false, transfer_limit + 1,
+      transfer_limit));
+
   // Modal work preempts queued tile work.
   assert(p4_pipeline_candidate_precedes(2, 20, 1, 10));
   assert(!p4_pipeline_candidate_precedes(1, 10, 2, 20));

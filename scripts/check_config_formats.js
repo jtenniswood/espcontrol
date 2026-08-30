@@ -9,11 +9,11 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
-const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const COMPAT_FIXTURES = path.join(ROOT, "product", "v2", "product_compatibility.json");
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
-const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
+const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(ROOT, "product", "v2", "card_contract.json"), "utf8"));
 
 function loadHooks(search, grid) {
   const params = new URLSearchParams(search || "");
@@ -37,8 +37,7 @@ function loadHooks(search, grid) {
   vm.createContext(sandbox);
   vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   if (grid) {
-    sandbox.GRID_COLS = grid.cols;
-    sandbox.GRID_ROWS = grid.rows;
+    sandbox.__ESPCONTROL_TEST_HOOKS__.config.setGridDimensions(grid.cols, grid.rows);
   }
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
@@ -451,6 +450,13 @@ hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, true);
 assert.strictEqual(coverArtActionButton.options, "cover_art_details", "cover art removes its retired press action while preserving track details");
 hooks.setMediaCoverArtDetailsEnabled(coverArtActionButton, false);
 assert.strictEqual(coverArtActionButton.options, "", "cover art omits disabled track details");
+hooks.setMediaSpeakerGroupEntity(coverArtActionButton, " sensor.cover_art_speakers ");
+hooks.setMediaVolumeMax(coverArtActionButton, "75");
+assert.strictEqual(
+  coverArtActionButton.options,
+  "speaker_group_entity=sensor.cover_art_speakers,volume_max=75",
+  "cover art stores the advanced settings used by its All Controls modal"
+);
 const speakerGroupButton = { type: "media", sensor: "speaker_group", options: "" };
 hooks.setMediaSpeakerGroupEntity(speakerGroupButton, " media_player.compatible_speakers ");
 hooks.setMediaVolumeMax(speakerGroupButton, "80");

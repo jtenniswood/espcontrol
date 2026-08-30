@@ -1,0 +1,25 @@
+{
+  "label": "Fans",
+  "allowInSubpage": true,
+  "pickerKey": "fan_speed",
+  "domains": ["fan"],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" },
+      "label": { "policy": "keep" },
+      "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+      "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+      "sensor": { "policy": "clear" },
+      "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "fan_direction" },
+      "precision": { "policy": "clear" },
+      "options": { "policy": "clear" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": []
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Swap Horizontal", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "fan_direction", "precision": "", "options": ""
+  }
+}

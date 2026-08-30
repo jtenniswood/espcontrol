@@ -16,10 +16,41 @@ import check_public_firmware
 WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
-COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
+COMPAT_FIXTURES = ROOT / "product" / "v2" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
 BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_weather_driver.h"
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
+WEB_SERVER_IDF_INIT = ROOT / "components" / "web_server_idf" / "__init__.py"
+WEB_SERVER_IDF_CPP = ROOT / "components" / "web_server_idf" / "web_server_idf.cpp"
+S3_DEVICE_YAML = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
+S3_ARTWORK_TRANSFER_CPP = ROOT / "components" / "artwork_image" / "s3_artwork_transfer.cpp"
+PUBLIC_API_ENCRYPTION_PACKAGE = ROOT / "common" / "addon" / "api_encryption_dynamic.yaml"
+PUBLIC_API_ENCRYPTION_REFERENCE = "common/addon/api_encryption_dynamic.yaml"
+LEGACY_OTA_PARTITION_LAYOUTS = {
+    "esp32-p4-86": "partitions_32mb_card_images.csv",
+    "guition-esp32-p4-jc1060p470": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc1060p470-v2": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc4880p443": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1": "partitions_16mb_card_images.csv",
+    "guition-esp32-p4-jc8012p4a1-v2": "partitions_16mb_card_images.csv",
+    "guition-esp32-s3-4848s040": "partitions_16mb_card_images.csv",
+}
+LEGACY_OTA_PARTITION_ROWS = {
+    "partitions_16mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0x6f0000,",
+        "app1,          app,  ota_1,   0x710000,  0x6f0000,",
+        "card_images,   data, 0x40,    0xe00000,  0x200000,",
+    ),
+    "partitions_32mb_card_images.csv": (
+        "nvs,           data, nvs,     0x9000,    0xd000,",
+        "otadata,       data, ota,     0x16000,   0x2000,",
+        "app0,          app,  ota_0,   0x20000,   0xef0000,",
+        "app1,          app,  ota_1,   0xf10000,  0xef0000,",
+        "card_images,   data, 0x40,    0x1e00000, 0x200000,",
+    ),
+}
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -99,27 +130,7 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
             assert "[Subpage](/features/subpages)" in grid, f"{stem}: grid snippet missing subpage support"
         else:
             assert "Touch subpages are not available" in grid, f"{stem}: grid snippet missing no-subpage note"
-        assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
-        assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
-        assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
-        image_card_types = capability.get("imageCardTypes", [])
-        if capability["imageSlots"] == 0 or not image_card_types:
-            image_capacity_text = "Not supported"
-        elif image_card_types == ["media_cover_art"]:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} Media Cover Art card' +
-                ("" if capability["imageSlots"] == 1 else "s")
-            )
-        else:
-            image_capacity_text = (
-                f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
-            )
-        assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
-        assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
-        relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
-        assert relay_text in grid, f"{stem}: grid snippet missing relay availability"
-        ethernet_text = "Yes, manual ESPHome install only" if capability["ethernetManualInstall"] else "No"
-        assert ethernet_text in grid, f"{stem}: grid snippet missing Ethernet support"
+        assert "| Capability | Value |" not in grid, f"{stem}: grid snippet must not include a device specs table"
         assert f'slug="{capability["installSlug"]}"' in install, f"{stem}: install snippet missing slug"
 
 
@@ -147,13 +158,16 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
 
     core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
     assert "webserver/www.js?device=${device_slug}" in core, "hosted web URL does not select a shared profile"
-    assert "docs/public/webserver/embedded/www.js" in core, "firmware does not embed its offline web editor fallback"
     assert 'ESPCONTROL_DEVICE_SLUG=\\"${device_slug}\\"' in core, "firmware build does not expose its profile slug"
     server = (ROOT / "components" / "web_server_idf" / "web_server_idf.cpp").read_text(encoding="utf-8")
     assert '\\"device_slug\\"' in server and "ESPCONTROL_DEVICE_PROFILE" in server, (
         "firmware metadata endpoint does not expose the shared web profile"
     )
     for slug in profiles:
+        dev = (ROOT / "devices" / slug / "dev.yaml").read_text(encoding="utf-8")
+        assert 'js_include: "../../docs/public/webserver/embedded/www.js"' in dev, (
+            f"{slug}: local development firmware does not embed its offline editor"
+        )
         for suffix in (".yaml", ".factory.yaml"):
             build = (ROOT / "builds" / f"{slug}{suffix}").read_text(encoding="utf-8")
             assert 'docs/public/webserver/embedded/www.js"' in build, f"{slug}{suffix}: firmware does not embed its offline editor"
@@ -163,17 +177,101 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
         )
 
 
+def test_web_server_request_limits() -> None:
+    init = WEB_SERVER_IDF_INIT.read_text(encoding="utf-8")
+    server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
+    header_limit = re.search(
+        r'add_idf_sdkconfig_option\("CONFIG_HTTPD_MAX_REQ_HDR_LEN",\s*(\d+)\)',
+        init,
+    )
+    assert header_limit and int(header_limit.group(1)) >= 4096, (
+        "web server request-header limit must support modern browser headers"
+    )
+    assert "static constexpr size_t MAX_FORM_URLENCODED_BODY_LENGTH = 1024;" in server, (
+        "form-encoded POST bodies must retain their independent 1024-byte limit"
+    )
+    assert "r->content_len > MAX_FORM_URLENCODED_BODY_LENGTH" in server, (
+        "form-encoded POST body validation must use its independent limit"
+    )
+    assert "r->content_len > CONFIG_HTTPD_MAX_REQ_HDR_LEN" not in server, (
+        "form-encoded POST bodies must not inherit the request-header limit"
+    )
+
+
+def test_s3_low_heap_policy() -> None:
+    """Keep the S3 artwork path and web server within its internal-heap budget."""
+    device = S3_DEVICE_YAML.read_text(encoding="utf-8")
+    artwork = S3_ARTWORK_TRANSFER_CPP.read_text(encoding="utf-8")
+    server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
+
+    for option in (
+        'CONFIG_SPIRAM_USE_MALLOC: "y"',
+        'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"',
+        'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"',
+    ):
+        assert option in device, f"S3 device profile is missing {option}"
+    assert "HTTP_CLIENT_BUFFER_SIZE = 4 * 1024" in artwork, (
+        "S3 artwork HTTP buffer must stay at 4 KiB"
+    )
+    assert "xTaskCreateWithCaps" in artwork and "MALLOC_CAP_SPIRAM" in artwork, (
+        "S3 artwork transfer task must prefer a PSRAM stack"
+    )
+    assert "falling back to internal RAM" in artwork and "config.buffer_size = HTTP_CLIENT_BUFFER_SIZE" in artwork, (
+        "S3 artwork transfer must retain an internal-stack fallback and bounded HTTP buffer"
+    )
+    conditional = server.split("#if defined(CONFIG_IDF_TARGET_ESP32S3)", 1)[1].split("#endif", 1)[0]
+    s3_server, p4_server = conditional.split("#else", 1)
+    assert "config.stack_size = 12288;" in s3_server and "config.max_open_sockets = 3;" in s3_server, (
+        "S3 web server policy must use the reduced stack and socket count"
+    )
+    assert "config.stack_size = 16384;" in p4_server and "config.max_open_sockets = 5;" in p4_server, (
+        "P4 web server policy must remain unchanged"
+    )
+
+
+def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> None:
+    espcontrol = re.search(r"(?ms)^espcontrol:\n(?P<body>(?:^  .*\n|^\s*$\n)*)", device)
+    assert espcontrol, f"{slug}: device.yaml is missing its espcontrol block"
+    body = espcontrol.group("body")
+    if "  panel_config:\n" not in body:
+        return
+
+    slots = int(profile["slots"])
+    bindings = [
+        int(slot)
+        for slot in re.findall(r"(?m)^      - config: button_(\d+)_config$", body)
+    ]
+    assert bindings == list(range(1, slots + 1)), (
+        f"{slug}: native panel config bindings must cover slots 1-{slots} exactly; "
+        f"found {bindings}"
+    )
+
+    chunk_rows = re.findall(r"(?m)^        subpage_chunks: \[([^\n]+)\]$", body)
+    assert len(chunk_rows) == slots, (
+        f"{slug}: native panel config must provide subpage chunks for all {slots} slots"
+    )
+    for slot, row in enumerate(chunk_rows, start=1):
+        expected = [f"subpage_{slot}_config", f"subpage_{slot}_config_ext"] + [
+            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, 8)
+        ]
+        actual = [value.strip() for value in row.split(",")]
+        assert actual == expected, (
+            f"{slug}: slot {slot} native subpage bindings differ: {actual} != {expected}"
+        )
+
+
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
     for slug, profile in profiles.items():
         package_path = ROOT / "devices" / slug / "packages.yaml"
         device_path = ROOT / "devices" / slug / "device" / "device.yaml"
         sensor_path = ROOT / "devices" / slug / "device" / "sensors.yaml"
         package = package_path.read_text(encoding="utf-8")
-        device_path.read_text(encoding="utf-8")
+        device = device_path.read_text(encoding="utf-8")
         sensors = sensor_path.read_text(encoding="utf-8")
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        test_native_panel_config_bindings(slug, profile, device)
         label_lines = profile["web"]["btn"]["labelLines"]
         label_lines_tall = profile["web"]["btn"]["labelLinesDouble"]
         assert f"cfg.label_lines = {label_lines};" in sensors, (
@@ -202,6 +300,70 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             )
         if profile["firmware"].get("display", {}).get("infoOnly"):
             assert "cfg.info_only = true;" in sensors, f"{slug}: sensors.yaml missing info-only grid flag"
+
+
+def test_public_api_encryption_policy(profile_slugs: list[str]) -> None:
+    policy = PUBLIC_API_ENCRYPTION_PACKAGE.read_text(encoding="utf-8")
+    assert policy == "api:\n  encryption: {}\n", (
+        "public API encryption package must remain keyless and dynamically provisionable"
+    )
+    assert "key:" not in policy, "public firmware must not embed a shared API encryption key"
+    assert "provisioning:" not in policy, "public firmware must not add a timed provisioning lockout"
+
+    local_reference = f"api_encryption: !include ../{PUBLIC_API_ENCRYPTION_REFERENCE}"
+    remote_reference = f"file: {PUBLIC_API_ENCRYPTION_REFERENCE}"
+    for slug in profile_slugs:
+        factory = (ROOT / "builds" / f"{slug}.factory.yaml").read_text(encoding="utf-8")
+        public_config = (ROOT / "devices" / slug / "esphome.yaml").read_text(encoding="utf-8")
+        dev = (ROOT / "devices" / slug / "dev.yaml").read_text(encoding="utf-8")
+        local_build = (ROOT / "builds" / f"{slug}.yaml").read_text(encoding="utf-8")
+        assert local_reference in factory, f"{slug}: factory firmware must support dynamic API encryption"
+        assert remote_reference in public_config, f"{slug}: public config must support dynamic API encryption"
+        assert PUBLIC_API_ENCRYPTION_REFERENCE not in dev, f"{slug}: dev firmware must remain plaintext"
+        assert PUBLIC_API_ENCRYPTION_REFERENCE not in local_build, f"{slug}: local build must remain plaintext"
+
+    core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
+    assert PUBLIC_API_ENCRYPTION_REFERENCE not in core, "shared core firmware must remain plaintext"
+
+    manual_setup = (ROOT / "docs" / "getting-started" / "manual-esphome-setup.md").read_text(encoding="utf-8")
+    assert manual_setup.count(remote_reference) == 3, (
+        "manual WiFi, authenticated web, and Ethernet examples must include dynamic API encryption"
+    )
+
+
+def test_ota_preserves_deployed_partition_layouts() -> None:
+    for slug, table_name in LEGACY_OTA_PARTITION_LAYOUTS.items():
+        device_path = ROOT / "devices" / slug / "device" / "device.yaml"
+        dev_path = ROOT / "devices" / slug / "dev.yaml"
+        public_config_path = ROOT / "devices" / slug / "esphome.yaml"
+        build_path = ROOT / "builds" / f"{slug}.yaml"
+        factory_path = ROOT / "builds" / f"{slug}.factory.yaml"
+        device = device_path.read_text(encoding="utf-8")
+        dev = dev_path.read_text(encoding="utf-8")
+        public_config = public_config_path.read_text(encoding="utf-8")
+        build = build_path.read_text(encoding="utf-8")
+        factory = factory_path.read_text(encoding="utf-8")
+        assert "partitions:" not in device, (
+            f"{slug}: device package must not require a local partition table from remote installs"
+        )
+        assert f'partitions: "../../common/device/{table_name}"' in dev, (
+            f"{slug}: local development builds must retain the deployed {table_name} flash layout"
+        )
+        assert "partition_table:" not in public_config, (
+            f"{slug}: published remote configuration must not reference a local partition table"
+        )
+        assert f'partitions: "../common/device/{table_name}"' in build, (
+            f"{slug}: copied firmware builds must retain the deployed {table_name} flash layout"
+        )
+        assert (
+            f'partitions: "../common/device/{table_name}"' in factory
+            or f"!include {slug}.yaml" in factory
+        ), f"{slug}: factory builds must retain the deployed {table_name} flash layout"
+
+    for table_name, rows in LEGACY_OTA_PARTITION_ROWS.items():
+        table = (ROOT / "common" / "device" / table_name).read_text(encoding="utf-8")
+        for row in rows:
+            assert row in table, f"{table_name}: missing deployed partition row {row}"
 
 
 def test_upgrades_do_not_reset_saved_panel_config() -> None:
@@ -272,6 +434,7 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
 def test_rotation_refresh_rebuilds_subpages() -> None:
     slugs = (
         "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
         "guition-esp32-p4-jc4880p443",
         "guition-esp32-p4-jc8012p4a1",
         "guition-esp32-p4-jc8012p4a1-v2",
@@ -284,6 +447,34 @@ def test_rotation_refresh_rebuilds_subpages() -> None:
             "  - id: refresh_subpage_grid", 1)[0]
         assert "grid_rebuild_all(slots, cfg," in refresh_script, (
             f"{slug}: rotation refresh must rebuild secondary cards safely"
+        )
+
+
+def test_seven_inch_width_compensation_rotates_with_screen() -> None:
+    profiles = load_device_profiles()
+    for slug in (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+    ):
+        profile = profiles[slug]
+        assert profile["rotation"]["rotateWidthCompensation"], (
+            f"{slug}: portrait rotation must move pixel compensation to the rotated axis"
+        )
+        assert profile["firmware"]["display"]["widthCompensationPercent"] == 95, (
+            f"{slug}: 7-inch pixel compensation must remain at 95%"
+        )
+        assert profile["firmware"]["display"]["textWidthCompensationPercent"] == 100, (
+            f"{slug}: 7-inch text must retain its natural proportions"
+        )
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        assert "cfg.width_compensation_percent = 95;" in sensors, (
+            f"{slug}: generated firmware is missing 7-inch pixel compensation"
+        )
+        assert "cfg.width_compensation_vertical = portrait;" in sensors, (
+            f"{slug}: generated firmware does not rotate the compensation axis in portrait"
+        )
+        assert "apply_text_width_compensation(id(display_time));" in sensors, (
+            f"{slug}: clock-bar text must use the independent text compensation policy"
         )
 
 
@@ -424,14 +615,15 @@ def test_weather_card_visual_matches_preview() -> None:
     styles = (ROOT / "src" / "webserver" / "application" / "styles.ts").read_text(encoding="utf-8")
     subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
     weather_forecast = BUTTON_GRID_WEATHER_FORECAST.read_text(encoding="utf-8")
-    assert ".sp-type-badge{display:none}" in styles, "web preview type badges should remain visually hidden"
+    controls = (ROOT / "src" / "webserver" / "application" / "controls_fields.ts").read_text(encoding="utf-8")
+    assert "sp-type-badge" not in styles + controls, "web previews should omit card-type badges"
     assert "set_weather_card_badge" not in weather_visuals, (
         "device weather cards should not show the hidden web preview type badge"
     )
     assert 'set_weather_card_badge(s, "Weather Cloudy")' not in weather_visuals, (
         "current weather device card should not render a visible weather badge"
     )
-    assert 'lv_label_set_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
+    assert 'lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
         "current weather device card should render the same label as the web preview"
     )
     assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in weather_visuals, (
@@ -440,10 +632,10 @@ def test_weather_card_visual_matches_preview() -> None:
     assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
-    assert 'lv_label_set_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
+    assert 'lv_label_set_display_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
         "forecast weather placeholder should show the configured unit like the web preview"
     )
-    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
+    assert 'lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
@@ -463,7 +655,7 @@ def test_weather_card_visual_matches_preview() -> None:
         "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_visual
         and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_visual
         and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_visual
-    ), "weather cards must reset inherited icon, value, and label placement before rendering"
+    ), "weather cards must reset icons top-left and values/labels to their standard positions before rendering"
     assert "inline std::string normalize_weather_state" in weather_forecast, (
         "current weather device cards should normalize equivalent weather state spellings before mapping icons"
     )
@@ -605,8 +797,8 @@ def test_card_label_line_clamp_matches_preview_on_subpages() -> None:
     assert "apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);" in grid, (
         "subpage back labels must follow the configured line limit"
     )
-    assert "apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);" in grid, (
-        "subpage card labels must follow the configured line limit"
+    assert "refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);" in grid, (
+        "subpage card labels must follow the configured line limit before card-specific geometry is restored"
     )
 
 
@@ -693,13 +885,18 @@ def main() -> int:
     assert profile_slugs == compatibility_required_slugs(), "current compatibility device slug fixture is stale"
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
+    test_web_server_request_limits()
+    test_s3_low_heap_policy()
     test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_constrained_s3_supports_one_cover_art_card(profiles)
     test_generated_yaml(profiles)
+    test_public_api_encryption_policy(profile_slugs)
+    test_ota_preserves_deployed_partition_layouts()
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()
+    test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()

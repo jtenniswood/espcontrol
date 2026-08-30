@@ -1,6 +1,6 @@
 ---
 name: flash-displays
-description: Flash EspControl display firmware from this repository using ESPHome. Use when the user invokes /flash-displays with no extra display name, or asks to flash, reflash, update, or upload firmware to all known displays in sequence, or to a specific display such as 7inch, 7-inch P4, 10inch, 10-inch V1, 10-inch V2, P4-86, 4.3-inch P4, 4-inch P4, or 4-inch S3, over an explicitly supplied OTA target or USB.
+description: Flash EspControl display firmware from this repository using ESPHome. Use when the user invokes /flash-displays with no extra display name, or asks to flash, reflash, update, or upload firmware to all known displays in sequence, or to a specific display such as 7inch, 7-inch P4, 10inch, 10-inch V1, 10-inch V2, P4-86, 4.3-inch P4, 4-inch P4, 4-inch S3, or S3 second, over an explicitly supplied OTA target or USB.
 ---
 
 # Flash Displays
@@ -13,12 +13,16 @@ Use the local development ESPHome configs to flash the known EspControl displays
 
 | Request names | ESPHome config directory | Default OTA target |
 |---|---|---|
-| `7inch`, `7-inch`, `7inch P4`, `7-inch P4`, `JC1060P470` | `devices/guition-esp32-p4-jc1060p470` | `192.168.6.102` |
+| `7inch`, `7-inch`, `7inch P4`, `7-inch P4`, `7inch V1`, `7-inch V1`, `JC1060P470` | `devices/guition-esp32-p4-jc1060p470` | `192.168.6.102` |
+| `7inch V2`, `7-inch V2`, `JC1060P470 V2` | `devices/guition-esp32-p4-jc1060p470-v2` | Ask for the target |
 | `10inch`, `10-inch`, `10inch P4`, `10-inch P4`, `10inch V1`, `10-inch V1`, `JC8012P4A1` | `devices/guition-esp32-p4-jc8012p4a1` | `192.168.6.103` |
 | `10inch V2`, `10-inch V2`, `JC8012P4A1 V2` | `devices/guition-esp32-p4-jc8012p4a1-v2` | Ask for the target |
 | `4inch P4`, `4-inch P4`, `P4-86`, `86 Panel`, `Waveshare P4-86`, `esp32-p4-86` | `devices/esp32-p4-86` | `192.168.6.104` |
 | `4.3inch P4`, `4.3-inch P4`, `P4 4.3inch`, `P4 4.3-inch`, `JC4880P443` | `devices/guition-esp32-p4-jc4880p443` | `192.168.6.101` |
 | `4inch S3`, `4-inch S3`, `4848S040` | `devices/guition-esp32-s3-4848s040` | `192.168.6.105` |
+| `S3 second`, `second S3`, `4inch S3 second`, `4-inch S3 second` | `devices/guition-esp32-s3-4848s040` | `192.168.6.100` |
+
+Treat the 7-inch panel at `192.168.6.102`, and an ambiguous or default `7inch` request, as V1 hardware. Always flash that panel with the V1 `JC1060P470` configuration in `devices/guition-esp32-p4-jc1060p470`; never substitute the V2 configuration because that firmware will not work on this panel. Select the V2 directory only when the user explicitly requests the 7-inch V2 panel and supplies a different OTA target or explicitly requests USB.
 
 Treat the 10-inch panel at `192.168.6.103`, and an ambiguous or default `10inch` request, as V1 hardware. Always flash that panel with the V1 `JC8012P4A1` configuration in `devices/guition-esp32-p4-jc8012p4a1`; never substitute the V2 configuration because that firmware will not work on this panel. Select the V2 directory only when the user explicitly requests the 10-inch V2 panel and supplies a different OTA target or explicitly requests USB.
 
@@ -28,11 +32,12 @@ If the user says only `4inch` or `4-inch`, ask whether they mean the 4-inch P4 s
 
 For `/flash-displays` with no extra target, or for `all`, flash in this sequence by default over OTA using the default targets above:
 
-1. 7-inch P4.
+1. 7-inch P4 V1.
 2. 10-inch P4 V1.
 3. 4-inch P4 / P4-86.
 4. 4.3-inch P4.
 5. 4-inch S3.
+6. S3 second.
 
 ## YAML Selection
 
@@ -41,25 +46,26 @@ Use `dev.yaml` by default. If the user names another YAML file, use that file in
 - If the user explicitly says `dev`, `dev file`, or `dev.yaml`, use `dev.yaml` instead.
 - If the user gives a bare filename such as `esphome.yaml`, resolve it inside the selected display's config directory.
 - If the user gives a repo-relative path such as `devices/guition-esp32-p4-jc8012p4a1/esphome.yaml`, resolve it from the repository root.
+- For the 7-inch panel at `192.168.6.102`, or an ambiguous/default 7-inch request, require the selected YAML to resolve inside `devices/guition-esp32-p4-jc1060p470`, which is the V1 configuration. Allow `devices/guition-esp32-p4-jc1060p470-v2` only when the user explicitly requests V2 and supplies a different OTA target or explicitly requests USB; otherwise stop and clarify instead of flashing it.
 - For the 10-inch panel at `192.168.6.103`, or an ambiguous/default 10-inch request, require the selected YAML to resolve inside `devices/guition-esp32-p4-jc8012p4a1`, which is the V1 configuration. Allow `devices/guition-esp32-p4-jc8012p4a1-v2` only when the user explicitly requests V2 and supplies a different OTA target or explicitly requests USB; otherwise stop and clarify instead of flashing it.
 - Only use YAML files inside this repository. If the selected file does not exist, ask for the correct file instead of guessing.
 - Use the required local secrets file described below. Do not create secret values or print, modify, copy, or commit the file contents.
 
 ## Secrets File
 
-All development YAML files require a local `secrets.yaml` containing `wifi_ssid` and `wifi_password`. Use this existing file as the only secrets source:
+All development YAML files require a local `secrets.yaml` containing `wifi_ssid` and `wifi_password`. Always use this existing local file as the only secrets source:
 
 ```text
-/Users/jtenniswood/Git/espcontrol/secrets.yaml
+/home/jtenniswood/git/espcontrol/secrets.yaml
 ```
 
 Before flashing each selected display:
 
-1. Confirm the source exists with `test -f /Users/jtenniswood/Git/espcontrol/secrets.yaml`. If it is missing, stop and tell the user; do not create or guess secret values.
+1. Confirm the source exists with `test -f /home/jtenniswood/git/espcontrol/secrets.yaml`. If it is missing, stop and tell the user; do not create or guess secret values.
 2. Run the following from the selected display's config directory. This creates the ignored local symlink only when `secrets.yaml` is absent, and verifies that any existing file or symlink resolves to the required source:
 
    ```bash
-   SECRETS_SOURCE=/Users/jtenniswood/Git/espcontrol/secrets.yaml
+   SECRETS_SOURCE=/home/jtenniswood/git/espcontrol/secrets.yaml
    if [ ! -e secrets.yaml ] && [ ! -L secrets.yaml ]; then
      ln -s "$SECRETS_SOURCE" secrets.yaml
    fi
@@ -96,10 +102,13 @@ Never display the secrets file, include its contents in command output, or add i
 
 ## Commands
 
-Use this substitution so ESPHome builds from the local repository checkout:
+Use the project wrapper so a flash always uses the ESPHome version pinned by
+`.github/esphome.env`. It stops before compiling if the installed executable is
+older or newer than the release version. The wrapper also builds from the local
+repository checkout:
 
 ```bash
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run <yaml-file> --device <target> --no-logs
+python3 scripts/local_esphome.py <yaml-file> run --device <target> --no-logs
 ```
 
 Run from the appropriate config directory:
@@ -107,43 +116,51 @@ Run from the appropriate config directory:
 ```bash
 # 7-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.102 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.102 --no-logs
 
 # 7-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 10-inch P4 V1 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.103 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.103 --no-logs
 
 # 10-inch P4 V1 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 4-inch P4 / P4-86 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/esp32-p4-86
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.104 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.104 --no-logs
 
 # 4-inch P4 / P4-86 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/esp32-p4-86
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 4.3-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.101 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.101 --no-logs
 
 # 4.3-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 4-inch S3 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.105 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.105 --no-logs
 
 # 4-inch S3 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
-esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
+
+# S3 second over OTA
+cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
+python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.100 --no-logs
+
+# S3 second over USB, only when explicitly requested
+cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
+python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 ```
 
 ## Reporting

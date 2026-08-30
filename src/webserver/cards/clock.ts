@@ -1,7 +1,25 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerClockCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry } from "../application/card_registry";
+import type { ConfigDateTimeOptionsFeature } from "../application/config_date_time_options";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+
+export function registerClockCardTypes(
+    registry: CardRegistry,
+    dateTimeOptions: ConfigDateTimeOptionsFeature,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardLargeNumbersHidePreviewLabel, cardSensorPreviewHtml } = fields;
+    const { dateTimeCardTimeParts, metadata } = dateTimeOptions;
     // Read-only local clock card: displays the panel's local time only.
-    registerButtonType("clock", {
+    registry.register("clock", {
         label: function (this: any) { return cardContractCardLabel("clock"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("clock"); },
         pickerKey: function (this: any) { return cardContractPickerKey("clock"); },
@@ -11,7 +29,7 @@ export function registerClockCardTypes(): GlobalDescriptors {
         isAvailable: function (this: any) {
             return false;
         },
-        cardMetadata: DATE_TIME_CARD_METADATA,
+        cardMetadata: metadata,
         onSelect: function (this: any, b?: any) {
             var defaults: any = cardContractDefaultConfig("clock");
             Object.keys(defaults).forEach(function (this: any, key?: any) { b[key] = defaults[key]; });
@@ -24,13 +42,13 @@ export function registerClockCardTypes(): GlobalDescriptors {
             b.sensor = "";
             b.unit = "";
             b.precision = "";
-            helpers.renderCardModeSelector(panel, b, helpers, DATE_TIME_CARD_METADATA);
-            helpers.renderCardLargeNumbersToggle(panel, b, helpers, DATE_TIME_CARD_METADATA);
+            helpers.renderCardModeSelector(panel, b, helpers, metadata);
+            helpers.renderCardLargeNumbersToggle(panel, b, helpers, metadata);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var time: any = dateTimeCardTimeParts();
             return {
-                buttonClass: cardLargeNumbersHidePreviewLabel(b, helpers, DATE_TIME_CARD_METADATA)
+                buttonClass: cardLargeNumbersHidePreviewLabel(b, helpers, metadata)
                     ? "sp-clock-wide-large"
                     : undefined,
                 iconHtml: cardSensorPreviewHtml(b, helpers, time.value, time.unit),
@@ -38,5 +56,4 @@ export function registerClockCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {};
 }

@@ -190,13 +190,17 @@ class CompanionActionsHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 };
 
-inline void register_companion_actions_endpoint() {
+inline void register_companion_actions_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
-  auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) return;
-  server->addHandler(new CompanionActionsHandler());
+  server.addHandler(new CompanionActionsHandler());
   registered = true;
+}
+
+inline void register_companion_actions_endpoint() {
+  auto *server = esphome::web_server_idf::global_async_web_server();
+  if (server) register_companion_actions_endpoint(*server);
 }
 #else
 inline void register_companion_actions_endpoint() {}

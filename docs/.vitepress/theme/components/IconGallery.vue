@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import iconsData from '../../../../common/assets/icons.json'
+import iconsData from '../../../../product/v2/icons.json'
 
 const GROUP_ORDER = [
   'Lighting',

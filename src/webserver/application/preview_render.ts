@@ -1,36 +1,84 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installPreviewRenderModule(): GlobalDescriptors {
+import { WEB_UI_COLORS } from "../state/ui_tokens";
+import { escHtml } from "./ui_primitives";
+import {
+    buttonConfigDisabledForDevice as isButtonConfigDisabledForDevice,
+    cardTypePickerDetails,
+    cardTypePickerOptions,
+    defaultCardTypeForPicker,
+    infoOnlyCardVisible,
+    previewValue,
+    registryValue,
+} from "../features/preview";
+import type { ApplicationLayoutState } from "./application_context";
+import type { CardRegistry } from "./card_registry";
+import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
+import type { ConfigCodecFeature } from "./config_codec";
+import type { UiRuntimeState } from "./state";
+import type { ScreenRotationFeature } from "./screen_rotation_state";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { GridFeature } from "./grid";
+import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
+export interface PreviewRenderDependencies {
+    readonly document: Document;
+    readonly layout: ApplicationLayoutState;
+    readonly cards: CardRegistry;
+    readonly confirmationOptions: ConfigConfirmationOptionsFeature;
+    readonly codec: ConfigCodecFeature;
+    readonly runtime: UiRuntimeState;
+    readonly screenRotation: ScreenRotationFeature;
+    readonly shell: Pick<ControlsShellFeature, "isConfigLocked">;
+    readonly grid: Pick<GridFeature, "ctx" | "resolveIcon" | "sizeClass">;
+    readonly selection: Pick<ButtonSettingsSelectionFeature, "renderSelectionBar" | "updatePreviewHint">;
+}
+export interface PreviewRenderFeature {
+    render(): void;
+    registryValue(typeDefinition?: any, key?: any, fallback?: any): any;
+    configDisabled(button?: any): boolean;
+    defaultTypeForPicker(key?: any): any;
+    pickerOptions(isSubpage?: any, selectedTypeKey?: any): any[];
+    pickerKeys(isSubpage?: any, selectedTypeKey?: any): any[];
+    typeVisibleInPicker(key?: any, isSubpage?: any): boolean;
+}
+
+export function createPreviewRenderFeature(dependencies: PreviewRenderDependencies): PreviewRenderFeature {
+    const document = dependencies.document;
+    const els = dependencies.runtime.els;
+    const { cardOnPattern } = dependencies.confirmationOptions;
+    const { getSubpage } = dependencies.codec;
+    const { gridPreviewBlocked: gridPreviewBlockedByRotationStartup } = dependencies.screenRotation;
+    const { isConfigLocked } = dependencies.shell;
+    const { ctx, resolveIcon, sizeClass } = dependencies.grid;
+    const { renderSelectionBar, updatePreviewHint } = dependencies.selection;
     // ── Preview rendering (unified) ────────────────────────────────────────
     function previewHtmlValue(this: any, typePreview?: any, key?: any, fallback?: any) {
-        return PreviewFeature.previewValue(typePreview, key, fallback);
+        return previewValue(typePreview, key, fallback);
     }
     function buttonTypeRegistryValue(this: any, typeDef?: any, key?: any, fallback?: any) {
-        return PreviewFeature.registryValue(typeDef, key, fallback);
+        return registryValue(typeDef, key, fallback);
     }
     function buttonTypeDisabledForDevice(this: any, key?: any) {
-        var disabled: any = CFG.disabledCardTypes || [];
+        var disabled: any = dependencies.layout.config.disabledCardTypes || [];
         return disabled.indexOf(key || "") !== -1;
     }
     function buttonConfigDisabledForDevice(this: any, button?: any) {
-        var type: any = button && button.type || "";
-        if (buttonTypeDisabledForDevice(type))
-            return true;
-        var typeDef: any = BUTTON_TYPES[type];
-        var pickerKey: any = typeDef && buttonTypeRegistryValue(typeDef, "pickerKey", "");
-        return !!pickerKey && buttonTypeDisabledForDevice(pickerKey);
+        return isButtonConfigDisabledForDevice(
+            dependencies.cards.definitions,
+            dependencies.layout.config.disabledCardTypes || [],
+            button,
+        );
     }
     function buttonTypeInfoOnlyVisible(this: any, key?: any) {
-        return PreviewFeature.infoOnlyCardVisible(key || "", !!CFG.infoOnly);
+        return infoOnlyCardVisible(key || "", !!dependencies.layout.config.infoOnly);
     }
     function defaultButtonTypeForPicker(this: any, key?: any) {
-        return PreviewFeature.defaultCardTypeForPicker(key);
+        return defaultCardTypeForPicker(key);
     }
     function buttonTypePickerDetails(this: any, key?: any, label?: any) {
-        return PreviewFeature.cardTypePickerDetails(key || "", label || "");
+        return cardTypePickerDetails(key || "", label || "");
     }
     function buttonTypePickerOptionList(this: any, isSub?: any, selectedTypeKey?: any) {
-        return PreviewFeature.cardTypePickerOptions(BUTTON_TYPES, CFG.disabledCardTypes || [], !!CFG.infoOnly, !!isSub, selectedTypeKey);
+        return cardTypePickerOptions(dependencies.cards.definitions, dependencies.layout.config.disabledCardTypes || [], !!dependencies.layout.config.infoOnly, !!isSub, selectedTypeKey);
     }
     function buttonTypePickerKeys(this: any, isSub?: any, selectedTypeKey?: any) {
         return buttonTypePickerOptionList(!!isSub, selectedTypeKey).map(function (this: any, opt?: any) {
@@ -93,7 +141,7 @@ export function installPreviewRenderModule(): GlobalDescriptors {
                 var label: any = b.label || b.entity || "Configure";
                 var color: any = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
                     ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
-                var previewTypeDef: any = BUTTON_TYPES[b.type || ""] || null;
+                var previewTypeDef: any = dependencies.cards.definitions[b.type || ""] || null;
                 if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
                     previewTypeDef = null;
                 }
@@ -140,16 +188,12 @@ export function installPreviewRenderModule(): GlobalDescriptors {
         renderSelectionBar(c);
     }
     return {
-        "previewHtmlValue": staticGlobal(previewHtmlValue),
-        "buttonTypeRegistryValue": staticGlobal(buttonTypeRegistryValue),
-        "buttonTypeDisabledForDevice": staticGlobal(buttonTypeDisabledForDevice),
-        "buttonConfigDisabledForDevice": staticGlobal(buttonConfigDisabledForDevice),
-        "buttonTypeInfoOnlyVisible": staticGlobal(buttonTypeInfoOnlyVisible),
-        "defaultButtonTypeForPicker": staticGlobal(defaultButtonTypeForPicker),
-        "buttonTypePickerDetails": staticGlobal(buttonTypePickerDetails),
-        "buttonTypePickerOptionList": staticGlobal(buttonTypePickerOptionList),
-        "buttonTypePickerKeys": staticGlobal(buttonTypePickerKeys),
-        "buttonTypeVisibleInPicker": staticGlobal(buttonTypeVisibleInPicker),
-        "renderPreview": staticGlobal(renderPreview),
+        render: renderPreview,
+        registryValue: buttonTypeRegistryValue,
+        configDisabled: buttonConfigDisabledForDevice,
+        defaultTypeForPicker: defaultButtonTypeForPicker,
+        pickerOptions: buttonTypePickerOptionList,
+        pickerKeys: buttonTypePickerKeys,
+        typeVisibleInPicker: buttonTypeVisibleInPicker,
     };
 }

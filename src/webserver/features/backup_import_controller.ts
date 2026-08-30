@@ -13,10 +13,14 @@ export interface PlannedBackupImport<Settings, Plan> {
   readonly backupPlan: Plan;
 }
 
+export interface BackupImportController<Settings, Plan, Target> {
+  plan(data: unknown, target: Target): PlannedBackupImport<Settings, Plan>;
+}
+
 /** Builds a restore plan using the layout that the backup will activate. */
 export function createBackupImportController<Normalized extends { settings?: unknown }, Settings, Plan, Target>(
   options: BackupImportControllerOptions<Normalized, Settings, Plan, Target>,
-) {
+): BackupImportController<Settings, Plan, Target> {
   return {
     plan(data: unknown, target: Target): PlannedBackupImport<Settings, Plan> {
       const normalizedBackup = options.normalizeBackup(data);

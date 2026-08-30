@@ -45,6 +45,7 @@ CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
 LIMITS_HEADER = ROOT / "components" / "espcontrol" / "button_grid_limits.h"
 STRING_HEADER = ROOT / "components" / "espcontrol" / "button_grid_string.h"
+DISPLAY_TEXT_HEADER = ROOT / "components" / "espcontrol" / "display_text.h"
 BUTTON_GRID_FACADE = ROOT / "components" / "espcontrol" / "button_grid.h"
 CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
 DEVICES_DIR = ROOT / "devices"
@@ -82,7 +83,10 @@ class StringRef {
 
 struct lv_obj_t {
   int flags = 0;
+  int transform_scale_x = 256;
+  int transform_scale_y = 256;
   std::string text;
+  void *user_data = nullptr;
 };
 constexpr int MAX_GRID_SLOTS = 25;
 inline int bounded_grid_slots(int num_slots) {
@@ -100,7 +104,7 @@ struct BtnSlot {
   lv_obj_t *subpage_lbl = nullptr;
 };
 struct lv_disp_t {};
-struct lv_font_t {};
+struct lv_font_t { int line_height = 16; };
 using lv_coord_t = int;
 using lv_style_selector_t = int;
 using lv_color_t = int;
@@ -139,14 +143,22 @@ constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
 inline lv_obj_t *lv_scr_act() { return lv_active_screen; }
-inline void lv_obj_set_style_transform_scale_x(lv_obj_t *, int, int) {}
-inline void lv_obj_set_style_transform_scale_y(lv_obj_t *, int, int) {}
+inline void lv_obj_set_style_transform_scale_x(lv_obj_t *obj, int scale, int) {
+  if (obj) obj->transform_scale_x = scale;
+}
+inline void lv_obj_set_style_transform_scale_y(lv_obj_t *obj, int scale, int) {
+  if (obj) obj->transform_scale_y = scale;
+}
 inline void lv_obj_set_style_bg_color(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_text_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_text_align(lv_obj_t *, int, lv_style_selector_t) {}
 inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
+inline const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *, lv_style_selector_t) {
+  static const lv_font_t font;
+  return &font;
+}
 inline void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_add_state(lv_obj_t *, int) {}
@@ -166,6 +178,7 @@ inline int lv_obj_get_style_pad_bottom(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_column(lv_obj_t *, int) { return 0; }
 inline int lv_obj_get_style_pad_row(lv_obj_t *, int) { return 0; }
 inline lv_obj_t *lv_obj_get_parent(lv_obj_t *) { return nullptr; }
+inline void *lv_obj_get_user_data(lv_obj_t *obj) { return obj ? obj->user_data : nullptr; }
 inline lv_disp_t *lv_disp_get_default() { return lv_test_disp_available ? &lv_test_default_disp : nullptr; }
 inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
 inline int lv_disp_get_ver_res(lv_disp_t *) { return lv_test_ver_res; }
@@ -178,6 +191,7 @@ inline void lv_obj_set_grid_cell(lv_obj_t *, int, int, int, int, int, int) {}
 inline void lv_obj_set_style_pad_top(lv_obj_t *, int, int) {}
 inline void lv_obj_update_layout(lv_obj_t *) {}
 inline void lv_label_set_text(lv_obj_t *obj, const char *text) { if (obj) obj->text = text ? text : ""; }
+inline const char *lv_label_get_text(lv_obj_t *obj) { return obj ? obj->text.c_str() : ""; }
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
 inline void lv_obj_move_foreground(lv_obj_t *) {}
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
@@ -244,6 +258,11 @@ int main() {
     true, &main_page, espcontrol::DisplayMode::ACTIVE, false);
   assert(awake_clock_bar.reserve_space);
   assert(awake_clock_bar.visible);
+
+  auto dimmed_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, espcontrol::DisplayMode::DIMMED, false);
+  assert(dimmed_clock_bar.reserve_space);
+  assert(dimmed_clock_bar.visible);
 
   auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
     true, &main_page, espcontrol::DisplayMode::CLOCK, false);
@@ -513,6 +532,10 @@ int main() {
   assert(media_cover_art_enabled(cover_art_details));
   assert(media_cover_art_details_enabled(cover_art_details));
   assert(cover_art_details.options == "cover_art_details");
+  auto cover_art_advanced = parse_cfg("media_player.office;Cover Art;Auto;Auto;cover_art;;media;;speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
+  assert(cover_art_advanced.options == "speaker_group_entity=sensor.cover_art_speakers,volume_max=75");
+  assert(media_speaker_group_entity(cover_art_advanced) == "sensor.cover_art_speakers");
+  assert(media_volume_max_percent(cover_art_advanced) == 75);
   auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
   assert(legacy_cover_art.sensor == "cover_art");
   assert(legacy_cover_art.precision == "");
@@ -651,6 +674,30 @@ int main() {
   assert(normalize_width_compensation_percent(25) == 50);
   assert(normalize_width_compensation_percent(175) == 150);
   assert(width_compensation_scale(100) == 256);
+  lv_obj_t compensated_obj;
+  set_width_compensation_vertical_axis(false);
+  apply_width_compensation(&compensated_obj, 95);
+  assert(compensated_obj.transform_scale_x == width_compensation_scale(95));
+  assert(compensated_obj.transform_scale_y == 256);
+  set_icon_width_compensation_percent(95);
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 171);
+  assert(compensated_obj.transform_scale_y == 180);
+  set_text_width_compensation_percent(100);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
+  set_width_compensation_vertical_axis(true);
+  apply_width_compensation(&compensated_obj, 95);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == width_compensation_scale(95));
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 180);
+  assert(compensated_obj.transform_scale_y == 171);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
+  set_width_compensation_vertical_axis(false);
   assert(clamp_percent_value(-1) == 0);
   assert(clamp_percent_value(101) == 100);
   int brightness_pct = -1;
@@ -713,6 +760,33 @@ int main() {
   assert(cleared.positions[1] == 0);
   assert(cleared.positions[3] == 0);
   assert(cleared.positions[4] == 0);
+
+  // A 10-inch portrait-large tile must not retain its 4x3 span when restored
+  // onto the 7-inch 5x3 grid from the reported backup layout.
+  OrderResult cross_device;
+  parse_order_string("1,7,6p,,,8,2,,,,3,4,,,,9,5", 15, cross_device);
+  OrderResult cross_device_safe;
+  clear_spanned_cells(cross_device, 15, 5, cross_device_safe);
+  assert(cross_device_safe.positions[2] == 6);
+  assert(cross_device_safe.row_span[5] == 1);
+  assert(cross_device_safe.col_span[5] == 1);
+
+  // Spans that fit the target grid remain unchanged.
+  OrderResult fitting_span;
+  parse_order_string("1,2w", 6, fitting_span);
+  OrderResult fitting_span_safe;
+  clear_spanned_cells(fitting_span, 6, 3, fitting_span_safe);
+  assert(fitting_span_safe.row_span[1] == 1);
+  assert(fitting_span_safe.col_span[1] == 2);
+
+  // Legacy subpages reserve the first cell for Back. A wide card at source
+  // position 4 is rendered at position 5, where it fits a five-column grid.
+  int subpage_row_span = 1;
+  int subpage_col_span = 2;
+  normalize_grid_span_for_position(5, 15, 5, subpage_row_span,
+                                   subpage_col_span);
+  assert(subpage_row_span == 1);
+  assert(subpage_col_span == 2);
 
   return 0;
 }
@@ -794,7 +868,7 @@ def runtime_capability_enum_name(value: str) -> str:
 
 
 def generated_card_runtime_assertions() -> str:
-    contract = json.loads((ROOT / "common" / "config" / "card_contract.json").read_text(encoding="utf-8"))
+    contract = json.loads((ROOT / "product" / "v2" / "card_contract.json").read_text(encoding="utf-8"))
     runtime = contract["runtime"]
     lines = [
         "  struct RuntimeConfig {",
@@ -898,6 +972,7 @@ def main() -> int:
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
         shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
+        shutil.copy2(DISPLAY_TEXT_HEADER, tmp_path / "display_text.h")
         lvgl_stub = tmp_path / "esphome" / "components" / "lvgl" / "lvgl_esphome.h"
         lvgl_stub.parent.mkdir(parents=True, exist_ok=True)
         lvgl_stub.write_text("", encoding="utf-8")

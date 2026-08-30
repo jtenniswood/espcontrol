@@ -17,6 +17,9 @@ substitutions:
   alarm_delay_entry_beep_file: "device/alarm_delay_entry_beep.flac"
   alarm_delay_exit_beep_file: "device/alarm_delay_exit_beep.flac"
 
+esp32:
+  partitions: "../../common/device/partitions_32mb_card_images.csv"
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password

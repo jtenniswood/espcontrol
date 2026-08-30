@@ -115,6 +115,25 @@ CommitResult ConfigurationService::commit_document_if_generation(
 
 ServiceLoadResult ConfigurationService::load(uint8_t *output,
                                              size_t output_capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  return load_unlocked(output, output_capacity);
+}
+
+ServiceLoadResult ConfigurationService::load_and_apply_runtime(
+    uint8_t *output, size_t output_capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  const ServiceLoadResult loaded = load_unlocked(output, output_capacity);
+  if (!loaded.ok() || runtime_ == nullptr) return loaded;
+  if (runtime_->apply(loaded.document_version, output, loaded.document_size)) {
+    return loaded;
+  }
+  ServiceLoadResult failed = loaded;
+  failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
+  return failed;
+}
+
+ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
+                                                      size_t output_capacity) {
   if (output == nullptr && output_capacity > 0) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
@@ -208,6 +227,12 @@ ServiceLoadResult ConfigurationService::load(uint8_t *output,
 
 ServiceLoadResult ConfigurationService::refresh_legacy_shadow(
     uint8_t *output, size_t output_capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  return refresh_legacy_shadow_unlocked(output, output_capacity);
+}
+
+ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
+    uint8_t *output, size_t output_capacity) {
   if (output == nullptr && output_capacity > 0) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
@@ -276,6 +301,12 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow(
 ServiceSaveResult ConfigurationService::save(uint16_t document_version,
                                              const uint8_t *document,
                                              size_t document_size) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  return save_unlocked(document_version, document, document_size);
+}
+
+ServiceSaveResult ConfigurationService::save_unlocked(
+    uint16_t document_version, const uint8_t *document, size_t document_size) {
   if (document_size > 0 && document == nullptr) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
@@ -295,7 +326,15 @@ ServiceSaveResult ConfigurationService::save(uint16_t document_version,
     return {ServiceStatus::STORE_FAILED, committed.status, document_version,
             committed.generation, document_size};
   }
-  if (!legacy_.mirror(document_version, document, document_size)) {
+  const bool mirrored = !legacy_writes_enabled() ||
+                        legacy_.mirror(document_version, document, document_size);
+  const bool applied = runtime_ == nullptr ||
+                       runtime_->apply(document_version, document, document_size);
+  if (!applied) {
+    return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
+            document_version, committed.generation, document_size};
+  }
+  if (!mirrored) {
     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
@@ -304,6 +343,14 @@ ServiceSaveResult ConfigurationService::save(uint16_t document_version,
 }
 
 ServiceSaveResult ConfigurationService::save_if_generation(
+    uint32_t expected_generation, uint16_t document_version,
+    const uint8_t *document, size_t document_size) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  return save_if_generation_unlocked(expected_generation, document_version,
+                                     document, document_size);
+}
+
+ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     uint32_t expected_generation, uint16_t document_version,
     const uint8_t *document, size_t document_size) {
   if (document_size > 0 && document == nullptr) {
@@ -329,7 +376,15 @@ ServiceSaveResult ConfigurationService::save_if_generation(
     return {ServiceStatus::STORE_FAILED, committed.status, document_version,
             committed.generation, document_size};
   }
-  if (!legacy_.mirror(document_version, document, document_size)) {
+  const bool mirrored = !legacy_writes_enabled() ||
+                        legacy_.mirror(document_version, document, document_size);
+  const bool applied = runtime_ == nullptr ||
+                       runtime_->apply(document_version, document, document_size);
+  if (!applied) {
+    return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
+            document_version, committed.generation, document_size};
+  }
+  if (!mirrored) {
     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }

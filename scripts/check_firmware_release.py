@@ -123,7 +123,7 @@ def validate_esphome_env(path: Path) -> None:
     assert len(lines) == 1, f"{path}: expected exactly one ESPHOME_VERSION line"
     assert ESPHOME_ENV_RE.fullmatch(lines[0]), (
         f"{path}: expected ESPHOME_VERSION to be a stable numeric ESPHome release, "
-        "for example ESPHOME_VERSION=2026.6.5"
+        "for example ESPHOME_VERSION=2026.8.1"
     )
 
 
@@ -132,16 +132,16 @@ def test_esphome_env_format() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         valid = base / "valid.env"
-        valid.write_text("ESPHOME_VERSION=2026.6.5\n", encoding="utf-8")
+        valid.write_text("ESPHOME_VERSION=2026.8.1\n", encoding="utf-8")
         validate_esphome_env(valid)
 
         for value in (
             "",
-            "export ESPHOME_VERSION=2026.6.5\n",
-            "ESPHOME_VERSION=\"2026.6.5\"\n",
-            "ESPHOME_VERSION=2026.6.5-beta.1\n",
-            "OTHER_VERSION=2026.6.5\n",
-            "ESPHOME_VERSION=2026.6.5\nEXTRA=value\n",
+            "export ESPHOME_VERSION=2026.8.1\n",
+            "ESPHOME_VERSION=\"2026.8.1\"\n",
+            "ESPHOME_VERSION=2026.8.1-beta.1\n",
+            "OTHER_VERSION=2026.8.1\n",
+            "ESPHOME_VERSION=2026.8.1\nEXTRA=value\n",
         ):
             invalid = base / "invalid.env"
             invalid.write_text(value, encoding="utf-8")
@@ -168,6 +168,11 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "scripts/firmware_release.py publish-draft" in workflow
     assert "--source-revision" in workflow
     assert "scripts/firmware_release.py verify-recovery" in workflow
+    assert "scripts/check_release_contract.py --github-repository" in workflow
+    assert "GH_TOKEN: ${{ github.token }}" in workflow
+    assert "CMake ${CMAKE_VERSION} is older than the required version 3.20" in workflow
+    assert '"cmake==3.31.10"' in workflow
+    assert "npx playwright install --with-deps chromium" in workflow
     assert str(prepare_c6_firmware.C6_RELATIVE_PATH) in workflow
     assert "path: dist/firmware/" in workflow, "publishable firmware must use the dist boundary"
 
@@ -176,11 +181,11 @@ def test_device_matrix_sparse_checkouts_include_product_model() -> None:
     required_paths = (
         "product/model_v2.json",
         "scripts/product_model_v2.py",
-        "common/assets/icons.json",
-        "common/config/card_contract.json",
-        "common/config/entity_names.json",
-        "common/config/strings.*.txt",
-        "compatibility/fixtures/product_compatibility.json",
+        "product/v2/icons.json",
+        "product/v2/card_contract.json",
+        "product/v2/entity_names.json",
+        "product/v2/translations/strings.*.txt",
+        "product/v2/product_compatibility.json",
     )
     for workflow_path in (FIRMWARE_COMPILE_WORKFLOW, NIGHTLY_FIRMWARE_WORKFLOW):
         workflow = workflow_path.read_text(encoding="utf-8")
@@ -456,6 +461,7 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     assert "/getting-started/c6-recovery" in install
     screen_docs = {
         "guition-esp32-p4-jc1060p470": ROOT / "docs/screens/jc1060p470.md",
+        "guition-esp32-p4-jc1060p470-v2": ROOT / "docs/screens/jc1060p470-v2.md",
         "guition-esp32-p4-jc4880p443": ROOT / "docs/screens/jc4880p443.md",
         "guition-esp32-p4-jc8012p4a1": ROOT / "docs/screens/jc8012p4a1.md",
         "guition-esp32-p4-jc8012p4a1-v2": ROOT / "docs/screens/jc8012p4a1-v2.md",
@@ -470,6 +476,24 @@ def test_recovery_sources_and_documentation_stay_complete() -> None:
     s3_doc = (ROOT / "docs/screens/4848s040.md").read_text(encoding="utf-8")
     assert "C6RecoveryCallout" not in s3_doc
     assert "guition-esp32-s3-4848s040" not in selector
+
+
+def test_installers_preflight_public_manifest() -> None:
+    install_button = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallButton.vue"
+    ).read_text(encoding="utf-8")
+    install_selector = (
+        ROOT / "docs/.vitepress/theme/components/EspInstallSelector.vue"
+    ).read_text(encoding="utf-8")
+    for component in (install_button, install_selector):
+        assert "fetch(manifestUrl" in component
+        assert "cache: 'no-store'" in component
+        assert "manifestAvailable.value = response.ok" in component
+        assert "response.status !== 404" in component
+        assert "!manifestAvailable" in component
+        assert "has not been published yet" in component
+        assert '@click="prepareInstaller"' in component
+    assert "if (checked.value && supported.value) prepareInstaller()" in install_selector
 
 
 def test_valid_files_and_directory() -> None:
@@ -769,6 +793,7 @@ def main() -> int:
     test_recovery_manifest_and_payload_verification()
     test_c6_dependency_preparation_is_verified_and_atomic()
     test_recovery_sources_and_documentation_stay_complete()
+    test_installers_preflight_public_manifest()
     test_draft_release_publishes_only_after_remote_asset_verification()
     test_published_or_mismatched_asset_release_stays_unpublished()
     test_wrong_slug_path_fails()

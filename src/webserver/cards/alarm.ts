@@ -1,5 +1,42 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerAlarmCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { escHtml, iconSlug } from "../application/ui_primitives";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import type { ConfigAccessClimateAlarmOptionsFeature } from "../application/config_access_climate_alarm_options";
+import type { ButtonSettingsRenderQueueFeature } from "../application/button_settings_render_queue";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerAlarmCardTypes(
+    registry: CardRegistry,
+    accessOptions: ConfigAccessClimateAlarmOptionsFeature,
+    renderQueue: ButtonSettingsRenderQueueFeature,
+    fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
+): void {
+    const { renderButtonSettings } = cardUi;
+    const { condField } = fields;
+    const {
+        alarmBehaviorSpec,
+        alarmActionSpecs,
+        alarmMaxVisibleActions,
+        alarmActionIconIsGenerated,
+        alarmActionInfo,
+        alarmPinRequired,
+        setAlarmPinRequired,
+        alarmVisibleActions,
+        setAlarmVisibleActions,
+        alarmIconDisplayMode,
+        setAlarmIconDisplayMode,
+        alarmLabelDisplayMode,
+        setAlarmLabelDisplayMode,
+        normalizeAlarmOptions,
+    } = accessOptions;
     // Alarm cards: one-tap alarm_control_panel actions.
     var ALARM_CONTROL_PANEL_VALUE: any = "control_panel";
     function alarmControlPanelValue(this: any) {
@@ -171,14 +208,14 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
                 setAlarmVisibleActions(b, selected);
                 helpers.saveField("options", b.options);
                 syncInputs(alarmVisibleActions(b));
-                scheduleRender();
+                renderQueue.schedule();
             });
         }
         syncInputs(visible);
         panel.appendChild(field);
         return field;
     }
-    registerButtonType("alarm", {
+    registry.register("alarm", {
         label: function (this: any) { return cardContractCardLabel("alarm"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("alarm"); },
         pickerKey: function (this: any) { return cardContractPickerKey("alarm"); },
@@ -250,7 +287,7 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
                         setAlarmIconDisplayMode(button, value);
                         cardHelpers.saveField("options", button.options);
                         setIconVisible(value);
-                        scheduleRender();
+                        renderQueue.schedule();
                     },
                 }),
             });
@@ -263,7 +300,7 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
                         setAlarmLabelDisplayMode(button, value);
                         cardHelpers.saveField("options", button.options);
                         setLabelVisible(value);
-                        scheduleRender();
+                        renderQueue.schedule();
                     },
                 }),
             });
@@ -306,7 +343,7 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
             };
         },
     });
-    registerButtonType("alarm_action", {
+    registry.register("alarm_action", {
         label: function (this: any) { return cardContractCardLabel("alarm_action"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("alarm_action"); },
         labelPlaceholder: "e.g. Arm Away",
@@ -369,17 +406,4 @@ export function registerAlarmCardTypes(): GlobalDescriptors {
             };
         },
     });
-    return {
-        "ALARM_CONTROL_PANEL_VALUE": liveGlobal(() => ALARM_CONTROL_PANEL_VALUE, (value?: any) => { ALARM_CONTROL_PANEL_VALUE = value; }),
-        "alarmControlPanelValue": staticGlobal(alarmControlPanelValue),
-        "alarmUsesDefaultIcon": staticGlobal(alarmUsesDefaultIcon),
-        "alarmCardTypeOptions": staticGlobal(alarmCardTypeOptions),
-        "alarmCardTypeOptionsForSettings": staticGlobal(alarmCardTypeOptionsForSettings),
-        "alarmLabelIsGenerated": staticGlobal(alarmLabelIsGenerated),
-        "alarmIconIsGenerated": staticGlobal(alarmIconIsGenerated),
-        "setAlarmCardType": staticGlobal(setAlarmCardType),
-        "ALARM_CARD_METADATA": liveGlobal(() => ALARM_CARD_METADATA, (value?: any) => { ALARM_CARD_METADATA = value; }),
-        "renderAlarmCardTypeField": staticGlobal(renderAlarmCardTypeField),
-        "renderAlarmVisibleActionsField": staticGlobal(renderAlarmVisibleActionsField),
-    };
 }

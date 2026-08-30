@@ -4,10 +4,11 @@ import Foundation
 import SwiftUI
 
 struct LaunchableApp: Identifiable, Hashable {
-    let id: String                 // Opaque panel action id, not a file path.
     let bundleIdentifier: String
     let name: String
     let url: URL
+
+    var id: String { bundleIdentifier }
 }
 
 @MainActor
@@ -55,7 +56,7 @@ final class CompanionStore: NSObject, ObservableObject {
                 guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { continue }
                 let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
                     ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String) ?? url.deletingPathExtension().lastPathComponent
-                found.append(LaunchableApp(id: UUID().uuidString, bundleIdentifier: id, name: name, url: url))
+                found.append(LaunchableApp(bundleIdentifier: id, name: name, url: url))
             }
         }
         availableApps = Dictionary(grouping: found, by: \.bundleIdentifier).compactMap { $0.value.first }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

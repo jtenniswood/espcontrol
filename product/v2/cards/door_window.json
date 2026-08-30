@@ -1,0 +1,33 @@
+{
+  "label": "Doors & Windows",
+  "allowInSubpage": true,
+  "domains": ["binary_sensor", "sensor"],
+  "options": [
+    {
+      "name": "active_color",
+      "label": "Lit When Open",
+      "kind": "flag",
+      "omitDefault": true
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "clear" },
+      "label": { "policy": "keep" },
+      "icon": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+      "icon_on": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+      "sensor": { "policy": "keep" },
+      "unit": { "policy": "clear" },
+      "type": { "policy": "default", "value": "door_window" },
+      "precision": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+      "options": { "policy": "hook", "hook": "normalize_occupancy_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["active_color"],
+    "optionHook": "normalize_occupancy_options"
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Door", "icon_on": "Door Open",
+    "sensor": "", "unit": "", "type": "door_window", "precision": "door", "options": "active_color"
+  }
+}

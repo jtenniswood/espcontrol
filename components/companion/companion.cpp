@@ -300,11 +300,12 @@ void CompanionService::begin_pairing() {
 bool CompanionService::pairing_active() const { return !this->pairing_code_.empty() && millis() < this->pairing_expires_at_; }
 
 void CompanionService::revoke_pairing() {
+  const int socket_fd = this->authenticated_socket_;
   this->identity_.paired = 0;
   std::fill(this->identity_.credential, this->identity_.credential + sizeof(this->identity_.credential), 0);
   this->preferences_.save(&this->identity_);
   this->set_connected_(false);
-  if (this->authenticated_socket_ >= 0) httpd_sess_trigger_close(this->server_, this->authenticated_socket_);
+  if (socket_fd >= 0) httpd_sess_trigger_close(this->server_, socket_fd);
 }
 
 void begin_companion_pairing() { if (global_companion_service) global_companion_service->begin_pairing(); }

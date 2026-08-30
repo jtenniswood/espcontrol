@@ -1,0 +1,73 @@
+{
+  "label": "Lights",
+  "allowInSubpage": true,
+  "pickerKey": "light_brightness",
+  "hidden": true,
+  "domains": [
+    "light"
+  ],
+  "options": [
+    {
+      "name": "light_tabs",
+      "label": "Visible Tabs",
+      "kind": "text",
+      "values": [
+        "power",
+        "brightness",
+        "temperature",
+        "color"
+      ],
+      "defaultValue": "power|brightness|temperature|color",
+      "omitDefault": true
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "keep"
+      },
+      "icon": {
+        "policy": "keep"
+      },
+      "icon_on": {
+        "policy": "keep"
+      },
+      "sensor": {
+        "policy": "clear"
+      },
+      "unit": {
+        "policy": "clear"
+      },
+      "type": {
+        "policy": "default",
+        "value": "light_control"
+      },
+      "precision": {
+        "policy": "clear"
+      },
+      "options": {
+        "policy": "hook",
+        "hook": "normalize_light_control_options"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": [
+      "light_tabs"
+    ],
+    "optionHook": "normalize_light_control_options"
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Lightbulb Outline",
+    "icon_on": "Lightbulb",
+    "sensor": "",
+    "unit": "",
+    "type": "light_control",
+    "precision": "",
+    "options": ""
+  }
+}

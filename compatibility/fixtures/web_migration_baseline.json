@@ -1,6 +1,7 @@
 {
   "deviceProfiles": [
     "guition-esp32-p4-jc1060p470",
+    "guition-esp32-p4-jc1060p470-v2",
     "guition-esp32-p4-jc4880p443",
     "guition-esp32-p4-jc8012p4a1",
     "guition-esp32-p4-jc8012p4a1-v2",
@@ -52,8 +53,7 @@
       "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
       "coverArtSecondaryMediaPlayerEntity": "",
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
-      "coverArtHideExternalInput": true, "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
-      "coverArtHomeAssistantBaseUrl": "",
+      "coverArtHideExternalInput": true, "coverArtHomeAssistantEndpointMode": "Manual", "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
       "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
       "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
@@ -108,5 +108,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2453252, "gzip": 964863, "gzipTolerance": 8192 }
+  "bundleSize": { "minified": 2562351, "gzip": 1080240, "gzipTolerance": 9216 }
 }

@@ -1,7 +1,48 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerClimateCardTypes(): GlobalDescriptors {
+import {
+    cardContractAllowInSubpage,
+    cardContractCard,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractDomains,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import { iconSlug } from "../application/ui_primitives";
+import type { CardRegistry } from "../application/card_registry";
+import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
+import type { ConfigAccessClimateAlarmOptionsFeature } from "../application/config_access_climate_alarm_options";
+import type { ClockBarFeature } from "../application/clock_bar_state";
+import type { ButtonSettingsRenderQueueFeature } from "../application/button_settings_render_queue";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+export function registerClimateCardTypes(
+    registry: CardRegistry,
+    modalTabs: ConfigModalTabOptionsFeature,
+    accessOptions: ConfigAccessClimateAlarmOptionsFeature,
+    clockBar: Pick<ClockBarFeature, "temperatureUnitSymbol">,
+    renderQueue: ButtonSettingsRenderQueueFeature,
+    fields: ControlsFieldsFeature,
+): void {
+    const { cardBadgeLabelHtml, cardSensorPreviewHtml, condField } = fields;
+    const { temperatureUnitSymbol } = clockBar;
+    const {
+        climateControlTabDefinitions,
+        climateControlTabs,
+        setClimateControlTabs,
+        renderModalTabSettings,
+    } = modalTabs;
+    const {
+        normalizeClimateOptions,
+        climateLabelDisplayMode,
+        setClimateLabelDisplayMode,
+        climateNumberDisplayMode,
+        setClimateNumberDisplayMode,
+        climateTemperatureStep,
+        setClimateTemperatureStep,
+        parseClimatePrecisionConfig,
+        climatePrecisionConfig,
+    } = accessOptions;
     // Climate card: thermostat status plus full-screen climate controls.
-    var CLIMATE_CARD_METADATA: any = {
+    const CLIMATE_CARD_METADATA: any = {
         entity: {
             label: "Climate Entity",
             idSuffix: "entity",
@@ -46,7 +87,7 @@ export function registerClimateCardTypes(): GlobalDescriptors {
             badge: "thermostat",
         },
     };
-    registerButtonType("climate", {
+    registry.register("climate", {
         label: function (this: any) { return cardContractCardLabel("climate"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("climate"); },
         pickerKey: function (this: any) { return cardContractPickerKey("climate"); },
@@ -114,7 +155,7 @@ export function registerClimateCardTypes(): GlobalDescriptors {
                         setClimateNumberDisplayMode(button, value);
                         cardHelpers.saveField("options", button.options);
                         syncIconFields();
-                        scheduleRender();
+                        renderQueue.schedule();
                     },
                 }),
             });
@@ -126,7 +167,7 @@ export function registerClimateCardTypes(): GlobalDescriptors {
                 field: "icon",
                 fallback: "Thermostat",
                 label: "Off Icon",
-                onChange: function (this: any) { scheduleRender(); },
+                onChange: function (this: any) { renderQueue.schedule(); },
             });
             helpers.renderCardIconPicker(iconFields, b, helpers, {
                 pickerIdSuffix: "climate-icon-on-picker",
@@ -134,7 +175,7 @@ export function registerClimateCardTypes(): GlobalDescriptors {
                 field: "icon_on",
                 fallback: "Auto",
                 label: "On Icon",
-                onChange: function (this: any) { scheduleRender(); },
+                onChange: function (this: any) { renderQueue.schedule(); },
             });
             function syncIconFields(this: any) {
                 iconFields.classList.toggle("sp-visible", climateNumberDisplayMode(b) === "icon");
@@ -148,7 +189,7 @@ export function registerClimateCardTypes(): GlobalDescriptors {
                         setClimateLabelDisplayMode(button, value);
                         cardHelpers.saveField("options", button.options);
                         syncLabelField();
-                        scheduleRender();
+                        renderQueue.schedule();
                     },
                 }),
             });
@@ -162,14 +203,14 @@ export function registerClimateCardTypes(): GlobalDescriptors {
             function saveClimateAdvancedSettings(this: any) {
                 b.precision = climatePrecisionConfig(precision.value, minInp.value, maxInp.value);
                 helpers.saveField("precision", b.precision);
-                scheduleRender();
+                renderQueue.schedule();
             }
             precision.addEventListener("change", saveClimateAdvancedSettings);
             var stepField: any = helpers.selectField(CLIMATE_CARD_METADATA.temperatureStep.label, helpers.idPrefix + "climate-temperature-step", CLIMATE_CARD_METADATA.temperatureStep.options, climateTemperatureStep(b));
             stepField.select.addEventListener("change", function (this: any) {
                 setClimateTemperatureStep(b, stepField.select.value);
                 helpers.saveField("options", b.options);
-                scheduleRender();
+                renderQueue.schedule();
             });
             helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
             panel.appendChild(cardSettingsDisclosure.panel);
@@ -226,14 +267,11 @@ export function registerClimateCardTypes(): GlobalDescriptors {
             };
         },
     });
-    registerButtonType("climate_control", Object.assign({}, BUTTON_TYPES.climate, {
+    registry.register("climate_control", Object.assign({}, registry.definitions.climate, {
         label: function (this: any) { return cardContractCardLabel("climate_control"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("climate_control"); },
         pickerKey: function (this: any) { return cardContractPickerKey("climate_control"); },
         hidden: function (this: any) { return cardContractHidden("climate_control"); },
         defaultConfig: function (this: any) { return cardContractDefaultConfig("climate_control"); },
     }));
-    return {
-        "CLIMATE_CARD_METADATA": liveGlobal(() => CLIMATE_CARD_METADATA, (value?: any) => { CLIMATE_CARD_METADATA = value; }),
-    };
 }
