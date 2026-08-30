@@ -79,6 +79,7 @@ struct ImageCardCtx {
   bool requested_once = false;
   bool image_ready = false;
   bool download_active = false;
+  bool show_label = false;
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
@@ -335,10 +336,13 @@ inline lv_obj_t *image_card_loading_widget(lv_obj_t *widget);
 inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
                                        lv_coord_t *target_width,
                                        lv_coord_t *target_height);
+inline lv_obj_t *image_card_label_shadow(lv_obj_t *label, lv_obj_t *btn);
 inline void image_card_move_label_foreground(lv_obj_t *loading_widget);
 inline void image_card_align_label(lv_obj_t *label, lv_obj_t *btn,
                                    lv_coord_t x_offset = 0,
                                    lv_coord_t y_offset = 0);
+inline void image_card_align_label_stack(lv_obj_t *label, lv_obj_t *btn,
+                                         lv_obj_t *icon);
 inline void image_card_align_icon(lv_obj_t *icon, lv_obj_t *btn);
 inline bool image_card_apply_modal_geometry(
   ImageCardCtx *ctx,
@@ -464,6 +468,24 @@ inline void image_card_apply_loading_fonts(lv_obj_t *loading_widget,
   if (label && label_font) lv_obj_set_style_text_font(label, label_font, LV_PART_MAIN);
 }
 
+inline void image_card_set_configured_label_visible(lv_obj_t *loading_widget,
+                                                     bool visible) {
+  if (!loading_widget) return;
+  lv_obj_t *label = static_cast<lv_obj_t *>(lv_obj_get_user_data(loading_widget));
+  lv_obj_t *btn = lv_obj_get_parent(loading_widget);
+  if (!label || !btn) return;
+  lv_obj_t *shadow = image_card_label_shadow(label, btn);
+  if (visible) {
+    if (shadow) lv_obj_clear_flag(shadow, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+    image_card_align_label_stack(label, btn,
+      static_cast<lv_obj_t *>(lv_obj_get_user_data(label)));
+  } else {
+    if (shadow) lv_obj_add_flag(shadow, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
 inline void image_card_refresh_loading_layout(lv_obj_t *loading_widget) {
   if (!loading_widget) return;
   lv_obj_set_layout(loading_widget, 0);
@@ -475,15 +497,6 @@ inline void image_card_refresh_loading_layout(lv_obj_t *loading_widget) {
   lv_coord_t pad_top = btn ? lv_obj_get_style_pad_top(btn, LV_PART_MAIN) : 0;
   lv_coord_t pad_bottom = btn ? lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN) : 0;
   lv_coord_t width = btn ? lv_obj_get_width(btn) : lv_obj_get_width(loading_widget);
-  lv_coord_t height = btn ? lv_obj_get_height(btn) : lv_obj_get_height(loading_widget);
-  lv_obj_t *card_label = static_cast<lv_obj_t *>(lv_obj_get_user_data(loading_widget));
-  if (card_label && !lv_obj_has_flag(card_label, LV_OBJ_FLAG_HIDDEN)) {
-    const lv_font_t *font = lv_obj_get_style_text_font(card_label, LV_PART_MAIN);
-    lv_coord_t reserve = font && font->line_height > 0 ? font->line_height * 2 : 40;
-    reserve += pad_bottom;
-    if (reserve > height / 2) reserve = height / 2;
-    if (height > reserve) lv_obj_set_height(loading_widget, height - reserve);
-  }
   lv_obj_t *icon = image_card_loading_icon(loading_widget);
   lv_obj_t *label = image_card_loading_label(loading_widget);
   if (icon) {
@@ -498,11 +511,7 @@ inline void image_card_refresh_loading_layout(lv_obj_t *loading_widget) {
     if (width > pad_left + pad_right) {
       lv_obj_set_width(label, width - pad_left - pad_right);
     }
-    if (icon) {
-      lv_obj_align_to(label, icon, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 6);
-    } else {
-      lv_obj_align(label, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
-    }
+    lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
     lv_obj_move_foreground(label);
   }
   lv_obj_update_layout(loading_widget);
@@ -516,6 +525,7 @@ inline void image_card_set_loading_state(lv_obj_t *loading_widget, const char *t
   if (icon) lv_label_set_text(icon, IMAGE_CARD_LOADING_ICON);
   lv_obj_t *label = image_card_loading_label(loading_widget);
   if (label) lv_label_set_text(label, espcontrol_i18n(text));
+  image_card_set_configured_label_visible(loading_widget, false);
   image_card_refresh_loading_layout(loading_widget);
   lv_obj_clear_flag(loading_widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_foreground(loading_widget);
@@ -534,6 +544,8 @@ inline void image_card_set_loading_state(ImageCardCtx *ctx, const char *text,
 inline void image_card_hide_loading(ImageCardCtx *ctx) {
   if (!ctx || !ctx->loading_widget) return;
   lv_obj_add_flag(ctx->loading_widget, LV_OBJ_FLAG_HIDDEN);
+  image_card_set_configured_label_visible(
+    ctx->loading_widget, ctx->image_ready && ctx->show_label);
 }
 
 inline void image_card_hide(ImageCardCtx *ctx) {
@@ -950,6 +962,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].last_modal_request_started_ms = 0;
     contexts[i].width_compensation_percent = 100;
     contexts[i].media_artwork_width_compensation_percent = 100;
+    contexts[i].show_label = false;
     if (contexts[i].modal_cleanup_timer) {
       lv_timer_del(contexts[i].modal_cleanup_timer);
       contexts[i].modal_cleanup_timer = nullptr;
@@ -2575,6 +2588,7 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   ctx->width_compensation_percent = cfg.width_compensation_percent;
   ctx->media_artwork_width_compensation_percent = 100;
+  ctx->show_label = image_card_label_enabled(p);
   image_card_log_diagnostics(ctx, "bind-card");
   int cached_target_width = ctx->image->get_fixed_width();
   int cached_target_height = ctx->image->get_fixed_height();
