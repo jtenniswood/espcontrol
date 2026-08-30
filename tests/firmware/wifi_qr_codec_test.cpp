@@ -5,7 +5,7 @@
 #include "wifi_qr_layout.h"
 
 int main() {
-  assert(wifi_qr_tile_vertical_inset(1, 1) == 3);
+  assert(wifi_qr_tile_vertical_inset(1, 1) == 6);
   assert(wifi_qr_tile_vertical_inset(2, 2) == 6);
   assert(wifi_qr_tile_vertical_inset(3, 3) == 6);
 
@@ -19,10 +19,12 @@ int main() {
   assert(ssid == "Guest Wifi");
   assert(password == "Pass;word:123");
   assert(payload == "WIFI:T:WPA;S:Guest Wifi;P:Pass\\;word\\:123;H:true;;");
+  assert(wifi_qr_compact_payload(payload) == payload);
   assert(wifi_qr_build_payload("Q2Fmw6k", "open", "", false, &payload, &ssid));
   assert(ssid == "Café");
   assert(wifi_qr_build_payload("R3Vlc3Q", "open", "", false, &payload, &ssid));
   assert(payload == "WIFI:T:nopass;S:Guest;H:false;;");
+  assert(wifi_qr_compact_payload(payload) == "WIFI:T:nopass;S:Guest;;");
   assert(wifi_qr_build_payload("R3Vlc3Q", "open", "", false, &payload, &ssid, &password));
   assert(password.empty());
   assert(!wifi_qr_build_payload("R3Vlc3Q", "wpa", "c2hvcnQ", false, &payload, &ssid));

@@ -75,6 +75,16 @@ inline std::string wifi_qr_escape(const std::string &value) {
   for (char ch : value) { if (ch == '\\' || ch == ';' || ch == ',' || ch == '\"' || ch == ':') out.push_back('\\'); out.push_back(ch); }
   return out;
 }
+inline std::string wifi_qr_compact_payload(const std::string &payload) {
+  static constexpr const char *visible_suffix = "H:false;;";
+  static constexpr size_t visible_suffix_size = 9;
+  if (payload.size() >= visible_suffix_size &&
+      payload.compare(payload.size() - visible_suffix_size,
+                      visible_suffix_size, visible_suffix) == 0) {
+    return payload.substr(0, payload.size() - visible_suffix_size) + ";";
+  }
+  return payload;
+}
 inline bool wifi_qr_build_payload(const std::string &ssid64, const std::string &security_value,
                                   const std::string &pass64, bool hidden, std::string *payload,
                                   std::string *ssid, std::string *decoded_password = nullptr) {

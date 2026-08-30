@@ -1,5 +1,7 @@
 #pragma once
 
+#include <src/libs/qrcode/qrcodegen.h>
+
 #include "wifi_qr_layout.h"
 
 namespace espcontrol::cards {
@@ -9,6 +11,63 @@ inline bool wifi_qr_driver_matches(const Context &context) {
 
 inline bool wifi_qr_driver_uses_tile_qr(const ParsedCfg &config) {
   return config.type == "wifi_qr_card";
+}
+
+inline lv_result_t wifi_qr_driver_update_compact(
+    lv_obj_t *qr, const std::string &payload) {
+  if (!qr || payload.size() > qrcodegen_BUFFER_LEN_MAX)
+    return LV_RESULT_INVALID;
+  lv_draw_buf_t *draw_buf = lv_canvas_get_draw_buf(qr);
+  if (!draw_buf) return LV_RESULT_INVALID;
+
+  const int version = qrcodegen_getMinFitVersion(
+    qrcodegen_Ecc_LOW, payload.size());
+  const int module_count = qrcodegen_version2size(version);
+  const int scale = module_count > 0 ? draw_buf->header.w / module_count : 0;
+  if (version <= 0 || scale <= 0) return LV_RESULT_INVALID;
+
+  const size_t buffer_size = qrcodegen_BUFFER_LEN_FOR_VERSION(version);
+  uint8_t *encoded = static_cast<uint8_t *>(lv_malloc(buffer_size));
+  uint8_t *data = static_cast<uint8_t *>(lv_malloc(buffer_size));
+  if (!encoded || !data) {
+    if (encoded) lv_free(encoded);
+    if (data) lv_free(data);
+    return LV_RESULT_INVALID;
+  }
+  lv_memcpy(data, payload.data(), payload.size());
+  const bool encoded_ok = qrcodegen_encodeBinary(
+    data, payload.size(), encoded, qrcodegen_Ecc_LOW, version, version,
+    qrcodegen_Mask_AUTO, true);
+  if (!encoded_ok) {
+    lv_free(encoded);
+    lv_free(data);
+    return LV_RESULT_INVALID;
+  }
+
+  lv_draw_buf_clear(draw_buf, nullptr);
+  lv_canvas_set_palette(qr, 0, lv_color_to_32(lv_color_white(), LV_OPA_COVER));
+  lv_canvas_set_palette(qr, 1, lv_color_to_32(lv_color_black(), LV_OPA_COVER));
+  lv_display_enable_invalidation(lv_obj_get_display(qr), false);
+  const int rendered_side = module_count * scale;
+  const int margin = (draw_buf->header.w - rendered_side) / 2;
+  const lv_color_t dark = lv_color_hex(1);
+  for (int module_y = 0; module_y < module_count; module_y++) {
+    for (int module_x = 0; module_x < module_count; module_x++) {
+      if (!qrcodegen_getModule(encoded, module_x, module_y)) continue;
+      const int start_x = margin + module_x * scale;
+      const int start_y = margin + module_y * scale;
+      for (int y = 0; y < scale; y++) {
+        for (int x = 0; x < scale; x++) {
+          lv_canvas_set_px(qr, start_x + x, start_y + y, dark, LV_OPA_COVER);
+        }
+      }
+    }
+  }
+  lv_display_enable_invalidation(lv_obj_get_display(qr), true);
+  lv_obj_invalidate(qr);
+  lv_free(encoded);
+  lv_free(data);
+  return LV_RESULT_OK;
 }
 
 inline lv_coord_t wifi_qr_driver_tile_side(
@@ -61,7 +120,13 @@ inline bool wifi_qr_driver_render_tile(
   const lv_coord_t side = wifi_qr_driver_tile_side(slot.btn, row_span, col_span);
   if (side <= 0) return true;
   if (lv_obj_get_width(qr) != side) lv_qrcode_set_size(qr, side);
-  if (lv_qrcode_update(qr, payload.c_str(), payload.size()) != LV_RESULT_OK) {
+  const bool compact_tile = row_span == 1 && col_span == 1;
+  const std::string rendered_payload = compact_tile
+    ? wifi_qr_compact_payload(payload) : payload;
+  const lv_result_t update_result = compact_tile
+    ? wifi_qr_driver_update_compact(qr, rendered_payload)
+    : lv_qrcode_update(qr, rendered_payload.c_str(), rendered_payload.size());
+  if (update_result != LV_RESULT_OK) {
     if (slot.sensor_container) lv_obj_set_user_data(slot.sensor_container, nullptr);
     lv_obj_del(qr);
     return true;
