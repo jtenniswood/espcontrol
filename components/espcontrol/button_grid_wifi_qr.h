@@ -102,7 +102,9 @@ inline void wifi_qr_apply_tab_visibility() {
 inline void wifi_qr_layout_modal() {
   WifiQrModalUi &ui = wifi_qr_modal_ui();
   if (!ui.overlay || !ui.panel) return;
-  const ControlModalLayout layout = control_modal_calc_layout(100);
+  const int modal_width_compensation_percent = icon_width_compensation_percent();
+  const ControlModalLayout layout =
+    control_modal_calc_layout(modal_width_compensation_percent);
   control_modal_apply_panel_layout(
     ui.overlay, ui.panel, layout, control_modal_card_radius(nullptr));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
@@ -111,7 +113,8 @@ inline void wifi_qr_layout_modal() {
   const bool show_tab_bar = ui.tabs.size() > 1;
   const ControlModalTabLayout tabs_layout =
     control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, modal_width_compensation_percent);
   for (size_t index = 0; index < ui.tabs.size(); ++index) {
     const WifiQrTab tab = ui.tabs[index];
     lv_obj_t *button = tab == WifiQrTab::QR ? ui.qr_tab : ui.details_tab;
