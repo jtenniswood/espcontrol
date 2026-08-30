@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <cstring>
 #include <sstream>
+#include <sys/socket.h>
+#include <unistd.h>
 
 namespace esphome::companion {
 
@@ -144,6 +146,7 @@ bool CompanionService::ensure_identity_() {
 bool CompanionService::start_server_() {
   httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
   config.httpd.max_open_sockets = 2;
+  config.httpd.close_fn = &CompanionService::session_close_;
   config.port_secure = this->port_;
   config.httpd.global_user_ctx = this;
   config.servercert = this->identity_.certificate;
@@ -155,6 +158,16 @@ bool CompanionService::start_server_() {
       .uri = "/companion/v1", .method = HTTP_GET, .handler = &CompanionService::websocket_handler_, .user_ctx = this,
       .is_websocket = true, .handle_ws_control_frames = true};
   return httpd_register_uri_handler(this->server_, &websocket) == ESP_OK;
+}
+
+void CompanionService::session_close_(httpd_handle_t server, int socket_fd) {
+  (void) server;
+  if (global_companion_service &&
+      socket_fd == global_companion_service->authenticated_socket_) {
+    global_companion_service->set_connected_(false);
+  }
+  shutdown(socket_fd, SHUT_RD);
+  close(socket_fd);
 }
 
 esp_err_t CompanionService::websocket_handler_(httpd_req_t *request) {
@@ -247,8 +260,8 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     this->send_(socket_fd, "ERROR|authenticate_first");
     return;
   }
-  if (parts[0] == "CATALOG" && parts.size() == 2) {
-    this->catalogue_ = split(parts[1], ',');
+  if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
+    this->catalogue_ = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
     std::vector<CompanionAction> actions;
     for (const auto &entry : this->catalogue_) {
       const auto item = split(entry, ':');
@@ -298,7 +311,10 @@ void CompanionService::begin_pairing() {
   this->next_attempt_at_ = 0;
 }
 
-bool CompanionService::pairing_active() const { return !this->pairing_code_.empty() && millis() < this->pairing_expires_at_; }
+bool CompanionService::pairing_active() const {
+  return !this->pairing_code_.empty() &&
+    static_cast<int32_t>(millis() - this->pairing_expires_at_) < 0;
+}
 
 void CompanionService::revoke_pairing() {
   this->identity_.paired = 0;

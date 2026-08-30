@@ -1832,6 +1832,7 @@ inline void grid_phase2(
   reset_climate_control_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
+  for (int i = 0; i < NS; i++) companion_forget_card(slots[i].btn);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
