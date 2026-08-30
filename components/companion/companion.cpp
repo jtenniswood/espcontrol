@@ -146,6 +146,10 @@ bool CompanionService::ensure_identity_() {
 bool CompanionService::start_server_() {
   httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
   config.httpd.max_open_sockets = 2;
+  // The main web UI owns ESP-IDF's default HTTPD control port. Each HTTPD
+  // instance needs a distinct internal control socket even when its public
+  // listener uses a different port.
+  config.httpd.ctrl_port += 1;
   config.httpd.close_fn = &CompanionService::session_close_;
   config.port_secure = this->port_;
   config.httpd.global_user_ctx = this;
