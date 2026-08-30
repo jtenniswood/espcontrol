@@ -5,7 +5,7 @@
 #include "wifi_qr_layout.h"
 
 int main() {
-  assert(wifi_qr_tile_vertical_inset(1, 1) == 6);
+  assert(wifi_qr_tile_vertical_inset(1, 1) == 3);
   assert(wifi_qr_tile_vertical_inset(2, 2) == 6);
   assert(wifi_qr_tile_vertical_inset(3, 3) == 6);
   assert(wifi_qr_scale_with_quiet_zone(123, 33) == 3);

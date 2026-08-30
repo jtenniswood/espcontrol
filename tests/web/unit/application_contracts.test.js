@@ -402,6 +402,7 @@ describe("browserless application contracts", () => {
     assert.match(qrPreview.iconHtml, /shape-rendering="crispEdges"/);
     assert.doesNotMatch(qrPreview.iconHtml, /viewBox="0 0 21 21"/);
     assert.match(styles, /\.sp-wifi-qr-preview\{[^}]*width:84%;height:84%/);
+    assert.match(styles, /\.sp-wifi-qr-card:hover\{filter:none\}/);
     assert.match(styles, /\.sp-wifi-qr-card\.sp-btn-big \.sp-wifi-qr-preview,[^}]*width:97%;height:97%/);
     definitions.wifi_qr_card.cardMetadata.mode.onChange.call(
       { value: "wifi_qr" }, qrCard, { saveField() {} },
