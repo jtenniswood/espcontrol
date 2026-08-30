@@ -12,12 +12,9 @@ inline bool wifi_qr_driver_uses_tile_qr(const ParsedCfg &config) {
 inline lv_coord_t wifi_qr_driver_tile_side(lv_obj_t *button) {
   if (!button) return 0;
   lv_obj_update_layout(button);
-  const lv_coord_t shortest =
-    std::min<lv_coord_t>(lv_obj_get_width(button), lv_obj_get_height(button));
-  // Keep a narrow white strip around the device QR, especially above and
-  // below it, without giving up the enlarged card-filling layout.
-  const lv_coord_t inset = std::max<lv_coord_t>(4, shortest / 48);
-  const lv_coord_t available = shortest - inset * 2;
+  constexpr lv_coord_t vertical_inset = 3;
+  const lv_coord_t available = std::min<lv_coord_t>(
+    lv_obj_get_width(button), lv_obj_get_height(button) - vertical_inset * 2);
   return available >= 48 ? available : 0;
 }
 
@@ -47,7 +44,7 @@ inline bool wifi_qr_driver_render_tile(
     lv_obj_clear_flag(qr, LV_OBJ_FLAG_CLICKABLE);
     lv_qrcode_set_dark_color(qr, lv_color_black());
     lv_qrcode_set_light_color(qr, lv_color_white());
-    // The white tile and responsive inset provide the visible separation here.
+    // The white tile and three-pixel vertical inset provide separation here.
     // LVGL's four-module quiet zone made the code unnecessarily small on cards.
     lv_qrcode_set_quiet_zone(qr, false);
     lv_obj_set_style_border_width(qr, 0, LV_PART_MAIN);
