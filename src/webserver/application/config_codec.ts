@@ -176,8 +176,17 @@ export function createConfigCodecFeature(
     function cardRequiresSquareSize(this: any, b?: any) {
         return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
     }
+    function cardIsWifiSharing(this: any, b?: any) {
+        return !!(b && (b.type === "wifi_qr" || b.type === "wifi_qr_card"));
+    }
+    function cardSupportsWifiPortraitSizes(this: any, b?: any) {
+        return cardIsWifiSharing(b) && (
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1" ||
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v2"
+        );
+    }
     function cardSupportsExtraLargeSize(this: any, b?: any) {
-        return cardRequiresSquareSize(b) || !!(b && (b.type === "wifi_qr" || b.type === "wifi_qr_card"));
+        return cardRequiresSquareSize(b) || cardIsWifiSharing(b);
     }
     function cardSupportsMaxSize(this: any, b?: any) {
         return !!(b && b.type === "image");
@@ -190,6 +199,16 @@ export function createConfigCodecFeature(
     }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        if (cardIsWifiSharing(b)) {
+            if (size === CARD_SIZE_SINGLE || size === CARD_SIZE_LARGE)
+                return size;
+            if (size === CARD_SIZE_EXTRA_LARGE)
+                return layout.gridCols >= 3 && layout.gridRows >= 3 ? size : CARD_SIZE_SINGLE;
+            if (cardSupportsWifiPortraitSizes(b) &&
+                (size === CARD_SIZE_MAX_TALL || size === CARD_SIZE_PORTRAIT_LARGE))
+                return size;
+            return CARD_SIZE_SINGLE;
+        }
         if (size === CARD_SIZE_LANDSCAPE_LARGE)
             return cardSupportsLandscapeLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_PORTRAIT_LARGE)
@@ -1024,6 +1043,8 @@ export function createConfigCodecFeature(
         normalizeWithRegisteredCardType,
         normalizeButtonConfig,
         cardRequiresSquareSize,
+        cardIsWifiSharing,
+        cardSupportsWifiPortraitSizes,
         cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,

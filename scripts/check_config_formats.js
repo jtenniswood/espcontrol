@@ -344,6 +344,15 @@ assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mo
 assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_art" }), true, "cover art cards require square sizes");
 assert.strictEqual(hooks.cardSupportsExtraLargeSize({ type: "wifi_qr" }), true, "Wifi Connect cards support 3x3 sizes");
 assert.strictEqual(hooks.cardSupportsExtraLargeSize({ type: "wifi_qr_card" }), true, "Wifi QR cards support 3x3 sizes");
+assert.strictEqual(hooks.cardSupportsWifiPortraitSizes({ type: "wifi_qr" }), false, "non-10-inch Wifi cards reject portrait sizes");
+assert.strictEqual(tenInchHooks.cardSupportsWifiPortraitSizes({ type: "wifi_qr" }), true, "10-inch Wifi cards support portrait sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "wifi_qr" }, 2), 1, "Wifi cards reject non-square tall sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "wifi_qr_card" }, 3), 1, "Wifi QR cards reject non-square wide sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "wifi_qr" }, 4), 4, "Wifi cards keep 2x2 sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "wifi_qr_card" }, 7), 7, "Wifi QR cards keep 3x3 sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "wifi_qr" }, 9), 1, "non-10-inch Wifi cards reject 2x3 sizes");
+assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "wifi_qr" }, 9), 9, "10-inch Wifi cards keep 2x3 sizes");
+assert.strictEqual(tenInchHooks.normalizeCardSizeForConfig({ type: "wifi_qr_card" }, 10), 10, "10-inch Wifi QR cards keep 3x4 sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 7), 7, "cover art keeps 3x3 size");
 assert.strictEqual(tenInchHooks.cardSupportsPortraitLargeSize({ type: "media", sensor: "cover_art" }), true, "10-inch cover art supports portrait-large size");
@@ -406,6 +415,21 @@ assert.strictEqual(
   Array.from(hooks.cardSizeMenuOptions({ type: "wifi_qr_card" })).some((option) => option.size === 7 && option.label === "Extra Large (3x3)"),
   true,
   "Wifi QR card size menu exposes Extra Large (3x3)",
+);
+assert.deepStrictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "wifi_qr" }), (option) => option.size),
+  [1, 4, 7],
+  "Wifi Connect card size menu only exposes square sizes",
+);
+assert.deepStrictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "wifi_qr_card" }), (option) => option.size),
+  [1, 4, 7],
+  "Wifi QR card size menu only exposes square sizes",
+);
+assert.deepStrictEqual(
+  Array.from(tenInchHooks.cardSizeMenuOptions({ type: "wifi_qr" }), (option) => [option.size, option.label]),
+  [[1, "Single (1x1)"], [4, "Large (2x2)"], [7, "Extra Large (3x3)"], [9, "Max Tall (2x3)"], [10, "Massive (3x4)"]],
+  "10-inch Wifi card size menu adds 2x3 and 3x4 portrait sizes",
 );
 const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],
