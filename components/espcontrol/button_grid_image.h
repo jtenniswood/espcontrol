@@ -1018,7 +1018,16 @@ inline ImageCardCtx *acquire_image_card_context(const GridConfig &cfg,
       }
     }
   }
-  if (!selected) return nullptr;
+  if (!selected) {
+    ESP_LOGW("image_card", "Image downloader pool exhausted for %s (configured=%d, capacity=%d)",
+             entity_id.c_str(), cfg.image_card_image_count, IMAGE_CARD_MAX_CONTEXTS);
+    for (int i = 0; i < count; i++) {
+      ESP_LOGW("image_card", "  slot %d: image=%p active=%s entity=%s cached=%s",
+               i, contexts[i].image, YESNO(contexts[i].active),
+               contexts[i].entity_id.c_str(), contexts[i].cached_entity_id.c_str());
+    }
+    return nullptr;
+  }
   if (selected->cached_entity_id != entity_id) {
     selected->image->release();
     selected->source_url.clear();
