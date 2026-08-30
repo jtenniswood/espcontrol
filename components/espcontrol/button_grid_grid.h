@@ -576,7 +576,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
     return;
   }
-  if (espcontrol::cards::wifi_qr_driver_setup_visual(s, p, context)) return;
+  if (espcontrol::cards::wifi_qr_driver_setup_visual(
+        s, p, context, row_span, col_span)) return;
   if (espcontrol::cards::light_control_driver_setup_visual(s, p, context)) {
     espcontrol::cards::light_control_driver_attach_interaction(s, p, context);
     espcontrol::cards::light_control_driver_refresh_layout(s, p, context);
@@ -924,7 +925,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
         s, p, context)) {
     return;
   } else if (espcontrol::cards::wifi_qr_driver_refresh_layout(
-               s, p, context)) {
+               s, p, context, row_span, col_span)) {
     return;
   } else if (espcontrol::cards::light_control_driver_refresh_layout(
                s, p, context)) {
