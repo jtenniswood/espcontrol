@@ -73,7 +73,9 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-drag-active .sp-btn:hover{filter:none}" +
         ".sp-btn.sp-selected{border-color:var(--accent)}" +
         ".sp-wifi-qr-card{padding:0;background:#fff!important;align-items:center;justify-content:center}" +
-        ".sp-wifi-qr-preview{display:block;width:97%;height:97%;pointer-events:none}" +
+        ".sp-wifi-qr-preview{display:block;width:84%;height:84%;pointer-events:none}" +
+        ".sp-wifi-qr-card.sp-btn-big .sp-wifi-qr-preview,.sp-wifi-qr-card.sp-btn-extra-large .sp-wifi-qr-preview," +
+        ".sp-wifi-qr-card.sp-btn-max-tall .sp-wifi-qr-preview,.sp-wifi-qr-card.sp-btn-portrait-large .sp-wifi-qr-preview{width:97%;height:97%}" +
         ".sp-btn-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad);" +
         "font-size:var(--btn-icon);line-height:1;color:#fff;z-index:1}" +
         ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +

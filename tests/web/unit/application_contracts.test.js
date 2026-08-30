@@ -346,6 +346,7 @@ describe("browserless application contracts", () => {
 
   test("groups Connect and QR cards under Wifi Sharing", () => {
     const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
+    const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
     const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
     const definitions = {};
     const modalTabs = {
@@ -400,6 +401,8 @@ describe("browserless application contracts", () => {
     assert.match(qrPreview.iconHtml, /viewBox="4 4 29 29"/);
     assert.match(qrPreview.iconHtml, /shape-rendering="crispEdges"/);
     assert.doesNotMatch(qrPreview.iconHtml, /viewBox="0 0 21 21"/);
+    assert.match(styles, /\.sp-wifi-qr-preview\{[^}]*width:84%;height:84%/);
+    assert.match(styles, /\.sp-wifi-qr-card\.sp-btn-big \.sp-wifi-qr-preview,[^}]*width:97%;height:97%/);
     definitions.wifi_qr_card.cardMetadata.mode.onChange.call(
       { value: "wifi_qr" }, qrCard, { saveField() {} },
     );
