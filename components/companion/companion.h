@@ -45,6 +45,7 @@ class CompanionService final : public Component {
 
  protected:
   static esp_err_t websocket_handler_(httpd_req_t *request);
+  static void session_close_(httpd_handle_t server, int socket_fd);
   esp_err_t handle_websocket_(httpd_req_t *request);
   bool start_server_();
   bool ensure_identity_();

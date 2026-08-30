@@ -2143,6 +2143,37 @@
       }
     },
     {
+      "name": "companion: approved_app",
+      "sourceKind": "contract",
+      "sourceType": "companion",
+      "mode": "approved_app",
+      "canonicalType": "companion",
+      "web": {
+        "registration": "companion",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "c9da18ede694afd8"
+        }
+      },
+      "firmware": {
+        "family": "COMPANION"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "screen_lock: toggle",
       "sourceKind": "contract",
       "sourceType": "screen_lock",

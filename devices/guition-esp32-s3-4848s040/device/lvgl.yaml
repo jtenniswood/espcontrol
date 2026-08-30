@@ -162,3 +162,13 @@ lvgl:
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "7" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "8" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "9" } }
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (!esphome::companion::companion_pairing_active() &&
+              !lv_obj_has_flag(id(companion_pairing_code_label), LV_OBJ_FLAG_HIDDEN)) {
+            lv_label_set_text(id(companion_pairing_code_label), "");
+            lv_obj_add_flag(id(companion_pairing_code_label), LV_OBJ_FLAG_HIDDEN);
+          }

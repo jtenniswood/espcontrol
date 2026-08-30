@@ -10,7 +10,7 @@
   },
   "summary": {
     "deviceProfiles": 7,
-    "cardTypes": 40,
+    "cardTypes": 41,
     "entityNames": 101,
     "icons": 334,
     "structuralIcons": 19,
@@ -1205,7 +1205,8 @@
       "slug": "guition-esp32-s3-4848s040",
       "slots": 9,
       "capabilities": {
-        "imageSlots": 1
+        "imageSlots": 1,
+        "companion": true
       },
       "public": {
         "name": "Guition 4848S040",
@@ -1488,6 +1489,7 @@
         "media_playlist",
         "option_select",
         "push",
+        "companion",
         "screen_lock",
         "webhook",
         "sensor",
@@ -1881,6 +1883,18 @@
         },
         "push": {
           "driver": "push",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
+            "actions": true,
+            "numericControl": false,
+            "modal": false,
+            "runtimeAllocation": false,
+            "subpage": true
+          }
+        },
+        "companion": {
+          "driver": "companion",
           "capabilities": {
             "informationOnly": false,
             "subscriptions": false,
@@ -4838,6 +4852,58 @@
           "options": ""
         }
       },
+      "companion": {
+        "label": "Companion",
+        "allowInSubpage": true,
+        "domains": [],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "keep"
+            },
+            "label": {
+              "policy": "keep"
+            },
+            "icon": {
+              "policy": "default_if_empty",
+              "value": "Monitor"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "companion"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "clear"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": []
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Monitor",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "companion",
+          "precision": "",
+          "options": ""
+        }
+      },
       "screen_lock": {
         "label": "Screen Lock",
         "allowInSubpage": true,
@@ -5925,6 +5991,7 @@
       "climate": "H",
       "climate_control": "HC",
       "push": "P",
+      "companion": "CP",
       "screen_lock": "SL",
       "webhook": "WH",
       "internal": "I",

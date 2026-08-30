@@ -29,6 +29,7 @@ final class CompanionStore: NSObject, ObservableObject {
         panelName = defaults.string(forKey: Keys.name) ?? "My EspControl"
         allowedBundleIdentifiers = Set(defaults.stringArray(forKey: Keys.allowed) ?? [])
         super.init()
+        refreshApplications()
     }
 
     var hasSavedPairing: Bool { KeychainStore.load(service: KeychainStore.service, account: panelHost) != nil }
