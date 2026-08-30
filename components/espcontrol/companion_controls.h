@@ -4,7 +4,9 @@
 // the companion service owns pairing, transport and the Mac-specific allowlist.
 
 #include <algorithm>
+#include <atomic>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -26,9 +28,26 @@ using CompanionActionSender = std::function<bool(const std::string &, const std:
 
 inline void companion_request_card_refresh();
 
-inline std::vector<CompanionAction> &companion_actions() {
-  static std::vector<CompanionAction> actions;
-  return actions;
+struct CompanionRuntimeState {
+  std::mutex mutex;
+  std::vector<CompanionAction> actions;
+  bool connected{false};
+};
+
+struct CompanionRuntimeSnapshot {
+  std::vector<CompanionAction> actions;
+  bool connected{false};
+};
+
+inline CompanionRuntimeState &companion_runtime_state() {
+  static CompanionRuntimeState state;
+  return state;
+}
+
+inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
+  auto &state = companion_runtime_state();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  return {state.actions, state.connected};
 }
 
 inline CompanionActionSender &companion_action_sender() {
@@ -36,27 +55,30 @@ inline CompanionActionSender &companion_action_sender() {
   return sender;
 }
 
-inline bool &companion_connected() {
-  static bool connected = false;
-  return connected;
-}
-
 inline void companion_set_actions(std::vector<CompanionAction> actions) {
   actions.erase(std::remove_if(actions.begin(), actions.end(),
     [](const CompanionAction &action) {
       return action.id.empty() || action.id.size() > 96 || action.label.size() > 96;
     }), actions.end());
-  companion_actions() = std::move(actions);
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.actions = std::move(actions);
+  }
   companion_request_card_refresh();
 }
 
 inline uint32_t companion_next_request_number() {
-  static uint32_t request_number = 0;
+  static std::atomic<uint32_t> request_number{0};
   return ++request_number;
 }
 
 inline void companion_set_connected(bool connected) {
-  companion_connected() = connected;
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.connected = connected;
+  }
   companion_request_card_refresh();
 }
 
@@ -65,9 +87,10 @@ inline void register_companion_action_sender(CompanionActionSender sender) {
 }
 
 inline bool companion_action_available(const std::string &action_id) {
-  if (!companion_connected() || action_id.empty()) return false;
-  const auto &actions = companion_actions();
-  return std::any_of(actions.begin(), actions.end(), [&action_id](const CompanionAction &action) {
+  if (action_id.empty()) return false;
+  const auto snapshot = companion_runtime_snapshot();
+  if (!snapshot.connected) return false;
+  return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;
   });
 }
@@ -83,8 +106,8 @@ inline std::vector<CompanionCardRef> &companion_card_refs() {
   return refs;
 }
 
-inline bool &companion_card_refresh_requested() {
-  static bool requested = false;
+inline std::atomic<bool> &companion_card_refresh_requested() {
+  static std::atomic<bool> requested{false};
   return requested;
 }
 
@@ -113,11 +136,10 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id)
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
 }
 
-inline void companion_request_card_refresh() { companion_card_refresh_requested() = true; }
+inline void companion_request_card_refresh() { companion_card_refresh_requested().store(true); }
 
 inline void companion_refresh_cards_if_requested() {
-  if (!companion_card_refresh_requested()) return;
-  companion_card_refresh_requested() = false;
+  if (!companion_card_refresh_requested().exchange(false)) return;
   auto &refs = companion_card_refs();
   for (auto it = refs.begin(); it != refs.end();) {
     if (!it->button || !lv_obj_is_valid(it->button)) {
@@ -173,8 +195,9 @@ class CompanionActionsHandler : public esphome::web_server_idf::AsyncWebHandler 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
     std::string json = "[";
     bool first = true;
-    if (companion_connected()) {
-      for (const auto &action : companion_actions()) {
+    const auto snapshot = companion_runtime_snapshot();
+    if (snapshot.connected) {
+      for (const auto &action : snapshot.actions) {
         if (!first) json += ",";
         first = false;
         json += "{\"id\":\"" + companion_json_escape(action.id) +
