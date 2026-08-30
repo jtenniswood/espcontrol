@@ -18,6 +18,7 @@
 #include "panel_config_espidf_storage.h"
 #include "panel_config_esphome_text.h"
 #include "panel_config_legacy_adapter.h"
+#include "panel_config_legacy_entity_guard.h"
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_storage_backend.h"
@@ -31,6 +32,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   if (server == nullptr) return;
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
+  espcontrol::configuration::register_panel_config_legacy_entity_guard(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);
   espcontrol::configuration::register_panel_config_read_endpoint(*server);
   espcontrol::configuration::register_panel_config_write_endpoint(*server);
