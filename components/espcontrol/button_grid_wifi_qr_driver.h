@@ -23,7 +23,7 @@ inline lv_result_t wifi_qr_driver_update_compact(
   const int version = qrcodegen_getMinFitVersion(
     qrcodegen_Ecc_LOW, payload.size());
   const int module_count = qrcodegen_version2size(version);
-  const int scale = wifi_qr_scale_with_quiet_zone(
+  const int scale = wifi_qr_compact_scale(
     draw_buf->header.w, module_count);
   if (version <= 0 || scale <= 0) return LV_RESULT_INVALID;
 
