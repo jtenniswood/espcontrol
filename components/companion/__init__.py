@@ -20,7 +20,6 @@ CompanionService = companion_ns.class_("CompanionService", cg.Component)
 
 def _reserve_network_resources(config):
     """Reserve the listener and client sockets before ESPHome sizes lwIP."""
-    network.require_high_performance_networking()
     socket.consume_sockets(
         1, "companion_secure_websocket", socket.SocketType.TCP_LISTEN
     )(config)
