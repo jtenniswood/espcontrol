@@ -32,6 +32,7 @@ using espcontrol::artwork::artwork_selection_needs_download;
 using espcontrol::artwork::source_response_can_apply_immediately;
 using espcontrol::cover_art::RuntimeState;
 using espcontrol::cover_art::media_card_artwork_suppressed;
+using espcontrol::cover_art::media_cover_art_idle_placeholder_visible;
 using espcontrol::cover_art::media_external_source_stale_for_current_content;
 using espcontrol::cover_art::media_now_playing_artist_visible;
 
@@ -60,6 +61,11 @@ int main() {
   assert(media_now_playing_artist_visible(true, false, true, false));
   assert(!media_now_playing_artist_visible(false, false, true, false));
   assert(!media_now_playing_artist_visible(true, false, false, false));
+
+  // Cover-art cards use their music icon instead of placeholder punctuation
+  // until Home Assistant reports current media content.
+  assert(media_cover_art_idle_placeholder_visible(false));
+  assert(!media_cover_art_idle_placeholder_visible(true));
 
   // A source attribute omitted from the latest Home Assistant state must not
   // leave a retained TV route active once current music content arrives.
