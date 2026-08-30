@@ -133,7 +133,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         guard store.isConnected || task != nil else { return }
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
-        let catalogue = store.selectedApps().map { "\($0.bundleIdentifier):\($0.name.replacingOccurrences(of: ":", with: " ").replacingOccurrences(of: ",", with: " "))" }.joined(separator: ",")
+        let catalogue = store.selectedApps().compactMap { app -> String? in
+            guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
+            return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
+        }.joined(separator: ",")
         send("CATALOG|\(catalogue)")
     }
 
@@ -155,6 +158,21 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     private static func verificationCode(for fingerprint: String) -> String {
         String(fingerprint.prefix(12)).uppercased()
+    }
+
+    private static func validCatalogueIdentifier(_ value: String) -> Bool {
+        !value.isEmpty && value.utf8.count <= 96 && value.utf8.allSatisfy {
+            $0 >= 0x20 && $0 <= 0x7e && $0 != 0x7c && $0 != 0x3a && $0 != 0x2c
+        }
+    }
+
+    private static func catalogueLabel(_ value: String, fallback: String) -> String {
+        let bytes = value.utf8.filter {
+            $0 >= 0x20 && $0 <= 0x7e && $0 != 0x7c && $0 != 0x3a && $0 != 0x2c
+        }
+        let sanitized = String(decoding: bytes.prefix(96), as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return sanitized.isEmpty ? fallback : sanitized
     }
 }
 

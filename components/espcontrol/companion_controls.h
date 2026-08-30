@@ -213,7 +213,8 @@ class CompanionActionsHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 };
 
-inline void register_companion_actions_endpoint(esphome::web_server_idf::AsyncWebServer &server) {
+inline void register_companion_actions_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
   server.addHandler(new CompanionActionsHandler());

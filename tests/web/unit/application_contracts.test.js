@@ -435,6 +435,15 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(globals, /\bvar (?:WEBHOOK_CARD_METADATA|WEBHOOK_HEADERS_OPTION|WEBHOOK_METHODS|normalizeWebhookConfig|setWebhookHeaders|webhookHeaders|webhookMethod):/);
   });
 
+  test("registers the Companion card through profile and browser services", () => {
+    const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
+    const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/companion.ts"), "utf8");
+    assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal|CFG)\b/);
+    assert.match(entry, /registerCompanionCardTypes\(\s*registry,\s*!!context\.device\.profile\.features\?\.companion,\s*context\.dom\.document,\s*context\.dom\.fetch,\s*fields,?\s*\);/);
+    assert.match(card, /fetchImpl\("\/companion\/actions", \{ cache: "no-store" \}\)/);
+    assert.doesNotMatch(entry, /registerCompatibility\(registerCompanionCardTypes/);
+  });
+
   test("registers the internal relay card with profile-owned options", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/internal.ts"), "utf8");

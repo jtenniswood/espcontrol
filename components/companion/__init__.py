@@ -17,6 +17,16 @@ MULTI_CONF = False
 companion_ns = cg.esphome_ns.namespace("companion")
 CompanionService = companion_ns.class_("CompanionService", cg.Component)
 
+
+def _reserve_network_resources(config):
+    """Reserve the listener and client sockets before ESPHome sizes lwIP."""
+    socket.consume_sockets(
+        1, "companion_secure_websocket", socket.SocketType.TCP_LISTEN
+    )(config)
+    socket.consume_sockets(2, "companion_secure_websocket")(config)
+    return config
+
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -25,13 +35,11 @@ CONFIG_SCHEMA = cv.All(
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.only_on_esp32,
+    _reserve_network_resources,
 )
 
 
 async def to_code(config):
-    network.require_high_performance_networking()
-    socket.consume_sockets(1, "companion_secure_websocket", socket.SocketType.TCP_LISTEN)(config)
-    socket.consume_sockets(2, "companion_secure_websocket")(config)
     esp32.add_idf_sdkconfig_option("CONFIG_HTTPD_WS_SUPPORT", True)
     esp32.add_idf_sdkconfig_option("CONFIG_ESP_HTTPS_SERVER_ENABLE", True)
     esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_X509_CRT_WRITE_C", True)

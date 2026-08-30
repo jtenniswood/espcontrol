@@ -150,7 +150,13 @@ function registerCards(context: ApplicationContext) {
   registerActionCardTypes(registry, context.configuration.confirmationOptions, context.controllers.entityState, fields, cardUi);
   registerAlarmCardTypes(registry, context.configuration.accessClimateAlarm, context.controllers.renderQueue, fields, cardUi);
   registerCalendarCardTypes(registry, context.configuration.dateTimeOptions, fields);
-  registerCompanionCardTypes(registry, fields, context.device.profile);
+  registerCompanionCardTypes(
+    registry,
+    !!context.device.profile.features?.companion,
+    context.dom.document,
+    context.dom.fetch,
+    fields,
+  );
   registerClimateCardTypes(
     registry,
     context.configuration.modalTabs,

@@ -321,10 +321,10 @@ bool CompanionService::pairing_active() const {
 }
 
 void CompanionService::revoke_pairing() {
+  const int previous_socket = this->authenticated_socket_;
   this->identity_.paired = 0;
   std::fill(this->identity_.credential, this->identity_.credential + sizeof(this->identity_.credential), 0);
   this->preferences_.save(&this->identity_);
-  const int previous_socket = this->authenticated_socket_;
   this->set_connected_(false);
   if (previous_socket >= 0) httpd_sess_trigger_close(this->server_, previous_socket);
 }
