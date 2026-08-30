@@ -98,6 +98,8 @@ struct SliderCtx {
 };
 
 struct MediaNowPlayingCtx {
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *idle_lbl = nullptr;
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
@@ -113,6 +115,7 @@ struct MediaNowPlayingCtx {
   bool source_known = false;
   bool external_source = false;
   bool external_source_fallback = false;
+  bool cover_art_mode = false;
   bool show_track_details = true;
   bool play_pause_background = false;
   bool artist_below_title = false;
