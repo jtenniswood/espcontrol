@@ -315,7 +315,7 @@ inline lv_obj_t *todo_lite_create_row(TodoCardCtx *ctx, TodoLiteItem *item,
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   if (ctx && ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
-  apply_width_compensation(label, ctx ? ctx->width_compensation_percent : 100);
+  apply_text_width_compensation(label);
   lv_obj_align(label, LV_ALIGN_LEFT_MID, label_x, 0);
   return row;
 }
@@ -340,7 +340,7 @@ inline lv_obj_t *todo_lite_create_note_row(TodoCardCtx *ctx, const char *text,
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx && ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
-  apply_width_compensation(label, ctx ? ctx->width_compensation_percent : 100);
+  apply_text_width_compensation(label);
   lv_obj_center(label);
   return row;
 }
@@ -1051,7 +1051,7 @@ inline lv_obj_t *todo_modal_create_list_item_row(
       lv_obj_update_layout(check);
       lv_coord_t offset_x = lv_obj_get_width(check) * (256 - check_zoom) / 512;
       lv_coord_t offset_y = lv_obj_get_height(check) * (256 - check_zoom) / 512;
-      lv_obj_set_style_transform_zoom(check, check_zoom, LV_PART_MAIN);
+      apply_icon_width_compensation(check, check_zoom);
       lv_obj_align(check, LV_ALIGN_CENTER, offset_x, offset_y);
     }
     label_x = checkbox_size + gap;
@@ -1066,7 +1066,8 @@ inline lv_obj_t *todo_modal_create_list_item_row(
     lv_color_hex(show_checkbox ? DARK_TEXT_SOFT : DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(value, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(value, font, LV_PART_MAIN);
-  apply_width_compensation(value, width_compensation_percent);
+  (void) width_compensation_percent;
+  apply_text_width_compensation(value);
   lv_obj_align(value, LV_ALIGN_LEFT_MID, label_x, 0);
 
   return row;
