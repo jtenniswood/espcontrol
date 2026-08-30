@@ -27,7 +27,11 @@ export class NativePanelConfigController {
   private saveQueue_: Promise<NativePanelConfigSaveOutcome> = Promise.resolve("saved");
   private legacyFallback_ = false;
   private retryDelayMs_ = 250;
-  private maxDiscoveryRetries_ = 20;
+  // P4 panels can still be completing their deferred native-configuration
+  // setup when the web editor first loads. Allow enough time for that API to
+  // become ready before deciding that the firmware only supports legacy
+  // entity configuration.
+  private maxDiscoveryRetries_ = 40;
 
   constructor(private readonly dependencies: NativePanelConfigControllerDependencies) {
     this.client_ = dependencies.fetch ? createNativePanelConfigClient(dependencies.fetch) : null;

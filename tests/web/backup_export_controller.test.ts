@@ -36,4 +36,19 @@ export function runBackupExportControllerTests(): void {
   equal(nativeConfig.subpages[2], "subpage-config", "native backup retains subpages");
   equal(nativeConfig.settings.button_order, "1,2d", "native backup retains button order");
   equal(nativeConfig.settings.button_on_color, "0073FF", "native backup retains active colour");
+
+  const wifiCard = "wifi_qr,,Connect,Wifi,Auto,,,,,ssid64=R3Vlc3QgV2lmaQ,pass64=dHJ1c3RlZC1uZXR3b3Jr";
+  const wifiBackup = createBackupExportController({
+    serializeButtonConfig: () => wifiCard,
+    serializeSubpageConfig: (subpage) => String(subpage || ""),
+  }).addNativeConfig({}, {
+    deviceProfile: "panel-a",
+    buttons: [
+      { entity: "", label: "Connect", icon: "Wifi", icon_on: "Auto", sensor: "", unit: "", type: "wifi_qr", precision: "", options: "ssid64=R3Vlc3QgV2lmaQ,pass64=dHJ1c3RlZC1uZXR3b3Jr" },
+    ],
+    subpages: {},
+  });
+  const wifiNativeConfig = decodePanelConfig(decodePanelConfigBackupPayload(wifiBackup.native_config));
+  equal(wifiNativeConfig.buttons[1], wifiCard,
+    "native backup intentionally retains Wifi network names and passwords");
 }

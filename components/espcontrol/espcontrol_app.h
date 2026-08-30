@@ -47,8 +47,10 @@ class EspControlApp : public esphome::Component {
       uint8_t slot, esphome::text::Text *button,
       esphome::text::Text *subpage_0, esphome::text::Text *subpage_1,
       esphome::text::Text *subpage_2, esphome::text::Text *subpage_3,
-      esphome::text::Text *subpage_4, esphome::text::Text *subpage_5,
-      esphome::text::Text *subpage_6, esphome::text::Text *subpage_7);
+      esphome::text::Text *subpage_4 = nullptr,
+      esphome::text::Text *subpage_5 = nullptr,
+      esphome::text::Text *subpage_6 = nullptr,
+      esphome::text::Text *subpage_7 = nullptr);
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }

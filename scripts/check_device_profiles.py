@@ -233,8 +233,10 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     espcontrol = re.search(r"(?ms)^espcontrol:\n(?P<body>(?:^  .*\n|^\s*$\n)*)", device)
     assert espcontrol, f"{slug}: device.yaml is missing its espcontrol block"
     body = espcontrol.group("body")
-    if "  panel_config:\n" not in body:
-        return
+    assert "  panel_config:\n" in body, (
+        f"{slug}: device.yaml must enable native panel configuration so "
+        "cards that contain device-owned settings remain available"
+    )
 
     slots = int(profile["slots"])
     bindings = [
@@ -250,9 +252,12 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     assert len(chunk_rows) == slots, (
         f"{slug}: native panel config must provide subpage chunks for all {slots} slots"
     )
+    chunk_count = 4 if "button_template_4chunk.yaml" in (
+        ROOT / "devices" / slug / "packages.yaml"
+    ).read_text(encoding="utf-8") else 8
     for slot, row in enumerate(chunk_rows, start=1):
         expected = [f"subpage_{slot}_config", f"subpage_{slot}_config_ext"] + [
-            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, 8)
+            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, chunk_count)
         ]
         actual = [value.strip() for value in row.split(",")]
         assert actual == expected, (
