@@ -8,10 +8,10 @@ int main() {
   assert(wifi_qr_tile_vertical_inset(1, 1) == 3);
   assert(wifi_qr_tile_vertical_inset(2, 2) == 6);
   assert(wifi_qr_tile_vertical_inset(3, 3) == 6);
-  assert(WIFI_QR_COMPACT_MARGIN_MODULES == 4);
-  assert(wifi_qr_compact_scale(132, 29) == 3);
+  assert(WIFI_QR_COMPACT_MARGIN_MODULES == 2);
+  assert(wifi_qr_compact_scale(132, 29) == 4);
   assert(wifi_qr_compact_scale(123, 33) == 3);
-  assert(wifi_qr_compact_scale(116, 33) == 2);
+  assert(wifi_qr_compact_scale(116, 33) == 3);
   assert(wifi_qr_compact_scale(0, 33) == 0);
 
   assert((wifi_qr_tabs("") == std::vector<std::string>{"qr", "credentials"}));
