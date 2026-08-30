@@ -63,6 +63,7 @@ struct MediaControlCtx {
   bool available = true;
   bool state_known = false;
   bool playing = false;
+  bool cover_art_mode = false;
   bool highlight_playing = true;
   bool volume_known = false;
   bool label_shows_status = false;
@@ -373,7 +374,9 @@ inline void media_control_apply_availability(lv_obj_t *visual_obj, lv_obj_t *inp
 
 inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
   if (!ctx) return;
-  if (ctx->label_lbl) {
+  if (ctx->label_lbl &&
+      espcontrol::media::media_control_updates_parent_label(
+        ctx->cover_art_mode)) {
     std::string label = ctx->label_shows_status
       ? media_status_text(ctx->state_text)
       : ctx->label;
@@ -1070,6 +1073,32 @@ inline bool media_playback_has_current_content(const MediaPlaybackState *state) 
     state->has_state, state->available, has_content);
 }
 
+inline void media_cover_art_set_idle_placeholder(MediaNowPlayingCtx *ctx,
+                                                 bool visible) {
+  if (!ctx || !ctx->cover_art_mode) return;
+  if (ctx->icon_lbl) {
+    if (visible) {
+      lv_label_set_display_text(ctx->icon_lbl, find_icon("Music"));
+      lv_obj_align(ctx->icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+      lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_move_foreground(ctx->icon_lbl);
+    } else {
+      lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  if (ctx->idle_lbl) {
+    if (visible) {
+      lv_label_set_display_text(ctx->idle_lbl, espcontrol_i18n("Idle"));
+      lv_obj_align(ctx->idle_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+      configure_button_label_wrap(ctx->idle_lbl);
+      lv_obj_clear_flag(ctx->idle_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_move_foreground(ctx->idle_lbl);
+    } else {
+      lv_obj_add_flag(ctx->idle_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+}
+
 inline void media_playback_refresh_stable_artwork(MediaPlaybackState *state,
                                                   MediaNowPlayingCtx *ctx) {
   if (!state || !ctx || !ctx->cover_art) return;
@@ -1091,8 +1120,13 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
   if (!state || !ctx) return;
   ctx->source_known = state->source_known;
   ctx->external_source = state->external_source;
+  const bool has_content = media_playback_has_current_content(state);
+  const bool idle_placeholder = ctx->cover_art_mode &&
+    espcontrol::cover_art::media_cover_art_idle_placeholder_visible(
+      state->has_state, state->available, state->state_text, has_content,
+      ctx->external_source_fallback);
+  media_cover_art_set_idle_placeholder(ctx, idle_placeholder);
   if (ctx->cover_art) {
-    const bool has_content = media_playback_has_current_content(state);
     if (espcontrol::cover_art::media_card_artwork_should_clear(
           state->has_state, state->available, state->state_text, has_content)) {
       image_card_clear_media_artwork(ctx->cover_art);
@@ -1104,11 +1138,13 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
   }
   if (ctx->title_lbl) {
     const std::string title =
-      ctx->external_source_fallback && state->external_source && !state->source.empty()
+      idle_placeholder ? std::string()
+      : ctx->external_source_fallback && state->external_source && !state->source.empty()
         ? state->source
         : state->title.empty() ? std::string("--") : state->title;
     lv_label_set_display_text(ctx->title_lbl, title.c_str());
-    if (ctx->show_track_details || ctx->external_source_fallback) {
+    if (!idle_placeholder &&
+        (ctx->show_track_details || ctx->external_source_fallback)) {
       lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {
       lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -1118,7 +1154,8 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
     std::strncpy(ctx->artist, state->artist.c_str(), sizeof(ctx->artist) - 1);
     ctx->artist[sizeof(ctx->artist) - 1] = '\0';
     media_apply_now_playing_artist_text(ctx);
-    if (espcontrol::cover_art::media_now_playing_artist_visible(
+    if (!idle_placeholder &&
+        espcontrol::cover_art::media_now_playing_artist_visible(
           !state->artist.empty(), ctx->external_source,
           ctx->show_track_details, ctx->external_source_fallback)) {
       lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -1546,6 +1583,12 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
       [state, generation](esphome::StringRef state_ref) {
         if (!media_playback_generation_valid(state, generation)) return;
         std::string state_text = string_ref_limited(state_ref, HA_SHORT_STATE_MAX_LEN);
+        const bool had_content = !state->title.empty() || !state->artist.empty() ||
+                                 state->has_current_content_id ||
+                                 state->artwork_content_mask != 0;
+        const bool resync_content =
+          espcontrol::cover_art::media_state_change_needs_content_resync(
+            state->has_state, state->state_text, state_text, had_content);
         const bool invalidate_retained_content =
           espcontrol::cover_art::media_state_change_invalidates_retained_content(
             state->has_state, state->state_text, state_text);
@@ -1570,6 +1613,12 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         }
         media_playback_apply_state_to_consumers(state);
         media_playback_refresh_progress_timer(state);
+        // Attribute subscriptions only report values that changed. If an
+        // entity retains the same track while moving through idle, the local
+        // idle cleanup has no metadata callback to repopulate the card or its
+        // modal. Reannounce once on the idle-to-active edge to request the
+        // complete current Home Assistant snapshot.
+        if (resync_content) ha_reannounce_state_subscriptions();
       })
   );
 }
@@ -2397,6 +2446,10 @@ inline std::string media_control_title_text(MediaControlCtx *ctx) {
 
 inline std::string media_control_artist_text(MediaControlCtx *ctx) {
   if (!ctx) return "";
+  if (!espcontrol::media::media_modal_artist_visible(
+        ctx->cover_art_mode, ctx->state_text, !ctx->artist.empty())) {
+    return "";
+  }
   if (!ctx->artist.empty()) return ctx->artist;
   if (!ctx->friendly_name.empty()) return ctx->friendly_name;
   return ctx->label;
@@ -4395,6 +4448,7 @@ inline MediaControlCtx *create_media_control_context(
   MediaControlCtx *ctx = new MediaControlCtx();
   ctx->entity_id = p.entity;
   ctx->label = media_control_card_label(p);
+  ctx->cover_art_mode = media_card_mode(p.sensor) == "cover_art";
   ctx->max_pct = media_volume_max_percent(p);
   ctx->speaker_group_entity = media_group_discovery_entity(media_speaker_group_entity(p));
   ctx->group_only = media_card_mode(p.sensor) == "speaker_group";
@@ -4520,7 +4574,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
     ctx->btn = s.btn;
+    ctx->icon_lbl = s.icon_lbl;
+    ctx->idle_lbl = s.text_lbl;
     ctx->content_padding = padding;
+    ctx->cover_art_mode = mode == "cover_art";
     ctx->show_track_details = mode != "cover_art" || media_cover_art_details_enabled(p);
     ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
     if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
@@ -4560,6 +4617,12 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
         media_title_font, layout_padding,
         media_cover_art_title_line_limit(row_span, col_span),
         true, 0);
+      lv_label_set_display_text(ctx->title_lbl, "");
+      lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
+      // Wait for a known, available inactive state before presenting the card
+      // as idle. Initial loading and unavailable entities are not idle.
+      media_cover_art_set_idle_placeholder(ctx, false);
       media_position_now_playing_artist(ctx);
       return;
     }

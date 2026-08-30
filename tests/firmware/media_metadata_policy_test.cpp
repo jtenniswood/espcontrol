@@ -10,7 +10,9 @@ int main() {
   using espcontrol::media::media_content_id_should_clear_external_source;
   using espcontrol::media::media_content_id_should_override_source_update;
   using espcontrol::media::media_content_id_should_replace_external_source;
+  using espcontrol::media::media_control_updates_parent_label;
   using espcontrol::media::media_item_kind;
+  using espcontrol::media::media_modal_artist_visible;
   using espcontrol::media::media_metadata_clear_decision;
   using espcontrol::media::should_replace_media_metadata_identity;
 
@@ -33,6 +35,17 @@ int main() {
          MediaItemKind::AUDIOBOOK);
   assert(media_item_kind("opaque-content-id", "music") ==
          MediaItemKind::UNKNOWN);
+
+  // An idle cover-art modal must not substitute the card label for missing
+  // artist metadata. Other media modals retain their existing fallback.
+  assert(!media_modal_artist_visible(true, "idle", false));
+  assert(!media_modal_artist_visible(true, "Idle", false));
+  assert(media_modal_artist_visible(true, "idle", true));
+  assert(media_modal_artist_visible(true, "playing", false));
+  assert(media_modal_artist_visible(true, "paused", false));
+  assert(media_modal_artist_visible(false, "idle", false));
+  assert(!media_control_updates_parent_label(true));
+  assert(media_control_updates_parent_label(false));
 
   // Sonos exposes TV audio as a home-theatre SPDIF stream. Music services use
   // ordinary provider IDs and must not inherit a retained TV classification.
