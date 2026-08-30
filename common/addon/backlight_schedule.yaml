@@ -674,9 +674,6 @@ script:
     mode: restart
     then:
       - script.stop: screen_schedule_wake_timeout_check
-      - lambda: |-
-          id(espcontrol_app).display().clear(
-              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition

@@ -2804,6 +2804,10 @@ def firmware_display_active_finalization_errors(
             errors.append(
                 f"{schedule_rel}: wait for scheduled wake transition before finalizing the active display"
             )
+        if "espcontrol::DisplayRequestSource::MANUAL_SLEEP" in wake_body:
+            errors.append(
+                f"{schedule_rel}: preserve manual sleep across automatic scheduled wake"
+            )
 
     check_body = yaml_script_body(schedule_text, "screen_schedule_check")
     if check_body is None:
@@ -7518,6 +7522,18 @@ def run_self_test() -> int:
         ),
         valid_active_navigation,
         ("wait for scheduled wake transition",),
+    )
+    expect_display_active_finalization_errors(
+        "automatic scheduled wake preserves manual sleep",
+        valid_active_finalizer,
+        valid_schedule_wake.replace(
+            "    then:\n",
+            "    then:\n"
+            "      - lambda: 'id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::MANUAL_SLEEP);'\n",
+            1,
+        ),
+        valid_active_navigation,
+        ("preserve manual sleep",),
     )
     expect_display_active_finalization_errors(
         "normal-hours edge uses scheduled wake",
