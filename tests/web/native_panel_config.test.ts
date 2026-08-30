@@ -348,10 +348,16 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
       "deferred backup restore writes the exact native document");
     equal(await controller.writeText("button_order", "1,2"), "saved",
       "an edit waits for deferred native setup instead of writing a stale legacy shadow");
+    equal(await controller.writeButtonAndOrder(2, "combined-button", "2,1"), "saved",
+      "a card edit and its grid position save in one native document update");
+    equal(savedDocuments[2]?.buttons[2], "combined-button",
+      "the combined native save includes the edited card");
+    equal(savedDocuments[2]?.settings.button_order, "2,1",
+      "the combined native save includes the edited grid order");
     equal(capabilityRequests, 2,
       "a deferred edit retries capability discovery after the temporary 404");
-    equal(nativeSaves, 2,
-      "deferred backup restore and edit are written once the native endpoint is ready");
+    equal(nativeSaves, 3,
+      "deferred backup restore and edits are each written once the native endpoint is ready");
 
     controller.maxDiscoveryRetries = 0;
     let permanentlyMissingCapabilityRequests = 0;

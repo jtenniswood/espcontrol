@@ -138,6 +138,18 @@ export class NativePanelConfigController {
     return false;
   }
 
+  writeButtonAndOrder(slot: number, value: string, order: string): Promise<NativePanelConfigSaveOutcome> | null | false {
+    if (!Number.isInteger(slot) || slot < 1 || slot > this.dependencies.slotCount()) return false;
+    return this.schedule((current) => {
+      const withButton = updateNativePanelConfigDocument(
+        current, this.dependencies.deviceProfile(), "buttons", slot, value,
+      );
+      return updateNativePanelConfigDocument(
+        withButton, this.dependencies.deviceProfile(), "settings", "button_order", order,
+      );
+    });
+  }
+
   writeDocument(document: PanelConfigDocument): Promise<NativePanelConfigSaveOutcome> | null {
     if (!this.client_) return null;
     return this.schedule((current) => {

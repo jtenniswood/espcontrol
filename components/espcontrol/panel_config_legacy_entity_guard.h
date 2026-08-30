@@ -57,10 +57,7 @@ inline bool panel_config_legacy_entity_path(std::string_view path) {
 
 #include <esp_http_server.h>
 
-#include "configuration_service.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
-#include "panel_config_http_context.h"
-#include "panel_config_sensitive_data.h"
 
 namespace espcontrol::configuration {
 
@@ -77,18 +74,8 @@ class PanelConfigLegacyEntityGuard final
     char url_buffer[
         esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     const esphome::StringRef url = request->url_to(url_buffer);
-    if (!panel_config_legacy_entity_path(
-            std::string_view(url.c_str(), url.size()))) {
-      return false;
-    }
-
-    if (!panel_config_http_context_ready()) return true;
-    PanelConfigHttpContext &context = panel_config_http_context();
-    const ServiceLoadResult loaded =
-        context.service->load(context.document, context.document_capacity);
-    if (!loaded.ok()) return loaded.status != ServiceStatus::EMPTY;
-    return panel_config_contains_wifi_password(context.document,
-                                               loaded.document_size);
+    return panel_config_legacy_entity_path(
+        std::string_view(url.c_str(), url.size()));
 #endif
   }
 
@@ -96,7 +83,7 @@ class PanelConfigLegacyEntityGuard final
       esphome::web_server_idf::AsyncWebServerRequest *request) override {
     httpd_req_t *raw_request = *request;
     httpd_resp_send_err(raw_request, HTTPD_403_FORBIDDEN,
-                        "Wifi Sharing passwords require web authentication");
+                        "Legacy panel configuration requires web authentication");
   }
 };
 

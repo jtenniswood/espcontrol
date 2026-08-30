@@ -2654,8 +2654,8 @@
       "web": {
         "registration": "wifi_qr",
         "picker": {
-          "main": true,
-          "subpage": true,
+          "main": false,
+          "subpage": false,
           "infoOnly": false
         },
         "preview": {

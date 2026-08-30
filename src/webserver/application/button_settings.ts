@@ -379,30 +379,30 @@ export function createButtonSettingsFeature(
             }
             var savedButton: any = saved.button;
             var sizeChanged: any = applyCardSizeConstraint(savedButton);
-            var persistence: any = saved.saveSubpage
-                ? saveSubpageConfig(subpageHomeSlot)
-                : saved.saveButton ? configPersistence.saveButtonConfig(slot) : Promise.resolve("saved");
+            var orderChanged: any = !saved.saveSubpage && (saved.saveGrid || sizeChanged);
+            var persistence: any;
+            if (saved.saveSubpage)
+                persistence = saveSubpageConfig(subpageHomeSlot);
+            else if (saved.saveButton && orderChanged)
+                persistence = configPersistence.saveButtonConfigAndOrder(slot, serializeGrid(state.grid));
+            else if (saved.saveButton)
+                persistence = configPersistence.saveButtonConfig(slot);
+            else if (orderChanged)
+                persistence = requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
+            else
+                persistence = Promise.resolve("saved");
             return Promise.resolve(persistence).then(function (result: any) {
                 if (!saveResultSucceeded(result)) {
                     restoreDraftState();
                     return false;
                 }
-                var orderSave: any = (!saved.saveSubpage && (saved.saveGrid || sizeChanged))
-                    ? requestApi.postText(entityName("button_order"), serializeGrid(state.grid))
-                    : Promise.resolve("saved");
-                return Promise.resolve(orderSave).then(function (orderResult: any) {
-                    if (!saveResultSucceeded(orderResult)) {
-                        restoreDraftState();
-                        return false;
-                    }
-                    state.settingsDraft = null;
-                    var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
-                    if (savedTypeDef && savedTypeDef.afterSave) {
-                        savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
-                    }
-                    renderPreview();
-                    return true;
-                });
+                state.settingsDraft = null;
+                var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
+                if (savedTypeDef && savedTypeDef.afterSave) {
+                    savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
+                }
+                renderPreview();
+                return true;
             }).catch(function () {
                 restoreDraftState();
                 showBanner("Could not save the configuration. Check the connection and try again.", "error");

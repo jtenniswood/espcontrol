@@ -13,6 +13,7 @@ import {
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
+import type { NativePanelConfigController } from "../controllers/native_panel_config_controller";
 
 // Credentials are encoded only to keep the compact card format unambiguous.
 // This is deliberately not encryption: exported backups contain the password.
@@ -21,6 +22,7 @@ export function registerWifiQrCardTypes(
     modalTabs: ConfigModalTabOptionsFeature,
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
+    nativePanelConfig: Pick<NativePanelConfigController, "supported">,
 ): void {
     const { renderButtonSettings } = cardUi;
     const SSID_OPTION = "ssid64";
@@ -136,6 +138,7 @@ export function registerWifiQrCardTypes(
             label: function (this: any) { return cardContractCardLabel(type); },
             allowInSubpage: function (this: any) { return cardContractAllowInSubpage(type); },
             pickerKey: function (this: any) { return cardContractPickerKey(type); },
+            isAvailable: function (this: any) { return nativePanelConfig.supported(); },
             hideLabel: true,
             defaultConfig: function (this: any) { return cardContractDefaultConfig(type); },
             cardMetadata: WIFI_QR_CARD_METADATA,

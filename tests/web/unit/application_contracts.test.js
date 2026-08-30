@@ -364,17 +364,23 @@ describe("browserless application contracts", () => {
       renderModalTabSettings() {},
     };
     let rerenders = 0;
+    let nativeSupported = false;
     registerWifiQrCardTypes({
       register(key, value) {
         definitions[key] = value;
       },
-    }, modalTabs, { cardBadgePreview() {} }, { renderButtonSettings() { rerenders += 1; } });
+    }, modalTabs, { cardBadgePreview() {} }, { renderButtonSettings() { rerenders += 1; } }, {
+      supported() { return nativeSupported; },
+    });
     assert.deepEqual(Object.keys(definitions), ["wifi_qr", "wifi_qr_card"]);
     assert.equal(definitions.wifi_qr.label(), "Wifi Sharing");
     assert.equal(definitions.wifi_qr.pickerKey(), "");
     assert.equal(definitions.wifi_qr_card.pickerKey(), "wifi_qr");
     assert.equal(definitions.wifi_qr.hideLabel, true);
     assert.equal(definitions.wifi_qr_card.hideLabel, true);
+    assert.equal(definitions.wifi_qr.isAvailable(), false);
+    nativeSupported = true;
+    assert.equal(definitions.wifi_qr.isAvailable(), true);
     assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
     assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
     assert.match(source, /disclosureSection\("Wifi Network"/);
@@ -876,11 +882,9 @@ describe("browserless application contracts", () => {
     assert.match(buttonSettings, /saveBtn\.addEventListener\("click", async function/);
     assert.match(buttonSettings, /if \(await applySettingsDraft\(\)\)/);
     assert.match(buttonSettings, /restoreDraftState\(\);[\s\S]*return false/);
-    assert.ok(
-      buttonSettings.indexOf("configPersistence.saveButtonConfig(slot)") <
-        buttonSettings.indexOf('requestApi.postText(entityName("button_order")'),
-      "card configuration should be accepted before its grid position is persisted",
-    );
+    assert.match(buttonSettings, /configPersistence\.saveButtonConfigAndOrder\(slot, serializeGrid\(state\.grid\)\)/);
+    assert.match(persistence, /nativePanelConfig\.writeButtonAndOrder/);
+    assert.match(persistence, /Wifi Sharing requires current device firmware/);
     assert.doesNotMatch(globals, /\bvar (?:SUBPAGE_RAW_CHUNK_FIELDS|saveButtonConfig|saveSubpageEntity|saveSubpageEntityLegacy|scheduleSliderSubpageMigration|subpageChunkShouldPost|subpageEntityKeys):/);
   });
 

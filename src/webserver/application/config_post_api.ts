@@ -14,6 +14,7 @@ export interface ConfigPersistenceFeature {
     connectRequestApi(requestApi: ApplicationApiFeature): void;
     subpageEntityKeys(): string[];
     saveButtonConfig(slot: number): Promise<any>;
+    saveButtonConfigAndOrder(slot: number, order: string): Promise<any>;
     saveSubpageEntity(slot: number): unknown;
     subpageChunkShouldPost(slot?: any, keys?: any, chunks?: any, index?: any, previousPendingChunks?: any): boolean;
     scheduleSliderSubpageMigration(slot?: any): void;
@@ -23,10 +24,10 @@ export function createConfigPersistenceFeature(
     nativePanelConfig: NativePanelConfigController | null = null,
     runtime: UiRuntimeState,
     layout: ApplicationLayoutState,
-    entityState: Pick<EntityStateFeature, "entityNameForSlot" | "hasRememberedPostPath">,
+    entityState: Pick<EntityStateFeature, "entityName" | "entityNameForSlot" | "hasRememberedPostPath">,
     shell: Pick<ControlsShellFeature, "showBanner">,
 ): ConfigPersistenceFeature {
-    const { entityNameForSlot, hasRememberedPostPath } = entityState;
+    const { entityName, entityNameForSlot, hasRememberedPostPath } = entityState;
     const { showBanner } = shell;
     let codec: Pick<ConfigCodecFeature, "serializeButtonConfig" | "serializeSubpageConfig"> | undefined;
     let requestApi: ApplicationApiFeature | undefined;
@@ -51,10 +52,60 @@ export function createConfigPersistenceFeature(
             throw new Error("Configuration persistence used before the codec was connected");
         return codec.serializeSubpageConfig(subpage);
     }
+    function isWifiSharingButton(button: any) {
+        return button && (button.type === "wifi_qr" || button.type === "wifi_qr_card");
+    }
+    function serializedConfigContainsWifiSharing(value: any) {
+        return /(?:^|;)wifi_qr(?:_card)?(?:;|$)/.test(String(value || ""));
+    }
+    function rejectLegacyWifiSharingSave(api: ApplicationApiFeature) {
+        api.postQueueError = true;
+        showBanner("Wifi Sharing requires current device firmware. Update the panel before saving this card.", "error");
+        return "unsupported";
+    }
+    function queueNativeSave(nativeSave: Promise<any>, legacyFallback: () => any) {
+        var api: any = requests();
+        api.postQueue = api.postQueue.then(function () { return nativeSave; }).then(function (result: any) {
+            if (result === "legacy-fallback")
+                return legacyFallback();
+            if (result !== "saved")
+                api.postQueueError = true;
+            return result;
+        });
+        return api.postQueue;
+    }
     // ── Config Post API ───────────────────────────────────────────────────
     function saveButtonConfig(this: any, slot?: any) {
         var b: any = state.buttons[slot - 1];
-        return requests().postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
+        var value: any = serializeButtonConfig(b);
+        if (!isWifiSharingButton(b))
+            return requests().postText(entityNameForSlot("button_config", slot), value);
+        var nativeSave: any = nativePanelConfig
+            ? nativePanelConfig.writeText(entityNameForSlot("button_config", slot), value)
+            : null;
+        if (nativeSave)
+            return queueNativeSave(nativeSave, function () { return rejectLegacyWifiSharingSave(requests()); });
+        return Promise.resolve(rejectLegacyWifiSharingSave(requests()));
+    }
+    function saveButtonConfigAndOrder(this: any, slot?: any, order?: any) {
+        var b: any = state.buttons[slot - 1];
+        var value: any = serializeButtonConfig(b);
+        var wifiSharing: any = isWifiSharingButton(b);
+        var nativeSave: any = nativePanelConfig
+            ? nativePanelConfig.writeButtonAndOrder(Number.parseInt(String(slot), 10), value, String(order || ""))
+            : null;
+        function saveLegacy(this: any) {
+            var api: any = requests();
+            if (wifiSharing)
+                return rejectLegacyWifiSharingSave(api);
+            return api.postTextLegacy(entityNameForSlot("button_config", slot), value)
+                .then(function () { return api.postTextLegacy(entityName("button_order"), order); });
+        }
+        if (nativeSave)
+            return queueNativeSave(nativeSave, saveLegacy);
+        var api: any = requests();
+        api.postQueue = api.postQueue.then(saveLegacy);
+        return api.postQueue;
     }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];
@@ -111,6 +162,8 @@ export function createConfigPersistenceFeature(
             state.subpageSavePending[slot] = full;
             var api: any = requests();
             api.postQueue = api.postQueue.then(function () { return nativeSave; }).then(function (result: any) {
+                if (result === "legacy-fallback" && serializedConfigContainsWifiSharing(full))
+                    return rejectLegacyWifiSharingSave(api);
                 if (result === "legacy-fallback")
                     return saveSubpageEntityLegacy(slot, full, true);
                 if (result !== "saved")
@@ -119,6 +172,8 @@ export function createConfigPersistenceFeature(
             });
             return api.postQueue;
         }
+        if (serializedConfigContainsWifiSharing(full))
+            return Promise.resolve(rejectLegacyWifiSharingSave(requests()));
         saveSubpageEntityLegacy(slot, full);
     }
     function scheduleSliderSubpageMigration(this: any, slot?: any) {
@@ -138,6 +193,7 @@ export function createConfigPersistenceFeature(
         connectRequestApi,
         subpageEntityKeys,
         saveButtonConfig: (slot) => saveButtonConfig(slot),
+        saveButtonConfigAndOrder: (slot, order) => saveButtonConfigAndOrder(slot, order),
         saveSubpageEntity: (slot) => saveSubpageEntity(slot),
         subpageChunkShouldPost,
         scheduleSliderSubpageMigration,
