@@ -108,6 +108,12 @@ void EspControlApp::set_panel_config_button(
   panel_config_button_texts_[slot - 1] = {
       button, {subpage_0, subpage_1, subpage_2, subpage_3, subpage_4,
                subpage_5, subpage_6, subpage_7}};
+#ifdef USE_WEBSERVER
+  configuration::bind_panel_config_legacy_entity_sources(
+      slot, button,
+      {subpage_0, subpage_1, subpage_2, subpage_3,
+       subpage_4, subpage_5, subpage_6, subpage_7});
+#endif
 }
 
 bool EspControlApp::native_configuration_requested() const {
