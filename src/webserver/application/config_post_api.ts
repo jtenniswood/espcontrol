@@ -8,6 +8,7 @@ import type { ApplicationLayoutState } from "./application_context";
 import type { EntityStateFeature } from "./entity_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
+import { serializedConfigContainsWifiSharing } from "../features/wifi_sharing_config";
 
 export interface ConfigPersistenceFeature {
     connectCodec(codec: Pick<ConfigCodecFeature, "serializeButtonConfig" | "serializeSubpageConfig">): void;
@@ -54,9 +55,6 @@ export function createConfigPersistenceFeature(
     }
     function isWifiSharingButton(button: any) {
         return button && (button.type === "wifi_qr" || button.type === "wifi_qr_card");
-    }
-    function serializedConfigContainsWifiSharing(value: any) {
-        return /(?:^|;)wifi_qr(?:_card)?(?:;|$)/.test(String(value || ""));
     }
     function rejectLegacyWifiSharingSave(api: ApplicationApiFeature) {
         api.postQueueError = true;
