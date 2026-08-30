@@ -371,6 +371,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
                 }
             });
         }
+        addCtxDivider();
         addCtxItem("code-json", "Paste Code", function (this: any) {
             showPasteCardCode(pos, c.isSub);
         });

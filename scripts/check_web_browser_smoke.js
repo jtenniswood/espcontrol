@@ -3956,7 +3956,16 @@ async function openPasteCardCodeDialog(page) {
     assert.strictEqual(createSubpageIndex, 1, "home empty-slot menu shows Create Subpage second");
   }
   assert.strictEqual(menuLabels.at(-1).trim(), "Paste Code", "empty-slot menu ends with Paste Code");
-  assert.strictEqual(await menu.locator(":scope > .sp-ctx-divider").count(), 0, "empty-slot menu has no divider");
+  const trailingMenuStructure = await menu.locator(":scope > *").evaluateAll((elements) =>
+    elements.slice(-2).map((element) =>
+      element.classList.contains("sp-ctx-divider") ? "divider" : element.textContent.trim(),
+    ),
+  );
+  assert.deepStrictEqual(
+    trailingMenuStructure,
+    ["divider", "Paste Code"],
+    "empty-slot menu separates Paste Code from the actions above it",
+  );
   await menu.getByText("Paste Code", { exact: true }).click();
   await page.locator(".sp-transfer-dialog").waitFor({ state: "visible" });
   const dialog = page.locator(".sp-transfer-dialog");
