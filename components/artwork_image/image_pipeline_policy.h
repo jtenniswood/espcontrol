@@ -313,10 +313,13 @@ constexpr bool image_pipeline_completion_needs_recovery(bool image_ready,
 
 // A modal-quality image is reusable only while every part of its cache key
 // still matches. Camera and image entities can keep the same entity ID while
-// publishing a new source URL.
+// publishing a new source URL. Only constrained displays apply the short
+// cache lifetime; standard P4 displays retain their modal cache indefinitely.
 constexpr bool image_pipeline_modal_cache_matches(bool ready, bool same_image,
-                                                   bool same_entity, bool same_source) {
-  return ready && same_image && same_entity && same_source;
+                                                   bool same_entity, bool same_source,
+                                                   bool constrained, bool expired) {
+  return ready && same_image && same_entity && same_source &&
+         (!constrained || !expired);
 }
 
 // A modal needs either a usable tile preview or a source it can request. With
