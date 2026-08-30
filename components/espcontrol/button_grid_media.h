@@ -63,6 +63,7 @@ struct MediaControlCtx {
   bool available = true;
   bool state_known = false;
   bool playing = false;
+  bool cover_art_mode = false;
   bool highlight_playing = true;
   bool volume_known = false;
   bool label_shows_status = false;
@@ -2429,6 +2430,10 @@ inline std::string media_control_title_text(MediaControlCtx *ctx) {
 
 inline std::string media_control_artist_text(MediaControlCtx *ctx) {
   if (!ctx) return "";
+  if (!espcontrol::media::media_modal_artist_visible(
+        ctx->cover_art_mode, ctx->state_text)) {
+    return "";
+  }
   if (!ctx->artist.empty()) return ctx->artist;
   if (!ctx->friendly_name.empty()) return ctx->friendly_name;
   return ctx->label;
@@ -4427,6 +4432,7 @@ inline MediaControlCtx *create_media_control_context(
   MediaControlCtx *ctx = new MediaControlCtx();
   ctx->entity_id = p.entity;
   ctx->label = media_control_card_label(p);
+  ctx->cover_art_mode = media_card_mode(p.sensor) == "cover_art";
   ctx->max_pct = media_volume_max_percent(p);
   ctx->speaker_group_entity = media_group_discovery_entity(media_speaker_group_entity(p));
   ctx->group_only = media_card_mode(p.sensor) == "speaker_group";

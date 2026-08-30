@@ -167,4 +167,9 @@ inline bool should_replace_media_metadata_identity(
   return !next_content_id.empty();
 }
 
+inline bool media_modal_artist_visible(bool cover_art_mode,
+                                       const std::string &state) {
+  return !cover_art_mode || normalize_media_kind_token(state) != "idle";
+}
+
 }  // namespace espcontrol::media
