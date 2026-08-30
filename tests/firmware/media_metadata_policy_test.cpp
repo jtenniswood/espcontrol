@@ -38,11 +38,12 @@ int main() {
 
   // An idle cover-art modal must not substitute the card label for missing
   // artist metadata. Other media modals retain their existing fallback.
-  assert(!media_modal_artist_visible(true, "idle"));
-  assert(!media_modal_artist_visible(true, "Idle"));
-  assert(media_modal_artist_visible(true, "playing"));
-  assert(media_modal_artist_visible(true, "paused"));
-  assert(media_modal_artist_visible(false, "idle"));
+  assert(!media_modal_artist_visible(true, "idle", false));
+  assert(!media_modal_artist_visible(true, "Idle", false));
+  assert(media_modal_artist_visible(true, "idle", true));
+  assert(media_modal_artist_visible(true, "playing", false));
+  assert(media_modal_artist_visible(true, "paused", false));
+  assert(media_modal_artist_visible(false, "idle", false));
   assert(!media_control_updates_parent_label(true));
   assert(media_control_updates_parent_label(false));
 

@@ -168,8 +168,10 @@ inline bool should_replace_media_metadata_identity(
 }
 
 inline bool media_modal_artist_visible(bool cover_art_mode,
-                                       const std::string &state) {
-  return !cover_art_mode || normalize_media_kind_token(state) != "idle";
+                                       const std::string &state,
+                                       bool artist_present) {
+  return artist_present || !cover_art_mode ||
+         normalize_media_kind_token(state) != "idle";
 }
 
 inline bool media_control_updates_parent_label(bool cover_art_mode) {

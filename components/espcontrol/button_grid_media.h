@@ -1122,7 +1122,9 @@ inline void media_playback_apply_state_to_now_playing_snapshot(
   ctx->external_source = state->external_source;
   const bool has_content = media_playback_has_current_content(state);
   const bool idle_placeholder = ctx->cover_art_mode &&
-    espcontrol::cover_art::media_cover_art_idle_placeholder_visible(has_content);
+    espcontrol::cover_art::media_cover_art_idle_placeholder_visible(
+      state->has_state, state->available, state->state_text, has_content,
+      ctx->external_source_fallback);
   media_cover_art_set_idle_placeholder(ctx, idle_placeholder);
   if (ctx->cover_art) {
     if (espcontrol::cover_art::media_card_artwork_should_clear(
@@ -2445,7 +2447,7 @@ inline std::string media_control_title_text(MediaControlCtx *ctx) {
 inline std::string media_control_artist_text(MediaControlCtx *ctx) {
   if (!ctx) return "";
   if (!espcontrol::media::media_modal_artist_visible(
-        ctx->cover_art_mode, ctx->state_text)) {
+        ctx->cover_art_mode, ctx->state_text, !ctx->artist.empty())) {
     return "";
   }
   if (!ctx->artist.empty()) return ctx->artist;
@@ -4618,7 +4620,9 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       lv_label_set_display_text(ctx->title_lbl, "");
       lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
-      media_cover_art_set_idle_placeholder(ctx, true);
+      // Wait for a known, available inactive state before presenting the card
+      // as idle. Initial loading and unavailable entities are not idle.
+      media_cover_art_set_idle_placeholder(ctx, false);
       media_position_now_playing_artist(ctx);
       return;
     }

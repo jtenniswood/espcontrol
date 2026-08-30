@@ -102,8 +102,11 @@ inline bool media_entity_content_available(bool state_known, bool available,
   return state_known && available && has_content;
 }
 
-inline bool media_cover_art_idle_placeholder_visible(bool has_content) {
-  return !has_content;
+inline bool media_cover_art_idle_placeholder_visible(
+    bool state_known, bool available, const std::string &state,
+    bool has_content, bool external_source_fallback) {
+  return state_known && available && !media_entity_state_usable(state) &&
+         !has_content && !external_source_fallback;
 }
 
 inline bool use_secondary_media_entity(bool primary_external,

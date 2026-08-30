@@ -63,10 +63,21 @@ int main() {
   assert(!media_now_playing_artist_visible(false, false, true, false));
   assert(!media_now_playing_artist_visible(true, false, false, false));
 
-  // Cover-art cards use their music icon instead of placeholder punctuation
-  // until Home Assistant reports current media content.
-  assert(media_cover_art_idle_placeholder_visible(false));
-  assert(!media_cover_art_idle_placeholder_visible(true));
+  // Cover-art cards use their music icon only for a known, available inactive
+  // player. Loading, unavailable, active, and external-source fallback states
+  // must retain their distinct presentation.
+  assert(media_cover_art_idle_placeholder_visible(
+    true, true, "idle", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    false, true, "unknown", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, false, "unavailable", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, true, "playing", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, true, "idle", true, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, true, "idle", false, true));
 
   // Attribute values can remain unchanged while a player passes through
   // idle. Re-request the current snapshot when playback resumes without any
