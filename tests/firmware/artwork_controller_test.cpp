@@ -35,6 +35,7 @@ using espcontrol::cover_art::media_card_artwork_suppressed;
 using espcontrol::cover_art::media_cover_art_idle_placeholder_visible;
 using espcontrol::cover_art::media_external_source_stale_for_current_content;
 using espcontrol::cover_art::media_now_playing_artist_visible;
+using espcontrol::cover_art::media_state_change_needs_content_resync;
 
 int main() {
   RefreshTrigger trigger;
@@ -66,6 +67,15 @@ int main() {
   // until Home Assistant reports current media content.
   assert(media_cover_art_idle_placeholder_visible(false));
   assert(!media_cover_art_idle_placeholder_visible(true));
+
+  // Attribute values can remain unchanged while a player passes through
+  // idle. Re-request the current snapshot when playback resumes without any
+  // locally retained track data so both the card and modal recover.
+  assert(media_state_change_needs_content_resync(true, "idle", "playing", false));
+  assert(media_state_change_needs_content_resync(true, "off", "paused", false));
+  assert(!media_state_change_needs_content_resync(true, "playing", "paused", false));
+  assert(!media_state_change_needs_content_resync(true, "idle", "playing", true));
+  assert(!media_state_change_needs_content_resync(false, "unknown", "playing", false));
 
   // A source attribute omitted from the latest Home Assistant state must not
   // leave a retained TV route active once current music content arrives.

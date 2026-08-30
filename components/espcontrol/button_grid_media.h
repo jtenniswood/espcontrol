@@ -1581,6 +1581,12 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
       [state, generation](esphome::StringRef state_ref) {
         if (!media_playback_generation_valid(state, generation)) return;
         std::string state_text = string_ref_limited(state_ref, HA_SHORT_STATE_MAX_LEN);
+        const bool had_content = !state->title.empty() || !state->artist.empty() ||
+                                 state->has_current_content_id ||
+                                 state->artwork_content_mask != 0;
+        const bool resync_content =
+          espcontrol::cover_art::media_state_change_needs_content_resync(
+            state->has_state, state->state_text, state_text, had_content);
         const bool invalidate_retained_content =
           espcontrol::cover_art::media_state_change_invalidates_retained_content(
             state->has_state, state->state_text, state_text);
@@ -1605,6 +1611,12 @@ inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
         }
         media_playback_apply_state_to_consumers(state);
         media_playback_refresh_progress_timer(state);
+        // Attribute subscriptions only report values that changed. If an
+        // entity retains the same track while moving through idle, the local
+        // idle cleanup has no metadata callback to repopulate the card or its
+        // modal. Reannounce once on the idle-to-active edge to request the
+        // complete current Home Assistant snapshot.
+        if (resync_content) ha_reannounce_state_subscriptions();
       })
   );
 }

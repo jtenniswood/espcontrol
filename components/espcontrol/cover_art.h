@@ -82,6 +82,14 @@ inline bool media_state_change_invalidates_retained_content(
          normalized_media_source(previous_state) != normalized_next;
 }
 
+inline bool media_state_change_needs_content_resync(
+    bool previous_state_known, const std::string &previous_state,
+    const std::string &next_state, bool has_content) {
+  return previous_state_known &&
+         !media_entity_state_usable(previous_state) &&
+         media_entity_state_usable(next_state) && !has_content;
+}
+
 inline bool media_card_artwork_should_clear(bool state_known, bool available,
                                             const std::string &state,
                                             bool has_content) {
