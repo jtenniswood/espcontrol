@@ -205,9 +205,11 @@ int main() {
   assert(!image_pipeline_completion_needs_recovery(false, true, false));
 
   // A changed source URL invalidates an otherwise matching modal cache entry.
-  assert(image_pipeline_modal_cache_matches(true, true, true, true));
-  assert(!image_pipeline_modal_cache_matches(true, true, true, false));
-  assert(!image_pipeline_modal_cache_matches(false, true, true, true));
+  assert(image_pipeline_modal_cache_matches(true, true, true, true, false, true));
+  assert(image_pipeline_modal_cache_matches(true, true, true, true, true, false));
+  assert(!image_pipeline_modal_cache_matches(true, true, true, true, true, true));
+  assert(!image_pipeline_modal_cache_matches(true, true, true, false, false, false));
+  assert(!image_pipeline_modal_cache_matches(false, true, true, true, false, false));
 
   // A card without a tile or a source cannot progress beyond modal loading.
   assert(image_pipeline_modal_can_open(true, false));
