@@ -6,6 +6,7 @@ int main() {
   using espcontrol::configuration::PanelConfigLegacyEntityTarget;
   using espcontrol::configuration::panel_config_legacy_entity_target;
   using espcontrol::configuration::panel_config_legacy_entity_path;
+  using espcontrol::configuration::panel_config_legacy_values_contain_wifi_password;
 
   assert(panel_config_legacy_entity_path("/text/Button 1 Config"));
   assert(panel_config_legacy_entity_path("/text/Button 40 Config"));
@@ -32,4 +33,11 @@ int main() {
   assert(!panel_config_legacy_entity_path("/text/Subpage 3 Config Ext 8"));
   assert(!panel_config_legacy_entity_path("/sensor/Button 1 Config"));
   assert(!panel_config_legacy_entity_path("/text/Button 0 Config"));
+
+  assert(panel_config_legacy_values_contain_wifi_password(
+      {"buttons|wifi_qr,ssid64=VGVzdA,pass64=c2VjcmV0", "", "", "", "", "", "", ""}));
+  assert(panel_config_legacy_values_contain_wifi_password(
+      {"buttons|wifi_", "qr,ssid64=VGVzdA,pass", "64=c2VjcmV0", "", "", "", "", ""}));
+  assert(!panel_config_legacy_values_contain_wifi_password(
+      {"buttons|wifi_", "qr,ssid64=VGVzdA", "", "", "", "", "", ""}));
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <string_view>
 
@@ -72,11 +73,37 @@ inline bool panel_config_legacy_entity_path(std::string_view path) {
   return panel_config_legacy_entity_target(path, &target);
 }
 
+inline bool panel_config_legacy_values_contain_wifi_password(
+    const std::array<std::string_view, 8> &values) {
+  constexpr std::string_view WIFI_TYPE = "wifi_qr";
+  constexpr std::string_view PASSWORD = "pass64=";
+  size_t wifi_match = 0;
+  size_t password_match = 0;
+  bool has_wifi_type = false;
+  bool has_password = false;
+  for (const std::string_view value : values) {
+    for (const char character : value) {
+      if (!has_wifi_type) {
+        wifi_match = character == WIFI_TYPE[wifi_match]
+                         ? wifi_match + 1
+                         : static_cast<size_t>(character == WIFI_TYPE.front());
+        has_wifi_type = wifi_match == WIFI_TYPE.size();
+      }
+      if (!has_password) {
+        password_match = character == PASSWORD[password_match]
+                             ? password_match + 1
+                             : static_cast<size_t>(character == PASSWORD.front());
+        has_password = password_match == PASSWORD.size();
+      }
+      if (has_wifi_type && has_password) return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace espcontrol::configuration
 
 #ifdef USE_WEBSERVER
-
-#include <array>
 
 #include <esp_http_server.h>
 
@@ -108,22 +135,19 @@ inline void bind_panel_config_legacy_entity_sources(
 
 inline bool panel_config_legacy_source_contains_wifi_password(
     const PanelConfigLegacyEntitySources &sources, int subpage_chunk) {
-  bool has_wifi_type = false;
-  bool has_password = false;
-  const auto inspect = [&](esphome::text::Text *text) {
-    if (text == nullptr) return;
-    const std::string_view value(text->state);
-    has_wifi_type = has_wifi_type ||
-                    value.find("wifi_qr") != std::string_view::npos;
-    has_password = has_password ||
-                   value.find("pass64=") != std::string_view::npos;
-  };
   if (subpage_chunk < 0) {
-    inspect(sources.button);
-  } else {
-    for (esphome::text::Text *text : sources.subpages) inspect(text);
+    if (sources.button == nullptr) return false;
+    const std::string_view value(sources.button->state);
+    return value.find("wifi_qr") != std::string_view::npos &&
+           value.find("pass64=") != std::string_view::npos;
   }
-  return has_wifi_type && has_password;
+  std::array<std::string_view, 8> values{};
+  for (size_t index = 0; index < sources.subpages.size(); ++index) {
+    if (sources.subpages[index] != nullptr) {
+      values[index] = sources.subpages[index]->state;
+    }
+  }
+  return panel_config_legacy_values_contain_wifi_password(values);
 }
 
 class PanelConfigLegacyEntityGuard final
