@@ -3952,9 +3952,7 @@ async function openPasteCardCodeDialog(page) {
   const menuLabels = await menu.locator(":scope > .sp-ctx-item").allTextContents();
   assert.strictEqual(menuLabels[0].trim(), "Create Card", "empty-slot menu starts with Create Card");
   const createSubpageIndex = menuLabels.findIndex((text) => text.trim() === "Create Subpage");
-  if (createSubpageIndex !== -1) {
-    assert.strictEqual(createSubpageIndex, 1, "home empty-slot menu shows Create Subpage second");
-  }
+  assert.strictEqual(createSubpageIndex, 1, "home empty-slot menu shows Create Subpage second");
   assert.strictEqual(menuLabels.at(-1).trim(), "Paste Code", "empty-slot menu ends with Paste Code");
   const trailingMenuStructure = await menu.locator(":scope > *").evaluateAll((elements) =>
     elements.slice(-2).map((element) =>
