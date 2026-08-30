@@ -169,7 +169,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.unit.clear();
     b.precision.clear();
     b.options = image_card_options_normalized(b.options);
-    normalize_image_card_overlay_fields(b.icon, b.options);
+    normalize_image_card_overlay_fields(b.label, b.icon, b.options);
     b.icon_on = "Auto";
   }
   if (b.type == "light_switch") {
