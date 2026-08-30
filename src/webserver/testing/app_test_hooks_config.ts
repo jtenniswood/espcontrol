@@ -253,6 +253,7 @@ export function installAppTestHooksConfig(
     } = lightCards;
     const {
         cardRequiresSquareSize,
+        cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
@@ -372,6 +373,7 @@ export function installAppTestHooksConfig(
             mediaNowPlayingControls: mediaNowPlayingControls,
             mediaStateDisplayModeSupported: mediaStateDisplayModeSupported,
             cardRequiresSquareSize: cardRequiresSquareSize,
+            cardSupportsExtraLargeSize: cardSupportsExtraLargeSize,
             cardSupportsMaxSize: cardSupportsMaxSize,
             cardSupportsPortraitLargeSize: cardSupportsPortraitLargeSize,
             cardSupportsLandscapeLargeSize: cardSupportsLandscapeLargeSize,

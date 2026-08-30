@@ -176,6 +176,9 @@ export function createConfigCodecFeature(
     function cardRequiresSquareSize(this: any, b?: any) {
         return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
     }
+    function cardSupportsExtraLargeSize(this: any, b?: any) {
+        return cardRequiresSquareSize(b) || !!(b && (b.type === "wifi_qr" || b.type === "wifi_qr_card"));
+    }
     function cardSupportsMaxSize(this: any, b?: any) {
         return !!(b && b.type === "image");
     }
@@ -1021,6 +1024,7 @@ export function createConfigCodecFeature(
         normalizeWithRegisteredCardType,
         normalizeButtonConfig,
         cardRequiresSquareSize,
+        cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,

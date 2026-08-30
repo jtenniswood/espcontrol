@@ -73,6 +73,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
     const { renderPreview, renderButtonSettings, openCardSettings, openVoiceServicesSettings, addSlot, addSubpageSlot, duplicateButton, duplicateSubpageButton, deleteSlot, deleteButtons } = dependencies;
     const {
         cardRequiresSquareSize,
+        cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
@@ -198,7 +199,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             options.push({ size: CARD_SIZE_EXTRA_WIDE, label: "Extra Wide (1x3)" });
         }
         options.push({ size: CARD_SIZE_LARGE, label: "Large (2x2)" });
-        if (cardRequiresSquareSize(b) && dependencies.layout.gridCols >= 3 && dependencies.layout.gridRows >= 3)
+        if (cardSupportsExtraLargeSize(b) && dependencies.layout.gridCols >= 3 && dependencies.layout.gridRows >= 3)
             options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
         if (cardSupportsMaxSize(b)) {
             options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });

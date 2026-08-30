@@ -342,6 +342,8 @@ assert.strictEqual(hooks.mediaEditorMode("cover_art"), "cover_art", "cover art m
 assert.strictEqual(hooks.mediaEditorMode("speaker_group"), "speaker_group", "speaker group media mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mode falls back through spec");
 assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_art" }), true, "cover art cards require square sizes");
+assert.strictEqual(hooks.cardSupportsExtraLargeSize({ type: "wifi_qr" }), true, "Wifi Connect cards support 3x3 sizes");
+assert.strictEqual(hooks.cardSupportsExtraLargeSize({ type: "wifi_qr_card" }), true, "Wifi QR cards support 3x3 sizes");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 7), 7, "cover art keeps 3x3 size");
 assert.strictEqual(tenInchHooks.cardSupportsPortraitLargeSize({ type: "media", sensor: "cover_art" }), true, "10-inch cover art supports portrait-large size");
@@ -394,6 +396,16 @@ assert.strictEqual(
   Array.from(fourPointThreeInchHooks.cardSizeMenuOptions({ type: "media", sensor: "cover_art" })).some((option) => option.size === 7),
   false,
   "4.3-inch cover art size menu hides Extra Large (3x3)",
+);
+assert.strictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "wifi_qr" })).some((option) => option.size === 7 && option.label === "Extra Large (3x3)"),
+  true,
+  "Wifi Connect card size menu exposes Extra Large (3x3)",
+);
+assert.strictEqual(
+  Array.from(hooks.cardSizeMenuOptions({ type: "wifi_qr_card" })).some((option) => option.size === 7 && option.label === "Extra Large (3x3)"),
+  true,
+  "Wifi QR card size menu exposes Extra Large (3x3)",
 );
 const transferredSensor = tenInchHooks.cardTransferEntriesFromEnvelopeForTest({
   cards: [{ type: "sensor", entity: "sensor.office", label: "Office", size: 10 }],
