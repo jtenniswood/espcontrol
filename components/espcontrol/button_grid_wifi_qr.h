@@ -155,12 +155,7 @@ inline void wifi_qr_layout_modal() {
     }
   }
 
-  if (ui.qr) {
-    const lv_coord_t side = ui.qr_side;
-    lv_obj_set_style_border_width(
-      ui.qr, std::max<lv_coord_t>(4, side / 24), LV_PART_MAIN);
-    lv_obj_center(ui.qr);
-  }
+  if (ui.qr) lv_obj_center(ui.qr);
 
   if (ui.back_btn) lv_obj_move_foreground(ui.back_btn);
   if (ui.tab_row) lv_obj_move_foreground(ui.tab_row);
@@ -289,8 +284,10 @@ inline void wifi_qr_open_modal(const ParsedCfg &config, lv_obj_t *owner) {
   if (ui.qr) {
     lv_qrcode_set_dark_color(ui.qr, lv_color_black());
     lv_qrcode_set_light_color(ui.qr, lv_color_white());
-    // The white border preserves the scanner quiet zone inside the roomy tab inset.
-    lv_obj_set_style_border_color(ui.qr, lv_color_white(), LV_PART_MAIN);
+    // LVGL allocates this outside the encoded matrix. A widget border would be
+    // drawn inward and could cover the outer modules of dense QR payloads.
+    lv_qrcode_set_quiet_zone(ui.qr, true);
+    lv_obj_set_style_border_width(ui.qr, 0, LV_PART_MAIN);
   }
 
   wifi_qr_apply_tab_visibility();

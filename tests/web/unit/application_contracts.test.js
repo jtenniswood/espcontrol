@@ -859,6 +859,7 @@ describe("browserless application contracts", () => {
   test("composes configuration persistence without compatibility globals", () => {
     const persistence = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_post_api.ts"), "utf8");
     const codec = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_codec.ts"), "utf8");
+    const buttonSettings = fs.readFileSync(path.join(ROOT, "src/webserver/application/button_settings.ts"), "utf8");
     const backup = fs.readFileSync(path.join(ROOT, "src/webserver/application/app_backup.ts"), "utf8");
     const hooks = fs.readFileSync(path.join(ROOT, "src/webserver/testing/app_test_hooks_config.ts"), "utf8");
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
@@ -870,6 +871,15 @@ describe("browserless application contracts", () => {
     assert.match(hooks, /ConfigPersistenceFeature/);
     assert.match(entry, /createConfigCodecFeature\([\s\S]*configurationPersistence/);
     assert.match(entry, /configPersistence: configurationPersistence/);
+    assert.match(persistence, /return requests\(\)\.postText\(entityNameForSlot\("button_config", slot\)/);
+    assert.match(buttonSettings, /saveBtn\.addEventListener\("click", async function/);
+    assert.match(buttonSettings, /if \(await applySettingsDraft\(\)\)/);
+    assert.match(buttonSettings, /restoreDraftState\(\);[\s\S]*return false/);
+    assert.ok(
+      buttonSettings.indexOf("configPersistence.saveButtonConfig(slot)") <
+        buttonSettings.indexOf('requestApi.postText(entityName("button_order")'),
+      "card configuration should be accepted before its grid position is persisted",
+    );
     assert.doesNotMatch(globals, /\bvar (?:SUBPAGE_RAW_CHUNK_FIELDS|saveButtonConfig|saveSubpageEntity|saveSubpageEntityLegacy|scheduleSliderSubpageMigration|subpageChunkShouldPost|subpageEntityKeys):/);
   });
 

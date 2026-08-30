@@ -379,6 +379,20 @@ static constexpr size_t NUM_ICONS = sizeof(ICON_ENTRIES) / sizeof(ICON_ENTRIES[0
 
 // Linear search for an icon name; returns fallback (cog) if not found
 inline const char* find_icon(const char* name) {
+  // Keep serialized icon names from releases that used the typographic
+  // "Wi-Fi" spelling working after the visible labels moved to "Wifi".
+  static const IconEntry legacy_icon_aliases[] = {
+      {"Wi-Fi Startup",              "\U000F05A9"},
+      {"Wi-Fi",                      "\U000F0928"},
+      {"Wi-Fi Strength Outline",     "\U000F092F"},
+      {"Wi-Fi Strength 1",           "\U000F091F"},
+      {"Wi-Fi Strength 2",           "\U000F0922"},
+      {"Wi-Fi Strength 3",           "\U000F0925"},
+      {"Wi-Fi Strength Off Outline", "\U000F092E"},
+  };
+  for (const IconEntry &alias : legacy_icon_aliases) {
+    if (std::strcmp(alias.name, name) == 0) return alias.glyph;
+  }
   for (size_t i = 0; i < NUM_ICONS; i++) {
     if (std::strcmp(ICON_ENTRIES[i].name, name) == 0) {
       return ICON_ENTRIES[i].glyph;

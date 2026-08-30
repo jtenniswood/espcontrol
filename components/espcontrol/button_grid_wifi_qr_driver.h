@@ -23,7 +23,8 @@ inline lv_result_t wifi_qr_driver_update_compact(
   const int version = qrcodegen_getMinFitVersion(
     qrcodegen_Ecc_LOW, payload.size());
   const int module_count = qrcodegen_version2size(version);
-  const int scale = module_count > 0 ? draw_buf->header.w / module_count : 0;
+  const int scale = wifi_qr_scale_with_quiet_zone(
+    draw_buf->header.w, module_count);
   if (version <= 0 || scale <= 0) return LV_RESULT_INVALID;
 
   const size_t buffer_size = qrcodegen_BUFFER_LEN_FOR_VERSION(version);
@@ -107,9 +108,8 @@ inline bool wifi_qr_driver_render_tile(
     lv_obj_clear_flag(qr, LV_OBJ_FLAG_CLICKABLE);
     lv_qrcode_set_dark_color(qr, lv_color_black());
     lv_qrcode_set_light_color(qr, lv_color_white());
-    // The white tile and size-specific vertical inset provide separation here.
-    // LVGL's four-module quiet zone made the code unnecessarily small on cards.
-    lv_qrcode_set_quiet_zone(qr, false);
+    // The QR standard requires four blank modules outside the encoded matrix.
+    lv_qrcode_set_quiet_zone(qr, true);
     lv_obj_set_style_border_width(qr, 0, LV_PART_MAIN);
     if (slot.sensor_container) lv_obj_set_user_data(slot.sensor_container, qr);
   }

@@ -13,7 +13,7 @@ export interface ConfigPersistenceFeature {
     connectCodec(codec: Pick<ConfigCodecFeature, "serializeButtonConfig" | "serializeSubpageConfig">): void;
     connectRequestApi(requestApi: ApplicationApiFeature): void;
     subpageEntityKeys(): string[];
-    saveButtonConfig(slot: number): void;
+    saveButtonConfig(slot: number): Promise<any>;
     saveSubpageEntity(slot: number): unknown;
     subpageChunkShouldPost(slot?: any, keys?: any, chunks?: any, index?: any, previousPendingChunks?: any): boolean;
     scheduleSliderSubpageMigration(slot?: any): void;
@@ -54,7 +54,7 @@ export function createConfigPersistenceFeature(
     // ── Config Post API ───────────────────────────────────────────────────
     function saveButtonConfig(this: any, slot?: any) {
         var b: any = state.buttons[slot - 1];
-        requests().postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
+        return requests().postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
     }
     function subpageEntityKeys(this: any) {
         var keys: any = ENTITY_CATALOG.groups.subpage_slot || [];

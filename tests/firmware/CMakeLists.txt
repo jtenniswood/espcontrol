@@ -45,6 +45,12 @@ target_compile_options(wifi_qr_codec_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(wifi_qr_codec_test PRIVATE ../../components/espcontrol)
 add_test(NAME wifi_qr_codec_test COMMAND wifi_qr_codec_test)
 
+add_executable(icons_legacy_alias_test icons_legacy_alias_test.cpp)
+target_compile_features(icons_legacy_alias_test PRIVATE cxx_std_17)
+target_compile_options(icons_legacy_alias_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(icons_legacy_alias_test PRIVATE ../../components/espcontrol)
+add_test(NAME icons_legacy_alias_test COMMAND icons_legacy_alias_test)
+
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
 target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)
@@ -143,6 +149,12 @@ target_compile_features(panel_config_sensitive_data_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_sensitive_data_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(panel_config_sensitive_data_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_sensitive_data_test COMMAND panel_config_sensitive_data_test)
+
+add_executable(panel_config_event_filter_test panel_config_event_filter_test.cpp)
+target_compile_features(panel_config_event_filter_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_event_filter_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_event_filter_test PRIVATE ../../components/web_server_idf)
+add_test(NAME panel_config_event_filter_test COMMAND panel_config_event_filter_test)
 
 add_executable(panel_config_storage_backend_test
   panel_config_storage_backend_test.cpp

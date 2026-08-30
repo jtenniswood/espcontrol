@@ -296,6 +296,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   sync_card_checked_text_color(s.btn);
   lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
   lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
+  if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
   if (s.text_lbl) {
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);

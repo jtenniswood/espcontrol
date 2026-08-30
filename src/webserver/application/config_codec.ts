@@ -1009,7 +1009,7 @@ export function createConfigCodecFeature(
     function saveSubpageConfig(this: any, homeSlot?: any) {
         var sp: any = getSubpage(homeSlot);
         sp.order = serializeSubpageGrid(sp);
-        saveSubpageEntity(homeSlot);
+        return saveSubpageEntity(homeSlot);
     }
     function subpageFirstFreeSlot(this: any, sp?: any) {
         var used: any = {};
