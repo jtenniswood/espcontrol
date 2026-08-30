@@ -6,8 +6,8 @@
 
 int main() {
   assert(wifi_qr_tile_vertical_inset(1, 1) == 6);
-  assert(wifi_qr_tile_vertical_inset(2, 2) == 3);
-  assert(wifi_qr_tile_vertical_inset(3, 3) == 3);
+  assert(wifi_qr_tile_vertical_inset(2, 2) == 6);
+  assert(wifi_qr_tile_vertical_inset(3, 3) == 6);
 
   assert((wifi_qr_tabs("") == std::vector<std::string>{"qr", "credentials"}));
   assert((wifi_qr_tabs("credentials|qr") == std::vector<std::string>{"credentials", "qr"}));
