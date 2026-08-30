@@ -66,7 +66,6 @@ class CompanionService final : public Component {
   uint32_t next_attempt_at_{0};
   uint8_t failed_attempts_{0};
   std::string pairing_code_;
-  std::vector<std::string> catalogue_;
 };
 
 // The display owns the interaction. These narrow helpers avoid exposing the

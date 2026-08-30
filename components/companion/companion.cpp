@@ -246,6 +246,10 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
       this->send_(socket_fd, "ERROR|pairing_failed");
       return;
     }
+    const int previous_socket = this->authenticated_socket_;
+    this->set_connected_(false);
+    if (previous_socket >= 0 && previous_socket != socket_fd)
+      httpd_sess_trigger_close(this->server_, previous_socket);
     for (auto &byte : this->identity_.credential) byte = static_cast<uint8_t>(esp_random());
     this->identity_.paired = 1;
     this->last_sequence_ = 0;
@@ -261,9 +265,9 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     return;
   }
   if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
-    this->catalogue_ = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
+    const auto catalogue = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
     std::vector<CompanionAction> actions;
-    for (const auto &entry : this->catalogue_) {
+    for (const auto &entry : catalogue) {
       const auto item = split(entry, ':');
       if (item.size() == 2 && safe_field(item[0], 96) && safe_field(item[1], 96)) actions.push_back({item[0], item[1]});
     }
@@ -317,12 +321,12 @@ bool CompanionService::pairing_active() const {
 }
 
 void CompanionService::revoke_pairing() {
-  const int socket_fd = this->authenticated_socket_;
+  const int previous_socket = this->authenticated_socket_;
   this->identity_.paired = 0;
   std::fill(this->identity_.credential, this->identity_.credential + sizeof(this->identity_.credential), 0);
   this->preferences_.save(&this->identity_);
   this->set_connected_(false);
-  if (socket_fd >= 0) httpd_sess_trigger_close(this->server_, socket_fd);
+  if (previous_socket >= 0) httpd_sess_trigger_close(this->server_, previous_socket);
 }
 
 void begin_companion_pairing() { if (global_companion_service) global_companion_service->begin_pairing(); }

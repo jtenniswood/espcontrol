@@ -102,6 +102,22 @@ def battery_substitution_lines(device: dict) -> list[str]:
 
 def voice_substitution_lines(device: dict) -> list[str]:
     if not package_data(device).get("localVoiceServices"):
+        if device["slug"] == "guition-esp32-s3-4848s040":
+            return [
+                "  voice_clock_bar_hide_code: |-",
+                "    clock_bar_set_widget_hidden(id(companion_status_button), true);",
+                "  voice_clock_bar_apply_code: |-",
+                "    {",
+                *clock_bar_icon_offset_lines("companion_status_x", "companion_status_button",
+                                             "companion_status_icon_label"),
+                "      lv_obj_align(id(companion_status_button), LV_ALIGN_TOP_RIGHT,",
+                "                   companion_status_x, clock_bar_icon_y);",
+                "      lv_obj_clear_flag(id(companion_status_button), LV_OBJ_FLAG_HIDDEN);",
+                "    }",
+                "  navigate_voice_target_code: |-",
+                '    ESP_LOGW("navigation", "Voice volume target is not available on this device");',
+                '  voice_interaction_active_condition: "false"',
+            ]
         return [
             '  voice_clock_bar_hide_code: ""',
             '  voice_clock_bar_apply_code: ""',
