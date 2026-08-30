@@ -1,4 +1,4 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import type { AppFeature } from "./app";
 
 const startupState = globalThis as typeof globalThis & {
     __ESPCONTROL_RELOAD_EMBEDDED__?: () => void;
@@ -6,12 +6,12 @@ const startupState = globalThis as typeof globalThis & {
     __ESPCONTROL_UI_STARTING__?: boolean;
 };
 
-export function installAppStartModule(): GlobalDescriptors {
+export function startApp(app: Pick<AppFeature, "init">): void {
     // ── Start ──────────────────────────────────────────────────────────────
     function start(this: any) {
         startupState.__ESPCONTROL_UI_STARTING__ = true;
         try {
-            init();
+            app.init();
             startupState.__ESPCONTROL_UI_STARTED__ = true;
         }
         catch (error) {
@@ -34,5 +34,4 @@ export function installAppStartModule(): GlobalDescriptors {
     else {
         start();
     }
-    return {};
 }

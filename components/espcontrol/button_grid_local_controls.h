@@ -132,7 +132,7 @@ inline bool local_sensor_apply_value(const std::string &key, float value) {
     if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
     else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
     else snprintf(buffer, sizeof(buffer), "%.0f", value);
-    lv_label_set_text(control.sensor_lbl, buffer);
+    lv_label_set_display_text(control.sensor_lbl, buffer);
     applied = true;
   }
   return applied;
@@ -189,17 +189,22 @@ class LocalActionHandler : public esphome::web_server_idf::AsyncWebHandler {
   }
 };
 
-inline void register_local_action_endpoint() {
+inline void register_local_action_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
+  server.addHandler(new LocalActionHandler());
+  registered = true;
+  ESP_LOGI("espcontrol", "Local action endpoint registered");
+}
+
+inline void register_local_action_endpoint() {
   auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
+  if (server == nullptr) {
     ESP_LOGW("espcontrol", "register_local_action_endpoint: server not ready");
     return;
   }
-  server->addHandler(new LocalActionHandler());
-  registered = true;
-  ESP_LOGI("espcontrol", "Local action endpoint registered");
+  register_local_action_endpoint(*server);
 }
 
 class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
@@ -255,17 +260,22 @@ class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
   }
 };
 
-inline void register_local_sensor_endpoint() {
+inline void register_local_sensor_endpoint(
+    esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
+  server.addHandler(new LocalSensorHandler());
+  registered = true;
+  ESP_LOGI("sensors", "Local sensor endpoint registered");
+}
+
+inline void register_local_sensor_endpoint() {
   auto *server = esphome::web_server_idf::global_async_web_server();
-  if (!server) {
+  if (server == nullptr) {
     ESP_LOGW("sensors", "register_local_sensor_endpoint: server not ready");
     return;
   }
-  server->addHandler(new LocalSensorHandler());
-  registered = true;
-  ESP_LOGI("sensors", "Local sensor endpoint registered");
+  register_local_sensor_endpoint(*server);
 }
 #endif  // USE_WEBSERVER
 
@@ -342,7 +352,7 @@ inline void apply_internal_relay_state(lv_obj_t *btn, lv_obj_t *icon_lbl,
     set_card_checked_state(btn, on);
   }
   if (icon_lbl && has_icon_on)
-    lv_label_set_text(icon_lbl, on ? icon_on : icon_off);
+    lv_label_set_display_text(icon_lbl, on ? icon_on : icon_off);
 }
 
 inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool on) {
@@ -357,11 +367,11 @@ inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool 
   if (w.sp_on_count[w.parent_idx] > 0) {
     set_card_checked_state(w.parent_btn, true);
     if (w.parent_has_alt_icon && w.parent_icon)
-      lv_label_set_text(w.parent_icon, w.parent_on_glyph);
+      lv_label_set_display_text(w.parent_icon, w.parent_on_glyph);
   } else {
     set_card_checked_state(w.parent_btn, false);
     if (w.parent_has_alt_icon && w.parent_icon)
-      lv_label_set_text(w.parent_icon, w.parent_off_glyph);
+      lv_label_set_display_text(w.parent_icon, w.parent_off_glyph);
   }
 }
 

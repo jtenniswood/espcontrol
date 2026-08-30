@@ -41,14 +41,11 @@ inline ButtonGridNavigationService &grid_navigation_service() {
           espcontrol::active_espcontrol_app_core()) {
     return core->grid_navigation_service<ButtonGridNavigationService>();
   }
-#ifdef ESP_PLATFORM
-  // Firmware UI work begins only after EspControlAppCore starts. Keeping the
-  // contract strict avoids a second permanent navigation allocation.
-  std::abort();
-#else
+  // ESPHome may dispatch navigation cleanup while the core is still being
+  // registered during startup. Preserve that state until core ownership is
+  // available instead of turning the callback into a reboot.
   static ButtonGridNavigationService service;
   return service;
-#endif
 }
 
 // Compatibility accessors for existing grid code. New runtime ownership lives

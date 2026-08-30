@@ -1,62 +1,65 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function registerEntityModeCardHelpers(): GlobalDescriptors {
-    function entityModeValues(this: any, cardType?: any, optionName?: any, fallbackModes?: any) {
-        var spec: any = cardContractOptionSpec(cardType, optionName);
-        return spec && spec.values ? spec.values.slice() : fallbackModes.map(function (this: any, entry?: any) { return entry[0]; });
+import { cardContractOptionSpec } from "../application/config_option_core";
+
+export function entityModeValues(this: any, cardType?: any, optionName?: any, fallbackModes?: any) {
+    const spec: any = cardContractOptionSpec(cardType, optionName);
+    return spec && spec.values ? spec.values.slice() : fallbackModes.map(function (entry?: any) { return entry[0]; });
+}
+
+export function normalizeEntityMode(this: any, mode?: any, values?: any, fallback?: any) {
+    mode = String(mode || "");
+    return values.indexOf(mode) >= 0 ? mode : fallback;
+}
+
+export function entityModeCardUsesDefaultIcon(this: any, icon?: any, icons?: any) {
+    if (!icon || icon === "Auto")
+        return true;
+    return icons.indexOf(icon) >= 0;
+}
+
+export function normalizeEntityModeCardConfig(this: any, button?: any, options?: any) {
+    if (!button)
+        return;
+    const mode: any = options.normalizeMode(button.sensor);
+    button.sensor = mode;
+    if (options.keepUnit && options.keepUnit(mode)) {
+        button.unit = button.unit || "";
     }
-    function normalizeEntityMode(this: any, mode?: any, values?: any, fallback?: any) {
-        mode = String(mode || "");
-        return values.indexOf(mode) >= 0 ? mode : fallback;
+    else {
+        button.unit = "";
     }
-    function entityModeCardUsesDefaultIcon(this: any, icon?: any, icons?: any) {
-        if (!icon || icon === "Auto")
-            return true;
-        return icons.indexOf(icon) >= 0;
+    button.precision = "";
+    button.options = "";
+    button.icon_on = "Auto";
+    if (!button.icon || button.icon === "Auto")
+        button.icon = options.defaultIcon(mode);
+}
+
+export function applyEntityModeCardModeChange(
+    this: any,
+    button?: any,
+    helpers?: any,
+    previousMode?: any,
+    nextMode?: any,
+    options?: any,
+) {
+    const hadDefaultIcon: any = options.usesDefaultIcon(button.icon);
+    button.sensor = nextMode;
+    if (options.keepUnit && options.keepUnit(nextMode)) {
+        button.unit = button.unit || "";
     }
-    function normalizeEntityModeCardConfig(this: any, b?: any, options?: any) {
-        if (!b)
-            return;
-        var mode: any = options.normalizeMode(b.sensor);
-        b.sensor = mode;
-        if (options.keepUnit && options.keepUnit(mode)) {
-            b.unit = b.unit || "";
-        }
-        else {
-            b.unit = "";
-        }
-        b.precision = "";
-        b.options = "";
-        b.icon_on = "Auto";
-        if (!b.icon || b.icon === "Auto")
-            b.icon = options.defaultIcon(mode);
+    else {
+        button.unit = "";
+        helpers.saveField("unit", "");
     }
-    function applyEntityModeCardModeChange(this: any, b?: any, helpers?: any, previousMode?: any, nextMode?: any, options?: any) {
-        var hadDefaultIcon: any = options.usesDefaultIcon(b.icon);
-        b.sensor = nextMode;
-        if (options.keepUnit && options.keepUnit(nextMode)) {
-            b.unit = b.unit || "";
-        }
-        else {
-            b.unit = "";
-            helpers.saveField("unit", "");
-        }
-        b.precision = "";
-        b.options = "";
-        b.icon_on = "Auto";
-        helpers.saveField("sensor", nextMode);
-        helpers.saveField("precision", "");
-        helpers.saveField("options", "");
-        helpers.saveField("icon_on", "Auto");
-        if (hadDefaultIcon || b.icon === options.defaultIcon(previousMode)) {
-            b.icon = options.defaultIcon(nextMode);
-            helpers.saveField("icon", b.icon);
-        }
+    button.precision = "";
+    button.options = "";
+    button.icon_on = "Auto";
+    helpers.saveField("sensor", nextMode);
+    helpers.saveField("precision", "");
+    helpers.saveField("options", "");
+    helpers.saveField("icon_on", "Auto");
+    if (hadDefaultIcon || button.icon === options.defaultIcon(previousMode)) {
+        button.icon = options.defaultIcon(nextMode);
+        helpers.saveField("icon", button.icon);
     }
-    return {
-        "entityModeValues": staticGlobal(entityModeValues),
-        "normalizeEntityMode": staticGlobal(normalizeEntityMode),
-        "entityModeCardUsesDefaultIcon": staticGlobal(entityModeCardUsesDefaultIcon),
-        "normalizeEntityModeCardConfig": staticGlobal(normalizeEntityModeCardConfig),
-        "applyEntityModeCardModeChange": staticGlobal(applyEntityModeCardModeChange),
-    };
 }

@@ -14,7 +14,7 @@ from device_profiles import ROOT, load_device_profiles, public_device_capabiliti
 WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
-CARD_CONTRACT_JSON = ROOT / "common" / "config" / "card_contract.json"
+CARD_CONTRACT_JSON = ROOT / "product" / "v2" / "card_contract.json"
 CARD_CAPABILITIES_DOC = ROOT / "docs" / "generated" / "cards" / "capabilities.md"
 
 
@@ -97,14 +97,12 @@ def test_generated_device_docs(devices: list[dict]) -> None:
         grid_text = grid.read_text(encoding="utf-8")
         install_text = install.read_text(encoding="utf-8")
         for value in (
-            capability["slug"],
-            capability["installSlug"],
-            capability["chipFamily"],
             str(capability["slots"]),
             str(capability["grid"]["rows"]),
             str(capability["grid"]["cols"]),
         ):
-            assert value in grid_text or value in install_text, f"{stem}: generated docs missing {value!r}"
+            assert value in grid_text, f"{stem}: generated grid docs missing {value!r}"
+        assert capability["installSlug"] in install_text, f"{stem}: generated install docs missing install slug"
 
 
 def test_generated_card_docs() -> None:

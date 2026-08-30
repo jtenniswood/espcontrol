@@ -21,6 +21,7 @@ struct GridConfig {
   bool info_only = false;
   bool subpage_chevrons_enabled = true;
   int width_compensation_percent = 100;
+  int text_width_compensation_percent = 100;
   int volume_width_compensation_percent = 100;
   int media_artwork_width_compensation_percent = 100;
   DisplayModalProfile modal_profile;
@@ -93,6 +94,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.volume_icon = cfg.volume_icon_font;
   profile.width.vertical_axis = cfg.width_compensation_vertical;
   profile.width.main_percent = cfg.width_compensation_percent;
+  profile.width.text_percent = cfg.text_width_compensation_percent;
   profile.width.volume_percent = cfg.volume_width_compensation_percent;
   profile.large_numbers.font = cfg.sp_large_sensor_font;
   profile.large_numbers.unit_offset_percent = cfg.large_sensor_unit_offset_percent;
@@ -311,10 +313,10 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
 inline void clear_unsupported_card_slot_visuals(BtnSlot &s) {
   // Slot widgets persist across dashboard reloads. An unsupported replacement
   // must not keep showing the icon, label, or value from the previous card.
-  if (s.icon_lbl) lv_label_set_text(s.icon_lbl, "");
-  if (s.text_lbl) lv_label_set_text(s.text_lbl, "");
-  if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, "");
-  if (s.unit_lbl) lv_label_set_text(s.unit_lbl, "");
+  if (s.icon_lbl) lv_label_set_display_text(s.icon_lbl, "");
+  if (s.text_lbl) lv_label_set_display_text(s.text_lbl, "");
+  if (s.sensor_lbl) lv_label_set_display_text(s.sensor_lbl, "");
+  if (s.unit_lbl) lv_label_set_display_text(s.unit_lbl, "");
 }
 
 inline bool info_only_hidden_card_type(const espcontrol::cards::Context &context) {
@@ -417,6 +419,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->media_artwork = true;
   art->media_artwork_suppressed = espcontrol::cover_art::media_card_artwork_suppressed(
     media_ctx->source_known, media_ctx->external_source);
+  art->media_artwork_refresh_forced = false;
   art->media_overlay = overlay;
   art->media_overlay_artwork_tint = show_track_details;
   art->media_artwork_applied = [media_ctx]() {
@@ -451,39 +454,69 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     std::string("entity_picture"),
     std::function<void(esphome::StringRef)>(
       [art, playback, entity_id, generation](esphome::StringRef picture) {
+        bool clear_stale_artwork = false;
+        const std::string value = string_ref_limited(
+          picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
+        const bool present =
+          espcontrol::artwork::artwork_entity_picture_present(value);
         if (media_playback_generation_valid(playback, generation)) {
-          const std::string value = string_ref_limited(
-            picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
-          const bool present = !value.empty() && value != "unknown" &&
-                               value != "unavailable";
-          if (present) playback->artwork_content_mask |= 1u;
+          media_playback_clear_stale_external_source(playback, present);
+          const bool current = espcontrol::cover_art::media_artwork_content_current(
+            playback->has_state, playback->available, playback->state_text, present);
+          if (current) playback->artwork_content_mask |= 1u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~1u);
+          clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
+            playback->has_state, playback->available, playback->state_text,
+            media_playback_has_current_content(playback));
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
-        image_card_handle_media_artwork_picture(art, picture, false);
-      })
+        if (!present || clear_stale_artwork) {
+          image_card_clear_media_artwork(art);
+          return;
+        }
+        // Attribute subscriptions are independent. Ask the artwork coordinator
+        // to obtain a matching remote/local pair instead of downloading from
+        // this individual notification.
+        image_card_schedule_media_artwork_refresh(art);
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
   ha_subscribe_attribute(
     entity_id,
     std::string("entity_picture_local"),
     std::function<void(esphome::StringRef)>(
       [art, playback, entity_id, generation](esphome::StringRef picture) {
+        bool clear_stale_artwork = false;
         if (media_playback_generation_valid(playback, generation)) {
           const std::string value = string_ref_limited(
             picture, espcontrol::cover_art::MAX_ARTWORK_URL_LENGTH);
-          const bool present = !value.empty() && value != "unknown" &&
-                               value != "unavailable";
-          if (present) playback->artwork_content_mask |= 2u;
+          const bool present =
+            espcontrol::artwork::artwork_entity_picture_present(value);
+          const bool current = espcontrol::cover_art::media_artwork_content_current(
+            playback->has_state, playback->available, playback->state_text, present);
+          if (current) playback->artwork_content_mask |= 2u;
           else playback->artwork_content_mask &= static_cast<uint8_t>(~2u);
+          clear_stale_artwork = espcontrol::cover_art::media_card_artwork_should_clear(
+            playback->has_state, playback->available, playback->state_text,
+            media_playback_has_current_content(playback));
           media_playback_apply_state_to_now_playing(playback);
         }
         if (!image_card_context_current(art, entity_id, generation)) return;
-        image_card_handle_media_artwork_picture(art, picture, true);
-      })
+        if (clear_stale_artwork) {
+          image_card_clear_media_artwork(art);
+          return;
+        }
+        // See the remote callback above: one notification starts one paired
+        // refresh, which prevents either attribute winning by arrival order.
+        image_card_schedule_media_artwork_refresh(art);
+      }),
+    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    true
   );
   subscribe_image_card_access_token(art, entity_id);
-  image_card_request_media_artwork(art);
+  image_card_schedule_media_artwork_refresh(art);
 }
 
 inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
@@ -721,17 +754,16 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
                                       int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   std::string mode = media_card_mode(p.sensor);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-
   if (mode == "cover_art") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
     if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     if (s.text_lbl) {
-      lv_label_set_text(s.text_lbl, "");
+      lv_label_set_display_text(s.text_lbl, "");
       lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
     }
     if (ctx->title_lbl && ctx->artist_lbl) {
+      const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
       const bool large = media_cover_art_uses_screensaver_fonts(row_span, col_span);
       const bool compact_large = media_cover_art_uses_compact_large_fonts(row_span, col_span);
       const bool compact_portrait =
@@ -758,7 +790,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
         lv_obj_set_style_text_font(ctx->artist_lbl, artist_font, LV_PART_MAIN);
       }
       ctx->artist_below_title = large;
-      ctx->artist_gap = pad > 1 ? pad / 2 : 0;
+      ctx->artist_gap = media_cover_art_artist_gap(
+        ctx->content_padding.top, row_span, col_span);
       if (ctx->show_track_details || ctx->external_source_fallback) {
         lv_obj_clear_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -766,12 +799,12 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
         lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
       }
-      display_apply_main_width(ctx->title_lbl, display);
-      display_apply_main_width(ctx->artist_lbl, display);
+      display_apply_text_width(ctx->title_lbl, display);
+      display_apply_text_width(ctx->artist_lbl, display);
       setup_media_now_playing_layout(
         s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-        title_font, pad,
-        media_cover_art_limits_title_to_two_lines(row_span, col_span),
+        title_font, padding,
+        media_cover_art_title_line_limit(row_span, col_span),
         true, 0, false);
       media_position_now_playing_artist(ctx);
     }
@@ -782,13 +815,14 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "now_playing") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
-    if (ctx->title_lbl) display_apply_main_width(ctx->title_lbl, display);
-    if (ctx->artist_lbl) display_apply_main_width(ctx->artist_lbl, display);
+    const CardPadding padding = ctx->progress_slider ? ctx->content_padding : CardPadding{};
+    if (ctx->title_lbl) display_apply_text_width(ctx->title_lbl, display);
+    if (ctx->artist_lbl) display_apply_text_width(ctx->artist_lbl, display);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, ctx->title_lbl, ctx->artist_lbl,
-      display_media_title_font(display), pad,
-      row_span == 1, ctx->play_pause_background,
-      ctx->progress_slider ? pad : 0, false);
+      display_media_title_font(display), padding,
+      row_span == 1 ? 2 : 0, ctx->play_pause_background,
+      ctx->progress_slider ? padding.left : 0, false);
     media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
     return;
@@ -797,16 +831,22 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "position") {
     lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
     SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
-    lv_coord_t position_pad = ctx && ctx->content_pad > 0
-      ? ctx->content_pad
+    const lv_coord_t position_left = ctx && ctx->content_pad_left > 0
+      ? ctx->content_pad_left
+      : lv_obj_get_style_pad_left(s.btn, LV_PART_MAIN);
+    const lv_coord_t position_top = ctx && ctx->content_pad_top > 0
+      ? ctx->content_pad_top
       : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+    const lv_coord_t position_bottom = ctx && ctx->content_pad_bottom > 0
+      ? ctx->content_pad_bottom
+      : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
     if (ctx && ctx->media_value_lbl) {
-      display_apply_main_width(ctx->media_value_lbl, display);
-      lv_obj_align(ctx->media_value_lbl, LV_ALIGN_TOP_LEFT, position_pad, position_pad);
+      display_apply_text_width(ctx->media_value_lbl, display);
+      lv_obj_align(ctx->media_value_lbl, LV_ALIGN_TOP_LEFT, position_left, position_top);
       lv_obj_move_foreground(ctx->media_value_lbl);
     }
     if (s.text_lbl) {
-      lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, position_pad, -position_pad);
+      lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, position_left, -position_bottom);
       configure_button_label_wrap(s.text_lbl);
       lv_obj_move_foreground(s.text_lbl);
     }
@@ -834,14 +874,24 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "volume") return;
 
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
-  if (slider) slider_refresh_geometry(slider);
+  if (slider) {
+    refresh_slider_card_layout(s);
+  }
 }
 
 inline void refresh_slider_card_layout(BtnSlot &s) {
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
-  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
-  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
+  // Reuse the padding captured before the slider zeroed it so the icon and label
+  // stay aligned with every non-slider card.
+  const lv_coord_t pad_left = ctx
+    ? ctx->label_pad_left : lv_obj_get_style_pad_left(s.btn, LV_PART_MAIN);
+  const lv_coord_t pad_top = ctx
+    ? ctx->label_pad_top : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+  const lv_coord_t pad_bottom = ctx
+    ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
+  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
+  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
   if (slider) slider_refresh_geometry(slider);
 }
 
@@ -876,6 +926,9 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     return;
   } else if (espcontrol::cards::media_driver_refresh_layout(
                s, p, context, cfg, row_span, col_span)) {
+    return;
+  } else if (espcontrol::cards::cover_modal_driver_refresh_layout(
+               s, p, context)) {
     return;
   } else {
     espcontrol::cards::access_cover_driver_refresh_layout(
@@ -1099,6 +1152,7 @@ inline bool grid_refresh_subpage_layouts(
     const std::string order = get_subpage_order(sp_cfg);
     SubpageOrder sp_order;
     parse_subpage_order(order, NS, sp_btns.size(), sp_order);
+    normalize_subpage_order_spans(sp_order, NS, COLS);
 
     // Binding a card to another entity/type requires new HA callbacks. Keep
     // the existing data-bound widgets intact and defer that structural edit to
@@ -1125,7 +1179,7 @@ inline bool grid_refresh_subpage_layouts(
     lv_obj_set_grid_dsc_array(entry->screen, subpage_cols, subpage_rows);
     const std::string back_label = get_subpage_back_label(order);
     if (entry->back_slot.text_lbl != nullptr) {
-      lv_label_set_text(entry->back_slot.text_lbl, back_label.c_str());
+      lv_label_set_display_text(entry->back_slot.text_lbl, back_label.c_str());
     }
     set_grid_card_cell(
       entry->back_button, entry->screen,
@@ -1133,6 +1187,7 @@ inline bool grid_refresh_subpage_layouts(
       sp_order.back_col_span, sp_order.back_row_span, COLS, ROWS);
     apply_card_label_line_clamp(entry->back_slot.text_lbl, cfg,
                                 sp_order.back_row_span);
+    configure_button_label_wrap(entry->back_slot.text_lbl);
 
     // Preserve card instances (and their HA subscriptions), but hide cards
     // removed from the saved order so stale content is never left visible.
@@ -1935,6 +1990,7 @@ inline void grid_phase2(
 
     SubpageOrder sp_ord;
     parse_subpage_order(sp_order_str, NS, sp_btns.size(), sp_ord);
+    normalize_subpage_order_spans(sp_ord, NS, COLS);
 
     lv_obj_t *sub_scr = lv_obj_create(NULL);
     int display_order = NS;
@@ -1973,9 +2029,10 @@ inline void grid_phase2(
       cfg.subpage_chevron_font);
     display_apply_main_width(back_slot.icon_lbl, display);
     display_apply_slot_text_width(back_slot, display);
-    lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
-    lv_label_set_text(back_slot.text_lbl, sp_back_label.c_str());
+    lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
+    lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
+    configure_button_label_wrap(back_slot.text_lbl);
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
@@ -2036,7 +2093,10 @@ inline void grid_phase2(
       display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
-      apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);
+      // The line clamp re-anchors labels at the button content origin. Slider
+      // cards remove button padding so their fill can reach the edges, so run
+      // the card-specific refresh after clamping to restore the captured inset.
+      refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);
 
       if (espcontrol::cards::image_driver_bind_subpage(
             sub_slot, sb_cfg, context, cfg)) continue;
@@ -2152,7 +2212,12 @@ inline void grid_phase2(
   // Phase 2 can finish after the API connection callbacks have already run
   // during boot. Refresh newly bound artwork contexts here so the current
   // track image loads without waiting for the next media metadata change.
-  if (ha_api_state_connected()) refresh_image_cards();
+  if (ha_api_state_connected()) {
+    // A runtime configuration save can add new entity subscriptions after
+    // Home Assistant completed its initial subscription handshake.
+    ha_reannounce_state_subscriptions();
+    refresh_image_cards();
+  }
   refresh_weather_forecast_cards();
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
@@ -2175,8 +2240,14 @@ inline bool grid_rebuild_all(
     const std::string &order_str,
     const std::string &on_hex,
     lv_obj_t *main_page_obj) {
+  if (main_page_obj == nullptr) {
+    ESP_LOGW("navigation", "Main page is not ready");
+    return false;
+  }
   const int active_subpage_slot = navigation_active_subpage_slot();
-  if (!navigation_return_home(main_page_obj)) return false;
+  const bool grid_screen_active = grid_navigation_rebuild_should_return_home(
+      lv_scr_act() == main_page_obj, active_subpage_slot);
+  if (grid_screen_active && !navigation_return_home(main_page_obj)) return false;
   grid_phase1(slots, cfg, order_str, on_hex, main_page_obj);
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, sp_ext2_configs,
               sp_ext3_configs, sp_ext4_configs, sp_ext5_configs,

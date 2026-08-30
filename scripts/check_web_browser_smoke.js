@@ -6,9 +6,15 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { chromium } = require("playwright");
+const { loadTypeScriptModule } = require("./load_typescript_module");
 const { freshWebOutputDir } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
+const {
+  createPanelConfigBackupPayload,
+  decodePanelConfig,
+  encodePanelConfig,
+} = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
@@ -63,6 +69,13 @@ function casesFromManifest() {
 }
 
 const CASES = casesFromManifest();
+const ACTIVE_CASES = process.env.ESPCONTROL_BROWSER_PROFILE
+  ? CASES.filter((testCase) => testCase.slug === process.env.ESPCONTROL_BROWSER_PROFILE)
+  : CASES;
+assert(
+  ACTIVE_CASES.length > 0,
+  `Unknown browser profile: ${process.env.ESPCONTROL_BROWSER_PROFILE || "(none)"}`,
+);
 
 const BUTTON_FIXTURES = [
   "light.kitchen;Kitchen;Lightbulb;Lightbulb",
@@ -73,7 +86,29 @@ const BUTTON_FIXTURES = [
   "alarm_control_panel.house;Alarm;Security;Auto;;;alarm;;",
 ];
 
-function htmlFor(slug) {
+function nativeConfigState(slug) {
+  const buttons = {};
+  BUTTON_FIXTURES.forEach((value, index) => { buttons[index + 1] = value; });
+  return {
+    document: {
+      deviceProfile: slug,
+      buttons,
+      subpages: {},
+      settings: { button_order: "1,2,3w,4,5,6" },
+    },
+    generation: 1,
+    puts: [],
+    requests: [],
+  };
+}
+
+function htmlFor(slug, embeddedFallback = false) {
+  const scripts = embeddedFallback
+    ? [
+        `<script src="/webserver/embedded/www.js?device=${slug}"></script>`,
+        `<script src="/webserver/www.js?device=${slug}&v=v2.8.0"></script>`,
+      ]
+    : [`<script src="/webserver/www.js?device=${slug}"></script>`];
   return [
     "<!doctype html>",
     '<html lang="en">',
@@ -83,7 +118,7 @@ function htmlFor(slug) {
     "</head>",
     "<body>",
     "<esp-app></esp-app>",
-    `<script src="/webserver/www.js?device=${slug}"></script>`,
+    ...scripts,
     "</body>",
     "</html>",
   ].join("");
@@ -128,7 +163,11 @@ function publicFirmwareVersions(slug) {
   };
 }
 
-async function installRoutes(context, slug) {
+async function installRoutes(context, slug, options = {}) {
+  const nativeState = options.nativeState || null;
+  const offlineFallback = options.offlineFallback === true;
+  const legacyTextState = options.legacyTextState || {};
+  const truncateLegacyText = options.truncateLegacyText || "";
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   const webAssetManifestPath = path.join(WEB_OUTPUT_DIR, "web-assets.json");
   assert(
@@ -143,6 +182,101 @@ async function installRoutes(context, slug) {
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
+    const legacyTextMatch = requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname.match(/^\/text\/([^/]+)(?:\/set)?$/);
+    if (legacyTextMatch) {
+      const name = decodeURIComponent(legacyTextMatch[1]);
+      const objectId = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      if (route.request().method() === "POST") {
+        const value = requestUrl.searchParams.get("value") || "";
+        const storedValue = objectId === truncateLegacyText ? "" : value;
+        legacyTextState[name] = storedValue;
+        legacyTextState[objectId] = storedValue;
+        await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+        return;
+      }
+      if (route.request().method() === "GET") {
+        const value = Object.prototype.hasOwnProperty.call(legacyTextState, name)
+          ? legacyTextState[name]
+          : legacyTextState[objectId];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ value: value || "" }),
+        });
+        return;
+      }
+    }
+    if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
+      const suppliedGeneration = route.request().headers()["if-match"];
+      nativeState.requests.push(
+        `${route.request().method()} ${requestUrl.pathname}` +
+        (suppliedGeneration ? ` if-match=${suppliedGeneration}` : ""),
+      );
+    }
+    if (
+      nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/capabilities"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configuration: { read: true, write: true, document_versions: [1] },
+          web_assets: { versions: [1] },
+        }),
+      });
+      return;
+    }
+    if (
+      !nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/capabilities"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configuration: { read: false, write: false, document_versions: [] },
+        }),
+      });
+      return;
+    }
+    if (
+      nativeState &&
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/api/v1/config"
+    ) {
+      if (route.request().method() === "PUT") {
+        const expected = `"${nativeState.generation}"`;
+        const supplied = route.request().headers()["if-match"];
+        if (supplied !== expected) {
+          await route.fulfill({ status: 409, body: "generation conflict" });
+          return;
+        }
+        const body = route.request().postDataBuffer();
+        assert(body, `${slug}: native configuration PUT has a binary body`);
+        nativeState.document = decodePanelConfig(new Uint8Array(body));
+        nativeState.generation += 1;
+        nativeState.puts.push({
+          generation: nativeState.generation,
+          document: JSON.parse(JSON.stringify(nativeState.document)),
+        });
+        await route.fulfill({
+          status: 204,
+          headers: { ETag: `"${nativeState.generation}"` },
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/vnd.espcontrol.panel-config",
+        headers: { ETag: `"${nativeState.generation}"` },
+        body: Buffer.from(encodePanelConfig(nativeState.document)),
+      });
+      return;
+    }
     if (
       requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname === `/${slug}`
@@ -150,7 +284,7 @@ async function installRoutes(context, slug) {
       await route.fulfill({
         status: 200,
         contentType: "text/html",
-        body: htmlFor(slug),
+        body: htmlFor(slug, offlineFallback),
       });
       return;
     }
@@ -162,6 +296,17 @@ async function installRoutes(context, slug) {
         status: 200,
         contentType: "application/javascript",
         body: fs.readFileSync(scriptPath, "utf8"),
+      });
+      return;
+    }
+    if (
+      requestUrl.hostname === "espcontrol.test" &&
+      requestUrl.pathname === "/webserver/embedded/www.js"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/javascript",
+        body: fs.readFileSync(path.join(WEB_OUTPUT_DIR, "embedded", "www.js"), "utf8"),
       });
       return;
     }
@@ -180,6 +325,10 @@ async function installRoutes(context, slug) {
       requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname === `/webserver/${webAssetManifest.bundles[0].path}`
     ) {
+      if (offlineFallback) {
+        await route.abort("failed");
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/javascript",
@@ -223,10 +372,17 @@ async function installFakeEventSource(page) {
     window.__seedEspState = function (events) {
       if (!window.__eventSources.length)
         throw new Error("No EventSource instance was created");
-      var source = window.__eventSources[0];
+      var source = window.__eventSources[window.__eventSources.length - 1];
       events.forEach(function (event) {
         source.dispatch("state", { data: JSON.stringify(event) });
       });
+    };
+    window.__disconnectEsp = function () {
+      if (!window.__eventSources.length)
+        throw new Error("No EventSource instance was created");
+      var source = window.__eventSources[window.__eventSources.length - 1];
+      source.readyState = 2;
+      source.dispatch("error", {});
     };
     window.__seedEspPing = function (payload) {
       if (!window.__eventSources.length)
@@ -296,10 +452,27 @@ function seededEvents() {
     },
     { id: "select-screen__language", state: "en", value: "en", option: ["en"] },
     {
+      id: "select-home_assistant_artwork_endpoint_mode",
+      state: "Automatic",
+      value: "Automatic",
+      option: ["Automatic", "Manual"],
+    },
+    {
+      id: "text_sensor-home_assistant_artwork_endpoint_status",
+      state: "Automatic — http://192.0.2.10",
+    },
+    {
       id: "select-home_assistant_artwork_protocol",
       state: "http",
       value: "http",
       option: ["http", "https"],
+    },
+    {
+      id: "number-home_assistant_artwork_port",
+      state: "8123",
+      value: 8123,
+      min: 1,
+      max: 65535,
     },
     { id: "switch-firmware__auto_update", state: "ON", value: true },
     { id: "text_sensor-firmware__version", state: "v1.12.0" },
@@ -341,6 +514,21 @@ function seededEvents() {
   ];
   BUTTON_FIXTURES.forEach((state, index) => {
     events.push({ id: `text-button_${index + 1}_config`, state });
+  });
+  return events;
+}
+
+function nativeDocumentEvents(document) {
+  const events = seededEvents().filter((event) =>
+    event.id !== "text-button_order" &&
+    !/^text-button_\d+_config$/.test(event.id),
+  );
+  events.push({
+    id: "text-button_order",
+    state: document.settings.button_order || "",
+  });
+  Object.entries(document.buttons).forEach(([slot, state]) => {
+    events.push({ id: `text-button_${slot}_config`, state });
   });
   return events;
 }
@@ -1490,11 +1678,50 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     "8123",
     `${label}: Home Assistant port field should default to 8123`,
   );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-endpoint-mode").inputValue(),
+    "Automatic",
+    `${label}: Home Assistant artwork endpoint should default to Automatic`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-ha-artwork-endpoint-status").textContent(),
+    "Automatic — http://192.0.2.10",
+    `${label}: Home Assistant artwork endpoint status should render`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isDisabled(),
+    `${label}: Home Assistant protocol should be disabled in Automatic mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isDisabled(),
+    `${label}: Home Assistant port should be disabled in Automatic mode`,
+  );
+  const endpointModePostsBefore = posts.length;
+  await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-endpoint-mode").selectOption("Manual");
+  await waitForPost(
+    posts,
+    { domain: "select", name: "home_assistant_artwork_endpoint_mode", action: "set", option: "Manual" },
+    `${label}: Home Assistant artwork endpoint mode post`,
+    endpointModePostsBefore,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-protocol").isEnabled(),
+    `${label}: Home Assistant protocol should be editable in Manual mode`,
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isEnabled(),
+    `${label}: Home Assistant port should be editable in Manual mode`,
+  );
   assert(
     (await homeAssistantSettingsCard
       .locator("#sp-set-ha-artwork-port.sp-input--no-stepper")
       .count()) === 1,
     `${label}: Home Assistant port field should hide browser stepper controls`,
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-base-url").count(),
+    0,
+    `${label}: unsupported artwork base URL field should not render`,
   );
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -2208,6 +2435,66 @@ async function assertEmptyCellSettings(page, posts, label) {
   );
 }
 
+async function assertNewMediaCardDefaults(page, posts, label) {
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  if ((await emptyCell.count()) === 0) return;
+
+  const before = posts.length;
+  const pos = await emptyCell.getAttribute("data-pos");
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Media card type" }).click();
+  await page.locator("#sp-inp-media-mode").waitFor({ state: "visible" });
+
+  assert.strictEqual(
+    await page.locator("#sp-inp-media-mode").inputValue(),
+    "cover_art",
+    `${label}: a new Media card should default to Cover Art`,
+  );
+  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Play/Pause",
+    `${label}: leaving Cover Art should refresh the generated label`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+
+  await page.locator(`.sp-main [data-pos="${pos}"].sp-empty-cell`).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Action card type" }).click();
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator(".sp-disclosure-button")
+    .click();
+  await page.locator("#sp-inp-label").fill("Custom media label");
+  await page.locator("#sp-inp-type").selectOption("media");
+  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Custom media label",
+    `${label}: changing a labelled card to Media preserves its custom label`,
+  );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: checking new Media card defaults should not post a card`,
+  );
+}
+
 async function assertAllCardSettingsGrouped(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -2305,6 +2592,14 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       );
     }
 
+    if (cardOption.value === "weather") {
+      assert.strictEqual(
+        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+        0,
+        `${label}: Weather current conditions should not show empty Card Settings`,
+      );
+    }
+
     const typeSelect = page.locator(
       '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
     );
@@ -2324,6 +2619,13 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       for (const typeValue of typeOptions) {
         await typeSelect.selectOption(typeValue);
         await assertGrouped(`${cardOption.label} / ${typeValue || "default"}`);
+        if (cardOption.value === "weather" && typeValue) {
+          assert.strictEqual(
+            await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
+            1,
+            `${label}: Weather forecasts should group their extra settings`,
+          );
+        }
       }
     }
 
@@ -2656,14 +2958,23 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
   assert.strictEqual(await page.locator("#sp-inp-media-mode").inputValue(), "cover_art", `${label}: existing Cover Art card should retain its subtype`);
   assert.strictEqual(await page.locator("#sp-inp-entity").inputValue(), "media_player.living", `${label}: existing Cover Art card should retain its entity`);
   assert.deepStrictEqual(
-    await page.locator("#sp-inp-media-mode option").evaluateAll((options) => options.slice(0, 2).map((option) => option.value)),
-    ["control_modal", "cover_art"],
-    `${label}: Media Type should start with All Controls followed by Cover Art`,
+    await page.locator("#sp-inp-media-mode option").evaluateAll((options) => options.slice(0, 3).map((option) => option.value)),
+    ["control_modal", "cover_art", "playlist"],
+    `${label}: Media Type should place Track, Album or Playlist below Cover Art`,
   );
   assert.strictEqual(
     await page.locator("#sp-inp-media-mode").locator('option[value="cover_art"]').textContent(),
     "Cover Art",
     `${label}: Media should offer Cover Art in its Type selector`,
+  );
+  assert.deepStrictEqual(
+    await page
+      .locator("#sp-inp-media-mode option")
+      .evaluateAll((options) => options
+        .filter((option) => ["play_pause", "previous", "next", "volume"].includes(option.value))
+        .map((option) => option.textContent)),
+    ["Play/Pause", "Previous", "Next", "Volume"],
+    `${label}: Media action types should use their concise names`,
   );
 
   const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({
@@ -2672,10 +2983,15 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
   const externalSources = page.locator(".sp-settings-modal .sp-disclosure").filter({
     has: page.locator("#sp-inp-media-cover-art-secondary-player"),
   });
+  const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-advanced"),
+  });
   assert(await cardSettings.isVisible(), `${label}: Cover Art card settings panel should render`);
   assert(await externalSources.isVisible(), `${label}: Cover Art external sources panel should render`);
+  assert(await advanced.isVisible(), `${label}: Cover Art advanced settings panel should render`);
   assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: Cover Art card settings should start collapsed`);
   assert(!(await externalSources.getAttribute("class")).includes("sp-open"), `${label}: Cover Art external sources should start collapsed`);
+  assert(!(await advanced.getAttribute("class")).includes("sp-open"), `${label}: Cover Art advanced settings should start collapsed`);
   assert(
     await externalSources.getByText("External Sources", { exact: true }).isVisible(),
     `${label}: Cover Art external sources panel should use the shared title`,
@@ -2700,12 +3016,20 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
     1,
     `${label}: Cover Art secondary entity should be inside External Sources`,
   );
+  await advanced.locator("> .sp-disclosure-button").click();
+  assert(await page.locator("#sp-inp-volume-max").isVisible(), `${label}: Cover Art Advanced should reveal maximum volume`);
+  assert(await page.locator("#sp-inp-speaker-group-entity").isVisible(), `${label}: Cover Art Advanced should reveal speaker discovery`);
 
   await cardSettings.locator("> .sp-disclosure-button").click();
   assert(await page.locator("#sp-inp-media-cover-art-details").isChecked(), `${label}: existing Cover Art details setting should be retained`);
   assert(
     await cardSettings.getByText("Show Track Details", { exact: true }).isVisible(),
     `${label}: Cover Art Card Settings should reveal Show Track Details`,
+  );
+  assert.strictEqual(
+    await cardSettings.locator("> .sp-disclosure-body").evaluate((el) => getComputedStyle(el).padding),
+    "14px",
+    `${label}: Cover Art Card Settings should keep compact spacing around its single toggle`,
   );
   await externalSources.locator("> .sp-disclosure-button").click();
   const info = externalSources.locator("#sp-inp-media-cover-art-secondary-player-info");
@@ -2874,6 +3198,17 @@ async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   await page.locator('.sp-main [data-slot="4"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.locator("#sp-inp-media-mode").selectOption("control_modal");
+  const advanced = page.locator(".sp-settings-modal .sp-disclosure").filter({
+    has: page.locator("#sp-inp-media-advanced"),
+  });
+  assert(await advanced.isVisible(), `${label}: All Controls advanced settings should render`);
+  assert(!(await advanced.getAttribute("class")).includes("sp-open"), `${label}: All Controls advanced settings should start collapsed`);
+  assert.strictEqual(await page.locator("#sp-inp-volume-max").isVisible(), false, `${label}: maximum volume should start hidden under Advanced`);
+  assert.strictEqual(await page.locator("#sp-inp-speaker-group-entity").isVisible(), false, `${label}: speaker discovery should start hidden under Advanced`);
+  await advanced.locator("> .sp-disclosure-button").click();
+  assert(await page.locator("#sp-inp-volume-max").isVisible(), `${label}: Advanced should reveal maximum volume`);
+  assert(await page.locator("#sp-inp-speaker-group-entity").isVisible(), `${label}: Advanced should reveal speaker discovery`);
   await page.locator("#sp-inp-media-mode").selectOption("next");
   await page
     .locator(".sp-settings-modal .sp-disclosure")
@@ -3313,6 +3648,15 @@ async function assertBackupImportSmoke(page, posts, testCase) {
         value: "9443",
       },
       "backup Home Assistant artwork port import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "home_assistant_artwork_endpoint_mode",
+        action: "set",
+        option: "Manual",
+      },
+      "backup Home Assistant artwork endpoint mode import",
     ],
     [
       {
@@ -4545,6 +4889,380 @@ async function assertNightScheduleSensorControls(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
 }
 
+function panelConfigLabel(document, slot) {
+  return String(document.buttons[slot] || "").split(";")[1] || "";
+}
+
+async function waitForNativeState(nativeState, predicate, label, timeoutMs = 10000) {
+  const deadline = Date.now() + timeoutMs;
+  let stableSince = 0;
+  let stablePutCount = -1;
+  while (Date.now() < deadline) {
+    const putCount = nativeState.puts.length;
+    if (predicate()) {
+      if (stablePutCount !== putCount) {
+        stablePutCount = putCount;
+        stableSince = Date.now();
+      } else if (Date.now() - stableSince >= 250) {
+        return;
+      }
+    } else {
+      stableSince = 0;
+      stablePutCount = -1;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.fail(`${label}: native state did not settle (${nativeState.requests.join(", ")})`);
+}
+
+async function seedNativeDocument(page, nativeState) {
+  await page.evaluate(
+    (events) => window.__seedEspState(events),
+    nativeDocumentEvents(nativeState.document),
+  );
+  await page.waitForSelector('.sp-main [data-slot="2"]');
+}
+
+async function assertNativeProfileJourney(browser, testCase) {
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+
+    const sensor = page.locator('.sp-main [data-slot="2"]');
+    assert(
+      (await sensor.textContent()).includes("Energy"),
+      `${testCase.name}: sensor preview renders before editing`,
+    );
+    await sensor.click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    const cardSettings = page
+      .locator(".sp-settings-modal .sp-disclosure")
+      .filter({ hasText: "Card Settings" })
+      .first();
+    if (!(await page.locator("#sp-inp-label").isVisible())) {
+      await cardSettings.locator(".sp-disclosure-button").click();
+    }
+    const editedLabel = `Accepted ${testCase.slug}`;
+    await page.locator("#sp-inp-label").fill(editedLabel);
+    const beforeSave = nativeState.puts.length;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(
+      (label) => document.querySelector('.sp-main [data-slot="2"]')?.textContent?.includes(label),
+      editedLabel,
+    );
+    await waitForNativeState(
+      nativeState,
+      () => nativeState.puts.length > beforeSave &&
+        panelConfigLabel(nativeState.document, 2) === editedLabel,
+      `${testCase.name}: native sensor save`,
+    );
+    assert.strictEqual(
+      panelConfigLabel(nativeState.document, 2),
+      editedLabel,
+      `${testCase.name}: sensor edit saves through native PanelConfig ` +
+        `(PUT labels: ${nativeState.puts.map((put) => panelConfigLabel(put.document, 2)).join(" -> ")})`,
+    );
+
+    const sourceCount = await page.evaluate(() => window.__eventSources.length);
+    await page.evaluate(() => window.__disconnectEsp());
+    await page.waitForFunction(
+      (count) => window.__eventSources.length > count,
+      sourceCount,
+      { timeout: 7000 },
+    );
+    await seedNativeDocument(page, nativeState);
+    assert(
+      (await page.locator('.sp-main [data-slot="2"]').textContent()).includes(editedLabel),
+      `${testCase.name}: reconnect reloads the saved sensor card`,
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+    assert(
+      (await page.locator('.sp-main [data-slot="2"]').textContent()).includes(editedLabel),
+      `${testCase.name}: reload retains the native sensor edit`,
+    );
+
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    assert(downloadPath, `${testCase.name}: backup export creates a file`);
+    const backup = JSON.parse(fs.readFileSync(downloadPath, "utf8"));
+    assert.strictEqual(backup.version, 2, `${testCase.name}: backup export uses v2`);
+    assert.strictEqual(
+      backup.native_config.device_profile,
+      testCase.slug,
+      `${testCase.name}: backup includes the native device profile`,
+    );
+
+    const restoredLabel = `Restored ${testCase.slug}`;
+    const restoredDocument = JSON.parse(JSON.stringify(nativeState.document));
+    const restoredFields = restoredDocument.buttons[2].split(";");
+    restoredFields[1] = restoredLabel;
+    restoredDocument.buttons[2] = restoredFields.join(";");
+    restoredDocument.settings.future_native_setting = `native-${testCase.slug}`;
+    backup.buttons[1].label = `Readable ${testCase.slug}`;
+    backup.native_config = createPanelConfigBackupPayload(
+      encodePanelConfig(restoredDocument),
+    );
+    const beforeRestore = nativeState.puts.length;
+    await importBackup(page, backup, `native-restore-${testCase.slug}`);
+    await page.waitForSelector(".sp-banner.sp-success", { timeout: 10000 });
+    await waitForNativeState(
+      nativeState,
+      () => nativeState.puts.length > beforeRestore &&
+        panelConfigLabel(nativeState.document, 2) === restoredLabel,
+      `${testCase.name}: native backup restore`,
+    );
+    assert.strictEqual(
+      panelConfigLabel(nativeState.document, 2),
+      restoredLabel,
+      `${testCase.name}: backup restore writes the native document`,
+    );
+    assert.strictEqual(
+      nativeState.document.settings.future_native_setting,
+      `native-${testCase.slug}`,
+      `${testCase.name}: backup restore retains native-only settings`,
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+    assert(
+      (await page.locator('.sp-main [data-slot="2"]').textContent()).includes(restoredLabel),
+      `${testCase.name}: restored backup survives a reload`,
+    );
+    assert.deepStrictEqual(errors, [], `${testCase.name}: native journey has no browser errors`);
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertLegacyProfileFallback(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug);
+  const page = await context.newPage();
+  const posts = [];
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (request.method() === "POST" && requestUrl.hostname === "espcontrol.test") {
+      posts.push(postRecord(request.url()));
+    }
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await page.evaluate((events) => window.__seedEspState(events), seededEvents());
+    await page.waitForSelector('.sp-main [data-slot="2"]');
+    await page.locator('.sp-main [data-slot="2"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    const cardSettings = page
+      .locator(".sp-settings-modal .sp-disclosure")
+      .filter({ hasText: "Card Settings" })
+      .first();
+    if (!(await page.locator("#sp-inp-label").isVisible())) {
+      await cardSettings.locator(".sp-disclosure-button").click();
+    }
+    await page.locator("#sp-inp-label").fill(`Legacy ${testCase.slug}`);
+    const before = posts.length;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForAnyPost(
+      posts,
+      [
+        { domain: "text", name: "button_2_config", action: "set" },
+        { domain: "text", name: "Button 2 Config", action: "set" },
+      ],
+      `${testCase.name}: unsupported native API falls back to legacy save`,
+      before,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertLegacyRestoreVerificationFailure(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { truncateLegacyText: "button_16_config" });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources && window.__eventSources.length > 0);
+    await page.evaluate((events) => window.__seedEspState(events), seededEvents());
+    await importBackup(page, backupFixture(testCase.slug, testCase.slots), "truncated-legacy-backup");
+    await page.waitForSelector(".sp-banner.sp-error", { timeout: 30000 });
+    const message = await page.locator(".sp-banner").textContent();
+    assert(message.includes("Button 16 Config"), "legacy verification identifies a truncated slot");
+    assert(!message.includes("successfully"), "legacy verification failure suppresses import success");
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertOfflineProfileFallback(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { offlineFallback: true });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app", { timeout: 5000 });
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await page.evaluate((events) => window.__seedEspState(events), seededEvents());
+    await page.waitForSelector(".sp-main > .sp-btn");
+    assert.strictEqual(
+      await page.evaluate(() => globalThis.__ESPCONTROL_USING_EMBEDDED__),
+      true,
+      `${testCase.name}: failed remote bundle starts the embedded editor`,
+    );
+    assert.deepStrictEqual(
+      errors,
+      [],
+      `${testCase.name}: embedded offline fallback has no browser errors`,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertMediaCoverArtCompactPreview(page, label) {
+  const layout = await page.evaluate(() => {
+    const card = document.querySelector('.sp-main [data-slot="4"]');
+    const artist = card.querySelector(".sp-media-now-artist");
+    const standardLabel = document.querySelector('.sp-main [data-slot="1"] .sp-btn-label');
+    const artistStyle = getComputedStyle(artist);
+    const standardStyle = getComputedStyle(standardLabel);
+    const largeCard = card.cloneNode(true);
+    largeCard.classList.remove("sp-media-cover-details-single");
+    largeCard.classList.add("sp-btn-big");
+    largeCard.style.cssText = "position:fixed;left:-1000px;top:0;width:400px;height:400px";
+    document.body.appendChild(largeCard);
+    const largeTitleRect = largeCard.querySelector(".sp-media-cover-details-title").getBoundingClientRect();
+    const largeArtistRow = largeCard.querySelector(".sp-media-cover-details-row");
+    const largeArtistRect = largeArtistRow.querySelector(".sp-media-now-artist").getBoundingClientRect();
+    const largeArtistMarginTop = parseFloat(getComputedStyle(largeArtistRow).marginTop);
+    const extraLargeCard = card.cloneNode(true);
+    extraLargeCard.classList.remove("sp-media-cover-details-single");
+    extraLargeCard.classList.add("sp-btn-extra-large");
+    extraLargeCard.style.cssText = "position:fixed;left:-1000px;top:0;width:600px;height:600px";
+    document.body.appendChild(extraLargeCard);
+    const extraLargeTitleLineClamp = getComputedStyle(
+      extraLargeCard.querySelector(".sp-media-cover-details-title"),
+    ).webkitLineClamp;
+    const extraLargeArtistFontWeight = getComputedStyle(
+      extraLargeCard.querySelector(".sp-media-now-artist"),
+    ).fontWeight;
+    const result = {
+      compactClass: card.classList.contains("sp-media-cover-details-single"),
+      whiteSpace: artistStyle.whiteSpace,
+      textOverflow: artistStyle.textOverflow,
+      fontFamily: artistStyle.fontFamily,
+      fontSize: artistStyle.fontSize,
+      fontWeight: artistStyle.fontWeight,
+      standardFontFamily: standardStyle.fontFamily,
+      standardFontSize: standardStyle.fontSize,
+      standardFontWeight: standardStyle.fontWeight,
+      hasTypeBadge: Boolean(card.querySelector(".sp-type-badge")),
+      largeArtistMarginTop,
+      largeTitleArtistGap: largeArtistRect.top - largeTitleRect.bottom,
+      extraLargeTitleLineClamp,
+      extraLargeArtistFontWeight,
+    };
+    largeCard.remove();
+    extraLargeCard.remove();
+    return result;
+  });
+
+  assert(layout.compactClass, `${label}: 1x1 Cover Art details preview uses its compact layout`);
+  assert.strictEqual(layout.whiteSpace, "nowrap", `${label}: 1x1 Cover Art artist stays on one line`);
+  assert.strictEqual(layout.textOverflow, "ellipsis", `${label}: long 1x1 Cover Art artists truncate cleanly`);
+  assert.strictEqual(layout.fontFamily, layout.standardFontFamily, `${label}: Cover Art artist uses the card-label font`);
+  assert.strictEqual(layout.fontSize, layout.standardFontSize, `${label}: Cover Art artist uses the card-label size`);
+  assert.strictEqual(layout.fontWeight, layout.standardFontWeight, `${label}: Cover Art artist uses the card-label weight`);
+  assert.strictEqual(layout.hasTypeBadge, false, `${label}: 1x1 Cover Art omits the card-type icon`);
+  assert(layout.largeArtistMarginTop > 0, `${label}: 2x2 Cover Art artist has extra top spacing`);
+  assert(layout.largeTitleArtistGap >= layout.largeArtistMarginTop - 1, `${label}: 2x2 Cover Art title and artist remain separated`);
+  assert.strictEqual(layout.extraLargeTitleLineClamp, "5", `${label}: 3x3 Cover Art title is limited to five lines`);
+  assert.strictEqual(layout.extraLargeArtistFontWeight, "300", `${label}: 3x3 Cover Art artist uses a light font weight`);
+}
+
+async function assertCardIconsTopLeft(page, label) {
+  const icons = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(
+      ".sp-main > .sp-btn .sp-btn-icon, .sp-main > .sp-btn .sp-image-preview-icon",
+    )).map((icon) => {
+      const card = icon.closest(".sp-btn");
+      const cardRect = card.getBoundingClientRect();
+      const iconRect = icon.getBoundingClientRect();
+      const iconStyle = getComputedStyle(icon);
+      const sliderPreview = card.querySelector(".sp-slider-preview");
+      return {
+        visible: iconRect.width > 0 && iconRect.height > 0,
+        leftGap: iconRect.left - cardRect.left,
+        topGap: iconRect.top - cardRect.top,
+        leftInset: parseFloat(iconStyle.left) || 0,
+        topInset: parseFloat(iconStyle.top) || 0,
+        iconZIndex: parseInt(iconStyle.zIndex, 10) || 0,
+        sliderZIndex: sliderPreview
+          ? (parseInt(getComputedStyle(sliderPreview).zIndex, 10) || 0)
+          : null,
+      };
+    }).filter((measurement) => measurement.visible),
+  );
+  assert(icons.length > 0, `${label}: preview contains visible card icons`);
+  for (const icon of icons) {
+    assert(
+      Math.abs(icon.leftGap - icon.leftInset) <= 3,
+      `${label}: card icon is inset from the left edge by the shared card padding (${JSON.stringify(icon)})`,
+    );
+    assert(
+      Math.abs(icon.topGap - icon.topInset) <= 3,
+      `${label}: card icon is inset from the top edge by the shared card padding (${JSON.stringify(icon)})`,
+    );
+    if (icon.sliderZIndex !== null) {
+      assert(
+        icon.iconZIndex > icon.sliderZIndex,
+        `${label}: slider card icon stays above its fill overlay (${JSON.stringify(icon)})`,
+      );
+    }
+  }
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -4601,11 +5319,30 @@ async function runCase(browser, testCase) {
       [],
       `${testCase.name}: the editor should not need third-party CDN assets`,
     );
+    const iconStyle = await page.evaluate(() => {
+      const style = document.getElementById("espcontrol-local-web-assets");
+      return style ? style.textContent || "" : "";
+    });
+    assert(
+      iconStyle.includes(".mdi-cog::before{content:'\\F0493'}"),
+      `${testCase.name}: the local icon stylesheet should use a CSS codepoint escape`,
+    );
+    assert(
+      iconStyle.includes("@font-face{font-family:'Inter'"),
+      `${testCase.name}: the local stylesheet should embed the interface font`,
+    );
+    assert.strictEqual(
+      await page.locator(".sp-support-link").textContent(),
+      "Buy me a coffee",
+      `${testCase.name}: the support button should retain its recognised label`,
+    );
     assertNoLayoutBreaks(
       await measureCoreLayout(page),
       testCase.name,
       testCase,
     );
+    await assertCardIconsTopLeft(page, testCase.name);
+    await assertMediaCoverArtCompactPreview(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
@@ -4628,6 +5365,7 @@ async function runCase(browser, testCase) {
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);
+    await assertNewMediaCardDefaults(page, posts, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);
@@ -4656,18 +5394,25 @@ async function runCase(browser, testCase) {
 
 (async function main() {
   const browser = await chromium.launch();
+  const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
-    await assertPageTitleEvents(browser);
-    await assertRotationStartupOrdering(browser);
-    for (const testCase of CASES) {
-      await runCase(browser, testCase);
-      await assertMobileDeviceViewport(browser, testCase);
+    if (!acceptanceOnly) {
+      await assertPageTitleEvents(browser);
+      await assertRotationStartupOrdering(browser);
+    }
+    for (const testCase of ACTIVE_CASES) {
+      if (!acceptanceOnly) await runCase(browser, testCase);
+      await assertNativeProfileJourney(browser, testCase);
+      await assertLegacyProfileFallback(browser, testCase);
+      if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);
+      await assertOfflineProfileFallback(browser, testCase);
+      if (!acceptanceOnly) await assertMobileDeviceViewport(browser, testCase);
     }
   } finally {
     await browser.close();
   }
   console.log(
-    `Browser web smoke checks passed for ${CASES.length} generated layouts.`,
+    `Browser web smoke checks passed for ${ACTIVE_CASES.length} generated layouts.`,
   );
 })().catch((error) => {
   console.error(error && error.stack ? error.stack : error);

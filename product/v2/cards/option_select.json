@@ -1,0 +1,10 @@
+{
+  "label": "Option Select",
+  "allowInSubpage": true,
+  "hidden": true,
+  "domains": ["select", "input_select"],
+  "default": {
+    "entity": "", "label": "", "icon": "Flash", "icon_on": "Auto",
+    "sensor": "input_select.select_option", "unit": "", "type": "action", "precision": "", "options": ""
+  }
+}

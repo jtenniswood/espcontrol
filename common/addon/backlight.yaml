@@ -330,23 +330,35 @@ script:
             - script.execute: hide_clock_view
           else:
             - script.execute: hide_clock_view
-            - delay: 100ms
-            - lambda: |-
-                if (!id(espcontrol_app).display().transition_is_current(
-                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
-                  id(display_mode_effect_active).stop();
-                }
+            # The cover-art overlay is already hidden before this effect runs.
+            # Do not hold the controls screen for the clock-screen settling
+            # delay: the large artwork has just triggered a full redraw and a
+            # direct hand-off makes the dismissal feel substantially quicker.
+            - if:
+                condition:
+                  lambda: 'return previous_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - delay: 100ms
+                  - lambda: |-
+                      if (!id(espcontrol_app).display().transition_is_current(
+                            static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
+                        id(display_mode_effect_active).stop();
+                      }
             - if:
                 condition:
                   lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
                 then:
                   - script.execute: navigate_after_api
-            - delay: 50ms
-            - lambda: |-
-                if (!id(espcontrol_app).display().transition_is_current(
-                      static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
-                  id(display_mode_effect_active).stop();
-                }
+            - if:
+                condition:
+                  lambda: 'return previous_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - delay: 50ms
+                  - lambda: |-
+                      if (!id(espcontrol_app).display().transition_is_current(
+                            static_cast<uint32_t>(generation), espcontrol::DisplayMode::ACTIVE)) {
+                        id(display_mode_effect_active).stop();
+                      }
             - script.execute: clock_bar_apply
             - script.execute: backlight_apply_brightness
 
@@ -385,10 +397,15 @@ script:
           };
 
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          const bool connectivity_setup = id(connectivity_setup_display_active);
-          const bool waiting_for_time = !connectivity_setup && screen_schedule_waiting_for_time(
+          const bool setup_page_active =
+              lv_scr_act() == id(ha_setup_page)->obj ||
+              lv_scr_act() == id(ha_actions_page)->obj ||
+              lv_scr_act() == id(button_setup_page)->obj;
+          const bool onboarding = id(connectivity_setup_display_active) ||
+                                  (id(button_order).state.empty() && setup_page_active);
+          const bool waiting_for_time = !onboarding && screen_schedule_waiting_for_time(
               id(screen_schedule_trigger).state, id(schedule_enabled).state, now.is_valid());
-          const bool schedule_night = !connectivity_setup && screen_schedule_night_active(
+          const bool schedule_night = !onboarding && screen_schedule_night_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
               id(schedule_presence_detected),
@@ -409,6 +426,11 @@ script:
             controller.clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           }
 
+          set_request(espcontrol::DisplayRequestSource::ONBOARDING, onboarding,
+                      espcontrol::DisplayMode::ACTIVE);
+          if (onboarding) {
+            controller.clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
+          }
           set_request(espcontrol::DisplayRequestSource::BOOT_GUARD, waiting_for_time,
                       espcontrol::DisplayMode::DISPLAY_OFF);
           set_request(espcontrol::DisplayRequestSource::USER_WAKE,
@@ -911,15 +933,19 @@ script:
 
   # Home Assistant exposes the physical backlight as a light entity. Treat an
   # OFF command as persistent manual sleep whenever another visible display
-  # mode is active. Internal automatic and scheduled OFF transitions already
-  # target DISPLAY_OFF, so they must not create a manual-sleep request.
+  # mode is active. Ignore restored OFF state during component setup: it is not
+  # a user command and can otherwise put the controller into MANUAL_SLEEP while
+  # the boot sequence turns the physical backlight back on. Internal automatic
+  # and scheduled OFF transitions already target DISPLAY_OFF, so they must not
+  # create a manual-sleep request.
   - id: display_backlight_handle_off
     mode: restart
     then:
       - if:
           condition:
             lambda: |-
-              return !id(espcontrol_app).display().target_mode_is(
+              return App.is_setup_complete() &&
+                     !id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::DISPLAY_OFF);
           then:
             - script.execute: screen_schedule_manual_sleep
@@ -950,22 +976,28 @@ script:
     mode: restart
     then:
       - script.execute: display_mode_clear_setup_dimmed
-      - delay: 120s
       - if:
           condition:
             lambda: |-
-              return (id(espcontrol_app).display().target_source_is(
-                          espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
-                      id(espcontrol_app).display().target_mode_is(
-                          espcontrol::DisplayMode::DISPLAY_OFF)) ||
-                     screen_schedule_waiting_for_time(
-                       id(screen_schedule_trigger).state,
-                       id(schedule_enabled).state,
-                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+              return !id(connectivity_setup_display_active) &&
+                     !id(button_order).state.empty();
           then:
-            - script.execute: display_mode_reconcile
-          else:
-            - script.execute: display_mode_request_setup_dimmed
+            - delay: 120s
+            - if:
+                condition:
+                  lambda: |-
+                    return (id(espcontrol_app).display().target_source_is(
+                                espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                            id(espcontrol_app).display().target_mode_is(
+                                espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                           screen_schedule_waiting_for_time(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+                then:
+                  - script.execute: display_mode_reconcile
+                else:
+                  - script.execute: display_mode_request_setup_dimmed
 
   # Home screen return timer (restartable)
   - id: home_screen_idle_check
@@ -975,14 +1007,18 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              return !std::isnan(val) && val > 0;
+              return !id(connectivity_setup_display_active) &&
+                     !id(button_order).state.empty() &&
+                     !std::isnan(val) && val > 0;
           then:
             - delay: !lambda |-
                 float val = id(home_screen_timeout).state;
                 if (std::isnan(val) || val <= 0) val = 60;
                 return (int)(val * 1000);
             - lambda: |-
-                if (!alarm_display_takeover_active()) {
+                if (!id(connectivity_setup_display_active) &&
+                    !id(button_order).state.empty() &&
+                    !alarm_display_takeover_active()) {
                   navigation_return_home(id(main_page)->obj);
                 }
 
@@ -993,7 +1029,9 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              if (std::isnan(val) || val <= 0) return false;
+              if (id(connectivity_setup_display_active) ||
+                  id(button_order).state.empty() ||
+                  std::isnan(val) || val <= 0) return false;
               return lv_disp_get_inactive_time(NULL) >= (uint32_t)(val * 1000);
           then:
             - lambda: |-
@@ -1247,8 +1285,6 @@ script:
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED);
           then:
             - lvgl.resume:
-            - script.execute: clock_bar_hide
-            - script.wait: clock_bar_hide
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
                       static_cast<uint32_t>(generation), espcontrol::DisplayMode::DIMMED)) {
@@ -1258,6 +1294,7 @@ script:
             - lambda: 'refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));'
             - lvgl.widget.show: dim_screensaver_touch_guard
             - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'
+            - script.execute: clock_bar_apply
             - script.execute:
                 id: backlight_note_internal_brightness
                 brightness: !lambda 'return id(screensaver_dimmed_target_level);'

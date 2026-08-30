@@ -9,7 +9,7 @@ const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const INVENTORY_PATH = path.join(ROOT, "common", "config", "card_runtime_inventory.json");
-const CONTRACT_PATH = path.join(ROOT, "common", "config", "card_contract.json");
+const CONTRACT_PATH = path.join(ROOT, "product", "v2", "card_contract.json");
 const NORMALIZATION_PATH = path.join(ROOT, "common", "config", "card_runtime_baseline_card_normalization_fixtures.json");
 const SURFACE_PATH = path.join(ROOT, "compatibility", "fixtures", "card_runtime_surface_baseline.json");
 const REPORT_PATH = path.join(ROOT, "docs", "generated", "cards", "runtime-coverage.md");
@@ -60,11 +60,11 @@ function webRegistrationTypes() {
   const types = new Set();
   for (const name of fs.readdirSync(cardsDir).filter((item) => item.endsWith(".ts"))) {
     const source = fs.readFileSync(path.join(cardsDir, name), "utf8");
-    for (const match of source.matchAll(/registerButtonType\(\s*(["'])(.*?)\1\s*,/g)) {
+    for (const match of source.matchAll(/registry\.register\(\s*(["'])(.*?)\1\s*,/g)) {
       types.add(match[2]);
     }
-    if (source.includes("registerCoverLikeCardType(")) {
-      for (const match of source.matchAll(/registerCoverLikeCardType\(\s*\{[\s\S]*?\btype:\s*(["'])(.*?)\1/g)) {
+    if (source.includes("registerCard(")) {
+      for (const match of source.matchAll(/registerCard\(\s*\{[\s\S]*?\btype:\s*(["'])(.*?)\1/g)) {
         types.add(match[2]);
       }
     }

@@ -227,11 +227,34 @@ inline void media_driver_bind_cover_art_route(
     const bool secondary_configured =
       !now_playing->secondary_entity.empty() &&
       now_playing->secondary_entity != now_playing->primary_entity;
+    const bool secondary_playback_active =
+      secondary_state && secondary_state->has_state &&
+      secondary_state->available &&
+      espcontrol::cover_art::media_entity_state_usable(
+        secondary_state->state_text);
+    const bool secondary_has_content =
+      media_playback_has_current_content(secondary_state);
     const bool use_secondary = espcontrol::cover_art::use_secondary_media_entity(
       primary_state && primary_state->external_source,
       secondary_configured,
-      secondary_state && secondary_state->available,
-      media_playback_has_current_content(secondary_state));
+      secondary_playback_active,
+      secondary_has_content);
+    if (primary_state && primary_state->external_source) {
+      ESP_LOGD(
+        "media_card",
+        "Secondary route entity=%s configured=%d state=%s active=%d content=%d title=%d artist=%d artwork=%u selected=%d",
+        now_playing->secondary_entity.empty()
+          ? "<none>" : now_playing->secondary_entity.c_str(),
+        secondary_configured,
+        secondary_state && secondary_state->has_state
+          ? secondary_state->state_text.c_str() : "<unknown>",
+        secondary_playback_active,
+        secondary_has_content,
+        secondary_state && !secondary_state->title.empty(),
+        secondary_state && !secondary_state->artist.empty(),
+        secondary_state ? static_cast<unsigned>(secondary_state->artwork_content_mask) : 0u,
+        use_secondary);
+    }
     const bool external_source_fallback =
       primary_state && primary_state->external_source && !use_secondary;
     const std::string next_entity = use_secondary
@@ -267,7 +290,7 @@ inline void media_driver_bind_cover_art_route(
         art->entity_id.clear();
       } else {
         art->entity_id = next_entity;
-        image_card_request_media_artwork(art);
+        image_card_schedule_media_artwork_refresh(art);
       }
     }
 

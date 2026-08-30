@@ -19,7 +19,7 @@ from device_profiles import (
     slot_devices as load_slot_devices,
     validate_manifest_data,
 )
-from product_model_v2 import source_path
+from product_model_v2 import load_product_model_v2, source_path
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -90,6 +90,8 @@ def path_error(path: str, message: str) -> str:
 
 
 def load_card_contract(path: Path = CARD_CONTRACT_JSON) -> dict[str, Any]:
+    if path.resolve() == CARD_CONTRACT_JSON.resolve():
+        return load_product_model_v2().card_contract_data()
     data = load_json(path)
     if not isinstance(data, dict):
         raise ProductSchemaError(f"{rel(path)} must contain a JSON object")

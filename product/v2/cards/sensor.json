@@ -1,0 +1,247 @@
+{
+  "label": "Sensor",
+  "allowInSubpage": true,
+  "domains": [
+    "sensor",
+    "binary_sensor",
+    "text_sensor"
+  ],
+  "options": [
+    {
+      "name": "large_numbers",
+      "label": "Large Sensor Numbers",
+      "kind": "flag",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "in",
+          "value": [
+            "icon",
+            "text",
+            "time"
+          ],
+          "negate": true
+        }
+      ],
+      "supportedWhen": {
+        "precisionNot": [
+          "icon",
+          "text",
+          "time"
+        ]
+      }
+    },
+    {
+      "name": "time_unit",
+      "label": "Incoming Value Unit",
+      "kind": "choice",
+      "values": [
+        "",
+        "seconds",
+        "minutes",
+        "hours",
+        "days"
+      ],
+      "defaultValue": "",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "time"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "time"
+        ]
+      }
+    },
+    {
+      "name": "active_color",
+      "label": "Lit When Active",
+      "kind": "flag",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "in",
+          "value": [
+            "time"
+          ],
+          "negate": true
+        }
+      ],
+      "supportedWhen": {
+        "precisionNot": [
+          "time"
+        ]
+      }
+    },
+    {
+      "name": "state_labels",
+      "label": "Status Translation",
+      "kind": "flag",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "text"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "state_input",
+      "label": "Input Status",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "text"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "state_output",
+      "label": "Display Text",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "text"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "state_input_2",
+      "label": "Input Status 2",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "text"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "state_output_2",
+      "label": "Display Text 2",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "text"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "text"
+        ]
+      }
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "keep"
+      },
+      "icon": {
+        "policy": "hook",
+        "hook": "normalize_sensor_fields"
+      },
+      "icon_on": {
+        "policy": "hook",
+        "hook": "normalize_sensor_fields"
+      },
+      "sensor": {
+        "policy": "hook",
+        "hook": "normalize_sensor_fields"
+      },
+      "unit": {
+        "policy": "keep"
+      },
+      "type": {
+        "policy": "default",
+        "value": "sensor"
+      },
+      "precision": {
+        "policy": "hook",
+        "hook": "normalize_sensor_fields"
+      },
+      "options": {
+        "policy": "hook",
+        "hook": "normalize_sensor_options"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": [
+      "large_numbers",
+      "time_unit",
+      "active_color",
+      "state_labels",
+      "state_input",
+      "state_output",
+      "state_input_2",
+      "state_output_2"
+    ],
+    "optionHook": "normalize_sensor_options",
+    "migrationActions": [
+      "legacy_local_sensor",
+      "legacy_text_sensor",
+      "legacy_sensor_state_high_label",
+      "legacy_sensor_state_low_label"
+    ]
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Auto",
+    "icon_on": "Auto",
+    "sensor": "",
+    "unit": "",
+    "type": "sensor",
+    "precision": "",
+    "options": ""
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "label": "Weather Forecast",
+  "allowInSubpage": true,
+  "hidden": true,
+  "domains": ["weather"],
+  "default": {
+    "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "weather", "precision": "tomorrow", "options": ""
+  }
+}

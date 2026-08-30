@@ -1,0 +1,324 @@
+{
+  "label": "Media",
+  "allowInSubpage": true,
+  "domains": [
+    "media_player"
+  ],
+  "options": [
+    {
+      "name": "media_mode",
+      "label": "Type",
+      "kind": "choice",
+      "values": [
+        "control_modal",
+        "speaker_group",
+        "play_pause",
+        "previous",
+        "next",
+        "volume",
+        "position",
+        "now_playing",
+        "cover_art",
+        "playlist"
+      ],
+      "defaultValue": "play_pause",
+      "storageField": "sensor",
+      "omitDefault": false,
+      "aliases": {
+        "controls": "play_pause"
+      }
+    },
+    {
+      "name": "media_display",
+      "label": "Type",
+      "kind": "choice",
+      "values": [
+        "",
+        "state"
+      ],
+      "defaultValue": "",
+      "storageField": "precision",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "in",
+          "value": [
+            "play_pause",
+            "position"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "media_now_playing_controls",
+      "label": "Controls",
+      "kind": "choice",
+      "values": [
+        "",
+        "progress",
+        "play_pause"
+      ],
+      "defaultValue": "",
+      "storageField": "precision",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "now_playing"
+        }
+      ]
+    },
+    {
+      "name": "cover_art_details",
+      "label": "Show Track Details",
+      "kind": "flag",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "cover_art"
+        }
+      ]
+    },
+    {
+      "name": "cover_art_secondary_entity",
+      "label": "External Source Media Entity",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "cover_art"
+        }
+      ]
+    },
+    {
+      "name": "volume_max",
+      "label": "Maximum Volume",
+      "kind": "number",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "defaultValue": "100",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "in",
+          "value": [
+            "control_modal",
+            "cover_art",
+            "speaker_group",
+            "volume"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "speaker_group_entity",
+      "label": "Speaker Discovery Entity",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "in",
+          "value": [
+            "control_modal",
+            "cover_art",
+            "speaker_group"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "label_display",
+      "label": "Label Display",
+      "kind": "choice",
+      "values": [
+        "label",
+        "status"
+      ],
+      "defaultValue": "status",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "control_modal"
+        }
+      ]
+    },
+    {
+      "name": "number_display",
+      "label": "Top Left Display",
+      "kind": "choice",
+      "values": [
+        "icon",
+        "volume"
+      ],
+      "defaultValue": "icon",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "control_modal"
+        }
+      ]
+    },
+    {
+      "name": "playlist_content_id",
+      "label": "Media Content ID / URI",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "playlist"
+        }
+      ]
+    },
+    {
+      "name": "playlist_content_type",
+      "label": "Media Content Type",
+      "kind": "text",
+      "defaultValue": "playlist",
+      "hidden": true,
+      "docsHidden": true,
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "playlist"
+        }
+      ]
+    },
+    {
+      "name": "playlist_player_source",
+      "label": "Player Source / Input",
+      "kind": "text",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "equals",
+          "value": "playlist"
+        }
+      ]
+    },
+    {
+      "name": "large_numbers",
+      "label": "Large Media Numbers",
+      "kind": "flag",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "sensor",
+          "operator": "in",
+          "value": [
+            "volume",
+            "position"
+          ]
+        }
+      ]
+    }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {
+        "policy": "keep"
+      },
+      "label": {
+        "policy": "hook",
+        "hook": "normalize_media_fields"
+      },
+      "icon": {
+        "policy": "hook",
+        "hook": "normalize_media_fields"
+      },
+      "icon_on": {
+        "policy": "keep"
+      },
+      "sensor": {
+        "policy": "hook",
+        "hook": "normalize_media_fields"
+      },
+      "unit": {
+        "policy": "keep"
+      },
+      "type": {
+        "policy": "default",
+        "value": "media"
+      },
+      "precision": {
+        "policy": "hook",
+        "hook": "normalize_media_fields"
+      },
+      "options": {
+        "policy": "hook",
+        "hook": "normalize_media_options"
+      }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": [
+      "label_display",
+      "number_display",
+      "cover_art_details",
+      "cover_art_secondary_entity",
+      "speaker_group_entity",
+      "volume_max",
+      "playlist_content_id",
+      "playlist_content_type",
+      "playlist_player_source",
+      "large_numbers"
+    ],
+    "optionHook": "normalize_media_options"
+  },
+  "behavior": {
+    "media": {
+      "defaultMode": "play_pause",
+      "legacyModes": {
+        "controls": "play_pause"
+      },
+      "stateDisplayModes": [
+        "play_pause",
+        "position"
+      ],
+      "playbackServices": {
+        "play_pause": "media_player.media_play_pause",
+        "previous": "media_player.media_previous_track",
+        "next": "media_player.media_next_track"
+      }
+    }
+  },
+  "default": {
+    "entity": "",
+    "label": "",
+    "icon": "Auto",
+    "icon_on": "Auto",
+    "sensor": "play_pause",
+    "unit": "",
+    "type": "media",
+    "precision": "",
+    "options": ""
+  }
+}

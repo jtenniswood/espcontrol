@@ -13,9 +13,11 @@ EspControlAppCore::~EspControlAppCore() {
 bool EspControlAppCore::configure_configuration_service(
     configuration::ConfigurationStore &store,
     configuration::LegacyConfigurationAdapter &legacy,
-    const configuration::ConfigurationDocumentValidator *validator) {
+    const configuration::ConfigurationDocumentValidator *validator,
+    configuration::LegacyConfigurationMode legacy_mode) {
   if (configuration_service_) return false;
-  configuration_service_.emplace(store, legacy, validator);
+  configuration_service_.emplace(store, legacy, validator, nullptr, 0,
+                                 legacy_mode);
   return true;
 }
 

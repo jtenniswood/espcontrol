@@ -11,7 +11,7 @@ rendering, Home Assistant actions, or subpage card behavior.
 
 1. Read [Card Type Map](card-type-map.md) for the saved type and related files.
 2. Edit first:
-   - `common/config/card_contract.json`
+   - `product/v2/card_contract.json`
    - `src/webserver/cards/<type>.ts`
    - `components/espcontrol/button_grid_<type>.h`
 3. Regenerate with `python3 scripts/build.py` when the contract or web bundle
@@ -35,7 +35,7 @@ or export behavior, model fields, aliases, or compatibility fixtures.
 2. Edit first:
    - `src/webserver/application/config_codec.ts`
    - `components/espcontrol/button_grid_config.h`
-   - `compatibility/fixtures/product_compatibility.json`
+   - `product/v2/product_compatibility.json`
 3. Regenerate only if contract, model, or web generated inputs also changed.
 4. Verify first with `npm run check:backup-contract`,
    `npm run check:model-contract`, and `npm run check:firmware-parser`.
@@ -90,7 +90,7 @@ navigation, or card type documentation.
 
 1. Edit handwritten docs under `docs/`.
 2. If generated public docs are stale, update the source in
-   `devices/manifest.json` or `common/config/card_contract.json`, then regenerate.
+   `devices/manifest.json` or `product/v2/card_contract.json`, then regenerate.
 3. Verify with `npm run docs:build` and `npm run check:dev-docs`.
 4. Stop if a generated docs page was edited directly or if a public card page no
    longer maps to a saved card type.

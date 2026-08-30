@@ -79,6 +79,22 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
   bool mirror_failed{false};
 };
 
+class FakeRuntime final : public ConfigurationRuntimeAdapter {
+ public:
+  bool apply(uint16_t document_version, const uint8_t *document,
+             size_t document_size) override {
+    ++apply_calls;
+    applied_version = document_version;
+    applied.assign(document, document + document_size);
+    return !apply_failed;
+  }
+
+  std::vector<uint8_t> applied;
+  uint16_t applied_version{0};
+  size_t apply_calls{0};
+  bool apply_failed{false};
+};
+
 std::vector<uint8_t> bytes(const char *value) {
   return std::vector<uint8_t>(value, value + std::strlen(value));
 }
@@ -191,6 +207,94 @@ bool successful_save_dual_writes() {
   return saved.ok() && saved.generation == 1 && legacy.mirror_calls == 1 &&
          legacy.mirrored_version == CURRENT_CONFIGURATION_DOCUMENT_VERSION &&
          legacy.mirrored == expected;
+}
+
+bool successful_save_updates_the_native_runtime() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const std::vector<uint8_t> expected = bytes("live-native-document");
+  const ServiceSaveResult saved =
+      service.save_current(expected.data(), expected.size());
+  return saved.ok() && runtime.apply_calls == 1 &&
+         runtime.applied_version == CURRENT_CONFIGURATION_DOCUMENT_VERSION &&
+         runtime.applied == expected;
+}
+
+bool stored_document_can_be_applied_to_the_runtime_atomically() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const std::vector<uint8_t> expected = bytes("boot-native-document");
+  if (!service.save_current(expected.data(), expected.size()).ok()) {
+    return false;
+  }
+
+  std::array<uint8_t, 64> output{};
+  const ServiceLoadResult loaded =
+      service.load_and_apply_runtime(output.data(), output.size());
+  return loaded.ok() && loaded.generation == 1 && runtime.apply_calls == 2 &&
+         runtime.applied_version == CURRENT_CONFIGURATION_DOCUMENT_VERSION &&
+         runtime.applied == expected &&
+         std::equal(expected.begin(), expected.end(), output.begin());
+}
+
+bool runtime_is_updated_even_if_the_legacy_mirror_fails() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  legacy.mirror_failed = true;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const std::vector<uint8_t> expected = bytes("durable-native-document");
+  const ServiceSaveResult saved =
+      service.save_current(expected.data(), expected.size());
+  return saved.status == ServiceStatus::LEGACY_MIRROR_FAILED &&
+         saved.durable() && runtime.apply_calls == 1 &&
+         runtime.applied == expected;
+}
+
+bool read_import_only_preserves_upgrade_import_without_legacy_writes() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(
+      store, legacy, nullptr, nullptr, 0,
+      LegacyConfigurationMode::READ_IMPORT_ONLY);
+  service.set_runtime_adapter(&runtime);
+  const std::vector<uint8_t> expected = bytes("native-only-save");
+  if (!service.save_current(expected.data(), expected.size()).ok() ||
+      service.legacy_writes_enabled() || legacy.mirror_calls != 0 ||
+      runtime.apply_calls != 1 || runtime.applied != expected) {
+    return false;
+  }
+  legacy.value = bytes("older-legacy-value");
+  std::array<uint8_t, 64> output{};
+  const ServiceLoadResult native = service.load(output.data(), output.size());
+  if (!native.ok() || native.document_size != expected.size() ||
+      !std::equal(expected.begin(), expected.end(), output.begin())) {
+    return false;
+  }
+
+  MemoryBackend upgrade_backend(256);
+  ConfigurationStore upgrade_store(upgrade_backend);
+  FakeLegacy upgrade_legacy;
+  upgrade_legacy.value = bytes("upgrade-legacy-value");
+  ConfigurationService upgrade_service(
+      upgrade_store, upgrade_legacy, nullptr, nullptr, 0,
+      LegacyConfigurationMode::READ_IMPORT_ONLY);
+  output.fill(0);
+  const ServiceLoadResult imported =
+      upgrade_service.load(output.data(), output.size());
+  return imported.imported_legacy() && upgrade_legacy.mirror_calls == 0;
 }
 
 bool conditional_save_rejects_a_stale_generation() {
@@ -322,6 +426,10 @@ int main() {
       failed_legacy_mirror_keeps_the_native_save_durable() &&
       failed_durable_save_never_updates_legacy() &&
       successful_save_dual_writes() &&
+      successful_save_updates_the_native_runtime() &&
+      stored_document_can_be_applied_to_the_runtime_atomically() &&
+      runtime_is_updated_even_if_the_legacy_mirror_fails() &&
+      read_import_only_preserves_upgrade_import_without_legacy_writes() &&
       conditional_save_rejects_a_stale_generation() &&
       version_and_buffer_failures_are_explicit() &&
       malformed_store_document_is_not_treated_as_legacy() &&

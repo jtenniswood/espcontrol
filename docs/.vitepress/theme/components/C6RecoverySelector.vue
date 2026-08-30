@@ -80,10 +80,17 @@ const devices = [
   },
   {
     slug: 'guition-esp32-p4-jc1060p470',
-    name: 'JC1060P470',
+    name: 'JC1060P470 original panel',
     size: '7 in',
-    detail: '1024 × 600 landscape',
-    warning: 'Confirm the back label says JC1060P470.',
+    detail: 'Unmarked case; board date before 2622',
+    warning: 'Use this for an unmarked case. If unsure, disconnect power and check the screen-board date code: earlier than 2622 is the original panel.',
+  },
+  {
+    slug: 'guition-esp32-p4-jc1060p470-v2',
+    name: 'JC1060P470 new panel',
+    size: '7 in',
+    detail: 'Case marked V2; board date 2622 or newer',
+    warning: 'Use this for a case marked V2. If unsure, disconnect power and check the screen-board date code: 2622 or newer is the new panel.',
   },
   {
     slug: 'guition-esp32-p4-jc4880p443',

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify icon gallery groups match icons.json.
+"""Verify icon gallery groups match the Product Model icon source.
 
 Usage:
     python scripts/check_icon_groups.py       # exit 1 if any icon grouping is stale
@@ -9,8 +9,10 @@ import re
 import sys
 from pathlib import Path
 
+from product_model_v2 import source_path
+
 ROOT = Path(__file__).resolve().parent.parent
-ICONS_JSON = ROOT / "common" / "assets" / "icons.json"
+ICONS_JSON = source_path("icons")
 GALLERY_VUE = ROOT / "docs" / ".vitepress" / "theme" / "components" / "IconGallery.vue"
 
 

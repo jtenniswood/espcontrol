@@ -34,6 +34,8 @@
 // implementation is split into focused headers below for easier review.
 #include "button_grid_limits.h"
 #include "button_grid_string.h"
+#include "display_text.h"
+
 #include "button_grid_ha.h"
 #include "button_grid_config.h"
 #include "button_grid_style.h"

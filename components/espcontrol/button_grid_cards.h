@@ -10,35 +10,35 @@ inline void clear_push_button_transition(lv_obj_t *btn);
 
 inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
   if (garage_command_mode(p.sensor)) {
-    lv_label_set_text(s.icon_lbl, garage_command_icon(p));
-    lv_label_set_text(s.text_lbl, garage_card_show_status(p) ? "--" : garage_card_label(p));
+    lv_label_set_display_text(s.icon_lbl, garage_command_icon(p));
+    lv_label_set_display_text(s.text_lbl, garage_card_show_status(p) ? "--" : garage_card_label(p));
     apply_push_button_transition(s.btn);
     return;
   }
-  lv_label_set_text(s.icon_lbl, garage_closed_icon(p.icon));
-  lv_label_set_text(s.text_lbl, garage_card_show_status(p) ? "--" : garage_card_label(p));
+  lv_label_set_display_text(s.icon_lbl, garage_closed_icon(p.icon));
+  lv_label_set_display_text(s.text_lbl, garage_card_show_status(p) ? "--" : garage_card_label(p));
 }
 
 inline void setup_gate_card(BtnSlot &s, const ParsedCfg &p) {
   if (gate_command_mode(p.sensor)) {
-    lv_label_set_text(s.icon_lbl, gate_command_icon(p));
-    lv_label_set_text(s.text_lbl, gate_card_show_status(p) ? "--" : gate_card_label(p));
+    lv_label_set_display_text(s.icon_lbl, gate_command_icon(p));
+    lv_label_set_display_text(s.text_lbl, gate_card_show_status(p) ? "--" : gate_card_label(p));
     apply_push_button_transition(s.btn);
     return;
   }
-  lv_label_set_text(s.icon_lbl, gate_closed_icon(p.icon));
-  lv_label_set_text(s.text_lbl, gate_card_show_status(p) ? "--" : gate_card_label(p));
+  lv_label_set_display_text(s.icon_lbl, gate_closed_icon(p.icon));
+  lv_label_set_display_text(s.text_lbl, gate_card_show_status(p) ? "--" : gate_card_label(p));
 }
 
 inline void setup_lock_card(BtnSlot &s, const ParsedCfg &p) {
   if (lock_command_mode(p.sensor)) {
-    lv_label_set_text(s.icon_lbl, lock_command_icon(p));
-    lv_label_set_text(s.text_lbl, lock_card_label(p));
+    lv_label_set_display_text(s.icon_lbl, lock_command_icon(p));
+    lv_label_set_display_text(s.text_lbl, lock_card_label(p));
     apply_push_button_transition(s.btn);
     return;
   }
-  lv_label_set_text(s.icon_lbl, lock_locked_icon(p.icon));
-  lv_label_set_text(s.text_lbl, lock_card_label(p));
+  lv_label_set_display_text(s.icon_lbl, lock_locked_icon(p.icon));
+  lv_label_set_display_text(s.text_lbl, lock_card_label(p));
 }
 
 inline const char *screen_lock_locked_icon(const ParsedCfg &p) {
@@ -69,10 +69,10 @@ inline void screen_lock_register_card(const BtnSlot &s, const ParsedCfg &p) {
 }
 
 inline void setup_screen_lock_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl,
+  lv_label_set_display_text(s.icon_lbl,
     screen_lock_enabled() ? screen_lock_locked_icon(p) : screen_lock_unlocked_icon(p));
   std::string label = screen_lock_card_label();
-  lv_label_set_text(s.text_lbl, label.c_str());
+  lv_label_set_display_text(s.text_lbl, label.c_str());
   screen_lock_register_card(s, p);
   apply_push_button_transition(s.btn);
 }
@@ -99,9 +99,9 @@ inline void clear_push_button_transition(lv_obj_t *btn) {
 inline void setup_internal_relay_card(BtnSlot &s, const ParsedCfg &p) {
   bool push_mode = internal_relay_push_mode(p);
   std::string label = internal_relay_label(p);
-  lv_label_set_text(s.text_lbl, label.c_str());
+  lv_label_set_display_text(s.text_lbl, label.c_str());
   const char *icon_off = internal_relay_icon(p, push_mode);
-  lv_label_set_text(s.icon_lbl, icon_off);
+  lv_label_set_display_text(s.icon_lbl, icon_off);
   if (push_mode) {
     apply_push_button_transition(s.btn);
     return;
@@ -116,7 +116,7 @@ inline void setup_internal_relay_card(BtnSlot &s, const ParsedCfg &p) {
 inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
   if (!p.entity.empty()) {
     if (!p.label.empty()) {
-      lv_label_set_text(s.text_lbl, p.label.c_str());
+      lv_label_set_display_text(s.text_lbl, p.label.c_str());
     }
     const char* icon_cp = "\U000F0493";
     if (p.icon.empty() || p.icon == "Auto") {
@@ -125,26 +125,26 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
     } else {
       icon_cp = find_icon(p.icon.c_str());
     }
-    lv_label_set_text(s.icon_lbl, icon_cp);
+    lv_label_set_display_text(s.icon_lbl, icon_cp);
 
     if (!p.sensor.empty()) {
       if (!p.unit.empty()) {
         std::string unit = trim_display_unit(p.unit);
-        lv_label_set_text(s.unit_lbl, unit.c_str());
+        lv_label_set_display_text(s.unit_lbl, unit.c_str());
       }
     }
   } else {
     if (!p.label.empty()) {
-      lv_label_set_text(s.text_lbl, p.label.c_str());
+      lv_label_set_display_text(s.text_lbl, p.label.c_str());
     }
     if (!p.icon.empty() && p.icon != "Auto") {
-      lv_label_set_text(s.icon_lbl, find_icon(p.icon.c_str()));
+      lv_label_set_display_text(s.icon_lbl, find_icon(p.icon.c_str()));
     } else if (p.type == "push") {
-      lv_label_set_text(s.icon_lbl, "\U000F0741");
+      lv_label_set_display_text(s.icon_lbl, "\U000F0741");
       apply_push_button_transition(s.btn);
     }
     if (p.type == "push" && p.label.empty()) {
-      lv_label_set_text(s.text_lbl, espcontrol_i18n("Push"));
+      lv_label_set_display_text(s.text_lbl, espcontrol_i18n("Push"));
     }
   }
 }
@@ -175,27 +175,27 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   std::string action_label = p.label.empty()
     ? (p.entity.empty() ? espcontrol_i18n(std::string("Action")) : p.entity)
     : p.label;
-  lv_label_set_text(s.text_lbl, action_label.c_str());
+  lv_label_set_display_text(s.text_lbl, action_label.c_str());
   const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Flash") : find_icon(p.icon.c_str());
-  lv_label_set_text(s.icon_lbl, icon_cp);
+  lv_label_set_display_text(s.icon_lbl, icon_cp);
   if (action_card_state_icon_mode(p) || action_card_state_text_mode(p)) {
     lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   } else if (action_card_state_numeric_mode(p)) {
     lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(s.sensor_lbl, "--");
+    lv_label_set_display_text(s.sensor_lbl, "--");
     std::string unit = trim_display_unit(action_card_state_unit(p));
-    lv_label_set_text(s.unit_lbl, unit.c_str());
+    lv_label_set_display_text(s.unit_lbl, unit.c_str());
   }
   apply_push_button_transition(s.btn);
 }
 
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p) {
   std::string label = p.label.empty() ? (p.entity.empty() ? "Local Action" : sentence_cap_text(p.entity)) : p.label;
-  lv_label_set_text(s.text_lbl, label.c_str());
+  lv_label_set_display_text(s.text_lbl, label.c_str());
   const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Gesture Tap") : find_icon(p.icon.c_str());
-  lv_label_set_text(s.icon_lbl, icon_cp);
+  lv_label_set_display_text(s.icon_lbl, icon_cp);
   apply_push_button_transition(s.btn);
 }
 
@@ -251,11 +251,11 @@ inline void setup_subpage_parent_state_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   if (value_font) lv_obj_set_style_text_font(s.sensor_lbl, value_font, LV_PART_MAIN);
-  lv_label_set_text(s.sensor_lbl, "--");
+  lv_label_set_display_text(s.sensor_lbl, "--");
   std::string unit = trim_display_unit(p.unit);
-  lv_label_set_text(s.unit_lbl, unit.c_str());
+  lv_label_set_display_text(s.unit_lbl, unit.c_str());
   std::string subpage_label = p.label.empty() ? espcontrol_i18n(std::string("Subpage")) : p.label;
-  lv_label_set_text(s.text_lbl, subpage_label.c_str());
+  lv_label_set_display_text(s.text_lbl, subpage_label.c_str());
   set_subpage_chevron_visible(
     s, subpage_chevron_enabled, subpage_chevron_x, subpage_chevron_y,
     subpage_chevron_text_width_percent);

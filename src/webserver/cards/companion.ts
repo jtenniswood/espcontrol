@@ -1,37 +1,49 @@
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import {
+    cardContractAllowInSubpage,
+    cardContractCardLabel,
+    cardContractDefaultConfig,
+    cardContractHidden,
+    cardContractPickerKey,
+} from "../generated/card_contract";
+import type { CardRegistry } from "../application/card_registry";
+import type { ControlsFieldsFeature } from "../application/controls_fields";
+import type { DeviceConfig } from "../state/types";
 
 /**
  * Companion cards deliberately have no free-form command field. The selected
  * identifier is supplied by the paired Mac and is opaque to the panel UI.
  */
-export function registerCompanionCardTypes(): GlobalDescriptors {
-    function companionSupported(this: any) {
-        return !!(CFG.features && CFG.features.companion);
+export function registerCompanionCardTypes(
+    registry: CardRegistry,
+    fields: ControlsFieldsFeature,
+    deviceConfig: DeviceConfig,
+): void {
+    const { cardBadgePreview } = fields;
+
+    function companionSupported() {
+        return !!deviceConfig.features?.companion;
     }
 
-    function normalizeCompanionCard(this: any, card?: any) {
-        if (!card)
-            return;
+    function normalizeCompanionCard(card?: any) {
+        if (!card) return;
         card.type = "companion";
         card.sensor = "";
         card.unit = "";
         card.precision = "";
         card.options = "";
         card.icon_on = "Auto";
-        if (!card.icon || card.icon === "Auto")
-            card.icon = "Monitor";
+        if (!card.icon || card.icon === "Auto") card.icon = "Monitor";
     }
 
-    function fetchActions(this: any) {
+    function fetchActions() {
         return fetch("/companion/actions", { cache: "no-store" })
             .then(function (response: Response) {
-                if (!response.ok)
-                    throw new Error("HTTP " + response.status);
+                if (!response.ok) throw new Error("HTTP " + response.status);
                 return response.json();
             });
     }
 
-    const COMPANION_CARD_METADATA: any = {
+    const metadata: any = {
         icon: {
             pickerIdSuffix: "icon-picker",
             idSuffix: "icon",
@@ -41,20 +53,20 @@ export function registerCompanionCardTypes(): GlobalDescriptors {
         preview: { badge: "monitor" },
     };
 
-    registerButtonType("companion", {
+    registry.register("companion", {
         label: function () { return cardContractCardLabel("companion"); },
         allowInSubpage: function () { return cardContractAllowInSubpage("companion"); },
         pickerKey: function () { return cardContractPickerKey("companion"); },
         hidden: function () { return cardContractHidden("companion"); },
         labelPlaceholder: "e.g. Safari",
         defaultConfig: function () { return cardContractDefaultConfig("companion"); },
-        cardMetadata: COMPANION_CARD_METADATA,
+        cardMetadata: metadata,
         isAvailable: companionSupported,
-        onSelect: function (_this: any, card?: any) {
+        onSelect: function (card?: any) {
             const defaults: any = cardContractDefaultConfig("companion");
             Object.keys(defaults).forEach(function (key) { card[key] = defaults[key]; });
         },
-        renderSettings: function (_this: any, panel?: any, card?: any, _slot?: any, helpers?: any) {
+        renderSettings: function (panel?: any, card?: any, _slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
             const field: any = document.createElement("div");
             field.className = "sp-field";
@@ -103,20 +115,14 @@ export function registerCompanionCardTypes(): GlobalDescriptors {
                 card.entity = this.value;
                 helpers.saveField("entity", card.entity);
             });
-            helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
+            helpers.renderBasicCardFields(panel, card, helpers, metadata, { entity: false });
         },
-        renderPreview: function (_this: any, card?: any, helpers?: any) {
+        renderPreview: function (card?: any, helpers?: any) {
             return cardBadgePreview(card, helpers, {
                 label: card.label || card.entity || "Mac App",
                 iconFallback: "Monitor",
-                badge: COMPANION_CARD_METADATA.preview.badge,
+                badge: metadata.preview.badge,
             });
         },
     });
-
-    return {
-        "COMPANION_CARD_METADATA": liveGlobal(() => COMPANION_CARD_METADATA, () => {}),
-        "companionSupported": staticGlobal(companionSupported),
-        "normalizeCompanionCard": staticGlobal(normalizeCompanionCard),
-    };
 }

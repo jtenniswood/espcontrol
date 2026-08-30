@@ -34,6 +34,10 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
+      # Eight API clients add five sockets above ESPHome's three-client
+      # baseline. Reserve those five explicitly on top of the generated
+      # 14-socket web, artwork, mDNS, OTA, and API budget.
+      CONFIG_LWIP_MAX_SOCKETS: "19"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -153,6 +157,12 @@ esphome:
       then:
         - lambda: 'id(screen_rotation_ready) = true;'
         - script.execute: apply_screen_rotation
+
+# The P4 panel has enough memory for additional native API clients. Allow
+# Home Assistant, ESPHome logs, and browser/configuration sessions to overlap
+# without rejecting connections at ESPHome's default five-client limit.
+api:
+  max_connections: 8
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)

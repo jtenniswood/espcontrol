@@ -16,6 +16,10 @@ struct Subpage {
 }  // namespace
 
 int main() {
+  assert(!grid_navigation_rebuild_should_return_home(false, 0));
+  assert(grid_navigation_rebuild_should_return_home(true, 0));
+  assert(grid_navigation_rebuild_should_return_home(false, 2));
+
   GridNavigationService<HomeTarget, Subpage> navigation;
 
   navigation.home_targets().push_back({1});

@@ -85,14 +85,11 @@ inline ButtonGridModalService &control_modal_service() {
   if (auto *core = espcontrol::active_espcontrol_app_core()) {
     return core->modal_state_service<ButtonGridModalService>();
   }
-#ifdef ESP_PLATFORM
-  // Firmware UI work begins only after EspControlAppCore starts. Keeping the
-  // contract strict avoids a second permanent modal-state allocation.
-  std::abort();
-#else
+  // A component can request modal cleanup while ESPHome is still bringing the
+  // application core online.  Treat that transition as an empty modal state;
+  // aborting here turns a harmless startup callback into a boot loop.
   static ButtonGridModalService service;
   return service;
-#endif
 }
 
 inline ControlModalActive &control_modal_active() {
@@ -410,11 +407,13 @@ inline espcontrol::modal::ContentLayout control_modal_calc_content_layout(
 
 inline void control_modal_apply_tab_row(lv_obj_t *tab_row,
                                         const ControlModalLayout &layout,
-                                        const ControlModalTabLayout &tabs_layout) {
+                                        const ControlModalTabLayout &tabs_layout,
+                                        int width_compensation_percent) {
   if (!tab_row) return;
   if (tabs_layout.show_tab_bar) {
     lv_obj_clear_flag(tab_row, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_size(tab_row, tabs_layout.tab_frame_w, tabs_layout.tab_frame_h);
+    apply_width_compensation(tab_row, width_compensation_percent);
     lv_obj_set_style_radius(tab_row, tabs_layout.tab_frame_h / 2, LV_PART_MAIN);
     lv_obj_align(tab_row, LV_ALIGN_TOP_LEFT, tabs_layout.row_left, layout.inset + 2);
   } else {
@@ -450,12 +449,10 @@ inline uint16_t control_modal_tab_icon_zoom(const ControlModalLayout &layout) {
 inline void control_modal_layout_tab_button(lv_obj_t *tab_btn,
                                             const ControlModalLayout &layout,
                                             const ControlModalTabLayout &tabs_layout,
-                                            int index, bool active,
-                                            int width_compensation_percent = 100) {
+                                            int index, bool active) {
   if (!tab_btn || !tabs_layout.show_tab_bar) return;
   lv_coord_t tab_btn_size = active ? tabs_layout.selected_tab_size : tabs_layout.tab_size;
   lv_obj_set_size(tab_btn, tab_btn_size, tab_btn_size);
-  apply_width_compensation(tab_btn, width_compensation_percent);
   lv_obj_set_style_radius(tab_btn, tab_btn_size / 2, LV_PART_MAIN);
   lv_coord_t first_tab_x = (tabs_layout.tab_frame_w - tabs_layout.tabs_total_w) / 2;
   lv_coord_t tab_x = first_tab_x + index * (tabs_layout.tab_size + tabs_layout.tab_gap);
@@ -678,7 +675,7 @@ inline lv_obj_t *control_modal_create_flat_icon_button(
 
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_label_set_text(label, icon);
+    lv_label_set_display_text(label, icon);
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -710,7 +707,7 @@ inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t 
     lv_obj_del(btn);
     return nullptr;
   }
-  lv_label_set_text(label, text);
+  lv_label_set_display_text(label, text);
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
@@ -871,13 +868,14 @@ inline lv_obj_t *control_modal_create_title(lv_obj_t *parent,
                                             const lv_font_t *font,
                                             int width_compensation_percent) {
   lv_obj_t *title = lv_label_create(parent);
-  lv_label_set_text(title, text.c_str());
+  lv_label_set_display_text(title, text.c_str());
   lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
   lv_obj_set_width(title, width);
   lv_obj_set_style_text_color(title, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(title, font, LV_PART_MAIN);
-  apply_width_compensation(title, width_compensation_percent);
+  (void) width_compensation_percent;
+  apply_text_width_compensation(title);
   return title;
 }
 
@@ -919,13 +917,14 @@ inline lv_obj_t *control_modal_create_list_row(lv_obj_t *parent,
   control_modal_apply_pressed_fill(btn);
 
   lv_obj_t *value = lv_label_create(btn);
-  lv_label_set_text(value, label.c_str());
+  lv_label_set_display_text(value, label.c_str());
   lv_label_set_long_mode(value, LV_LABEL_LONG_DOT);
   lv_obj_set_width(value, lv_pct(100));
   lv_obj_set_style_text_color(value, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(value, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(value, font, LV_PART_MAIN);
-  apply_width_compensation(value, width_compensation_percent);
+  (void) width_compensation_percent;
+  apply_text_width_compensation(value);
   lv_obj_center(value);
   return btn;
 }
@@ -950,7 +949,7 @@ inline lv_obj_t *control_modal_create_text_button(
   control_modal_apply_pressed_fill(btn);
 
   lv_obj_t *label = lv_label_create(btn);
-  lv_label_set_text(label, text.c_str());
+  lv_label_set_display_text(label, text.c_str());
   lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
   lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);

@@ -35,6 +35,11 @@ esp32:
       # and LVGL buffers are initialized.
       CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      # Route ordinary allocations larger than 4 KiB to PSRAM while keeping
+      # a 32 KiB internal reserve for DMA and cache-disabled operations.
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"
+      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"
       # The RGB driver already restarts after a genuine DMA underflow. Restarting
       # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
       CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"

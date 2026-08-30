@@ -1,16 +1,87 @@
 import { state } from "../state/app_instance";
-import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
-export function installSettingsSystemSectionModule(): GlobalDescriptors {
+import { normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkPort, normalizeHomeAssistantArtworkProtocol } from "../model/settings";
+import type { UiRuntimeState } from "./state";
+import {
+    firmwareInfoFromPublicManifest,
+    firmwareInfosFromPublicVersions,
+    publicFirmwareManifestUrl,
+    publicFirmwareVersionsUrl,
+} from "./firmware_metadata";
+import type { FirmwareVersionFeature } from "./firmware_version_state";
+import type { FirmwareUpdateFeature } from "./firmware_update_state";
+import type { C6FirmwareFeature } from "./c6_firmware_ui";
+import type { ControlsShellFeature } from "./controls_shell";
+import type { ApplicationApiFeature } from "./api";
+import type { StateLoaderFeature } from "./state_loader_api";
+import type { FirmwareUpdatePostApiFeature } from "./firmware_update_post_api";
+import type { ArtworkPostApiFeature } from "./artwork_post_api";
+import type { PublicFirmwareInstallFeature } from "./public_firmware_install";
+import type { ControlsFieldsFeature } from "./controls_fields";
+import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
+
+export interface SettingsSystemSectionActions {
+    exportBackup(): void;
+    importBackup(): void;
+}
+
+export interface SettingsSystemSectionFeature {
+    buildSystemSettingsCards(...args: any[]): any;
+}
+
+export function createSettingsSystemSectionFeature(
+    actions: SettingsSystemSectionActions,
+    runtime: UiRuntimeState,
+    firmwareVersion: FirmwareVersionFeature,
+    firmwareUpdate: FirmwareUpdateFeature,
+    c6Firmware: C6FirmwareFeature,
+    shell: Pick<ControlsShellFeature, "createActionButton">,
+    requestApi: Pick<ApplicationApiFeature, "getJsonQuietly" | "postFirmwareAutoUpdate" | "postFirmwareUpdateFrequency" | "postC6FirmwareAutoUpdate">,
+    stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion">,
+    firmwarePostApi: FirmwareUpdatePostApiFeature,
+    artworkPostApi: Pick<ArtworkPostApiFeature, "postHomeAssistantArtworkPort" | "postHomeAssistantArtworkProtocol" | "postHomeAssistantArtworkEndpointMode">,
+    publicFirmwareInstall: Pick<PublicFirmwareInstallFeature, "installPublicFirmwareViaWebOta">,
+    fields: Pick<ControlsFieldsFeature, "fieldLabel" | "makeCollapsibleCard" | "toggleRow">,
+    helpers: Pick<SettingsPageHelpersFeature, "disclosureBadge" | "inlineDisclosure" | "statusBadge">,
+): SettingsSystemSectionFeature {
+    const { fieldLabel, makeCollapsibleCard, toggleRow } = fields;
+    const { disclosureBadge, inlineDisclosure, statusBadge } = helpers;
+    const { createActionButton } = shell;
+    const els = runtime.els;
+    const { render: renderFirmwareVersion } = firmwareVersion;
+    const {
+        controlsVisible: firmwareUpdateControlsVisible,
+        latestInstallAction: latestFirmwareInstallAction,
+        latestInfo: latestFirmwareInfo,
+        renderStatus: renderFirmwareUpdateStatus,
+        clearWebOtaFallback: clearFirmwareWebOtaFallback,
+        startInstallRefresh: startFirmwareInstallRefresh,
+        scheduleWebOtaFallback: scheduleFirmwareWebOtaFallback,
+        setPublicInfo: setPublicFirmwareInfo,
+        setPublicVersions: setPublicFirmwareVersions,
+        syncUi: syncFirmwareUpdateUi,
+        syncPreviousUi: syncPreviousFirmwareUi,
+        selectedPreviousInfo: selectedPreviousFirmwareInfo,
+        syncVersionSelect: syncFirmwareVersionSelect,
+    } = firmwareUpdate;
+    const { updateKnownAvailable: c6FirmwareUpdateKnownAvailable, syncUi: syncC6FirmwareUi } = c6Firmware;
+    const {
+        postFirmwareUpdateInstall,
+        postFirmwareUpdateCheck,
+        postC6FirmwareUpdateInstall,
+        postC6FirmwareUpdateCheck,
+    } = firmwarePostApi;
+    const { postHomeAssistantArtworkPort, postHomeAssistantArtworkProtocol, postHomeAssistantArtworkEndpointMode } = artworkPostApi;
+    const { installPublicFirmwareViaWebOta } = publicFirmwareInstall;
     // ── Settings System Section ────────────────────────────────────────
     function buildSystemSettingsCards(this: any) {
         var backupBody: any = document.createElement("div");
         var backupRow: any = document.createElement("div");
         backupRow.className = "sp-backup-btns";
         var exportBtn: any = createActionButton("sp-backup-btn", "Export", "download");
-        exportBtn.addEventListener("click", exportConfig);
+        exportBtn.addEventListener("click", actions.exportBackup);
         backupRow.appendChild(exportBtn);
         var importBtn: any = createActionButton("sp-backup-btn", "Import", "upload");
-        importBtn.addEventListener("click", importConfig);
+        importBtn.addEventListener("click", actions.importBackup);
         backupRow.appendChild(importBtn);
         backupBody.appendChild(backupRow);
         var backupCard: any = makeCollapsibleCard("Backup", backupBody, true);
@@ -76,15 +147,15 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             state.firmwareChecking = true;
             renderFirmwareUpdateStatus();
             postFirmwareUpdateCheck();
-            getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
+            requestApi.getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
             });
-            getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
+            requestApi.getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
                 setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
             });
             setTimeout(function (this: any) {
                 state.firmwareChecking = false;
-                refreshFirmwareVersion();
+                stateLoader.refreshFirmwareVersion();
                 renderFirmwareUpdateStatus();
             }, 10000);
         });
@@ -112,7 +183,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
                 return;
             }
             state.autoUpdate = this.checked;
-            postFirmwareAutoUpdate(state.autoUpdate);
+            requestApi.postFirmwareAutoUpdate(state.autoUpdate);
             syncFirmwareUpdateUi();
         });
         els.setAutoUpdateRow = autoUpdateToggle.row;
@@ -135,7 +206,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             if (!firmwareUpdateControlsVisible())
                 return;
             state.updateFrequency = this.value;
-            postFirmwareUpdateFrequency(state.updateFrequency);
+            requestApi.postFirmwareUpdateFrequency(state.updateFrequency);
         });
         freqWrap.appendChild(freqSelect);
         autoUpdateBody.appendChild(freqWrap);
@@ -177,7 +248,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
                 return;
             }
             state.c6FirmwareAutoUpdate = this.checked;
-            postC6FirmwareAutoUpdate(state.c6FirmwareAutoUpdate);
+            requestApi.postC6FirmwareAutoUpdate(state.c6FirmwareAutoUpdate);
             syncC6FirmwareUi();
         });
         wifiFirmwareBody.appendChild(c6AutoUpdateToggle.row);
@@ -195,7 +266,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
                 syncC6FirmwareUi();
                 postC6FirmwareUpdateInstall();
                 setTimeout(function (this: any) {
-                    refreshFirmwareVersion();
+                    stateLoader.refreshFirmwareVersion();
                 }, 5000);
                 return;
             }
@@ -204,7 +275,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             postC6FirmwareUpdateCheck();
             setTimeout(function (this: any) {
                 state.c6FirmwareChecking = false;
-                refreshFirmwareVersion();
+                stateLoader.refreshFirmwareVersion();
                 syncC6FirmwareUi();
             }, 10000);
         });
@@ -263,8 +334,41 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         syncFirmwareVersionSelect();
         syncFirmwareUpdateUi();
         syncC6FirmwareUi();
-        refreshFirmwareVersion();
+        stateLoader.refreshFirmwareVersion();
         var homeAssistantSettingsBody: any = document.createElement("div");
+        var haModeField: any = document.createElement("div");
+        haModeField.className = "sp-field";
+        haModeField.appendChild(fieldLabel("Connection", "sp-set-ha-artwork-endpoint-mode"));
+        var haModeSelect: any = document.createElement("select");
+        haModeSelect.className = "sp-select";
+        haModeSelect.id = "sp-set-ha-artwork-endpoint-mode";
+        ["Automatic", "Manual"].forEach(function (option: any) {
+            var item: any = document.createElement("option");
+            item.value = option;
+            item.textContent = option;
+            haModeSelect.appendChild(item);
+        });
+        haModeSelect.value = normalizeHomeAssistantArtworkEndpointMode(
+            state.homeAssistantArtworkEndpointMode,
+            state.homeAssistantArtworkProtocol,
+            state.coverArtHomeAssistantPort);
+        haModeSelect.addEventListener("change", function (this: any) {
+            state.homeAssistantArtworkEndpointMode = normalizeHomeAssistantArtworkEndpointMode(
+                this.value, state.homeAssistantArtworkProtocol, state.coverArtHomeAssistantPort);
+            this.value = state.homeAssistantArtworkEndpointMode;
+            postHomeAssistantArtworkEndpointMode(state.homeAssistantArtworkEndpointMode);
+            haProtocolSelect.disabled = state.homeAssistantArtworkEndpointMode !== "Manual";
+            haPortInput.disabled = state.homeAssistantArtworkEndpointMode !== "Manual";
+        });
+        haModeField.appendChild(haModeSelect);
+        homeAssistantSettingsBody.appendChild(haModeField);
+        els.setHomeAssistantArtworkEndpointMode = haModeSelect;
+        var haStatus: any = document.createElement("p");
+        haStatus.className = "sp-setting-note";
+        haStatus.id = "sp-ha-artwork-endpoint-status";
+        haStatus.textContent = state.homeAssistantArtworkEndpointStatus || "Discovering";
+        homeAssistantSettingsBody.appendChild(haStatus);
+        els.homeAssistantArtworkEndpointStatus = haStatus;
         var haProtocolField: any = document.createElement("div");
         haProtocolField.className = "sp-field";
         haProtocolField.appendChild(fieldLabel("Home Assistant Protocol", "sp-set-ha-artwork-protocol"));
@@ -306,23 +410,9 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         haPortField.appendChild(haPortInput);
         homeAssistantSettingsBody.appendChild(haPortField);
         els.setCoverArtHomeAssistantPort = haPortInput;
-        var haBaseUrlField: any = document.createElement("div");
-        haBaseUrlField.className = "sp-field";
-        haBaseUrlField.appendChild(fieldLabel("Artwork Base URL (optional)", "sp-set-ha-artwork-base-url"));
-        var haBaseUrlInput: any = document.createElement("input");
-        haBaseUrlInput.className = "sp-input";
-        haBaseUrlInput.id = "sp-set-ha-artwork-base-url";
-        haBaseUrlInput.type = "url";
-        haBaseUrlInput.placeholder = "https://home.example.com";
-        haBaseUrlInput.value = state.coverArtHomeAssistantBaseUrl;
-        haBaseUrlInput.addEventListener("change", function (this: any) {
-            state.coverArtHomeAssistantBaseUrl = normalizeHomeAssistantArtworkBaseUrl(this.value);
-            this.value = state.coverArtHomeAssistantBaseUrl;
-            postHomeAssistantArtworkBaseUrl(state.coverArtHomeAssistantBaseUrl);
-        });
-        haBaseUrlField.appendChild(haBaseUrlInput);
-        homeAssistantSettingsBody.appendChild(haBaseUrlField);
-        els.setCoverArtHomeAssistantBaseUrl = haBaseUrlInput;
+        var manualEndpoint = haModeSelect.value === "Manual";
+        haProtocolSelect.disabled = !manualEndpoint;
+        haPortInput.disabled = !manualEndpoint;
         var homeAssistantSettingsCard: any = makeCollapsibleCard("Home Assistant Settings", homeAssistantSettingsBody, true);
         return {
             backupCard: backupCard,
@@ -331,6 +421,6 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         };
     }
     return {
-        "buildSystemSettingsCards": staticGlobal(buildSystemSettingsCards),
+        buildSystemSettingsCards,
     };
 }

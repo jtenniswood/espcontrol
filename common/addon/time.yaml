@@ -32,18 +32,9 @@ esphome:
       - script.execute: ha_actions_text_refresh
       - script.execute: button_setup_text_refresh
 
-# Ask Home Assistant for time once the native API has finished state setup. This
-# keeps the HA time source as a fallback without adding traffic during the
-# fragile reconnect window.
-api:
-  on_client_connected:
-    - delay: 2s
-    - lambda: |-
-        if (ha_api_state_connected()) id(homeassistant_time).update();
-    - script.execute: timezone_after_homeassistant_time_sync
-    - script.execute: backlight_recalc_sunrise_sunset
-    - script.execute: screen_schedule_check
-
+# Ask Home Assistant time is scheduled centrally by core_infra.yaml after the
+# native API handshake has completed.  Keeping it there prevents a second
+# connection hook from running work before the protocol Hello response.
 # ---------------------------------------------------------------------------
 # Timezone selector (drives sunrise/sunset calculation via sun_calc.h)
 # ---------------------------------------------------------------------------
@@ -258,6 +249,7 @@ select:
       - "es"
       - "fi"
       - "fr"
+      - "he"
       - "hu"
       - "it"
       - "nb"

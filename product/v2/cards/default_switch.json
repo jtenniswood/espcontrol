@@ -1,0 +1,33 @@
+{
+  "label": "Switch",
+  "allowInSubpage": true,
+  "domains": ["light", "switch", "input_boolean", "fan"],
+  "options": [
+    { "name": "large_numbers", "label": "Large Active Display Numbers", "kind": "flag", "omitDefault": true },
+    { "name": "confirmation_mode", "label": "Confirmation Required", "kind": "choice", "values": ["", "off", "on", "both"], "defaultValue": "", "omitDefault": true, "storage": ["confirm_off", "confirm_on"] },
+    { "name": "on_pattern", "label": "On State Pattern", "kind": "choice", "values": ["", "stripes"], "defaultValue": "", "omitDefault": true },
+    {
+      "name": "confirm_message", "label": "Message", "kind": "text", "defaultValue": "Turn off this device?", "omitDefault": true,
+      "defaultValueByMode": { "off": "Turn off this device?", "on": "Turn on this device?", "both": "Toggle this device?" }
+    },
+    { "name": "confirm_yes", "label": "Confirm Button", "kind": "text", "defaultValue": "Yes", "omitDefault": true },
+    { "name": "confirm_no", "label": "Cancel Button", "kind": "text", "defaultValue": "No", "omitDefault": true }
+  ],
+  "normalization": {
+    "fields": {
+      "entity": { "policy": "keep" }, "label": { "policy": "keep" },
+      "icon": { "policy": "default_if_empty", "value": "Auto" },
+      "icon_on": { "policy": "default_if_empty", "value": "Auto" },
+      "sensor": { "policy": "keep" }, "unit": { "policy": "keep" },
+      "type": { "policy": "default", "value": "" }, "precision": { "policy": "keep" },
+      "options": { "policy": "hook", "hook": "normalize_switch_options" }
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["large_numbers", "on_pattern", "confirm_off", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
+    "optionHook": "normalize_switch_options"
+  },
+  "default": {
+    "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "", "precision": "", "options": ""
+  }
+}
