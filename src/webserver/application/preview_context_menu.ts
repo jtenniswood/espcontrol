@@ -356,6 +356,10 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         ctxMenu = document.createElement("div");
         ctxMenu.className = "sp-ctx-menu";
         var c: any = ctx();
+        addCtxItem("plus", "Create Card", function (this: any) { addSlot(pos); });
+        if (!c.isSub) {
+            addCtxItem("folder-plus", "Create Subpage", function (this: any) { addSubpageSlot(pos); });
+        }
         if (state.clipboard) {
             var count: any = state.clipboard.buttons.length;
             addCtxItem("content-paste", count > 1 ? "Paste " + count + " Cards" : "Paste", function (this: any) {
@@ -367,14 +371,9 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
                 }
             });
         }
-        addCtxItem("code-json", "Paste Code…", function (this: any) {
+        addCtxItem("code-json", "Paste Code", function (this: any) {
             showPasteCardCode(pos, c.isSub);
         });
-        addCtxDivider();
-        addCtxItem("plus", "Create Card", function (this: any) { addSlot(pos); });
-        if (!c.isSub) {
-            addCtxItem("folder-plus", "Create Subpage", function (this: any) { addSubpageSlot(pos); });
-        }
         document.body.appendChild(ctxMenu);
         positionMenu(ctxMenu, e);
     }
