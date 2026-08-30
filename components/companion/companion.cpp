@@ -74,7 +74,7 @@ void CompanionService::setup() {
 }
 
 void CompanionService::loop() {
-  if (this->pairing_active() && millis() >= this->pairing_expires_at_) {
+  if (!this->pairing_code_.empty() && static_cast<int32_t>(millis() - this->pairing_expires_at_) >= 0) {
     this->pairing_code_.clear();
     this->pairing_expires_at_ = 0;
   }
@@ -144,7 +144,7 @@ bool CompanionService::ensure_identity_() {
 bool CompanionService::start_server_() {
   httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
   config.httpd.max_open_sockets = 2;
-  config.httpd.server_port = this->port_;
+  config.port_secure = this->port_;
   config.httpd.global_user_ctx = this;
   config.servercert = this->identity_.certificate;
   config.servercert_len = this->identity_.certificate_len;
@@ -235,6 +235,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     }
     for (auto &byte : this->identity_.credential) byte = static_cast<uint8_t>(esp_random());
     this->identity_.paired = 1;
+    this->last_sequence_ = 0;
     this->preferences_.save(&this->identity_);
     this->pairing_code_.clear();
     this->pairing_expires_at_ = 0;
