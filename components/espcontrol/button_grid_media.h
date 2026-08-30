@@ -374,7 +374,9 @@ inline void media_control_apply_availability(lv_obj_t *visual_obj, lv_obj_t *inp
 
 inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
   if (!ctx) return;
-  if (ctx->label_lbl) {
+  if (ctx->label_lbl &&
+      espcontrol::media::media_control_updates_parent_label(
+        ctx->cover_art_mode)) {
     std::string label = ctx->label_shows_status
       ? media_status_text(ctx->state_text)
       : ctx->label;

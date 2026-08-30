@@ -172,4 +172,8 @@ inline bool media_modal_artist_visible(bool cover_art_mode,
   return !cover_art_mode || normalize_media_kind_token(state) != "idle";
 }
 
+inline bool media_control_updates_parent_label(bool cover_art_mode) {
+  return !cover_art_mode;
+}
+
 }  // namespace espcontrol::media
