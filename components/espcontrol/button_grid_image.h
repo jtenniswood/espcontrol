@@ -904,7 +904,9 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   if (count < 0) count = 0;
   if (cfg.image_card_modal_image) {
     cfg.image_card_modal_image->cancel_update();
-    if (!image_card_retain_modal_cache(cfg.image_card_modal_image)) {
+    if (image_card_retain_modal_cache(cfg.image_card_modal_image)) {
+      image_card_schedule_modal_cache_expiry(cfg.image_card_modal_image);
+    } else {
       image_card_release_modal_cache(cfg.image_card_modal_image);
     }
   }

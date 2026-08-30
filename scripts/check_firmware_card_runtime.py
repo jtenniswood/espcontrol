@@ -489,6 +489,10 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: release the constrained modal cache when resetting the image-card pool"
             )
+        if reset_body is None or "image_card_schedule_modal_cache_expiry" not in reset_body:
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: reschedule constrained modal cache expiry when retaining it during pool resets"
+            )
         callback_body = function_body(text, "image_card_bind_callbacks")
         callback_guards = (
             "callbacks_bound_image != bound_image",
@@ -1468,6 +1472,26 @@ inline void setup_light_temp_visual() {
                     "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
                     "}\n"
                     "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  image_card_release_modal_cache(cfg.image_card_modal_image);\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("reschedule constrained modal cache expiry when retaining it during pool resets",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void image_card_bind_callbacks(ImageCardCtx *ctx) {\n"
+                    "  auto *bound_image = ctx->image;\n"
+                    "  bool changed = ctx->callbacks_bound_image != bound_image;\n"
+                    "  if (changed || !bound_image->has_on_finished_callbacks()) {\n"
+                    "    if (ctx->image == bound_image) {}\n"
+                    "  }\n"
+                    "  if (changed || !bound_image->has_on_error_callbacks()) {}\n"
+                    "}\n"
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  image_card_schedule_modal_cache_expiry(cfg.image_card_modal_image);\n"
                     "  image_card_release_modal_cache(cfg.image_card_modal_image);\n"
                     "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
                     "}\n"
