@@ -215,16 +215,6 @@ private struct CompanionSettings: View {
                     .padding(8)
                 }
 
-                GroupBox("Connection") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(store.statusDescription)
-                        Text("The panel is the secure server. This app only makes an outbound connection to the panel and does not listen for incoming network connections.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                }
             }
             .padding()
         }
