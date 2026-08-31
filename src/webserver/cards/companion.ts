@@ -5,7 +5,7 @@ import {
     cardContractHidden,
     cardContractPickerKey,
 } from "../generated/card_contract";
-import type { CardRegistry } from "../application/card_registry";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 
 interface CompanionAction {
@@ -103,6 +103,16 @@ export function companionAppLabel(
 }
 
 const COMPANION_CARD_METADATA = {
+    mode: {
+        label: "Action",
+        idSuffix: "companion-mode",
+        options: [
+            ["app", "Launch app"],
+            ["shortcut", "Keyboard shortcut"],
+            ["url", "Open URL"],
+        ],
+        value: companionCardMode,
+    },
     icon: {
         pickerIdSuffix: "icon-picker",
         idSuffix: "icon",
@@ -111,6 +121,14 @@ const COMPANION_CARD_METADATA = {
     },
     preview: { badge: "monitor" },
 };
+
+function companionCardMode(card: any): string {
+    const entity = typeof card?.entity === "string" ? card.entity : "";
+    const sensor = typeof card?.sensor === "string" ? card.sensor : "";
+    if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
+    if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
+    return "app";
+}
 
 export function normalizeCompanionCard(card: any): void {
     if (!card) return;
@@ -141,8 +159,10 @@ export function registerCompanionCardTypes(
     document: Document,
     fetchImpl: typeof fetch,
     fields: ControlsFieldsFeature,
+    cardUi: CardUiServices,
 ): void {
     const { cardBadgePreview, fieldLabel } = fields;
+    const { renderButtonSettings } = cardUi;
 
     registry.register("companion", {
         label: function () { return cardContractCardLabel("companion"); },
@@ -157,34 +177,26 @@ export function registerCompanionCardTypes(
             const defaults: any = cardContractDefaultConfig("companion");
             Object.keys(defaults).forEach(function (key) { card[key] = defaults[key]; });
         },
+        renderSettingsBeforeLabel: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
+            normalizeCompanionCard(card);
+            helpers.renderCardModeSelector(panel, card, helpers, {
+                mode: {
+                    ...COMPANION_CARD_METADATA.mode,
+                    onChange: function (this: HTMLSelectElement) {
+                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX : "";
+                        card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
+                        helpers.saveField("entity", card.entity);
+                        helpers.saveField("sensor", card.sensor);
+                        renderButtonSettings();
+                    },
+                },
+            });
+        },
         renderSettings: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
             card.entity = currentEntity;
-            const shortcutMode = currentEntity.startsWith(COMPANION_SHORTCUT_PREFIX);
-            const urlMode = card.sensor.startsWith(COMPANION_URL_PREFIX);
-            const initialMode = shortcutMode ? "shortcut" : (urlMode ? "url" : "app");
-
-            const modeField = document.createElement("div");
-            modeField.className = "sp-field";
-            modeField.appendChild(fieldLabel("Action", helpers.idPrefix + "companion-mode"));
-            const modeSelect = document.createElement("select");
-            modeSelect.className = "sp-select";
-            modeSelect.id = helpers.idPrefix + "companion-mode";
-            [
-                { value: "app", label: "Launch app" },
-                { value: "shortcut", label: "Keyboard shortcut" },
-                { value: "url", label: "Open URL" },
-            ]
-                .forEach(function (item) {
-                    const option = document.createElement("option");
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    option.selected = item.value === initialMode;
-                    modeSelect.appendChild(option);
-                });
-            modeField.appendChild(modeSelect);
-            panel?.appendChild(modeField);
+            const initialMode = companionCardMode(card);
 
             const appField = document.createElement("div");
             appField.className = "sp-field";
@@ -239,7 +251,7 @@ export function registerCompanionCardTypes(
             urlField.appendChild(urlNote);
             panel?.appendChild(urlField);
             helpers.requireField(urlInput, "Enter an http:// or https:// address before saving.", function () {
-                return modeSelect.value === "url";
+                return initialMode === "url";
             });
 
             function syncMode(mode: string): void {
@@ -249,19 +261,6 @@ export function registerCompanionCardTypes(
                 urlField.style.display = mode === "url" ? "" : "none";
             }
             syncMode(initialMode);
-
-            modeSelect.addEventListener("change", function () {
-                card.entity = modeSelect.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX : "";
-                card.sensor = modeSelect.value === "url" ? COMPANION_URL_PREFIX : "";
-                select.value = "";
-                shortcutInput.value = "";
-                urlInput.value = "";
-                helpers.saveField("entity", card.entity);
-                helpers.saveField("sensor", card.sensor);
-                syncMode(modeSelect.value);
-                if (modeSelect.value === "shortcut") shortcutInput.focus();
-                if (modeSelect.value === "url") urlInput.focus();
-            });
 
             shortcutInput.addEventListener("keydown", function (event) {
                 event.preventDefault();

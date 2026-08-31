@@ -157,6 +157,7 @@ function registerCards(context: ApplicationContext) {
     context.dom.document,
     context.dom.fetch,
     fields,
+    cardUi,
   );
   registerClimateCardTypes(
     registry,
