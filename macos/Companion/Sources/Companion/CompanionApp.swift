@@ -133,90 +133,28 @@ private struct CompanionSettings: View {
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                GroupBox("Panel") {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Button("Paste pairing details") {
-                            guard let clipboard = NSPasteboard.general.string(forType: .string),
-                                  let details = CompanionPairingDetails.parse(clipboard) else {
-                                store.updateStatus("Copy pairing details from the panel web settings first")
-                                return
-                            }
-                            store.panelHost = details.panelHost
-                            pairingCode = details.pairingCode
-                            verificationCode = details.verificationCode
-                            focusedField = nil
-                            store.updateStatus("Pairing details pasted — click Pair to continue")
-                        }
-                        .controlSize(.large)
-
-                        SettingsTextField(
-                            label: "Panel address",
-                            placeholder: "e.g. 192.168.6.100",
-                            text: $store.panelHost,
-                            field: .panelHost,
-                            focusedField: $focusedField
-                        )
-
-                        SettingsTextField(
-                            label: "Panel name",
-                            placeholder: "e.g. Kitchen display",
-                            text: $store.panelName,
-                            field: .panelName,
-                            focusedField: $focusedField
-                        )
-
-                        HStack(alignment: .bottom, spacing: 12) {
-                            SettingsTextField(
-                                label: "Pairing code",
-                                placeholder: "Eight-letter code",
-                                text: $pairingCode,
-                                field: .pairingCode,
-                                focusedField: $focusedField
-                            )
-
-                            SettingsTextField(
-                                label: "Verification code",
-                                placeholder: "Verify code",
-                                text: $verificationCode,
-                                field: .verificationCode,
-                                focusedField: $focusedField
-                            )
-
-                            Button("Pair") {
-                                store.pair(code: pairingCode, verificationCode: verificationCode)
-                            }
-                            .controlSize(.large)
-                        }
-
-                        Text("In the panel web editor, open Settings → Companion, start pairing, then copy and paste the pairing details here.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        if store.hasSavedPairing {
-                            Button("Forget this panel", role: .destructive) { store.forgetPanel() }
-                        }
-                    }
-                    .padding(8)
+        TabView {
+            ScrollView {
+                GroupBox("Device connection") {
+                    deviceConnectionSettings
+                        .padding(8)
                 }
-
-                GroupBox("Apps shown on the panel") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if store.availableApps.isEmpty {
-                            Text("No apps found in /Applications yet.").foregroundStyle(.secondary)
-                        } else {
-                            ForEach(store.availableApps) { app in
-                                Toggle(app.name, isOn: store.allowedBinding(for: app))
-                            }
-                        }
-                        Button("Rescan Applications") { store.refreshApplications() }
-                    }
-                    .padding(8)
-                }
-
+                .padding()
             }
-            .padding()
+            .tabItem {
+                Label("Device", systemImage: "display")
+            }
+
+            ScrollView {
+                GroupBox("Supported apps") {
+                    supportedAppsSettings
+                        .padding(8)
+                }
+                .padding()
+            }
+            .tabItem {
+                Label("Apps", systemImage: "square.grid.2x2")
+            }
         }
         .onAppear {
             focusSettingsWindow {
@@ -224,6 +162,84 @@ private struct CompanionSettings: View {
             }
         }
         .task { store.refreshApplications() }
+    }
+
+    private var deviceConnectionSettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button("Paste pairing details") {
+                guard let clipboard = NSPasteboard.general.string(forType: .string),
+                      let details = CompanionPairingDetails.parse(clipboard) else {
+                    store.updateStatus("Copy pairing details from the panel web settings first")
+                    return
+                }
+                store.panelHost = details.panelHost
+                pairingCode = details.pairingCode
+                verificationCode = details.verificationCode
+                focusedField = nil
+                store.updateStatus("Pairing details pasted — click Pair to continue")
+            }
+            .controlSize(.large)
+
+            SettingsTextField(
+                label: "Panel address",
+                placeholder: "e.g. 192.168.6.100",
+                text: $store.panelHost,
+                field: .panelHost,
+                focusedField: $focusedField
+            )
+
+            SettingsTextField(
+                label: "Panel name",
+                placeholder: "e.g. Kitchen display",
+                text: $store.panelName,
+                field: .panelName,
+                focusedField: $focusedField
+            )
+
+            HStack(alignment: .bottom, spacing: 12) {
+                SettingsTextField(
+                    label: "Pairing code",
+                    placeholder: "Eight-letter code",
+                    text: $pairingCode,
+                    field: .pairingCode,
+                    focusedField: $focusedField
+                )
+
+                SettingsTextField(
+                    label: "Verification code",
+                    placeholder: "Verify code",
+                    text: $verificationCode,
+                    field: .verificationCode,
+                    focusedField: $focusedField
+                )
+
+                Button("Pair") {
+                    store.pair(code: pairingCode, verificationCode: verificationCode)
+                }
+                .controlSize(.large)
+            }
+
+            Text("In the panel web editor, open Settings → Companion, start pairing, then copy and paste the pairing details here.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if store.hasSavedPairing {
+                Button("Forget this panel", role: .destructive) { store.forgetPanel() }
+            }
+        }
+    }
+
+    private var supportedAppsSettings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if store.availableApps.isEmpty {
+                Text("No apps found in /Applications yet.").foregroundStyle(.secondary)
+            } else {
+                ForEach(store.availableApps) { app in
+                    Toggle(app.name, isOn: store.allowedBinding(for: app))
+                }
+            }
+            Button("Rescan Applications") { store.refreshApplications() }
+        }
     }
 }
 
