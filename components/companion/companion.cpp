@@ -1,4 +1,5 @@
 #include "companion.h"
+#include "now_playing_protocol.h"
 
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
@@ -29,9 +30,9 @@ static constexpr uint32_t PAIRING_WINDOW_MS = 15 * 60 * 1000;
 static constexpr uint32_t RETRY_DELAY_MS = 30 * 1000;
 static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = 16 * 1024;
 static constexpr size_t MAX_CATALOGUE_ACTIONS = 256;
-static constexpr size_t MAX_NOW_PLAYING_FIELD_BYTES = 256;
-static constexpr size_t MAX_ARTWORK_BYTES = 256 * 1024;
-static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = 12 * 1024;
+static constexpr size_t MAX_NOW_PLAYING_FIELD_BYTES = protocol::MAX_TEXT_FIELD_BYTES;
+static constexpr size_t MAX_ARTWORK_BYTES = protocol::MAX_ARTWORK_BYTES;
+static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = protocol::MAX_ARTWORK_CHUNK_BYTES;
 static constexpr uint32_t NOW_PLAYING_RECONNECT_GRACE_MS = 5000;
 static constexpr char PAIRING_ALPHABET[] = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
@@ -411,12 +412,12 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       const size_t length = root["byteLength"] | 0;
       const std::string sha256 = root["sha256"] | "";
       const std::string mime_type = root["mimeType"] | "";
-      if (generation != this->now_playing_generation_ ||
-          generation != runtime.now_playing.generation ||
-          !runtime.now_playing.artwork_follows || length < 12 ||
-          length > MAX_ARTWORK_BYTES || mime_type != "image/jpeg") return false;
       std::array<uint8_t, 32> expected{};
-      if (!parse_hex_sha256(sha256, expected)) return false;
+      const bool hash_valid = parse_hex_sha256(sha256, expected);
+      if (!protocol::artwork_begin_valid(true, generation, runtime.now_playing.generation,
+                                         runtime.now_playing.artwork_follows, length,
+                                         mime_type == "image/jpeg", hash_valid) ||
+          generation != this->now_playing_generation_) return false;
       this->reset_artwork_transfer_("replaced artwork transfer");
       this->artwork_buffer_ = this->artwork_allocator_.allocate(length);
       if (!this->artwork_buffer_) return false;
@@ -430,10 +431,7 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
     if (type == "artwork.end") {
       if (!this->artwork_buffer_ || generation != this->artwork_generation_ ||
           this->artwork_offset_ != this->artwork_length_) return false;
-      if (this->artwork_length_ < 4 || this->artwork_buffer_[0] != 0xff ||
-          this->artwork_buffer_[1] != 0xd8 ||
-          this->artwork_buffer_[this->artwork_length_ - 2] != 0xff ||
-          this->artwork_buffer_[this->artwork_length_ - 1] != 0xd9) {
+      if (!protocol::jpeg_signature_valid(this->artwork_buffer_, this->artwork_length_)) {
         this->reset_artwork_transfer_("invalid JPEG signature", true);
         return true;
       }
@@ -483,8 +481,9 @@ void CompanionService::handle_binary_(int socket_fd, const uint8_t *data, size_t
                           (static_cast<uint32_t>(data[5]) << 16) |
                           (static_cast<uint32_t>(data[6]) << 8) | data[7];
   const size_t chunk_size = size - 8;
-  if (generation != this->artwork_generation_ || offset != this->artwork_offset_ ||
-      chunk_size > this->artwork_length_ - this->artwork_offset_) {
+  if (!protocol::artwork_chunk_valid(true, generation, this->artwork_generation_, offset,
+                                      this->artwork_offset_, chunk_size,
+                                      this->artwork_length_)) {
     this->reset_artwork_transfer_("invalid generation or byte offset", true);
     return;
   }

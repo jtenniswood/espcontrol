@@ -178,7 +178,11 @@ final class CompanionStore: NSObject, ObservableObject {
         if isConnected && nowPlayingSharingEnabled {
             nowPlayingProvider.start()
         } else {
-            nowPlayingProvider.stop()
+            if isConnected && !nowPlayingSharingEnabled {
+                nowPlayingProvider.stopAndPublishUnavailable()
+            } else {
+                nowPlayingProvider.stop()
+            }
             nowPlayingStatus = nowPlayingSharingEnabled
                 ? "Waiting for a panel connection" : "Now Playing sharing is disabled"
         }

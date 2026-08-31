@@ -113,6 +113,7 @@ export {
   normalizeBackupScreenSettings,
   normalizeClockBrightness,
   normalizeCoverArtDelay,
+  normalizeCoverArtSource,
   normalizeAlarmDelayAnnouncement,
   normalizeAlarmDelayBeepVolume,
   normalizeAlarmDelayFinalCountdown,

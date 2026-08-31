@@ -26,6 +26,24 @@ struct CompanionNowPlayingSnapshot: Equatable {
     }
 }
 
+protocol MediaRemoteProviding {
+    var isAvailable: Bool { get }
+    func startObserving(_ handler: @escaping () -> Void) -> Bool
+    func stopObserving()
+    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void)
+}
+
+struct MediaRemoteSystemSource: MediaRemoteProviding {
+    var isAvailable: Bool { ECMediaRemoteBridge.isAvailable() }
+    func startObserving(_ handler: @escaping () -> Void) -> Bool {
+        ECMediaRemoteBridge.startObservingChanges(handler)
+    }
+    func stopObserving() { ECMediaRemoteBridge.stopObservingChanges() }
+    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void) {
+        ECMediaRemoteBridge.fetchNowPlaying(completion)
+    }
+}
+
 @MainActor
 final class SystemNowPlayingProvider {
     var onSnapshot: ((CompanionNowPlayingSnapshot) -> Void)?
@@ -35,8 +53,14 @@ final class SystemNowPlayingProvider {
     private var generation: UInt32 = 0
     private var lastIdentity = ""
     private var lastState: CompanionPlaybackState = .unavailable
+    private var lastSnapshot: CompanionNowPlayingSnapshot?
+    private let source: MediaRemoteProviding
 
-    var isAvailable: Bool { ECMediaRemoteBridge.isAvailable() }
+    init(source: MediaRemoteProviding = MediaRemoteSystemSource()) {
+        self.source = source
+    }
+
+    var isAvailable: Bool { source.isAvailable }
 
     func start() {
         stop()
@@ -45,7 +69,7 @@ final class SystemNowPlayingProvider {
             publishUnavailable()
             return
         }
-        _ = ECMediaRemoteBridge.startObservingChanges { [weak self] in self?.refresh() }
+        _ = source.startObserving { [weak self] in self?.refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -55,11 +79,16 @@ final class SystemNowPlayingProvider {
     func stop() {
         timer?.invalidate()
         timer = nil
-        ECMediaRemoteBridge.stopObservingChanges()
+        source.stopObserving()
+    }
+
+    func stopAndPublishUnavailable() {
+        stop()
+        publishUnavailable()
     }
 
     func refresh() {
-        ECMediaRemoteBridge.fetchNowPlaying { [weak self] raw, pid in
+        source.fetch { [weak self] raw, pid in
             guard let self else { return }
             guard let raw, !raw.isEmpty else {
                 self.onStatus?("No active macOS Now Playing session")
@@ -107,19 +136,24 @@ final class SystemNowPlayingProvider {
                 artworkJPEG: artwork
             )
             onStatus?("Sharing \(appName): \(snapshot.title.isEmpty ? "Now Playing" : snapshot.title)")
-            onSnapshot?(snapshot)
+            if snapshot != lastSnapshot {
+                lastSnapshot = snapshot
+                onSnapshot?(snapshot)
+            }
         }
     }
 
     private func publishUnavailable() {
-        guard lastState != .unavailable else { return }
+        guard lastSnapshot?.state != .unavailable else { return }
         generation &+= 1
         lastIdentity = ""
         lastState = .unavailable
-        onSnapshot?(CompanionNowPlayingSnapshot(
+        let snapshot = CompanionNowPlayingSnapshot(
             generation: generation, applicationIdentifier: "", applicationName: "",
             state: .unavailable, contentIdentifier: "", title: "", artist: "", album: "",
-            durationMilliseconds: 0, positionMilliseconds: 0, playbackRate: 0, artworkJPEG: nil))
+            durationMilliseconds: 0, positionMilliseconds: 0, playbackRate: 0, artworkJPEG: nil)
+        lastSnapshot = snapshot
+        onSnapshot?(snapshot)
     }
 
     private static func normalizedValues(_ raw: [AnyHashable: Any]) -> [String: Any] {
@@ -155,11 +189,13 @@ final class SystemNowPlayingProvider {
         return nil
     }
 
-    private static func clamped(_ value: String, bytes: Int) -> String {
-        String(decoding: value.utf8.prefix(bytes), as: UTF8.self)
+    static func clamped(_ value: String, bytes: Int) -> String {
+        var data = Data(value.utf8.prefix(bytes))
+        while !data.isEmpty && String(data: data, encoding: .utf8) == nil { data.removeLast() }
+        return String(data: data, encoding: .utf8) ?? ""
     }
 
-    private static func normalizedArtwork(_ data: Data) -> Data? {
+    static func normalizedArtwork(_ data: Data) -> Data? {
         guard let image = NSImage(data: data) else { return nil }
         let size = NSSize(width: 480, height: 480)
         let output = NSImage(size: size)

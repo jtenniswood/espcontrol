@@ -358,6 +358,7 @@ export interface BackupPanelSettingsState {
   mediaPlayerSleepPrevention: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
+  coverArtSource: string;
   coverArtMediaPlayerEntity: string;
   coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
@@ -384,6 +385,10 @@ export interface BackupPanelSettingsState {
 function normalizeScreensaverMode(value: unknown): string {
   const mode = String(value || "disabled");
   return mode === "sensor" || mode === "timer" || mode === "disabled" ? mode : "disabled";
+}
+
+export function normalizeCoverArtSource(value: unknown): string {
+  return String(value || "") === "Mac Companion" ? "Mac Companion" : "Home Assistant";
 }
 
 function normalizeScreenRotationValue(value: unknown, options: readonly string[]): string {
@@ -503,6 +508,7 @@ export function normalizeBackupPanelSettings(
       : true,
     mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
+    coverArtSource: normalizeCoverArtSource(settings.cover_art_source),
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
     coverArtSecondaryMediaPlayerEntity: String(settings.cover_art_secondary_media_player_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
