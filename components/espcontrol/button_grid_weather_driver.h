@@ -49,10 +49,8 @@ inline bool weather_driver_setup_visual(
           : espcontrol_i18n(std::string("Tomorrow")))
       : config.label;
     lv_label_set_display_text(slot.text_lbl, label.c_str());
-    apply_width_compensation(
-      slot.sensor_container, display_main_width_percent(display));
-    apply_width_compensation(
-      slot.text_lbl, display_main_width_percent(display));
+    display_apply_text_width(slot.sensor_container, display);
+    display_apply_text_width(slot.text_lbl, display);
     register_weather_forecast_card(
       slot.btn, slot.sensor_lbl, slot.unit_lbl, slot.text_lbl,
       config.entity, day, config.label);

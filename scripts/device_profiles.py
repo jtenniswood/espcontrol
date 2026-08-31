@@ -541,6 +541,7 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
 
     for key in (
         "widthCompensationPercent",
+        "textWidthCompensationPercent",
         "volumeWidthCompensationPercent",
         "mediaArtworkWidthCompensationPercent",
     ):
@@ -959,6 +960,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         slot["portrait_cols"] = layout["portraitCols"]
     if display.get("widthCompensationPercent", 100) != 100:
         slot["width_compensation_percent"] = display["widthCompensationPercent"]
+    if display.get("textWidthCompensationPercent", 100) != 100:
+        slot["text_width_compensation_percent"] = display["textWidthCompensationPercent"]
     if display.get("volumeWidthCompensationPercent", 100) != 100:
         slot["volume_width_compensation_percent"] = display["volumeWidthCompensationPercent"]
     if display.get("mediaArtworkWidthCompensationPercent", 100) != 100:

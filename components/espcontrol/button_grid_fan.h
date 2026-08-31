@@ -858,7 +858,8 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
   int tab_count = static_cast<int>(visible_tabs.count);
   bool show_tab_bar = visible_tabs.count > 1;
   ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
-  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  control_modal_apply_tab_row(
+    ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);
   for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = fan_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;
