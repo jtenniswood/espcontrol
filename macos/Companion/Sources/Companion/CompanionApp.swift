@@ -234,6 +234,19 @@ private struct CompanionSettings: View {
             if store.availableApps.isEmpty {
                 Text("No apps found in /Applications yet.").foregroundStyle(.secondary)
             } else {
+                HStack(spacing: 10) {
+                    Button("Enable All") { store.allowAllApplications() }
+                        .disabled(store.allAvailableAppsAllowed)
+                    Button("Disable All") { store.disallowAllApplications() }
+                        .disabled(!store.hasAllowedApps)
+                    Spacer()
+                    Text("\(store.allowedAvailableAppCount) enabled")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
                 ForEach(store.availableApps) { app in
                     Toggle(app.name, isOn: store.allowedBinding(for: app))
                 }

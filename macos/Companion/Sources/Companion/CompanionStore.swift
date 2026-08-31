@@ -34,6 +34,13 @@ final class CompanionStore: NSObject, ObservableObject {
 
     var hasSavedPairing: Bool { KeychainStore.load(service: KeychainStore.service, account: panelHost) != nil }
     var connectionSymbol: String { isConnected ? "laptopcomputer.and.iphone" : "laptopcomputer.slash" }
+    var allAvailableAppsAllowed: Bool {
+        !availableApps.isEmpty && availableApps.allSatisfy { allowedBundleIdentifiers.contains($0.bundleIdentifier) }
+    }
+    var allowedAvailableAppCount: Int {
+        availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) }.count
+    }
+    var hasAllowedApps: Bool { !allowedBundleIdentifiers.isEmpty }
 
     func allowedBinding(for app: LaunchableApp) -> Binding<Bool> {
         Binding(
@@ -41,10 +48,24 @@ final class CompanionStore: NSObject, ObservableObject {
             set: { enabled in
                 if enabled { self.allowedBundleIdentifiers.insert(app.bundleIdentifier) }
                 else { self.allowedBundleIdentifiers.remove(app.bundleIdentifier) }
-                self.defaults.set(Array(self.allowedBundleIdentifiers).sorted(), forKey: Keys.allowed)
-                self.connection.publishCatalogue()
+                self.persistAllowedApplications()
             }
         )
+    }
+
+    func allowAllApplications() {
+        allowedBundleIdentifiers = Set(availableApps.map(\.bundleIdentifier))
+        persistAllowedApplications()
+    }
+
+    func disallowAllApplications() {
+        allowedBundleIdentifiers.removeAll()
+        persistAllowedApplications()
+    }
+
+    private func persistAllowedApplications() {
+        defaults.set(Array(allowedBundleIdentifiers).sorted(), forKey: Keys.allowed)
+        connection.publishCatalogue()
     }
 
     func refreshApplications() {
