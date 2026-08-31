@@ -115,17 +115,25 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func refreshApplications() {
         let roots = [URL(fileURLWithPath: "/Applications"), URL(fileURLWithPath: "/System/Applications")]
+        let additionalSystemApps = [URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")]
         let keys: Set<URLResourceKey> = [.isDirectoryKey]
         var found: [LaunchableApp] = []
+
+        func appendApplication(at url: URL) {
+            guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { return }
+            let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+                ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+                ?? url.deletingPathExtension().lastPathComponent
+            found.append(LaunchableApp(bundleIdentifier: id, name: name, url: url))
+        }
+
         for root in roots {
             guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
             for case let url as URL in enumerator where url.pathExtension == "app" {
-                guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { continue }
-                let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-                    ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String) ?? url.deletingPathExtension().lastPathComponent
-                found.append(LaunchableApp(bundleIdentifier: id, name: name, url: url))
+                appendApplication(at: url)
             }
         }
+        additionalSystemApps.forEach { appendApplication(at: $0) }
         availableApps = Dictionary(grouping: found, by: \.bundleIdentifier).compactMap { $0.value.first }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
@@ -148,6 +156,9 @@ final class CompanionStore: NSObject, ObservableObject {
     func updateStatus(_ message: String, connected: Bool = false) { statusDescription = message; isConnected = connected }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = selectedApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
+        if app.bundleIdentifier == "com.apple.finder" {
+            return NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser)
+        }
         NSWorkspace.shared.openApplication(at: app.url, configuration: .init()) { _, _ in }
         return true
     }
