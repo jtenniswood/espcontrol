@@ -16,6 +16,16 @@ export interface SettingsCompanionSectionFeature {
     buildCompanionSettingsCard(): HTMLElement;
 }
 
+export function companionPairingStatusText(state: CompanionPairingState): string {
+    if (state.active && state.pairing_code && state.verification_code) {
+        const minutes = Math.max(1, Math.ceil(state.expires_in_seconds / 60));
+        const pairing = "Pairing is open for about " + minutes + (minutes === 1 ? " minute." : " minutes.");
+        return state.connected ? "Mac Companion connected. " + pairing : pairing;
+    }
+    if (state.connected) return "Mac Companion connected";
+    return state.paired ? "Mac paired, but not connected" : "No Mac paired";
+}
+
 export function formatCompanionPairingDetails(host: string, state: CompanionPairingState): string {
     return [
         "EspControl Companion pairing",
@@ -71,6 +81,8 @@ export function createSettingsCompanionSectionFeature(
         const status = document.createElement("div");
         status.className = "sp-companion-status";
         status.textContent = "Checking Companion status…";
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
         body.appendChild(status);
 
         const details = document.createElement("div");
@@ -100,9 +112,9 @@ export function createSettingsCompanionSectionFeature(
 
         function render(value: CompanionPairingState): void {
             current = value;
+            status.textContent = companionPairingStatusText(value);
+            status.classList.toggle("sp-companion-status-connected", value.connected);
             if (value.active && value.pairing_code && value.verification_code) {
-                const minutes = Math.max(1, Math.ceil(value.expires_in_seconds / 60));
-                status.textContent = "Pairing is open for about " + minutes + (minutes === 1 ? " minute." : " minutes.");
                 pairingValue.textContent = value.pairing_code;
                 verificationValue.textContent = value.verification_code;
                 details.classList.remove("sp-hidden");
@@ -113,7 +125,6 @@ export function createSettingsCompanionSectionFeature(
             details.classList.add("sp-hidden");
             copyButton.classList.add("sp-hidden");
             startButton.textContent = "Start pairing";
-            status.textContent = value.connected ? "Mac connected" : value.paired ? "Mac paired, but not connected" : "No Mac paired";
         }
 
         startButton.addEventListener("click", async function () {
@@ -136,11 +147,35 @@ export function createSettingsCompanionSectionFeature(
             }
         });
 
+        async function refreshStatus(): Promise<void> {
+            try {
+                render(await requestPairing("GET"));
+            } catch {
+                status.textContent = "Companion connection status unavailable";
+                status.classList.remove("sp-companion-status-connected");
+            }
+        }
+
         requestPairing("GET").then(render).catch(function () {
             status.textContent = "Companion pairing is unavailable";
             startButton.disabled = true;
         });
-        return fields.makeCollapsibleCard("Mac Companion", body, true);
+        const card = fields.makeCollapsibleCard("Mac Companion", body, true);
+        let refreshInProgress = false;
+        const refreshTimer = window.setInterval(async function () {
+            if (!card.isConnected) {
+                window.clearInterval(refreshTimer);
+                return;
+            }
+            if (refreshInProgress) return;
+            refreshInProgress = true;
+            try {
+                await refreshStatus();
+            } finally {
+                refreshInProgress = false;
+            }
+        }, 2000);
+        return card;
     }
 
     return { buildCompanionSettingsCard };

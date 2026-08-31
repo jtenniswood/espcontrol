@@ -1,4 +1,7 @@
-import { formatCompanionPairingDetails } from "../../src/webserver/application/settings_companion_section";
+import {
+  companionPairingStatusText,
+  formatCompanionPairingDetails,
+} from "../../src/webserver/application/settings_companion_section";
 
 export function runCompanionPairingFeatureTests(): void {
   const details = formatCompanionPairingDetails("192.168.6.100", {
@@ -17,4 +20,17 @@ export function runCompanionPairingFeatureTests(): void {
     "Verify code: 1234-5678-90AB",
   ].join("\n");
   if (details !== expected) throw new Error("Companion pairing details must match the Mac paste format");
+
+  const connectedStatus = companionPairingStatusText({
+    available: true,
+    active: false,
+    paired: true,
+    connected: true,
+    expires_in_seconds: 0,
+    pairing_code: "",
+    verification_code: "",
+  });
+  if (connectedStatus !== "Mac Companion connected") {
+    throw new Error("Connected Companion status must be clear on the settings page");
+  }
 }
