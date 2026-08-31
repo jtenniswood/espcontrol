@@ -1389,7 +1389,7 @@
             "main_page_pad_top": "\"40\"",
             "main_page_compact_pad_top": "\"4\"",
             "clock_bar_item_gap": "\"60\"",
-            "clock_bar_visual_gap": "\"8\"",
+            "clock_bar_visual_gap": "\"32\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"240\"",

@@ -108,6 +108,7 @@ def voice_substitution_lines(device: dict) -> list[str]:
                 "    clock_bar_set_widget_hidden(id(companion_status_button), true);",
                 "  voice_clock_bar_apply_code: |-",
                 "    {",
+                "      clock_bar_right_icons.gap = ${clock_bar_visual_gap};",
                 *clock_bar_icon_offset_lines("companion_status_x", "companion_status_button",
                                              "companion_status_icon_label"),
                 "      lv_obj_align(id(companion_status_button), LV_ALIGN_TOP_RIGHT,",

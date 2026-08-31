@@ -34,11 +34,12 @@ substitutions:
   main_page_pad_top: "40"
   main_page_compact_pad_top: "4"
   clock_bar_item_gap: "60"
-  clock_bar_visual_gap: "8"
+  clock_bar_visual_gap: "32"
   voice_clock_bar_hide_code: |-
     clock_bar_set_widget_hidden(id(companion_status_button), true);
   voice_clock_bar_apply_code: |-
     {
+      clock_bar_right_icons.gap = ${clock_bar_visual_gap};
       const int companion_status_x_box = lv_obj_get_width(id(companion_status_button));
       const int companion_status_x = clock_bar_right_icons_next_x(
           clock_bar_right_icons, companion_status_x_box,
