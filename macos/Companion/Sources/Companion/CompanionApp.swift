@@ -1,58 +1,93 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @main
 struct CompanionApp: App {
-    @StateObject private var store = CompanionStore()
+    @NSApplicationDelegateAdaptor(CompanionApplicationDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("EspControl Companion", systemImage: store.connectionSymbol) {
-            CompanionMenu(store: store)
-        }
-        .menuBarExtraStyle(.window)
-
         Settings {
-            CompanionSettings(store: store)
+            CompanionSettings(store: appDelegate.store)
                 .frame(width: 560, height: 500)
         }
     }
 }
 
-private struct CompanionMenu: View {
-    @ObservedObject var store: CompanionStore
+@MainActor
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
+    let store = CompanionStore()
+    private var statusItem: NSStatusItem?
+    private var connectionObservation: AnyCancellable?
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("EspControl Companion").font(.headline)
-            Text(store.statusDescription).foregroundStyle(.secondary)
-            Divider()
-            Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
-            if #available(macOS 14.0, *) {
-                CompanionSettingsButton()
-            } else {
-                Button("Open Settings…") {
-                    activateCompanionApplication()
-                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                    focusSettingsWindow()
-                }
-            }
-            Divider()
-            Button("Quit") { NSApp.terminate(nil) }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = item
+        if let button = item.button {
+            button.target = self
+            button.action = #selector(statusItemClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.toolTip = "EspControl Companion"
         }
-        .padding()
+        updateStatusItemImage()
+        connectionObservation = store.$isConnected
+            .removeDuplicates()
+            .sink { [weak self] _ in self?.updateStatusItemImage() }
     }
-}
 
-@available(macOS 14.0, *)
-private struct CompanionSettingsButton: View {
-    @Environment(\.openSettings) private var openSettings
-
-    var body: some View {
-        Button("Open Settings…") {
-            activateCompanionApplication()
-            openSettings()
-            focusSettingsWindow()
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        guard let event = NSApp.currentEvent else {
+            openCompanionWindow()
+            return
         }
+        if event.type == .rightMouseUp {
+            NSMenu.popUpContextMenu(contextMenu(), with: event, for: sender)
+        } else {
+            openCompanionWindow()
+        }
+    }
+
+    private func contextMenu() -> NSMenu {
+        let menu = NSMenu()
+        let connectItem = NSMenuItem(
+            title: store.isConnected ? "Reconnect" : "Connect",
+            action: #selector(connect),
+            keyEquivalent: ""
+        )
+        connectItem.target = self
+        menu.addItem(connectItem)
+        menu.addItem(.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(title: "Quit EspControl Companion", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        return menu
+    }
+
+    private func updateStatusItemImage() {
+        guard let button = statusItem?.button else { return }
+        let image = NSImage(systemSymbolName: store.connectionSymbol, accessibilityDescription: "EspControl Companion")
+        image?.isTemplate = true
+        button.image = image
+    }
+
+    @objc private func connect() { store.connect() }
+    @objc private func openSettings() { openCompanionWindow() }
+    @objc private func quit() { NSApp.terminate(nil) }
+
+    private func openCompanionWindow() {
+        activateCompanionApplication()
+        let opened = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if !opened {
+            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
+        focusSettingsWindow()
     }
 }
 
