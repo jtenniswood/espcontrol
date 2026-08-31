@@ -9,7 +9,7 @@ export function runCompanionPairingFeatureTests(): void {
     active: true,
     paired: false,
     connected: false,
-    expires_in_seconds: 86400,
+    expires_in_seconds: 900,
     pairing_code: "ABCD-EFGH",
     mdns_name: "espcontrol-4inch-s3.local",
   });
@@ -25,10 +25,10 @@ export function runCompanionPairingFeatureTests(): void {
     active: true,
     paired: false,
     connected: false,
-    expires_in_seconds: 86400,
+    expires_in_seconds: 900,
     pairing_code: "ABCD-EFGH",
   });
-  if (openStatus !== "Pairing is open for about 24 hours.") {
+  if (openStatus !== "Pairing is open for about 15 minutes.") {
     throw new Error("Companion setup should describe the extended pairing window");
   }
 

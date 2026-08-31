@@ -23,7 +23,7 @@ namespace esphome::companion {
 
 static const char *const TAG = "companion";
 static CompanionService *global_companion_service = nullptr;
-static constexpr uint32_t PAIRING_WINDOW_MS = 24 * 60 * 60 * 1000;
+static constexpr uint32_t PAIRING_WINDOW_MS = 15 * 60 * 1000;
 static constexpr uint32_t RETRY_DELAY_MS = 30 * 1000;
 static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = 16 * 1024;
 static constexpr size_t MAX_CATALOGUE_ACTIONS = 256;
@@ -253,6 +253,8 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     if (this->authenticated_socket_ != -1 && this->authenticated_socket_ != socket_fd) httpd_sess_trigger_close(this->server_, this->authenticated_socket_);
     this->authenticated_socket_ = socket_fd;
     this->set_connected_(true);
+    this->pairing_code_.clear();
+    this->pairing_expires_at_ = 0;
     this->send_(socket_fd, "AUTHENTICATED|1");
     this->publish_catalogue_();
     return;

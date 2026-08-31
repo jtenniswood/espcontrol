@@ -79,7 +79,7 @@ export function createSettingsCompanionSectionFeature(
         const body = document.createElement("div");
         const note = document.createElement("p");
         note.className = "sp-setting-note sp-companion-note";
-        note.textContent = "Start pairing, then copy the details into EspControl Companion on your Mac. Setup codes remain available for 24 hours; once paired, the trusted connection is saved across reboots.";
+        note.textContent = "Start pairing, then copy the details into EspControl Companion on your Mac. The setup code expires after 15 minutes or as soon as the Mac connects; the trusted pairing remains saved across reboots.";
         body.appendChild(note);
 
         const status = document.createElement("div");

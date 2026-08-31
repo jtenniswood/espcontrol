@@ -307,6 +307,9 @@ private struct CompanionSettings: View {
             focusSettingsWindow()
         }
         .task { store.refreshApplications() }
+        .onChange(of: store.isConnected) { connected in
+            if connected { pairingCode = "" }
+        }
     }
 
     private var deviceConnectionSettings: some View {
