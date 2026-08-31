@@ -3006,7 +3006,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "value": "Auto"
         },
         "sensor": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "unit": {
           "policy": "clear"
