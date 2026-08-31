@@ -152,7 +152,10 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
 
 inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
-  std::string label = p.label.empty() ? (p.entity.empty() ? "Mac App" : p.entity) : p.label;
+  const std::string shortcut_label = companion_shortcut_label(p.entity);
+  std::string label = p.label.empty()
+    ? (!shortcut_label.empty() ? shortcut_label : (p.entity.empty() ? "Mac App" : p.entity))
+    : p.label;
   lv_label_set_text(s.text_lbl, label.c_str());
   const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
   lv_label_set_text(s.icon_lbl, icon);

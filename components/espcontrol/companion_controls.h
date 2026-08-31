@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cctype>
+#include <cstdlib>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -115,10 +117,86 @@ inline void register_companion_pairing_callbacks(CompanionPairingProvider provid
   companion_pairing_starter() = std::move(starter);
 }
 
+inline std::vector<std::string> companion_shortcut_parts(const std::string &action_id) {
+  static const std::string prefix = "shortcut.";
+  if (action_id.rfind(prefix, 0) != 0 || action_id.size() <= prefix.size() || action_id.size() > 96) return {};
+  std::vector<std::string> parts;
+  size_t start = prefix.size();
+  while (start <= action_id.size()) {
+    const size_t end = action_id.find('+', start);
+    parts.push_back(action_id.substr(start, end == std::string::npos ? std::string::npos : end - start));
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  return parts;
+}
+
+inline bool companion_shortcut_action_valid(const std::string &action_id) {
+  const auto parts = companion_shortcut_parts(action_id);
+  if (parts.size() < 2 || parts.size() > 5) return false;
+  bool command = false, control = false, option = false, shift = false;
+  for (size_t i = 0; i + 1 < parts.size(); i++) {
+    const auto &part = parts[i];
+    if (part == "command" && !command) command = true;
+    else if (part == "control" && !control) control = true;
+    else if (part == "option" && !option) option = true;
+    else if (part == "shift" && !shift) shift = true;
+    else return false;
+  }
+  if (!command && !control && !option) return false;
+  const auto &key = parts.back();
+  if (key.size() == 1 && ((key[0] >= 'a' && key[0] <= 'z') || (key[0] >= '0' && key[0] <= '9'))) return true;
+  static const std::vector<std::string> named_keys{
+    "space", "enter", "tab", "escape", "delete", "forwarddelete",
+    "left", "right", "up", "down", "home", "end", "pageup", "pagedown",
+    "keycomma", "keyperiod", "keyslash", "keysemicolon", "keyquote", "keybackslash", "keyminus",
+    "keyequal", "keybracketleft", "keybracketright", "keybackquote",
+  };
+  if (std::find(named_keys.begin(), named_keys.end(), key) != named_keys.end()) return true;
+  if (key.size() >= 2 && key[0] == 'f') {
+    const int number = std::atoi(key.c_str() + 1);
+    return number >= 1 && number <= 20 && key == "f" + std::to_string(number);
+  }
+  return false;
+}
+
+inline std::string companion_shortcut_label(const std::string &action_id) {
+  if (!companion_shortcut_action_valid(action_id)) return "";
+  const auto parts = companion_shortcut_parts(action_id);
+  std::string label;
+  for (size_t i = 0; i + 1 < parts.size(); i++) {
+    if (parts[i] == "command") label += "Cmd+";
+    else if (parts[i] == "control") label += "Ctrl+";
+    else if (parts[i] == "option") label += "Opt+";
+    else if (parts[i] == "shift") label += "Shift+";
+  }
+  std::string key = parts.back();
+  if (key.size() == 1 && key[0] >= 'a' && key[0] <= 'z') key[0] = static_cast<char>(key[0] - 'a' + 'A');
+  else if (key == "enter") key = "Return";
+  else if (key == "escape") key = "Esc";
+  else if (key == "forwarddelete") key = "Forward Delete";
+  else if (key == "pageup") key = "Page Up";
+  else if (key == "pagedown") key = "Page Down";
+  else if (key == "keycomma") key = ",";
+  else if (key == "keyperiod") key = ".";
+  else if (key == "keyslash") key = "/";
+  else if (key == "keysemicolon") key = ";";
+  else if (key == "keyquote") key = "'";
+  else if (key == "keybackslash") key = "\\";
+  else if (key == "keyminus") key = "-";
+  else if (key == "keyequal") key = "=";
+  else if (key == "keybracketleft") key = "[";
+  else if (key == "keybracketright") key = "]";
+  else if (key == "keybackquote") key = "`";
+  else if (!key.empty()) key[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(key[0])));
+  return label + key;
+}
+
 inline bool companion_action_available(const std::string &action_id) {
   if (action_id.empty()) return false;
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
+  if (companion_shortcut_action_valid(action_id)) return true;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;
   });

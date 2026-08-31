@@ -13,6 +13,61 @@ interface CompanionAction {
     readonly label: string;
 }
 
+const COMPANION_SHORTCUT_PREFIX = "shortcut.";
+const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
+const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
+    Space: "space", Enter: "enter", Tab: "tab", Escape: "escape",
+    Backspace: "delete", Delete: "forwarddelete",
+    ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down",
+    Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
+    Comma: "keycomma", Period: "keyperiod", Slash: "keyslash", Semicolon: "keysemicolon",
+    Quote: "keyquote", Backslash: "keybackslash", Minus: "keyminus", Equal: "keyequal",
+    BracketLeft: "keybracketleft", BracketRight: "keybracketright", Backquote: "keybackquote",
+};
+const COMPANION_SHORTCUT_KEY_LABELS: Readonly<Record<string, string>> = {
+    space: "Space", enter: "Return", tab: "Tab", escape: "Esc",
+    delete: "Delete", forwarddelete: "Forward Delete",
+    left: "←", right: "→", up: "↑", down: "↓",
+    home: "Home", end: "End", pageup: "Page Up", pagedown: "Page Down",
+    keycomma: ",", keyperiod: ".", keyslash: "/", keysemicolon: ";", keyquote: "'",
+    keybackslash: "\\", keyminus: "-", keyequal: "=", keybracketleft: "[",
+    keybracketright: "]", keybackquote: "`",
+};
+
+function companionShortcutKey(code: string): string {
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+    if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+    if (/^F(?:[1-9]|1[0-9]|20)$/.test(code)) return code.toLowerCase();
+    return COMPANION_SHORTCUT_KEYS[code] || "";
+}
+
+export function companionShortcutActionId(event: Pick<KeyboardEvent,
+    "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">): string {
+    const key = companionShortcutKey(event.code);
+    if (!key || (!event.metaKey && !event.ctrlKey && !event.altKey)) return "";
+    const parts: string[] = [];
+    if (event.metaKey) parts.push("command");
+    if (event.ctrlKey) parts.push("control");
+    if (event.altKey) parts.push("option");
+    if (event.shiftKey) parts.push("shift");
+    parts.push(key);
+    return COMPANION_SHORTCUT_PREFIX + parts.join("+");
+}
+
+export function formatCompanionShortcutActionId(actionId: string): string {
+    if (!actionId.startsWith(COMPANION_SHORTCUT_PREFIX)) return "";
+    const parts = actionId.slice(COMPANION_SHORTCUT_PREFIX.length).split("+");
+    const key = parts.pop() || "";
+    if (!key || !parts.length || parts.some((part) =>
+        !(COMPANION_SHORTCUT_MODIFIERS as readonly string[]).includes(part))) return "";
+    const symbols: Readonly<Record<string, string>> = {
+        command: "⌘", control: "⌃", option: "⌥", shift: "⇧",
+    };
+    const keyLabel = COMPANION_SHORTCUT_KEY_LABELS[key]
+        || (/^[a-z]$/.test(key) ? key.toUpperCase() : key.toUpperCase());
+    return parts.map((part) => symbols[part]).join("") + keyLabel;
+}
+
 const COMPANION_CARD_METADATA = {
     icon: {
         pickerIdSuffix: "icon-picker",
@@ -58,7 +113,7 @@ export function registerCompanionCardTypes(
         allowInSubpage: function () { return cardContractAllowInSubpage("companion"); },
         pickerKey: function () { return cardContractPickerKey("companion"); },
         hidden: function () { return cardContractHidden("companion"); },
-        labelPlaceholder: "e.g. Safari",
+        labelPlaceholder: "e.g. Safari or Select all",
         defaultConfig: function () { return cardContractDefaultConfig("companion"); },
         cardMetadata: COMPANION_CARD_METADATA,
         isAvailable: function () { return supported; },
@@ -68,9 +123,28 @@ export function registerCompanionCardTypes(
         },
         renderSettings: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
-            const field = document.createElement("div");
-            field.className = "sp-field";
-            field.appendChild(fieldLabel("Mac App", helpers.idPrefix + "companion-action"));
+            const shortcutMode = card.entity.startsWith(COMPANION_SHORTCUT_PREFIX);
+
+            const modeField = document.createElement("div");
+            modeField.className = "sp-field";
+            modeField.appendChild(fieldLabel("Action", helpers.idPrefix + "companion-mode"));
+            const modeSelect = document.createElement("select");
+            modeSelect.className = "sp-select";
+            modeSelect.id = helpers.idPrefix + "companion-mode";
+            [{ value: "app", label: "Launch app" }, { value: "shortcut", label: "Keyboard shortcut" }]
+                .forEach(function (item) {
+                    const option = document.createElement("option");
+                    option.value = item.value;
+                    option.textContent = item.label;
+                    option.selected = item.value === (shortcutMode ? "shortcut" : "app");
+                    modeSelect.appendChild(option);
+                });
+            modeField.appendChild(modeSelect);
+            panel?.appendChild(modeField);
+
+            const appField = document.createElement("div");
+            appField.className = "sp-field";
+            appField.appendChild(fieldLabel("Mac App", helpers.idPrefix + "companion-action"));
 
             const select = document.createElement("select");
             select.className = "sp-select";
@@ -80,8 +154,55 @@ export function registerCompanionCardTypes(
             loading.value = "";
             loading.textContent = "Loading approved apps…";
             select.appendChild(loading);
-            field.appendChild(select);
-            panel?.appendChild(field);
+            appField.appendChild(select);
+            panel?.appendChild(appField);
+
+            const shortcutField = document.createElement("div");
+            shortcutField.className = "sp-field";
+            shortcutField.appendChild(fieldLabel("Shortcut", helpers.idPrefix + "companion-shortcut"));
+            const shortcutInput = document.createElement("input");
+            shortcutInput.className = "sp-input";
+            shortcutInput.id = helpers.idPrefix + "companion-shortcut";
+            shortcutInput.readOnly = true;
+            shortcutInput.placeholder = "Click, then press a shortcut such as ⌘A";
+            shortcutInput.value = formatCompanionShortcutActionId(card.entity);
+            shortcutInput.setAttribute("aria-label", "Keyboard shortcut");
+            shortcutField.appendChild(shortcutInput);
+            const shortcutNote = document.createElement("div");
+            shortcutNote.className = "sp-field-info-text";
+            shortcutNote.textContent = "Use Command, Control, or Option with a key. The shortcut is replayed on the active Mac app.";
+            shortcutField.appendChild(shortcutNote);
+            panel?.appendChild(shortcutField);
+
+            function syncMode(mode: string): void {
+                appField.style.display = mode === "app" ? "" : "none";
+                shortcutField.style.display = mode === "shortcut" ? "" : "none";
+            }
+            syncMode(shortcutMode ? "shortcut" : "app");
+
+            modeSelect.addEventListener("change", function () {
+                card.entity = modeSelect.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX : "";
+                select.value = "";
+                shortcutInput.value = "";
+                helpers.saveField("entity", card.entity);
+                syncMode(modeSelect.value);
+                if (modeSelect.value === "shortcut") shortcutInput.focus();
+            });
+
+            shortcutInput.addEventListener("keydown", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (["MetaLeft", "MetaRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "ShiftLeft", "ShiftRight"]
+                    .includes(event.code)) return;
+                const actionId = companionShortcutActionId(event);
+                if (!actionId) {
+                    shortcutInput.value = "Use ⌘, ⌃, or ⌥ with a supported key";
+                    return;
+                }
+                card.entity = actionId;
+                shortcutInput.value = formatCompanionShortcutActionId(actionId);
+                helpers.saveField("entity", card.entity);
+            });
 
             fetchCompanionActions(fetchImpl).then(function (actions) {
                 select.replaceChildren();
@@ -119,8 +240,9 @@ export function registerCompanionCardTypes(
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
         },
         renderPreview: function (card?: any, helpers?: any) {
+            const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             return cardBadgePreview(card, helpers, {
-                label: card.label || card.entity || "Mac App",
+                label: card.label || shortcutLabel || card.entity || "Mac App",
                 iconFallback: "Monitor",
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });

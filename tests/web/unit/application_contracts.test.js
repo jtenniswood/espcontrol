@@ -18,6 +18,7 @@ function sourceFiles(directory) {
 describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
   const { runCompanionPairingFeatureTests } = loadTypescriptTest("tests/web/companion_pairing_feature.test.ts");
+  const { runCompanionShortcutFeatureTests } = loadTypescriptTest("tests/web/companion_shortcut_feature.test.ts");
   const { runApplicationContextTests } = loadTypescriptTest("tests/web/application_context.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
@@ -30,6 +31,10 @@ describe("browserless application contracts", () => {
 
   test("formats Companion pairing details for the Mac app", () => {
     runCompanionPairingFeatureTests();
+  });
+
+  test("captures and formats Companion keyboard shortcuts", () => {
+    runCompanionShortcutFeatureTests();
   });
 
   test("owns browser composition and compatibility layout state", () => {

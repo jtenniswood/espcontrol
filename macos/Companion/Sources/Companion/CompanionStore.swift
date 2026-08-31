@@ -85,4 +85,19 @@ final class CompanionStore: NSObject, ObservableObject {
         NSWorkspace.shared.openApplication(at: app.url, configuration: .init()) { _, _ in }
         return true
     }
+
+    func perform(actionIdentifier: String) -> Bool {
+        guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
+            return launch(bundleIdentifier: actionIdentifier)
+        }
+        guard let shortcut = CompanionKeyboardShortcut(actionIdentifier: actionIdentifier) else {
+            updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)
+            return false
+        }
+        guard shortcut.replay() else {
+            updateStatus("Allow EspControl Companion in Privacy & Security → Accessibility", connected: isConnected)
+            return false
+        }
+        return true
+    }
 }

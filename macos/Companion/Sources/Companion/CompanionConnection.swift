@@ -121,8 +121,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             publishCatalogue()
         case "INVOKE":
             guard parts.count == 3 else { return }
-            let launched = store.launch(bundleIdentifier: parts[2])
-            send("RESULT|\(parts[1])|\(launched ? "opened" : "not_allowed")")
+            let performed = store.perform(actionIdentifier: parts[2])
+            send("RESULT|\(parts[1])|\(performed ? "performed" : "not_allowed")")
         case "ERROR":
             store.updateStatus(parts.dropFirst().joined(separator: " "))
         default: break

@@ -5,7 +5,7 @@ description: Launch approved macOS applications from a 4848S040 EspControl panel
 
 # Companion Cards
 
-Companion cards are a proof-of-concept card type for the **4-inch 4848S040** panel. They let you launch a small, approved list of applications on one paired Mac. They do not run shell commands or expose your Mac to incoming network connections.
+Companion cards are a proof-of-concept card type for the **4-inch 4848S040** panel. They let you launch a small, approved list of applications or replay a saved keyboard shortcut on one paired Mac. They do not run shell commands or expose your Mac to incoming network connections.
 
 ## Before adding cards
 
@@ -18,14 +18,20 @@ The Mac stores the pairing credential in Keychain and pins the panel's locally g
 
 ## Add a Companion card
 
-Use the normal browser layout editor: select an empty home-screen or subpage slot, choose **Companion**, then choose one of the approved Mac apps from **Mac App**. Give it a label and icon like any other card.
+Use the normal browser layout editor and select an empty home-screen or subpage slot, then choose **Companion**. Under **Action**, choose one of:
 
-The card is disabled when the Mac is offline or when that app has been removed from the approved list. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards; no separate Mac layout editor is needed.
+- **Launch app** — select one of the applications approved in the Mac app.
+- **Keyboard shortcut** — click the shortcut field and press a combination such as Command-A. The browser records and displays the combination on the card.
+
+The first time a shortcut is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts are sent to whichever Mac application is active at that time.
+
+The card is disabled when the Mac is offline, or when an app-launch card references an application that has been removed from the approved list. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards; no separate Mac layout editor is needed.
 
 ## Limits in this proof of concept
 
 - One Mac can be paired to one panel at a time.
-- The first version only launches apps. It does not control playback, windows, files, or arbitrary commands.
+- Keyboard shortcuts require Command, Control, or Option plus a supported key. Modifier-only and unsupported system keys are rejected.
+- Companion does not control playback, windows, files, or arbitrary commands directly.
 - Companion is only offered on the 4848S040 profile. Other panels continue to behave normally.
 
 If a pairing needs to be replaced, forget it in the Mac app and start a new pairing session from the panel's web settings.
