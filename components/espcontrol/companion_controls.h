@@ -292,16 +292,20 @@ inline std::string companion_shortcut_label(const std::string &action_id) {
   const auto parts = companion_shortcut_parts(action_id);
   std::string label;
   for (size_t i = 0; i + 1 < parts.size(); i++) {
-    if (parts[i] == "command") label += "Cmd+";
-    else if (parts[i] == "control") label += "Ctrl+";
-    else if (parts[i] == "option") label += "Opt+";
-    else if (parts[i] == "shift") label += "Shift+";
+    if (parts[i] == "command") label += "\U000F0633";
+    else if (parts[i] == "control") label += "\U000F0634";
+    else if (parts[i] == "option") label += "\U000F0635";
+    else if (parts[i] == "shift") label += "\U000F0636";
   }
   std::string key = parts.back();
   if (key.size() == 1 && key[0] >= 'a' && key[0] <= 'z') key[0] = static_cast<char>(key[0] - 'a' + 'A');
   else if (key == "enter") key = "Return";
   else if (key == "escape") key = "Esc";
   else if (key == "forwarddelete") key = "Forward Delete";
+  else if (key == "left") key = "\U000F004D";
+  else if (key == "right") key = "\U000F0054";
+  else if (key == "up") key = "\U000F005D";
+  else if (key == "down") key = "\U000F0045";
   else if (key == "pageup") key = "Page Up";
   else if (key == "pagedown") key = "Page Down";
   else if (key == "keycomma") key = ",";

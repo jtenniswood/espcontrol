@@ -1,0 +1,9 @@
+# Material Design Icons used inside Companion keyboard shortcut labels.
+- "\U000F0633"  # mdi-apple-keyboard-command
+- "\U000F0634"  # mdi-apple-keyboard-control
+- "\U000F0635"  # mdi-apple-keyboard-option
+- "\U000F0636"  # mdi-apple-keyboard-shift
+- "\U000F004D"  # mdi-arrow-left
+- "\U000F0054"  # mdi-arrow-right
+- "\U000F005D"  # mdi-arrow-up
+- "\U000F0045"  # mdi-arrow-down

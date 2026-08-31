@@ -34,6 +34,8 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
+      - file: '${mdi_font_file}'
+        glyphs: !include ../../../common/assets/shortcut_glyphs.yaml
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 

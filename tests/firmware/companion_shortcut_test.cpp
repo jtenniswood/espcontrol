@@ -5,10 +5,12 @@
 int main() {
   assert(!companion_connected());
   assert(companion_shortcut_action_valid("shortcut.command+a"));
-  assert(companion_shortcut_label("shortcut.command+a") == "Cmd+A");
+  assert(companion_shortcut_label("shortcut.command+a") == "\U000F0633" "A");
   assert(companion_shortcut_action_valid("shortcut.control+shift+tab"));
-  assert(companion_shortcut_label("shortcut.control+shift+tab") == "Ctrl+Shift+Tab");
+  assert(companion_shortcut_label("shortcut.control+shift+tab") == "\U000F0634\U000F0636" "Tab");
   assert(companion_shortcut_action_valid("shortcut.option+f20"));
+  assert(companion_shortcut_label("shortcut.option+f20") == "\U000F0635" "F20");
+  assert(companion_shortcut_label("shortcut.command+left") == "\U000F0633\U000F004D");
 
   assert(!companion_shortcut_action_valid("shortcut.shift+a"));
   assert(!companion_shortcut_action_valid("shortcut.command+command+a"));
