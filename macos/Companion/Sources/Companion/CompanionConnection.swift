@@ -25,10 +25,14 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         let configuration = URLSessionConfiguration.ephemeral
         configuration.waitsForConnectivity = true
         session = URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
-        task = session?.webSocketTask(with: url)
-        task?.resume()
+        guard let task = session?.webSocketTask(with: url) else {
+            store.updateStatus("Could not create the panel connection")
+            return
+        }
+        self.task = task
+        task.resume()
         store.updateStatus("Connecting…")
-        receive()
+        receive(from: task)
     }
 
     func disconnect() {
@@ -41,7 +45,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         store.updateStatus("Not connected")
     }
 
-    func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
+    func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
+        guard task === webSocketTask else { return }
         switch mode {
         case .pair(let code, _): send("PAIR|\(code)")
         case .authenticate:
@@ -58,7 +63,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         }
     }
 
-    func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
+    func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
+        guard task === webSocketTask else { return }
         store.updateStatus("Panel disconnected")
     }
 
@@ -88,15 +94,19 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         }
     }
 
-    private func receive() {
+    private func receive(from task: URLSessionWebSocketTask) {
         receiveTask = Task { [weak self] in
-            guard let self, let task = self.task else { return }
-            do {
-                let message = try await task.receive()
-                if case .string(let value) = message { self.handle(value) }
-                self.receive()
-            } catch {
-                self.store.updateStatus("Connection ended")
+            guard let self else { return }
+            while !Task.isCancelled && self.task === task {
+                do {
+                    let message = try await task.receive()
+                    guard !Task.isCancelled, self.task === task else { return }
+                    if case .string(let value) = message { self.handle(value) }
+                } catch {
+                    guard !Task.isCancelled, self.task === task else { return }
+                    self.store.updateStatus("Connection ended: \(error.localizedDescription)")
+                    return
+                }
             }
         }
     }
