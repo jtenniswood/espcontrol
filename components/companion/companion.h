@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/preferences.h"
 
 #include <esp_https_server.h>
@@ -52,6 +53,11 @@ class CompanionService final : public Component {
   bool ensure_identity_();
   bool authenticate_(const std::vector<std::string> &parts);
   void handle_message_(int socket_fd, const std::string &message);
+  void handle_json_(int socket_fd, const std::string &message);
+  void handle_binary_(int socket_fd, const uint8_t *data, size_t size);
+  void reset_artwork_transfer_(const char *reason = nullptr, bool notify = false);
+  void send_artwork_ack_(uint32_t generation, size_t next_offset);
+  void expire_now_playing_();
   void send_(int socket_fd, const std::string &message);
   void set_connected_(bool connected);
   void publish_catalogue_();
@@ -69,6 +75,14 @@ class CompanionService final : public Component {
   uint32_t next_attempt_at_{0};
   uint8_t failed_attempts_{0};
   std::string pairing_code_;
+  RAMAllocator<uint8_t> artwork_allocator_{};
+  uint8_t *artwork_buffer_{nullptr};
+  size_t artwork_length_{0};
+  size_t artwork_offset_{0};
+  uint32_t artwork_generation_{0};
+  std::array<uint8_t, 32> artwork_sha256_{};
+  uint32_t now_playing_generation_{0};
+  uint32_t disconnect_grace_expires_at_{0};
 };
 
 // The display owns the interaction. These narrow helpers avoid exposing the

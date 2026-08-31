@@ -714,6 +714,49 @@ void ArtworkImage::cancel_update() {
   }
 }
 
+bool ArtworkImage::load_owned_buffer(uint8_t *data, size_t size) {
+  if (!data || size < 12 || size > this->max_download_buffer_size_) return false;
+
+  this->update_pending_ = false;
+  this->pending_url_.clear();
+  this->end_connection_();
+  this->cancel_service_request_();
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
+  this->completed_transfer_bytes_ = size;
+  this->peak_download_buffer_size_ = size;
+  this->request_started_ms_ = millis();
+  this->response_ready_ms_ = this->request_started_ms_;
+  this->first_byte_ms_ = this->request_started_ms_;
+  this->transfer_complete_ms_ = this->request_started_ms_;
+  this->decode_started_ms_ = 0;
+
+  if (!this->download_buffer_.adopt(data, size)) return false;
+  const ImageFormat resolved = this->detect_format_();
+  if (resolved == ImageFormat::AUTO || !this->create_decoder_(resolved, size)) {
+    ESP_LOGE(TAG, "Owned artwork buffer has an unsupported image format");
+    this->fail_download_();
+    return true;
+  }
+
+  while (this->download_buffer_.unread() > 0 && !this->decoder_->is_finished()) {
+    const size_t before = this->download_buffer_.unread();
+    if (!this->decode_buffered_data_() || this->download_buffer_.unread() == before) {
+      ESP_LOGE(TAG, "Owned artwork buffer could not be decoded completely");
+      this->fail_download_();
+      return true;
+    }
+    App.feed_wdt();
+  }
+  if (!this->decoder_->is_finished()) {
+    ESP_LOGE(TAG, "Owned artwork buffer ended before the decoder finished");
+    this->fail_download_();
+    return true;
+  }
+  this->finish_download_();
+  return true;
+}
+
 void ArtworkImage::update() {
   if (this->service_pending_) {
     this->service_generation_++;

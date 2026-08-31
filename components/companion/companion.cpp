@@ -3,6 +3,7 @@
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include "esphome/components/json/json_util.h"
 
 #include "../espcontrol/companion_controls.h"
 
@@ -14,6 +15,7 @@
 #include <mbedtls/x509_crt.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <sstream>
 #include <sys/socket.h>
@@ -27,6 +29,10 @@ static constexpr uint32_t PAIRING_WINDOW_MS = 15 * 60 * 1000;
 static constexpr uint32_t RETRY_DELAY_MS = 30 * 1000;
 static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = 16 * 1024;
 static constexpr size_t MAX_CATALOGUE_ACTIONS = 256;
+static constexpr size_t MAX_NOW_PLAYING_FIELD_BYTES = 256;
+static constexpr size_t MAX_ARTWORK_BYTES = 256 * 1024;
+static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = 12 * 1024;
+static constexpr uint32_t NOW_PLAYING_RECONNECT_GRACE_MS = 5000;
 static constexpr char PAIRING_ALPHABET[] = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 static std::vector<std::string> split(const std::string &value, char separator) {
@@ -60,6 +66,23 @@ static bool constant_time_equal(const std::string &left, const std::string &righ
   unsigned char different = 0;
   for (size_t i = 0; i < left.size(); i++) different |= left[i] ^ right[i];
   return different == 0;
+}
+
+static bool parse_hex_sha256(const std::string &value, std::array<uint8_t, 32> &result) {
+  if (value.size() != 64) return false;
+  auto nibble = [](char byte) -> int {
+    if (byte >= '0' && byte <= '9') return byte - '0';
+    if (byte >= 'a' && byte <= 'f') return byte - 'a' + 10;
+    if (byte >= 'A' && byte <= 'F') return byte - 'A' + 10;
+    return -1;
+  };
+  for (size_t i = 0; i < result.size(); i++) {
+    const int high = nibble(value[i * 2]);
+    const int low = nibble(value[i * 2 + 1]);
+    if (high < 0 || low < 0) return false;
+    result[i] = static_cast<uint8_t>((high << 4) | low);
+  }
+  return true;
 }
 
 void CompanionService::setup() {
@@ -102,6 +125,11 @@ void CompanionService::loop() {
   if (!this->pairing_code_.empty() && static_cast<int32_t>(millis() - this->pairing_expires_at_) >= 0) {
     this->pairing_code_.clear();
     this->pairing_expires_at_ = 0;
+  }
+  if (this->disconnect_grace_expires_at_ != 0 &&
+      static_cast<int32_t>(millis() - this->disconnect_grace_expires_at_) >= 0) {
+    this->disconnect_grace_expires_at_ = 0;
+    this->expire_now_playing_();
   }
   companion_refresh_cards_if_requested();
 }
@@ -221,6 +249,14 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
     if (socket_fd == this->authenticated_socket_) this->set_connected_(false);
     return ESP_OK;
   }
+  if (frame.type == HTTPD_WS_TYPE_BINARY) {
+    if (socket_fd != this->authenticated_socket_) {
+      this->send_(socket_fd, "ERROR|authenticate_first");
+      return ESP_OK;
+    }
+    this->handle_binary_(socket_fd, payload.data(), frame.len);
+    return ESP_OK;
+  }
   if (frame.type != HTTPD_WS_TYPE_TEXT) return ESP_OK;
   this->handle_message_(socket_fd, reinterpret_cast<const char *>(payload.data()));
   return ESP_OK;
@@ -243,6 +279,14 @@ bool CompanionService::authenticate_(const std::vector<std::string> &parts) {
 }
 
 void CompanionService::handle_message_(int socket_fd, const std::string &message) {
+  if (!message.empty() && message.front() == '{') {
+    if (socket_fd != this->authenticated_socket_) {
+      this->send_(socket_fd, "ERROR|authenticate_first");
+      return;
+    }
+    this->handle_json_(socket_fd, message);
+    return;
+  }
   const auto parts = split(message, '|');
   if (parts.empty()) return;
   if (parts[0] == "AUTH") {
@@ -313,6 +357,170 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
   }
 }
 
+void CompanionService::handle_json_(int socket_fd, const std::string &message) {
+  bool parsed = json::parse_json(message, [this, socket_fd](JsonObject root) -> bool {
+    const std::string type = root["type"] | "";
+    const uint32_t version = root["version"] | 0;
+    const uint32_t generation = root["generation"] | 0;
+    if (version != 2 || generation == 0) return false;
+
+    if (type == "now_playing") {
+      if (generation < this->now_playing_generation_) return true;
+      auto text = [&root](const char *key) { return std::string(root[key] | ""); };
+      CompanionNowPlayingSnapshot snapshot;
+      snapshot.generation = generation;
+      snapshot.source_application_id = text("applicationIdentifier");
+      snapshot.source_application_name = text("applicationName");
+      snapshot.content_id = text("contentIdentifier");
+      snapshot.title = text("title");
+      snapshot.artist = text("artist");
+      snapshot.album = text("album");
+      const std::array<const std::string *, 6> fields{{
+          &snapshot.source_application_id, &snapshot.source_application_name,
+          &snapshot.content_id, &snapshot.title, &snapshot.artist, &snapshot.album}};
+      if (std::any_of(fields.begin(), fields.end(), [](const std::string *field) {
+            return field->size() > MAX_NOW_PLAYING_FIELD_BYTES;
+          })) return false;
+      const std::string state = text("state");
+      if (state == "playing") snapshot.playback_state = CompanionPlaybackState::PLAYING;
+      else if (state == "paused") snapshot.playback_state = CompanionPlaybackState::PAUSED;
+      else if (state == "stopped") snapshot.playback_state = CompanionPlaybackState::STOPPED;
+      else if (state == "unavailable") snapshot.playback_state = CompanionPlaybackState::UNAVAILABLE;
+      else return false;
+      const double duration_ms = root["durationMs"] | 0.0;
+      const double position_ms = root["positionMs"] | 0.0;
+      const double playback_rate = root["playbackRate"] | 0.0;
+      if (!std::isfinite(duration_ms) || !std::isfinite(position_ms) ||
+          !std::isfinite(playback_rate) || duration_ms < 0 || position_ms < 0 ||
+          duration_ms > 86400000.0 || position_ms > 86400000.0 ||
+          playback_rate < -16.0 || playback_rate > 16.0) return false;
+      snapshot.duration = static_cast<float>(duration_ms / 1000.0);
+      snapshot.position = static_cast<float>(position_ms / 1000.0);
+      snapshot.playback_rate = static_cast<float>(playback_rate);
+      snapshot.artwork_follows = root["hasArtwork"] | false;
+      this->reset_artwork_transfer_("new now-playing generation");
+      this->now_playing_generation_ = generation;
+      this->defer([snapshot = std::move(snapshot)]() mutable {
+        companion_set_now_playing(std::move(snapshot));
+      });
+      return true;
+    }
+
+    if (type == "artwork.begin") {
+      const auto runtime = companion_runtime_snapshot();
+      const size_t length = root["byteLength"] | 0;
+      const std::string sha256 = root["sha256"] | "";
+      const std::string mime_type = root["mimeType"] | "";
+      if (generation != this->now_playing_generation_ ||
+          generation != runtime.now_playing.generation ||
+          !runtime.now_playing.artwork_follows || length < 12 ||
+          length > MAX_ARTWORK_BYTES || mime_type != "image/jpeg") return false;
+      std::array<uint8_t, 32> expected{};
+      if (!parse_hex_sha256(sha256, expected)) return false;
+      this->reset_artwork_transfer_("replaced artwork transfer");
+      this->artwork_buffer_ = this->artwork_allocator_.allocate(length);
+      if (!this->artwork_buffer_) return false;
+      this->artwork_length_ = length;
+      this->artwork_generation_ = generation;
+      this->artwork_sha256_ = expected;
+      this->send_artwork_ack_(generation, 0);
+      return true;
+    }
+
+    if (type == "artwork.end") {
+      if (!this->artwork_buffer_ || generation != this->artwork_generation_ ||
+          this->artwork_offset_ != this->artwork_length_) return false;
+      if (this->artwork_length_ < 4 || this->artwork_buffer_[0] != 0xff ||
+          this->artwork_buffer_[1] != 0xd8 ||
+          this->artwork_buffer_[this->artwork_length_ - 2] != 0xff ||
+          this->artwork_buffer_[this->artwork_length_ - 1] != 0xd9) {
+        this->reset_artwork_transfer_("invalid JPEG signature", true);
+        return true;
+      }
+      std::array<uint8_t, 32> actual{};
+      mbedtls_sha256(this->artwork_buffer_, this->artwork_length_, actual.data(), 0);
+      unsigned char different = 0;
+      for (size_t i = 0; i < actual.size(); i++) different |= actual[i] ^ this->artwork_sha256_[i];
+      if (different != 0) {
+        this->reset_artwork_transfer_("SHA-256 mismatch", true);
+        return true;
+      }
+      uint8_t *owned = this->artwork_buffer_;
+      const size_t owned_size = this->artwork_length_;
+      this->artwork_buffer_ = nullptr;
+      this->artwork_length_ = 0;
+      this->artwork_offset_ = 0;
+      this->artwork_generation_ = 0;
+      this->defer([this, generation, owned, owned_size]() {
+        if (!companion_deliver_artwork(generation, owned, owned_size)) {
+          this->artwork_allocator_.deallocate(owned, owned_size);
+        }
+      });
+      return true;
+    }
+
+    if (type == "artwork.abort") {
+      if (generation == this->artwork_generation_) this->reset_artwork_transfer_("Mac aborted transfer");
+      return true;
+    }
+    return false;
+  });
+  if (!parsed) {
+    ESP_LOGW(TAG, "Rejected invalid Companion JSON message");
+    this->send_(socket_fd, "ERROR|invalid_json_message");
+  }
+}
+
+void CompanionService::handle_binary_(int socket_fd, const uint8_t *data, size_t size) {
+  if (!this->artwork_buffer_ || size < 9 || size > MAX_ARTWORK_CHUNK_BYTES + 8) {
+    this->reset_artwork_transfer_("unexpected binary frame", true);
+    return;
+  }
+  const uint32_t generation = (static_cast<uint32_t>(data[0]) << 24) |
+                              (static_cast<uint32_t>(data[1]) << 16) |
+                              (static_cast<uint32_t>(data[2]) << 8) | data[3];
+  const uint32_t offset = (static_cast<uint32_t>(data[4]) << 24) |
+                          (static_cast<uint32_t>(data[5]) << 16) |
+                          (static_cast<uint32_t>(data[6]) << 8) | data[7];
+  const size_t chunk_size = size - 8;
+  if (generation != this->artwork_generation_ || offset != this->artwork_offset_ ||
+      chunk_size > this->artwork_length_ - this->artwork_offset_) {
+    this->reset_artwork_transfer_("invalid generation or byte offset", true);
+    return;
+  }
+  std::memcpy(this->artwork_buffer_ + this->artwork_offset_, data + 8, chunk_size);
+  this->artwork_offset_ += chunk_size;
+  this->send_artwork_ack_(generation, this->artwork_offset_);
+  (void) socket_fd;
+}
+
+void CompanionService::send_artwork_ack_(uint32_t generation, size_t next_offset) {
+  this->send_(this->authenticated_socket_, "{\"type\":\"artwork.ack\",\"version\":2,\"generation\":" +
+      std::to_string(generation) + ",\"nextOffset\":" + std::to_string(next_offset) + "}");
+}
+
+void CompanionService::reset_artwork_transfer_(const char *reason, bool notify) {
+  const uint32_t generation = this->artwork_generation_;
+  if (this->artwork_buffer_) this->artwork_allocator_.deallocate(this->artwork_buffer_, this->artwork_length_);
+  this->artwork_buffer_ = nullptr;
+  this->artwork_length_ = 0;
+  this->artwork_offset_ = 0;
+  this->artwork_generation_ = 0;
+  if (reason) ESP_LOGD(TAG, "Artwork transfer reset: %s", reason);
+  if (notify && generation != 0 && this->authenticated_socket_ >= 0) {
+    this->send_(this->authenticated_socket_, "{\"type\":\"artwork.abort\",\"version\":2,\"generation\":" +
+        std::to_string(generation) + "}");
+  }
+}
+
+void CompanionService::expire_now_playing_() {
+  this->reset_artwork_transfer_("connection grace period expired");
+  auto snapshot = companion_runtime_snapshot().now_playing;
+  snapshot.playback_state = CompanionPlaybackState::UNAVAILABLE;
+  snapshot.artwork_follows = false;
+  companion_set_now_playing(std::move(snapshot));
+}
+
 void CompanionService::send_(int socket_fd, const std::string &message) {
   if (!this->server_ || socket_fd < 0) return;
   httpd_ws_frame_t frame{};
@@ -324,6 +532,12 @@ void CompanionService::send_(int socket_fd, const std::string &message) {
 
 void CompanionService::set_connected_(bool connected) {
   if (!connected) this->authenticated_socket_ = -1;
+  if (connected) {
+    this->disconnect_grace_expires_at_ = 0;
+  } else {
+    this->reset_artwork_transfer_("connection closed");
+    this->disconnect_grace_expires_at_ = millis() + NOW_PLAYING_RECONNECT_GRACE_MS;
+  }
   companion_set_connected(connected);
   if (!connected) companion_set_actions({});
 }

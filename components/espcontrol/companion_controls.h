@@ -42,17 +42,45 @@ struct CompanionPairingSnapshot {
 using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
 using CompanionPairingStarter = std::function<CompanionPairingSnapshot()>;
 
+enum class CompanionPlaybackState : uint8_t {
+  UNAVAILABLE = 0,
+  STOPPED,
+  PAUSED,
+  PLAYING,
+};
+
+struct CompanionNowPlayingSnapshot {
+  uint32_t generation{0};
+  CompanionPlaybackState playback_state{CompanionPlaybackState::UNAVAILABLE};
+  std::string source_application_id;
+  std::string source_application_name;
+  std::string content_id;
+  std::string title;
+  std::string artist;
+  std::string album;
+  float duration{0.0f};
+  float position{0.0f};
+  float playback_rate{0.0f};
+  bool artwork_follows{false};
+};
+
+using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
+// Ownership of data transfers to the handler only when it returns true.
+using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t *data, size_t size)>;
+
 inline void companion_request_card_refresh();
 
 struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
   bool connected{false};
+  CompanionNowPlayingSnapshot now_playing;
 };
 
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
   bool connected{false};
+  CompanionNowPlayingSnapshot now_playing;
 };
 
 inline CompanionRuntimeState &companion_runtime_state() {
@@ -63,7 +91,36 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.connected};
+  return {state.actions, state.connected, state.now_playing};
+}
+
+inline CompanionNowPlayingHandler &companion_now_playing_handler() {
+  static CompanionNowPlayingHandler handler;
+  return handler;
+}
+
+inline CompanionArtworkHandler &companion_artwork_handler() {
+  static CompanionArtworkHandler handler;
+  return handler;
+}
+
+inline void register_companion_now_playing_handlers(CompanionNowPlayingHandler now_playing,
+                                                     CompanionArtworkHandler artwork) {
+  companion_now_playing_handler() = std::move(now_playing);
+  companion_artwork_handler() = std::move(artwork);
+}
+
+inline void companion_set_now_playing(CompanionNowPlayingSnapshot snapshot) {
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.now_playing = snapshot;
+  }
+  if (companion_now_playing_handler()) companion_now_playing_handler()(snapshot);
+}
+
+inline bool companion_deliver_artwork(uint32_t generation, uint8_t *data, size_t size) {
+  return companion_artwork_handler() && companion_artwork_handler()(generation, data, size);
 }
 
 inline bool companion_connected() {

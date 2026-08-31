@@ -11,6 +11,7 @@ from esphome.components import esp32, network, socket
 from esphome.const import CONF_ID, CONF_PORT
 
 DEPENDENCIES = ["network"]
+AUTO_LOAD = ["json"]
 CODEOWNERS = ["@jtenniswood"]
 MULTI_CONF = False
 
