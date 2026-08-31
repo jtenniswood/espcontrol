@@ -36,6 +36,10 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in self?.updateStatusItemImage() }
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        store.refreshLaunchAtLoginStatus()
+    }
+
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
         guard let event = NSApp.currentEvent else {
             openCompanionWindow()
@@ -255,6 +259,13 @@ private struct CompanionSettings: View {
             }
 
             Text("In the panel web editor, open Settings → Companion, start pairing, then copy and paste the pairing details here.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
+            Text(store.launchAtLoginMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

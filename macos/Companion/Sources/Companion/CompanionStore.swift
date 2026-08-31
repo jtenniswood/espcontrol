@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import ServiceManagement
 import SwiftUI
 
 struct LaunchableApp: Identifiable, Hashable {
@@ -19,6 +20,8 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var allowedBundleIdentifiers: Set<String>
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
+    @Published private(set) var launchAtLoginEnabled = false
+    @Published private(set) var launchAtLoginMessage = ""
 
     private enum Keys { static let host = "panelHost"; static let name = "panelName"; static let allowed = "allowedApps"; static let fingerprint = "certificateFingerprint" }
     private let defaults = UserDefaults.standard
@@ -29,6 +32,7 @@ final class CompanionStore: NSObject, ObservableObject {
         panelName = defaults.string(forKey: Keys.name) ?? "My EspControl"
         allowedBundleIdentifiers = Set(defaults.stringArray(forKey: Keys.allowed) ?? [])
         super.init()
+        refreshLaunchAtLoginStatus()
         refreshApplications()
     }
 
@@ -61,6 +65,47 @@ final class CompanionStore: NSObject, ObservableObject {
     func disallowAllApplications() {
         allowedBundleIdentifiers.removeAll()
         persistAllowedApplications()
+    }
+
+    func launchAtLoginBinding() -> Binding<Bool> {
+        Binding(
+            get: { self.launchAtLoginEnabled },
+            set: { self.setLaunchAtLogin($0) }
+        )
+    }
+
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        let service = SMAppService.mainApp
+        do {
+            if enabled {
+                if service.status == .notRegistered || service.status == .notFound {
+                    try service.register()
+                }
+            } else if service.status != .notRegistered && service.status != .notFound {
+                try service.unregister()
+            }
+            refreshLaunchAtLoginStatus()
+        } catch {
+            refreshLaunchAtLoginStatus()
+            launchAtLoginMessage = "macOS could not update this login item. Install the app in Applications and try again."
+        }
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        switch SMAppService.mainApp.status {
+        case .enabled:
+            launchAtLoginEnabled = true
+            launchAtLoginMessage = "The app will open automatically after you sign in."
+        case .requiresApproval:
+            launchAtLoginEnabled = true
+            launchAtLoginMessage = "Allow the app in System Settings → General → Login Items to finish enabling it."
+        case .notFound:
+            launchAtLoginEnabled = false
+            launchAtLoginMessage = "Install the app in Applications before enabling this setting."
+        default:
+            launchAtLoginEnabled = false
+            launchAtLoginMessage = "The app will stay closed when you sign in."
+        }
     }
 
     private func persistAllowedApplications() {

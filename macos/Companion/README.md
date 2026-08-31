@@ -14,6 +14,7 @@ cd macos/Companion
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. The app can launch only applications you explicitly tick in its settings. Those approved applications can also be selected to open `http://` or `https://` links. The app can replay keyboard shortcuts created in the panel's web editor; macOS Accessibility permission is required the first time a shortcut is used.
 
 Click the EspControl icon in the macOS menu bar to open the app settings. Right-click it for quick access to Connect or Reconnect, Settings, and Quit.
+The Device tab also includes an **Open EspControl Companion at Login** switch. macOS may require approval under **System Settings → General → Login Items**.
 
 To pair, open the panel's browser editor and go to **Settings → Companion**. Start pairing and copy the details, then use **Paste pairing details** in the Mac app and click **Pair**. Pair on a trusted local network. The app stores the paired credential in the macOS Keychain and pins the panel certificate. Forgetting the panel clears both values.
 
