@@ -1021,7 +1021,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
     options.slug === "esp32-p4-86"
       ? ["Display", "Voice & Sounds", "Sleep & Schedule", "Preferences", "System"]
-      : ["Display", "Sleep & Schedule", "Preferences", "System"],
+      : options.slug === "guition-esp32-s3-4848s040"
+        ? ["Display", "Sleep & Schedule", "Preferences", "Companion", "System"]
+        : ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {

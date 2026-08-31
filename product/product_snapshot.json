@@ -4898,7 +4898,7 @@
               "value": "Auto"
             },
             "sensor": {
-              "policy": "keep"
+              "policy": "clear"
             },
             "unit": {
               "policy": "clear"
