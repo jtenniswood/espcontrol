@@ -78,15 +78,8 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        guard let event = NSApp.currentEvent else {
-            openCompanionWindow()
-            return
-        }
-        if event.type == .rightMouseUp {
-            NSMenu.popUpContextMenu(contextMenu(), with: event, for: sender)
-        } else {
-            openCompanionWindow()
-        }
+        guard let event = NSApp.currentEvent else { return }
+        NSMenu.popUpContextMenu(contextMenu(), with: event, for: sender)
     }
 
     private func contextMenu() -> NSMenu {
