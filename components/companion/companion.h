@@ -35,8 +35,8 @@ class CompanionService final : public Component {
   void loop() override;
   void dump_config() override;
 
-  // Called by the panel web setup page. It rotates the
-  // eight-letter code, invalidates any unfinished attempt and expires quickly.
+  // Called by the panel web setup page. It rotates the eight-letter setup code
+  // and invalidates any unfinished attempt. The resulting trust is persistent.
   void begin_pairing();
   const std::string &pairing_code() const { return this->pairing_code_; }
   std::string pairing_verification_code() const;

@@ -19,8 +19,12 @@ export interface SettingsCompanionSectionFeature {
 
 export function companionPairingStatusText(state: CompanionPairingState): string {
     if (state.active && state.pairing_code && state.verification_code) {
+        const hours = Math.ceil(state.expires_in_seconds / 3600);
         const minutes = Math.max(1, Math.ceil(state.expires_in_seconds / 60));
-        const pairing = "Pairing is open for about " + minutes + (minutes === 1 ? " minute." : " minutes.");
+        const duration = hours >= 2
+            ? hours + (hours === 1 ? " hour" : " hours")
+            : minutes + (minutes === 1 ? " minute" : " minutes");
+        const pairing = "Pairing is open for about " + duration + ".";
         return state.connected ? "Mac Companion connected. " + pairing : pairing;
     }
     if (state.connected) return "Mac Companion connected";
@@ -77,7 +81,7 @@ export function createSettingsCompanionSectionFeature(
         const body = document.createElement("div");
         const note = document.createElement("p");
         note.className = "sp-setting-note sp-companion-note";
-        note.textContent = "Start a five-minute pairing session, then copy the details into EspControl Companion on your Mac.";
+        note.textContent = "Start pairing, then copy the details into EspControl Companion on your Mac. Setup codes remain available for 24 hours; once paired, the trusted connection is saved across reboots.";
         body.appendChild(note);
 
         const status = document.createElement("div");

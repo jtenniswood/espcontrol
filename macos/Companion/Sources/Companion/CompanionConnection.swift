@@ -11,13 +11,22 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var task: URLSessionWebSocketTask?
     private var mode: Mode = .authenticate
     private var receiveTask: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
     private var pendingCertificateFingerprint: String?
+    private var shouldReconnect = false
 
     init(store: CompanionStore) { self.store = store }
 
     func connect(mode: Mode) {
-        disconnect()
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        tearDownConnection()
+        shouldReconnect = {
+            if case .authenticate = mode { return true }
+            return false
+        }()
         guard !store.panelHost.isEmpty, let url = URL(string: "wss://\(store.panelHost):8443/companion/v1") else {
+            shouldReconnect = false
             store.updateStatus("Enter the panel address first")
             return
         }
@@ -36,13 +45,20 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     func disconnect() {
+        shouldReconnect = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        tearDownConnection()
+        store.updateStatus("Not connected")
+    }
+
+    private func tearDownConnection() {
         receiveTask?.cancel()
         receiveTask = nil
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         session?.invalidateAndCancel()
         session = nil
-        store.updateStatus("Not connected")
     }
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
@@ -65,7 +81,12 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
         guard task === webSocketTask else { return }
-        store.updateStatus("Panel disconnected")
+        task = nil
+        receiveTask?.cancel()
+        receiveTask = nil
+        session?.invalidateAndCancel()
+        session = nil
+        scheduleReconnect()
     }
 
     func urlSession(_: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
@@ -105,10 +126,29 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
                     if case .string(let value) = message { self.handle(value) }
                 } catch {
                     guard !Task.isCancelled, self.task === task else { return }
-                    self.store.updateStatus("Connection ended: \(error.localizedDescription)")
+                    self.task = nil
+                    self.receiveTask = nil
+                    self.session?.invalidateAndCancel()
+                    self.session = nil
+                    self.scheduleReconnect()
                     return
                 }
             }
+        }
+    }
+
+    private func scheduleReconnect() {
+        guard shouldReconnect, store.hasSavedPairing else {
+            store.updateStatus("Panel disconnected")
+            return
+        }
+        guard reconnectTask == nil else { return }
+        store.updateStatus("Panel unavailable — reconnecting…")
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled, let self, self.shouldReconnect else { return }
+            self.reconnectTask = nil
+            self.connect(mode: .authenticate)
         }
     }
 

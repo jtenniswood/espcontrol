@@ -23,7 +23,7 @@ namespace esphome::companion {
 
 static const char *const TAG = "companion";
 static CompanionService *global_companion_service = nullptr;
-static constexpr uint32_t PAIRING_WINDOW_MS = 5 * 60 * 1000;
+static constexpr uint32_t PAIRING_WINDOW_MS = 24 * 60 * 60 * 1000;
 static constexpr uint32_t RETRY_DELAY_MS = 30 * 1000;
 static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = 16 * 1024;
 static constexpr size_t MAX_CATALOGUE_ACTIONS = 256;
@@ -269,7 +269,8 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     return;
   }
   if (parts[0] == "PAIR") {
-    // Pairing is permitted only during the physical five-minute window. The
+    // Pairing is permitted only during the setup window opened from the panel
+    // webserver. The trusted credential itself does not expire.
     // Mac receives a fresh credential only inside this TLS connection, then
     // stores it in Keychain and pins this certificate's fingerprint.
     if (!this->pairing_active() || millis() < this->next_attempt_at_ || parts.size() != 2 || !constant_time_equal(parts[1], this->pairing_code_)) {
@@ -282,10 +283,16 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     this->set_connected_(false);
     if (previous_socket >= 0 && previous_socket != socket_fd)
       httpd_sess_trigger_close(this->server_, previous_socket);
+    const auto previous_identity = this->identity_;
     for (auto &byte : this->identity_.credential) byte = static_cast<uint8_t>(esp_random());
     this->identity_.paired = 1;
     this->last_sequence_ = 0;
-    this->preferences_.save(&this->identity_);
+    if (!this->preferences_.save(&this->identity_)) {
+      this->identity_ = previous_identity;
+      ESP_LOGE(TAG, "Could not persist the paired Mac credential");
+      this->send_(socket_fd, "ERROR|pairing_storage_failed");
+      return;
+    }
     this->pairing_code_.clear();
     this->pairing_expires_at_ = 0;
     this->failed_attempts_ = 0;
