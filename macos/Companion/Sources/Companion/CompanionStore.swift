@@ -114,7 +114,13 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func refreshApplications() {
-        let roots = [URL(fileURLWithPath: "/Applications"), URL(fileURLWithPath: "/System/Applications")]
+        let roots = [
+            URL(fileURLWithPath: "/Applications"),
+            URL(fileURLWithPath: "/System/Applications"),
+            // Current macOS releases install Safari in the protected Cryptex
+            // application volume and expose only a compatibility link in /Applications.
+            URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications"),
+        ]
         let additionalSystemApps = [URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")]
         let keys: Set<URLResourceKey> = [.isDirectoryKey]
         var found: [LaunchableApp] = []
