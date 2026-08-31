@@ -26,7 +26,13 @@ private struct CompanionMenu: View {
             Text(store.statusDescription).foregroundStyle(.secondary)
             Divider()
             Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
-            Button("Open Settings…") { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+            if #available(macOS 14.0, *) {
+                SettingsLink { Text("Open Settings…") }
+            } else {
+                Button("Open Settings…") {
+                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                }
+            }
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
         }
