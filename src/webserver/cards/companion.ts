@@ -197,7 +197,7 @@ export function registerCompanionCardTypes(
             select.disabled = true;
             const loading = document.createElement("option");
             loading.value = "";
-            loading.textContent = "Loading approved apps…";
+            loading.textContent = "Loading Mac apps…";
             select.appendChild(loading);
             appField.appendChild(select);
             panel?.appendChild(appField);
@@ -295,7 +295,7 @@ export function registerCompanionCardTypes(
                 select.replaceChildren();
                 const placeholder = document.createElement("option");
                 placeholder.value = "";
-                placeholder.textContent = actions.length ? "Choose an approved app…" : "No Mac companion is connected";
+                placeholder.textContent = actions.length ? "Choose a Mac app…" : "No Mac companion is connected";
                 select.appendChild(placeholder);
                 actions.forEach(function (action) {
                     const option = document.createElement("option");

@@ -239,28 +239,12 @@ private struct CompanionSettings: View {
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        TabView {
-            ScrollView {
-                GroupBox("Device connection") {
-                    deviceConnectionSettings
-                        .padding(8)
-                }
-                .padding()
+        ScrollView {
+            GroupBox("Device connection") {
+                deviceConnectionSettings
+                    .padding(8)
             }
-            .tabItem {
-                Label("Device", systemImage: "display")
-            }
-
-            ScrollView {
-                GroupBox("Supported apps") {
-                    supportedAppsSettings
-                        .padding(8)
-                }
-                .padding()
-            }
-            .tabItem {
-                Label("Apps", systemImage: "square.grid.2x2")
-            }
+            .padding()
         }
         .onAppear {
             focusSettingsWindow {
@@ -375,31 +359,6 @@ private struct CompanionSettings: View {
         )
     }
 
-    private var supportedAppsSettings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if store.availableApps.isEmpty {
-                Text("No apps found in /Applications yet.").foregroundStyle(.secondary)
-            } else {
-                HStack(spacing: 10) {
-                    Button("Enable All") { store.allowAllApplications() }
-                        .disabled(store.allAvailableAppsAllowed)
-                    Button("Disable All") { store.disallowAllApplications() }
-                        .disabled(!store.hasAllowedApps)
-                    Spacer()
-                    Text("\(store.allowedAvailableAppCount) enabled")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider()
-
-                ForEach(store.availableApps) { app in
-                    Toggle(app.name, isOn: store.allowedBinding(for: app))
-                }
-            }
-            Button("Rescan Applications") { store.refreshApplications() }
-        }
-    }
 }
 
 private struct SettingsTextField: View {

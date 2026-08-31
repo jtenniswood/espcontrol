@@ -1,7 +1,7 @@
 #pragma once
 
 // Runtime boundary for Companion cards. The grid knows only opaque action IDs;
-// the companion service owns pairing, transport and the Mac-specific allowlist.
+// the companion service owns pairing, transport and the Mac app catalogue.
 
 #include <algorithm>
 #include <atomic>

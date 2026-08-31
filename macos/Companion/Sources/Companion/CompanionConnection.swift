@@ -149,7 +149,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         guard store.isConnected || task != nil else { return }
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
-        let catalogue = store.selectedApps().compactMap { app -> String? in
+        let catalogue = store.launchableApps().compactMap { app -> String? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
             return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
         }.joined(separator: ",")

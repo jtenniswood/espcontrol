@@ -17,20 +17,18 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
     @Published var panelName: String { didSet { defaults.set(panelName, forKey: Keys.name) } }
     @Published private(set) var availableApps: [LaunchableApp] = []
-    @Published private(set) var allowedBundleIdentifiers: Set<String>
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
 
-    private enum Keys { static let host = "panelHost"; static let name = "panelName"; static let allowed = "allowedApps"; static let fingerprint = "certificateFingerprint" }
+    private enum Keys { static let host = "panelHost"; static let name = "panelName" }
     private let defaults = UserDefaults.standard
     private lazy var connection = CompanionConnection(store: self)
 
     override init() {
         panelHost = defaults.string(forKey: Keys.host) ?? ""
         panelName = defaults.string(forKey: Keys.name) ?? "My EspControl"
-        allowedBundleIdentifiers = Set(defaults.stringArray(forKey: Keys.allowed) ?? [])
         super.init()
         refreshLaunchAtLoginStatus()
         refreshApplications()
@@ -38,35 +36,6 @@ final class CompanionStore: NSObject, ObservableObject {
 
     var hasSavedPairing: Bool { KeychainStore.load(service: KeychainStore.service, account: panelHost) != nil }
     var connectionSymbol: String { isConnected ? "laptopcomputer.and.iphone" : "laptopcomputer.slash" }
-    var allAvailableAppsAllowed: Bool {
-        !availableApps.isEmpty && availableApps.allSatisfy { allowedBundleIdentifiers.contains($0.bundleIdentifier) }
-    }
-    var allowedAvailableAppCount: Int {
-        availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) }.count
-    }
-    var hasAllowedApps: Bool { !allowedBundleIdentifiers.isEmpty }
-
-    func allowedBinding(for app: LaunchableApp) -> Binding<Bool> {
-        Binding(
-            get: { self.allowedBundleIdentifiers.contains(app.bundleIdentifier) },
-            set: { enabled in
-                if enabled { self.allowedBundleIdentifiers.insert(app.bundleIdentifier) }
-                else { self.allowedBundleIdentifiers.remove(app.bundleIdentifier) }
-                self.persistAllowedApplications()
-            }
-        )
-    }
-
-    func allowAllApplications() {
-        allowedBundleIdentifiers = Set(availableApps.map(\.bundleIdentifier))
-        persistAllowedApplications()
-    }
-
-    func disallowAllApplications() {
-        allowedBundleIdentifiers.removeAll()
-        persistAllowedApplications()
-    }
-
     func launchAtLoginBinding() -> Binding<Bool> {
         Binding(
             get: { self.launchAtLoginEnabled },
@@ -108,11 +77,6 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
 
-    private func persistAllowedApplications() {
-        defaults.set(Array(allowedBundleIdentifiers).sorted(), forKey: Keys.allowed)
-        connection.publishCatalogue()
-    }
-
     func refreshApplications() {
         let standardRoots = [
             URL(fileURLWithPath: "/Applications"),
@@ -145,20 +109,12 @@ final class CompanionStore: NSObject, ObservableObject {
         }
         scanApplicationRoots(standardRoots)
         additionalSystemApps.forEach { appendApplication(at: $0) }
-        let standardAppIdentifiers = Set(found.map(\.bundleIdentifier))
-        let previouslyAllowedAllStandardApps = !standardAppIdentifiers.isEmpty
-            && standardAppIdentifiers.isSubset(of: allowedBundleIdentifiers)
-
         scanApplicationRoots(cryptexRoots)
         availableApps = Dictionary(grouping: found, by: \.bundleIdentifier).compactMap { $0.value.first }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        if previouslyAllowedAllStandardApps {
-            let previousSelection = allowedBundleIdentifiers
-            allowedBundleIdentifiers.formUnion(availableApps.map(\.bundleIdentifier))
-            if allowedBundleIdentifiers != previousSelection { persistAllowedApplications() }
-        }
+        if isConnected { connection.publishCatalogue() }
     }
 
-    func selectedApps() -> [LaunchableApp] { availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) } }
+    func launchableApps() -> [LaunchableApp] { availableApps }
     func connect() { connection.connect(mode: .authenticate) }
     func pair(code: String, verificationCode: String) {
         connection.connect(mode: .pair(
@@ -180,7 +136,7 @@ final class CompanionStore: NSObject, ObservableObject {
         isConnected = connected
     }
     func launch(bundleIdentifier: String) -> Bool {
-        guard let app = selectedApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
+        guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
         if app.bundleIdentifier == "com.apple.finder" {
             return NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser)
         }
@@ -213,8 +169,8 @@ final class CompanionStore: NSObject, ObservableObject {
               components.user == nil,
               components.password == nil,
               let url = components.url,
-              let app = selectedApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
-            updateStatus("Blocked an invalid URL or unapproved app", connected: isConnected)
+              let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
+            updateStatus("Blocked an invalid URL or unavailable app", connected: isConnected)
             return false
         }
         NSWorkspace.shared.open([url], withApplicationAt: app.url, configuration: .init()) { _, _ in }
