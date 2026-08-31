@@ -1505,6 +1505,10 @@ inline bool slider_has_alt_icon(const std::string &type, const std::string &icon
 
 inline const char *slider_icon_off(const std::string &type, const std::string &entity_id,
                                    const std::string &icon) {
+  if ((icon.empty() || icon == "Auto") && entity_id == "media.output_volume")
+    return find_icon("Volume High");
+  if ((icon.empty() || icon == "Auto") && entity_id == "media.input_volume")
+    return find_icon("Microphone");
   if (type == "cover" && (icon.empty() || icon == "Auto"))
     return find_icon("Blinds");
   if (icon.empty() || icon == "Auto")
@@ -2800,7 +2804,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
       if (!sl) return;
       SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
       if (c && !c->entity_id.empty()) {
-        if (!c->available) return;
+        if (!c->available && !companion_volume_control_valid(c->entity_id)) return;
         slider_apply_vertical_pointer_value(sl);
         int val = lv_slider_get_value(sl);
         send_slider_action(c->entity_id, val, c->cover_tilt);

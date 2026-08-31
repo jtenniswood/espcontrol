@@ -64,6 +64,8 @@ class CompanionService final : public Component {
   bool invoke_(const std::string &action_id, const std::string &request_id);
   bool invoke_url_(const std::string &app_id, const std::string &encoded_url,
                    const std::string &request_id);
+  bool invoke_value_(const std::string &control_id, int value,
+                     const std::string &request_id);
 
   ESPPreferenceObject preferences_;
   CompanionIdentityPreference identity_{};

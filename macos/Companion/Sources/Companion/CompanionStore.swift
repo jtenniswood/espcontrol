@@ -36,6 +36,9 @@ final class CompanionStore: NSObject, ObservableObject {
     private let defaults = UserDefaults.standard
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
+    private let mediaController = SystemMediaController()
+    private var mediaControlTimer: Timer?
+    private var lastMediaControlValues: [String: Int] = [:]
 
     override init() {
         panelHost = defaults.string(forKey: Keys.host) ?? ""
@@ -172,6 +175,13 @@ final class CompanionStore: NSObject, ObservableObject {
         statusDescription = message
         isConnected = connected
         updateNowPlayingProvider()
+        if connected {
+            startMediaControlPublishing()
+        } else {
+            mediaControlTimer?.invalidate()
+            mediaControlTimer = nil
+            lastMediaControlValues = [:]
+        }
     }
 
     private func updateNowPlayingProvider() {
@@ -197,6 +207,9 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func perform(actionIdentifier: String) -> Bool {
+        if actionIdentifier.hasPrefix("media.") {
+            return mediaController.perform(actionIdentifier: actionIdentifier)
+        }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
             return launch(bundleIdentifier: actionIdentifier)
         }
@@ -209,6 +222,29 @@ final class CompanionStore: NSObject, ObservableObject {
             return false
         }
         return true
+    }
+
+    func setMediaControlValue(_ value: Int, controlIdentifier: String) -> Bool {
+        guard mediaController.setValue(value, controlIdentifier: controlIdentifier) else { return false }
+        publishMediaControlValues(force: true)
+        return true
+    }
+
+    private func startMediaControlPublishing() {
+        if mediaControlTimer == nil {
+            mediaControlTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.publishMediaControlValues() }
+            }
+        }
+        publishMediaControlValues(force: true)
+    }
+
+    private func publishMediaControlValues(force: Bool = false) {
+        guard isConnected else { return }
+        let values = mediaController.values()
+        guard force || values != lastMediaControlValues else { return }
+        lastMediaControlValues = values
+        connection.publishMediaControlValues(values)
     }
 
     func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {

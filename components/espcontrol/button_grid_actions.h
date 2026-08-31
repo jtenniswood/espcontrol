@@ -521,6 +521,12 @@ inline void send_cover_command_action(const CoverCommandCtx &ctx) {
 
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
 inline bool send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
+  if (companion_volume_control_valid(entity_id)) {
+    char request_id[24];
+    snprintf(request_id, sizeof(request_id), "volume-%08lx",
+             static_cast<unsigned long>(companion_next_request_number()));
+    return invoke_companion_value(entity_id, value, request_id);
+  }
   esphome::api::HomeassistantActionRequest req;
   if (value < 0) {
     if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return false;

@@ -15,6 +15,12 @@ interface CompanionAction {
 
 const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
+const COMPANION_MEDIA_PREFIX = "media.";
+export const COMPANION_MEDIA_ACTIONS = [
+    { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
+    { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
+    { id: "media.next", label: "Next Track", icon: "Skip Next" },
+] as const;
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
     Space: "space", Enter: "enter", Tab: "tab", Escape: "escape",
@@ -110,6 +116,7 @@ const COMPANION_CARD_METADATA = {
             ["app", "Launch app"],
             ["shortcut", "Keyboard shortcut"],
             ["url", "Open URL"],
+            ["media", "Media control"],
         ],
         value: companionCardMode,
     },
@@ -122,10 +129,11 @@ const COMPANION_CARD_METADATA = {
     preview: { badge: "monitor" },
 };
 
-function companionCardMode(card: any): string {
+export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
+    if (entity.startsWith(COMPANION_MEDIA_PREFIX)) return "media";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
 }
@@ -183,8 +191,15 @@ export function registerCompanionCardTypes(
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
                     onChange: function (this: HTMLSelectElement) {
-                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX : "";
+                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
+                            : this.value === "media" ? COMPANION_MEDIA_ACTIONS[0].id : "";
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
+                        if (this.value === "media") {
+                            card.label = COMPANION_MEDIA_ACTIONS[0].label;
+                            card.icon = COMPANION_MEDIA_ACTIONS[0].icon;
+                            helpers.saveField("label", card.label);
+                            helpers.saveField("icon", card.icon);
+                        }
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
                         renderButtonSettings();
@@ -254,11 +269,28 @@ export function registerCompanionCardTypes(
                 return initialMode === "url";
             });
 
+            const mediaField = document.createElement("div");
+            mediaField.className = "sp-field";
+            mediaField.appendChild(fieldLabel("Media Control", helpers.idPrefix + "companion-media-action"));
+            const mediaSelect = document.createElement("select");
+            mediaSelect.className = "sp-select";
+            mediaSelect.id = helpers.idPrefix + "companion-media-action";
+            COMPANION_MEDIA_ACTIONS.forEach(function (action) {
+                const option = document.createElement("option");
+                option.value = action.id;
+                option.textContent = action.label;
+                option.selected = card.entity === action.id;
+                mediaSelect.appendChild(option);
+            });
+            mediaField.appendChild(mediaSelect);
+            panel?.appendChild(mediaField);
+
             function syncMode(mode: string): void {
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
+                mediaField.style.display = mode === "media" ? "" : "none";
             }
             syncMode(initialMode);
 
@@ -287,6 +319,20 @@ export function registerCompanionCardTypes(
             }
             urlInput.addEventListener("input", saveUrl);
             urlInput.addEventListener("change", saveUrl);
+
+            mediaSelect.addEventListener("change", function () {
+                const previous = COMPANION_MEDIA_ACTIONS.find(function (action) { return action.id === card.entity; });
+                const selected = COMPANION_MEDIA_ACTIONS.find(function (action) { return action.id === mediaSelect.value; });
+                if (!selected) return;
+                const currentLabel = typeof card.label === "string" ? card.label : "";
+                card.entity = selected.id;
+                card.label = companionAppLabel(currentLabel, previous?.label || "", selected.label);
+                card.icon = selected.icon;
+                helpers.saveField("entity", card.entity);
+                helpers.saveField("label", card.label);
+                helpers.saveField("icon", card.icon);
+                renderButtonSettings();
+            });
 
             let companionActions: readonly CompanionAction[] = [];
             fetchCompanionActions(fetchImpl).then(function (actions) {

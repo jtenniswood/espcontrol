@@ -102,6 +102,10 @@ void CompanionService::setup() {
                                        const std::string &request) {
     return this->invoke_url_(app, url, request);
   });
+  register_companion_value_sender([this](const std::string &control, int value,
+                                         const std::string &request) {
+    return this->invoke_value_(control, value, request);
+  });
   auto pairing_snapshot = [this]() {
     const auto runtime = companion_runtime_snapshot();
     return CompanionPairingSnapshot{
@@ -353,6 +357,13 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     // Result messages are intentionally shown only in diagnostics/logging;
     // cards do not optimistically claim a Mac app opened.
     ESP_LOGD(TAG, "Mac result: %s", message.c_str());
+  } else if (parts[0] == "STATE" && parts.size() == 3 &&
+             companion_volume_control_valid(parts[1])) {
+    char *end = nullptr;
+    const long value = std::strtol(parts[2].c_str(), &end, 10);
+    if (end && *end == '\0' && value >= 0 && value <= 100) {
+      companion_set_value(parts[1], static_cast<int>(value));
+    }
   } else if (parts[0] == "HEARTBEAT") {
     this->send_(socket_fd, "HEARTBEAT|ok");
   }
@@ -555,6 +566,16 @@ bool CompanionService::invoke_url_(const std::string &app_id, const std::string 
       !safe_field(encoded_url, 1024) || !safe_field(request_id, 64)) return false;
   this->send_(this->authenticated_socket_,
               "OPEN_URL|" + request_id + "|" + app_id + "|" + encoded_url);
+  return true;
+}
+
+bool CompanionService::invoke_value_(const std::string &control_id, int value,
+                                     const std::string &request_id) {
+  if (this->authenticated_socket_ < 0 ||
+      !companion_volume_control_valid(control_id) ||
+      value < 0 || value > 100 || !safe_field(request_id, 64)) return false;
+  this->send_(this->authenticated_socket_,
+              "SET_VALUE|" + request_id + "|" + control_id + "|" + std::to_string(value));
   return true;
 }
 

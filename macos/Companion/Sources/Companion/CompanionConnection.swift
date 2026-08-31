@@ -183,6 +183,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             guard parts.count == 4 else { return }
             let opened = store.openURL(encodedURL: parts[3], bundleIdentifier: parts[2])
             send("RESULT|\(parts[1])|\(opened ? "opened" : "not_allowed")")
+        case "SET_VALUE":
+            guard parts.count == 4, let value = Int(parts[3]), (0...100).contains(value) else { return }
+            let changed = store.setMediaControlValue(value, controlIdentifier: parts[2])
+            send("RESULT|\(parts[1])|\(changed ? "performed" : "not_allowed")")
         case "ERROR":
             store.updateStatus(parts.dropFirst().joined(separator: " "))
         default: break
@@ -269,6 +273,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         send("CATALOG|\(catalogue)")
     }
 
+    func publishMediaControlValues(_ values: [String: Int]) {
+        for (identifier, value) in values.sorted(by: { $0.key < $1.key }) {
+            guard Self.validMediaControlIdentifier(identifier), (0...100).contains(value) else { continue }
+            send("STATE|\(identifier)|\(value)")
+        }
+    }
+
     private func send(_ value: String) { task?.send(.string(value)) { _ in } }
 
     private var certificateFingerprintKey: String { "companion.certificateFingerprint.\(store.panelHost)" }
@@ -285,6 +296,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         !value.isEmpty && value.utf8.count <= 96 && value.utf8.allSatisfy {
             $0 >= 0x20 && $0 <= 0x7e && $0 != 0x7c && $0 != 0x3a && $0 != 0x2c
         }
+    }
+
+    private static func validMediaControlIdentifier(_ value: String) -> Bool {
+        value == SystemMediaController.outputVolumeID || value == SystemMediaController.inputVolumeID
     }
 
     private static func catalogueLabel(_ value: String, fallback: String) -> String {

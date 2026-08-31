@@ -620,7 +620,7 @@ describe("browserless application contracts", () => {
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/slider.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
-    assert.match(entry, /registerSliderCardTypes\(registry, context\.configuration\.modalTabs, lightCards, fields, context\.controllers\.settingsUi\);/);
+    assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?context\.device\.profile\.features\?\.companion,[\s\S]*?cardUi,[\s\S]*?\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerSliderCardTypes/);
     assert.doesNotMatch(globals, /\bvar (?:renderCoverControlTabSettings|sliderCardMetadata|sliderTypeFactory):/);
   });
@@ -706,7 +706,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(light, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(entry, /const lightCards = registerLightTemperatureCardTypes\(registry, context\.configuration\.modalTabs, fields, cardUi\);/);
-    assert.match(entry, /registerSliderCardTypes\(registry, context\.configuration\.modalTabs, lightCards, fields, context\.controllers\.settingsUi\);/);
+    assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?cardUi,[\s\S]*?\);/);
     assert.match(entry, /registerSwitchCardTypes\(registry, context\.configuration\.confirmationOptions, lightCards, fields\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerLightTemperatureCardTypes/);
     assert.match(slider, /lightCards: LightCardRegistration/);

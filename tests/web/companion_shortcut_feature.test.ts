@@ -1,11 +1,17 @@
 import {
   companionAppLabel,
+  companionCardMode,
   companionShortcutActionId,
   companionUrlConfig,
   companionUrlValue,
   formatCompanionShortcutActionId,
   normalizeCompanionCard,
 } from "../../src/webserver/cards/companion";
+import {
+  COMPANION_INPUT_VOLUME_ID,
+  COMPANION_OUTPUT_VOLUME_ID,
+  companionSliderMode,
+} from "../../src/webserver/cards/slider";
 
 function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
   "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"> {
@@ -20,6 +26,18 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
+    throw new Error("Companion media actions must retain their card subtype");
+  }
+  if (companionSliderMode({ entity: COMPANION_OUTPUT_VOLUME_ID }) !== "mac_output") {
+    throw new Error("Output volume must be available as a Slider control");
+  }
+  if (companionSliderMode({ entity: COMPANION_INPUT_VOLUME_ID }) !== "mac_input") {
+    throw new Error("Input volume must be available as a Slider control");
+  }
+  if (companionSliderMode({ entity: "light.office" }) !== "home_assistant") {
+    throw new Error("Existing Home Assistant sliders must remain unchanged");
+  }
   if (companionAppLabel("", "", "Safari") !== "Safari") {
     throw new Error("Selecting a Companion app must prefill an empty card label");
   }

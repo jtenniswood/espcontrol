@@ -26,8 +26,14 @@ struct CompanionAction {
   std::string label;
 };
 
+struct CompanionValue {
+  std::string id;
+  int value{0};
+};
+
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
 using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
+using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
 
 struct CompanionPairingSnapshot {
   bool available{false};
@@ -73,12 +79,14 @@ inline void companion_request_card_refresh();
 struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
+  std::vector<CompanionValue> values;
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
 };
 
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
+  std::vector<CompanionValue> values;
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
 };
@@ -91,7 +99,7 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.connected, state.now_playing};
+  return {state.actions, state.values, state.connected, state.now_playing};
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
@@ -137,6 +145,11 @@ inline CompanionUrlSender &companion_url_sender() {
   return sender;
 }
 
+inline CompanionValueSender &companion_value_sender() {
+  static CompanionValueSender sender;
+  return sender;
+}
+
 inline CompanionPairingProvider &companion_pairing_provider() {
   static CompanionPairingProvider provider;
   return provider;
@@ -160,6 +173,44 @@ inline void companion_set_actions(std::vector<CompanionAction> actions) {
   companion_request_card_refresh();
 }
 
+inline bool companion_media_action_valid(const std::string &action_id) {
+  return action_id == "media.play_pause" || action_id == "media.previous" ||
+         action_id == "media.next";
+}
+
+inline bool companion_volume_control_valid(const std::string &control_id) {
+  return control_id == "media.output_volume" || control_id == "media.input_volume";
+}
+
+inline const char *companion_volume_control_label(const std::string &control_id) {
+  if (control_id == "media.output_volume") return "Output Volume";
+  if (control_id == "media.input_volume") return "Input Volume";
+  return "Volume";
+}
+
+inline bool companion_value(const std::string &control_id, int &value) {
+  const auto snapshot = companion_runtime_snapshot();
+  const auto item = std::find_if(snapshot.values.begin(), snapshot.values.end(),
+    [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; });
+  if (item == snapshot.values.end()) return false;
+  value = item->value;
+  return true;
+}
+
+inline void companion_set_value(const std::string &control_id, int value) {
+  if (!companion_volume_control_valid(control_id)) return;
+  value = std::max(0, std::min(100, value));
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    auto item = std::find_if(state.values.begin(), state.values.end(),
+      [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; });
+    if (item == state.values.end()) state.values.push_back({control_id, value});
+    else item->value = value;
+  }
+  companion_request_card_refresh();
+}
+
 inline uint32_t companion_next_request_number() {
   static std::atomic<uint32_t> request_number{0};
   return ++request_number;
@@ -170,6 +221,7 @@ inline void companion_set_connected(bool connected) {
   {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.connected = connected;
+    if (!connected) state.values.clear();
   }
   companion_request_card_refresh();
 }
@@ -180,6 +232,10 @@ inline void register_companion_action_sender(CompanionActionSender sender) {
 
 inline void register_companion_url_sender(CompanionUrlSender sender) {
   companion_url_sender() = std::move(sender);
+}
+
+inline void register_companion_value_sender(CompanionValueSender sender) {
+  companion_value_sender() = std::move(sender);
 }
 
 inline void register_companion_pairing_callbacks(CompanionPairingProvider provider,
@@ -268,6 +324,7 @@ inline bool companion_action_available(const std::string &action_id) {
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
   if (companion_shortcut_action_valid(action_id)) return true;
+  if (companion_media_action_valid(action_id)) return true;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;
   });
@@ -296,8 +353,18 @@ struct CompanionCardRef {
   std::string url_config;
 };
 
+struct CompanionSliderRef {
+  lv_obj_t *slider = nullptr;
+  std::string control_id;
+};
+
 inline std::vector<CompanionCardRef> &companion_card_refs() {
   static std::vector<CompanionCardRef> refs;
+  return refs;
+}
+
+inline std::vector<CompanionSliderRef> &companion_slider_refs() {
+  static std::vector<CompanionSliderRef> refs;
   return refs;
 }
 
@@ -315,6 +382,29 @@ inline void companion_forget_card(lv_obj_t *button) {
 
 inline void companion_card_deleted(lv_event_t *event) {
   companion_forget_card(static_cast<lv_obj_t *>(lv_event_get_target(event)));
+}
+
+inline void companion_slider_deleted(lv_event_t *event) {
+  lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(event));
+  auto &refs = companion_slider_refs();
+  refs.erase(std::remove_if(refs.begin(), refs.end(), [slider](const CompanionSliderRef &ref) {
+    return ref.slider == slider;
+  }), refs.end());
+}
+
+inline void companion_track_slider(lv_obj_t *slider, const std::string &control_id) {
+  if (!slider || !companion_volume_control_valid(control_id)) return;
+  auto &refs = companion_slider_refs();
+  auto existing = std::find_if(refs.begin(), refs.end(), [slider](const CompanionSliderRef &ref) {
+    return ref.slider == slider;
+  });
+  if (existing != refs.end()) {
+    existing->control_id = control_id;
+  } else {
+    refs.push_back({slider, control_id});
+    lv_obj_add_event_cb(slider, companion_slider_deleted, LV_EVENT_DELETE, nullptr);
+  }
+  companion_request_card_refresh();
 }
 
 inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
@@ -353,9 +443,29 @@ inline void companion_refresh_cards_if_requested() {
     }
     ++it;
   }
+  auto &sliders = companion_slider_refs();
+  const auto snapshot = companion_runtime_snapshot();
+  for (auto it = sliders.begin(); it != sliders.end();) {
+    if (!it->slider || !lv_obj_is_valid(it->slider)) {
+      it = sliders.erase(it);
+      continue;
+    }
+    const auto value = std::find_if(snapshot.values.begin(), snapshot.values.end(),
+      [it](const CompanionValue &candidate) { return candidate.id == it->control_id; });
+    const bool available = snapshot.connected && value != snapshot.values.end();
+    if (available) {
+      lv_slider_set_value(it->slider, value->value, LV_ANIM_OFF);
+      lv_obj_send_event(it->slider, LV_EVENT_VALUE_CHANGED, nullptr);
+      lv_obj_clear_state(it->slider, LV_STATE_DISABLED);
+    } else {
+      lv_obj_add_state(it->slider, LV_STATE_DISABLED);
+    }
+    ++it;
+  }
 }
 #else
 inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
+inline void companion_track_slider(void *, const std::string &) {}
 inline void companion_request_card_refresh() {}
 inline void companion_refresh_cards_if_requested() {}
 #endif
@@ -372,6 +482,13 @@ inline bool invoke_companion_url(const std::string &app_id,
   const std::string encoded_url = companion_encoded_url(url_config);
   if (encoded_url.empty() || !companion_action_available(app_id) || !companion_url_sender()) return false;
   return companion_url_sender()(app_id, encoded_url, request_id);
+}
+
+inline bool invoke_companion_value(const std::string &control_id, int value,
+                                   const std::string &request_id) {
+  if (!companion_connected() || !companion_volume_control_valid(control_id) ||
+      !companion_value_sender()) return false;
+  return companion_value_sender()(control_id, std::max(0, std::min(100, value)), request_id);
 }
 
 #ifdef USE_WEBSERVER

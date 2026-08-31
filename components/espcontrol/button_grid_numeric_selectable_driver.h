@@ -153,6 +153,14 @@ inline void numeric_selectable_driver_bind_slider(
   lv_obj_t *slider = slot.sensor_container
     ? static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container))
     : nullptr;
+  if (companion_volume_control_valid(config.entity)) {
+    if (config.label.empty() && slot.text_lbl) {
+      lv_label_set_display_text(
+        slot.text_lbl, companion_volume_control_label(config.entity));
+    }
+    companion_track_slider(slider, config.entity);
+    return;
+  }
   const bool has_icon_on = slider_has_alt_icon(config.type, config.icon_on);
   const char *icon_on = has_icon_on
     ? slider_icon_on(config.type, config.entity, config.icon, config.icon_on)

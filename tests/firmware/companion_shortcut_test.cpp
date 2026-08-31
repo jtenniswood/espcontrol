@@ -25,6 +25,26 @@ int main() {
   companion_set_actions({{"com.apple.Safari", "Safari"}});
   companion_set_connected(true);
   assert(companion_connected());
+  assert(companion_media_action_valid("media.play_pause"));
+  assert(companion_media_action_valid("media.previous"));
+  assert(companion_media_action_valid("media.next"));
+  assert(!companion_media_action_valid("media.delete_everything"));
+  assert(companion_action_available("media.play_pause"));
+  assert(companion_volume_control_valid("media.output_volume"));
+  assert(companion_volume_control_valid("media.input_volume"));
+  assert(!companion_volume_control_valid("media.screen_brightness"));
+  companion_set_value("media.output_volume", 72);
+  int output_volume = 0;
+  assert(companion_value("media.output_volume", output_volume));
+  assert(output_volume == 72);
+  bool volume_invoked = false;
+  register_companion_value_sender([&volume_invoked](const std::string &control, int value,
+                                                     const std::string &request) {
+    volume_invoked = control == "media.output_volume" && value == 64 && request == "volume-1";
+    return volume_invoked;
+  });
+  assert(invoke_companion_value("media.output_volume", 64, "volume-1"));
+  assert(volume_invoked);
   assert(companion_url_available("com.apple.Safari", url_config));
   assert(!companion_url_available("com.google.Chrome", url_config));
   bool invoked = false;
@@ -35,5 +55,7 @@ int main() {
   });
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
+  companion_set_connected(false);
+  assert(!companion_value("media.output_volume", output_volume));
   return 0;
 }

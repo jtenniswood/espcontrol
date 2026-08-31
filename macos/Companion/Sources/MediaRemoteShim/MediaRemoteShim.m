@@ -5,11 +5,13 @@
 typedef void (*ECRegisterNotificationsFn)(dispatch_queue_t);
 typedef void (*ECGetNowPlayingInfoFn)(dispatch_queue_t, void (^)(CFDictionaryRef _Nullable));
 typedef void (*ECGetNowPlayingPIDFn)(dispatch_queue_t, void (^)(int));
+typedef BOOL (*ECSendCommandFn)(uint32_t, CFDictionaryRef _Nullable);
 
 static void *ECMediaRemoteHandle;
 static ECRegisterNotificationsFn ECRegisterNotifications;
 static ECGetNowPlayingInfoFn ECGetNowPlayingInfo;
 static ECGetNowPlayingPIDFn ECGetNowPlayingPID;
+static ECSendCommandFn ECSendCommand;
 static NSMutableArray<id> *ECObservers;
 
 static BOOL ECLoadMediaRemote(void) {
@@ -25,6 +27,8 @@ static BOOL ECLoadMediaRemote(void) {
         ECMediaRemoteHandle, "MRMediaRemoteGetNowPlayingInfo");
     ECGetNowPlayingPID = (ECGetNowPlayingPIDFn) dlsym(
         ECMediaRemoteHandle, "MRMediaRemoteGetNowPlayingApplicationPID");
+    ECSendCommand = (ECSendCommandFn) dlsym(
+        ECMediaRemoteHandle, "MRMediaRemoteSendCommand");
   });
   return ECRegisterNotifications != NULL && ECGetNowPlayingInfo != NULL &&
          ECGetNowPlayingPID != NULL;
@@ -72,6 +76,11 @@ static BOOL ECLoadMediaRemote(void) {
     [[NSNotificationCenter defaultCenter] removeObserver:observer];
   }
   ECObservers = nil;
+}
+
++ (BOOL)sendCommand:(uint32_t)command {
+  if (!ECLoadMediaRemote() || ECSendCommand == NULL) return NO;
+  return ECSendCommand(command, NULL);
 }
 
 @end
