@@ -344,9 +344,14 @@ private struct CompanionSettings: View {
 
             Spacer()
 
-            Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
-                .controlSize(.large)
-                .disabled(store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            VStack(alignment: .trailing, spacing: 8) {
+                Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
+                    .controlSize(.large)
+
+                Button("Open Device Webserver") { store.openPanelWebServer() }
+                    .controlSize(.large)
+            }
+            .disabled(store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(12)
         .background(

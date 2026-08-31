@@ -116,6 +116,20 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func launchableApps() -> [LaunchableApp] { availableApps }
     func connect() { connection.connect(mode: .authenticate) }
+    func openPanelWebServer() {
+        let host = panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else {
+            updateStatus("Enter the panel address first", connected: isConnected)
+            return
+        }
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = host
+        guard let url = components.url, NSWorkspace.shared.open(url) else {
+            updateStatus("Could not open the panel webserver", connected: isConnected)
+            return
+        }
+    }
     func pair(code: String, verificationCode: String) {
         connection.connect(mode: .pair(
             code: code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
