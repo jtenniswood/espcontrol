@@ -81,6 +81,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             store.updateStatus("Blocked: panel certificate changed")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else if saved != nil {
+            if case .pair = mode { pendingCertificateFingerprint = fingerprint }
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else if case let .pair(_, verificationCode) = mode,
                   Self.normalizedVerificationCode(verificationCode) == Self.verificationCode(for: fingerprint) {
@@ -114,6 +115,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private func handle(_ message: String) {
         let parts = message.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
         guard let type = parts.first else { return }
+        print("[EspControl Companion] Received \(type)")
         switch type {
         case "PAIRED":
             guard parts.count == 2, let credential = Data(hex: parts[1]) else { store.updateStatus("Pairing failed"); return }

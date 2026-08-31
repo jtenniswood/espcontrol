@@ -153,7 +153,11 @@ final class CompanionStore: NSObject, ObservableObject {
         statusDescription = "Panel forgotten"
     }
 
-    func updateStatus(_ message: String, connected: Bool = false) { statusDescription = message; isConnected = connected }
+    func updateStatus(_ message: String, connected: Bool = false) {
+        print("[EspControl Companion] \(message)")
+        statusDescription = message
+        isConnected = connected
+    }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = selectedApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
         if app.bundleIdentifier == "com.apple.finder" {
