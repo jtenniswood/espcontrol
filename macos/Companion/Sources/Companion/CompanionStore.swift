@@ -137,10 +137,13 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func forgetPanel() {
-        KeychainStore.remove(service: KeychainStore.service, account: panelHost)
-        defaults.removeObject(forKey: "companion.certificateFingerprint.\(panelHost)")
-        defaults.removeObject(forKey: "companion.authenticationSequence.\(panelHost)")
+        let forgottenHost = panelHost
+        KeychainStore.remove(service: KeychainStore.service, account: forgottenHost)
+        defaults.removeObject(forKey: "companion.certificateFingerprint.\(forgottenHost)")
+        defaults.removeObject(forKey: "companion.authenticationSequence.\(forgottenHost)")
         connection.disconnect()
+        panelHost = ""
+        panelName = ""
         statusDescription = "Panel forgotten"
     }
 

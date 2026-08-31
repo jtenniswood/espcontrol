@@ -353,7 +353,11 @@ private struct CompanionSettings: View {
                 .foregroundStyle(.secondary)
 
             if store.hasSavedPairing {
-                Button("Forget this panel", role: .destructive) { store.forgetPanel() }
+                Button("Forget this panel", role: .destructive) {
+                    store.forgetPanel()
+                    pairingCode = ""
+                    focusedField = .panelHost
+                }
             }
         }
     }
