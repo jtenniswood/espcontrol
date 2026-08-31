@@ -204,6 +204,7 @@ export function registerActionCardTypes(
                 valueField.appendChild(valueInput);
                 panel.appendChild(valueField);
                 helpers.bindField(valueInput, "unit", true);
+                helpers.requireField(valueInput, "Enter a value before saving.");
             }
             if (!isOptionSelect) {
                 helpers.renderCardIconPicker(panel, b, helpers, {

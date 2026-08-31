@@ -18,8 +18,8 @@ inline int32_t vertical_edge_inset(int32_t height) {
 }
 
 inline bool vertical_pointer_position(int32_t pointer_y, int32_t top, int32_t bottom,
-                                      int max_position, int &position) {
-  if (bottom < top || max_position < 0) return false;
+                                      int32_t position_count, int &position) {
+  if (bottom < top || position_count <= 0) return false;
 
   const int32_t height = bottom - top + 1;
   const int32_t inset = vertical_edge_inset(height);
@@ -28,7 +28,7 @@ inline bool vertical_pointer_position(int32_t pointer_y, int32_t top, int32_t bo
   if (safe_bottom <= safe_top) return false;
 
   if (pointer_y <= safe_top) {
-    position = max_position;
+    position = position_count;
     return true;
   }
   if (pointer_y >= safe_bottom) {
@@ -39,8 +39,7 @@ inline bool vertical_pointer_position(int32_t pointer_y, int32_t top, int32_t bo
   const int32_t span = safe_bottom - safe_top;
   const int32_t distance_from_bottom = safe_bottom - pointer_y;
   position = static_cast<int>(
-      (static_cast<int64_t>(distance_from_bottom) * max_position + span / 2) /
-      span);
+    (static_cast<int64_t>(distance_from_bottom) * position_count + span / 2) / span);
   return true;
 }
 

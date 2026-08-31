@@ -1474,12 +1474,12 @@ inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
   lv_area_t slider_area;
   lv_obj_get_coords(slider, &slider_area);
 
-  const int max_position = ctx->numeric
+  const int positions = ctx->numeric
     ? espcontrol::number_slider::slider_position_count(slider_numeric_metadata(ctx))
     : 100;
   int value = 0;
   if (!espcontrol::slider_geometry::vertical_pointer_position(
-        point.y, slider_area.y1, slider_area.y2, max_position, value)) {
+        point.y, slider_area.y1, slider_area.y2, positions, value)) {
     return false;
   }
   if (lv_slider_get_value(slider) == value) return true;

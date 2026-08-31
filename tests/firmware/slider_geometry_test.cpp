@@ -47,6 +47,16 @@ int main() {
   if (!maps_to(45, 0, 100, 56)) return EXIT_FAILURE;
   if (!maps_to(46, 0, 100, 55)) return EXIT_FAILURE;
 
+  // Numeric sliders map directly to their full position range instead of first
+  // rounding through a whole percentage.
+  int position = -1;
+  if (!vertical_pointer_position(99, 0, 200, 1000, position)) return EXIT_FAILURE;
+  if (position != 506) return EXIT_FAILURE;
+  if (!vertical_pointer_position(-1, 0, 200, 1000, position)) return EXIT_FAILURE;
+  if (position != 1000) return EXIT_FAILURE;
+  if (!vertical_pointer_position(201, 0, 200, 1000, position)) return EXIT_FAILURE;
+  if (position != 0) return EXIT_FAILURE;
+
   // Higher-resolution sliders map directly to their full position range rather
   // than first collapsing the pointer coordinate to a whole percentage.
   if (!maps_position_to(500, 0, 1000, 1000, 500)) return EXIT_FAILURE;
@@ -59,6 +69,7 @@ int main() {
   if (unchanged != 42) return EXIT_FAILURE;
   if (vertical_pointer_percent(0, 0, 0, unchanged)) return EXIT_FAILURE;
   if (unchanged != 42) return EXIT_FAILURE;
+  if (vertical_pointer_position(0, 0, 100, 0, unchanged)) return EXIT_FAILURE;
   if (vertical_pointer_position(0, 0, 100, -1, unchanged)) return EXIT_FAILURE;
   if (unchanged != 42) return EXIT_FAILURE;
 
