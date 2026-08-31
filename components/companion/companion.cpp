@@ -359,6 +359,10 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     ESP_LOGD(TAG, "Mac result: %s", message.c_str());
   } else if (parts[0] == "STATE" && parts.size() == 3 &&
              companion_volume_control_valid(parts[1])) {
+    if (parts[2] == "unavailable") {
+      companion_remove_value(parts[1]);
+      return;
+    }
     char *end = nullptr;
     const long value = std::strtol(parts[2].c_str(), &end, 10);
     if (end && *end == '\0' && value >= 0 && value <= 100) {

@@ -238,7 +238,7 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func perform(actionIdentifier: String) -> Bool {
-        if actionIdentifier.hasPrefix("media.") {
+        if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
@@ -274,8 +274,9 @@ final class CompanionStore: NSObject, ObservableObject {
         guard isConnected else { return }
         let values = mediaController.values()
         guard force || values != lastMediaControlValues else { return }
+        let unavailable = Set(lastMediaControlValues.keys).subtracting(values.keys)
         lastMediaControlValues = values
-        connection.publishMediaControlValues(values)
+        connection.publishMediaControlValues(values, unavailable: unavailable)
     }
 
     func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {

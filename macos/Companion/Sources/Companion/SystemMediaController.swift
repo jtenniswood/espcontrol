@@ -13,6 +13,12 @@ final class SystemMediaController {
         case previousTrack = 5
     }
 
+    static func supports(actionIdentifier: String) -> Bool {
+        actionIdentifier == "media.play_pause" ||
+            actionIdentifier == "media.previous" ||
+            actionIdentifier == "media.next"
+    }
+
     func perform(actionIdentifier: String) -> Bool {
         let command: RemoteCommand
         switch actionIdentifier {
@@ -64,47 +70,36 @@ final class SystemMediaController {
 
     private func volume(scope: AudioObjectPropertyScope) -> Float32? {
         guard let device = defaultDevice(scope: scope) else { return nil }
-        var values: [Float32] = []
-        for element in [kAudioObjectPropertyElementMain, 1, 2] {
-            var address = AudioObjectPropertyAddress(
-                mSelector: kAudioDevicePropertyVolumeScalar,
-                mScope: scope,
-                mElement: AudioObjectPropertyElement(element)
-            )
-            guard AudioObjectHasProperty(device, &address) else { continue }
-            var value: Float32 = 0
-            var size = UInt32(MemoryLayout<Float32>.size)
-            if AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr {
-                if element == kAudioObjectPropertyElementMain { return value }
-                values.append(value)
-            }
-        }
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Float32(values.count)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: scope,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectHasProperty(device, &address) else { return nil }
+        var settable = DarwinBoolean(false)
+        guard AudioObjectIsPropertySettable(device, &address, &settable) == noErr,
+              settable.boolValue else { return nil }
+        var value: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr else { return nil }
+        return value
     }
 
     private func setVolume(_ value: Float32, scope: AudioObjectPropertyScope) -> Bool {
         guard let device = defaultDevice(scope: scope) else { return false }
-        var changed = false
-        for element in [kAudioObjectPropertyElementMain, 1, 2] {
-            var address = AudioObjectPropertyAddress(
-                mSelector: kAudioDevicePropertyVolumeScalar,
-                mScope: scope,
-                mElement: AudioObjectPropertyElement(element)
-            )
-            guard AudioObjectHasProperty(device, &address) else { continue }
-            var settable = DarwinBoolean(false)
-            guard AudioObjectIsPropertySettable(device, &address, &settable) == noErr,
-                  settable.boolValue else { continue }
-            var scalar = value
-            if AudioObjectSetPropertyData(
-                device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &scalar
-            ) == noErr {
-                changed = true
-                if element == kAudioObjectPropertyElementMain { return true }
-            }
-        }
-        return changed
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: scope,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectHasProperty(device, &address) else { return false }
+        var settable = DarwinBoolean(false)
+        guard AudioObjectIsPropertySettable(device, &address, &settable) == noErr,
+              settable.boolValue else { return false }
+        var scalar = value
+        return AudioObjectSetPropertyData(
+            device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &scalar
+        ) == noErr
     }
 }
 

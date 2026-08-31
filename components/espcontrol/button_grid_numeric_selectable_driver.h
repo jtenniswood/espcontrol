@@ -154,6 +154,11 @@ inline void numeric_selectable_driver_bind_slider(
     ? static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container))
     : nullptr;
   if (companion_volume_control_valid(config.entity)) {
+    if (slot.icon_lbl) {
+      lv_label_set_display_text(
+        slot.icon_lbl,
+        slider_icon_off(config.type, config.entity, config.icon));
+    }
     if (config.label.empty() && slot.text_lbl) {
       lv_label_set_display_text(
         slot.text_lbl, companion_volume_control_label(config.entity));

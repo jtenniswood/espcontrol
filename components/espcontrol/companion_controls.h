@@ -211,6 +211,18 @@ inline void companion_set_value(const std::string &control_id, int value) {
   companion_request_card_refresh();
 }
 
+inline void companion_remove_value(const std::string &control_id) {
+  if (!companion_volume_control_valid(control_id)) return;
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.values.erase(std::remove_if(state.values.begin(), state.values.end(),
+      [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; }),
+      state.values.end());
+  }
+  companion_request_card_refresh();
+}
+
 inline uint32_t companion_next_request_number() {
   static std::atomic<uint32_t> request_number{0};
   return ++request_number;

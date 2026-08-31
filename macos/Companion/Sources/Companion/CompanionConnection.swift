@@ -331,7 +331,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         send("CATALOG|\(catalogue)")
     }
 
-    func publishMediaControlValues(_ values: [String: Int]) {
+    func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {
+        for identifier in unavailable.sorted() where Self.validMediaControlIdentifier(identifier) {
+            send("STATE|\(identifier)|unavailable")
+        }
         for (identifier, value) in values.sorted(by: { $0.key < $1.key }) {
             guard Self.validMediaControlIdentifier(identifier), (0...100).contains(value) else { continue }
             send("STATE|\(identifier)|\(value)")

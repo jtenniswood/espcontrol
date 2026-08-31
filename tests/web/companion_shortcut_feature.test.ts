@@ -1,11 +1,13 @@
 import {
   companionAppLabel,
   companionCardMode,
+  companionMediaIcon,
   companionShortcutActionId,
   companionUrlConfig,
   companionUrlValue,
   formatCompanionShortcutActionId,
   normalizeCompanionCard,
+  resetCompanionMediaPresentation,
 } from "../../src/webserver/cards/companion";
 import {
   COMPANION_INPUT_VOLUME_ID,
@@ -29,6 +31,9 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
   }
+  if (companionCardMode({ entity: "media.thirdparty.app", sensor: "" }) !== "app") {
+    throw new Error("Installed apps beginning with media. must remain app actions");
+  }
   if (companionSliderMode({ entity: COMPANION_OUTPUT_VOLUME_ID }) !== "mac_output") {
     throw new Error("Output volume must be available as a Slider control");
   }
@@ -46,6 +51,22 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionAppLabel("Work browser", "Safari", "Google Chrome") !== "Work browser") {
     throw new Error("Changing a Companion app must preserve a custom card label");
+  }
+  if (companionMediaIcon("Play Pause", "Play Pause", "Skip Next") !== "Skip Next") {
+    throw new Error("Changing media actions must refresh a generated icon");
+  }
+  if (companionMediaIcon("Music", "Play Pause", "Skip Next") !== "Music") {
+    throw new Error("Changing media actions must preserve a custom icon");
+  }
+  const generatedMediaCard = { entity: "media.play_pause", label: "Play / Pause", icon: "Play Pause" };
+  resetCompanionMediaPresentation(generatedMediaCard, "app");
+  if (generatedMediaCard.label !== "" || generatedMediaCard.icon !== "Monitor") {
+    throw new Error("Leaving Media Control must clear generated media presentation fields");
+  }
+  const customMediaCard = { entity: "media.next", label: "Skip", icon: "Music" };
+  resetCompanionMediaPresentation(customMediaCard, "shortcut");
+  if (customMediaCard.label !== "Skip" || customMediaCard.icon !== "Music") {
+    throw new Error("Leaving Media Control must preserve custom presentation fields");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));

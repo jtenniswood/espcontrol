@@ -15,7 +15,6 @@ interface CompanionAction {
 
 const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
-const COMPANION_MEDIA_PREFIX = "media.";
 export const COMPANION_MEDIA_ACTIONS = [
     { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
     { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
@@ -108,6 +107,15 @@ export function companionAppLabel(
     return !trimmedLabel || trimmedLabel === previousAppLabel ? selectedAppLabel : currentLabel;
 }
 
+export function companionMediaIcon(
+    currentIcon: string,
+    previousGeneratedIcon: string,
+    selectedGeneratedIcon: string,
+): string {
+    return !currentIcon || currentIcon === "Auto" || currentIcon === previousGeneratedIcon
+        ? selectedGeneratedIcon : currentIcon;
+}
+
 const COMPANION_CARD_METADATA = {
     mode: {
         label: "Action",
@@ -133,9 +141,17 @@ export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
-    if (entity.startsWith(COMPANION_MEDIA_PREFIX)) return "media";
+    if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
+}
+
+export function resetCompanionMediaPresentation(card: any, nextMode: string): void {
+    if (!card || nextMode === "media") return;
+    const previous = COMPANION_MEDIA_ACTIONS.find((action) => action.id === card.entity);
+    if (!previous) return;
+    if (card.label === previous.label) card.label = "";
+    if (card.icon === previous.icon) card.icon = "Monitor";
 }
 
 export function normalizeCompanionCard(card: any): void {
@@ -191,6 +207,9 @@ export function registerCompanionCardTypes(
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
                     onChange: function (this: HTMLSelectElement) {
+                        const previousLabel = card.label;
+                        const previousIcon = card.icon;
+                        resetCompanionMediaPresentation(card, this.value);
                         card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
                             : this.value === "media" ? COMPANION_MEDIA_ACTIONS[0].id : "";
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
@@ -200,6 +219,8 @@ export function registerCompanionCardTypes(
                             helpers.saveField("label", card.label);
                             helpers.saveField("icon", card.icon);
                         }
+                        if (card.label !== previousLabel) helpers.saveField("label", card.label);
+                        if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
                         renderButtonSettings();
@@ -325,9 +346,10 @@ export function registerCompanionCardTypes(
                 const selected = COMPANION_MEDIA_ACTIONS.find(function (action) { return action.id === mediaSelect.value; });
                 if (!selected) return;
                 const currentLabel = typeof card.label === "string" ? card.label : "";
+                const currentIcon = typeof card.icon === "string" ? card.icon : "";
                 card.entity = selected.id;
                 card.label = companionAppLabel(currentLabel, previous?.label || "", selected.label);
-                card.icon = selected.icon;
+                card.icon = companionMediaIcon(currentIcon, previous?.icon || "", selected.icon);
                 helpers.saveField("entity", card.entity);
                 helpers.saveField("label", card.label);
                 helpers.saveField("icon", card.icon);

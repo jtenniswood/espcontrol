@@ -39,6 +39,9 @@ int main() {
   int output_volume = 0;
   assert(companion_value("media.output_volume", output_volume));
   assert(output_volume == 72);
+  companion_remove_value("media.output_volume");
+  assert(!companion_value("media.output_volume", output_volume));
+  companion_set_value("media.output_volume", 72);
   bool volume_invoked = false;
   register_companion_value_sender([&volume_invoked](const std::string &control, int value,
                                                      const std::string &request) {
