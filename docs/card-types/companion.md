@@ -15,6 +15,7 @@ Companion cards are a proof-of-concept card type for the **4-inch 4848S040** pan
 4. Choose **Copy pairing details**. In the Mac app settings, choose **Paste pairing details**, then **Pair**. The app checks the Verify code against the panel certificate before it sends the pairing code. Pair on a trusted local network, then choose which installed apps it may launch.
 
 The Mac stores the pairing credential in Keychain and pins the panel's locally generated certificate. If you forget the panel from the Mac app, pair it again before Companion cards will work.
+When the authenticated Mac is connected, a monitor icon appears beside Wi-Fi in the panel's clock bar. It disappears within a moment if the connection ends.
 
 ## Add a Companion card
 
