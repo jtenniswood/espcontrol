@@ -18,9 +18,12 @@
 #include "panel_config_espidf_storage.h"
 #include "panel_config_esphome_text.h"
 #include "panel_config_legacy_adapter.h"
+#include "panel_config_legacy_entity_guard.h"
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_storage_backend.h"
+#include "panel_config_endpoint_policy.h"
+#include "panel_config_storage_selection.h"
 #include "panel_config_write_endpoint.h"
 #include "panel_config_http_context.h"
 #include "button_grid.h"
@@ -31,6 +34,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   if (server == nullptr) return;
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
+  espcontrol::configuration::register_panel_config_legacy_entity_guard(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);
   espcontrol::configuration::register_panel_config_read_endpoint(*server);
   espcontrol::configuration::register_panel_config_write_endpoint(*server);
@@ -71,6 +75,7 @@ class EspControlApp::NativeConfigurationRuntime {
   uint8_t *memory{nullptr};
   uint8_t *document_buffer{nullptr};
   uint8_t *boot_buffer{nullptr};
+  size_t slot_capacity{0};
   bool boot_configuration_pending{false};
   configuration::EspHomePanelConfigTextValue button_order{};
   configuration::EspHomePanelConfigTextValue button_on_color{};
@@ -106,6 +111,12 @@ void EspControlApp::set_panel_config_button(
   panel_config_button_texts_[slot - 1] = {
       button, {subpage_0, subpage_1, subpage_2, subpage_3, subpage_4,
                subpage_5, subpage_6, subpage_7}};
+#ifdef USE_WEBSERVER
+  configuration::bind_panel_config_legacy_entity_sources(
+      slot, button,
+      {subpage_0, subpage_1, subpage_2, subpage_3,
+       subpage_4, subpage_5, subpage_6, subpage_7});
+#endif
 }
 
 bool EspControlApp::native_configuration_requested() const {
@@ -159,7 +170,8 @@ void EspControlApp::register_panel_config_endpoints() {
       core_.configuration_service();
   NativeConfigurationRuntime *const runtime = native_configuration_runtime_.get();
   const bool can_bind_document_endpoints = panel_config_service != nullptr &&
-      runtime != nullptr && runtime->document_buffer != nullptr;
+      runtime != nullptr && runtime->document_buffer != nullptr &&
+      runtime->slot_capacity > 0;
   if (!can_bind_document_endpoints) {
     ESP_LOGE(TAG,
              "Native configuration endpoints unavailable: service=%s runtime=%s document_buffer=%s",
@@ -175,7 +187,7 @@ void EspControlApp::register_panel_config_endpoints() {
   }
   configuration::bind_panel_config_http_context(
       *panel_config_service, runtime->document_buffer,
-      PANEL_CONFIG_STORAGE_SLOT_CAPACITY,
+      runtime->slot_capacity,
       web_auth_username_ == nullptr ? "" : web_auth_username_,
       web_auth_password_ == nullptr ? "" : web_auth_password_);
   configuration::set_panel_config_read_supported(true);
@@ -205,7 +217,7 @@ void EspControlApp::apply_boot_configuration() {
   // nor the running grid can be reverted by an older startup document.
   const configuration::ServiceLoadResult loaded =
       panel_config_service->load_and_apply_runtime(
-          runtime->boot_buffer, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+          runtime->boot_buffer, runtime->slot_capacity);
   if (!loaded.ok()) {
     ESP_LOGE(TAG, "Native configuration could not reload for the live grid (%u)",
              static_cast<unsigned>(loaded.status));
@@ -264,25 +276,37 @@ void EspControlApp::initialize_native_configuration() {
   panel_config_service->set_runtime_adapter(&runtime.runtime_config);
   if (!runtime.legacy_config.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
-  } else if (panel_config_card_images_storage_
-                 ? !runtime.blobs.begin_card_images_partition(
-                       PANEL_CONFIG_STORAGE_SLOT_CAPACITY)
-                 : !runtime.blobs.begin()) {
-    ESP_LOGE(TAG, "Native configuration storage is unavailable");
   } else {
+    const configuration::PanelConfigStorageSelection storage =
+        configuration::begin_panel_config_storage(
+            runtime.blobs, panel_config_card_images_storage_,
+            PANEL_CONFIG_STORAGE_SLOT_CAPACITY,
+            PANEL_CONFIG_NVS_SLOT_CAPACITY);
+    if (!storage.ready) {
+      ESP_LOGE(TAG, "Native configuration storage is unavailable");
+      native_configuration_initialized_ = true;
+      register_panel_config_endpoints();
+      return;
+    }
+    runtime.slot_capacity = storage.slot_capacity;
+    if (storage.used_nvs_fallback) {
+      ESP_LOGW(TAG,
+               "Card-images partition is unavailable; using NVS with %u-byte slots",
+               static_cast<unsigned>(runtime.slot_capacity));
+    }
     ESP_LOGI(TAG, "Allocating native configuration buffers");
 #ifdef USE_ESP32
     // Two fixed slots back the atomic store; the scratch, HTTP request, and
     // delayed boot-application buffers must not overlap each other.
-    constexpr size_t panel_config_memory_size =
-        PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 5;
+    const size_t panel_config_memory_size = runtime.slot_capacity * 5;
     runtime.memory = static_cast<uint8_t *>(
         heap_caps_malloc(panel_config_memory_size,
                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 #endif
     if (runtime.memory == nullptr ||
         !runtime.backend.begin(runtime.memory,
-                                     PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 2)) {
+                               runtime.slot_capacity * 2,
+                               runtime.slot_capacity)) {
       ESP_LOGE(TAG, "Native configuration memory is unavailable");
       native_configuration_initialized_ = true;
       register_panel_config_endpoints();
@@ -290,13 +314,19 @@ void EspControlApp::initialize_native_configuration() {
     }
     ESP_LOGI(TAG, "Loading native configuration document");
     panel_config_service->set_scratch_buffer(
-        runtime.memory + PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 2,
-        PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+        runtime.memory + runtime.slot_capacity * 2,
+        runtime.slot_capacity);
     runtime.document_buffer =
-        runtime.memory + PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 3;
-    runtime.boot_buffer = runtime.memory + PANEL_CONFIG_STORAGE_SLOT_CAPACITY * 4;
+        runtime.memory + runtime.slot_capacity * 3;
+    runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 4;
     const configuration::ServiceLoadResult loaded = panel_config_service->load(
-        runtime.document_buffer, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+        runtime.document_buffer, runtime.slot_capacity);
+    if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
+      ESP_LOGW(TAG,
+               "Native configuration initial load failed (%u); keeping legacy configuration endpoints active",
+               static_cast<unsigned>(loaded.status));
+      runtime.document_buffer = nullptr;
+    }
     if (loaded.status == configuration::ServiceStatus::IMPORTED_LEGACY) {
       ESP_LOGI(TAG, "Imported legacy panel configuration into generation %" PRIu32,
                loaded.generation);

@@ -44,12 +44,16 @@ class BufferedBlobStorageBackend final : public StorageBackend {
   explicit BufferedBlobStorageBackend(BlobStorage &storage)
       : storage_(storage) {}
 
-  bool begin(uint8_t *slot_storage, size_t slot_storage_size) {
+  bool begin(uint8_t *slot_storage, size_t slot_storage_size,
+             size_t slot_capacity = SlotCapacity) {
     if (slot_storage == nullptr ||
-        slot_storage_size < CONFIGURATION_SLOT_COUNT * SlotCapacity)
+        slot_capacity < CONFIGURATION_ENVELOPE_HEADER_SIZE ||
+        slot_capacity > SlotCapacity ||
+        slot_storage_size < CONFIGURATION_SLOT_COUNT * slot_capacity)
       return false;
+    slot_capacity_ = slot_capacity;
     for (uint8_t slot = 0; slot < CONFIGURATION_SLOT_COUNT; ++slot) {
-      slots_[slot] = slot_storage + static_cast<size_t>(slot) * SlotCapacity;
+      slots_[slot] = slot_storage + static_cast<size_t>(slot) * slot_capacity_;
     }
     loaded_.fill(false);
     dirty_.fill(false);
@@ -57,7 +61,7 @@ class BufferedBlobStorageBackend final : public StorageBackend {
     return true;
   }
 
-  size_t slot_capacity() const override { return SlotCapacity; }
+  size_t slot_capacity() const override { return slot_capacity_; }
 
   bool read(uint8_t slot, size_t offset, uint8_t *output,
             size_t size) override {
@@ -88,7 +92,7 @@ class BufferedBlobStorageBackend final : public StorageBackend {
       // the in-memory image after ConfigurationStore withdraws publication.
       // Besides keeping compact NVS writes compact, this makes the next
       // payload and metadata writes safe for a raw-flash implementation.
-      std::memset(slots_[slot], 0xFF, SlotCapacity);
+      std::memset(slots_[slot], 0xFF, slot_capacity_);
       stored_sizes_[slot] = 0;
     }
     if (size > 0) std::memcpy(slots_[slot] + offset, data, size);
@@ -110,8 +114,8 @@ class BufferedBlobStorageBackend final : public StorageBackend {
 
  private:
   bool range_is_valid(uint8_t slot, size_t offset, size_t size) const {
-    return slot < CONFIGURATION_SLOT_COUNT && offset <= SlotCapacity &&
-           size <= SlotCapacity - offset;
+    return slot < CONFIGURATION_SLOT_COUNT && offset <= slot_capacity_ &&
+           size <= slot_capacity_ - offset;
   }
 
   bool ready() const {
@@ -124,19 +128,20 @@ class BufferedBlobStorageBackend final : public StorageBackend {
   bool load_slot(uint8_t slot) {
     if (loaded_[slot]) return true;
     const BlobLoadResult result =
-        storage_.load_blob(slot, slots_[slot], SlotCapacity);
+        storage_.load_blob(slot, slots_[slot], slot_capacity_);
     if (result.status == BlobLoadStatus::FAILED ||
-        result.size > SlotCapacity) {
+        result.size > slot_capacity_) {
       return false;
     }
     if (result.status == BlobLoadStatus::MISSING)
-      std::memset(slots_[slot], 0xFF, SlotCapacity);
+      std::memset(slots_[slot], 0xFF, slot_capacity_);
     stored_sizes_[slot] = result.size;
     loaded_[slot] = true;
     return true;
   }
 
   BlobStorage &storage_;
+  size_t slot_capacity_{SlotCapacity};
   std::array<uint8_t *, CONFIGURATION_SLOT_COUNT> slots_{};
   std::array<bool, CONFIGURATION_SLOT_COUNT> loaded_{};
   std::array<bool, CONFIGURATION_SLOT_COUNT> dirty_{};
