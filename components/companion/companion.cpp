@@ -71,6 +71,10 @@ void CompanionService::setup() {
   register_companion_action_sender([this](const std::string &action, const std::string &request) {
     return this->invoke_(action, request);
   });
+  register_companion_url_sender([this](const std::string &app, const std::string &url,
+                                       const std::string &request) {
+    return this->invoke_url_(app, url, request);
+  });
   auto pairing_snapshot = [this]() {
     const auto runtime = companion_runtime_snapshot();
     return CompanionPairingSnapshot{
@@ -322,6 +326,15 @@ void CompanionService::publish_catalogue_() { this->send_(this->authenticated_so
 bool CompanionService::invoke_(const std::string &action_id, const std::string &request_id) {
   if (this->authenticated_socket_ < 0 || !safe_field(action_id, 96) || !safe_field(request_id, 64)) return false;
   this->send_(this->authenticated_socket_, "INVOKE|" + request_id + "|" + action_id);
+  return true;
+}
+
+bool CompanionService::invoke_url_(const std::string &app_id, const std::string &encoded_url,
+                                   const std::string &request_id) {
+  if (this->authenticated_socket_ < 0 || !safe_field(app_id, 96) ||
+      !safe_field(encoded_url, 1024) || !safe_field(request_id, 64)) return false;
+  this->send_(this->authenticated_socket_,
+              "OPEN_URL|" + request_id + "|" + app_id + "|" + encoded_url);
   return true;
 }
 

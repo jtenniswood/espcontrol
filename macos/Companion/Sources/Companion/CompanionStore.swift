@@ -100,4 +100,22 @@ final class CompanionStore: NSObject, ObservableObject {
         }
         return true
     }
+
+    func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {
+        guard encodedURL.utf8.count <= 1024,
+              let value = encodedURL.removingPercentEncoding,
+              let components = URLComponents(string: value),
+              let scheme = components.scheme?.lowercased(),
+              (scheme == "http" || scheme == "https"),
+              components.host != nil,
+              components.user == nil,
+              components.password == nil,
+              let url = components.url,
+              let app = selectedApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
+            updateStatus("Blocked an invalid URL or unapproved app", connected: isConnected)
+            return false
+        }
+        NSWorkspace.shared.open([url], withApplicationAt: app.url, configuration: .init()) { _, _ in }
+        return true
+    }
 }

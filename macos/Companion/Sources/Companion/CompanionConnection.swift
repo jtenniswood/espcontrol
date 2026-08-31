@@ -123,6 +123,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             guard parts.count == 3 else { return }
             let performed = store.perform(actionIdentifier: parts[2])
             send("RESULT|\(parts[1])|\(performed ? "performed" : "not_allowed")")
+        case "OPEN_URL":
+            guard parts.count == 4 else { return }
+            let opened = store.openURL(encodedURL: parts[3], bundleIdentifier: parts[2])
+            send("RESULT|\(parts[1])|\(opened ? "opened" : "not_allowed")")
         case "ERROR":
             store.updateStatus(parts.dropFirst().joined(separator: " "))
         default: break

@@ -153,14 +153,17 @@ inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
 
 inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
   const std::string shortcut_label = companion_shortcut_label(p.entity);
+  const bool url_card = !companion_encoded_url(p.sensor).empty();
   std::string label = p.label.empty()
-    ? (!shortcut_label.empty() ? shortcut_label : (p.entity.empty() ? "Mac App" : p.entity))
+    ? (!shortcut_label.empty() ? shortcut_label : (url_card ? "Open URL" : (p.entity.empty() ? "Mac App" : p.entity)))
     : p.label;
   lv_label_set_text(s.text_lbl, label.c_str());
   const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
   lv_label_set_text(s.icon_lbl, icon);
-  companion_track_card(s.btn, p.entity);
-  const bool available = companion_action_available(p.entity);
+  companion_track_card(s.btn, p.entity, p.sensor);
+  const bool available = url_card
+    ? companion_url_available(p.entity, p.sensor)
+    : companion_action_available(p.entity);
   if (available) {
     lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
     apply_push_button_transition(s.btn);

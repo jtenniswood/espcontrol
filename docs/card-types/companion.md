@@ -1,11 +1,11 @@
 ---
 title: Companion Cards
-description: Launch approved macOS applications from a 4848S040 EspControl panel.
+description: Launch approved macOS applications, open web links, or replay keyboard shortcuts from a 4848S040 EspControl panel.
 ---
 
 # Companion Cards
 
-Companion cards are a proof-of-concept card type for the **4-inch 4848S040** panel. They let you launch a small, approved list of applications or replay a saved keyboard shortcut on one paired Mac. They do not run shell commands or expose your Mac to incoming network connections.
+Companion cards are a proof-of-concept card type for the **4-inch 4848S040** panel. They let you launch an approved application, open a web address with an approved application, or replay a saved keyboard shortcut on one paired Mac. They do not run shell commands or expose your Mac to incoming network connections.
 
 ## Before adding cards
 
@@ -22,15 +22,17 @@ Use the normal browser layout editor and select an empty home-screen or subpage 
 
 - **Launch app** — select one of the applications approved in the Mac app.
 - **Keyboard shortcut** — click the shortcut field and press a combination such as Command-A. The browser records and displays the combination on the card.
+- **Open URL** — enter an `http://` or `https://` address and choose the approved installed application that should open it, such as Safari or Chrome.
 
 The first time a shortcut is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts are sent to whichever Mac application is active at that time.
 
-The card is disabled when the Mac is offline, or when an app-launch card references an application that has been removed from the approved list. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards; no separate Mac layout editor is needed.
+The card is disabled when the Mac is offline, when an app or URL card references an application that has been removed from the approved list, or when a URL is incomplete. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards; no separate Mac layout editor is needed.
 
 ## Limits in this proof of concept
 
 - One Mac can be paired to one panel at a time.
 - Keyboard shortcuts require Command, Control, or Option plus a supported key. Modifier-only and unsupported system keys are rejected.
+- URL cards accept only `http://` and `https://` addresses without embedded usernames or passwords.
 - Companion does not control playback, windows, files, or arbitrary commands directly.
 - Companion is only offered on the 4848S040 profile. Other panels continue to behave normally.
 

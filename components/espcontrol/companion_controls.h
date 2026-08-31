@@ -27,6 +27,7 @@ struct CompanionAction {
 };
 
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
+using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
 
 struct CompanionPairingSnapshot {
   bool available{false};
@@ -70,6 +71,11 @@ inline CompanionActionSender &companion_action_sender() {
   return sender;
 }
 
+inline CompanionUrlSender &companion_url_sender() {
+  static CompanionUrlSender sender;
+  return sender;
+}
+
 inline CompanionPairingProvider &companion_pairing_provider() {
   static CompanionPairingProvider provider;
   return provider;
@@ -109,6 +115,10 @@ inline void companion_set_connected(bool connected) {
 
 inline void register_companion_action_sender(CompanionActionSender sender) {
   companion_action_sender() = std::move(sender);
+}
+
+inline void register_companion_url_sender(CompanionUrlSender sender) {
+  companion_url_sender() = std::move(sender);
 }
 
 inline void register_companion_pairing_callbacks(CompanionPairingProvider provider,
@@ -202,10 +212,27 @@ inline bool companion_action_available(const std::string &action_id) {
   });
 }
 
+inline std::string companion_encoded_url(const std::string &url_config) {
+  static const std::string prefix = "url.";
+  if (url_config.rfind(prefix, 0) != 0 || url_config.size() <= prefix.size()) return "";
+  const std::string encoded = url_config.substr(prefix.size());
+  if (encoded.size() > 1024 ||
+      (encoded.rfind("http%3A%2F%2F", 0) != 0 && encoded.rfind("https%3A%2F%2F", 0) != 0)) return "";
+  if (!std::all_of(encoded.begin(), encoded.end(), [](unsigned char byte) {
+        return byte >= 0x21 && byte <= 0x7e && byte != '|' && byte != ',';
+      })) return "";
+  return encoded;
+}
+
+inline bool companion_url_available(const std::string &app_id, const std::string &url_config) {
+  return !companion_encoded_url(url_config).empty() && companion_action_available(app_id);
+}
+
 #ifdef USE_LVGL
 struct CompanionCardRef {
   lv_obj_t *button = nullptr;
   std::string action_id;
+  std::string url_config;
 };
 
 inline std::vector<CompanionCardRef> &companion_card_refs() {
@@ -229,7 +256,8 @@ inline void companion_card_deleted(lv_event_t *event) {
   companion_forget_card(static_cast<lv_obj_t *>(lv_event_get_target(event)));
 }
 
-inline void companion_track_card(lv_obj_t *button, const std::string &action_id) {
+inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
+                                 const std::string &url_config = "") {
   if (!button) return;
   auto &refs = companion_card_refs();
   auto existing = std::find_if(refs.begin(), refs.end(), [button](const CompanionCardRef &ref) {
@@ -237,9 +265,10 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id)
   });
   if (existing != refs.end()) {
     existing->action_id = action_id;
+    existing->url_config = url_config;
     return;
   }
-  refs.push_back({button, action_id});
+  refs.push_back({button, action_id, url_config});
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
 }
 
@@ -253,7 +282,10 @@ inline void companion_refresh_cards_if_requested() {
       it = refs.erase(it);
       continue;
     }
-    if (companion_action_available(it->action_id)) {
+    const bool available = it->url_config.empty()
+      ? companion_action_available(it->action_id)
+      : companion_url_available(it->action_id, it->url_config);
+    if (available) {
       lv_obj_clear_state(it->button, LV_STATE_DISABLED);
     } else {
       lv_obj_add_state(it->button, LV_STATE_DISABLED);
@@ -262,7 +294,7 @@ inline void companion_refresh_cards_if_requested() {
   }
 }
 #else
-inline void companion_track_card(void *, const std::string &) {}
+inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
 inline void companion_request_card_refresh() {}
 inline void companion_refresh_cards_if_requested() {}
 #endif
@@ -271,6 +303,14 @@ inline bool invoke_companion_action(const std::string &action_id,
                                     const std::string &request_id) {
   if (!companion_action_available(action_id) || !companion_action_sender()) return false;
   return companion_action_sender()(action_id, request_id);
+}
+
+inline bool invoke_companion_url(const std::string &app_id,
+                                 const std::string &url_config,
+                                 const std::string &request_id) {
+  const std::string encoded_url = companion_encoded_url(url_config);
+  if (encoded_url.empty() || !companion_action_available(app_id) || !companion_url_sender()) return false;
+  return companion_url_sender()(app_id, encoded_url, request_id);
 }
 
 #ifdef USE_WEBSERVER

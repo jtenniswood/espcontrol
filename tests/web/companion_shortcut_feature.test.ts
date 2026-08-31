@@ -1,6 +1,9 @@
 import {
   companionShortcutActionId,
+  companionUrlConfig,
+  companionUrlValue,
   formatCompanionShortcutActionId,
+  normalizeCompanionCard,
 } from "../../src/webserver/cards/companion";
 
 function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
@@ -34,4 +37,21 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionShortcutActionId(shortcutEvent({ code: "AudioVolumeUp", metaKey: true })) !== "") {
     throw new Error("Unsupported keys must not become remote shortcuts");
   }
+
+  const urlConfig = companionUrlConfig("https://example.com/dashboard?room=office");
+  if (!urlConfig.startsWith("url.https%3A%2F%2Fexample.com%2Fdashboard")) {
+    throw new Error("HTTPS Companion URLs must use the encoded URL card format");
+  }
+  if (companionUrlValue(urlConfig) !== "https://example.com/dashboard?room=office") {
+    throw new Error("Companion URL card values must round-trip");
+  }
+  if (companionUrlConfig("file:///Applications/Calculator.app") !== "") {
+    throw new Error("Companion URL cards must reject non-web schemes");
+  }
+  if (companionUrlConfig("https://user:password@example.com") !== "") {
+    throw new Error("Companion URL cards must reject embedded credentials");
+  }
+  const urlCard = { entity: "com.apple.Safari", sensor: urlConfig, icon: "Monitor" };
+  normalizeCompanionCard(urlCard);
+  if (urlCard.sensor !== urlConfig) throw new Error("Companion URL configuration must survive card normalization");
 }

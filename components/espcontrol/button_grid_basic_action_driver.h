@@ -298,7 +298,10 @@ inline bool basic_action_driver_bind_subpage(
         char request_id[24];
         snprintf(request_id, sizeof(request_id), "sub-%08lx",
                  static_cast<unsigned long>(companion_next_request_number()));
-        if (!invoke_companion_action(card->entity, request_id)) {
+        const bool invoked = companion_encoded_url(card->sensor).empty()
+          ? invoke_companion_action(card->entity, request_id)
+          : invoke_companion_url(card->entity, card->sensor, request_id);
+        if (!invoked) {
           ESP_LOGW("companion", "Action unavailable: %s", card->entity.c_str());
         }
       }, LV_EVENT_CLICKED, click);
@@ -490,7 +493,10 @@ inline bool basic_action_driver_handle_main_click(
       char request_id[24];
       snprintf(request_id, sizeof(request_id), "%08lx-%d",
                static_cast<unsigned long>(companion_next_request_number()), slot_number);
-      if (!invoke_companion_action(config.entity, request_id)) {
+      const bool invoked = companion_encoded_url(config.sensor).empty()
+        ? invoke_companion_action(config.entity, request_id)
+        : invoke_companion_url(config.entity, config.sensor, request_id);
+      if (!invoked) {
         ESP_LOGW("companion", "Action unavailable: %s", config.entity.c_str());
       }
       break;

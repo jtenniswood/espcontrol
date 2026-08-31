@@ -57,6 +57,8 @@ class CompanionService final : public Component {
   void set_connected_(bool connected);
   void publish_catalogue_();
   bool invoke_(const std::string &action_id, const std::string &request_id);
+  bool invoke_url_(const std::string &app_id, const std::string &encoded_url,
+                   const std::string &request_id);
 
   ESPPreferenceObject preferences_;
   CompanionIdentityPreference identity_{};
