@@ -24,6 +24,8 @@ static const char *const TAG = "companion";
 static CompanionService *global_companion_service = nullptr;
 static constexpr uint32_t PAIRING_WINDOW_MS = 5 * 60 * 1000;
 static constexpr uint32_t RETRY_DELAY_MS = 30 * 1000;
+static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = 16 * 1024;
+static constexpr size_t MAX_CATALOGUE_ACTIONS = 256;
 static constexpr char PAIRING_ALPHABET[] = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 static std::vector<std::string> split(const std::string &value, char separator) {
@@ -206,7 +208,11 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
     return ESP_OK;
   }
   httpd_ws_frame_t frame{};
-  if (httpd_ws_recv_frame(request, &frame, 0) != ESP_OK || frame.len > 1024) return ESP_FAIL;
+  if (httpd_ws_recv_frame(request, &frame, 0) != ESP_OK) return ESP_FAIL;
+  if (frame.len > MAX_WEBSOCKET_FRAME_BYTES) {
+    ESP_LOGW(TAG, "Rejected oversized Companion frame (%u bytes)", static_cast<unsigned>(frame.len));
+    return ESP_FAIL;
+  }
   std::vector<uint8_t> payload(frame.len + 1, 0);
   frame.payload = payload.data();
   if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) return ESP_FAIL;
@@ -292,6 +298,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     const auto catalogue = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
     std::vector<CompanionAction> actions;
     for (const auto &entry : catalogue) {
+      if (actions.size() >= MAX_CATALOGUE_ACTIONS) break;
       const auto item = split(entry, ':');
       if (item.size() == 2 && safe_field(item[0], 96) && safe_field(item[1], 96)) actions.push_back({item[0], item[1]});
     }
