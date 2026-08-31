@@ -78,8 +78,12 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        guard let event = NSApp.currentEvent else { return }
-        NSMenu.popUpContextMenu(contextMenu(), with: event, for: sender)
+        guard let statusItem else { return }
+        // Temporarily attach the menu to the status item so AppKit positions it
+        // directly below the menu-bar icon instead of at the pointer location.
+        statusItem.menu = contextMenu()
+        sender.performClick(nil)
+        statusItem.menu = nil
     }
 
     private func contextMenu() -> NSMenu {
