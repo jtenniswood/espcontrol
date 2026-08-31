@@ -234,13 +234,12 @@ private func focusSettingsWindow(
 }
 
 private enum CompanionSettingsField: Hashable {
-    case panelHost, panelName, pairingCode, verificationCode
+    case panelHost, panelName, pairingCode
 }
 
 private struct CompanionPairingDetails {
     let panelHost: String
     let pairingCode: String
-    let verificationCode: String
 
     static func parse(_ text: String) -> CompanionPairingDetails? {
         var values: [String: String] = [:]
@@ -251,17 +250,15 @@ private struct CompanionPairingDetails {
             if parts.count == 2 { values[parts[0].lowercased()] = parts[1] }
         }
         guard var panel = values["panel"],
-              let pairingCode = values["pairing code"],
-              let verificationCode = values["verify code"] else { return nil }
+              let pairingCode = values["pairing code"] else { return nil }
         if let url = URL(string: panel.contains("://") ? panel : "http://\(panel)"),
            let host = url.host {
             panel = host
         }
-        guard !panel.isEmpty, !pairingCode.isEmpty, !verificationCode.isEmpty else { return nil }
+        guard !panel.isEmpty, !pairingCode.isEmpty else { return nil }
         return CompanionPairingDetails(
             panelHost: panel,
-            pairingCode: pairingCode.uppercased(),
-            verificationCode: verificationCode.uppercased()
+            pairingCode: pairingCode.uppercased()
         )
     }
 }
@@ -269,7 +266,6 @@ private struct CompanionPairingDetails {
 private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
-    @State private var verificationCode = ""
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
@@ -316,7 +312,6 @@ private struct CompanionSettings: View {
                 }
                 store.panelHost = details.panelHost
                 pairingCode = details.pairingCode
-                verificationCode = details.verificationCode
                 focusedField = nil
                 store.updateStatus("Pairing details pasted — click Pair to continue")
             }
@@ -347,16 +342,8 @@ private struct CompanionSettings: View {
                     focusedField: $focusedField
                 )
 
-                SettingsTextField(
-                    label: "Verification code",
-                    placeholder: "Verify code",
-                    text: $verificationCode,
-                    field: .verificationCode,
-                    focusedField: $focusedField
-                )
-
                 Button("Pair") {
-                    store.pair(code: pairingCode, verificationCode: verificationCode)
+                    store.pair(code: pairingCode)
                 }
                 .controlSize(.large)
             }

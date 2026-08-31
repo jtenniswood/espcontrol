@@ -9,7 +9,6 @@ export interface CompanionPairingState {
     connected: boolean;
     expires_in_seconds: number;
     pairing_code: string;
-    verification_code: string;
     mdns_name?: string;
 }
 
@@ -18,7 +17,7 @@ export interface SettingsCompanionSectionFeature {
 }
 
 export function companionPairingStatusText(state: CompanionPairingState): string {
-    if (state.active && state.pairing_code && state.verification_code) {
+    if (state.active && state.pairing_code) {
         const hours = Math.ceil(state.expires_in_seconds / 3600);
         const minutes = Math.max(1, Math.ceil(state.expires_in_seconds / 60));
         const duration = hours >= 2
@@ -37,7 +36,6 @@ export function formatCompanionPairingDetails(host: string, state: CompanionPair
         "EspControl Companion pairing",
         "Panel: " + (mdnsName || host),
         "Pairing code: " + state.pairing_code,
-        "Verify code: " + state.verification_code,
     ].join("\n");
 }
 
@@ -96,11 +94,7 @@ export function createSettingsCompanionSectionFeature(
         const pairingRow = document.createElement("div");
         pairingRow.className = "sp-companion-code-row";
         pairingRow.innerHTML = '<span>Pairing code</span><strong class="sp-companion-code"></strong>';
-        const verificationRow = document.createElement("div");
-        verificationRow.className = "sp-companion-code-row";
-        verificationRow.innerHTML = '<span>Verify code</span><strong class="sp-companion-code"></strong>';
         details.appendChild(pairingRow);
-        details.appendChild(verificationRow);
         body.appendChild(details);
 
         const actions = document.createElement("div");
@@ -114,18 +108,16 @@ export function createSettingsCompanionSectionFeature(
 
         let current: CompanionPairingState | null = null;
         const pairingValue = pairingRow.querySelector("strong") as HTMLElement;
-        const verificationValue = verificationRow.querySelector("strong") as HTMLElement;
 
         function render(value: CompanionPairingState): void {
             current = value;
             status.textContent = companionPairingStatusText(value);
             status.classList.toggle("sp-companion-status-connected", value.connected);
-            if (value.active && value.pairing_code && value.verification_code) {
+            if (value.active && value.pairing_code) {
                 pairingValue.textContent = value.pairing_code;
-                verificationValue.textContent = value.verification_code;
                 details.classList.remove("sp-hidden");
                 copyButton.classList.remove("sp-hidden");
-                startButton.textContent = "Generate new codes";
+                startButton.textContent = "Generate new code";
                 return;
             }
             details.classList.add("sp-hidden");

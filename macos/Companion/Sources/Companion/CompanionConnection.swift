@@ -4,7 +4,7 @@ import Security
 
 @MainActor
 final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @preconcurrency URLSessionWebSocketDelegate {
-    enum Mode { case authenticate, pair(code: String, verificationCode: String) }
+    enum Mode { case authenticate, pair(code: String) }
 
     private unowned let store: CompanionStore
     private var session: URLSession?
@@ -64,7 +64,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
         guard task === webSocketTask else { return }
         switch mode {
-        case .pair(let code, _): send("PAIR|\(code)")
+        case .pair(let code): send("PAIR|\(code)")
         case .authenticate:
             guard let credential = KeychainStore.load(service: KeychainStore.service, account: store.panelHost) else {
                 store.updateStatus("Start pairing in the panel web settings")
@@ -104,14 +104,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         } else if saved != nil {
             if case .pair = mode { pendingCertificateFingerprint = fingerprint }
             completionHandler(.useCredential, URLCredential(trust: trust))
-        } else if case let .pair(_, verificationCode) = mode,
-                  Self.normalizedVerificationCode(verificationCode) == Self.verificationCode(for: fingerprint) {
-            // Do not send the pairing code until the certificate has
-            // been independently matched against the value shown on the panel.
+        } else if case .pair = mode {
+            // The one-time pairing code authorizes this first connection. Pin
+            // the certificate when the panel returns the paired credential.
             pendingCertificateFingerprint = fingerprint
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
-            store.updateStatus("Blocked: panel verification code did not match")
+            store.updateStatus("Start pairing in the panel web settings")
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
@@ -159,7 +158,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         switch type {
         case "PAIRED":
             guard parts.count == 2, let credential = Data(hex: parts[1]) else { store.updateStatus("Pairing failed"); return }
-            guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing verification failed"); return }
+            guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return }
             KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost)
             UserDefaults.standard.set(fingerprint, forKey: certificateFingerprintKey)
             UserDefaults.standard.removeObject(forKey: authenticationSequenceKey)
@@ -206,14 +205,6 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         let next = previous &+ 1
         UserDefaults.standard.set(Int(next), forKey: authenticationSequenceKey)
         return next
-    }
-
-    private static func normalizedVerificationCode(_ value: String) -> String {
-        value.uppercased().filter { $0.isHexDigit }
-    }
-
-    private static func verificationCode(for fingerprint: String) -> String {
-        String(fingerprint.prefix(12)).uppercased()
     }
 
     private static func validCatalogueIdentifier(_ value: String) -> Bool {

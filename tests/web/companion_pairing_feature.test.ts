@@ -11,14 +11,12 @@ export function runCompanionPairingFeatureTests(): void {
     connected: false,
     expires_in_seconds: 86400,
     pairing_code: "ABCD-EFGH",
-    verification_code: "1234-5678-90AB",
     mdns_name: "espcontrol-4inch-s3.local",
   });
   const expected = [
     "EspControl Companion pairing",
     "Panel: espcontrol-4inch-s3.local",
     "Pairing code: ABCD-EFGH",
-    "Verify code: 1234-5678-90AB",
   ].join("\n");
   if (details !== expected) throw new Error("Companion pairing details must match the Mac paste format");
 
@@ -29,7 +27,6 @@ export function runCompanionPairingFeatureTests(): void {
     connected: false,
     expires_in_seconds: 86400,
     pairing_code: "ABCD-EFGH",
-    verification_code: "1234-5678-90AB",
   });
   if (openStatus !== "Pairing is open for about 24 hours.") {
     throw new Error("Companion setup should describe the extended pairing window");
@@ -42,7 +39,6 @@ export function runCompanionPairingFeatureTests(): void {
     connected: true,
     expires_in_seconds: 0,
     pairing_code: "",
-    verification_code: "",
   });
   if (connectedStatus !== "Mac Companion connected") {
     throw new Error("Connected Companion status must be clear on the settings page");

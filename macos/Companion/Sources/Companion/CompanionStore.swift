@@ -131,10 +131,9 @@ final class CompanionStore: NSObject, ObservableObject {
             return
         }
     }
-    func pair(code: String, verificationCode: String) {
+    func pair(code: String) {
         connection.connect(mode: .pair(
-            code: code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
-            verificationCode: verificationCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()))
+            code: code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()))
     }
 
     func forgetPanel() {

@@ -39,7 +39,6 @@ class CompanionService final : public Component {
   // and invalidates any unfinished attempt. The resulting trust is persistent.
   void begin_pairing();
   const std::string &pairing_code() const { return this->pairing_code_; }
-  std::string pairing_verification_code() const;
   bool pairing_active() const;
   uint32_t pairing_expires_in_seconds() const;
   bool paired() const { return this->identity_.paired != 0; }
@@ -76,7 +75,6 @@ class CompanionService final : public Component {
 // WebSocket service to the generic grid code.
 void begin_companion_pairing();
 std::string companion_pairing_code();
-std::string companion_pairing_verification_code();
 bool companion_pairing_active();
 void revoke_companion_pairing();
 
