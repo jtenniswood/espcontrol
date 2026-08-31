@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import Darwin
 import SwiftUI
 
 @main
@@ -21,12 +22,30 @@ struct CompanionApp: App {
 
 @MainActor
 final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
+    private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
     private var settingsWindow: NSWindow?
     private var connectionObservation: AnyCancellable?
+    private var instanceLockFileDescriptor: Int32 = -1
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard acquireInstanceLock() else {
+            DistributedNotificationCenter.default().postNotificationName(
+                Self.openSettingsNotification,
+                object: nil,
+                userInfo: nil,
+                deliverImmediately: true
+            )
+            NSApp.terminate(nil)
+            return
+        }
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(existingInstanceWasOpened),
+            name: Self.openSettingsNotification,
+            object: nil
+        )
         NSApp.setActivationPolicy(.accessory)
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem = item
@@ -42,6 +61,15 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in self?.updateStatusItemImage() }
         if store.hasSavedPairing && !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             store.connect()
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        DistributedNotificationCenter.default().removeObserver(self)
+        if instanceLockFileDescriptor >= 0 {
+            Darwin.lockf(instanceLockFileDescriptor, F_ULOCK, 0)
+            Darwin.close(instanceLockFileDescriptor)
+            instanceLockFileDescriptor = -1
         }
     }
 
@@ -93,6 +121,20 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
     @objc private func connect() { store.connect() }
     @objc private func openSettings() { openCompanionWindow() }
     @objc private func quit() { NSApp.terminate(nil) }
+    @objc private func existingInstanceWasOpened(_ notification: Notification) { openCompanionWindow() }
+
+    private func acquireInstanceLock() -> Bool {
+        let lockURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("io.espcontrol.companion.instance.lock")
+        let descriptor = Darwin.open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else { return false }
+        guard Darwin.lockf(descriptor, F_TLOCK, 0) == 0 else {
+            Darwin.close(descriptor)
+            return false
+        }
+        instanceLockFileDescriptor = descriptor
+        return true
+    }
 
     func openCompanionWindow() {
         activateCompanionApplication()
