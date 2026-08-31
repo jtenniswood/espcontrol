@@ -886,6 +886,8 @@ inline bool navigation_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool image_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool wifi_qr_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool light_control_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool fan_control_driver_handle_main_click(
@@ -924,6 +926,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   if (espcontrol::cards::navigation_driver_handle_main_click(
         context, p, btn_obj)) return;
   if (espcontrol::cards::image_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::wifi_qr_driver_handle_main_click(
         context, p, btn_obj)) return;
   if (espcontrol::cards::light_control_driver_handle_main_click(
         context, p, btn_obj)) return;

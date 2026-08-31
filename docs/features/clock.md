@@ -25,7 +25,7 @@ The network status icon is on by default. Hide the **Connectivity** item in the 
 
 ## How It Works
 
-The on-screen clock normally syncs directly from NTP over Wi-Fi. Home Assistant time is still used as a fallback, so the clock can continue to work if NTP is blocked but the panel is connected to Home Assistant. When the timezone is set to **Auto (Home Assistant)**, Home Assistant also provides the active timezone.
+The on-screen clock normally syncs directly from NTP over Wifi. Home Assistant time is still used as a fallback, so the clock can continue to work if NTP is blocked but the panel is connected to Home Assistant. When the timezone is set to **Auto (Home Assistant)**, Home Assistant also provides the active timezone.
 
 You can use public NTP server names, such as the defaults, or a local server/IP address on your own network. If your panel uses manual network settings without DNS, use IP addresses for the NTP servers. Turning **Custom NTP Servers** off resets the saved NTP server values back to the defaults.
 

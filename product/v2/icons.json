@@ -36,43 +36,49 @@
       "comment": "Firmware update entities"
     },
     {
-      "name": "Wi-Fi Startup",
-      "codepoint": "F05A9",
-      "mdi": "wifi",
-      "comment": "Setup screens"
+      "name": "Wifi QR Tab",
+      "codepoint": "F0432",
+      "mdi": "qrcode",
+      "comment": "Wifi Share QR tab"
     },
     {
-      "name": "Wi-Fi",
+      "name": "Wifi Password Tab",
+      "codepoint": "F0306",
+      "mdi": "key",
+      "comment": "Wifi Share credentials tab"
+    },
+    {
+      "name": "Wifi Setup",
       "codepoint": "F0928",
       "mdi": "wifi-strength-4",
       "comment": "Setup screens"
     },
     {
-      "name": "Wi-Fi Strength Outline",
+      "name": "Wifi Strength Outline",
       "codepoint": "F092F",
       "mdi": "wifi-strength-outline",
       "comment": "Network status"
     },
     {
-      "name": "Wi-Fi Strength 1",
+      "name": "Wifi Strength 1",
       "codepoint": "F091F",
       "mdi": "wifi-strength-1",
       "comment": "Network status"
     },
     {
-      "name": "Wi-Fi Strength 2",
+      "name": "Wifi Strength 2",
       "codepoint": "F0922",
       "mdi": "wifi-strength-2",
       "comment": "Network status"
     },
     {
-      "name": "Wi-Fi Strength 3",
+      "name": "Wifi Strength 3",
       "codepoint": "F0925",
       "mdi": "wifi-strength-3",
       "comment": "Network status"
     },
     {
-      "name": "Wi-Fi Strength Off Outline",
+      "name": "Wifi Strength Off Outline",
       "codepoint": "F092E",
       "mdi": "wifi-strength-off-outline",
       "comment": "Network status"
@@ -1750,6 +1756,11 @@
       "name": "Weather Windy Variant",
       "codepoint": "F059E",
       "mdi": "weather-windy-variant"
+    },
+    {
+      "name": "Wifi",
+      "codepoint": "F05A9",
+      "mdi": "wifi"
     },
     {
       "name": "Wind Power",

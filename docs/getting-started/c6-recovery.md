@@ -4,19 +4,19 @@ description:
   Use USB to reinstall EspControl and repair the ESP32-C6 WiFi processor on a supported ESP32-P4 panel without needing a network connection.
 ---
 
-# C6 Wi‑Fi Processor Recovery
+# C6 Wifi Processor Recovery
 
-Supported P4 panels use a separate **ESP32-C6 processor** for Wi‑Fi. Use this
+Supported P4 panels use a separate **ESP32-C6 processor** for Wifi. Use this
 recovery installer if your panel:
 
 - repeatedly disconnects or has an unreliable connection;
-- cannot complete its first Wi‑Fi setup;
+- cannot complete its first Wifi setup;
 - disappears from Home Assistant after restarting; or
 - reports ESP32-C6 firmware manifest timeouts in its USB log.
 
 The recovery download contains both the latest EspControl firmware and its matching
 C6 firmware. The P4 transfers the C6 update internally, so the repair does **not**
-need working Wi‑Fi or internet access after the USB download has completed.
+need working Wifi or internet access after the USB download has completed.
 
 ::: warning This reinstalls EspControl
 Export your configuration from **Settings > Backup** first when the panel is still
@@ -37,7 +37,7 @@ cannot be guaranteed after damaged or previously erased flash.
 
 <C6RecoverySelector />
 
-After the restart, reconnect the panel to Wi‑Fi if needed and confirm that it stays
+After the restart, reconnect the panel to Wifi if needed and confirm that it stays
 available in Home Assistant.
 
 ## If Recovery Cannot Communicate with the C6

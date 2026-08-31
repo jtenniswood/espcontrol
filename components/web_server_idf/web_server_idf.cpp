@@ -20,6 +20,7 @@
 #include <freertos/task.h>
 
 #include "utils.h"
+#include "panel_config_event_filter.h"
 #include "web_server_idf.h"
 
 #ifdef USE_WEBSERVER_OTA
@@ -1178,6 +1179,12 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   if (this->fd_.load() == 0) {
     return false;
   }
+#ifndef USE_WEBSERVER_AUTH
+  if (event != nullptr && std::strcmp(event, "state") == 0 &&
+      event_payload_is_legacy_panel_config(message, message_len)) {
+    return true;
+  }
+#endif
 
   process_buffer_();
   if (!event_buffer_.empty()) {

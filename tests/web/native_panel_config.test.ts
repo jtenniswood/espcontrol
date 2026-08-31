@@ -103,6 +103,36 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   });
   equal(await mirrorFailureClient.save((current) => current), "mirror-failed", "a failed legacy mirror is reported");
 
+  const authenticationRequiredClient = createNativePanelConfigClient(async (path, request) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    if (request?.method === "PUT") return response(403);
+    return response(200, document, "\"1\"");
+  });
+  equal(await authenticationRequiredClient.save((current) => current), "authentication-required",
+    "a password rejected by unauthenticated firmware is reported clearly");
+
+  const protectedReadClient = createNativePanelConfigClient(async (path) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    return response(403);
+  });
+  equal(await protectedReadClient.save((current) => current), "authentication-required",
+    "a protected password document is not treated as a generic save failure");
+
+  const challengedWriteClient = createNativePanelConfigClient(async (path, request) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    if (request?.method === "PUT") return response(401);
+    return response(200, document, "\"1\"");
+  });
+  equal(await challengedWriteClient.save((current) => current), "authentication-required",
+    "an authentication challenge while writing is reported clearly");
+
+  const challengedReadClient = createNativePanelConfigClient(async (path) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    return response(401);
+  });
+  equal(await challengedReadClient.save((current) => current), "authentication-required",
+    "an authentication challenge while reading is reported clearly");
+
   const runtimeFailureClient = createNativePanelConfigClient(async (path, request) => {
     if (path === "/api/v1/capabilities") return response(200);
     if (request?.method === "PUT") return response(500);
@@ -333,10 +363,16 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
       "deferred backup restore writes the exact native document");
     equal(await controller.writeText("button_order", "1,2"), "saved",
       "an edit waits for deferred native setup instead of writing a stale legacy shadow");
+    equal(await controller.writeButtonAndOrder(2, "combined-button", "2,1"), "saved",
+      "a card edit and its grid position save in one native document update");
+    equal(savedDocuments[2]?.buttons[2], "combined-button",
+      "the combined native save includes the edited card");
+    equal(savedDocuments[2]?.settings.button_order, "2,1",
+      "the combined native save includes the edited grid order");
     equal(capabilityRequests, 2,
       "a deferred edit retries capability discovery after the temporary 404");
-    equal(nativeSaves, 2,
-      "deferred backup restore and edit are written once the native endpoint is ready");
+    equal(nativeSaves, 3,
+      "deferred backup restore and edits are each written once the native endpoint is ready");
 
     controller.maxDiscoveryRetries = 0;
     let permanentlyMissingCapabilityRequests = 0;
