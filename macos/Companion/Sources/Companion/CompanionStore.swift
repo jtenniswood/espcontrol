@@ -32,7 +32,9 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var nowPlayingArtwork: NSImage?
 
     private enum Keys { static let host = "panelHost" }
-    private let defaults = UserDefaults.standard
+    private static let preferencesSuite = "io.espcontrol.companion"
+    private static let legacyPreferencesSuite = "EspControl Companion"
+    private let defaults: UserDefaults
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
     private let mediaController = SystemMediaController()
@@ -40,9 +42,20 @@ final class CompanionStore: NSObject, ObservableObject {
     private var lastMediaControlValues: [String: Int] = [:]
 
     override init() {
-        panelHost = defaults.string(forKey: Keys.host) ?? ""
-        nowPlayingSharingEnabled = defaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
+        let stableDefaults = UserDefaults(suiteName: Self.preferencesSuite) ?? .standard
+        let legacyDefaults = UserDefaults(suiteName: Self.legacyPreferencesSuite)
+        defaults = stableDefaults
+        panelHost = stableDefaults.string(forKey: Keys.host)
+            ?? legacyDefaults?.string(forKey: Keys.host)
+            ?? UserDefaults.standard.string(forKey: Keys.host)
+            ?? KeychainStore.accounts(service: KeychainStore.service).first
+            ?? ""
+        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool
+            ?? legacyDefaults?.object(forKey: "nowPlayingSharingEnabled") as? Bool
+            ?? UserDefaults.standard.object(forKey: "nowPlayingSharingEnabled") as? Bool
+            ?? true
         super.init()
+        migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
         nowPlayingProvider.onSnapshot = { [weak self] snapshot in
             guard let self else { return }
@@ -55,7 +68,28 @@ final class CompanionStore: NSObject, ObservableObject {
         refreshApplications()
     }
 
-    var hasSavedPairing: Bool { KeychainStore.load(service: KeychainStore.service, account: panelHost) != nil }
+    private func migrateConnectionPreferences(from legacyStores: [UserDefaults]) {
+        guard !panelHost.isEmpty else { return }
+        defaults.set(panelHost, forKey: Keys.host)
+        let keys = [
+            "companion.certificateFingerprint.\(panelHost)",
+            "companion.authenticationSequence.\(panelHost)",
+        ]
+        for key in keys where defaults.object(forKey: key) == nil {
+            if let value = legacyStores.lazy.compactMap({ $0.object(forKey: key) }).first {
+                defaults.set(value, forKey: key)
+            }
+        }
+    }
+
+    func stringPreference(forKey key: String) -> String? { defaults.string(forKey: key) }
+    func integerPreference(forKey key: String) -> Int { defaults.integer(forKey: key) }
+    func setPreference(_ value: Any, forKey key: String) { defaults.set(value, forKey: key) }
+    func removePreference(forKey key: String) { defaults.removeObject(forKey: key) }
+
+    var hasSavedPairing: Bool {
+        !panelHost.isEmpty && KeychainStore.accounts(service: KeychainStore.service).contains(panelHost)
+    }
     var connectionSymbol: String { isConnected ? "laptopcomputer" : "laptopcomputer.slash" }
     func launchAtLoginBinding() -> Binding<Bool> {
         Binding(

@@ -12,6 +12,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var mode: Mode = .authenticate
     private var receiveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var connectionTimeoutTask: Task<Void, Never>?
+    private var heartbeatTask: Task<Void, Never>?
     private var pendingCertificateFingerprint: String?
     private var shouldReconnect = false
     private var artworkData: Data?
@@ -46,6 +48,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         task.resume()
         store.updateStatus("Connecting…")
         receive(from: task)
+        startConnectionTimeout(for: task)
     }
 
     func disconnect() {
@@ -57,6 +60,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     private func tearDownConnection() {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         receiveTask?.cancel()
         receiveTask = nil
         task?.cancel(with: .goingAway, reason: nil)
@@ -70,27 +77,37 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         switch mode {
         case .pair(let code): send("PAIR|\(code)")
         case .authenticate:
-            guard let credential = KeychainStore.load(service: KeychainStore.service, account: store.panelHost) else {
-                store.updateStatus("Start pairing in the panel web settings")
+            authenticate(on: webSocketTask)
+        }
+    }
+
+    private func authenticate(on webSocketTask: URLSessionWebSocketTask) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        let host = store.panelHost
+        store.updateStatus("Authenticating…")
+        Task { [weak self, weak webSocketTask] in
+            let credential = await Task.detached(priority: .userInitiated) {
+                KeychainStore.load(service: KeychainStore.service, account: host)
+            }.value
+            guard let self, let webSocketTask, self.task === webSocketTask else { return }
+            guard let credential else {
+                self.store.updateStatus("Unlock the Mac or allow Keychain access to reconnect")
+                self.handleConnectionFailure(for: webSocketTask)
                 return
             }
-            let sequence = nextAuthenticationSequence()
+            let sequence = self.nextAuthenticationSequence()
             let nonce = UUID().uuidString
             let signed = "AUTH|\(sequence)|\(nonce)"
             let key = SymmetricKey(data: credential)
             let signature = HMAC<SHA256>.authenticationCode(for: Data(signed.utf8), using: key)
-            send("\(signed)|\(signature.map { String(format: "%02x", $0) }.joined())")
+            self.startConnectionTimeout(for: webSocketTask)
+            self.send("\(signed)|\(signature.map { String(format: "%02x", $0) }.joined())")
         }
     }
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
-        guard task === webSocketTask else { return }
-        task = nil
-        receiveTask?.cancel()
-        receiveTask = nil
-        session?.invalidateAndCancel()
-        session = nil
-        scheduleReconnect()
+        handleConnectionFailure(for: webSocketTask)
     }
 
     func urlSession(_: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
@@ -101,7 +118,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             completionHandler(.performDefaultHandling, nil); return
         }
         let fingerprint = SHA256.hash(data: SecCertificateCopyData(certificate) as Data).map { String(format: "%02x", $0) }.joined()
-        let saved = UserDefaults.standard.string(forKey: certificateFingerprintKey)
+        let saved = store.stringPreference(forKey: certificateFingerprintKey)
         if let saved, saved != fingerprint {
             store.updateStatus("Blocked: panel certificate changed")
             completionHandler(.cancelAuthenticationChallenge, nil)
@@ -128,16 +145,54 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
                     guard !Task.isCancelled, self.task === task else { return }
                     if case .string(let value) = message { self.handle(value) }
                 } catch {
-                    guard !Task.isCancelled, self.task === task else { return }
-                    self.task = nil
-                    self.receiveTask = nil
-                    self.session?.invalidateAndCancel()
-                    self.session = nil
-                    self.scheduleReconnect()
+                    guard !Task.isCancelled else { return }
+                    self.handleConnectionFailure(for: task)
                     return
                 }
             }
         }
+    }
+
+    private func startConnectionTimeout(for task: URLSessionWebSocketTask) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, let self, self.task === task, !self.store.isConnected else { return }
+            self.store.updateStatus("Panel did not respond — reconnecting…")
+            self.handleConnectionFailure(for: task)
+        }
+    }
+
+    private func startHeartbeat(for task: URLSessionWebSocketTask) {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled, let self, self.task === task else { return }
+                task.sendPing { [weak self, weak task] error in
+                    guard error != nil else { return }
+                    Task { @MainActor in
+                        guard let self, let task else { return }
+                        self.handleConnectionFailure(for: task)
+                    }
+                }
+            }
+        }
+    }
+
+    private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
+        guard task === failedTask else { return }
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        receiveTask?.cancel()
+        receiveTask = nil
+        task = nil
+        failedTask.cancel(with: .goingAway, reason: nil)
+        session?.invalidateAndCancel()
+        session = nil
+        scheduleReconnect()
     }
 
     private func scheduleReconnect() {
@@ -165,13 +220,16 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             guard parts.count == 2, let credential = Data(hex: parts[1]) else { store.updateStatus("Pairing failed"); return }
             guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return }
             KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost)
-            UserDefaults.standard.set(fingerprint, forKey: certificateFingerprintKey)
-            UserDefaults.standard.removeObject(forKey: authenticationSequenceKey)
+            store.setPreference(fingerprint, forKey: certificateFingerprintKey)
+            store.removePreference(forKey: authenticationSequenceKey)
             pendingCertificateFingerprint = nil
             store.updateStatus("Paired — reconnecting")
             connect(mode: .authenticate)
         case "AUTHENTICATED":
+            connectionTimeoutTask?.cancel()
+            connectionTimeoutTask = nil
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            if let task { startHeartbeat(for: task) }
             publishCatalogue()
         case "CATALOGUE":
             publishCatalogue()
@@ -286,9 +344,9 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var authenticationSequenceKey: String { "companion.authenticationSequence.\(store.panelHost)" }
 
     private func nextAuthenticationSequence() -> UInt32 {
-        let previous = UInt32(clamping: UserDefaults.standard.integer(forKey: authenticationSequenceKey))
+        let previous = UInt32(clamping: store.integerPreference(forKey: authenticationSequenceKey))
         let next = previous &+ 1
-        UserDefaults.standard.set(Int(next), forKey: authenticationSequenceKey)
+        store.setPreference(Int(next), forKey: authenticationSequenceKey)
         return next
     }
 
