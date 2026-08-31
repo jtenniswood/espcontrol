@@ -40,6 +40,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
         connectionObservation = store.$isConnected
             .removeDuplicates()
             .sink { [weak self] _ in self?.updateStatusItemImage() }
+        if store.hasSavedPairing && !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            store.connect()
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
