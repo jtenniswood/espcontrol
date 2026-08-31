@@ -1,4 +1,5 @@
 import {
+  companionAppLabel,
   companionShortcutActionId,
   companionUrlConfig,
   companionUrlValue,
@@ -19,6 +20,16 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  if (companionAppLabel("", "", "Safari") !== "Safari") {
+    throw new Error("Selecting a Companion app must prefill an empty card label");
+  }
+  if (companionAppLabel("Safari", "Safari", "Google Chrome") !== "Google Chrome") {
+    throw new Error("Changing a Companion app must refresh its generated label");
+  }
+  if (companionAppLabel("Work browser", "Safari", "Google Chrome") !== "Work browser") {
+    throw new Error("Changing a Companion app must preserve a custom card label");
+  }
+
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));
   if (selectAll !== "shortcut.command+a") throw new Error("Command-A shortcut encoding changed");
   if (formatCompanionShortcutActionId(selectAll) !== "⌘A") throw new Error("Command-A shortcut label changed");

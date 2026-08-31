@@ -92,6 +92,16 @@ export function companionUrlValue(sensor: string): string {
     }
 }
 
+export function companionAppLabel(
+    currentLabel: string,
+    previousAppLabel: string,
+    selectedAppLabel: string,
+): string {
+    if (!selectedAppLabel) return currentLabel;
+    const trimmedLabel = currentLabel.trim();
+    return !trimmedLabel || trimmedLabel === previousAppLabel ? selectedAppLabel : currentLabel;
+}
+
 const COMPANION_CARD_METADATA = {
     icon: {
         pickerIdSuffix: "icon-picker",
@@ -279,7 +289,9 @@ export function registerCompanionCardTypes(
             urlInput.addEventListener("input", saveUrl);
             urlInput.addEventListener("change", saveUrl);
 
+            let companionActions: readonly CompanionAction[] = [];
             fetchCompanionActions(fetchImpl).then(function (actions) {
+                companionActions = actions;
                 select.replaceChildren();
                 const placeholder = document.createElement("option");
                 placeholder.value = "";
@@ -309,8 +321,22 @@ export function registerCompanionCardTypes(
                 select.appendChild(unavailable);
             });
             select.addEventListener("change", function () {
+                const previousAction = companionActions.find(function (action) { return action.id === card.entity; });
+                const selectedAction = companionActions.find(function (action) { return action.id === select.value; });
+                const currentLabel = typeof card.label === "string" ? card.label : "";
+                const nextLabel = companionAppLabel(
+                    currentLabel,
+                    previousAction?.label || "",
+                    selectedAction?.label || "",
+                );
                 card.entity = select.value;
                 helpers.saveField("entity", card.entity);
+                if (nextLabel !== currentLabel) {
+                    card.label = nextLabel;
+                    const labelInput = document.getElementById(helpers.idPrefix + "label") as HTMLInputElement | null;
+                    if (labelInput) labelInput.value = nextLabel;
+                    helpers.saveField("label", nextLabel);
+                }
             });
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
         },
