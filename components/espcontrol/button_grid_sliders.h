@@ -2761,8 +2761,8 @@ inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
 inline void slider_numeric_restore_visual(SliderCtx *ctx) {
   if (!ctx || !ctx->numeric) return;
   if (ctx->sensor_container) lv_obj_add_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, "");
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->sensor_lbl) lv_label_set_display_text(ctx->sensor_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
   if (ctx->icon_lbl) lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -2774,8 +2774,8 @@ inline void slider_numeric_show_value(lv_obj_t *slider, SliderCtx *ctx) {
   const std::string formatted = espcontrol::number_slider::format_value(
     value, metadata);
   if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, formatted.c_str());
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
+  if (ctx->sensor_lbl) lv_label_set_display_text(ctx->sensor_lbl, formatted.c_str());
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
   if (ctx->sensor_container) lv_obj_clear_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
 }
 
