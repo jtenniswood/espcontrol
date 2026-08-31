@@ -272,6 +272,17 @@ private struct CompanionSettings: View {
         TabView {
             ScrollView {
                 GroupBox("Device connection") {
+                    connectionStatusPanel
+                        .padding(8)
+                }
+                .padding()
+            }
+            .tabItem {
+                Label("Status", systemImage: "dot.radiowaves.left.and.right")
+            }
+
+            ScrollView {
+                GroupBox("Connection settings") {
                     deviceConnectionSettings
                         .padding(8)
                 }
@@ -293,17 +304,13 @@ private struct CompanionSettings: View {
             }
         }
         .onAppear {
-            focusSettingsWindow {
-                focusedField = .panelHost
-            }
+            focusSettingsWindow()
         }
         .task { store.refreshApplications() }
     }
 
     private var deviceConnectionSettings: some View {
         VStack(alignment: .leading, spacing: 14) {
-            connectionStatusPanel
-
             Button("Paste pairing details") {
                 guard let clipboard = NSPasteboard.general.string(forType: .string),
                       let details = CompanionPairingDetails.parse(clipboard) else {
@@ -379,7 +386,7 @@ private struct CompanionSettings: View {
                 .foregroundStyle(store.isConnected ? Color.green : Color.secondary)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(store.isConnected ? "Connected to \(store.panelName)" : "Mac Companion is not connected")
+                Text(store.isConnected ? "Connected to \(connectionDisplayName)" : "Mac Companion is not connected")
                     .font(.headline)
                 Text(store.statusDescription)
                     .font(.caption)
@@ -389,13 +396,16 @@ private struct CompanionSettings: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 8) {
-                Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
-                    .controlSize(.large)
+                if canConnect {
+                    Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
+                        .controlSize(.large)
+                }
 
-                Button("Open Device Webserver") { store.openPanelWebServer() }
-                    .controlSize(.large)
+                if hasPanelAddress {
+                    Button("Open Device Webserver") { store.openPanelWebServer() }
+                        .controlSize(.large)
+                }
             }
-            .disabled(store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(12)
         .background(
@@ -406,6 +416,19 @@ private struct CompanionSettings: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(store.isConnected ? Color.green.opacity(0.55) : Color.secondary.opacity(0.25), lineWidth: 1)
         )
+    }
+
+    private var hasPanelAddress: Bool {
+        !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var canConnect: Bool {
+        hasPanelAddress && store.hasSavedPairing
+    }
+
+    private var connectionDisplayName: String {
+        let name = store.panelName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? store.panelHost : name
     }
 
 }
