@@ -31,7 +31,7 @@ private struct CompanionMenu: View {
                 CompanionSettingsButton()
             } else {
                 Button("Open Settings…") {
-                    NSApp.activate(ignoringOtherApps: true)
+                    activateCompanionApplication()
                     NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
                     focusSettingsWindow()
                 }
@@ -49,18 +49,47 @@ private struct CompanionSettingsButton: View {
 
     var body: some View {
         Button("Open Settings…") {
-            NSApp.activate(ignoringOtherApps: true)
+            activateCompanionApplication()
             openSettings()
             focusSettingsWindow()
         }
     }
 }
 
-private func focusSettingsWindow() {
+private func activateCompanionApplication() {
+    NSApp.setActivationPolicy(.regular)
+    NSApp.unhide(nil)
+    NSRunningApplication.current.activate(options: [
+        .activateAllWindows,
+        .activateIgnoringOtherApps,
+    ])
+    NSApp.activate(ignoringOtherApps: true)
+}
+
+private func focusSettingsWindow(
+    attemptsRemaining: Int = 8,
+    completion: (() -> Void)? = nil
+) {
+    activateCompanionApplication()
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.windows.first { $0.title.localizedCaseInsensitiveContains("Settings") }?
-            .makeKeyAndOrderFront(nil)
+        guard let window = NSApp.windows.first(where: {
+            $0.title.localizedCaseInsensitiveContains("Settings")
+        }) else {
+            if attemptsRemaining > 1 {
+                focusSettingsWindow(
+                    attemptsRemaining: attemptsRemaining - 1,
+                    completion: completion
+                )
+            }
+            return
+        }
+
+        window.level = .normal
+        window.orderFrontRegardless()
+        window.makeMain()
+        window.makeKeyAndOrderFront(nil)
+        activateCompanionApplication()
+        completion?()
     }
 }
 
@@ -200,8 +229,7 @@ private struct CompanionSettings: View {
             .padding()
         }
         .onAppear {
-            focusSettingsWindow()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            focusSettingsWindow {
                 focusedField = .panelHost
             }
         }
