@@ -401,8 +401,14 @@ private struct CompanionSettings: View {
 
             VStack(alignment: .trailing, spacing: 8) {
                 if canConnect {
-                    Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
-                        .controlSize(.large)
+                    Button(store.isConnected ? "Disconnect" : "Connect") {
+                        if store.isConnected {
+                            store.disconnect()
+                        } else {
+                            store.connect()
+                        }
+                    }
+                    .controlSize(.large)
                 }
 
                 if hasPanelAddress {
