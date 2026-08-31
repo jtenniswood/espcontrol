@@ -10,6 +10,7 @@ export interface CompanionPairingState {
     expires_in_seconds: number;
     pairing_code: string;
     verification_code: string;
+    mdns_name?: string;
 }
 
 export interface SettingsCompanionSectionFeature {
@@ -27,9 +28,10 @@ export function companionPairingStatusText(state: CompanionPairingState): string
 }
 
 export function formatCompanionPairingDetails(host: string, state: CompanionPairingState): string {
+    const mdnsName = String(state.mdns_name || "").trim().replace(/\.$/, "");
     return [
         "EspControl Companion pairing",
-        "Panel: " + host,
+        "Panel: " + (mdnsName || host),
         "Pairing code: " + state.pairing_code,
         "Verify code: " + state.verification_code,
     ].join("\n");

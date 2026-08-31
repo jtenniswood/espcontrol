@@ -12,10 +12,11 @@ export function runCompanionPairingFeatureTests(): void {
     expires_in_seconds: 300,
     pairing_code: "ABCD-EFGH",
     verification_code: "1234-5678-90AB",
+    mdns_name: "espcontrol-4inch-s3.local",
   });
   const expected = [
     "EspControl Companion pairing",
-    "Panel: 192.168.6.100",
+    "Panel: espcontrol-4inch-s3.local",
     "Pairing code: ABCD-EFGH",
     "Verify code: 1234-5678-90AB",
   ].join("\n");

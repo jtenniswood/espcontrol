@@ -37,6 +37,7 @@ struct CompanionPairingSnapshot {
   uint32_t expires_in_seconds{0};
   std::string pairing_code;
   std::string verification_code;
+  std::string mdns_name;
 };
 
 using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
@@ -371,7 +372,8 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"connected\":" + (snapshot.connected ? "true" : "false") +
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
     ",\"pairing_code\":\"" + companion_json_escape(snapshot.pairing_code) +
-    "\",\"verification_code\":\"" + companion_json_escape(snapshot.verification_code) + "\"}";
+    "\",\"verification_code\":\"" + companion_json_escape(snapshot.verification_code) +
+    "\",\"mdns_name\":\"" + companion_json_escape(snapshot.mdns_name) + "\"}";
 }
 
 class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler {

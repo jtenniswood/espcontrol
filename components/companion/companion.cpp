@@ -1,5 +1,6 @@
 #include "companion.h"
 
+#include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
@@ -87,6 +88,7 @@ void CompanionService::setup() {
       this->pairing_expires_in_seconds(),
       this->pairing_active() ? this->pairing_code() : "",
       this->pairing_active() ? this->pairing_verification_code() : "",
+      App.get_name() + ".local",
     };
   };
   register_companion_pairing_callbacks(pairing_snapshot, [this, pairing_snapshot]() {
