@@ -33,59 +33,72 @@ bool expect(bool condition, const char *message) {
 }  // namespace
 
 int main() {
-  constexpr size_t kSlotCapacity = 40 * 1024;
+  constexpr size_t kCardImagesSlotCapacity = 40 * 1024;
+  constexpr size_t kNvsSlotCapacity = 16 * 1024;
 
   {
     FakeStorage storage{false, true};
-    bool fallback = true;
-    if (!expect(espcontrol::configuration::begin_panel_config_storage(
-                    storage, false, kSlotCapacity, &fallback),
+    const auto selected = espcontrol::configuration::begin_panel_config_storage(
+        storage, false, kCardImagesSlotCapacity, kNvsSlotCapacity);
+    if (!expect(selected.ready,
                 "NVS-only storage should start") ||
         !expect(storage.partition_calls == 0,
                 "NVS-only storage must not probe the card partition") ||
         !expect(storage.nvs_calls == 1,
                 "NVS-only storage should open NVS once") ||
-        !expect(!fallback, "NVS-only storage is not a fallback"))
+        !expect(selected.slot_capacity == kNvsSlotCapacity,
+                "NVS-only storage should use the bounded slot capacity") ||
+        !expect(!selected.used_nvs_fallback,
+                "NVS-only storage is not a fallback"))
       return 1;
   }
 
   {
     FakeStorage storage{true, true};
-    bool fallback = true;
-    if (!expect(espcontrol::configuration::begin_panel_config_storage(
-                    storage, true, kSlotCapacity, &fallback),
+    const auto selected = espcontrol::configuration::begin_panel_config_storage(
+        storage, true, kCardImagesSlotCapacity, kNvsSlotCapacity);
+    if (!expect(selected.ready,
                 "Available card partition should start") ||
         !expect(storage.partition_calls == 1,
                 "Preferred card partition should be probed once") ||
-        !expect(storage.requested_capacity == kSlotCapacity,
+        !expect(storage.requested_capacity == kCardImagesSlotCapacity,
                 "Card partition should receive the configured slot capacity") ||
         !expect(storage.nvs_calls == 0,
                 "NVS must not open when the card partition is available") ||
-        !expect(!fallback, "Available card partition should not use fallback"))
+        !expect(selected.slot_capacity == kCardImagesSlotCapacity,
+                "Card partition should keep the larger slot capacity") ||
+        !expect(!selected.used_nvs_fallback,
+                "Available card partition should not use fallback"))
       return 1;
   }
 
   {
     FakeStorage storage{false, true};
-    bool fallback = false;
-    if (!expect(espcontrol::configuration::begin_panel_config_storage(
-                    storage, true, kSlotCapacity, &fallback),
+    const auto selected = espcontrol::configuration::begin_panel_config_storage(
+        storage, true, kCardImagesSlotCapacity, kNvsSlotCapacity);
+    if (!expect(selected.ready,
                 "Missing card partition should fall back to NVS") ||
         !expect(storage.partition_calls == 1,
                 "Missing card partition should be probed once") ||
         !expect(storage.nvs_calls == 1,
                 "Missing card partition should open NVS once") ||
-        !expect(fallback, "Missing card partition should report NVS fallback"))
+        !expect(selected.slot_capacity == kNvsSlotCapacity,
+                "NVS fallback should advertise its bounded capacity") ||
+        !expect(selected.used_nvs_fallback,
+                "Missing card partition should report NVS fallback"))
       return 1;
   }
 
   {
     FakeStorage storage{false, false};
-    bool fallback = false;
-    if (!expect(!espcontrol::configuration::begin_panel_config_storage(
-                    storage, true, kSlotCapacity, &fallback),
+    const auto selected = espcontrol::configuration::begin_panel_config_storage(
+        storage, true, kCardImagesSlotCapacity, kNvsSlotCapacity);
+    if (!expect(!selected.ready,
                 "Storage should fail when both backends are unavailable") ||
-        !expect(fallback, "Failed NVS fallback should still be reported"))
+        !expect(selected.slot_capacity == 0,
+                "Failed storage should not advertise a capacity") ||
+        !expect(selected.used_nvs_fallback,
+                "Failed NVS fallback should still be reported"))
       return 1;
   }
 

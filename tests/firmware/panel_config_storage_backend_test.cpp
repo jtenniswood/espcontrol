@@ -20,7 +20,7 @@ class FakeBlobStorage final : public BlobStorage {
  public:
   BlobLoadResult load_blob(uint8_t slot, uint8_t *output,
                            size_t capacity) override {
-    if (slot >= blobs_.size() || capacity != kSlotCapacity) {
+    if (slot >= blobs_.size() || capacity > kSlotCapacity) {
       return {BlobLoadStatus::FAILED};
     }
     if (!present_[slot]) return {BlobLoadStatus::MISSING};
@@ -142,6 +142,20 @@ bool withdrawing_a_slot_discards_stale_header_bytes() {
          retained == std::array<uint8_t, stale.size()>{{0xFF, 0xFF, 0xFF, 0xFF}};
 }
 
+bool runtime_capacity_bounds_atomic_slots() {
+  constexpr size_t kRuntimeCapacity = 48;
+  FakeBlobStorage blobs;
+  BufferedBlobStorageBackend<kSlotCapacity> backend(blobs);
+  std::array<uint8_t, kRuntimeCapacity * 2> memory{};
+  if (!backend.begin(memory.data(), memory.size(), kRuntimeCapacity) ||
+      backend.slot_capacity() != kRuntimeCapacity)
+    return false;
+  ConfigurationStore store(backend);
+  return store.maximum_payload_size() ==
+         kRuntimeCapacity -
+             espcontrol::configuration::CONFIGURATION_ENVELOPE_HEADER_SIZE;
+}
+
 }  // namespace
 
 int main() {
@@ -149,7 +163,8 @@ int main() {
                  commits_are_buffered_until_the_store_sync_boundary() &&
                  persisted_blobs_are_compact_but_remain_readable() &&
                  failed_sync_keeps_the_pending_slot_for_retry() &&
-                 withdrawing_a_slot_discards_stale_header_bytes()
+                 withdrawing_a_slot_discards_stale_header_bytes() &&
+                 runtime_capacity_bounds_atomic_slots()
              ? 0
              : 1;
 }
