@@ -320,7 +320,7 @@ private struct CompanionSettings: View {
                 store.panelHost = details.panelHost
                 pairingCode = details.pairingCode
                 focusedField = nil
-                store.updateStatus("Pairing details pasted — click Pair to continue")
+                store.pair(code: details.pairingCode)
             }
             .controlSize(.large)
 
