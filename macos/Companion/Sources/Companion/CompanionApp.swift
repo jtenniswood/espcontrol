@@ -273,12 +273,28 @@ private struct CompanionSettings: View {
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        ScrollView {
-            GroupBox("Device connection") {
-                deviceConnectionSettings
-                    .padding(8)
+        TabView {
+            ScrollView {
+                GroupBox("Device connection") {
+                    deviceConnectionSettings
+                        .padding(8)
+                }
+                .padding()
             }
-            .padding()
+            .tabItem {
+                Label("Connection", systemImage: "network")
+            }
+
+            ScrollView {
+                GroupBox("Startup") {
+                    startupSettings
+                        .padding(8)
+                }
+                .padding()
+            }
+            .tabItem {
+                Label("General", systemImage: "gearshape")
+            }
         }
         .onAppear {
             focusSettingsWindow {
@@ -349,17 +365,20 @@ private struct CompanionSettings: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Divider()
-
-            Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
-            Text(store.launchAtLoginMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
             if store.hasSavedPairing {
                 Button("Forget this panel", role: .destructive) { store.forgetPanel() }
             }
         }
+    }
+
+    private var startupSettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
+            Text(store.launchAtLoginMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var connectionStatusPanel: some View {
