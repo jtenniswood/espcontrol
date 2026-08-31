@@ -37,6 +37,11 @@ int main() {
 
   size = write_document(
       &document,
+      "~,Connect,Wifi,Auto,,,wifi_qr,,ssid64=R3Vlc3Q%2Cpass64=cGFzc3dvcmQ");
+  assert(panel_config_contains_wifi_password(document.data(), size));
+
+  size = write_document(
+      &document,
       ";;;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,pass64=cGFzc3dvcmQ");
   assert(panel_config_contains_wifi_password(document.data(), size));
 
@@ -49,9 +54,29 @@ int main() {
   assert(!panel_config_contains_wifi_password(document.data(), size));
 
   size = write_document(
+      &document,
+      ";wifi_qr;Auto;Auto;pass64=webhook-value;;webhook;;pass64=option-value");
+  assert(!panel_config_contains_wifi_password(document.data(), size));
+
+  size = write_document(
+      &document,
+      ";pass64=label;Wifi;Auto;;;wifi_qr;;ssid64=R3Vlc3Q,security=open");
+  assert(!panel_config_contains_wifi_password(document.data(), size));
+
+  size = write_document(
       &document, ";Subpage;Auto;Auto;;;subpage",
       "~1|wifi_qr,,Connect,Wifi,Auto,,,,ssid64=R3Vlc3Q%2Cpass64=cGFzc3dvcmQ");
   assert(panel_config_contains_wifi_password(document.data(), size));
+
+  size = write_document(
+      &document, ";Subpage;Auto;Auto;;;subpage",
+      "1|:Connect:Wifi:Auto:::wifi_qr::ssid64=R3Vlc3Q,pass64=cGFzc3dvcmQ");
+  assert(panel_config_contains_wifi_password(document.data(), size));
+
+  size = write_document(
+      &document, ";Subpage;Auto;Auto;;;subpage",
+      "~1|webhook,,wifi_qr,Auto,Auto,pass64=webhook-value,,,pass64=option-value");
+  assert(!panel_config_contains_wifi_password(document.data(), size));
 
   document[0] = 'X';
   assert(!panel_config_contains_wifi_password(document.data(), size));
