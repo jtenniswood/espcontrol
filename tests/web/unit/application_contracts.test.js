@@ -17,6 +17,7 @@ function sourceFiles(directory) {
 
 describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
+  const { runCompanionPairingFeatureTests } = loadTypescriptTest("tests/web/companion_pairing_feature.test.ts");
   const { runApplicationContextTests } = loadTypescriptTest("tests/web/application_context.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
@@ -25,6 +26,10 @@ describe("browserless application contracts", () => {
 
   test("plans clipboard transfers", () => {
     runClipboardFeatureTests();
+  });
+
+  test("formats Companion pairing details for the Mac app", () => {
+    runCompanionPairingFeatureTests();
   });
 
   test("owns browser composition and compatibility layout state", () => {
@@ -900,6 +905,7 @@ describe("browserless application contracts", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     for (const file of [
       "controls_fields.ts",
+      "settings_companion_section.ts",
       "settings_system_section.ts",
       "settings_page.ts",
       "settings_page_helpers.ts",
@@ -1088,6 +1094,7 @@ describe("browserless application contracts", () => {
     assert.match(entry, /settingsHelpers = createSettingsPageHelpersFeature\(/);
     assert.match(entry, /const scheduleSection = createSettingsScheduleSectionFeature\(/);
     assert.match(entry, /const coverArtSection = createSettingsCoverArtSectionFeature\(/);
+    assert.match(entry, /const companionSection = createSettingsCompanionSectionFeature\(dom, shell, fields\)/);
     assert.match(entry, /const systemSection = createSettingsSystemSectionFeature\(/);
     assert.match(entry, /settingsPage = createSettingsPageFeature\(/);
     assert.doesNotMatch(entry, /installSettings(?:PageHelpers|ScheduleSection|CoverArtSection|SystemSection|Page)Module/);

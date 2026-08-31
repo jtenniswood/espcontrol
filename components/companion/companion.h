@@ -35,12 +35,14 @@ class CompanionService final : public Component {
   void loop() override;
   void dump_config() override;
 
-  // Called only by the physical-display pairing control. It rotates the
+  // Called by the panel web setup page. It rotates the
   // eight-letter code, invalidates any unfinished attempt and expires quickly.
   void begin_pairing();
   const std::string &pairing_code() const { return this->pairing_code_; }
   std::string pairing_verification_code() const;
   bool pairing_active() const;
+  uint32_t pairing_expires_in_seconds() const;
+  bool paired() const { return this->identity_.paired != 0; }
   void revoke_pairing();
 
  protected:

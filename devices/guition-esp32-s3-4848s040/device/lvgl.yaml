@@ -62,51 +62,6 @@ lvgl:
             then:
               - script.execute: network_status_open_info
 
-      # Companion pairing is started only from the physical display. The code
-      # is intentionally short-lived and never exposed through the browser.
-      - obj:
-          id: companion_status_button
-          align: top_right
-          x: 0
-          y: 0
-          width: 48
-          height: 44
-          bg_opa: 0%
-          border_width: 0
-          pad_all: 0
-          scrollable: false
-          scrollbar_mode: "off"
-          clickable: true
-          hidden: true
-          widgets:
-            - label:
-                id: companion_status_icon_label
-                text: "\U000F0379"
-                text_font: font_icon_status
-                align: center
-                text_align: center
-                text_color: 0xFFFFFF
-          on_press:
-            then:
-              - lambda: |-
-                  esphome::companion::begin_companion_pairing();
-                  const std::string code = esphome::companion::companion_pairing_code();
-                  const std::string verification = esphome::companion::companion_pairing_verification_code();
-                  const std::string message = code + "\nVerify: " + verification;
-                  lv_label_set_text(id(companion_pairing_code_label), message.c_str());
-                  lv_obj_clear_flag(id(companion_pairing_code_label), LV_OBJ_FLAG_HIDDEN);
-
-      - label:
-          id: companion_pairing_code_label
-          text: ""
-          text_font: font_text_body
-          align: top_mid
-          x: 0
-          y: 38
-          text_align: center
-          text_color: 0xFFFFFF
-          hidden: true
-
       # Night mode indicator (schedule night period only). Starts hidden;
       # clock_bar_apply positions and reveals it beside the network icon, so the
       # x/y here are unused placeholders.
@@ -163,13 +118,3 @@ lvgl:
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "7" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "8" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "9" } }
-
-interval:
-  - interval: 1s
-    then:
-      - lambda: |-
-          if (!esphome::companion::companion_pairing_active() &&
-              !lv_obj_has_flag(id(companion_pairing_code_label), LV_OBJ_FLAG_HIDDEN)) {
-            lv_label_set_text(id(companion_pairing_code_label), "");
-            lv_obj_add_flag(id(companion_pairing_code_label), LV_OBJ_FLAG_HIDDEN);
-          }

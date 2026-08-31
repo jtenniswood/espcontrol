@@ -46,7 +46,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         case .pair(let code, _): send("PAIR|\(code)")
         case .authenticate:
             guard let credential = KeychainStore.load(service: KeychainStore.service, account: store.panelHost) else {
-                store.updateStatus("Start pairing on the panel")
+                store.updateStatus("Start pairing in the panel web settings")
                 return
             }
             let sequence = nextAuthenticationSequence()
@@ -78,7 +78,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else if case let .pair(_, verificationCode) = mode,
                   Self.normalizedVerificationCode(verificationCode) == Self.verificationCode(for: fingerprint) {
-            // Do not send the physical pairing code until the certificate has
+            // Do not send the pairing code until the certificate has
             // been independently matched against the value shown on the panel.
             pendingCertificateFingerprint = fingerprint
             completionHandler(.useCredential, URLCredential(trust: trust))

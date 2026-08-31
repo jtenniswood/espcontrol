@@ -26,6 +26,19 @@ struct CompanionAction {
 
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
 
+struct CompanionPairingSnapshot {
+  bool available{false};
+  bool active{false};
+  bool paired{false};
+  bool connected{false};
+  uint32_t expires_in_seconds{0};
+  std::string pairing_code;
+  std::string verification_code;
+};
+
+using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
+using CompanionPairingStarter = std::function<CompanionPairingSnapshot()>;
+
 inline void companion_request_card_refresh();
 
 struct CompanionRuntimeState {
@@ -53,6 +66,16 @@ inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
 inline CompanionActionSender &companion_action_sender() {
   static CompanionActionSender sender;
   return sender;
+}
+
+inline CompanionPairingProvider &companion_pairing_provider() {
+  static CompanionPairingProvider provider;
+  return provider;
+}
+
+inline CompanionPairingStarter &companion_pairing_starter() {
+  static CompanionPairingStarter starter;
+  return starter;
 }
 
 inline void companion_set_actions(std::vector<CompanionAction> actions) {
@@ -84,6 +107,12 @@ inline void companion_set_connected(bool connected) {
 
 inline void register_companion_action_sender(CompanionActionSender sender) {
   companion_action_sender() = std::move(sender);
+}
+
+inline void register_companion_pairing_callbacks(CompanionPairingProvider provider,
+                                                  CompanionPairingStarter starter) {
+  companion_pairing_provider() = std::move(provider);
+  companion_pairing_starter() = std::move(starter);
 }
 
 inline bool companion_action_available(const std::string &action_id) {
@@ -213,11 +242,46 @@ class CompanionActionsHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 };
 
+inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapshot) {
+  return std::string("{\"available\":") + (snapshot.available ? "true" : "false") +
+    ",\"active\":" + (snapshot.active ? "true" : "false") +
+    ",\"paired\":" + (snapshot.paired ? "true" : "false") +
+    ",\"connected\":" + (snapshot.connected ? "true" : "false") +
+    ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
+    ",\"pairing_code\":\"" + companion_json_escape(snapshot.pairing_code) +
+    "\",\"verification_code\":\"" + companion_json_escape(snapshot.verification_code) + "\"}";
+}
+
+class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler {
+ public:
+  bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
+    if (request->method() != HTTP_GET && request->method() != HTTP_POST) return false;
+    char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    return request->url_to(url_buf) == "/companion/pairing";
+  }
+
+  void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    CompanionPairingSnapshot snapshot;
+    if (request->method() == HTTP_POST) {
+      if (companion_pairing_starter()) snapshot = companion_pairing_starter()();
+    } else if (companion_pairing_provider()) {
+      snapshot = companion_pairing_provider()();
+    }
+    const std::string json = companion_pairing_json(snapshot);
+    httpd_req_t *req = *request;
+    httpd_resp_set_status(req, snapshot.available ? "200 OK" : "404 Not Found");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_send(req, json.c_str(), HTTPD_RESP_USE_STRLEN);
+  }
+};
+
 inline void register_companion_actions_endpoint(
     esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
   server.addHandler(new CompanionActionsHandler());
+  server.addHandler(new CompanionPairingHandler());
   registered = true;
 }
 

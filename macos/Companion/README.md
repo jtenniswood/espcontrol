@@ -13,6 +13,6 @@ cd macos/Companion
 
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. The app can only launch applications you explicitly tick in its settings.
 
-To pair, tap the Companion status icon on a 4848S040 panel, start pairing, then enter the eight-letter code in the app. The app stores the paired credential in the macOS Keychain and pins the panel certificate. Forgetting the panel clears both values.
+To pair, open the panel's browser editor and go to **Settings → Companion**. Start pairing and copy the details, then use **Paste pairing details** in the Mac app and click **Pair**. Pair on a trusted local network. The app stores the paired credential in the macOS Keychain and pins the panel certificate. Forgetting the panel clears both values.
 
 The protocol is intentionally narrow: a Mac publishes a list of approved bundle identifiers, and the panel can send an `INVOKE` for one of those identifiers. It does not execute shell commands, accept app paths from the panel, or accept inbound network connections.

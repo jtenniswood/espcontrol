@@ -61,7 +61,7 @@ external_components:
 
 # A local, panel-hosted TLS WebSocket endpoint for the optional macOS Companion
 # app. The panel never discovers or connects to the Mac; the Mac reconnects to
-# this endpoint after the user starts pairing on the physical display.
+# this endpoint after the user starts pairing from the panel web setup page.
 companion:
   id: mac_companion
   port: 8443

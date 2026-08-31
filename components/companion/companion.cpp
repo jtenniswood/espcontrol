@@ -71,6 +71,22 @@ void CompanionService::setup() {
   register_companion_action_sender([this](const std::string &action, const std::string &request) {
     return this->invoke_(action, request);
   });
+  auto pairing_snapshot = [this]() {
+    const auto runtime = companion_runtime_snapshot();
+    return CompanionPairingSnapshot{
+      true,
+      this->pairing_active(),
+      this->paired(),
+      runtime.connected,
+      this->pairing_expires_in_seconds(),
+      this->pairing_active() ? this->pairing_code() : "",
+      this->pairing_active() ? this->pairing_verification_code() : "",
+    };
+  };
+  register_companion_pairing_callbacks(pairing_snapshot, [this, pairing_snapshot]() {
+    this->begin_pairing();
+    return pairing_snapshot();
+  });
   register_companion_actions_endpoint();
   if (!this->start_server_()) this->mark_failed();
 }
@@ -322,6 +338,11 @@ void CompanionService::begin_pairing() {
 bool CompanionService::pairing_active() const {
   return !this->pairing_code_.empty() &&
     static_cast<int32_t>(millis() - this->pairing_expires_at_) < 0;
+}
+
+uint32_t CompanionService::pairing_expires_in_seconds() const {
+  if (!this->pairing_active()) return 0;
+  return (this->pairing_expires_at_ - millis() + 999) / 1000;
 }
 
 void CompanionService::revoke_pairing() {

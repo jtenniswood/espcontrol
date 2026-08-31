@@ -57,6 +57,7 @@ import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } fro
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
 import { createSettingsSystemSectionFeature } from "./application/settings_system_section";
+import { createSettingsCompanionSectionFeature } from "./application/settings_companion_section";
 import { createSettingsPageFeature, type SettingsPageFeature } from "./application/settings_page";
 import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./application/controls_fields";
 import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
@@ -860,12 +861,13 @@ function composeApplicationContext(): ApplicationContext {
   }, runtime, firmwareVersion, firmwareUpdate, c6Firmware, shell, requestApi,
   stateLoader, firmwarePostApi, artworkPostApi, publicFirmwareInstall, fields,
   settingsHelpers);
+  const companionSection = createSettingsCompanionSectionFeature(dom, shell, fields);
   settingsPage = createSettingsPageFeature(
     configurationCodec, runtime, core, layout, environment, screenScheduleState,
     screensaverTimeout, screenRotation, appearance, clockBarState, entityState,
     shell, requestApi, statusPreview, artworkPostApi, schedulePostApi,
     clockBarPostApi, fields, settingsHelpers, scheduleSection, coverArtSection,
-    systemSection, preview,
+    companionSection, systemSection, preview,
   );
   requestApi.connectReconnect(appEvents.connect);
   return createApplicationContext({

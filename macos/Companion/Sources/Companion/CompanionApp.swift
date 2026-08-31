@@ -68,6 +68,35 @@ private enum CompanionSettingsField: Hashable {
     case panelHost, panelName, pairingCode, verificationCode
 }
 
+private struct CompanionPairingDetails {
+    let panelHost: String
+    let pairingCode: String
+    let verificationCode: String
+
+    static func parse(_ text: String) -> CompanionPairingDetails? {
+        var values: [String: String] = [:]
+        for line in text.components(separatedBy: .newlines) {
+            let parts = line.split(separator: ":", maxSplits: 1).map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if parts.count == 2 { values[parts[0].lowercased()] = parts[1] }
+        }
+        guard var panel = values["panel"],
+              let pairingCode = values["pairing code"],
+              let verificationCode = values["verify code"] else { return nil }
+        if let url = URL(string: panel.contains("://") ? panel : "http://\(panel)"),
+           let host = url.host {
+            panel = host
+        }
+        guard !panel.isEmpty, !pairingCode.isEmpty, !verificationCode.isEmpty else { return nil }
+        return CompanionPairingDetails(
+            panelHost: panel,
+            pairingCode: pairingCode.uppercased(),
+            verificationCode: verificationCode.uppercased()
+        )
+    }
+}
+
 private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
@@ -79,6 +108,20 @@ private struct CompanionSettings: View {
             VStack(alignment: .leading, spacing: 20) {
                 GroupBox("Panel") {
                     VStack(alignment: .leading, spacing: 14) {
+                        Button("Paste pairing details") {
+                            guard let clipboard = NSPasteboard.general.string(forType: .string),
+                                  let details = CompanionPairingDetails.parse(clipboard) else {
+                                store.updateStatus("Copy pairing details from the panel web settings first")
+                                return
+                            }
+                            store.panelHost = details.panelHost
+                            pairingCode = details.pairingCode
+                            verificationCode = details.verificationCode
+                            focusedField = nil
+                            store.updateStatus("Pairing details pasted — click Pair to continue")
+                        }
+                        .controlSize(.large)
+
                         SettingsTextField(
                             label: "Panel address",
                             placeholder: "e.g. 192.168.6.100",
@@ -118,7 +161,7 @@ private struct CompanionSettings: View {
                             .controlSize(.large)
                         }
 
-                        Text("On the display, start Companion pairing first. Enter both the eight-letter code and the Verify code exactly as shown.")
+                        Text("In the panel web editor, open Settings → Companion, start pairing, then copy and paste the pairing details here.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
