@@ -173,6 +173,13 @@ target_compile_options(panel_config_storage_selection_test PRIVATE -Wall -Wextra
 target_include_directories(panel_config_storage_selection_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_storage_selection_test COMMAND panel_config_storage_selection_test)
 
+add_executable(panel_config_endpoint_policy_test
+  panel_config_endpoint_policy_test.cpp)
+target_compile_features(panel_config_endpoint_policy_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_endpoint_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_endpoint_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_endpoint_policy_test COMMAND panel_config_endpoint_policy_test)
+
 add_executable(panel_config_legacy_adapter_test
   panel_config_legacy_adapter_test.cpp
   ../../components/espcontrol/panel_config_legacy_adapter.cpp

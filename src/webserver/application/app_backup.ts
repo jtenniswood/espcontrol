@@ -314,19 +314,16 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
     }
     function importConfig(this: any) {
         backupFileController.import(function (data: any) {
-                function applyBackupRestorePlan(this: any, plannedImport: any) {
+                async function applyBackupRestorePlan(this: any, plannedImport: any) {
                 var importedSettings: any = plannedImport.importedSettings;
                 var importedGridCols: any = plannedImport.importedGridCols;
                 var backupPlan: any = plannedImport.backupPlan;
-                cancelMainGridSave();
-                var activeGridCols: any = controllers.layout.gridCols;
-                controllers.layout.gridCols = importedGridCols;
                 var nativeDocument: PanelConfigDocument = {
                     deviceProfile: controllers.layout.deviceId,
                     buttons: {},
                     subpages: {},
                     settings: {
-                        button_order: normalizedButtonOrder,
+                        button_order: "",
                         button_on_color: backupPlan.config.button_on_color,
                     },
                 };
@@ -348,34 +345,26 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 }
                 nativeDocument.settings.button_order = String(nativeDocument.settings.button_order || backupPlan.button_order || "");
                 nativeDocument.settings.button_on_color = String(nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || "");
-
-                state.buttons = [];
-                for (var canonicalButtonIndex: any = 0; canonicalButtonIndex < controllers.layout.numSlots; canonicalButtonIndex++)
-                    state.buttons[canonicalButtonIndex] = parseButtonConfig(nativeDocument.buttons[canonicalButtonIndex + 1] || "");
-                state.subpages = {};
-                state.subpageRaw = {};
-                for (var canonicalSubpageKey in nativeDocument.subpages) {
-                    var canonicalSubpage: any = parseSubpageConfig(nativeDocument.subpages[Number(canonicalSubpageKey)] || "");
-                    buildSubpageGrid(canonicalSubpage);
-                    state.subpages[canonicalSubpageKey] = canonicalSubpage;
-                }
-                var normalizedButtonOrder: any;
-                try {
-                    normalizedButtonOrder = applyImportedButtonOrder(nativeDocument.settings.button_order, {});
-                    nativeDocument.settings.button_order = normalizedButtonOrder;
-                }
-                finally {
-                    controllers.layout.gridCols = activeGridCols;
-                }
+                var parsedButtonOrder: any = EspControlModel.parseGridOrder(
+                    nativeDocument.settings.button_order,
+                    controllers.layout.numSlots,
+                    importedGridCols,
+                    {});
+                nativeDocument.settings.button_order = EspControlModel.serializeGridOrder(
+                    parsedButtonOrder.grid,
+                    parsedButtonOrder.sizes);
 
                 function readLegacyText(name: string) {
                     return requestApi.getJsonFirst(requestApi.entityDetailPaths("text", [name], "state"));
                 }
+                function rejectBackup(message: string): never {
+                    requestApi.postQueueError = true;
+                    throw Object.assign(new Error(message), { backupMessage: message });
+                }
                 function queueLegacyLayoutRestore() {
                     if (panelConfigDocumentContainsWifiSharing(nativeDocument)) {
-                        requestApi.postQueueError = true;
                         const message = "This backup contains Wifi Sharing cards, which require current device firmware. Update the panel before restoring this backup.";
-                        return Promise.reject(Object.assign(new Error(message), { backupMessage: message }));
+                        rejectBackup(message);
                     }
                     return restoreLegacyLayoutDocument(nativeDocument, {
                         slotCount: controllers.layout.numSlots,
@@ -395,25 +384,55 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         return "legacy-fallback";
                     });
                 }
-                var nativeRestore: any = controllers.nativePanelConfig
-                    ? controllers.nativePanelConfig.writeDocument(nativeDocument)
-                    : null;
-                var nativeRestoreCompletion: any = null;
-                if (nativeRestore) {
-                    nativeRestoreCompletion = requestApi.postQueue.then(function () { return nativeRestore; }).then(function (result: any) {
-                        if (result === "legacy-fallback") {
-                            return queueLegacyLayoutRestore();
-                        }
-                        else if (result !== "saved") {
-                            requestApi.postQueueError = true;
-                        }
-                        return result;
-                    });
-                    requestApi.postQueue = nativeRestoreCompletion;
+                await requestApi.postQueue;
+                var nativeController: any = controllers.nativePanelConfig;
+                var nativeAvailability: any = nativeController && nativeController.client
+                    ? await nativeController.waitForDiscovery()
+                    : "legacy-fallback";
+                if (nativeAvailability === "failed") {
+                    rejectBackup("Could not confirm that this device can safely restore the layout. Check the connection and try again.");
+                }
+                var layoutRestoreResult: any;
+                if (nativeAvailability === "legacy-fallback") {
+                    layoutRestoreResult = await queueLegacyLayoutRestore();
                 }
                 else {
-                    nativeRestoreCompletion = queueLegacyLayoutRestore();
-                    requestApi.postQueue = nativeRestoreCompletion;
+                    var nativeRestore: any = nativeController.writeDocument(nativeDocument);
+                    layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
+                    if (layoutRestoreResult === "legacy-fallback") {
+                        layoutRestoreResult = await queueLegacyLayoutRestore();
+                    }
+                    else if (layoutRestoreResult === "mirror-failed") {
+                        // The native document is durable, but the controller has
+                        // already warned that its downgrade copy is stale.
+                        requestApi.postQueueError = true;
+                    }
+                    else if (layoutRestoreResult !== "saved") {
+                        rejectBackup("The layout could not be restored. No other backup settings were changed.");
+                    }
+                }
+
+                // Do not change the editor or unrelated device settings until
+                // the complete layout has been accepted by the target firmware.
+                cancelMainGridSave();
+                var activeGridCols: any = controllers.layout.gridCols;
+                controllers.layout.gridCols = importedGridCols;
+                try {
+                    state.buttons = [];
+                    for (var canonicalButtonIndex: any = 0; canonicalButtonIndex < controllers.layout.numSlots; canonicalButtonIndex++)
+                        state.buttons[canonicalButtonIndex] = parseButtonConfig(nativeDocument.buttons[canonicalButtonIndex + 1] || "");
+                    state.subpages = {};
+                    state.subpageRaw = {};
+                    for (var canonicalSubpageKey in nativeDocument.subpages) {
+                        var canonicalSubpage: any = parseSubpageConfig(nativeDocument.subpages[Number(canonicalSubpageKey)] || "");
+                        buildSubpageGrid(canonicalSubpage);
+                        state.subpages[canonicalSubpageKey] = canonicalSubpage;
+                    }
+                    nativeDocument.settings.button_order = applyImportedButtonOrder(
+                        nativeDocument.settings.button_order, {});
+                }
+                finally {
+                    controllers.layout.gridCols = activeGridCols;
                 }
                 state.onColor = nativeDocument.settings.button_on_color;
                 if (els.setOnColor && els.setOnColor._syncColor)
@@ -658,7 +677,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 renderPreview();
                 renderButtonSettings();
                 switchTab("screen");
-                return nativeRestoreCompletion;
+                return layoutRestoreResult;
                 }
                 backupRestoreController.restore(data, {
                     device: controllers.layout.deviceId,

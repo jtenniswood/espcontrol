@@ -22,6 +22,7 @@
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_storage_backend.h"
+#include "panel_config_endpoint_policy.h"
 #include "panel_config_storage_selection.h"
 #include "panel_config_write_endpoint.h"
 #include "panel_config_http_context.h"
@@ -320,6 +321,11 @@ void EspControlApp::initialize_native_configuration() {
     runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 4;
     const configuration::ServiceLoadResult loaded = panel_config_service->load(
         runtime.document_buffer, runtime.slot_capacity);
+    if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
+      ESP_LOGW(TAG,
+               "Legacy panel configuration exceeds the native slot; keeping legacy configuration endpoints active");
+      runtime.document_buffer = nullptr;
+    }
     if (loaded.status == configuration::ServiceStatus::IMPORTED_LEGACY) {
       ESP_LOGI(TAG, "Imported legacy panel configuration into generation %" PRIu32,
                loaded.generation);

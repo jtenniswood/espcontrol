@@ -255,6 +255,18 @@ describe("browserless application contracts", () => {
     assert.match(entry, /createAppBackupFeature\(\{[\s\S]*statusPreview,[\s\S]*grid/);
   });
 
+  test("persists imported layouts before changing editor state or device settings", () => {
+    const backup = fs.readFileSync(path.join(ROOT, "src/webserver/application/app_backup.ts"), "utf8");
+    const discovery = backup.indexOf("await nativeController.waitForDiscovery()");
+    const nativeWrite = backup.indexOf("await nativeRestore");
+    const legacyWrite = backup.indexOf("await queueLegacyLayoutRestore()");
+    const editorMutation = backup.indexOf("state.buttons = []");
+    const settingsPost = backup.indexOf("postClockBarTemperatureEntities(");
+    assert.ok(discovery >= 0 && nativeWrite > discovery && legacyWrite > discovery);
+    assert.ok(editorMutation > nativeWrite && editorMutation > legacyWrite);
+    assert.ok(settingsPost > editorMutation);
+  });
+
   test("imports shared settings state helpers without application globals", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
