@@ -114,9 +114,11 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func refreshApplications() {
-        let roots = [
+        let standardRoots = [
             URL(fileURLWithPath: "/Applications"),
             URL(fileURLWithPath: "/System/Applications"),
+        ]
+        let cryptexRoots = [
             // Current macOS releases install Safari in the protected Cryptex
             // application volume and expose only a compatibility link in /Applications.
             URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications"),
@@ -133,14 +135,27 @@ final class CompanionStore: NSObject, ObservableObject {
             found.append(LaunchableApp(bundleIdentifier: id, name: name, url: url))
         }
 
-        for root in roots {
-            guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
-            for case let url as URL in enumerator where url.pathExtension == "app" {
-                appendApplication(at: url)
+        func scanApplicationRoots(_ roots: [URL]) {
+            for root in roots {
+                guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
+                for case let url as URL in enumerator where url.pathExtension == "app" {
+                    appendApplication(at: url)
+                }
             }
         }
+        scanApplicationRoots(standardRoots)
         additionalSystemApps.forEach { appendApplication(at: $0) }
+        let standardAppIdentifiers = Set(found.map(\.bundleIdentifier))
+        let previouslyAllowedAllStandardApps = !standardAppIdentifiers.isEmpty
+            && standardAppIdentifiers.isSubset(of: allowedBundleIdentifiers)
+
+        scanApplicationRoots(cryptexRoots)
         availableApps = Dictionary(grouping: found, by: \.bundleIdentifier).compactMap { $0.value.first }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        if previouslyAllowedAllStandardApps {
+            let previousSelection = allowedBundleIdentifiers
+            allowedBundleIdentifiers.formUnion(availableApps.map(\.bundleIdentifier))
+            if allowedBundleIdentifiers != previousSelection { persistAllowedApplications() }
+        }
     }
 
     func selectedApps() -> [LaunchableApp] { availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) } }
