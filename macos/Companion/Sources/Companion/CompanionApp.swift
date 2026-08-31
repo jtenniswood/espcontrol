@@ -8,8 +8,13 @@ struct CompanionApp: App {
 
     var body: some Scene {
         Settings {
-            CompanionSettings(store: appDelegate.store)
-                .frame(width: 560, height: 500)
+            EmptyView()
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { appDelegate.openCompanionWindow() }
+                    .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }
@@ -18,6 +23,7 @@ struct CompanionApp: App {
 final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
+    private var settingsWindow: NSWindow?
     private var connectionObservation: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -85,13 +91,29 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettings() { openCompanionWindow() }
     @objc private func quit() { NSApp.terminate(nil) }
 
-    private func openCompanionWindow() {
+    func openCompanionWindow() {
         activateCompanionApplication()
-        let opened = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        if !opened {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        if settingsWindow == nil {
+            let content = CompanionSettings(store: store)
+                .frame(width: 560, height: 500)
+            let controller = NSHostingController(rootView: content)
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 560, height: 500),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "EspControl Companion Settings"
+            window.contentMinSize = NSSize(width: 520, height: 420)
+            window.contentViewController = controller
+            window.isReleasedWhenClosed = false
+            window.center()
+            settingsWindow = window
         }
-        focusSettingsWindow()
+        settingsWindow?.level = .normal
+        settingsWindow?.makeKeyAndOrderFront(nil)
+        settingsWindow?.orderFrontRegardless()
+        activateCompanionApplication()
     }
 }
 
