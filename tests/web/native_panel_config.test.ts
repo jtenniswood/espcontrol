@@ -118,6 +118,21 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   equal(await protectedReadClient.save((current) => current), "authentication-required",
     "a protected password document is not treated as a generic save failure");
 
+  const challengedWriteClient = createNativePanelConfigClient(async (path, request) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    if (request?.method === "PUT") return response(401);
+    return response(200, document, "\"1\"");
+  });
+  equal(await challengedWriteClient.save((current) => current), "authentication-required",
+    "an authentication challenge while writing is reported clearly");
+
+  const challengedReadClient = createNativePanelConfigClient(async (path) => {
+    if (path === "/api/v1/capabilities") return response(200);
+    return response(401);
+  });
+  equal(await challengedReadClient.save((current) => current), "authentication-required",
+    "an authentication challenge while reading is reported clearly");
+
   const runtimeFailureClient = createNativePanelConfigClient(async (path, request) => {
     if (path === "/api/v1/capabilities") return response(200);
     if (request?.method === "PUT") return response(500);

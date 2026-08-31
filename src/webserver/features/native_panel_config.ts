@@ -124,7 +124,7 @@ export class NativePanelConfigClient {
       try {
         const current = await this.fetch_("/api/v1/config", { cache: "no-store" });
         if (!current.ok) {
-          if (current.status === 403) return "authentication-required";
+          if (current.status === 401 || current.status === 403) return "authentication-required";
           if (current.status === 404 || current.status === 503) {
             this.retryDiscovery();
             return "unsupported";
@@ -148,7 +148,7 @@ export class NativePanelConfigClient {
         // save so callers do not claim that an older firmware can restore it.
         if (next.status === 202) return "mirror-failed";
         if (next.ok) return "saved";
-        if (next.status === 403) return "authentication-required";
+        if (next.status === 401 || next.status === 403) return "authentication-required";
         if (next.status === 404 || next.status === 503) {
           this.retryDiscovery();
           return "unsupported";
