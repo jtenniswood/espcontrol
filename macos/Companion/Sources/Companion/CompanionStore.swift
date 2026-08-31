@@ -116,6 +116,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func launchableApps() -> [LaunchableApp] { availableApps }
     func connect() { connection.connect(mode: .authenticate) }
+    func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
         let host = panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !host.isEmpty else {
