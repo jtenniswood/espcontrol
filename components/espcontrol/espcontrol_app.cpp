@@ -22,6 +22,7 @@
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_storage_backend.h"
+#include "panel_config_storage_selection.h"
 #include "panel_config_write_endpoint.h"
 #include "panel_config_http_context.h"
 #include "button_grid.h"
@@ -270,14 +271,18 @@ void EspControlApp::initialize_native_configuration() {
     return;
   }
   panel_config_service->set_runtime_adapter(&runtime.runtime_config);
+  bool used_nvs_fallback = false;
   if (!runtime.legacy_config.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
-  } else if (panel_config_card_images_storage_
-                 ? !runtime.blobs.begin_card_images_partition(
-                       PANEL_CONFIG_STORAGE_SLOT_CAPACITY)
-                 : !runtime.blobs.begin()) {
+  } else if (!configuration::begin_panel_config_storage(
+                 runtime.blobs, panel_config_card_images_storage_,
+                 PANEL_CONFIG_STORAGE_SLOT_CAPACITY, &used_nvs_fallback)) {
     ESP_LOGE(TAG, "Native configuration storage is unavailable");
   } else {
+    if (used_nvs_fallback) {
+      ESP_LOGW(TAG,
+               "Card-images partition is unavailable; using NVS for native configuration");
+    }
     ESP_LOGI(TAG, "Allocating native configuration buffers");
 #ifdef USE_ESP32
     // Two fixed slots back the atomic store; the scratch, HTTP request, and
