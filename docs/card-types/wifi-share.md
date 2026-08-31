@@ -35,4 +35,4 @@ Enterprise Wifi, WEP, links, plain text QR codes, colour choices, and sharing th
 
 The password is base64url encoded only so it fits safely in the card configuration; it is **not encrypted**. Exported backup JSON files include Wifi Sharing credentials so they can restore correctly. Keep those files private and delete old copies you no longer need.
 
-Wifi Sharing passwords require the optional `web_server_auth` package. Firmware without web authentication rejects configuration documents containing a Wifi password instead of storing or returning that password through the local configuration API. Open networks do not contain a password and remain available without web authentication.
+The optional `web_server_auth` package is not required for Wifi Sharing. Without it, anyone who can access the panel's web interface on your network can also retrieve the configured Wifi Sharing credentials. This exposure is intentional so the panel can share the password; enable web authentication only when you want to restrict access to the whole web interface.

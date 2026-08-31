@@ -13,7 +13,6 @@
 #include "configuration_service.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_http_context.h"
-#include "panel_config_sensitive_data.h"
 
 namespace espcontrol::configuration {
 
@@ -59,14 +58,6 @@ class PanelConfigReadHandler final
                           "Native configuration is unavailable");
       return;
     }
-#ifndef USE_WEBSERVER_AUTH
-    if (panel_config_contains_wifi_password(context.document,
-                                            loaded.document_size)) {
-      httpd_resp_send_err(raw_request, HTTPD_403_FORBIDDEN,
-                          "Wifi Sharing passwords require web authentication");
-      return;
-    }
-#endif
     char generation[16]{};
     char etag[20]{};
     char version[8]{};
