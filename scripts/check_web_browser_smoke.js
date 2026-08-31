@@ -3947,11 +3947,24 @@ async function openPasteCardCodeDialog(page) {
   assert(await emptyCell.isVisible(), "card transfer test requires an empty destination cell");
   const pos = await emptyCell.getAttribute("data-pos");
   await emptyCell.click({ button: "right", force: true });
-  await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
-  await page
-    .locator(".sp-ctx-menu")
-    .getByText("Paste Code…", { exact: true })
-    .click();
+  const menu = page.locator(".sp-ctx-menu");
+  await menu.waitFor({ state: "visible" });
+  const menuLabels = await menu.locator(":scope > .sp-ctx-item").allTextContents();
+  assert.strictEqual(menuLabels[0].trim(), "Create Card", "empty-slot menu starts with Create Card");
+  const createSubpageIndex = menuLabels.findIndex((text) => text.trim() === "Create Subpage");
+  assert.strictEqual(createSubpageIndex, 1, "home empty-slot menu shows Create Subpage second");
+  assert.strictEqual(menuLabels.at(-1).trim(), "Paste Code", "empty-slot menu ends with Paste Code");
+  const trailingMenuStructure = await menu.locator(":scope > *").evaluateAll((elements) =>
+    elements.slice(-2).map((element) =>
+      element.classList.contains("sp-ctx-divider") ? "divider" : element.textContent.trim(),
+    ),
+  );
+  assert.deepStrictEqual(
+    trailingMenuStructure,
+    ["divider", "Paste Code"],
+    "empty-slot menu separates Paste Code from the actions above it",
+  );
+  await menu.getByText("Paste Code", { exact: true }).click();
   await page.locator(".sp-transfer-dialog").waitFor({ state: "visible" });
   const dialog = page.locator(".sp-transfer-dialog");
   assert.strictEqual(
