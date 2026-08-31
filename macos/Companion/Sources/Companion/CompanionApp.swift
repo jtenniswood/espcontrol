@@ -227,6 +227,8 @@ private struct CompanionSettings: View {
 
     private var deviceConnectionSettings: some View {
         VStack(alignment: .leading, spacing: 14) {
+            connectionStatusPanel
+
             Button("Paste pairing details") {
                 guard let clipboard = NSPasteboard.general.string(forType: .string),
                       let details = CompanionPairingDetails.parse(clipboard) else {
@@ -295,6 +297,37 @@ private struct CompanionSettings: View {
                 Button("Forget this panel", role: .destructive) { store.forgetPanel() }
             }
         }
+    }
+
+    private var connectionStatusPanel: some View {
+        HStack(spacing: 12) {
+            Image(systemName: store.isConnected ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.title2)
+                .foregroundStyle(store.isConnected ? Color.green : Color.secondary)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(store.isConnected ? "Connected to \(store.panelName)" : "Mac Companion is not connected")
+                    .font(.headline)
+                Text(store.statusDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(store.isConnected ? "Reconnect" : "Connect") { store.connect() }
+                .controlSize(.large)
+                .disabled(store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(store.isConnected ? Color.green.opacity(0.55) : Color.secondary.opacity(0.25), lineWidth: 1)
+        )
     }
 
     private var supportedAppsSettings: some View {
