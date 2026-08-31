@@ -14,6 +14,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var reconnectTask: Task<Void, Never>?
     private var pendingCertificateFingerprint: String?
     private var shouldReconnect = false
+    private var artworkData: Data?
+    private var artworkGeneration: UInt32 = 0
+    private var artworkOffset = 0
+    private static let artworkChunkBytes = 12 * 1024
 
     init(store: CompanionStore) { self.store = store }
 
@@ -152,6 +156,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     private func handle(_ message: String) {
+        if message.first == "{", handleJSON(message) { return }
         let parts = message.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
         guard let type = parts.first else { return }
         print("[EspControl Companion] Received \(type)")
@@ -182,6 +187,75 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             store.updateStatus(parts.dropFirst().joined(separator: " "))
         default: break
         }
+    }
+
+    private func handleJSON(_ message: String) -> Bool {
+        guard let data = message.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = object["type"] as? String else { return false }
+        if type == "artwork.ack",
+           let generation = (object["generation"] as? NSNumber)?.uint32Value,
+           let nextOffset = (object["nextOffset"] as? NSNumber)?.intValue,
+           generation == artworkGeneration, nextOffset == artworkOffset {
+            sendNextArtworkChunk()
+        } else if type == "artwork.abort" {
+            artworkData = nil
+            artworkOffset = 0
+        }
+        return true
+    }
+
+    func publishNowPlaying(_ snapshot: CompanionNowPlayingSnapshot) {
+        if artworkData != nil {
+            sendJSON(["type": "artwork.abort", "version": 2, "generation": artworkGeneration])
+        }
+        artworkData = nil
+        artworkOffset = 0
+        artworkGeneration = snapshot.generation
+        var message: [String: Any] = [
+            "type": "now_playing", "version": 2, "generation": snapshot.generation,
+            "applicationIdentifier": snapshot.applicationIdentifier,
+            "applicationName": snapshot.applicationName, "state": snapshot.state.rawValue,
+            "contentIdentifier": snapshot.contentIdentifier, "title": snapshot.title,
+            "artist": snapshot.artist, "album": snapshot.album,
+            "durationMs": snapshot.durationMilliseconds, "positionMs": snapshot.positionMilliseconds,
+            "playbackRate": snapshot.playbackRate, "hasArtwork": snapshot.artworkJPEG != nil,
+        ]
+        if let hash = snapshot.artworkSHA256 { message["artworkSHA256"] = hash }
+        sendJSON(message)
+        guard let artwork = snapshot.artworkJPEG else { return }
+        artworkData = artwork
+        sendJSON(["type": "artwork.begin", "version": 2, "generation": snapshot.generation,
+                  "byteLength": artwork.count, "sha256": snapshot.artworkSHA256 ?? "",
+                  "mimeType": "image/jpeg"])
+    }
+
+    private func sendNextArtworkChunk() {
+        guard let artworkData else { return }
+        if artworkOffset >= artworkData.count {
+            sendJSON(["type": "artwork.end", "version": 2, "generation": artworkGeneration])
+            self.artworkData = nil
+            artworkOffset = 0
+            return
+        }
+        let end = min(artworkOffset + Self.artworkChunkBytes, artworkData.count)
+        var frame = Data()
+        var generation = artworkGeneration.bigEndian
+        var offset = UInt32(artworkOffset).bigEndian
+        withUnsafeBytes(of: &generation) { frame.append(contentsOf: $0) }
+        withUnsafeBytes(of: &offset) { frame.append(contentsOf: $0) }
+        frame.append(artworkData[artworkOffset..<end])
+        artworkOffset = end
+        task?.send(.data(frame)) { [weak self] error in
+            if error != nil { Task { @MainActor in self?.artworkData = nil } }
+        }
+    }
+
+    private func sendJSON(_ object: [String: Any]) {
+        guard JSONSerialization.isValidJSONObject(object),
+              let data = try? JSONSerialization.data(withJSONObject: object), data.count <= 16 * 1024,
+              let value = String(data: data, encoding: .utf8) else { return }
+        send(value)
     }
 
     func publishCatalogue() {

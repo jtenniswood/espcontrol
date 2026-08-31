@@ -5,5 +5,17 @@ let package = Package(
     name: "EspControlCompanion",
     platforms: [.macOS(.v13)],
     products: [.executable(name: "EspControl Companion", targets: ["Companion"])],
-    targets: [.executableTarget(name: "Companion", path: "Sources/Companion")]
+    targets: [
+        .target(
+            name: "MediaRemoteShim",
+            path: "Sources/MediaRemoteShim",
+            publicHeadersPath: "include",
+            linkerSettings: [.linkedFramework("Foundation")]
+        ),
+        .executableTarget(
+            name: "Companion",
+            dependencies: ["MediaRemoteShim"],
+            path: "Sources/Companion"
+        ),
+    ]
 )

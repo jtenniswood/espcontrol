@@ -21,15 +21,35 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
+    @Published var nowPlayingSharingEnabled: Bool {
+        didSet {
+            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
+            updateNowPlayingProvider()
+        }
+    }
+    @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
+    @Published private(set) var nowPlayingApplication = ""
+    @Published private(set) var nowPlayingTitle = ""
+    @Published private(set) var nowPlayingArtwork: NSImage?
 
     private enum Keys { static let host = "panelHost"; static let name = "panelName" }
     private let defaults = UserDefaults.standard
     private lazy var connection = CompanionConnection(store: self)
+    private let nowPlayingProvider = SystemNowPlayingProvider()
 
     override init() {
         panelHost = defaults.string(forKey: Keys.host) ?? ""
         panelName = defaults.string(forKey: Keys.name) ?? "My EspControl"
+        nowPlayingSharingEnabled = defaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
         super.init()
+        nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
+        nowPlayingProvider.onSnapshot = { [weak self] snapshot in
+            guard let self else { return }
+            nowPlayingApplication = snapshot.applicationName
+            nowPlayingTitle = snapshot.title
+            nowPlayingArtwork = snapshot.artworkJPEG.flatMap(NSImage.init(data:))
+            if isConnected { connection.publishNowPlaying(snapshot) }
+        }
         refreshLaunchAtLoginStatus()
         refreshApplications()
     }
@@ -151,6 +171,17 @@ final class CompanionStore: NSObject, ObservableObject {
         print("[EspControl Companion] \(message)")
         statusDescription = message
         isConnected = connected
+        updateNowPlayingProvider()
+    }
+
+    private func updateNowPlayingProvider() {
+        if isConnected && nowPlayingSharingEnabled {
+            nowPlayingProvider.start()
+        } else {
+            nowPlayingProvider.stop()
+            nowPlayingStatus = nowPlayingSharingEnabled
+                ? "Waiting for a panel connection" : "Now Playing sharing is disabled"
+        }
     }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
