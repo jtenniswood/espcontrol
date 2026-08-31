@@ -12,6 +12,7 @@ import {
 import {
   COMPANION_INPUT_VOLUME_ID,
   COMPANION_OUTPUT_VOLUME_ID,
+  companionSliderIcon,
   companionSliderMode,
 } from "../../src/webserver/cards/slider";
 
@@ -42,6 +43,15 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionSliderMode({ entity: "light.office" }) !== "home_assistant") {
     throw new Error("Existing Home Assistant sliders must remain unchanged");
+  }
+  if (companionSliderIcon("Volume High", "mac_output", "mac_input") !== "Microphone") {
+    throw new Error("Changing volume controls must refresh generated slider icons");
+  }
+  if (companionSliderIcon("Palette", "mac_output", "mac_input") !== "Palette") {
+    throw new Error("Changing volume controls must preserve custom slider icons");
+  }
+  if (companionSliderIcon("Microphone", "mac_input", "home_assistant") !== "Auto") {
+    throw new Error("Leaving a volume control must clear its generated slider icon");
   }
   if (companionAppLabel("", "", "Safari") !== "Safari") {
     throw new Error("Selecting a Companion app must prefill an empty card label");

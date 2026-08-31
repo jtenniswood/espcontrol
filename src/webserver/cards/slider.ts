@@ -29,6 +29,20 @@ export function companionSliderMode(card: any): string {
     return "home_assistant";
 }
 
+function companionSliderDefaultIcon(mode: string): string {
+    if (mode === "mac_output") return "Volume High";
+    if (mode === "mac_input") return "Microphone";
+    return "Auto";
+}
+
+export function companionSliderIcon(icon: string, previousMode: string, nextMode: string): string {
+    const previousDefault = companionSliderDefaultIcon(previousMode);
+    if (!icon || icon === "Auto" || icon === previousDefault) {
+        return companionSliderDefaultIcon(nextMode);
+    }
+    return icon;
+}
+
 export function registerSliderCardTypes(
     registry: CardRegistry,
     modalTabs: ConfigModalTabOptionsFeature,
@@ -153,23 +167,19 @@ export function registerSliderCardTypes(
                             onChange: function (this: HTMLSelectElement) {
                                 sliderMode = this.value;
                                 var previousMode: any = companionSliderMode(b);
+                                b.icon = companionSliderIcon(b.icon, previousMode, sliderMode);
+                                b.icon_on = companionSliderIcon(b.icon_on, previousMode, sliderMode);
                                 if (sliderMode === "mac_output") {
                                     b.entity = COMPANION_OUTPUT_VOLUME_ID;
                                     if (!b.label || b.label === "Input Volume") b.label = "Output Volume";
-                                    b.icon = "Volume High";
-                                    b.icon_on = "Volume High";
                                 }
                                 else if (sliderMode === "mac_input") {
                                     b.entity = COMPANION_INPUT_VOLUME_ID;
                                     if (!b.label || b.label === "Output Volume") b.label = "Input Volume";
-                                    b.icon = "Microphone";
-                                    b.icon_on = "Microphone";
                                 }
                                 else if (previousMode !== "home_assistant") {
                                     b.entity = "";
                                     if (b.label === "Output Volume" || b.label === "Input Volume") b.label = "";
-                                    b.icon = "Auto";
-                                    b.icon_on = "Auto";
                                 }
                                 helpers.saveField("entity", b.entity);
                                 helpers.saveField("label", b.label);
