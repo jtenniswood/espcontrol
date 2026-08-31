@@ -17,6 +17,16 @@ Companion cards are a proof-of-concept card type for the **4-inch 4848S040** pan
 The Mac stores the pairing credential in Keychain and pins the panel's locally generated certificate. If you forget the panel from the Mac app, pair it again before Companion cards will work.
 When the authenticated Mac is connected, a monitor icon appears beside Wi-Fi in the panel's clock bar. It disappears within a moment if the connection ends.
 
+## Share what is playing on the Mac
+
+The Companion app can also share the active macOS **Now Playing** session, including its title, artist, album, progress, playback state, source application, and cover art. This works without Home Assistant and is enabled by default in the Mac app's **Now Playing** tab. Turn the switch off there if you do not want the Mac to share this information.
+
+On the 4848S040 browser editor, open **Settings → Cover Art Screen Saver** and set **Cover Art Source** to **Mac Companion**. Home Assistant entity, external-source, and filtering controls are hidden in this mode because one complete source supplies the metadata and artwork together. The existing delay and track-overlay duration settings still apply. Change the source back to **Home Assistant** to use the existing Home Assistant behavior; the panel never mixes the two sources or falls back automatically.
+
+Only actively playing media opens cover art automatically. Pausing or stopping follows the normal cover-art closing behavior. A short Companion network interruption gets a five-second grace period; after that the panel hides the presentation while keeping its decoded image cache until a fresh matching update arrives.
+
+Companion reads the session macOS shows in Control Centre. This can include Apple Music, Spotify, podcast apps, browsers, and video apps when they publish usable system metadata. An application that does not appear correctly in macOS Control Centre is not supported.
+
 ## Add a Companion card
 
 Use the normal browser layout editor and select an empty home-screen or subpage slot, then choose **Companion**. Under **Action**, choose one of:
@@ -35,6 +45,7 @@ The card is disabled when the Mac is offline, when an app or URL card references
 - Keyboard shortcuts require Command, Control, or Option plus a supported key. Modifier-only and unsupported system keys are rejected.
 - URL cards accept only `http://` and `https://` addresses without embedded usernames or passwords.
 - Companion does not control playback, windows, files, or arbitrary commands directly.
+- Reading other applications' Now Playing data uses macOS's private `MediaRemote` framework because Apple's public API only lets an application publish its own session. The framework is loaded dynamically. If a macOS update removes the required symbols, Companion reports the system feed as unavailable and its existing cards continue to work.
 - Companion is only offered on the 4848S040 profile. Other panels continue to behave normally.
 
 If a pairing needs to be replaced, forget it in the Mac app and start a new pairing session from the panel's web settings.

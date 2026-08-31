@@ -791,6 +791,18 @@ assert.strictEqual(legacyPanelSettings.alarmDelayFinalCountdown, 10, "legacy pan
 assert.strictEqual(model.normalizeAlarmDelayBeepVolume(5), 1, "alarm beep volume clamps high values");
 assert.strictEqual(model.normalizeAlarmDelayFinalCountdown(-4), 0, "alarm final countdown clamps low values");
 assert.strictEqual(legacyPanelSettings.coverArtHideExternalInput, true, "legacy panel settings default cover art external-input setting on");
+assert.strictEqual(legacyPanelSettings.coverArtSource, "Home Assistant", "legacy panel settings default cover art source to Home Assistant");
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({ cover_art_source: "Mac Companion" }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"], ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org", coverArtHomeAssistantProtocol: "http",
+    coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).coverArtSource,
+  "Mac Companion",
+  "backup restore preserves the Mac Companion cover art source",
+);
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantProtocol, "https", "legacy panel settings keep current Home Assistant artwork protocol");
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantPort, 80, "legacy panel settings keep current Home Assistant artwork port");
 assert.strictEqual(legacyPanelSettings.autoUpdate, false, "legacy panel settings keep current firmware auto-update setting");

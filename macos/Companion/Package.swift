@@ -17,5 +17,10 @@ let package = Package(
             dependencies: ["MediaRemoteShim"],
             path: "Sources/Companion"
         ),
+        .testTarget(
+            name: "CompanionTests",
+            dependencies: ["Companion"],
+            path: "Tests/CompanionTests"
+        ),
     ]
 )
