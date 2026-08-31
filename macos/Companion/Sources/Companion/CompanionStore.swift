@@ -35,7 +35,7 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     var hasSavedPairing: Bool { KeychainStore.load(service: KeychainStore.service, account: panelHost) != nil }
-    var connectionSymbol: String { isConnected ? "laptopcomputer.and.iphone" : "laptopcomputer.slash" }
+    var connectionSymbol: String { isConnected ? "laptopcomputer" : "laptopcomputer.slash" }
     func launchAtLoginBinding() -> Binding<Bool> {
         Binding(
             get: { self.launchAtLoginEnabled },

@@ -140,7 +140,8 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatusItemImage() {
         guard let button = statusItem?.button else { return }
-        let image = NSImage(systemSymbolName: store.connectionSymbol, accessibilityDescription: "EspControl Companion")
+        let description = store.isConnected ? "EspControl Companion connected" : "EspControl Companion disconnected"
+        let image = NSImage(systemSymbolName: store.connectionSymbol, accessibilityDescription: description)
         image?.isTemplate = true
         button.image = image
     }
