@@ -3,6 +3,7 @@
 #include "companion_controls.h"
 
 int main() {
+  assert(!companion_connected());
   assert(companion_shortcut_action_valid("shortcut.command+a"));
   assert(companion_shortcut_label("shortcut.command+a") == "Cmd+A");
   assert(companion_shortcut_action_valid("shortcut.control+shift+tab"));
@@ -23,6 +24,7 @@ int main() {
 
   companion_set_actions({{"com.apple.Safari", "Safari"}});
   companion_set_connected(true);
+  assert(companion_connected());
   assert(companion_url_available("com.apple.Safari", url_config));
   assert(!companion_url_available("com.google.Chrome", url_config));
   bool invoked = false;

@@ -62,6 +62,31 @@ lvgl:
             then:
               - script.execute: network_status_open_info
 
+      # Mac Companion connection status. This is intentionally an indicator,
+      # not another control: pairing and configuration live in the web UI.
+      - obj:
+          id: companion_status_icon
+          align: top_right
+          x: 0
+          y: 0
+          width: 48
+          height: 44
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: false
+          hidden: true
+          widgets:
+            - label:
+                id: companion_status_icon_label
+                text: "\U000F0379"
+                text_font: font_icon_status
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+
       # Night mode indicator (schedule night period only). Starts hidden;
       # clock_bar_apply positions and reveals it beside the network icon, so the
       # x/y here are unused placeholders.
@@ -118,3 +143,14 @@ lvgl:
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "7" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "8" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "9" } }
+
+interval:
+  - interval: 500ms
+    then:
+      - lambda: |-
+          static bool previous_companion_connection = false;
+          const bool connected = companion_connected();
+          if (connected != previous_companion_connection) {
+            previous_companion_connection = connected;
+            id(clock_bar_apply).execute();
+          }

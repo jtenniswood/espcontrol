@@ -34,9 +34,22 @@ substitutions:
   main_page_pad_top: "40"
   main_page_compact_pad_top: "4"
   clock_bar_item_gap: "60"
-  clock_bar_visual_gap: "8"
-  voice_clock_bar_hide_code: ""
-  voice_clock_bar_apply_code: ""
+  clock_bar_visual_gap: "24"
+  voice_clock_bar_hide_code: |-
+    clock_bar_set_widget_hidden(id(companion_status_icon), true);
+  voice_clock_bar_apply_code: |-
+    if (companion_connected()) {
+      clock_bar_right_icons.gap = ${clock_bar_visual_gap};
+      const int companion_status_box = lv_obj_get_width(id(companion_status_icon));
+      const int companion_status_x = clock_bar_right_icons_next_x(
+          clock_bar_right_icons, companion_status_box,
+          clock_bar_glyph_width(id(companion_status_icon_label), companion_status_box));
+      lv_obj_align(id(companion_status_icon), LV_ALIGN_TOP_RIGHT,
+                   companion_status_x, clock_bar_icon_y);
+      lv_obj_clear_flag(id(companion_status_icon), LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(id(companion_status_icon), LV_OBJ_FLAG_HIDDEN);
+    }
   navigate_voice_target_code: |-
     ESP_LOGW("navigation", "Voice volume target is not available on this device");
   voice_interaction_active_condition: "false"

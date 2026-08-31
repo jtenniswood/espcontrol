@@ -66,6 +66,10 @@ inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   return {state.actions, state.connected};
 }
 
+inline bool companion_connected() {
+  return companion_runtime_snapshot().connected;
+}
+
 inline CompanionActionSender &companion_action_sender() {
   static CompanionActionSender sender;
   return sender;
