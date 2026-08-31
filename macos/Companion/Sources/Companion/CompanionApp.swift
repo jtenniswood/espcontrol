@@ -239,7 +239,7 @@ private func focusSettingsWindow(
 }
 
 private enum CompanionSettingsField: Hashable {
-    case panelHost, panelName, pairingCode
+    case panelHost, pairingCode
 }
 
 private struct CompanionPairingDetails {
@@ -347,14 +347,6 @@ private struct CompanionSettings: View {
                 placeholder: "e.g. 192.168.6.100",
                 text: $store.panelHost,
                 field: .panelHost,
-                focusedField: $focusedField
-            )
-
-            SettingsTextField(
-                label: "Panel name",
-                placeholder: "e.g. Kitchen display",
-                text: $store.panelName,
-                field: .panelName,
                 focusedField: $focusedField
             )
 
@@ -475,8 +467,7 @@ private struct CompanionSettings: View {
     }
 
     private var connectionDisplayName: String {
-        let name = store.panelName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? store.panelHost : name
+        store.panelHost
     }
 
 }

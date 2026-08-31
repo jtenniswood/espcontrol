@@ -171,7 +171,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             store.updateStatus("Paired — reconnecting")
             connect(mode: .authenticate)
         case "AUTHENTICATED":
-            store.updateStatus("Connected to \(store.panelName)", connected: true)
+            store.updateStatus("Connected to \(store.panelHost)", connected: true)
             publishCatalogue()
         case "CATALOGUE":
             publishCatalogue()

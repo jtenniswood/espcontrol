@@ -15,7 +15,6 @@ struct LaunchableApp: Identifiable, Hashable {
 @MainActor
 final class CompanionStore: NSObject, ObservableObject {
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
-    @Published var panelName: String { didSet { defaults.set(panelName, forKey: Keys.name) } }
     @Published private(set) var availableApps: [LaunchableApp] = []
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
@@ -32,7 +31,7 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
 
-    private enum Keys { static let host = "panelHost"; static let name = "panelName" }
+    private enum Keys { static let host = "panelHost" }
     private let defaults = UserDefaults.standard
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
@@ -42,7 +41,6 @@ final class CompanionStore: NSObject, ObservableObject {
 
     override init() {
         panelHost = defaults.string(forKey: Keys.host) ?? ""
-        panelName = defaults.string(forKey: Keys.name) ?? "My EspControl"
         nowPlayingSharingEnabled = defaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
         super.init()
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
@@ -166,7 +164,6 @@ final class CompanionStore: NSObject, ObservableObject {
         defaults.removeObject(forKey: "companion.authenticationSequence.\(forgottenHost)")
         connection.disconnect()
         panelHost = ""
-        panelName = ""
         statusDescription = "Panel forgotten"
     }
 
