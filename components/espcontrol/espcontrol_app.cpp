@@ -323,7 +323,8 @@ void EspControlApp::initialize_native_configuration() {
         runtime.document_buffer, runtime.slot_capacity);
     if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
       ESP_LOGW(TAG,
-               "Legacy panel configuration exceeds the native slot; keeping legacy configuration endpoints active");
+               "Native configuration initial load failed (%u); keeping legacy configuration endpoints active",
+               static_cast<unsigned>(loaded.status));
       runtime.document_buffer = nullptr;
     }
     if (loaded.status == configuration::ServiceStatus::IMPORTED_LEGACY) {

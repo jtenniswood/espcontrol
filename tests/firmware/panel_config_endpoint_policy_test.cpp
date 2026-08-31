@@ -23,12 +23,24 @@ int main() {
   if (!expect(panel_config_load_allows_native_endpoints(ServiceStatus::OK),
               "A loaded native document should enable native endpoints"))
     return 1;
+  if (!expect(panel_config_load_allows_native_endpoints(
+                  ServiceStatus::IMPORTED_LEGACY),
+              "An imported legacy document should enable native endpoints"))
+    return 1;
   if (!expect(panel_config_load_allows_native_endpoints(ServiceStatus::EMPTY),
               "An empty store should allow a new native document"))
     return 1;
-  if (!expect(panel_config_load_allows_native_endpoints(
+  if (!expect(!panel_config_load_allows_native_endpoints(
+                  ServiceStatus::STORE_FAILED),
+              "An unreadable pre-upgrade NVS blob must disable native endpoints"))
+    return 1;
+  if (!expect(!panel_config_load_allows_native_endpoints(
                   ServiceStatus::INVALID_DOCUMENT),
-              "A damaged native document should remain replaceable"))
+              "A damaged native document must disable native endpoints"))
+    return 1;
+  if (!expect(!panel_config_load_allows_native_endpoints(
+                  ServiceStatus::UNSUPPORTED_VERSION),
+              "An unsupported native document must disable native endpoints"))
     return 1;
   return 0;
 }
