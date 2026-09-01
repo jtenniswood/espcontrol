@@ -45,6 +45,20 @@ artwork_image:
                        espcontrol::DisplayMode::CAMERA);
           then:
             - globals.set: { id: camera_screensaver_image_available, value: 'true' }
+            - lambda: |-
+                auto *img = id(camera_screensaver_downloaded_image);
+                ESP_LOGI("camera_screensaver", "Applying camera image=%dx%d content=%dx%d offset=%d,%d",
+                         img->get_width(), img->get_height(), img->get_content_width(), img->get_content_height(),
+                         img->get_content_offset_x(), img->get_content_offset_y());
+                #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+                ::lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));
+                #else
+                ::lv_img_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));
+                #endif
+                lv_obj_invalidate(id(camera_screensaver_image));
+            - lvgl.image.update:
+                id: camera_screensaver_image
+                src: camera_screensaver_downloaded_image
             - lvgl.widget.hide: camera_screensaver_unavailable
             - lvgl.widget.show: camera_screensaver_image
     on_error:
