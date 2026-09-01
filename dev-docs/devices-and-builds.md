@@ -60,29 +60,16 @@ external_components:
     refresh: 1s
 ```
 
-Build and upload local firmware from the repo root with the local ESPHome helper:
-
-```bash
-python3 scripts/local_esphome.py devices/<slug>/dev.yaml run
-```
-
 The helper injects `dev` as the `firmware_version`. That version appears in
 ESPHome logs, Home Assistant diagnostics, and the firmware version sensor.
 Running `esphome run dev.yaml` directly still works, and it uses the same static
 fallback version from `devices/<slug>/packages.yaml`.
 
-If both USB and over-the-air upload targets are available, ESPHome prompts for a
-choice. In scripts or background runs, that prompt can stop the upload, so pass
-the target explicitly:
-
-```bash
-python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device 192.168.x.x
-python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device /dev/cu.usbserial-...
-python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip> --no-logs
-```
-
 OTA upload only works after the display is already running EspControl firmware
 and is connected to the network. First flash is over USB.
+
+The [supported-device playbook](playbooks/add-supported-device.md) owns local
+compile/upload commands and explicit target selection.
 
 ## Generated Device Outputs
 
@@ -94,20 +81,7 @@ Device-profile changes can regenerate:
 - generated blocks in `devices/*/device/sensors.yaml`
 - files under `docs/public/webserver/` when web profile data changes
 
-Run:
-
-```bash
-python3 scripts/build.py
-python3 scripts/generate_device_slots.py
-```
-
-Then verify:
-
-```bash
-npm run check:device-matrix
-npm run check:device-profiles
-npm run check:product
-```
+The supported-device playbook owns the generator order and verification checks.
 
 ## Web Bundle Output
 
@@ -126,11 +100,9 @@ matches the firmware branch being flashed. Local testing can still override
 `scripts/build.py` derives each device profile and passes it to the Node bundle
 builder. That builder uses esbuild's API to produce a minified browser IIFE with
 an ES2020 target. VM and browser smoke tests build fresh copies through the same
-pipeline instead of reading the committed files. For an isolated build, run:
-
-```bash
-python3 scripts/build.py www --temporary-output /tmp/espcontrol-www
-```
+pipeline instead of reading the committed files. The web configurator playbook
+owns normal regeneration; the generator also supports isolated temporary output
+for tests and diagnostics.
 
 ## Firmware Build Artifacts
 
@@ -148,45 +120,44 @@ public firmware expectations.
 
 Per-device `platformio_options.build_flags` are escape hatches. Prefer manifest
 data, shared packages, or generated device slots for normal device differences.
-When a flag is needed, keep it documented here so it can be reviewed and removed
-deliberately.
+The exact flag/device mapping below is generated from every device YAML
+`build_flags` or `build_src_flags` list. Maintainers own the purpose and removal
+criteria in `dev-docs/build-flag-notes.json`.
 
-| Flag | Devices | Purpose | Remove when |
-|---|---|---|---|
-| `ESPCONTROL_DISABLE_TODO=1` | All current production devices | Keeps the todo card firmware out of memory-constrained builds. | Todo memory use is reduced enough to compile and run reliably on every supported panel. |
-| `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443` | Caps runtime grid allocation to the device's 6 slots. | Grid slot capacity is generated from device profile data. |
-| `ESPCONTROL_MAX_GRID_SLOTS=9` | `esp32-p4-86`, `guition-esp32-s3-4848s040` | Caps runtime grid allocation to the device's 9 slots. | Grid slot capacity is generated from device profile data. |
-| `ESPCONTROL_ESPHOME_2026_5_REBUILD=1` | P4 devices | Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler/watchdog changes. | Local and CI caches no longer contain stale 2026.4 objects, or the next deliberate cache-busting marker replaces it. |
-| `ESPCONTROL_JC1060P470_BOOTFIX_20260522=1` | `guition-esp32-p4-jc1060p470`, `guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for a JC1060P470 boot-loop fix. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC1060P470_OTA_WDT_20260526=1` | `guition-esp32-p4-jc1060p470`, `guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for the OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC4880P443_BOOTFIX_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for a JC4880P443 boot-loop fix. | A later required rebuild marker supersedes it. |
+Run `python3 scripts/check_dev_docs.py --update` after a device flag or its notes
+change. `npm run check:dev-docs` fails for a stale mapping, an undocumented flag,
+or notes for a flag that no device uses.
+
+<!-- BEGIN GENERATED DEVICE BUILD FLAGS -->
+| Flag | Devices from YAML | Purpose | Remove when |
+| --- | --- | --- | --- |
+| `-Wno-complain-wrong-lang` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses an ESP-IDF warning option that is invalid for C sources in the P4 build. | The upstream headers/build no longer pass the C++-only warning option to C sources. |
+| `-Wno-deprecated-declarations` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses deprecation warnings emitted by current ESPHome/ESP-IDF dependencies in P4 builds. | Supported dependencies compile these device profiles without the deprecated declarations. |
+| `-Wno-literal-suffix` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses the ESP-IDF header literal-suffix warning in P4 C++ builds. | The upstream headers compile cleanly without the suppression. |
+| `-mtext-section-literals` | `guition-esp32-s3-4848s040` | Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link. | The S3 firmware is split into smaller translation units or the toolchain makes the flag unnecessary. |
+| `ESPCONTROL_DISABLE_TODO=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Keeps the todo card firmware out of memory-constrained production builds. | Todo support compiles and runs with safe flash and heap headroom on every supported panel. |
+| `ESPCONTROL_DISABLE_WEATHER_FORECAST=1` | `guition-esp32-s3-4848s040` | Excludes the weather-forecast card from the constrained S3 firmware. | The card compiles and runs with safe flash and heap headroom on that panel. |
+| `ESPCONTROL_ESPHOME_2026_5_REBUILD=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler and watchdog changes. | Stale 2026.4 objects are no longer present in supported caches, or a later marker supersedes it. |
+| `ESPCONTROL_JC1060P470_BOOTFIX_20260522=1` | `guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for the JC1060P470 boot-loop fix. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC1060P470_OTA_WDT_20260526=1` | `guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for the JC1060P470 OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC4880P443_BOOTFIX_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for the JC4880P443 boot-loop fix. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC4880P443_OTA_WDT_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for the JC4880P443 OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for a JC8012P4A1 boot-loop fix. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_WDT_20260526=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the JC8012P4A1 watchdog increase. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the JC8012P4A1 USB logger/UART0 change. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for JC8012P4A1 OTA preparation changes. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for an image-card boot fix. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for restore crash recovery. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Keeps LVGL processing active while the panel is electrically off so scheduled and touch wake paths remain available. | ESPHome/LVGL can suspend and resume these panels without losing wake behavior. |
-| `ESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the GSL3680 wake-tap handling change. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the GSL3680 touch scaling change. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory media modal path on the S3 panel. | The full media path fits with safe runtime heap headroom. |
-| `ESPCONTROL_LOW_HEAP_COVER_ART=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory cover-art path on the S3 panel. | The full cover-art path fits with safe runtime heap headroom. |
-| `ESPCONTROL_DISABLE_WEATHER_FORECAST=1` | `guition-esp32-s3-4848s040` | Excludes the weather-forecast card from the constrained S3 firmware. | The card compiles and runs with safe flash and heap headroom. |
+| `ESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for the JC8012P4A1 boot-loop fix. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for restoring native display-space GSL3680 touch scaling. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for the GSL3680 wake-tap handling change. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for an image-card boot fix. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for JC8012P4A1 OTA preparation changes. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for restore crash recovery. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for the JC8012P4A1 USB logger and UART0 change. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_WDT_20260526=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Cache-busting marker for the JC8012P4A1 watchdog increase. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1` | `guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Keeps LVGL processing active while the panel is electrically off so scheduled and touch wake paths remain available. | ESPHome/LVGL can suspend and resume these panels without losing wake behavior. |
+| `ESPCONTROL_LOW_HEAP_COVER_ART=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory cover-art path on the constrained S3 panel. | The full cover-art path fits with safe runtime heap headroom. |
+| `ESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory media modal path on the constrained S3 panel. | The full media path fits with safe runtime heap headroom. |
+| `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443` | Caps runtime grid allocation to six slots. | Grid slot capacity is generated from device profile data. |
+| `ESPCONTROL_MAX_GRID_SLOTS=9` | `esp32-p4-86`<br>`guition-esp32-s3-4848s040` | Caps runtime grid allocation to nine slots. | Grid slot capacity is generated from device profile data. |
+<!-- END GENERATED DEVICE BUILD FLAGS -->
 
-Per-device `platformio_options.build_src_flags` should stay even narrower:
+## Changing Device Support
 
-| Flag | Devices | Purpose | Remove when |
-|---|---|---|---|
-| `-mtext-section-literals` | `guition-esp32-s3-4848s040` | Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link. | The S3 firmware is split into smaller translation units or ESPHome/toolchain changes make the flag unnecessary. |
-
-## Adding a Device Checklist
-
-1. Add the device entry in `product/v2/device_catalog.json` and regenerate `devices/manifest.json`.
-2. Add per-device YAML under `devices/<slug>/`.
-3. Confirm all required font roles exist.
-4. Confirm slot count equals `layout.cols * layout.rows`.
-5. Add public screen docs inputs if the device should appear on the public site.
-6. Generate outputs.
-7. Run product and device checks.
-8. Compile the device firmware before publishing support.
+Use [Add or Change a Supported Device](playbooks/add-supported-device.md) for the
+complete checklist, generator order, stop conditions, and checks.

@@ -1,0 +1,98 @@
+{
+  "-Wno-complain-wrong-lang": {
+    "purpose": "Suppresses an ESP-IDF warning option that is invalid for C sources in the P4 build.",
+    "remove_when": "The upstream headers/build no longer pass the C++-only warning option to C sources."
+  },
+  "-Wno-deprecated-declarations": {
+    "purpose": "Suppresses deprecation warnings emitted by current ESPHome/ESP-IDF dependencies in P4 builds.",
+    "remove_when": "Supported dependencies compile these device profiles without the deprecated declarations."
+  },
+  "-Wno-literal-suffix": {
+    "purpose": "Suppresses the ESP-IDF header literal-suffix warning in P4 C++ builds.",
+    "remove_when": "The upstream headers compile cleanly without the suppression."
+  },
+  "-mtext-section-literals": {
+    "purpose": "Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link.",
+    "remove_when": "The S3 firmware is split into smaller translation units or the toolchain makes the flag unnecessary."
+  },
+  "ESPCONTROL_DISABLE_TODO=1": {
+    "purpose": "Keeps the todo card firmware out of memory-constrained production builds.",
+    "remove_when": "Todo support compiles and runs with safe flash and heap headroom on every supported panel."
+  },
+  "ESPCONTROL_DISABLE_WEATHER_FORECAST=1": {
+    "purpose": "Excludes the weather-forecast card from the constrained S3 firmware.",
+    "remove_when": "The card compiles and runs with safe flash and heap headroom on that panel."
+  },
+  "ESPCONTROL_ESPHOME_2026_5_REBUILD=1": {
+    "purpose": "Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler and watchdog changes.",
+    "remove_when": "Stale 2026.4 objects are no longer present in supported caches, or a later marker supersedes it."
+  },
+  "ESPCONTROL_JC1060P470_BOOTFIX_20260522=1": {
+    "purpose": "Cache-busting marker for the JC1060P470 boot-loop fix.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC1060P470_OTA_WDT_20260526=1": {
+    "purpose": "Cache-busting marker for the JC1060P470 OTA flash erase watchdog increase.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC4880P443_BOOTFIX_20260522=1": {
+    "purpose": "Cache-busting marker for the JC4880P443 boot-loop fix.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC4880P443_OTA_WDT_20260522=1": {
+    "purpose": "Cache-busting marker for the JC4880P443 OTA flash erase watchdog increase.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1": {
+    "purpose": "Cache-busting marker for the JC8012P4A1 boot-loop fix.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1": {
+    "purpose": "Cache-busting marker for restoring native display-space GSL3680 touch scaling.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1": {
+    "purpose": "Cache-busting marker for the GSL3680 wake-tap handling change.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1": {
+    "purpose": "Cache-busting marker for an image-card boot fix.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1": {
+    "purpose": "Cache-busting marker for JC8012P4A1 OTA preparation changes.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1": {
+    "purpose": "Cache-busting marker for restore crash recovery.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1": {
+    "purpose": "Cache-busting marker for the JC8012P4A1 USB logger and UART0 change.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_JC8012P4A1_WDT_20260526=1": {
+    "purpose": "Cache-busting marker for the JC8012P4A1 watchdog increase.",
+    "remove_when": "A later required rebuild marker supersedes it."
+  },
+  "ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1": {
+    "purpose": "Keeps LVGL processing active while the panel is electrically off so scheduled and touch wake paths remain available.",
+    "remove_when": "ESPHome/LVGL can suspend and resume these panels without losing wake behavior."
+  },
+  "ESPCONTROL_LOW_HEAP_COVER_ART=1": {
+    "purpose": "Uses the reduced-memory cover-art path on the constrained S3 panel.",
+    "remove_when": "The full cover-art path fits with safe runtime heap headroom."
+  },
+  "ESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1": {
+    "purpose": "Uses the reduced-memory media modal path on the constrained S3 panel.",
+    "remove_when": "The full media path fits with safe runtime heap headroom."
+  },
+  "ESPCONTROL_MAX_GRID_SLOTS=6": {
+    "purpose": "Caps runtime grid allocation to six slots.",
+    "remove_when": "Grid slot capacity is generated from device profile data."
+  },
+  "ESPCONTROL_MAX_GRID_SLOTS=9": {
+    "purpose": "Caps runtime grid allocation to nine slots.",
+    "remove_when": "Grid slot capacity is generated from device profile data."
+  }
+}
