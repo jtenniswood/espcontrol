@@ -492,7 +492,7 @@ export function createSettingsPageHelpersFeature(
             { value: "off", label: "Display Off" },
             { value: "dim", label: "Screen Dimmed" },
             { value: "clock", label: "Clock" },
-            ...(CFG.features && CFG.features.cameraScreensaver ? [{ value: "camera", label: "Camera" }] : []),
+            ...(controllers.layout.config.features?.cameraScreensaver ? [{ value: "camera", label: "Camera" }] : []),
         ].forEach(function (this: any, opt?: any) {
             var o: any = document.createElement("option");
             o.value = opt.value;

@@ -390,7 +390,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         timerPanel.appendChild(timeoutControl.field);
         var timerClockControls: any = createScreensaverThenControls("sp-set-clock-mode");
         timerPanel.appendChild(timerClockControls.clockField);
-        if (CFG.features && CFG.features.cameraScreensaver)
+        if (layout.config.features?.cameraScreensaver)
             timerPanel.appendChild(timerClockControls.cameraField);
         timerPanel.appendChild(timerClockControls.dimBrightnessField);
         timerPanel.appendChild(timerClockControls.brightnessField);
@@ -428,7 +428,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         });
         var sensorClockControls: any = createScreensaverThenControls("sp-set-sensor-clock-mode");
         sensorPanel.appendChild(sensorClockControls.clockField);
-        if (CFG.features && CFG.features.cameraScreensaver)
+        if (layout.config.features?.cameraScreensaver)
             sensorPanel.appendChild(sensorClockControls.cameraField);
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
