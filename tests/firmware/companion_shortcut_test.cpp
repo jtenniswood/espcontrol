@@ -26,7 +26,8 @@ int main() {
   assert(companion_encoded_url("url.https%3A%2F%2Fexample.com|INVOKE").empty());
   assert(companion_encoded_url("url." + std::string(129, 'a')).empty());
 
-  companion_set_actions({{"com.apple.Safari", "Safari"}});
+  const std::string folder_action = "folder.00000000-0000-0000-0000-000000000001";
+  companion_set_actions({{"com.apple.Safari", "Safari"}, {folder_action, "Projects"}});
   assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
@@ -59,6 +60,7 @@ int main() {
   assert(volume_invoked);
   assert(companion_url_available("com.apple.Safari", url_config));
   assert(!companion_url_available("com.google.Chrome", url_config));
+  assert(companion_action_available(folder_action));
   bool invoked = false;
   register_companion_url_sender([&invoked](const std::string &app, const std::string &url,
                                            const std::string &request) {

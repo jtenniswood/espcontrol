@@ -379,6 +379,9 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         let entries = store.launchableApps().compactMap { app -> String? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
             return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
+        } + store.folderActions().compactMap { folder -> String? in
+            guard Self.validCatalogueIdentifier(folder.actionIdentifier) else { return nil }
+            return "\(folder.actionIdentifier):\(Self.catalogueLabel(folder.name, fallback: "Folder"))"
         }
         var catalogue = "CATALOG|"
         for entry in entries {

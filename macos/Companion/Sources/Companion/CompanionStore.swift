@@ -12,26 +12,40 @@ struct LaunchableApp: Identifiable, Hashable {
     var id: String { bundleIdentifier }
 }
 
+struct ApprovedFolder: Codable, Identifiable, Hashable {
+    static let actionPrefix = "folder."
+
+    let id: UUID
+    let name: String
+    let path: String
+
+    var actionIdentifier: String { Self.actionPrefix + id.uuidString.lowercased() }
+
+    static func identifier(from actionIdentifier: String) -> UUID? {
+        guard actionIdentifier.hasPrefix(actionPrefix) else { return nil }
+        return UUID(uuidString: String(actionIdentifier.dropFirst(actionPrefix.count)))
+    }
+}
+
 @MainActor
 final class CompanionStore: NSObject, ObservableObject {
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
     @Published private(set) var availableApps: [LaunchableApp] = []
+    @Published private(set) var approvedFolders: [ApprovedFolder]
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    @Published var nowPlayingSharingEnabled: Bool {
-        didSet {
-            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
-            updateNowPlayingProvider()
-        }
-    }
+    private let nowPlayingSharingEnabled = false
     @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
 
-    private enum Keys { static let host = "panelHost" }
+    private enum Keys {
+        static let host = "panelHost"
+        static let approvedFolders = "approvedFolders"
+    }
     private static let preferencesSuite = "io.espcontrol.companion"
     private static let legacyPreferencesSuite = "EspControl Companion"
     private let defaults: UserDefaults
@@ -46,15 +60,14 @@ final class CompanionStore: NSObject, ObservableObject {
         let stableDefaults = UserDefaults(suiteName: Self.preferencesSuite) ?? .standard
         let legacyDefaults = UserDefaults(suiteName: Self.legacyPreferencesSuite)
         defaults = stableDefaults
+        approvedFolders = stableDefaults.data(forKey: Keys.approvedFolders)
+            .flatMap { try? JSONDecoder().decode([ApprovedFolder].self, from: $0) }
+            ?? []
         panelHost = stableDefaults.string(forKey: Keys.host)
             ?? legacyDefaults?.string(forKey: Keys.host)
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
-        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool
-            ?? legacyDefaults?.object(forKey: "nowPlayingSharingEnabled") as? Bool
-            ?? UserDefaults.standard.object(forKey: "nowPlayingSharingEnabled") as? Bool
-            ?? true
         super.init()
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
@@ -148,12 +161,12 @@ final class CompanionStore: NSObject, ObservableObject {
             // application volume and expose only a compatibility link in /Applications.
             URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications"),
         ]
-        let additionalSystemApps = [URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")]
         let keys: Set<URLResourceKey> = [.isDirectoryKey]
         var found: [LaunchableApp] = []
 
         func appendApplication(at url: URL) {
             guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { return }
+            guard id != "com.apple.finder" else { return }
             let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
                 ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
                 ?? url.deletingPathExtension().lastPathComponent
@@ -169,13 +182,47 @@ final class CompanionStore: NSObject, ObservableObject {
             }
         }
         scanApplicationRoots(standardRoots)
-        additionalSystemApps.forEach { appendApplication(at: $0) }
         scanApplicationRoots(cryptexRoots)
         availableApps = Dictionary(grouping: found, by: \.bundleIdentifier).compactMap { $0.value.first }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         if isConnected { connection.publishCatalogue() }
     }
 
     func launchableApps() -> [LaunchableApp] { availableApps }
+    func folderActions() -> [ApprovedFolder] { approvedFolders }
+
+    func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a folder for EspControl cards"
+        panel.prompt = "Add Folder"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let selected = panel.url else { return }
+
+        let url = selected.standardizedFileURL
+        guard !approvedFolders.contains(where: { $0.path == url.path }) else {
+            updateStatus("That folder is already available", connected: isConnected)
+            return
+        }
+        let displayName = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
+        approvedFolders.append(ApprovedFolder(id: UUID(), name: displayName, path: url.path))
+        approvedFolders.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        persistApprovedFolders()
+        if isConnected { connection.publishCatalogue() }
+    }
+
+    func removeFolder(_ folder: ApprovedFolder) {
+        approvedFolders.removeAll { $0.id == folder.id }
+        persistApprovedFolders()
+        if isConnected { connection.publishCatalogue() }
+    }
+
+    private func persistApprovedFolders() {
+        if let data = try? JSONEncoder().encode(approvedFolders) {
+            defaults.set(data, forKey: Keys.approvedFolders)
+        }
+    }
     func connect() { connection.connect(mode: .authenticate) }
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
@@ -255,14 +302,29 @@ final class CompanionStore: NSObject, ObservableObject {
     }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
-        if app.bundleIdentifier == "com.apple.finder" {
-            return NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser)
-        }
         NSWorkspace.shared.openApplication(at: app.url, configuration: .init()) { _, _ in }
         return true
     }
 
+    func openFolder(actionIdentifier: String) -> Bool {
+        guard let identifier = ApprovedFolder.identifier(from: actionIdentifier),
+              let folder = approvedFolders.first(where: { $0.id == identifier }) else {
+            updateStatus("Blocked an unavailable folder", connected: isConnected)
+            return false
+        }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            updateStatus("The selected folder is no longer available", connected: isConnected)
+            return false
+        }
+        return NSWorkspace.shared.open(URL(fileURLWithPath: folder.path, isDirectory: true))
+    }
+
     func perform(actionIdentifier: String) -> Bool {
+        if actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix) {
+            return openFolder(actionIdentifier: actionIdentifier)
+        }
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }

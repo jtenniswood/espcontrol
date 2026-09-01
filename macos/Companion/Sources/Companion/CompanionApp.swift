@@ -311,13 +311,13 @@ private struct CompanionSettings: View {
             }
 
             ScrollView {
-                GroupBox("Mac Now Playing") {
-                    nowPlayingSettings.padding(8)
+                GroupBox("Folders available to cards") {
+                    folderSettings.padding(8)
                 }
                 .padding()
             }
             .tabItem {
-                Label("Now Playing", systemImage: "music.note")
+                Label("Folders", systemImage: "folder")
             }
 
             if store.supportsLaunchAtLogin {
@@ -404,26 +404,45 @@ private struct CompanionSettings: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var nowPlayingSettings: some View {
+    private var folderSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Share Mac Now Playing with the display", isOn: $store.nowPlayingSharingEnabled)
-            Text("Shares the active session shown by macOS Control Centre. This uses a private macOS system interface and may need an EspControl update after a future macOS release.")
+            Text("Choose folders here, then select one for each Open folder card in the device webserver. Folder paths stay on this Mac; the display receives only an anonymous identifier and friendly name.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 12) {
-                if let artwork = store.nowPlayingArtwork {
-                    Image(nsImage: artwork).resizable().scaledToFit().frame(width: 72, height: 72)
-                        .background(Color.black).clipShape(RoundedRectangle(cornerRadius: 8))
-                } else {
-                    Image(systemName: "music.note").frame(width: 72, height: 72)
-                        .background(Color.secondary.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    if !store.nowPlayingTitle.isEmpty { Text(store.nowPlayingTitle).font(.headline) }
-                    if !store.nowPlayingApplication.isEmpty { Text(store.nowPlayingApplication).foregroundStyle(.secondary) }
-                    Text(store.nowPlayingStatus).font(.caption).foregroundStyle(.secondary)
+
+            if store.approvedFolders.isEmpty {
+                Text("No folders have been added.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(store.approvedFolders) { folder in
+                    HStack(spacing: 12) {
+                        Image(systemName: "folder.fill")
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(folder.name).font(.headline)
+                            Text(folder.path)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            store.removeFolder(folder)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Remove folder")
+                    }
+                    Divider()
                 }
             }
+
+            Button("Add Folder…") { store.chooseFolder() }
+                .controlSize(.large)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
