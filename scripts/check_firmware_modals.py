@@ -72,6 +72,17 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
             errors.append(
                 "components/espcontrol/button_grid_sliders.h: keep the cover modal back button above tab and slider controls"
             )
+
+    wifi_qr_path = firmware_dir / "button_grid_wifi_qr.h"
+    if wifi_qr_path.exists():
+        text = wifi_qr_path.read_text(encoding="utf-8")
+        if (
+            "control_modal_calc_layout(modal_width_compensation_percent);" not in text
+            or "ui.tab_row, layout, tabs_layout, modal_width_compensation_percent);" not in text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_wifi_qr.h: apply the active display width compensation to the Wifi modal"
+            )
     return errors
 
 

@@ -30,10 +30,12 @@ export function runPreviewFeatureTests(): void {
     climate: { label: "Climate", allowInSubpage: false },
     climate_control: { label: "Climate controls", pickerKey: "climate", allowInSubpage: false },
     sensor: { label: "Sensor", allowInSubpage: true },
+    wifi_qr: { label: "Wifi Sharing", allowInSubpage: true },
+    wifi_qr_card: { label: "QR Card", pickerKey: "wifi_qr", allowInSubpage: true },
   };
   deepEqual(
     cardTypePickerOptions(definitions, [], false, true, null).map((option) => option.key),
-    ["action", "sensor"],
+    ["action", "sensor", "wifi_qr"],
     "subpage picker filters unsupported and aliased entries",
   );
   const infoOnlyOptions = cardTypePickerOptions(definitions, [], true, false, "action");

@@ -39,6 +39,18 @@ target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
 
+add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
+target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)
+target_compile_options(wifi_qr_codec_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(wifi_qr_codec_test PRIVATE ../../components/espcontrol)
+add_test(NAME wifi_qr_codec_test COMMAND wifi_qr_codec_test)
+
+add_executable(icons_legacy_alias_test icons_legacy_alias_test.cpp)
+target_compile_features(icons_legacy_alias_test PRIVATE cxx_std_17)
+target_compile_options(icons_legacy_alias_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(icons_legacy_alias_test PRIVATE ../../components/espcontrol)
+add_test(NAME icons_legacy_alias_test COMMAND icons_legacy_alias_test)
+
 add_executable(alarm_delay_audio_test alarm_delay_audio_test.cpp)
 target_compile_features(alarm_delay_audio_test PRIVATE cxx_std_17)
 target_compile_options(alarm_delay_audio_test PRIVATE -Wall -Wextra -Werror)
@@ -140,6 +152,20 @@ target_compile_features(panel_config_storage_backend_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_storage_backend_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(panel_config_storage_backend_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_backend_test)
+
+add_executable(panel_config_storage_selection_test
+  panel_config_storage_selection_test.cpp)
+target_compile_features(panel_config_storage_selection_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_storage_selection_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_storage_selection_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_storage_selection_test COMMAND panel_config_storage_selection_test)
+
+add_executable(panel_config_endpoint_policy_test
+  panel_config_endpoint_policy_test.cpp)
+target_compile_features(panel_config_endpoint_policy_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_endpoint_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(panel_config_endpoint_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME panel_config_endpoint_policy_test COMMAND panel_config_endpoint_policy_test)
 
 add_executable(panel_config_legacy_adapter_test
   panel_config_legacy_adapter_test.cpp
