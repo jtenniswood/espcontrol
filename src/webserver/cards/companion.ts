@@ -202,6 +202,11 @@ export function companionCardIsMetric(card: any): boolean {
     return COMPANION_SYSTEM_METRICS.some((metric) => metric.id === card?.entity);
 }
 
+export function companionLabelPlaceholder(card: any): string {
+    const metric = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.id === card?.entity);
+    return metric ? `e.g. ${metric.label}` : "e.g. Safari or Select all";
+}
+
 export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
@@ -306,6 +311,7 @@ export function registerCompanionCardTypes(
         allowInSubpage: function () { return cardContractAllowInSubpage("companion"); },
         pickerKey: function () { return cardContractPickerKey("companion"); },
         hidden: function () { return cardContractHidden("companion"); },
+        hideLabel: true,
         labelPlaceholder: "e.g. Safari or Select all",
         defaultConfig: function () { return cardContractDefaultConfig("companion"); },
         cardMetadata: COMPANION_CARD_METADATA,
@@ -374,11 +380,12 @@ export function registerCompanionCardTypes(
             card.entity = currentEntity;
             const initialMode = companionCardMode(card);
 
+            helpers.renderCardTextField(panel, card, helpers, {
+                label: "Label", idSuffix: "label", field: "label",
+                placeholder: companionLabelPlaceholder(card), rerender: true,
+            });
+
             if (companionCardIsMetric(card)) {
-                helpers.renderCardTextField(panel, card, helpers, {
-                    label: "Label", idSuffix: "label", field: "label",
-                    placeholder: "e.g. Processor", rerender: true,
-                });
                 helpers.renderCardTextField(panel, card, helpers, {
                     label: "Unit", idSuffix: "unit", field: "unit",
                     placeholder: "%", rerender: true,

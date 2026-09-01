@@ -6,6 +6,7 @@ import {
   companionFolderActions,
   companionEntityForMode,
   companionCardIsMetric,
+  companionLabelPlaceholder,
   companionMediaIcon,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
@@ -43,6 +44,10 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!companionCardIsMetric({ entity: "stat.memory" }) ||
       companionCardIsMetric({ entity: "sensor.memory_use" })) {
     throw new Error("Companion statistics must remain separate from Home Assistant sensors");
+  }
+  if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
+      companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
+    throw new Error("Companion cards must use one mode-appropriate label field");
   }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
