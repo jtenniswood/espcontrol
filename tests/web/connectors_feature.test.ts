@@ -58,7 +58,8 @@ export function runConnectorsFeatureTests(): void {
     throw new Error("Connected Home Assistant setup must still request action permission");
   }
   if (cardTypeConnector("companion") !== "mac_companion" ||
-      cardTypeConnector("slider") !== "mixed" ||
+      cardTypeConnector("slider", true) !== "mixed" ||
+      cardTypeConnector("slider", false) !== "home_assistant" ||
       cardTypeConnector("webhook") !== "network" ||
       cardTypeConnector("climate") !== "home_assistant") {
     throw new Error("Card picker connector classifications must remain explicit");

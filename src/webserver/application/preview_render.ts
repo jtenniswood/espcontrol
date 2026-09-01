@@ -78,7 +78,14 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
         return cardTypePickerDetails(key || "", label || "");
     }
     function buttonTypePickerOptionList(this: any, isSub?: any, selectedTypeKey?: any) {
-        return cardTypePickerOptions(dependencies.cards.definitions, dependencies.layout.config.disabledCardTypes || [], !!dependencies.layout.config.infoOnly, !!isSub, selectedTypeKey);
+        return cardTypePickerOptions(
+            dependencies.cards.definitions,
+            dependencies.layout.config.disabledCardTypes || [],
+            !!dependencies.layout.config.infoOnly,
+            !!isSub,
+            selectedTypeKey,
+            !!dependencies.layout.config.features?.companion,
+        );
     }
     function buttonTypePickerKeys(this: any, isSub?: any, selectedTypeKey?: any) {
         return buttonTypePickerOptionList(!!isSub, selectedTypeKey).map(function (this: any, opt?: any) {

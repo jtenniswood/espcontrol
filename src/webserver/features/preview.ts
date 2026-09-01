@@ -92,9 +92,9 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
 
 const LOCAL_CARD_TYPES = new Set(["internal", "local_sensor", "push", "screen_lock", "subpage", "timezone"]);
 
-export function cardTypeConnector(key: string): CardPickerOption["connector"] {
+export function cardTypeConnector(key: string, companionSupported = false): CardPickerOption["connector"] {
   if (key === "companion") return "mac_companion";
-  if (key === "slider") return "mixed";
+  if (key === "slider") return companionSupported ? "mixed" : "home_assistant";
   if (key === "webhook") return "network";
   if (LOCAL_CARD_TYPES.has(key)) return "local";
   return "home_assistant";
@@ -144,6 +144,7 @@ export function cardTypePickerOptions(
   infoOnly: boolean,
   isSub: boolean,
   selectedTypeKey: string | null | undefined,
+  companionSupported = false,
 ): CardPickerOption[] {
   const options: CardPickerOption[] = [];
   let selectedUnsupported: { key: string; label: string } | null = null;
@@ -167,7 +168,7 @@ export function cardTypePickerOptions(
       key: typeKey,
       label,
       disabled: false,
-      connector: cardTypeConnector(typeKey),
+      connector: cardTypeConnector(typeKey, companionSupported),
       ...cardTypePickerDetails(typeKey, label),
     });
   }
@@ -177,7 +178,7 @@ export function cardTypePickerOptions(
       key: selectedUnsupported.key,
       label,
       disabled: true,
-      connector: cardTypeConnector(selectedUnsupported.key),
+      connector: cardTypeConnector(selectedUnsupported.key, companionSupported),
       ...cardTypePickerDetails(selectedUnsupported.key, label),
     });
   }

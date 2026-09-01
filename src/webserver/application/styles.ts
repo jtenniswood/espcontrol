@@ -596,8 +596,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         "@media(max-width:480px){" +
         ":root{--gap:10px}" +
         ".sp-header{padding:0 10px}" +
+        ".sp-brand{display:none}" +
+        ".sp-nav{width:100%;min-width:0;justify-content:center}" +
         ".sp-tab{padding:0 10px;font-size:.75rem}" +
-        ".sp-tab-docs{margin-left:2px;padding-left:16px;gap:4px}" +
+        ".sp-tab-docs{margin-left:2px;padding-left:16px;gap:0;font-size:0}" +
         ".sp-settings-status-header{margin:28px 2px 12px}" +
         ".sp-config>.sp-settings-status-header:first-child{margin-top:12px}" +
         ".card{border-radius:10px;margin-bottom:10px}" +
