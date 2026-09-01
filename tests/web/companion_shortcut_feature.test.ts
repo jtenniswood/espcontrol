@@ -3,6 +3,7 @@ import {
   companionAppLabel,
   companionCardMode,
   companionModeChangeLabel,
+  companionPreviousAppLabel,
   companionShortcutActionId,
   companionUrlConfig,
   companionUrlValue,
@@ -71,6 +72,12 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionModeChangeLabel("Desk close", "window", "window.close", "",
       "shortcut", "shortcut.") !== "Desk close") {
     throw new Error("Leaving Window controls must preserve a custom card label");
+  }
+  const appActions = [{ id: "com.apple.Safari", label: "Safari" }];
+  if (companionPreviousAppLabel(appActions, "app", "com.apple.Safari") !== "Safari"
+      || companionPreviousAppLabel([], "app", "com.apple.Safari") !== null
+      || companionPreviousAppLabel([], "window", "window.close") !== "") {
+    throw new Error("Mode changes must defer when a saved Companion app cannot be identified");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));

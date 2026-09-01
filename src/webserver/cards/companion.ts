@@ -151,6 +151,15 @@ export function companionModeChangeLabel(
         ? nextGeneratedLabel : currentLabel;
 }
 
+export function companionPreviousAppLabel(
+    actions: readonly Pick<CompanionAction, "id" | "label">[],
+    previousMode: string,
+    previousEntity: string,
+): string | null {
+    if ((previousMode !== "app" && previousMode !== "url") || !previousEntity) return "";
+    return actions.find((action) => action.id === previousEntity)?.label ?? null;
+}
+
 const COMPANION_CARD_METADATA = {
     mode: {
         label: "Action",
@@ -254,20 +263,27 @@ export function registerCompanionCardTypes(
                     onChange: async function (this: HTMLSelectElement) {
                         const previousMode = companionCardMode(card);
                         const previousEntity = typeof card.entity === "string" ? card.entity : "";
-                        const currentLabel = typeof card.label === "string" ? card.label : "";
                         const nextMode = this.value;
                         let previousAppLabel = "";
                         if (previousMode === "app" || previousMode === "url") {
                             try {
                                 const actions = await loadCompanionActions();
-                                previousAppLabel = actions.find(function (action) {
-                                    return action.id === previousEntity;
-                                })?.label || "";
+                                const resolvedLabel = companionPreviousAppLabel(
+                                    actions, previousMode, previousEntity,
+                                );
+                                if (resolvedLabel === null) {
+                                    this.value = previousMode;
+                                    return;
+                                }
+                                previousAppLabel = resolvedLabel;
                             } catch {
                                 this.value = previousMode;
                                 return;
                             }
                         }
+                        if (this.value !== nextMode || companionCardMode(card) !== previousMode
+                            || (typeof card.entity === "string" ? card.entity : "") !== previousEntity) return;
+                        const currentLabel = typeof card.label === "string" ? card.label : "";
                         const nextEntity = nextMode === "shortcut" ? COMPANION_SHORTCUT_PREFIX
                             : nextMode === "window" ? (COMPANION_WINDOW_ACTIONS[0]?.id || "window.close") : "";
                         const nextLabel = companionModeChangeLabel(
