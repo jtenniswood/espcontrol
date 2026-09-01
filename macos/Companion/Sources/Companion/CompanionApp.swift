@@ -320,6 +320,15 @@ private struct CompanionSettings: View {
                 Label("Folders", systemImage: "folder")
             }
 
+            ScrollView {
+                GroupBox("Mac system statistics") {
+                    systemMetricsSettings.padding(8)
+                }
+                .padding()
+            }
+            .tabItem {
+                Label("System Stats", systemImage: "gauge.with.dots.needle.67percent")
+            }
             if store.supportsLaunchAtLogin {
                 ScrollView {
                     GroupBox("Startup") {
@@ -447,6 +456,18 @@ private struct CompanionSettings: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var systemMetricsSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("Share Mac system statistics with the display", isOn: $store.systemMetricsSharingEnabled)
+            Text("Shares overall processor, memory and storage usage, plus battery level when available. No application, file or browsing details are collected.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(store.systemMetricsStatus)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
     private var connectionStatusPanel: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {

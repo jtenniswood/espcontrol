@@ -246,3 +246,7 @@ no_speakers=Ni zvočnikov
 grouping_failed=Združevanje ni uspelo
 speakers_updated=Zvočniki posodobljeni
 updating_speakers=Posodabljanje zvočnikov
+processor=Procesor
+memory=Pomnilnik
+storage=Shramba
+battery=Baterija

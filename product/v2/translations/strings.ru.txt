@@ -246,3 +246,7 @@ no_speakers=Нет динамиков
 grouping_failed=Не удалось сгруппировать
 speakers_updated=Динамики обновлены
 updating_speakers=Обновление динамиков
+processor=Процессор
+memory=Память
+storage=Хранилище
+battery=Батарея

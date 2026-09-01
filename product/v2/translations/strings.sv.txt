@@ -246,3 +246,7 @@ no_speakers=Inga högtalare
 grouping_failed=Gruppering misslyckades
 speakers_updated=Högtalare uppdaterade
 updating_speakers=Uppdaterar högtalare
+processor=Processor
+memory=Minne
+storage=Lagring
+battery=Batteri

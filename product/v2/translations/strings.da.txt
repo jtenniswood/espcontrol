@@ -246,3 +246,7 @@ no_speakers=Ingen højttalere
 grouping_failed=Gruppering mislykkedes
 speakers_updated=Højttalere opdateret
 updating_speakers=Opdaterer højttalere
+processor=Processor
+memory=Hukommelse
+storage=Lager
+battery=Batteri

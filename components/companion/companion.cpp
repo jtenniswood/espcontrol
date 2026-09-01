@@ -517,6 +517,29 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       return true;
     }
 
+    if (type == "system_metrics") {
+      CompanionSystemMetricsSnapshot snapshot;
+      snapshot.generation = generation;
+      snapshot.cpu_usage_percent = root["cpuUsagePercent"] | NAN;
+      snapshot.memory_usage_percent = root["memoryUsagePercent"] | NAN;
+      snapshot.storage_usage_percent = root["storageUsagePercent"] | NAN;
+      snapshot.battery_percent = root["batteryPercent"] | NAN;
+      const std::array<float, 3> required{{
+          snapshot.cpu_usage_percent,
+          snapshot.memory_usage_percent,
+          snapshot.storage_usage_percent,
+      }};
+      if (std::any_of(required.begin(), required.end(), [](float value) {
+            return !std::isfinite(value) || value < 0.0f || value > 100.0f;
+          })) return false;
+      if (std::isfinite(snapshot.battery_percent) &&
+          (snapshot.battery_percent < 0.0f || snapshot.battery_percent > 100.0f)) return false;
+      this->defer([snapshot]() mutable {
+        companion_set_system_metrics(std::move(snapshot));
+      });
+      return true;
+    }
+
     if (type == "artwork.begin") {
       const size_t length = root["byteLength"] | 0;
       const std::string sha256 = root["sha256"] | "";

@@ -255,6 +255,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             if let task { startHeartbeat(for: task) }
             publishCatalogue()
             store.republishCurrentNowPlaying()
+            store.republishCurrentSystemMetrics()
         case "CATALOGUE":
             publishCatalogue()
         case "INVOKE":
@@ -333,6 +334,17 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         sendJSON(["type": "artwork.begin", "version": 2, "generation": snapshot.generation,
                   "byteLength": artwork.count, "sha256": artworkHash ?? "",
                   "mimeType": "image/jpeg"])
+    }
+
+    func publishSystemMetrics(_ snapshot: CompanionSystemMetricsSnapshot) {
+        var message: [String: Any] = [
+            "type": "system_metrics", "version": 2, "generation": snapshot.generation,
+            "cpuUsagePercent": snapshot.cpuUsagePercent,
+            "memoryUsagePercent": snapshot.memoryUsagePercent,
+            "storageUsagePercent": snapshot.storageUsagePercent,
+        ]
+        if let battery = snapshot.batteryPercent { message["batteryPercent"] = battery }
+        sendJSON(message)
     }
 
     private func sendNextArtworkChunk() {

@@ -41,6 +41,13 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
+    @Published var systemMetricsSharingEnabled: Bool {
+        didSet {
+            defaults.set(systemMetricsSharingEnabled, forKey: "systemMetricsSharingEnabled")
+            updateSystemMetricsProvider()
+        }
+    }
+    @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
 
     private enum Keys {
         static let host = "panelHost"
@@ -52,7 +59,9 @@ final class CompanionStore: NSObject, ObservableObject {
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
     private let mediaController = SystemMediaController()
+    private let systemMetricsProvider = SystemMetricsProvider()
     private var latestNowPlayingSnapshot: CompanionNowPlayingSnapshot?
+    private var latestSystemMetricsSnapshot: CompanionSystemMetricsSnapshot?
     private var mediaControlTimer: Timer?
     private var lastMediaControlValues: [String: Int] = [:]
 
@@ -68,6 +77,10 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
+        systemMetricsSharingEnabled = stableDefaults.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? legacyDefaults?.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? UserDefaults.standard.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? true
         super.init()
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
@@ -78,6 +91,12 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingArtwork = snapshot.artworkJPEG.flatMap(NSImage.init(data:))
             latestNowPlayingSnapshot = snapshot
             if isConnected { connection.publishNowPlaying(snapshot) }
+        }
+        systemMetricsProvider.onSnapshot = { [weak self] snapshot in
+            guard let self else { return }
+            latestSystemMetricsSnapshot = snapshot
+            systemMetricsStatus = "Sharing processor, memory, storage and battery statistics"
+            if isConnected { connection.publishSystemMetrics(snapshot) }
         }
         if supportsLaunchAtLogin { refreshLaunchAtLoginStatus() }
         refreshApplications()
@@ -266,12 +285,24 @@ final class CompanionStore: NSObject, ObservableObject {
         statusDescription = message
         isConnected = connected
         updateNowPlayingProvider()
+        updateSystemMetricsProvider()
         if connected {
             startMediaControlPublishing()
         } else {
             mediaControlTimer?.invalidate()
             mediaControlTimer = nil
             lastMediaControlValues = [:]
+        }
+    }
+
+    private func updateSystemMetricsProvider() {
+        if isConnected && systemMetricsSharingEnabled {
+            systemMetricsStatus = "Collecting Mac system statistics…"
+            systemMetricsProvider.start()
+        } else {
+            systemMetricsProvider.stop()
+            systemMetricsStatus = systemMetricsSharingEnabled
+                ? "Waiting for a panel connection" : "Mac system statistics sharing is disabled"
         }
     }
 
@@ -299,6 +330,11 @@ final class CompanionStore: NSObject, ObservableObject {
     func republishCurrentNowPlaying() {
         guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
+    }
+    func republishCurrentSystemMetrics() {
+        guard isConnected, systemMetricsSharingEnabled,
+              let snapshot = latestSystemMetricsSnapshot else { return }
+        connection.publishSystemMetrics(snapshot)
     }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }

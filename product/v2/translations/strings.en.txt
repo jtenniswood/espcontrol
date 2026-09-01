@@ -246,3 +246,7 @@ no_speakers=No Speakers
 grouping_failed=Grouping failed
 speakers_updated=Speakers updated
 updating_speakers=Updating speakers
+processor=Processor
+memory=Memory
+storage=Storage
+battery=Battery

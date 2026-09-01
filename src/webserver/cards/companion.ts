@@ -17,7 +17,7 @@ const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
 export const COMPANION_FOLDER_PREFIX = "folder.";
 const COMPANION_FINDER_ID = "com.apple.finder";
-const COMPANION_STATS_MODES = "stats,processor,memory,storage,battery".split(",");
+const COMPANION_STATS_MODES = "stats,processor,memory_usage,storage,battery".split(",");
 export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
     app: "Monitor",
     shortcut: "Shortcut Command",
@@ -29,6 +29,12 @@ export const COMPANION_MEDIA_ACTIONS = [
     { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
     { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
     { id: "media.next", label: "Next Track", icon: "Skip Next" },
+] as const;
+export const COMPANION_SYSTEM_METRICS = [
+    { mode: "processor", id: "stat.cpu", label: "Processor", unit: "%" },
+    { mode: "memory_usage", id: "stat.memory", label: "Memory", unit: "%" },
+    { mode: "storage", id: "stat.storage", label: "Storage", unit: "%" },
+    { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
 ] as const;
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
@@ -163,7 +169,7 @@ export function applyCompanionMediaPresentation(card: any, previousGeneratedLabe
 
 const COMPANION_CARD_METADATA = {
     mode: {
-        label: "Action",
+        label: "Type",
         idSuffix: "companion-mode",
         options: [
             ["app", "Launch app"],
@@ -171,6 +177,10 @@ const COMPANION_CARD_METADATA = {
             ["url", "Open URL"],
             ["folder", "Open folder"],
             ["media", "Media control"],
+            ["processor", "Processor usage"],
+            ["memory_usage", "Memory usage"],
+            ["storage", "Storage usage"],
+            ["battery", "Battery level"],
         ],
         value: companionCardMode,
     },
@@ -180,8 +190,17 @@ const COMPANION_CARD_METADATA = {
         field: "icon",
         fallback: "Monitor",
     },
+    largeNumbers: {
+        label: "Large Sensor Numbers",
+        idSuffix: "large-companion-numbers",
+        supported: companionCardIsMetric,
+    },
     preview: { badge: "monitor" },
 };
+
+export function companionCardIsMetric(card: any): boolean {
+    return COMPANION_SYSTEM_METRICS.some((metric) => metric.id === card?.entity);
+}
 
 export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
@@ -189,7 +208,8 @@ export function companionCardMode(card: any): string {
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
     if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
     if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
-    if (entity.startsWith("stat.")) return "stats";
+    const metric = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.id === entity);
+    if (metric) return metric.mode;
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
 }
@@ -198,7 +218,7 @@ export function companionEntityForMode(mode: string): string {
     if (mode === "shortcut") return COMPANION_SHORTCUT_PREFIX;
     if (mode === "folder") return COMPANION_FOLDER_PREFIX;
     if (mode === "media") return COMPANION_MEDIA_ACTIONS[0].id;
-    return "";
+    return COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === mode)?.id || "";
 }
 
 export function companionApplicationActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
@@ -218,8 +238,32 @@ export function resetCompanionMediaPresentation(card: any, nextMode: string): vo
     if (card.icon === previous.icon) card.icon = "Monitor";
 }
 
+export function resetCompanionMetricPresentation(card: any, nextMode: string): void {
+    if (!card) return;
+    const previous = COMPANION_SYSTEM_METRICS.find((metric) => metric.id === card.entity);
+    if (!previous || previous.mode === nextMode) return;
+    if (card.label === previous.label) card.label = "";
+    card.unit = "";
+    card.precision = "";
+    card.options = "";
+}
+
 export function normalizeCompanionCard(card: any): void {
     if (!card) return;
+    const metric = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.id === card.entity);
+    if (metric) {
+        card.type = "companion";
+        card.sensor = "";
+        card.unit = card.unit || metric.unit;
+        card.precision = card.precision === "0" || card.precision === "2" ? card.precision : "1";
+        card.options = String(card.options || "").split(",").filter((option) =>
+            option === "large_numbers" || option === "large_numbers=off").join(",");
+        card.icon_on = "Auto";
+        if (!card.icon || card.icon === "Auto" || card.icon === "Monitor") {
+            card.icon = companionSubtypeDefaultIcon(metric.mode, card.entity);
+        }
+        return;
+    }
     const urlConfig = typeof card.sensor === "string" && card.sensor.startsWith(COMPANION_URL_PREFIX)
         ? card.sensor : "";
     card.type = "companion";
@@ -254,7 +298,7 @@ export function registerCompanionCardTypes(
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
 ): void {
-    const { cardBadgePreview, fieldLabel } = fields;
+    const { cardBadgePreview, cardBadgeLabelHtml, cardSensorPreviewHtml, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
 
     registry.register("companion", {
@@ -298,10 +342,17 @@ export function registerCompanionCardTypes(
                             if (card.label === previousGeneratedLabel) card.label = "";
                         }
                         resetCompanionMediaPresentation(card, this.value);
+                        resetCompanionMetricPresentation(card, this.value);
+                        const selectedMetric = COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
                         card.entity = companionEntityForMode(this.value);
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
+                        } else if (selectedMetric) {
+                            card.label = "";
+                            card.unit = selectedMetric.unit;
+                            card.precision = "1";
+                            card.options = "";
                         }
                         card.icon = companionSubtypeIcon(
                             card.icon, previousMode, this.value, previousEntity, card.entity);
@@ -309,6 +360,9 @@ export function registerCompanionCardTypes(
                         if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
+                        helpers.saveField("unit", card.unit);
+                        helpers.saveField("precision", card.precision);
+                        helpers.saveField("options", card.options);
                         renderButtonSettings();
                     },
                 },
@@ -319,6 +373,25 @@ export function registerCompanionCardTypes(
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
             card.entity = currentEntity;
             const initialMode = companionCardMode(card);
+
+            if (companionCardIsMetric(card)) {
+                helpers.renderCardTextField(panel, card, helpers, {
+                    label: "Label", idSuffix: "label", field: "label",
+                    placeholder: "e.g. Processor", rerender: true,
+                });
+                helpers.renderCardTextField(panel, card, helpers, {
+                    label: "Unit", idSuffix: "unit", field: "unit",
+                    placeholder: "%", rerender: true,
+                });
+                const precision = helpers.precisionField(
+                    helpers.idPrefix + "precision", card.precision || "1", function (this: HTMLSelectElement) {
+                        card.precision = this.value;
+                        helpers.saveField("precision", card.precision);
+                    });
+                panel?.appendChild(precision.field);
+                helpers.renderCardLargeNumbersToggle(panel, card, helpers, COMPANION_CARD_METADATA);
+                return;
+            }
 
             const appField = document.createElement("div");
             appField.className = "sp-field";
@@ -574,6 +647,13 @@ export function registerCompanionCardTypes(
         },
         renderPreview: function (card?: any, helpers?: any) {
             const mode = companionCardMode(card);
+            if (companionCardIsMetric(card)) {
+                const metric = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.id === card.entity);
+                return {
+                    iconHtml: cardSensorPreviewHtml(card, helpers, "42.0", card.unit || metric?.unit || "%"),
+                    labelHtml: cardBadgeLabelHtml(helpers, card.label || metric?.label || "Mac"),
+                };
+            }
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }

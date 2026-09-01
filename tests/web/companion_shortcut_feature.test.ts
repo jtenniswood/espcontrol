@@ -5,6 +5,7 @@ import {
   companionCardMode,
   companionFolderActions,
   companionEntityForMode,
+  companionCardIsMetric,
   companionMediaIcon,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
@@ -14,6 +15,7 @@ import {
   formatCompanionShortcutActionId,
   normalizeCompanionCard,
   resetCompanionMediaPresentation,
+  resetCompanionMetricPresentation,
 } from "../../src/webserver/cards/companion";
 import {
   COMPANION_INPUT_VOLUME_ID,
@@ -35,6 +37,13 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "processor") {
+    throw new Error("Processor statistics must retain their Companion subtype");
+  }
+  if (!companionCardIsMetric({ entity: "stat.memory" }) ||
+      companionCardIsMetric({ entity: "sensor.memory_use" })) {
+    throw new Error("Companion statistics must remain separate from Home Assistant sensors");
+  }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
   }
@@ -126,6 +135,20 @@ export function runCompanionShortcutFeatureTests(): void {
   resetCompanionMediaPresentation(customMediaCard, "shortcut");
   if (customMediaCard.label !== "Skip" || customMediaCard.icon !== "Music") {
     throw new Error("Leaving Media Control must preserve custom presentation fields");
+  }
+  const metricCard = {
+    entity: "stat.cpu", label: "Processor", icon: "Monitor", sensor: "ignored",
+    unit: "", precision: "", options: "large_numbers,active_color", icon_on: "Auto",
+  };
+  normalizeCompanionCard(metricCard);
+  if (metricCard.sensor !== "" || metricCard.unit !== "%" || metricCard.precision !== "1" ||
+      metricCard.options !== "large_numbers") {
+    throw new Error("Companion statistics must normalize their own sensor-style fields");
+  }
+  resetCompanionMetricPresentation(metricCard, "app");
+  if (metricCard.label !== "" || String(metricCard.unit) !== "" || String(metricCard.precision) !== "" ||
+      String(metricCard.options) !== "") {
+    throw new Error("Leaving a generated statistic card must clear its generated presentation");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));

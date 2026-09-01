@@ -246,3 +246,7 @@ no_speakers=Aucune enceinte
 grouping_failed=Échec du regroupement
 speakers_updated=Enceintes mises à jour
 updating_speakers=Mise à jour des enceintes
+processor=Processeur
+memory=Mémoire
+storage=Stockage
+battery=Batterie
