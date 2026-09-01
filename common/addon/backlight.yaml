@@ -387,6 +387,10 @@ script:
                       }
             - script.execute: clock_bar_apply
             - script.execute: backlight_apply_brightness
+      - lambda: |-
+          #if defined(CONFIG_IDF_TARGET_ESP32S3)
+          image_card_resume_pipeline();
+          #endif
 
   - id: display_mode_effect_setup_dimmed
     mode: restart

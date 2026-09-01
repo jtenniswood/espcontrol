@@ -50,6 +50,21 @@ artwork_image:
                 ESP_LOGI("camera_screensaver", "Applying camera image=%dx%d content=%dx%d offset=%d,%d",
                          img->get_width(), img->get_height(), img->get_content_width(), img->get_content_height(),
                          img->get_content_offset_x(), img->get_content_offset_y());
+                #if defined(CONFIG_IDF_TARGET_ESP32S3)
+                lv_obj_set_pos(id(camera_screensaver_image), 0, 0);
+                #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+                lv_obj_set_size(id(camera_screensaver_image), lv_pct(100), lv_pct(100));
+                lv_image_set_inner_align(
+                    id(camera_screensaver_image),
+                    id(screensaver_camera_image_mode).current_option() == "Fill"
+                        ? LV_IMAGE_ALIGN_COVER
+                        : LV_IMAGE_ALIGN_CONTAIN);
+                #else
+                lv_img_set_pivot(id(camera_screensaver_image), 0, 0);
+                lv_img_set_zoom(id(camera_screensaver_image), 384);
+                lv_obj_set_size(id(camera_screensaver_image), 320, 320);
+                #endif
+                #endif
                 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
                 ::lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));
                 #else
@@ -148,6 +163,15 @@ script:
                      id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);
           then:
             - lambda: |-
+                #if defined(CONFIG_IDF_TARGET_ESP32S3)
+                constexpr int camera_decode_width = 320;
+                constexpr int camera_decode_height = 320;
+                id(camera_screensaver_downloaded_image)->set_target_size(
+                    camera_decode_width, camera_decode_height);
+                #else
+                constexpr int camera_decode_width = ${screen_width};
+                constexpr int camera_decode_height = ${screen_height};
+                #endif
                 id(camera_screensaver_downloaded_image)->set_resize_mode(
                     id(screensaver_camera_image_mode).current_option() == "Fill"
                         ? esphome::artwork_image::ImageResizeMode::COVER
@@ -202,7 +226,7 @@ script:
                   const std::string path = image_card_proxy_path_with_token(
                     image_card_entity_proxy_path(entity), id(camera_screensaver_access_token));
                   std::string url = image_card_join_url(id(cover_art_home_assistant_base_url), path);
-                  url = image_card_sized_url(url, ${screen_width}, ${screen_height});
+                  url = image_card_sized_url(url, camera_decode_width, camera_decode_height);
                   url = image_card_append_query_param(url, "time", static_cast<int>(millis()));
                   id(camera_screensaver_request_pending) = false;
                   if (!url.empty()) id(camera_screensaver_downloaded_image)->request_update_url(url);
@@ -264,6 +288,10 @@ script:
       - script.execute: hide_clock_view
       - script.execute: clock_bar_apply
       - lvgl.widget.hide: dim_screensaver_touch_guard
+      - lambda: |-
+          #if defined(CONFIG_IDF_TARGET_ESP32S3)
+          image_card_suspend_pipeline();
+          #endif
       - globals.set:
           id: camera_screensaver_transition_generation
           value: !lambda 'return static_cast<uint32_t>(generation);'
@@ -281,4 +309,18 @@ script:
       - script.stop: camera_screensaver_request_image
       - script.stop: camera_screensaver_retry
       - globals.set: { id: camera_screensaver_transition_generation, value: '0' }
+      - lambda: |-
+          #if defined(CONFIG_IDF_TARGET_ESP32S3)
+          #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+          ::lv_image_set_src(id(camera_screensaver_image),
+                             static_cast<const void *>(nullptr));
+          #else
+          lv_img_set_src(id(camera_screensaver_image), nullptr);
+          #endif
+          id(camera_screensaver_downloaded_image)->cancel_update();
+          id(camera_screensaver_downloaded_image)->release();
+          id(camera_screensaver_image_available) = false;
+          lv_obj_add_flag(id(camera_screensaver_image), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_clear_flag(id(camera_screensaver_unavailable), LV_OBJ_FLAG_HIDDEN);
+          #endif
       - lvgl.widget.hide: camera_screensaver
