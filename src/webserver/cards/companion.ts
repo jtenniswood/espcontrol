@@ -13,8 +13,36 @@ interface CompanionAction {
     readonly label: string;
 }
 
+interface CompanionWindowAction {
+    readonly id: string;
+    readonly label: string;
+    readonly group: string;
+}
+
 const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
+const COMPANION_WINDOW_PREFIX = "window.";
+export const COMPANION_WINDOW_ACTIONS: readonly CompanionWindowAction[] = [
+    { id: "window.close", label: "Close", group: "Window" },
+    { id: "window.minimize", label: "Minimise", group: "Window" },
+    { id: "window.hide", label: "Hide App", group: "Window" },
+    { id: "window.fullscreen", label: "Full Screen", group: "Window" },
+    { id: "window.fill", label: "Fill Desktop", group: "Move & Resize" },
+    { id: "window.center", label: "Centre", group: "Move & Resize" },
+    { id: "window.left", label: "Left", group: "Move & Resize" },
+    { id: "window.right", label: "Right", group: "Move & Resize" },
+    { id: "window.top", label: "Top", group: "Move & Resize" },
+    { id: "window.bottom", label: "Bottom", group: "Move & Resize" },
+    { id: "window.restore", label: "Return to Previous Size", group: "Move & Resize" },
+    { id: "window.arrange.left-right", label: "Left & Right", group: "Arrange Windows" },
+    { id: "window.arrange.right-left", label: "Right & Left", group: "Arrange Windows" },
+    { id: "window.arrange.top-bottom", label: "Top & Bottom", group: "Arrange Windows" },
+    { id: "window.arrange.bottom-top", label: "Bottom & Top", group: "Arrange Windows" },
+    { id: "window.arrange.left-quarters", label: "Left & Quarters", group: "Arrange Windows" },
+    { id: "window.arrange.right-quarters", label: "Right & Quarters", group: "Arrange Windows" },
+    { id: "window.arrange.top-quarters", label: "Top & Quarters", group: "Arrange Windows" },
+    { id: "window.arrange.bottom-quarters", label: "Bottom & Quarters", group: "Arrange Windows" },
+];
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
     Space: "space", Enter: "enter", Tab: "tab", Escape: "escape",
@@ -102,6 +130,10 @@ export function companionAppLabel(
     return !trimmedLabel || trimmedLabel === previousAppLabel ? selectedAppLabel : currentLabel;
 }
 
+export function companionWindowActionLabel(actionId: string): string {
+    return COMPANION_WINDOW_ACTIONS.find((action) => action.id === actionId)?.label || "";
+}
+
 const COMPANION_CARD_METADATA = {
     mode: {
         label: "Action",
@@ -110,6 +142,7 @@ const COMPANION_CARD_METADATA = {
             ["app", "Launch app"],
             ["shortcut", "Keyboard shortcut"],
             ["url", "Open URL"],
+            ["window", "Window controls"],
         ],
         value: companionCardMode,
     },
@@ -122,17 +155,19 @@ const COMPANION_CARD_METADATA = {
     preview: { badge: "monitor" },
 };
 
-function companionCardMode(card: any): string {
+export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
+    if (entity.startsWith(COMPANION_WINDOW_PREFIX)) return "window";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
 }
 
 export function normalizeCompanionCard(card: any): void {
     if (!card) return;
-    const urlConfig = typeof card.sensor === "string" && card.sensor.startsWith(COMPANION_URL_PREFIX)
+    const windowAction = typeof card.entity === "string" && card.entity.startsWith(COMPANION_WINDOW_PREFIX);
+    const urlConfig = !windowAction && typeof card.sensor === "string" && card.sensor.startsWith(COMPANION_URL_PREFIX)
         ? card.sensor : "";
     card.type = "companion";
     card.sensor = urlConfig;
@@ -183,7 +218,8 @@ export function registerCompanionCardTypes(
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
                     onChange: function (this: HTMLSelectElement) {
-                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX : "";
+                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
+                            : this.value === "window" ? (COMPANION_WINDOW_ACTIONS[0]?.id || "window.close") : "";
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
@@ -231,6 +267,34 @@ export function registerCompanionCardTypes(
             shortcutField.appendChild(shortcutNote);
             panel?.appendChild(shortcutField);
 
+            const windowField = document.createElement("div");
+            windowField.className = "sp-field";
+            windowField.appendChild(fieldLabel("Window action", helpers.idPrefix + "companion-window-action"));
+            const windowSelect = document.createElement("select");
+            windowSelect.className = "sp-select";
+            windowSelect.id = helpers.idPrefix + "companion-window-action";
+            const groups = new Map<string, HTMLOptGroupElement>();
+            COMPANION_WINDOW_ACTIONS.forEach(function (action) {
+                let group = groups.get(action.group);
+                if (!group) {
+                    group = document.createElement("optgroup");
+                    group.label = action.group;
+                    groups.set(action.group, group);
+                    windowSelect.appendChild(group);
+                }
+                const option = document.createElement("option");
+                option.value = action.id;
+                option.textContent = action.label;
+                option.selected = action.id === card.entity;
+                group.appendChild(option);
+            });
+            windowField.appendChild(windowSelect);
+            const windowNote = document.createElement("div");
+            windowNote.className = "sp-field-info-text sp-visible";
+            windowNote.textContent = "Controls the active Mac window. Tiling actions require macOS 15 or later.";
+            windowField.appendChild(windowNote);
+            panel?.appendChild(windowField);
+
             const urlField = document.createElement("div");
             urlField.className = "sp-field";
             urlField.appendChild(fieldLabel("URL", helpers.idPrefix + "companion-url"));
@@ -260,6 +324,7 @@ export function registerCompanionCardTypes(
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
+                windowField.style.display = mode === "window" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
             }
             syncMode(initialMode);
@@ -277,6 +342,21 @@ export function registerCompanionCardTypes(
                 card.entity = actionId;
                 shortcutInput.value = formatCompanionShortcutActionId(actionId);
                 helpers.saveField("entity", card.entity);
+            });
+
+            windowSelect.addEventListener("change", function () {
+                const currentLabel = typeof card.label === "string" ? card.label : "";
+                const previousLabel = companionWindowActionLabel(card.entity);
+                const nextLabel = companionWindowActionLabel(windowSelect.value);
+                card.entity = windowSelect.value;
+                helpers.saveField("entity", card.entity);
+                const updatedLabel = companionAppLabel(currentLabel, previousLabel, nextLabel);
+                if (updatedLabel !== currentLabel) {
+                    card.label = updatedLabel;
+                    const labelInput = document.getElementById(helpers.idPrefix + "label") as HTMLInputElement | null;
+                    if (labelInput) labelInput.value = updatedLabel;
+                    helpers.saveField("label", updatedLabel);
+                }
             });
 
             function saveUrl(): void {
@@ -343,10 +423,11 @@ export function registerCompanionCardTypes(
         },
         renderPreview: function (card?: any, helpers?: any) {
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
+            const windowLabel = companionWindowActionLabel(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
             return cardBadgePreview(card, helpers, {
-                label: card.label || shortcutLabel || urlLabel || card.entity || "Mac App",
+                label: card.label || windowLabel || shortcutLabel || urlLabel || card.entity || "Mac App",
                 iconFallback: "Monitor",
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });

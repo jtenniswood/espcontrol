@@ -264,11 +264,17 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func perform(actionIdentifier: String) -> Bool {
-        guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
+        let keyboardAction = actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix)
+            || actionIdentifier.hasPrefix(CompanionKeyboardShortcut.windowActionPrefix)
+        guard keyboardAction else {
             return launch(bundleIdentifier: actionIdentifier)
         }
         guard let shortcut = CompanionKeyboardShortcut(actionIdentifier: actionIdentifier) else {
             updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)
+            return false
+        }
+        guard shortcut.isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else {
+            updateStatus("Window tiling requires macOS 15 or later", connected: isConnected)
             return false
         }
         guard shortcut.replay() else {

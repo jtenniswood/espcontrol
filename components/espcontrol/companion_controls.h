@@ -265,11 +265,56 @@ inline std::string companion_shortcut_label(const std::string &action_id) {
   return label + key;
 }
 
+struct CompanionWindowActionDefinition {
+  const char *id;
+  const char *label;
+};
+
+inline const std::vector<CompanionWindowActionDefinition> &companion_window_actions() {
+  static const std::vector<CompanionWindowActionDefinition> actions{
+    {"window.close", "Close"},
+    {"window.minimize", "Minimise"},
+    {"window.hide", "Hide App"},
+    {"window.fullscreen", "Full Screen"},
+    {"window.fill", "Fill Desktop"},
+    {"window.center", "Centre"},
+    {"window.left", "Left"},
+    {"window.right", "Right"},
+    {"window.top", "Top"},
+    {"window.bottom", "Bottom"},
+    {"window.restore", "Return to Previous Size"},
+    {"window.arrange.left-right", "Left & Right"},
+    {"window.arrange.right-left", "Right & Left"},
+    {"window.arrange.top-bottom", "Top & Bottom"},
+    {"window.arrange.bottom-top", "Bottom & Top"},
+    {"window.arrange.left-quarters", "Left & Quarters"},
+    {"window.arrange.right-quarters", "Right & Quarters"},
+    {"window.arrange.top-quarters", "Top & Quarters"},
+    {"window.arrange.bottom-quarters", "Bottom & Quarters"},
+  };
+  return actions;
+}
+
+inline bool companion_window_action_valid(const std::string &action_id) {
+  const auto &actions = companion_window_actions();
+  return std::any_of(actions.begin(), actions.end(), [&action_id](const auto &action) {
+    return action_id == action.id;
+  });
+}
+
+inline std::string companion_window_action_label(const std::string &action_id) {
+  const auto &actions = companion_window_actions();
+  const auto action = std::find_if(actions.begin(), actions.end(), [&action_id](const auto &candidate) {
+    return action_id == candidate.id;
+  });
+  return action == actions.end() ? "" : action->label;
+}
+
 inline bool companion_action_available(const std::string &action_id) {
   if (action_id.empty()) return false;
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
-  if (companion_shortcut_action_valid(action_id)) return true;
+  if (companion_shortcut_action_valid(action_id) || companion_window_action_valid(action_id)) return true;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;
   });

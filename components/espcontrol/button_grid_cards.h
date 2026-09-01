@@ -153,9 +153,11 @@ inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
 
 inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
   const std::string shortcut_label = companion_shortcut_label(p.entity);
+  const std::string window_label = companion_window_action_label(p.entity);
   const bool url_card = !companion_encoded_url(p.sensor).empty();
   std::string label = p.label.empty()
-    ? (!shortcut_label.empty() ? shortcut_label : (url_card ? "Open URL" : (p.entity.empty() ? "Mac App" : p.entity)))
+    ? (!window_label.empty() ? window_label
+      : (!shortcut_label.empty() ? shortcut_label : (url_card ? "Open URL" : (p.entity.empty() ? "Mac App" : p.entity))))
     : p.label;
   lv_label_set_text(s.text_lbl, label.c_str());
   const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
