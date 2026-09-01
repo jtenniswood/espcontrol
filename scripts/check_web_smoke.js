@@ -394,6 +394,26 @@ const encoded = hooks.serializeButtonConfig(button);
 assert.strictEqual(encoded, "light.kitchen;Kitchen;Auto;Lightbulb");
 assert.deepStrictEqual(plain(hooks.parseButtonConfig(encoded)), button);
 
+const safariShortcutFolderButton = {
+  entity: "com.apple.Safari",
+  label: "Safari",
+  icon: "Monitor",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "companion",
+  precision: "",
+  options: "app_shortcuts",
+};
+const safariShortcutFolderRoundTrip = hooks.parseButtonConfig(
+  hooks.serializeButtonConfig(safariShortcutFolderButton)
+);
+assert.strictEqual(
+  safariShortcutFolderRoundTrip.options,
+  "app_shortcuts",
+  "Safari shortcut-folder options must survive button serialization"
+);
+
 const confirmationButton = {
   entity: "switch.printer",
   label: "3D Printer",
