@@ -31,6 +31,10 @@ int main() {
   assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
+  companion_set_focused_application("com.apple.Safari");
+  assert(companion_application_focused("com.apple.Safari"));
+  assert(!companion_application_focused("com.google.Chrome"));
+  assert(!companion_application_focused(folder_action));
   assert(companion_media_action_valid("media.play_pause"));
   assert(companion_media_action_valid("media.previous"));
   assert(companion_media_action_valid("media.next"));
@@ -70,6 +74,7 @@ int main() {
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
   companion_set_connected(false);
+  assert(!companion_application_focused("com.apple.Safari"));
   companion_set_connected(true);
   assert(!companion_action_available("media.play_pause"));
   assert(!companion_value("media.output_volume", output_volume));

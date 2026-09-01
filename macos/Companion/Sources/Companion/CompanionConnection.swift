@@ -390,6 +390,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             catalogue += separator + entry
         }
         send(catalogue)
+        publishFocusedApplication()
+    }
+
+    func publishFocusedApplication() {
+        let identifier = store.focusedLaunchableApplicationIdentifier()
+        guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
+        send("FOCUS|\(identifier)")
     }
 
     func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {

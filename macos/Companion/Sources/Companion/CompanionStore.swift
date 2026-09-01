@@ -69,6 +69,12 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
         super.init()
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(frontmostApplicationDidChange(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
         nowPlayingProvider.onSnapshot = { [weak self] snapshot in
@@ -189,6 +195,15 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func launchableApps() -> [LaunchableApp] { availableApps }
     func folderActions() -> [ApprovedFolder] { approvedFolders }
+    func focusedLaunchableApplicationIdentifier() -> String {
+        guard let identifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+              availableApps.contains(where: { $0.bundleIdentifier == identifier }) else { return "" }
+        return identifier
+    }
+
+    @objc private func frontmostApplicationDidChange(_: Notification) {
+        if isConnected { connection.publishFocusedApplication() }
+    }
 
     func chooseFolder() {
         let panel = NSOpenPanel()
