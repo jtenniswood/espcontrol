@@ -2433,9 +2433,15 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
     if (
         "action: refresh_camera_cards" not in p4_text
         or "refresh_visible_camera_cards();" not in p4_text
+        or "display.current_mode_is(espcontrol::DisplayMode::ACTIVE)" not in p4_text
+        or "display.current_mode_is(espcontrol::DisplayMode::DIMMED)" not in p4_text
+        or "display.target_mode_is(espcontrol::DisplayMode::ACTIVE)" not in p4_text
+        or "display.target_mode_is(espcontrol::DisplayMode::DIMMED)" not in p4_text
+        or "if (!page_visible) return;" not in p4_text
     ):
         errors.append(
-            "common/device/image_cards_6.yaml: expose the camera refresh action on P4 profiles"
+            "common/device/image_cards_6.yaml: expose the camera refresh action on P4 profiles "
+            "and keep it disabled behind full-screen display modes"
         )
     if "refresh_camera_cards" in s3_text or "refresh_visible_camera_cards" in s3_text:
         errors.append(
