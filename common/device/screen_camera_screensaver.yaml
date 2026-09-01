@@ -170,6 +170,7 @@ script:
                     }),
                     HA_SUBSCRIPTION_SCOPE_DEFAULT,
                     true);
+                  ha_reannounce_state_subscriptions();
                 }
                 if (image_card_valid_access_token(id(camera_screensaver_access_token))) {
                   const std::string path = image_card_proxy_path_with_token(
