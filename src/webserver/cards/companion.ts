@@ -197,6 +197,15 @@ export function applyCompanionMediaPresentation(card: any, previousGeneratedLabe
     card.icon = companionMediaIcon(currentIcon, "Monitor", selected.icon);
 }
 
+export function companionPreviousAppLabel(
+    actions: readonly Pick<CompanionAction, "id" | "label">[],
+    previousMode: string,
+    previousEntity: string,
+): string | null {
+    if ((previousMode !== "app" && previousMode !== "url") || !previousEntity) return "";
+    return actions.find((action) => action.id === previousEntity)?.label ?? null;
+}
+
 const COMPANION_CARD_METADATA = {
     mode: {
         label: "Type",
