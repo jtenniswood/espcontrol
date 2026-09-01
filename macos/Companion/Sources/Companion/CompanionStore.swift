@@ -101,7 +101,7 @@ final class CompanionStore: NSObject, ObservableObject {
         systemMetricsProvider.onSnapshot = { [weak self] snapshot in
             guard let self else { return }
             latestSystemMetricsSnapshot = snapshot
-            systemMetricsStatus = "Sharing processor, memory, storage and battery statistics"
+            systemMetricsStatus = "Sharing processor, memory, storage, network and battery statistics"
             if isConnected { connection.publishSystemMetrics(snapshot) }
         }
         if supportsLaunchAtLogin { refreshLaunchAtLoginStatus() }

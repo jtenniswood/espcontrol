@@ -7,6 +7,7 @@ import {
   companionEntityForMode,
   companionCardIsMetric,
   companionLabelPlaceholder,
+  companionMetricDisplayMode,
   companionMetricPreviewValue,
   companionMediaIcon,
   companionShortcutActionId,
@@ -43,8 +44,15 @@ export function runCompanionShortcutFeatureTests(): void {
     throw new Error("Processor statistics must retain their Companion subtype");
   }
   if (!companionCardIsMetric({ entity: "stat.memory" }) ||
+      !companionCardIsMetric({ entity: "stat.memory_free" }) ||
+      !companionCardIsMetric({ entity: "stat.memory_pressure" }) ||
       companionCardIsMetric({ entity: "sensor.memory_use" })) {
     throw new Error("Companion statistics must remain separate from Home Assistant sensors");
+  }
+  if (companionMetricDisplayMode({ entity: "stat.memory" }) !== "used" ||
+      companionMetricDisplayMode({ entity: "stat.memory_free" }) !== "free" ||
+      companionMetricDisplayMode({ entity: "stat.storage_free" }) !== "free") {
+    throw new Error("Memory and storage statistics must retain their Used or Free display choice");
   }
   if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
@@ -67,6 +75,18 @@ export function runCompanionShortcutFeatureTests(): void {
   if (customMetricCard.label !== "Mac RAM" || customMetricCard.precision !== "1") {
     throw new Error("Companion statistics must preserve custom labels and precision");
   }
+  const pressureCard: any = {
+    entity: "stat.memory_pressure", label: "", icon: "Auto", precision: "2", unit: "%",
+  };
+  normalizeCompanionCard(pressureCard);
+  if (pressureCard.label !== "Memory Pressure" || pressureCard.precision !== "" || pressureCard.unit !== "") {
+    throw new Error("Memory pressure must use its text state without numeric precision");
+  }
+  const networkCard: any = { entity: "stat.network_throughput", label: "", icon: "Auto" };
+  normalizeCompanionCard(networkCard);
+  if (networkCard.label !== "Network Throughput" || networkCard.unit !== "KB/s") {
+    throw new Error("Network throughput must use its rate label and unit");
+  }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
   }
@@ -79,7 +99,9 @@ export function runCompanionShortcutFeatureTests(): void {
     throw new Error("Open folder must retain its subtype while waiting for a folder selection");
   }
   if (companionEntityForMode("processor") !== "stat.cpu" ||
-      companionEntityForMode("memory_usage") !== "stat.memory") {
+      companionEntityForMode("memory_usage") !== "stat.memory" ||
+      companionEntityForMode("memory_pressure") !== "stat.memory_pressure" ||
+      companionEntityForMode("network_throughput") !== "stat.network_throughput") {
     throw new Error("System statistic subtypes must select their Companion metric entities");
   }
   if (companionSubtypeDefaultIcon("url") !== "Web" ||

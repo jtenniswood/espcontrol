@@ -160,7 +160,8 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
     lv_label_set_display_text(s.sensor_lbl, "--");
-    const std::string unit = trim_display_unit(p.unit.empty() ? "%" : p.unit);
+    const std::string unit = trim_display_unit(
+      p.unit.empty() ? companion_metric_default_unit(p.entity) : p.unit);
     lv_label_set_display_text(s.unit_lbl, "");
     companion_track_metric_card(s.btn, s.sensor_lbl, s.unit_lbl, p.entity, unit,
                                 parse_precision(p.precision));

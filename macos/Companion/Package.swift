@@ -16,7 +16,10 @@ let package = Package(
             name: "Companion",
             dependencies: ["MediaRemoteShim"],
             path: "Sources/Companion",
-            linkerSettings: [.linkedFramework("IOKit")]
+            linkerSettings: [
+                .linkedFramework("IOKit"),
+                .linkedFramework("SystemConfiguration"),
+            ]
         ),
         .testTarget(
             name: "CompanionTests",

@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import IOKit.ps
+import SystemConfiguration
 
 struct CompanionSystemMetricsSnapshot: Equatable {
     let generation: UInt32
@@ -8,6 +9,8 @@ struct CompanionSystemMetricsSnapshot: Equatable {
     let memoryUsagePercent: Double
     let storageUsagePercent: Double
     let batteryPercent: Double?
+    let memoryPressure: String
+    let networkThroughputKBps: Double?
 }
 
 @MainActor
@@ -17,10 +20,21 @@ final class SystemMetricsProvider {
     private var timer: Timer?
     private var generation: UInt32 = 0
     private var previousCPUTicks: (active: UInt64, total: UInt64)?
+    private var previousNetworkCounters: NetworkCounters?
+    private var memoryPressureSource: DispatchSourceMemoryPressure?
+    private var memoryPressure = "normal"
     private(set) var lastSnapshot: CompanionSystemMetricsSnapshot?
+
+    private struct NetworkCounters {
+        let interfaceName: String
+        let receivedBytes: UInt32
+        let sentBytes: UInt32
+        let timestamp: TimeInterval
+    }
 
     func start() {
         stop()
+        startMemoryPressureMonitoring()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -30,7 +44,11 @@ final class SystemMetricsProvider {
     func stop() {
         timer?.invalidate()
         timer = nil
+        memoryPressureSource?.cancel()
+        memoryPressureSource = nil
+        memoryPressure = "normal"
         previousCPUTicks = nil
+        previousNetworkCounters = nil
     }
 
     func refresh() {
@@ -44,10 +62,78 @@ final class SystemMetricsProvider {
             cpuUsagePercent: cpu,
             memoryUsagePercent: memory,
             storageUsagePercent: storage,
-            batteryPercent: Self.batteryPercent()
+            batteryPercent: Self.batteryPercent(),
+            memoryPressure: memoryPressure,
+            networkThroughputKBps: sampleNetworkThroughputKBps()
         )
         lastSnapshot = snapshot
         onSnapshot?(snapshot)
+    }
+
+    private func startMemoryPressureMonitoring() {
+        let source = DispatchSource.makeMemoryPressureSource(eventMask: .all, queue: .main)
+        source.setEventHandler { [weak self] in
+            Task { @MainActor in self?.updateMemoryPressure() }
+        }
+        memoryPressureSource = source
+        source.activate()
+    }
+
+    private func updateMemoryPressure() {
+        guard let event = memoryPressureSource?.data else { return }
+        if event.contains(.critical) {
+            memoryPressure = "critical"
+        } else if event.contains(.warning) {
+            memoryPressure = "warning"
+        } else if event.contains(.normal) {
+            memoryPressure = "normal"
+        }
+        refresh()
+    }
+
+    private func sampleNetworkThroughputKBps() -> Double? {
+        guard let current = Self.primaryNetworkCounters() else {
+            previousNetworkCounters = nil
+            return nil
+        }
+        defer { previousNetworkCounters = current }
+        guard let previous = previousNetworkCounters,
+              previous.interfaceName == current.interfaceName,
+              current.timestamp > previous.timestamp else { return 0 }
+        let received = UInt64(current.receivedBytes &- previous.receivedBytes)
+        let sent = UInt64(current.sentBytes &- previous.sentBytes)
+        return Double(received + sent) / (current.timestamp - previous.timestamp) / 1024.0
+    }
+
+    private static func primaryNetworkCounters() -> NetworkCounters? {
+        let keys = ["State:/Network/Global/IPv4", "State:/Network/Global/IPv6"]
+        let interfaceName = keys.lazy.compactMap { key -> String? in
+            guard let value = SCDynamicStoreCopyValue(nil, key as CFString) as? [String: Any] else {
+                return nil
+            }
+            return value["PrimaryInterface"] as? String
+        }.first
+        guard let interfaceName else { return nil }
+
+        var interfaces: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&interfaces) == 0, let first = interfaces else { return nil }
+        defer { freeifaddrs(first) }
+        var item: UnsafeMutablePointer<ifaddrs>? = first
+        while let pointer = item {
+            let interface = pointer.pointee
+            if String(cString: interface.ifa_name) == interfaceName,
+               interface.ifa_addr?.pointee.sa_family == UInt8(AF_LINK),
+               let data = interface.ifa_data?.assumingMemoryBound(to: if_data.self) {
+                return NetworkCounters(
+                    interfaceName: interfaceName,
+                    receivedBytes: data.pointee.ifi_ibytes,
+                    sentBytes: data.pointee.ifi_obytes,
+                    timestamp: Date.timeIntervalSinceReferenceDate
+                )
+            }
+            item = interface.ifa_next
+        }
+        return nil
     }
 
     private func sampleCPUUsagePercent() -> Double? {

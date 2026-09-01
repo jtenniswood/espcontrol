@@ -912,7 +912,9 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
 inline bool companion_system_metric_config(const ParsedCfg &p) {
   return p.type == "companion" &&
     (p.entity == "stat.cpu" || p.entity == "stat.memory" ||
-     p.entity == "stat.storage" || p.entity == "stat.battery");
+     p.entity == "stat.memory_free" || p.entity == "stat.storage" ||
+     p.entity == "stat.storage_free" || p.entity == "stat.battery" ||
+     p.entity == "stat.memory_pressure" || p.entity == "stat.network_throughput");
 }
 
 inline std::string date_time_card_options_normalized(const std::string &options,
@@ -1368,7 +1370,11 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on = "Auto";
     if (companion_system_metric_config(p)) {
       p.sensor.clear();
-      if (p.unit.empty()) p.unit = "%";
+      if (p.unit.empty()) {
+        if (p.entity == "stat.memory_pressure") p.unit.clear();
+        else if (p.entity == "stat.network_throughput") p.unit = "KB/s";
+        else p.unit = "%";
+      }
       if (p.precision != "0" && p.precision != "1" && p.precision != "2") p.precision = "0";
       p.options = date_time_card_options_normalized(p.options, p);
     } else {

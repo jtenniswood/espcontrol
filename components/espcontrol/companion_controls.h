@@ -81,6 +81,8 @@ struct CompanionSystemMetricsSnapshot {
   float memory_usage_percent{NAN};
   float storage_usage_percent{NAN};
   float battery_percent{NAN};
+  std::string memory_pressure;
+  float network_throughput_kbps{NAN};
 };
 
 using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
@@ -158,15 +160,25 @@ inline void companion_set_now_playing(CompanionNowPlayingSnapshot snapshot) {
 
 inline bool companion_metric_key_valid(const std::string &key) {
   return key == "stat.cpu" || key == "stat.memory" ||
-         key == "stat.storage" || key == "stat.battery";
+         key == "stat.memory_free" || key == "stat.storage" ||
+         key == "stat.storage_free" || key == "stat.battery" ||
+         key == "stat.memory_pressure" || key == "stat.network_throughput";
 }
 
 inline const char *companion_metric_label_key(const std::string &key) {
   if (key == "stat.cpu") return "processor";
-  if (key == "stat.memory") return "memory";
-  if (key == "stat.storage") return "storage";
+  if (key == "stat.memory" || key == "stat.memory_free") return "memory";
+  if (key == "stat.storage" || key == "stat.storage_free") return "storage";
   if (key == "stat.battery") return "battery";
+  if (key == "stat.memory_pressure") return "memory_pressure";
+  if (key == "stat.network_throughput") return "network_throughput";
   return "";
+}
+
+inline const char *companion_metric_default_unit(const std::string &key) {
+  if (key == "stat.memory_pressure") return "";
+  if (key == "stat.network_throughput") return "KB/s";
+  return companion_metric_key_valid(key) ? "%" : "";
 }
 
 inline bool companion_metric_value(const CompanionRuntimeSnapshot &snapshot,
@@ -174,10 +186,20 @@ inline bool companion_metric_value(const CompanionRuntimeSnapshot &snapshot,
   if (!snapshot.connected) return false;
   if (key == "stat.cpu") value = snapshot.system_metrics.cpu_usage_percent;
   else if (key == "stat.memory") value = snapshot.system_metrics.memory_usage_percent;
+  else if (key == "stat.memory_free") value = 100.0f - snapshot.system_metrics.memory_usage_percent;
   else if (key == "stat.storage") value = snapshot.system_metrics.storage_usage_percent;
+  else if (key == "stat.storage_free") value = 100.0f - snapshot.system_metrics.storage_usage_percent;
   else if (key == "stat.battery") value = snapshot.system_metrics.battery_percent;
+  else if (key == "stat.network_throughput") value = snapshot.system_metrics.network_throughput_kbps;
   else return false;
   return std::isfinite(value);
+}
+
+inline bool companion_metric_text(const CompanionRuntimeSnapshot &snapshot,
+                                  const std::string &key, std::string &value) {
+  if (!snapshot.connected || key != "stat.memory_pressure") return false;
+  value = snapshot.system_metrics.memory_pressure;
+  return value == "normal" || value == "warning" || value == "critical";
 }
 
 inline void companion_set_system_metrics(CompanionSystemMetricsSnapshot snapshot) {
@@ -581,17 +603,24 @@ inline void companion_refresh_cards_if_requested() {
     }
     if (!it->metric_key.empty()) {
       float value = NAN;
-      const bool available = companion_metric_value(snapshot, it->metric_key, value);
+      std::string text_value;
+      const bool text_metric = it->metric_key == "stat.memory_pressure";
+      const bool available = text_metric
+        ? companion_metric_text(snapshot, it->metric_key, text_value)
+        : companion_metric_value(snapshot, it->metric_key, value);
       if (it->value_label) {
         char buffer[32];
         if (!available) snprintf(buffer, sizeof(buffer), "--");
+        else if (text_metric) snprintf(
+          buffer, sizeof(buffer), "%s", espcontrol_i18n_key(text_value).c_str());
         else if (it->precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
         else if (it->precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
         else snprintf(buffer, sizeof(buffer), "%.0f", value);
         lv_label_set_display_text(it->value_label, buffer);
       }
       if (it->unit_label) {
-        lv_label_set_display_text(it->unit_label, available ? it->metric_unit.c_str() : "");
+        lv_label_set_display_text(
+          it->unit_label, available && !text_metric ? it->metric_unit.c_str() : "");
       }
       // Match the unavailable state used by other cards when their backing
       // connection is offline. A missing optional metric (for example,

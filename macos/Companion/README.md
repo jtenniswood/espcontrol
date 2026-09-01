@@ -16,7 +16,7 @@ For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and 
 Click the EspControl icon in the macOS menu bar to open the app settings. Right-click it for quick access to Connect or Reconnect, Settings, and Quit.
 When Companion is installed as a packaged `.app`, its General tab also includes an **Open EspControl Companion at Login** switch. The local Swift launcher does not create an app bundle, so it intentionally omits this setting. macOS may require approval under **System Settings → General → Login Items**.
 
-The **System Stats** tab shares overall processor, memory and storage usage, plus battery level when the Mac has a battery. Sharing is enabled by default and can be disabled independently. It does not collect application, file, or browsing details. Choose the corresponding type on a Companion card to show a reading.
+The **System Stats** tab shares overall processor and memory usage, the macOS memory-pressure state, startup-disk storage, combined network throughput on the primary interface, and battery level when the Mac has a battery. Memory and storage cards can show either used or free capacity. Sharing is enabled by default and can be disabled independently. It does not collect application, file, browsing, or network-content details. Choose the corresponding type on a Companion card to show a reading.
 
 To pair, open the panel's browser editor and go to **Settings → Companion**. Start pairing and copy the details, then use **Paste pairing details** in the Mac app and click **Pair**. Pair on a trusted local network. The app stores the paired credential in the macOS Keychain and pins the panel certificate. Forgetting the panel clears both values.
 
