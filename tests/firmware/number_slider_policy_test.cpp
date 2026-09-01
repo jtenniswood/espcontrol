@@ -77,9 +77,14 @@ int main() {
   if (decimal_places(1.0) != 0) return EXIT_FAILURE;
   if (decimal_places(0.1) != 1) return EXIT_FAILURE;
   if (decimal_places(0.125) != 3) return EXIT_FAILURE;
-  if (decimal_places(0.0000001) != 6) return EXIT_FAILURE;
+  if (decimal_places(0.0000001) != 7) return EXIT_FAILURE;
   const Metadata fine_step{0.0, 2.0, 0.0000001};
-  if (format_value(1.23456789, fine_step) != "1.234568") return EXIT_FAILURE;
+  if (format_value(1.23456789, fine_step) != "1.2345679") return EXIT_FAILURE;
+  const Metadata sub_micro_range{0.0000001, 0.0000002, 0.0000001};
+  if (format_value(value_for_position(sub_micro_range, 0), sub_micro_range) !=
+      "0.0000001") return EXIT_FAILURE;
+  if (format_value(value_for_position(sub_micro_range, 1), sub_micro_range) !=
+      "0.0000002") return EXIT_FAILURE;
   const Metadata float_metadata{0.0, 1.0, static_cast<double>(0.1f)};
   if (legal_step_count(float_metadata) != 10) return EXIT_FAILURE;
   if (decimal_places(float_metadata.step) != 1) return EXIT_FAILURE;

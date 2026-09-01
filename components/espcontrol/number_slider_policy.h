@@ -9,7 +9,7 @@
 namespace espcontrol::number_slider {
 
 constexpr int MAX_SLIDER_POSITIONS = 10000;
-constexpr int MAX_DECIMAL_PLACES = 6;
+constexpr int MAX_DECIMAL_PLACES = 15;
 
 struct Metadata {
   double minimum = 0.0;
