@@ -18,7 +18,6 @@
 #include "panel_config_espidf_storage.h"
 #include "panel_config_esphome_text.h"
 #include "panel_config_legacy_adapter.h"
-#include "panel_config_legacy_entity_guard.h"
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_storage_backend.h"
@@ -35,7 +34,6 @@ extern "C" void espcontrol_register_web_server_handlers(
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
   register_companion_actions_endpoint(*server);
-  espcontrol::configuration::register_panel_config_legacy_entity_guard(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);
   espcontrol::configuration::register_panel_config_read_endpoint(*server);
   espcontrol::configuration::register_panel_config_write_endpoint(*server);
@@ -112,12 +110,6 @@ void EspControlApp::set_panel_config_button(
   panel_config_button_texts_[slot - 1] = {
       button, {subpage_0, subpage_1, subpage_2, subpage_3, subpage_4,
                subpage_5, subpage_6, subpage_7}};
-#ifdef USE_WEBSERVER
-  configuration::bind_panel_config_legacy_entity_sources(
-      slot, button,
-      {subpage_0, subpage_1, subpage_2, subpage_3,
-       subpage_4, subpage_5, subpage_6, subpage_7});
-#endif
 }
 
 bool EspControlApp::native_configuration_requested() const {

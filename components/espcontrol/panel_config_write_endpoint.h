@@ -14,7 +14,6 @@
 #include "panel_config_document.h"
 #include "panel_config_http_etag.h"
 #include "panel_config_http_context.h"
-#include "panel_config_sensitive_data.h"
 #include "panel_config_write_status.h"
 
 namespace espcontrol::configuration {
@@ -106,14 +105,6 @@ class PanelConfigWriteHandler final
       reset_upload();
       return;
     }
-#ifndef USE_WEBSERVER_AUTH
-    if (panel_config_contains_wifi_password(context.document, received_size_)) {
-      send_status(raw_request, "403 Forbidden",
-                  "Wifi Sharing passwords require web authentication");
-      reset_upload();
-      return;
-    }
-#endif
     const auto if_match = request->get_header("If-Match");
     uint32_t expected_generation = 0;
     if (!if_match.has_value() ||
