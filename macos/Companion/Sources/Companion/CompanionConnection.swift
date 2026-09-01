@@ -14,6 +14,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var reconnectTask: Task<Void, Never>?
     private var pendingCertificateFingerprint: String?
     private var shouldReconnect = false
+    private var hasTerminalConnectionError = false
     private var artworkData: Data?
     private var artworkGeneration: UInt32 = 0
     private var artworkOffset = 0
@@ -28,6 +29,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         reconnectTask?.cancel()
         reconnectTask = nil
         tearDownConnection()
+        hasTerminalConnectionError = false
         shouldReconnect = {
             if case .authenticate = mode { return true }
             return false
@@ -118,6 +120,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         let fingerprint = SHA256.hash(data: SecCertificateCopyData(certificate) as Data).map { String(format: "%02x", $0) }.joined()
         let saved = UserDefaults.standard.string(forKey: certificateFingerprintKey)
         if let saved, saved != fingerprint {
+            shouldReconnect = false
+            hasTerminalConnectionError = true
             store.updateStatus("Blocked: panel certificate changed")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else if saved != nil {
@@ -156,6 +160,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     private func scheduleReconnect() {
+        guard !hasTerminalConnectionError else { return }
         guard shouldReconnect, store.hasSavedPairing else {
             store.updateStatus("Panel disconnected")
             return

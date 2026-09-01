@@ -313,15 +313,17 @@ private struct CompanionSettings: View {
                 Label("Now Playing", systemImage: "music.note")
             }
 
-            ScrollView {
-                GroupBox("Startup") {
-                    startupSettings
-                        .padding(8)
+            if store.supportsLaunchAtLogin {
+                ScrollView {
+                    GroupBox("Startup") {
+                        startupSettings
+                            .padding(8)
+                    }
+                    .padding()
                 }
-                .padding()
-            }
-            .tabItem {
-                Label("General", systemImage: "gearshape")
+                .tabItem {
+                    Label("General", systemImage: "gearshape")
+                }
             }
         }
         .onAppear {

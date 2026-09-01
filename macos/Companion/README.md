@@ -14,7 +14,7 @@ cd macos/Companion
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. The app can launch only applications you explicitly tick in its settings. Those approved applications can also be selected to open `http://` or `https://` links. The app can replay keyboard shortcuts created in the panel's web editor; macOS Accessibility permission is required the first time a shortcut is used.
 
 Click the EspControl icon in the macOS menu bar to open the app settings. Right-click it for quick access to Connect or Reconnect, Settings, and Quit.
-The Device tab also includes an **Open EspControl Companion at Login** switch. macOS may require approval under **System Settings → General → Login Items**.
+When Companion is installed as a packaged `.app`, its General tab also includes an **Open EspControl Companion at Login** switch. The local Swift launcher does not create an app bundle, so it intentionally omits this setting. macOS may require approval under **System Settings → General → Login Items**.
 
 The **Now Playing** tab shares the active session shown by macOS Control Centre with a paired 4848S040. Sharing is enabled by default and can be disabled at any time. The tab shows the detected application, track, artwork, and a clear diagnostic when the system feed is unavailable. On the panel, choose **Mac Companion** under **Settings → Cover Art Screen Saver → Cover Art Source** to use it.
 

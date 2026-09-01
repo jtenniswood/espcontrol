@@ -58,7 +58,7 @@ final class CompanionStore: NSObject, ObservableObject {
             latestNowPlayingSnapshot = snapshot
             if isConnected { connection.publishNowPlaying(snapshot) }
         }
-        refreshLaunchAtLoginStatus()
+        if supportsLaunchAtLogin { refreshLaunchAtLoginStatus() }
         refreshApplications()
     }
 
@@ -71,6 +71,9 @@ final class CompanionStore: NSObject, ObservableObject {
         availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) }.count
     }
     var hasAllowedApps: Bool { !allowedBundleIdentifiers.isEmpty }
+    var supportsLaunchAtLogin: Bool {
+        Bundle.main.bundleURL.pathExtension.lowercased() == "app"
+    }
 
     func allowedBinding(for app: LaunchableApp) -> Binding<Bool> {
         Binding(
@@ -100,6 +103,7 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
+        guard supportsLaunchAtLogin else { return }
         let service = SMAppService.mainApp
         do {
             if enabled {
@@ -182,16 +186,25 @@ final class CompanionStore: NSObject, ObservableObject {
     func connect() { connection.connect(mode: .authenticate) }
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
-        let host = panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !host.isEmpty else {
+        guard !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             updateStatus("Enter the panel address first", connected: isConnected)
             return
         }
-        guard let url = URL(string: host.contains("://") ? host : "http://\(host)"),
+        guard let url = Self.panelWebServerURL(from: panelHost),
               NSWorkspace.shared.open(url) else {
             updateStatus("Could not open the panel webserver", connected: isConnected)
             return
         }
+    }
+
+    static func panelWebServerURL(from value: String) -> URL? {
+        let raw = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = URL(string: raw.contains("://") ? raw : "http://\(raw)"),
+              let host = parsed.host else { return nil }
+        var components = URLComponents()
+        components.scheme = parsed.scheme?.lowercased() == "https" ? "https" : "http"
+        components.host = host
+        return components.url
     }
     func pair(code: String) {
         connection.connect(mode: .pair(
