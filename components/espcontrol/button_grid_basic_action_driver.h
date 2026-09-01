@@ -493,14 +493,23 @@ inline bool basic_action_driver_handle_main_click(
       char request_id[24];
       snprintf(request_id, sizeof(request_id), "%08lx-%d",
                static_cast<unsigned long>(companion_next_request_number()), slot_number);
+      lv_obj_t *screen = nullptr;
+      if (companion_app_shortcuts_enabled(config) && button) {
+        screen = static_cast<lv_obj_t *>(lv_obj_get_user_data(button));
+        if (screen) {
+          companion_expect_action_result(request_id, [screen]() {
+            if (lv_obj_is_valid(screen)) {
+              lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+            }
+          });
+        }
+      }
       const bool invoked = companion_encoded_url(config.sensor).empty()
         ? invoke_companion_action(config.entity, request_id)
         : invoke_companion_url(config.entity, config.sensor, request_id);
       if (!invoked) {
+        companion_cancel_action_result(request_id);
         ESP_LOGW("companion", "Action unavailable: %s", config.entity.c_str());
-      } else if (companion_app_shortcuts_enabled(config) && button) {
-        lv_obj_t *screen = static_cast<lv_obj_t *>(lv_obj_get_user_data(button));
-        if (screen) lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
       }
       break;
     }

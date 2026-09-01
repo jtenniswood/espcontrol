@@ -259,8 +259,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             publishCatalogue()
         case "INVOKE":
             guard parts.count == 3 else { return }
-            let performed = store.perform(actionIdentifier: parts[2])
-            send("RESULT|\(parts[1])|\(performed ? "performed" : "not_allowed")")
+            let requestIdentifier = parts[1]
+            let actionIdentifier = parts[2]
+            Task { [weak self] in
+                guard let self else { return }
+                let performed = await self.store.perform(actionIdentifier: actionIdentifier)
+                self.send("RESULT|\(requestIdentifier)|\(performed ? "performed" : "not_allowed")")
+            }
         case "OPEN_URL":
             guard parts.count == 4 else { return }
             let opened = store.openURL(encodedURL: parts[3], bundleIdentifier: parts[2])

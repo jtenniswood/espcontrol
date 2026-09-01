@@ -69,6 +69,17 @@ int main() {
   });
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
+  bool navigated = false;
+  companion_expect_action_result("launch-1", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("another-request", "performed");
+  assert(!navigated);
+  companion_deliver_action_result("launch-1", "not_allowed");
+  assert(!navigated);
+  companion_deliver_action_result("launch-1", "performed");
+  assert(!navigated);
+  companion_expect_action_result("launch-2", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-2", "performed");
+  assert(navigated);
   companion_set_connected(false);
   companion_set_connected(true);
   assert(!companion_action_available("media.play_pause"));

@@ -300,10 +300,25 @@ final class CompanionStore: NSObject, ObservableObject {
         guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
-    func launch(bundleIdentifier: String) -> Bool {
+    func launch(bundleIdentifier: String) async -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
-        NSWorkspace.shared.openApplication(at: app.url, configuration: .init()) { _, _ in }
-        return true
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        let runningApplication: NSRunningApplication? = await withCheckedContinuation { continuation in
+            NSWorkspace.shared.openApplication(at: app.url, configuration: configuration) { application, error in
+                continuation.resume(returning: error == nil ? application : nil)
+            }
+        }
+        guard let runningApplication else { return false }
+        _ = runningApplication.activate(options: [.activateIgnoringOtherApps])
+        for _ in 0..<30 {
+            if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == bundleIdentifier {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        updateStatus("Safari did not become active", connected: isConnected)
+        return false
     }
 
     func openFolder(actionIdentifier: String) -> Bool {
@@ -321,7 +336,7 @@ final class CompanionStore: NSObject, ObservableObject {
         return NSWorkspace.shared.open(URL(fileURLWithPath: folder.path, isDirectory: true))
     }
 
-    func perform(actionIdentifier: String) -> Bool {
+    func perform(actionIdentifier: String) async -> Bool {
         if actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix) {
             return openFolder(actionIdentifier: actionIdentifier)
         }
@@ -329,7 +344,7 @@ final class CompanionStore: NSObject, ObservableObject {
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
-            return launch(bundleIdentifier: actionIdentifier)
+            return await launch(bundleIdentifier: actionIdentifier)
         }
         guard let shortcut = CompanionKeyboardShortcut(actionIdentifier: actionIdentifier) else {
             updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)

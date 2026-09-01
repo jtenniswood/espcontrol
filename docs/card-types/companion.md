@@ -31,7 +31,7 @@ Use a [Slider card](/card-types/sliders) when you want to control the Mac's outp
 
 ### Add Safari shortcuts
 
-For a **Launch app** card that uses Safari, turn on **Add shortcut folder**. The card will bring Safari to the front and then open a folder on the panel containing Back, Forward, Reload, New Tab, and Close Tab. These controls use Safari's standard keyboard shortcuts.
+For a **Launch app** card that uses Safari, turn on **Add shortcut folder**. The card will bring Safari to the front and, after the Companion confirms Safari is active, open a folder on the panel containing Back, Forward, Reload, New Tab, and Close Tab. These controls use Safari's standard keyboard shortcuts. If Safari cannot become active, the panel stays on the home screen so a shortcut cannot reach another application.
 
 The folder is created with those five controls once. You can then edit their labels, icons, shortcuts, and order, or delete and add keyboard-shortcut cards. Turning the folder option off does not discard those edits; turning it back on restores the same folder. Safari must remain approved in the Companion app.
 
