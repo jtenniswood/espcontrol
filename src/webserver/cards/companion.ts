@@ -264,6 +264,7 @@ export function registerCompanionCardTypes(
                         const previousMode = companionCardMode(card);
                         const previousEntity = typeof card.entity === "string" ? card.entity : "";
                         const nextMode = this.value;
+                        if (nextMode === previousMode) return;
                         let previousAppLabel = "";
                         if ((previousMode === "app" || previousMode === "url") && previousEntity) {
                             try {
