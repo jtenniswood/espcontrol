@@ -34,6 +34,7 @@ static constexpr size_t MAX_NOW_PLAYING_FIELD_BYTES = protocol::MAX_TEXT_FIELD_B
 static constexpr size_t MAX_ARTWORK_BYTES = protocol::MAX_ARTWORK_BYTES;
 static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = protocol::MAX_ARTWORK_CHUNK_BYTES;
 static constexpr uint32_t NOW_PLAYING_RECONNECT_GRACE_MS = 5000;
+static constexpr uint32_t AUTHENTICATION_TIMEOUT_MS = 15 * 1000;
 static constexpr char PAIRING_ALPHABET[] = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 static std::vector<std::string> split(const std::string &value, char separator) {
@@ -139,6 +140,13 @@ void CompanionService::loop() {
     if (!this->server_ || httpd_queue_work(this->server_, &CompanionService::disconnect_expiry_work_, this) != ESP_OK)
       this->disconnect_expiry_queued_.store(false);
   }
+  const uint32_t authentication_deadline = this->authentication_expires_at_.load();
+  if (authentication_deadline != 0 &&
+      static_cast<int32_t>(millis() - authentication_deadline) >= 0 &&
+      !this->authentication_expiry_queued_.exchange(true)) {
+    if (!this->server_ || httpd_queue_work(this->server_, &CompanionService::authentication_expiry_work_, this) != ESP_OK)
+      this->authentication_expiry_queued_.store(false);
+  }
   companion_refresh_cards_if_requested();
 }
 
@@ -205,6 +213,7 @@ bool CompanionService::ensure_identity_() {
 bool CompanionService::start_server_() {
   httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
   config.httpd.max_open_sockets = 2;
+  config.httpd.lru_purge_enable = true;
   // The main web UI owns ESP-IDF's default HTTPD control port. Each HTTPD
   // instance needs a distinct internal control socket even when its public
   // listener uses a different port.
@@ -225,12 +234,28 @@ bool CompanionService::start_server_() {
 
 void CompanionService::session_close_(httpd_handle_t server, int socket_fd) {
   (void) server;
-  if (global_companion_service &&
-      socket_fd == global_companion_service->authenticated_socket_) {
-    global_companion_service->set_connected_(false);
+  if (global_companion_service) {
+    global_companion_service->forget_unauthenticated_socket_(socket_fd);
+    if (socket_fd == global_companion_service->authenticated_socket_)
+      global_companion_service->set_connected_(false);
   }
   shutdown(socket_fd, SHUT_RD);
   close(socket_fd);
+}
+
+void CompanionService::authentication_expiry_work_(void *context) {
+  auto *service = static_cast<CompanionService *>(context);
+  if (!service) return;
+  service->authentication_expiry_queued_.store(false);
+  const uint32_t now = millis();
+  for (auto &session : service->unauthenticated_sessions_) {
+    if (session.socket < 0 || static_cast<int32_t>(now - session.expires_at) < 0) continue;
+    const int socket_fd = session.socket;
+    session = {};
+    session.socket = -1;
+    httpd_sess_trigger_close(service->server_, socket_fd);
+  }
+  service->update_authentication_deadline_();
 }
 
 void CompanionService::disconnect_expiry_work_(void *context) {
@@ -251,6 +276,7 @@ esp_err_t CompanionService::websocket_handler_(httpd_req_t *request) {
 esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
   const int socket_fd = httpd_req_to_sockfd(request);
   if (request->method == HTTP_GET) {
+    this->track_unauthenticated_socket_(socket_fd);
     this->send_(socket_fd, "HELLO|1");
     return ESP_OK;
   }
@@ -270,6 +296,7 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
   if (frame.type == HTTPD_WS_TYPE_BINARY) {
     if (socket_fd != this->authenticated_socket_) {
       this->send_(socket_fd, "ERROR|authenticate_first");
+      this->expire_unauthenticated_socket_(socket_fd);
       return ESP_OK;
     }
     this->handle_binary_(socket_fd, payload.data(), frame.len);
@@ -307,6 +334,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
   if (!message.empty() && message.front() == '{') {
     if (socket_fd != this->authenticated_socket_) {
       this->send_(socket_fd, "ERROR|authenticate_first");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     this->handle_json_(socket_fd, message);
@@ -319,14 +347,17 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     const auto authentication = this->authenticate_(parts, last_sequence);
     if (authentication == AuthenticationResult::STALE_SEQUENCE) {
       this->send_(socket_fd, "ERROR|authentication_sequence|" + std::to_string(last_sequence));
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     if (authentication != AuthenticationResult::AUTHENTICATED) {
       this->send_(socket_fd, "ERROR|authentication_failed");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     if (this->authenticated_socket_ != -1 && this->authenticated_socket_ != socket_fd) httpd_sess_trigger_close(this->server_, this->authenticated_socket_);
     this->authenticated_socket_ = socket_fd;
+    this->forget_unauthenticated_socket_(socket_fd);
     this->set_connected_(true);
     {
       std::lock_guard<std::mutex> lock(this->pairing_mutex_);
@@ -345,22 +376,26 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     // stores it in Keychain and pins this certificate's fingerprint.
     if (parts.size() != 2) {
       this->send_(socket_fd, "ERROR|pairing_failed");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     const uint32_t now = millis();
     std::unique_lock<std::mutex> pairing_lock(this->pairing_mutex_);
     if (!this->pairing_active_locked_(now)) {
       this->send_(socket_fd, "ERROR|pairing_failed");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     if (this->next_attempt_at_ != 0 && static_cast<int32_t>(now - this->next_attempt_at_) < 0) {
       this->send_(socket_fd, "ERROR|pairing_throttled");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     if (!constant_time_equal(parts[1], this->pairing_code_)) {
       this->failed_attempts_++;
       this->next_attempt_at_ = now + RETRY_DELAY_MS;
       this->send_(socket_fd, "ERROR|pairing_failed");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     const int previous_socket = this->authenticated_socket_;
@@ -375,6 +410,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
       this->identity_ = previous_identity;
       ESP_LOGE(TAG, "Could not persist the paired Mac credential");
       this->send_(socket_fd, "ERROR|pairing_storage_failed");
+      this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
     this->pairing_code_.clear();
@@ -387,6 +423,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
   }
   if (socket_fd != this->authenticated_socket_) {
     this->send_(socket_fd, "ERROR|authenticate_first");
+    this->expire_unauthenticated_socket_(socket_fd);
     return;
   }
   if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
@@ -578,6 +615,58 @@ void CompanionService::send_(int socket_fd, const std::string &message) {
   frame.payload = reinterpret_cast<uint8_t *>(const_cast<char *>(message.data()));
   frame.len = message.size();
   httpd_ws_send_frame_async(this->server_, socket_fd, &frame);
+}
+
+void CompanionService::track_unauthenticated_socket_(int socket_fd) {
+  const uint32_t deadline = millis() + AUTHENTICATION_TIMEOUT_MS;
+  for (auto &session : this->unauthenticated_sessions_) {
+    if (session.socket == socket_fd) {
+      session.expires_at = deadline;
+      this->update_authentication_deadline_();
+      return;
+    }
+  }
+  for (auto &session : this->unauthenticated_sessions_) {
+    if (session.socket < 0) {
+      session.socket = socket_fd;
+      session.expires_at = deadline;
+      this->update_authentication_deadline_();
+      return;
+    }
+  }
+  // LRU purging can replace a socket before its close callback is delivered.
+  this->unauthenticated_sessions_[0] = {socket_fd, deadline};
+  this->update_authentication_deadline_();
+}
+
+void CompanionService::forget_unauthenticated_socket_(int socket_fd) {
+  for (auto &session : this->unauthenticated_sessions_) {
+    if (session.socket == socket_fd) {
+      session.socket = -1;
+      session.expires_at = 0;
+    }
+  }
+  this->update_authentication_deadline_();
+}
+
+void CompanionService::expire_unauthenticated_socket_(int socket_fd) {
+  for (auto &session : this->unauthenticated_sessions_) {
+    if (session.socket == socket_fd) session.expires_at = millis();
+  }
+  this->update_authentication_deadline_();
+}
+
+void CompanionService::update_authentication_deadline_() {
+  uint32_t earliest = 0;
+  const uint32_t now = millis();
+  for (const auto &session : this->unauthenticated_sessions_) {
+    if (session.socket < 0) continue;
+    if (earliest == 0 || static_cast<int32_t>(session.expires_at - earliest) < 0)
+      earliest = session.expires_at;
+  }
+  // Preserve an already-expired deadline so loop() queues cleanup immediately.
+  this->authentication_expires_at_.store(earliest == 0 ? 0 :
+      (static_cast<int32_t>(now - earliest) >= 0 ? now : earliest));
 }
 
 void CompanionService::set_connected_(bool connected) {

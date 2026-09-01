@@ -252,6 +252,8 @@ export function registerCompanionCardTypes(
             panel?.appendChild(urlField);
             helpers.requireField(urlInput, "Enter an http:// or https:// address before saving.", function () {
                 return initialMode === "url";
+            }, function (value: string) {
+                return Boolean(companionUrlConfig(value));
             });
 
             function syncMode(mode: string): void {

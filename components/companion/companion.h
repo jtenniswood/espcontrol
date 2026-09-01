@@ -54,6 +54,7 @@ class CompanionService final : public Component {
   static esp_err_t websocket_handler_(httpd_req_t *request);
   static void session_close_(httpd_handle_t server, int socket_fd);
   static void disconnect_expiry_work_(void *context);
+  static void authentication_expiry_work_(void *context);
   esp_err_t handle_websocket_(httpd_req_t *request);
   bool start_server_();
   bool ensure_identity_();
@@ -66,6 +67,10 @@ class CompanionService final : public Component {
   void send_artwork_ack_(uint32_t generation, size_t next_offset);
   void expire_now_playing_();
   void send_(int socket_fd, const std::string &message);
+  void track_unauthenticated_socket_(int socket_fd);
+  void forget_unauthenticated_socket_(int socket_fd);
+  void expire_unauthenticated_socket_(int socket_fd);
+  void update_authentication_deadline_();
   void set_connected_(bool connected);
   void publish_catalogue_();
   bool invoke_(const std::string &action_id, const std::string &request_id);
@@ -94,6 +99,13 @@ class CompanionService final : public Component {
   bool now_playing_artwork_follows_{false};
   std::atomic<uint32_t> disconnect_grace_expires_at_{0};
   std::atomic<bool> disconnect_expiry_queued_{false};
+  struct UnauthenticatedSession {
+    int socket{-1};
+    uint32_t expires_at{0};
+  };
+  std::array<UnauthenticatedSession, 2> unauthenticated_sessions_{};
+  std::atomic<uint32_t> authentication_expires_at_{0};
+  std::atomic<bool> authentication_expiry_queued_{false};
 };
 
 // The display owns the interaction. These narrow helpers avoid exposing the
