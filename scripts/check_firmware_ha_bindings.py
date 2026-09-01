@@ -7951,13 +7951,9 @@ def run_self_test() -> int:
         "    then:\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return ha_api_connected();'\n"
+        "            lambda: 'return id(espcontrol_app).connector_onboarding_complete();'\n"
         "          then:\n"
-        "            - if:\n"
-        "                condition:\n"
-        "                  lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'\n"
-        "                then:\n"
-        "                  - script.execute: navigate_after_api\n",
+        "            - script.execute: navigate_after_api\n",
         (),
     )
     expect_connectivity_api_errors(
