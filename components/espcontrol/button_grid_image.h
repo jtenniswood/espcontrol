@@ -71,6 +71,7 @@ struct ImageCardCtx {
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
+  bool camera_refresh_pending = false;
   bool media_artwork = false;
   bool media_artwork_suppressed = false;
   bool media_artwork_refresh_forced = false;
@@ -881,6 +882,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
+    contexts[i].camera_refresh_pending = false;
     contexts[i].media_artwork = false;
     contexts[i].media_artwork_suppressed = false;
     contexts[i].media_artwork_refresh_forced = false;
@@ -2410,6 +2412,78 @@ inline void image_card_refresh_media_artwork_on_metadata_change(ImageCardCtx *ct
     ctx->next_picture_retry_ms = 0;
   }
   image_card_schedule_media_artwork_refresh(ctx, true);
+}
+
+inline bool image_card_context_on_active_screen(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->media_artwork || !ctx->btn ||
+      lv_obj_has_flag(ctx->btn, LV_OBJ_FLAG_HIDDEN)) {
+    return false;
+  }
+  const ControlModalActive &active_modal = control_modal_active();
+  if (active_modal.kind != ControlModalKind::NONE &&
+      (active_modal.kind != ControlModalKind::IMAGE_CARD ||
+       !image_card_modal_active_for(ctx))) {
+    return false;
+  }
+  lv_obj_t *screen = ctx->btn;
+  while (lv_obj_get_parent(screen) != nullptr) screen = lv_obj_get_parent(screen);
+  return screen == lv_scr_act();
+}
+
+inline void image_card_request_camera_picture_attribute(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->media_artwork || ctx->entity_id.empty()) return;
+  const std::string entity_id = ctx->entity_id;
+  const uint32_t generation = ha_subscription_generation();
+  bool requested = ha_read_retained_attribute(
+    entity_id,
+    std::string("entity_picture"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef picture) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        ctx->camera_refresh_pending = false;
+        image_card_handle_picture(ctx, picture);
+      })
+  );
+  if (!requested) {
+    ctx->camera_refresh_pending = false;
+    image_card_log_diagnostics(ctx, "camera-action-picture-request-failed");
+  }
+}
+
+inline void image_card_refresh_camera_attributes(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->media_artwork || ctx->entity_id.empty() ||
+      ctx->camera_refresh_pending) {
+    return;
+  }
+  ctx->camera_refresh_pending = true;
+  const std::string entity_id = ctx->entity_id;
+  const uint32_t generation = ha_subscription_generation();
+  bool requested = ha_read_retained_attribute(
+    entity_id,
+    std::string("access_token"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef token_ref) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        std::string token = string_ref_limited(token_ref, 512);
+        if (image_card_valid_access_token(token)) {
+          ctx->access_token = token;
+        } else {
+          ctx->access_token.clear();
+        }
+        image_card_request_camera_picture_attribute(ctx);
+      })
+  );
+  if (!requested) image_card_request_camera_picture_attribute(ctx);
+}
+
+inline void refresh_visible_camera_cards() {
+  if (!ha_api_connected()) return;
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ImageCardCtx *ctx = &contexts[i];
+    if (!image_card_context_on_active_screen(ctx)) continue;
+    image_card_refresh_camera_attributes(ctx);
+  }
 }
 
 inline void refresh_image_cards() {
