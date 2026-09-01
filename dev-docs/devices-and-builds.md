@@ -92,7 +92,7 @@ Device-profile changes can regenerate:
 - `docs/generated/screens/*.md`
 - generated blocks in `devices/*/packages.yaml`
 - generated blocks in `devices/*/device/sensors.yaml`
-- `docs/public/webserver/*/www.js` when web profile data changes
+- files under `docs/public/webserver/` when web profile data changes
 
 Run:
 
@@ -161,12 +161,18 @@ deliberately.
 | `ESPCONTROL_JC1060P470_OTA_WDT_20260526=1` | `guition-esp32-p4-jc1060p470`, `guition-esp32-p4-jc1060p470-v2` | Cache-busting marker for the OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC4880P443_BOOTFIX_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for a JC4880P443 boot-loop fix. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC4880P443_OTA_WDT_20260522=1` | `guition-esp32-p4-jc4880p443` | Cache-busting marker for the JC4880P443 OTA flash erase watchdog increase. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for a JC8012P4A1 boot-loop fix. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_WDT_20260526=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for the JC8012P4A1 watchdog increase. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for the JC8012P4A1 USB logger/UART0 change. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for JC8012P4A1 OTA preparation changes. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for an image-card boot fix. | A later required rebuild marker supersedes it. |
-| `ESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for restore crash recovery. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for a JC8012P4A1 boot-loop fix. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_WDT_20260526=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the JC8012P4A1 watchdog increase. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the JC8012P4A1 USB logger/UART0 change. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for JC8012P4A1 OTA preparation changes. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for an image-card boot fix. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for restore crash recovery. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Keeps LVGL processing active while the panel is electrically off so scheduled and touch wake paths remain available. | ESPHome/LVGL can suspend and resume these panels without losing wake behavior. |
+| `ESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the GSL3680 wake-tap handling change. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1` | Both `guition-esp32-p4-jc8012p4a1` variants | Cache-busting marker for the GSL3680 touch scaling change. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory media modal path on the S3 panel. | The full media path fits with safe runtime heap headroom. |
+| `ESPCONTROL_LOW_HEAP_COVER_ART=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory cover-art path on the S3 panel. | The full cover-art path fits with safe runtime heap headroom. |
+| `ESPCONTROL_DISABLE_WEATHER_FORECAST=1` | `guition-esp32-s3-4848s040` | Excludes the weather-forecast card from the constrained S3 firmware. | The card compiles and runs with safe flash and heap headroom. |
 
 Per-device `platformio_options.build_src_flags` should stay even narrower:
 

@@ -262,7 +262,7 @@ Expected generated files commonly include:
 - `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `docs/generated/cards/capabilities.md`
-- `docs/public/webserver/*/www.js`
+- generated files under `docs/public/webserver/`
 
 ## Compatibility Notes
 

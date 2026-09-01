@@ -88,6 +88,7 @@ Stop if an older backup cannot be normalized into the current model.
 
 First files:
 
+- `product/v2/device_catalog.json`
 - `devices/manifest.json`
 - `devices/guition-esp32-s3-4848s040/`
 - `components/espcontrol/button_grid_grid.h`
