@@ -44,6 +44,9 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionCardMode({ entity: "window.left", sensor: "" }) !== "window") {
     throw new Error("Window actions must restore as the Window controls subtype");
   }
+  if (companionCardMode({ entity: "window.unknown", sensor: "" }) !== "window") {
+    throw new Error("Unknown restored window actions must remain visible for correction in Window controls");
+  }
   if (companionWindowActionLabel("window.center") !== "Centre"
       || companionWindowActionLabel("window.unknown") !== "") {
     throw new Error("Window actions must use allow-listed display labels");

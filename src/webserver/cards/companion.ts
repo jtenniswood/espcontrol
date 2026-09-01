@@ -274,6 +274,17 @@ export function registerCompanionCardTypes(
             windowSelect.className = "sp-select";
             windowSelect.id = helpers.idPrefix + "companion-window-action";
             const groups = new Map<string, HTMLOptGroupElement>();
+            if (initialMode === "window" && !companionWindowActionLabel(card.entity)) {
+                const unavailableGroup = document.createElement("optgroup");
+                unavailableGroup.label = "Unavailable";
+                const unavailableOption = document.createElement("option");
+                unavailableOption.value = card.entity;
+                unavailableOption.textContent = card.entity + " (unavailable)";
+                unavailableOption.selected = true;
+                unavailableOption.disabled = true;
+                unavailableGroup.appendChild(unavailableOption);
+                windowSelect.appendChild(unavailableGroup);
+            }
             COMPANION_WINDOW_ACTIONS.forEach(function (action) {
                 let group = groups.get(action.group);
                 if (!group) {
