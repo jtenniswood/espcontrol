@@ -116,6 +116,7 @@ void CompanionService::setup() {
       runtime.connected,
       this->pairing_expires_in_seconds(),
       this->port_,
+      runtime.system_metrics.generation,
       this->pairing_active() ? this->pairing_code() : "",
       App.get_name() + ".local",
     };

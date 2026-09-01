@@ -45,6 +45,7 @@ struct CompanionPairingSnapshot {
   bool connected{false};
   uint32_t expires_in_seconds{0};
   uint16_t port{8443};
+  uint32_t system_metrics_generation{0};
   std::string pairing_code;
   std::string mdns_name;
 };
@@ -708,6 +709,7 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"connected\":" + (snapshot.connected ? "true" : "false") +
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
     ",\"port\":" + std::to_string(snapshot.port) +
+    ",\"system_metrics_generation\":" + std::to_string(snapshot.system_metrics_generation) +
     ",\"pairing_code\":\"" + companion_json_escape(snapshot.pairing_code) +
     "\",\"mdns_name\":\"" + companion_json_escape(snapshot.mdns_name) + "\"}";
 }
