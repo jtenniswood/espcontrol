@@ -36,6 +36,7 @@ python3 scripts/generate_device_slots.py
 ```bash
 npm run check:firmware-parser
 npm run check:firmware-modals
+npm run check:firmware-modal-layouts
 npm run check:firmware-card-runtime
 npm run check:firmware-display-tokens
 npm run check:firmware-ha-bindings
