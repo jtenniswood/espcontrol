@@ -297,6 +297,10 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateNowPlayingProvider() {
+        if !isConnected || !nowPlayingSharingEnabled {
+            // Do not carry a confirmed session across disconnects or disabled sharing.
+            latestNowPlayingSnapshot = nil
+        }
         if isConnected && nowPlayingSharingEnabled {
             nowPlayingProvider.start()
         } else {
@@ -349,7 +353,8 @@ final class CompanionStore: NSObject, ObservableObject {
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
             if actionIdentifier == SystemMediaController.playPauseID {
                 guard nowPlayingSharingEnabled,
-                      latestNowPlayingSnapshot?.state != .unavailable else { return false }
+                      let snapshot = latestNowPlayingSnapshot,
+                      snapshot.state != .unavailable else { return false }
             }
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }

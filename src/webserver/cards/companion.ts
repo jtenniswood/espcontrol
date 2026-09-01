@@ -232,7 +232,7 @@ export function normalizeCompanionCard(card: any): void {
     card.icon_on = "Auto";
     const mode = companionCardMode(card);
     if (!card.icon || card.icon === "Auto" ||
-        (card.icon === "Monitor" && mode !== "app") ||
+        (card.icon === "Monitor" && mode !== "app" && mode !== "media") ||
         (card.icon === "Folder" && mode === "folder")) {
         card.icon = companionSubtypeDefaultIcon(mode, card.entity);
     }
