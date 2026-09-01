@@ -40,7 +40,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading, readable duration, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
-| **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
+| **[Slider](/card-types/sliders)** | Controls light brightness, fan speed, or a `number` / `input_number` value with a draggable fill bar. | Yes |
 | **[Fans](/card-types/fans)** | Controls supported fan switch, speed, oscillation, direction, and preset features. | Yes, as a fan entity |
 | **[Vacuum](/card-types/vacuum)** | Shows vacuum status or controls start/stop, dock, pause/resume, spot clean, locate, and clean area. | Yes, as a vacuum entity |
 | **[Lawn Mower](/card-types/lawn-mower)** | Shows mower status or controls start mowing, dock, and pause/resume. | Yes, as a lawn mower entity |

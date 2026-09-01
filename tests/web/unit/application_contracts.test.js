@@ -687,8 +687,19 @@ describe("browserless application contracts", () => {
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/action.ts"), "utf8");
     const options = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_confirmation_options.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
+    const { createConfigConfirmationOptionsFeature } = loadTypescriptTest(
+      "src/webserver/application/config_confirmation_options.ts",
+    );
+    const actionOptions = createConfigConfirmationOptionsFeature({
+      normalizeGarageOptions: (value) => value,
+      connectGarageConfirmationNormalizer: () => {},
+    });
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(options, /const actionCardActions/);
+    assert.equal(actionOptions.actionCardEntityMatchesAction("number.target_level", "number.set_value"), true);
+    assert.equal(actionOptions.actionCardEntityMatchesAction("number.target_level", "input_number.set_value"), false);
+    assert.equal(actionOptions.actionCardEntityMatchesAction("", "input_number.set_value"), true);
+    assert.match(card, /actionCardEntityMatchesAction\(b\.entity, this\.value\)/);
     assert.match(entry, /registerActionCardTypes\(registry, context\.configuration\.confirmationOptions, context\.controllers\.entityState, fields, cardUi\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerActionCardTypes/);
     assert.match(entry, /actionCardStateEntity: \(button\) => confirmationOptions\.actionCardStateEntity\(button\)/);

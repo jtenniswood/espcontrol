@@ -416,12 +416,12 @@ def check_root(root: Path) -> list[str]:
             "LV_INDEV_TYPE_POINTER",
             "lv_indev_get_point",
             "lv_obj_get_coords",
-            "vertical_pointer_percent",
+            "vertical_pointer_position",
             "LV_EVENT_VALUE_CHANGED",
         )
         if any(needle not in pointer_body for needle in pointer_required):
             failures.append(
-                f"components/espcontrol/{SLIDERS_HEADER}: map direct vertical slider pointer input through the safe endpoint track"
+                f"components/espcontrol/{SLIDERS_HEADER}: map direct vertical slider pointer input through the full safe endpoint track"
             )
 
         setup_body = function_body(text, "setup_slider_visual") or ""
@@ -1093,7 +1093,7 @@ inline bool slider_apply_vertical_pointer_value() {
   LV_INDEV_TYPE_POINTER;
   lv_indev_get_point();
   lv_obj_get_coords();
-  vertical_pointer_percent();
+  vertical_pointer_position();
   LV_EVENT_VALUE_CHANGED;
 }
 inline void slider_fit_to_button() {
