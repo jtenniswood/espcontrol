@@ -93,6 +93,12 @@ int main() {
   assert(!navigated);
   companion_expect_action_result("launch-2", [&navigated]() { navigated = true; });
   companion_deliver_action_result("launch-2", "performed");
+  assert(!navigated);
+  companion_expect_action_result("launch-3", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-3", "opened");
+  assert(!navigated);
+  companion_expect_action_result("launch-4", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-4", "activated");
   assert(navigated);
   companion_set_connected(false);
   companion_set_connected(true);

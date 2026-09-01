@@ -317,8 +317,17 @@ final class CompanionStore: NSObject, ObservableObject {
             }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        updateStatus("Safari did not become active", connected: isConnected)
+        updateStatus("\(app.name) did not become active", connected: isConnected)
         return false
+    }
+
+    func performResultStatus(actionIdentifier: String) async -> String {
+        let isApplicationLaunch = !actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix)
+            && !SystemMediaController.supports(actionIdentifier: actionIdentifier)
+            && !actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix)
+        let performed = await perform(actionIdentifier: actionIdentifier)
+        guard performed else { return "not_allowed" }
+        return isApplicationLaunch ? "activated" : "performed"
     }
 
     func openFolder(actionIdentifier: String) -> Bool {

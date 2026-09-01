@@ -71,7 +71,11 @@ inline void companion_deliver_action_result(const std::string &request_id,
     auto &pending = companion_pending_action_result();
     std::lock_guard<std::mutex> lock(pending.mutex);
     if (pending.request_id != request_id) return;
-    if (status == "performed" || status == "opened") success = std::move(pending.success);
+    // Only a current Companion build sends "activated" after it has verified
+    // that a launched application is frontmost. Older builds report
+    // "performed" as soon as launch scheduling succeeds, which is not safe
+    // enough to expose keyboard shortcuts.
+    if (status == "activated") success = std::move(pending.success);
     pending.request_id.clear();
     pending.success = nullptr;
   }

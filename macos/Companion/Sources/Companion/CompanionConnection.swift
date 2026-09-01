@@ -263,8 +263,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             let actionIdentifier = parts[2]
             Task { [weak self] in
                 guard let self else { return }
-                let performed = await self.store.perform(actionIdentifier: actionIdentifier)
-                self.send("RESULT|\(requestIdentifier)|\(performed ? "performed" : "not_allowed")")
+                let status = await self.store.performResultStatus(actionIdentifier: actionIdentifier)
+                self.send("RESULT|\(requestIdentifier)|\(status)")
             }
         case "OPEN_URL":
             guard parts.count == 4 else { return }
