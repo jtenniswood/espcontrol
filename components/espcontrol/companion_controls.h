@@ -567,7 +567,14 @@ inline void companion_refresh_cards_if_requested() {
       if (it->unit_label) {
         lv_label_set_display_text(it->unit_label, available ? it->metric_unit.c_str() : "");
       }
-      lv_obj_clear_state(it->button, LV_STATE_DISABLED);
+      // Match the unavailable state used by other cards when their backing
+      // connection is offline. A missing optional metric (for example,
+      // battery on a desktop Mac) remains enabled while Companion is online.
+      if (snapshot.connected) {
+        lv_obj_clear_state(it->button, LV_STATE_DISABLED);
+      } else {
+        lv_obj_add_state(it->button, LV_STATE_DISABLED);
+      }
       ++it;
       continue;
     }
