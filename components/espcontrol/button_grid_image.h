@@ -2419,6 +2419,12 @@ inline bool image_card_context_on_active_screen(ImageCardCtx *ctx) {
       lv_obj_has_flag(ctx->btn, LV_OBJ_FLAG_HIDDEN)) {
     return false;
   }
+  const ControlModalActive &active_modal = control_modal_active();
+  if (active_modal.kind != ControlModalKind::NONE &&
+      (active_modal.kind != ControlModalKind::IMAGE_CARD ||
+       !image_card_modal_active_for(ctx))) {
+    return false;
+  }
   lv_obj_t *screen = ctx->btn;
   while (lv_obj_get_parent(screen) != nullptr) screen = lv_obj_get_parent(screen);
   return screen == lv_scr_act();
