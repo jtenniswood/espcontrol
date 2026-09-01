@@ -536,13 +536,13 @@ export function createSettingsPageHelpersFeature(
         var cameraImageModeId: any = selectId === "sp-set-sensor-clock-mode"
             ? "sp-set-sensor-screensaver-camera-image-mode"
             : "sp-set-screensaver-camera-image-mode";
-        cameraImageModeField.appendChild(fieldLabel("Image Display", cameraImageModeId));
+        cameraImageModeField.appendChild(fieldLabel("Expanded Image", cameraImageModeId));
         var cameraImageModeSelect: any = document.createElement("select");
         cameraImageModeSelect.className = "sp-select";
         cameraImageModeSelect.id = cameraImageModeId;
         [
-            { value: "Fit", label: "Fit — show full image" },
-            { value: "Fill", label: "Fill — crop to screen" },
+            { value: "Fill", label: "Crop to fit" },
+            { value: "Fit", label: "Show full image" },
         ].forEach(function (this: any, option?: any) {
             var item: any = document.createElement("option");
             item.value = option.value;
