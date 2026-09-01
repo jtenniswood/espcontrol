@@ -61,6 +61,8 @@ export function runConnectorsFeatureTests(): void {
       cardTypeConnector("slider", true) !== "mixed" ||
       cardTypeConnector("slider", false) !== "home_assistant" ||
       cardTypeConnector("webhook") !== "network" ||
+      cardTypeConnector("wifi_qr") !== "local" ||
+      cardTypeConnector("wifi_qr_card") !== "local" ||
       cardTypeConnector("climate") !== "home_assistant") {
     throw new Error("Card picker connector classifications must remain explicit");
   }

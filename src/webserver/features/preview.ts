@@ -90,7 +90,10 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   media_control: "media",
 };
 
-const LOCAL_CARD_TYPES = new Set(["internal", "local_sensor", "push", "screen_lock", "subpage", "timezone"]);
+const LOCAL_CARD_TYPES = new Set([
+  "internal", "local_sensor", "push", "screen_lock", "subpage", "timezone",
+  "wifi_qr", "wifi_qr_card",
+]);
 
 export function cardTypeConnector(key: string, companionSupported = false): CardPickerOption["connector"] {
   if (key === "companion") return "mac_companion";
