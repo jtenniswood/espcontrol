@@ -11,6 +11,9 @@ globals:
   - id: camera_screensaver_subscribed_entity
     type: std::string
     initial_value: '""'
+  - id: camera_screensaver_subscribed_generation
+    type: uint32_t
+    initial_value: '0'
   - id: camera_screensaver_access_token
     type: std::string
     initial_value: '""'
@@ -50,6 +53,11 @@ artwork_image:
             lambda: 'return !id(camera_screensaver_image_available);'
           then:
             - lvgl.widget.show: camera_screensaver_unavailable
+      - if:
+          condition:
+            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);'
+          then:
+            - script.execute: camera_screensaver_retry
 
 interval:
   - interval: 1s
@@ -101,6 +109,10 @@ script:
     mode: restart
     then:
       - globals.set: { id: camera_screensaver_subscribed_entity, value: '""' }
+      - globals.set: { id: camera_screensaver_subscribed_generation, value: '0' }
+      - globals.set: { id: camera_screensaver_image_available, value: 'false' }
+      - lvgl.widget.hide: camera_screensaver_image
+      - lvgl.widget.show: camera_screensaver_unavailable
       - globals.set: { id: camera_screensaver_access_token, value: '""' }
       - globals.set: { id: camera_screensaver_request_pending, value: 'false' }
       - if:
@@ -130,8 +142,10 @@ script:
                   return;
                 }
                 const uint32_t subscription_generation = ha_subscription_generation();
-                if (id(camera_screensaver_subscribed_entity) != entity) {
+                if (id(camera_screensaver_subscribed_entity) != entity ||
+                    id(camera_screensaver_subscribed_generation) != subscription_generation) {
                   id(camera_screensaver_subscribed_entity) = entity;
+                  id(camera_screensaver_subscribed_generation) = subscription_generation;
                   id(camera_screensaver_access_token).clear();
                   id(camera_screensaver_request_pending) = false;
                   ha_subscribe_state(entity,
@@ -167,7 +181,8 @@ script:
                 }
                 if (id(camera_screensaver_request_pending)) return;
                 id(camera_screensaver_request_pending) = true;
-                ha_get_attribute(entity, std::string("access_token"),
+                const bool requested = ha_read_retained_attribute(
+                  entity, std::string("access_token"),
                   std::function<void(esphome::StringRef)>([entity, subscription_generation](esphome::StringRef token) {
                     id(camera_screensaver_request_pending) = false;
                     if (subscription_generation != ha_subscription_generation() ||
@@ -181,6 +196,11 @@ script:
                     id(camera_screensaver_access_token) = next;
                     id(camera_screensaver_request_image).execute();
                   }));
+                if (!requested) {
+                  id(camera_screensaver_request_pending) = false;
+                  id(camera_screensaver_show_unavailable).execute();
+                  id(camera_screensaver_retry).execute();
+                }
 
   - id: camera_screensaver_retry
     mode: restart
