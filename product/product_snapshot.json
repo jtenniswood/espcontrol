@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 7,
     "cardTypes": 43,
-    "entityNames": 101,
+    "entityNames": 102,
     "icons": 335,
     "structuralIcons": 20,
     "compatibilityFixtureGroups": 2
@@ -6647,6 +6647,17 @@
           "screen_saver__cover_art",
           "screen_saver_cover_art",
           "screensaver_cover_art"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "cover_art_source",
+        "domain": "select",
+        "name": "Cover Art Source",
+        "objectIds": [
+          "cover_art_source"
         ],
         "groups": [
           "settings"
