@@ -207,6 +207,12 @@ export function companionLabelPlaceholder(card: any): string {
     return metric ? `e.g. ${metric.label}` : "e.g. Safari or Select all";
 }
 
+export function companionMetricPreviewValue(precision: unknown): string {
+    const parsed = Number.parseInt(String(precision ?? "0"), 10);
+    const digits = parsed >= 0 && parsed <= 2 ? parsed : 0;
+    return (42).toFixed(digits);
+}
+
 export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
@@ -662,7 +668,10 @@ export function registerCompanionCardTypes(
             if (companionCardIsMetric(card)) {
                 const metric = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.id === card.entity);
                 return {
-                    iconHtml: cardSensorPreviewHtml(card, helpers, "42.0", card.unit || metric?.unit || "%"),
+                    iconHtml: cardSensorPreviewHtml(
+                        card, helpers, companionMetricPreviewValue(card.precision),
+                        card.unit || metric?.unit || "%",
+                    ),
                     labelHtml: cardBadgeLabelHtml(helpers, card.label || metric?.label || "Mac"),
                 };
             }

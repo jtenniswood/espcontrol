@@ -7,6 +7,7 @@ import {
   companionEntityForMode,
   companionCardIsMetric,
   companionLabelPlaceholder,
+  companionMetricPreviewValue,
   companionMediaIcon,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
@@ -48,6 +49,11 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
     throw new Error("Companion cards must use one mode-appropriate label field");
+  }
+  if (companionMetricPreviewValue("0") !== "42" ||
+      companionMetricPreviewValue("1") !== "42.0" ||
+      companionMetricPreviewValue("2") !== "42.00") {
+    throw new Error("Companion statistic previews must match the selected precision");
   }
   const generatedMetricCard: any = { entity: "stat.cpu", label: "", icon: "Auto" };
   normalizeCompanionCard(generatedMetricCard);
