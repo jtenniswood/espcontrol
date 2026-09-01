@@ -3192,6 +3192,57 @@ async function assertPlaylistValidationOpensSourcePanel(page, label) {
   });
 }
 
+async function assertNumberActionRequiresValue(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  const emptyCell = page
+    .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
+    .first();
+  assert(await emptyCell.count(), `${label}: number action validation needs an empty cell`);
+
+  const before = posts.length;
+  await emptyCell.click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.getByRole("button", { name: "Action card type" }).click();
+  await page.locator("#sp-inp-action").selectOption("number.set_value");
+  await page.locator("#sp-inp-entity").fill("number.target_level");
+  await page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Card Settings" })
+    .first()
+    .locator("> .sp-disclosure-button")
+    .click();
+  await page.locator("#sp-inp-action-value").fill("");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  assert(
+    await page.getByText("Enter a value before saving.", { exact: true }).isVisible(),
+    `${label}: a number action should reject a blank value`,
+  );
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: an invalid number action should not post`,
+  );
+
+  await page.locator("#sp-inp-action-value").fill("12.5");
+  assert.strictEqual(
+    await page.getByText("Enter a value before saving.", { exact: true }).count(),
+    0,
+    `${label}: entering a number action value should clear the validation error`,
+  );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+  assert.strictEqual(
+    posts.length,
+    before,
+    `${label}: closing the number action draft should not post`,
+  );
+}
+
 async function assertSpeakerGroupEditorAndPreview(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -5375,6 +5426,7 @@ async function runCase(browser, testCase) {
       await assertAllCardSettingsGrouped(page, posts, testCase.name);
       await assertFanOptionalLightSettings(page, testCase.name);
       await assertWebhookSettingsPanel(page, posts, testCase.name);
+      await assertNumberActionRequiresValue(page, posts, testCase.name);
     }
     await assertInternalControlsPanel(page, posts, testCase.name);
     await assertEmptyCellSettings(page, posts, testCase.name);
