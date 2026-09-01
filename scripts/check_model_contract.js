@@ -255,6 +255,20 @@ assert.deepStrictEqual(parsedTransfer.cards[0], transferCard,
   "card transfer preserves punctuation-heavy card configuration and size");
 assert.deepStrictEqual(parsedTransfer.cards[1], transferSubpageCard,
   "card transfer preserves a structured subpage");
+const safariShortcutFolderCard = {
+  ...transferSubpageCard,
+  type: "companion",
+  entity: "com.apple.Safari",
+  options: "app_shortcuts",
+};
+assert.deepStrictEqual(
+  plain(model.parseCardTransferCode(model.createCardTransferCode(
+    { device: "panel-a", firmware: "2026.7.0" },
+    [safariShortcutFolderCard],
+  )).cards[0]),
+  plain(safariShortcutFolderCard),
+  "card transfer preserves a Safari shortcut folder",
+);
 const extraLargeSubpageCard = {
   ...transferSubpageCard,
   subpage: {
@@ -360,7 +374,7 @@ assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: 
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, subpage: transferSubpageCard.subpage }] },
-  "only a Subpage card");
+  "only a subpage-owning card");
 assertTransferError({
   format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" },
   cards: [{ ...transferSubpageCard, subpage: { ...transferSubpageCard.subpage, order: ["B", "99"] } }],

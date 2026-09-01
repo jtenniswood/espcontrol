@@ -14,6 +14,7 @@ import {
     COMPANION_SHORTCUT_PREFIX,
     SAFARI_BUNDLE_ID,
     companionAppShortcutFolderEnabled,
+    companionShortcutFolderEditorAvailable,
     createSafariShortcutSubpage,
     normalizeCompanionAppShortcutOptions,
     setCompanionAppShortcutFolderEnabled,
@@ -614,7 +615,8 @@ export function registerCompanionCardTypes(
                 }
             });
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
-            if (!helpers.isSub && companionAppShortcutFolderEnabled(card)) {
+            const savedParent = !helpers.isSub && slot ? state.buttons[slot - 1] : null;
+            if (companionShortcutFolderEditorAvailable(card, savedParent)) {
                 const editButton = document.createElement("button");
                 editButton.className = "sp-action-btn sp-edit-subpage-btn";
                 editButton.textContent = "Edit Safari Shortcuts";

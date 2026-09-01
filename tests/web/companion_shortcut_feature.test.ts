@@ -24,6 +24,7 @@ import {
 import {
   companionAppShortcutFolderEnabled,
   companionShortcutFolderCardAllowed,
+  companionShortcutFolderEditorAvailable,
   createSafariShortcutSubpage,
   normalizeCompanionAppShortcutOptions,
   safariShortcutPresetCards,
@@ -49,6 +50,12 @@ export function runCompanionShortcutFeatureTests(): void {
   setCompanionAppShortcutFolderEnabled(safariFolderCard, true);
   if (!companionAppShortcutFolderEnabled(safariFolderCard) || safariFolderCard.options !== "app_shortcuts") {
     throw new Error("Safari launch cards must retain the shortcut-folder option");
+  }
+  if (companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard, options: "" })) {
+    throw new Error("The Safari shortcut editor must wait until the folder option is saved");
+  }
+  if (!companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard })) {
+    throw new Error("Saved Safari shortcut folders must expose their editor");
   }
   const chromeFolderCard = {
     type: "companion", entity: "com.google.Chrome", options: "app_shortcuts",

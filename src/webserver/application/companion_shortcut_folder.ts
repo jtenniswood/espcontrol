@@ -1,4 +1,5 @@
 import { configOptionEnabled, setConfigOption } from "../model/config_primitives";
+import { cardTransferOwnsSubpage } from "../model/card_transfer";
 
 export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
@@ -40,7 +41,11 @@ export function setCompanionAppShortcutFolderEnabled(card: any, enabled: boolean
 }
 
 export function cardOwnsSubpage(card: any): boolean {
-    return !!card && (card.type === "subpage" || companionAppShortcutFolderEnabled(card));
+    return !!card && cardTransferOwnsSubpage(card);
+}
+
+export function companionShortcutFolderEditorAvailable(draftCard: any, savedCard: any): boolean {
+    return companionAppShortcutFolderEnabled(draftCard) && companionAppShortcutFolderEnabled(savedCard);
 }
 
 export function companionShortcutFolderParent(buttons: readonly any[], homeSlot: number | null): any | null {

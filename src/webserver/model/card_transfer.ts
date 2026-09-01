@@ -1,5 +1,6 @@
 import type { CardConfig } from "../contracts/types";
 import { CARD_CONFIG_FIELDS, cloneCardConfig } from "./card";
+import { configOptionEnabled } from "./config_primitives";
 import { CARD_SIZE_DEFINITIONS } from "./grid";
 import {
   parseStructuredSubpageConfig,
@@ -27,6 +28,14 @@ export interface CardTransferEnvelope {
   version: number;
   source: CardTransferSource;
   cards: CardTransferEntry[];
+}
+
+export function cardTransferOwnsSubpage(card: Pick<CardConfig, "type" | "entity" | "options">): boolean {
+  return card.type === "subpage" || (
+    card.type === "companion" &&
+    card.entity === "com.apple.Safari" &&
+    configOptionEnabled(card.options, "app_shortcuts")
+  );
 }
 
 type CardTransferError = Error & { cardTransferMessage: string };
@@ -103,8 +112,8 @@ function normalizeTransferEntry(value: unknown, index: number): CardTransferEntr
   }
   const entry: CardTransferEntry = { ...card, size: value.size as number };
   if (Object.prototype.hasOwnProperty.call(value, "subpage")) {
-    if (card.type !== "subpage") {
-      throw transferError("Invalid card code - only a Subpage card can contain a subpage");
+    if (!cardTransferOwnsSubpage(card)) {
+      throw transferError("Invalid card code - only a subpage-owning card can contain a subpage");
     }
     entry.subpage = normalizeTransferSubpage(value.subpage, context + " subpage");
   }
