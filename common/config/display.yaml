@@ -526,6 +526,24 @@ select:
               - script.execute: screensaver_idle_check
 
   - platform: template
+    name: "${entity_screen_saver_camera_image_mode}"
+    internal: true
+    id: screensaver_camera_image_mode
+    entity_category: config
+    icon: "mdi:image-size-select-large"
+    optimistic: true
+    restore_value: true
+    initial_option: "Fit"
+    options:
+      - "Fit"
+      - "Fill"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: camera_screensaver_image_mode_changed
+
+  - platform: template
     name: "${entity_screen_temperature_unit}"
     internal: true
     disabled_by_default: true

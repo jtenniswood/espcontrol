@@ -3731,6 +3731,14 @@ def firmware_camera_screensaver_retained_token_errors(
         errors.append(
             f"{rel}: rebind the downloaded camera buffer to the LVGL image widget"
         )
+    if (
+        'id(screensaver_camera_image_mode).current_option() == "Fill"' not in text
+        or "ImageResizeMode::COVER" not in text
+        or "ImageResizeMode::FIT" not in text
+    ):
+        errors.append(
+            f"{rel}: map the camera Fit and Fill options to artwork resize modes"
+        )
     return errors
 
 
@@ -4847,6 +4855,9 @@ def run_self_test() -> int:
         'lvgl.image.update:\n'
         '  id: camera_screensaver_image\n'
         '  src: camera_screensaver_downloaded_image\n'
+        'id(screensaver_camera_image_mode).current_option() == "Fill"\n'
+        'esphome::artwork_image::ImageResizeMode::COVER\n'
+        'esphome::artwork_image::ImageResizeMode::FIT\n'
     )
     expect_camera_screensaver_retained_token_errors(
         "camera token subscription is not retained",
@@ -4890,6 +4901,13 @@ def run_self_test() -> int:
             'lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));\n', ''
         ),
         ("rebind the downloaded camera buffer",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera image display modes are not mapped",
+        valid_camera_screensaver.replace(
+            'esphome::artwork_image::ImageResizeMode::COVER\n', ''
+        ),
+        ("map the camera Fit and Fill options",),
     )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",

@@ -50,6 +50,7 @@ substitutions:
   entity_screensaver_mode: "Screensaver Mode"
   entity_screen_saver_action: "Screen Saver: Action"
   entity_screen_saver_camera_entity: "Screen Saver: Camera Entity"
+  entity_screen_saver_camera_image_mode: "Screen Saver: Camera Image Mode"
   entity_presence_sensor_entity: "Presence Sensor Entity"
   entity_screen_schedule_sensor_entity: "Screen Schedule Sensor Entity"
   entity_screen_saver_media_player_sleep_prevention: "Screen Saver: Media Player Sleep Prevention"

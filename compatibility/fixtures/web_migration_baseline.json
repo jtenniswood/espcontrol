@@ -49,7 +49,7 @@
       "timezone": "Europe/London (GMT+0)", "temperatureUnit": "°F", "language": "en", "clockFormat": "12h",
       "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
       "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
-      "screensaverMode": "disabled", "presenceSensorEntity": "", "screensaverCameraEntity": "", "mediaPlayerSleepPrevention": true,
+      "screensaverMode": "disabled", "presenceSensorEntity": "", "screensaverCameraEntity": "", "screensaverCameraImageMode": "Fit", "mediaPlayerSleepPrevention": true,
       "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
       "coverArtSecondaryMediaPlayerEntity": "",
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
@@ -108,5 +108,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2582233, "gzip": 1085604, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2584806, "gzip": 1085932, "gzipTolerance": 9216 }
 }

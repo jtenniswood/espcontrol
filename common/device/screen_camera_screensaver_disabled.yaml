@@ -3,6 +3,10 @@
 # legacy imported Camera selections are converted to Display Off in display.yaml.
 
 script:
+  - id: camera_screensaver_image_mode_changed
+    mode: restart
+    then: []
+
   - id: camera_screensaver_config_changed
     mode: restart
     then: []

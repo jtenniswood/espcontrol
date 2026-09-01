@@ -392,12 +392,16 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         timerPanel.appendChild(timerClockControls.clockField);
         if (layout.config.features?.cameraScreensaver)
             timerPanel.appendChild(timerClockControls.cameraField);
+        if (layout.config.features?.cameraScreensaver)
+            timerPanel.appendChild(timerClockControls.cameraImageModeField);
         timerPanel.appendChild(timerClockControls.dimBrightnessField);
         timerPanel.appendChild(timerClockControls.brightnessField);
         els.setClockSelect = timerClockControls.clockSelect;
         els.setClockField = timerClockControls.clockField;
         els.setScreensaverCameraField = timerClockControls.cameraField;
         els.setScreensaverCamera = timerClockControls.cameraInput;
+        els.setScreensaverCameraImageModeField = timerClockControls.cameraImageModeField;
+        els.setScreensaverCameraImageMode = timerClockControls.cameraImageModeSelect;
         els.setDimBrightnessField = timerClockControls.dimBrightnessField;
         els.setManualDimBrightnessField = timerClockControls.manualDimBrightnessField;
         els.setAutomaticDimBrightnessField = timerClockControls.automaticDimBrightnessField;
@@ -430,6 +434,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         sensorPanel.appendChild(sensorClockControls.clockField);
         if (layout.config.features?.cameraScreensaver)
             sensorPanel.appendChild(sensorClockControls.cameraField);
+        if (layout.config.features?.cameraScreensaver)
+            sensorPanel.appendChild(sensorClockControls.cameraImageModeField);
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);
@@ -438,6 +444,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setSensorClockField = sensorClockControls.clockField;
         els.setSensorScreensaverCameraField = sensorClockControls.cameraField;
         els.setSensorScreensaverCamera = sensorClockControls.cameraInput;
+        els.setSensorScreensaverCameraImageModeField = sensorClockControls.cameraImageModeField;
+        els.setSensorScreensaverCameraImageMode = sensorClockControls.cameraImageModeSelect;
         els.setSensorDimBrightnessField = sensorClockControls.dimBrightnessField;
         els.setSensorManualDimBrightnessField = sensorClockControls.manualDimBrightnessField;
         els.setSensorAutomaticDimBrightnessField = sensorClockControls.automaticDimBrightnessField;
