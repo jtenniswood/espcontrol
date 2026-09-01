@@ -277,9 +277,11 @@ private struct CompanionSettings: View {
     var body: some View {
         TabView {
             ScrollView {
-                GroupBox("Device connection") {
+                VStack(spacing: 12) {
                     connectionStatusPanel
-                        .padding(8)
+                    if hasPanelAddress {
+                        deviceWebserverPanel
+                    }
                 }
                 .padding()
             }
@@ -418,46 +420,67 @@ private struct CompanionSettings: View {
 
     private var connectionStatusPanel: some View {
         HStack(spacing: 12) {
-            Image(systemName: store.isConnected ? "checkmark.circle.fill" : "circle.dashed")
-                .font(.title2)
-                .foregroundStyle(store.isConnected ? Color.green : Color.secondary)
-
             VStack(alignment: .leading, spacing: 3) {
-                Text(store.isConnected ? "Connected to \(connectionDisplayName)" : "Mac Companion is not connected")
+                Text("EspControl Companion")
                     .font(.headline)
-                Text(store.statusDescription)
-                    .font(.caption)
+                Text(store.isConnected ? "Connected" : "Disconnected")
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 8) {
-                if canConnect {
-                    Button(store.isConnected ? "Disconnect" : "Connect") {
-                        if store.isConnected {
-                            store.disconnect()
-                        } else {
-                            store.connect()
-                        }
-                    }
-                    .controlSize(.large)
-                }
-
-                if hasPanelAddress {
-                    Button("Open Device Webserver") { store.openPanelWebServer() }
-                        .controlSize(.large)
-                }
+            if canConnect || store.isConnected {
+                Toggle("Connect EspControl Companion", isOn: connectionBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
             }
         }
-        .padding(12)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color(nsColor: .controlBackgroundColor))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(store.isConnected ? Color.green.opacity(0.55) : Color.secondary.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var deviceWebserverPanel: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Device Webserver")
+                    .font(.headline)
+                Text("Open the display settings in your browser")
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button("Open Device Webserver") { store.openPanelWebServer() }
+                .controlSize(.large)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var connectionBinding: Binding<Bool> {
+        Binding(
+            get: { store.isConnected },
+            set: { connected in
+                if connected {
+                    store.connect()
+                } else {
+                    store.disconnect()
+                }
+            }
         )
     }
 
@@ -467,10 +490,6 @@ private struct CompanionSettings: View {
 
     private var canConnect: Bool {
         hasPanelAddress && store.hasSavedPairing
-    }
-
-    private var connectionDisplayName: String {
-        store.panelHost
     }
 
 }
