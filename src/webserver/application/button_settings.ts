@@ -607,6 +607,7 @@ export function createButtonSettingsFeature(
                     home_assistant: "Home Assistant",
                     mac_companion: "Mac Companion",
                     mixed: "Home Assistant or Mac",
+                    home_assistant_or_local: "Home Assistant or local",
                     local: "On this display",
                     network: "Direct network",
                 };

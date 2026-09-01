@@ -33,7 +33,8 @@ export interface CardPickerOption {
   readonly icon: string;
   readonly description: string;
   readonly disabled: boolean;
-  readonly connector: "home_assistant" | "mac_companion" | "mixed" | "local" | "network";
+  readonly connector: "home_assistant" | "mac_companion" | "mixed" |
+    "home_assistant_or_local" | "local" | "network";
 }
 
 interface PickerDetails {
@@ -98,6 +99,7 @@ const LOCAL_CARD_TYPES = new Set([
 export function cardTypeConnector(key: string, companionSupported = false): CardPickerOption["connector"] {
   if (key === "companion") return "mac_companion";
   if (key === "slider") return companionSupported ? "mixed" : "home_assistant";
+  if (key === "action" || key === "sensor") return "home_assistant_or_local";
   if (key === "webhook") return "network";
   if (LOCAL_CARD_TYPES.has(key)) return "local";
   return "home_assistant";

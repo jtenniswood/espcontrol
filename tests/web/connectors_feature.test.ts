@@ -60,6 +60,8 @@ export function runConnectorsFeatureTests(): void {
   if (cardTypeConnector("companion") !== "mac_companion" ||
       cardTypeConnector("slider", true) !== "mixed" ||
       cardTypeConnector("slider", false) !== "home_assistant" ||
+      cardTypeConnector("action") !== "home_assistant_or_local" ||
+      cardTypeConnector("sensor") !== "home_assistant_or_local" ||
       cardTypeConnector("webhook") !== "network" ||
       cardTypeConnector("wifi_qr") !== "local" ||
       cardTypeConnector("wifi_qr_card") !== "local" ||
