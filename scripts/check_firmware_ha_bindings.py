@@ -13,6 +13,8 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE_DIR = ROOT / "components" / "espcontrol"
 CORE_INFRA_PATH = ROOT / "common" / "device" / "core_infra.yaml"
+SCREEN_LOADING_PATH = ROOT / "common" / "device" / "screen_loading.yaml"
+SCREEN_WIFI_SETUP_PATH = ROOT / "common" / "device" / "screen_wifi_setup.yaml"
 API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 C6_FIRMWARE_UPDATE_PATH = ROOT / "common" / "device" / "esp32_c6_firmware_update.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
@@ -1080,11 +1082,17 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: reset artwork retry state when playback resumes without a visible image")
     if playback_started_body and "espcontrol::cover_art::display_allowed(" in playback_started_body:
         errors.append(f"{rel}: let the playback-start event activate cover art before mirrored playback state settles")
-    if (
-        "cover_art_artist_label" in text
-        and "if (!id(cover_art_artist).empty()) return id(cover_art_artist);" not in text
+    sync_text_body = yaml_script_body(text, "cover_art_sync_track_text")
+    source_display_normalized = sync_text_body is not None and re.search(
+        r"normalize_display_text\(\s*decode_html_entities\(id\(cover_art_media_source\)\)\)",
+        sync_text_body,
+    )
+    if sync_text_body is not None and (
+        "normalize_display_text(id(cover_art_title))" not in sync_text_body
+        or "normalize_display_text(id(cover_art_artist))" not in sync_text_body
+        or source_display_normalized is None
     ):
-        errors.append(f"{rel}: prefer a real artist name over the external-source fallback label")
+        errors.append(f"{rel}: normalize decoded cover art metadata only at the label boundary")
     pause_body = yaml_script_body(text, "cover_art_pause_after_touch")
     if pause_body is not None and (
         "target_mode_is(espcontrol::DisplayMode::COVER_ART)" not in pause_body
@@ -2393,6 +2401,69 @@ def firmware_image_card_startup_errors(
     return errors
 
 
+def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
+    errors: list[str] = []
+    image_header = root / "components" / "espcontrol" / "button_grid_image.h"
+    p4_package = root / "common" / "device" / "image_cards_6.yaml"
+    s3_package = root / "common" / "device" / "image_cards_1.yaml"
+    if not image_header.exists() or not p4_package.exists() or not s3_package.exists():
+        return errors
+
+    image_text = image_header.read_text(encoding="utf-8")
+    p4_text = p4_package.read_text(encoding="utf-8")
+    s3_text = s3_package.read_text(encoding="utf-8")
+    camera_refresh_contract = (
+        "inline void refresh_visible_camera_cards()",
+        "image_card_context_on_active_screen(ctx)",
+        "ctx->media_artwork",
+        "const ControlModalActive &active_modal = control_modal_active()",
+        "active_modal.kind != ControlModalKind::NONE",
+        "active_modal.kind != ControlModalKind::IMAGE_CARD",
+        "!image_card_modal_active_for(ctx)",
+        "screen == lv_scr_act()",
+        'std::string("access_token")',
+        'std::string("entity_picture")',
+        "ctx->camera_refresh_pending",
+        "image_card_handle_picture(ctx, picture)",
+        "IMAGE_CARD_MIN_REPEAT_REFRESH_MS",
+        "image_card_active_download_context()",
+        "image_card_modal_active_for(ctx)",
+    )
+    if any(token not in image_text for token in camera_refresh_contract):
+        errors.append(
+            "components/espcontrol/button_grid_image.h: keep the Home Assistant camera "
+            "refresh action visible-only, camera-only, serialized, and throttled"
+        )
+    if (
+        "action: refresh_camera_cards" not in p4_text
+        or "refresh_visible_camera_cards();" not in p4_text
+        or "display.current_mode_is(espcontrol::DisplayMode::ACTIVE)" not in p4_text
+        or "display.current_mode_is(espcontrol::DisplayMode::DIMMED)" not in p4_text
+        or "display.target_mode_is(espcontrol::DisplayMode::ACTIVE)" not in p4_text
+        or "display.target_mode_is(espcontrol::DisplayMode::DIMMED)" not in p4_text
+        or "if (!page_visible) return;" not in p4_text
+    ):
+        errors.append(
+            "common/device/image_cards_6.yaml: expose the camera refresh action on P4 profiles "
+            "and keep it disabled behind full-screen display modes"
+        )
+    if "refresh_camera_cards" in s3_text or "refresh_visible_camera_cards" in s3_text:
+        errors.append(
+            "common/device/image_cards_1.yaml: keep the unsupported S3 camera refresh action disabled"
+        )
+
+    for package_path in sorted((root / "devices").glob("*/packages.yaml")):
+        slug = package_path.parent.name
+        package_text = package_path.read_text(encoding="utf-8")
+        expected = "image_cards_1.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
+        if expected not in package_text:
+            errors.append(
+                f"{package_path.relative_to(root)}: include {expected} so camera refresh action support "
+                "matches the display profile"
+            )
+    return errors
+
+
 def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
     if not path.exists():
         return []
@@ -3481,6 +3552,37 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
     return errors
 
 
+def firmware_wifi_setup_display_text_errors(
+    loading_path: Path,
+    wifi_setup_path: Path,
+    connectivity_path: Path,
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    expected_calls = (
+        (
+            loading_path,
+            "lv_label_set_display_text(id(loading_status_label), msg.c_str());",
+        ),
+        (
+            connectivity_path,
+            "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
+        ),
+        (
+            wifi_setup_path,
+            "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
+        ),
+    )
+    for path, expected_call in expected_calls:
+        if not path.exists():
+            continue
+        if expected_call not in path.read_text(encoding="utf-8"):
+            errors.append(
+                f"{path.relative_to(root)}: normalize user-controlled WiFi setup names before display"
+            )
+    return errors
+
+
 def firmware_ha_connection_screen_errors(core_infra_path: Path, root: Path) -> list[str]:
     if not core_infra_path.exists():
         return []
@@ -3609,6 +3711,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_camera_refresh_action_errors(ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(
         firmware_screensaver_wake_guard_errors(
@@ -3655,6 +3758,14 @@ def run_scan() -> int:
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(
+        firmware_wifi_setup_display_text_errors(
+            SCREEN_LOADING_PATH,
+            SCREEN_WIFI_SETUP_PATH,
+            CONNECTIVITY_PATHS[0],
+            ROOT,
+        )
+    )
     errors.extend(firmware_ha_connection_screen_errors(CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_c6_update_status_errors(C6_FIRMWARE_UPDATE_PATH, ROOT))
     if errors:
@@ -4590,6 +4701,33 @@ def expect_connectivity_api_errors(name: str, text: str, expected: tuple[str, ..
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_connectivity_api_errors((path,), root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_wifi_setup_display_text_errors(
+    name: str,
+    loading_text: str,
+    wifi_setup_text: str,
+    connectivity_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        loading_path = root / "common" / "device" / "screen_loading.yaml"
+        wifi_setup_path = root / "common" / "device" / "screen_wifi_setup.yaml"
+        connectivity_path = root / "common" / "addon" / "connectivity.yaml"
+        loading_path.parent.mkdir(parents=True)
+        connectivity_path.parent.mkdir(parents=True)
+        loading_path.write_text(loading_text, encoding="utf-8")
+        wifi_setup_path.write_text(wifi_setup_text, encoding="utf-8")
+        connectivity_path.write_text(connectivity_text, encoding="utf-8")
+
+        errors = firmware_wifi_setup_display_text_errors(
+            loading_path, wifi_setup_path, connectivity_path, root
+        )
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -5890,6 +6028,17 @@ def run_self_test() -> int:
         ("restart its countdown after every touch",),
     )
     expect_cover_art_refresh_errors(
+        "cover art metadata bypasses display normalization",
+        "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return id(cover_art_title);\n"
+        "          return id(cover_art_artist);\n"
+        "          return id(cover_art_media_source);\n",
+        ("normalize decoded cover art metadata only at the label boundary",),
+    )
+    expect_cover_art_refresh_errors(
         "stale cover refresh guard present",
         "globals:\n"
         "  - id: cover_art_runtime\n"
@@ -5898,6 +6047,13 @@ def run_self_test() -> int:
         "# cover_art_runtime).effective_download_url\n"
         "  - id: cover_art_album\n"
         "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return normalize_display_text(id(cover_art_title));\n"
+        "          return normalize_display_text(id(cover_art_artist));\n"
+        "          return normalize_display_text(\n"
+        "            decode_html_entities(id(cover_art_media_source)));\n"
         "  - id: cover_art_resolve_home_assistant_base_url\n"
         "    then:\n"
         "      - lambda: |-\n"
@@ -7764,6 +7920,24 @@ def run_self_test() -> int:
         "  on_client_connected:\n"
         "    - script.execute: navigate_after_api\n",
         ("wait for Home Assistant state subscription", "only navigate after a Home Assistant state connection"),
+    )
+    expect_wifi_setup_display_text_errors(
+        "raw WiFi setup display names",
+        "lv_label_set_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
+        "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
+        (
+            "common/device/screen_loading.yaml: normalize user-controlled WiFi setup names",
+            "common/device/screen_wifi_setup.yaml: normalize user-controlled WiFi setup names",
+            "common/addon/connectivity.yaml: normalize user-controlled WiFi setup names",
+        ),
+    )
+    expect_wifi_setup_display_text_errors(
+        "normalized WiFi setup display names",
+        "lv_label_set_display_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
+        "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
+        (),
     )
     expect_connectivity_api_errors(
         "home assistant state connected navigation",

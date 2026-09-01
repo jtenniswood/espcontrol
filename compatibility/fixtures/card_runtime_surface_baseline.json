@@ -2646,6 +2646,68 @@
       }
     },
     {
+      "name": "wifi_qr: share",
+      "sourceKind": "contract",
+      "sourceType": "wifi_qr",
+      "mode": "share",
+      "canonicalType": "wifi_qr",
+      "web": {
+        "registration": "wifi_qr",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "550375456a8a890e"
+        }
+      },
+      "firmware": {
+        "family": "WIFI_QR"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "wifi_qr"
+      }
+    },
+    {
+      "name": "wifi_qr_card: tile_qr",
+      "sourceKind": "contract",
+      "sourceType": "wifi_qr_card",
+      "mode": "tile_qr",
+      "canonicalType": "wifi_qr_card",
+      "web": {
+        "registration": "wifi_qr_card",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "02684f0d55ec47ef"
+        }
+      },
+      "firmware": {
+        "family": "WIFI_QR"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "wifi_qr"
+      }
+    },
+    {
       "name": "weather_forecast: legacy_forecast",
       "sourceKind": "contract",
       "sourceType": "weather_forecast",

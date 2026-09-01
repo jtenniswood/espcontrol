@@ -73,6 +73,9 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
     const { renderPreview, renderButtonSettings, openCardSettings, openVoiceServicesSettings, addSlot, addSubpageSlot, duplicateButton, duplicateSubpageButton, deleteSlot, deleteButtons } = dependencies;
     const {
         cardRequiresSquareSize,
+        cardIsWifiSharing,
+        cardSupportsWifiPortraitSizes,
+        cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
@@ -191,15 +194,19 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         var options: any = [
             { size: CARD_SIZE_SINGLE, label: "Single (1x1)" },
         ];
-        if (!cardRequiresSquareSize(b)) {
+        if (!cardRequiresSquareSize(b) && !cardIsWifiSharing(b)) {
             options.push({ size: CARD_SIZE_TALL, label: "Tall (2x1)" });
             options.push({ size: CARD_SIZE_EXTRA_TALL, label: "Extra Tall (3x1)" });
             options.push({ size: CARD_SIZE_WIDE, label: "Wide (1x2)" });
             options.push({ size: CARD_SIZE_EXTRA_WIDE, label: "Extra Wide (1x3)" });
         }
         options.push({ size: CARD_SIZE_LARGE, label: "Large (2x2)" });
-        if (cardRequiresSquareSize(b) && dependencies.layout.gridCols >= 3 && dependencies.layout.gridRows >= 3)
+        if (cardSupportsExtraLargeSize(b) && dependencies.layout.gridCols >= 3 && dependencies.layout.gridRows >= 3)
             options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
+        if (cardSupportsWifiPortraitSizes(b)) {
+            options.push({ size: CARD_SIZE_MAX_TALL, label: "Max Tall (2x3)" });
+            options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Massive (3x4)" });
+        }
         if (cardSupportsMaxSize(b)) {
             options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max Wide (3x2)" });
             options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
@@ -356,6 +363,10 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         ctxMenu = document.createElement("div");
         ctxMenu.className = "sp-ctx-menu";
         var c: any = ctx();
+        addCtxItem("plus", "Create Card", function (this: any) { addSlot(pos); });
+        if (!c.isSub) {
+            addCtxItem("folder-plus", "Create Subpage", function (this: any) { addSubpageSlot(pos); });
+        }
         if (state.clipboard) {
             var count: any = state.clipboard.buttons.length;
             addCtxItem("content-paste", count > 1 ? "Paste " + count + " Cards" : "Paste", function (this: any) {
@@ -367,14 +378,10 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
                 }
             });
         }
-        addCtxItem("code-json", "Paste Code…", function (this: any) {
+        addCtxDivider();
+        addCtxItem("code-json", "Paste Code", function (this: any) {
             showPasteCardCode(pos, c.isSub);
         });
-        addCtxDivider();
-        addCtxItem("plus", "Create Card", function (this: any) { addSlot(pos); });
-        if (!c.isSub) {
-            addCtxItem("folder-plus", "Create Subpage", function (this: any) { addSubpageSlot(pos); });
-        }
         document.body.appendChild(ctxMenu);
         positionMenu(ctxMenu, e);
     }

@@ -344,6 +344,7 @@ const ICON_GROUPS = {
   'Robot Vacuum Variant Off': 'Network & Tech',
   'Router': 'Network & Tech',
   'Router Network': 'Network & Tech',
+  'Wifi': 'Network & Tech',
   'Vacuum': 'Network & Tech',
   'Vacuum Outline': 'Network & Tech',
 

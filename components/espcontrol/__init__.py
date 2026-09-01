@@ -34,7 +34,7 @@ PANEL_CONFIG_BUTTON_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_CONFIG): cv.use_id(text.Text),
         cv.Required(CONF_SUBPAGE_CHUNKS): cv.All(
-            cv.ensure_list(cv.use_id(text.Text)), cv.Length(min=8, max=8)
+            cv.ensure_list(cv.use_id(text.Text)), cv.Length(min=4, max=8)
         ),
     }
 )

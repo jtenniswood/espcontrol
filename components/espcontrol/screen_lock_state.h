@@ -1,5 +1,7 @@
 #pragma once
 
+#include "display_text.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #include <algorithm>
@@ -126,10 +128,10 @@ inline void screen_lock_apply() {
     lv_obj_add_flag(ref.btn, LV_OBJ_FLAG_CLICKABLE);
     if (ref.icon_lbl) {
       const char *icon = locked ? ref.locked_icon : ref.unlocked_icon;
-      lv_label_set_text(ref.icon_lbl, icon ? icon : "");
+      lv_label_set_display_text(ref.icon_lbl, icon ? icon : "");
     }
     if (ref.text_lbl) {
-      lv_label_set_text(ref.text_lbl,
+      lv_label_set_display_text(ref.text_lbl,
         locked ? espcontrol_i18n("Screen Locked") : espcontrol_i18n("Screen Unlocked"));
     }
   }

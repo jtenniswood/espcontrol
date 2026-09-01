@@ -77,4 +77,4 @@ script:
           std::string msg = std::string(espcontrol_i18n_key("connect_to")) +
                             " '" + hotspot_ssid + "' " +
                             espcontrol_i18n_key("to_configure_your_network_settings");
-          lv_label_set_text(id(wifi_setup_instructions), msg.c_str());
+          lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());

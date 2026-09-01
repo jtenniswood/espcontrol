@@ -233,17 +233,21 @@ export function createButtonSettingsFeature(
                 input.setAttribute("aria-describedby", existing.id);
             }
         }
-        function requireField(this: any, input?: any, message?: any, isActive?: any) {
+        function requireField(this: any, input?: any, message?: any, isActive?: any, hasValue?: any) {
             if (!input)
                 return;
             requiredFields.push({
                 input: input,
                 message: message || "Add an entity before saving.",
                 isActive: isActive || function (this: any) { return true; },
+                hasValue: hasValue,
             });
+            function fieldHasValue(this: any) {
+                return hasValue ? hasValue(input.value) : Boolean(String(input.value || "").trim());
+            }
             function maybeClearError(this: any) {
                 if (!isActive || isActive()) {
-                    if (String(input.value || "").trim())
+                    if (fieldHasValue())
                         clearFieldError(input);
                 }
                 else {
@@ -279,7 +283,21 @@ export function createButtonSettingsFeature(
             input.addEventListener("change", maybeClearError);
         }
         function validateSettingsDraft(this: any) {
-            var firstInvalid: any = null;
+            var validation: any = cardEditorValidationController.validateRequiredFields(requiredFields.map(function (this: any, rule?: any) {
+                var value: any = String(rule.input.value || "").trim();
+                return {
+                    value: rule.input.value,
+                    active: !rule.isActive || rule.isActive(),
+                    present: rule.allowEmpty && !value
+                        ? true
+                        : rule.hasValue
+                            ? Boolean(rule.hasValue(rule.input.value))
+                            : rule.isValid
+                                ? Boolean(value && rule.isValid(value))
+                                : undefined,
+                };
+            }));
+            var firstInvalid: any = validation.firstInvalidIndex >= 0 ? requiredFields[validation.firstInvalidIndex].input : null;
             for (var i: any = 0; i < requiredFields.length; i++) {
                 var rule: any = requiredFields[i];
                 if (rule.isActive && !rule.isActive()) {
@@ -289,13 +307,22 @@ export function createButtonSettingsFeature(
                 var value: any = String(rule.input.value || "").trim();
                 if (!value && rule.allowEmpty)
                     continue;
-                if (value && (!rule.isValid || rule.isValid(value))) {
+                var isPresent: any = rule.hasValue
+                    ? rule.hasValue(rule.input.value)
+                    : Boolean(value);
+                if (isPresent && (!rule.isValid || rule.isValid(value))) {
                     clearFieldError(rule.input);
                     continue;
                 }
-                if (!firstInvalid)
-                    firstInvalid = rule.input;
                 showFieldError(rule.input, rule.message);
+            }
+            for (var j: any = 0; j < requiredFields.length; j++) {
+                var validityRule: any = requiredFields[j];
+                if (validityRule.isActive && !validityRule.isActive()) continue;
+                if (validityRule.input.checkValidity && !validityRule.input.checkValidity()) {
+                    showFieldError(validityRule.input, validityRule.input.validationMessage);
+                    if (!firstInvalid) firstInvalid = validityRule.input;
+                }
             }
             if (!firstInvalid)
                 return true;
@@ -356,10 +383,36 @@ export function createButtonSettingsFeature(
             applySpans(c.grid, c.sizes, c.maxSlots, layout.gridCols);
             return true;
         }
+        function saveResultSucceeded(this: any, result?: any) {
+            return result !== "authentication-required" && result !== "conflict" &&
+                result !== "failed" && result !== "unsupported";
+        }
         function applySettingsDraft(this: any) {
             if (!state.settingsDraft || state.settingsDraft.key !== draftKey)
-                return false;
+                return Promise.resolve(false);
             var draft: any = state.settingsDraft;
+            var originalGrid: any = c.grid.slice();
+            var originalButtons: any = c.buttons.map(cloneButtonConfig);
+            var originalSizes: any = Object.assign({}, c.sizes || {});
+            var subpageHomeSlot: any = state.editingSubpage;
+            var originalSubpageOrder: any = c.isSub
+                ? (getSubpage(subpageHomeSlot).order || []).slice() : null;
+            var originalSubpagePending: any = c.isSub
+                ? state.subpageSavePending[subpageHomeSlot] : undefined;
+            function restoreDraftState(this: any) {
+                c.grid.splice.apply(c.grid, [0, c.grid.length].concat(originalGrid));
+                c.buttons.splice.apply(c.buttons, [0, c.buttons.length].concat(originalButtons));
+                Object.keys(c.sizes || {}).forEach(function (key) { delete c.sizes[key]; });
+                Object.assign(c.sizes, originalSizes);
+                if (c.isSub) {
+                    getSubpage(subpageHomeSlot).order = originalSubpageOrder;
+                    if (originalSubpagePending === undefined)
+                        delete state.subpageSavePending[subpageHomeSlot];
+                    else
+                        state.subpageSavePending[subpageHomeSlot] = originalSubpagePending;
+                }
+                renderPreview();
+            }
             var saved: any = cardEditorSaveController.apply(draft, {
                 slot: slot, maxSlots: c.maxSlots, isSubpage: c.isSub,
                 grid: c.grid, buttons: c.buttons,
@@ -367,26 +420,39 @@ export function createButtonSettingsFeature(
             if (!saved.accepted) {
                 if (draft.isNew)
                     showBanner("That grid space is no longer available. Close this window and try again.", "error");
-                return false;
+                return Promise.resolve(false);
             }
             var savedButton: any = saved.button;
             var sizeChanged: any = applyCardSizeConstraint(savedButton);
-            state.settingsDraft = null;
-            if (saved.saveSubpage) {
-                saveSubpageConfig(state.editingSubpage);
-            }
-            else {
-                if (saved.saveGrid || sizeChanged)
-                    requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
-                if (saved.saveButton)
-                configPersistence.saveButtonConfig(slot);
-            }
-            var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
-            if (savedTypeDef && savedTypeDef.afterSave) {
-                savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
-            }
-            renderPreview();
-            return true;
+            var orderChanged: any = !saved.saveSubpage && (saved.saveGrid || sizeChanged);
+            var persistence: any;
+            if (saved.saveSubpage)
+                persistence = saveSubpageConfig(subpageHomeSlot);
+            else if (saved.saveButton && orderChanged)
+                persistence = configPersistence.saveButtonConfigAndOrder(slot, serializeGrid(state.grid));
+            else if (saved.saveButton)
+                persistence = configPersistence.saveButtonConfig(slot);
+            else if (orderChanged)
+                persistence = requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
+            else
+                persistence = Promise.resolve("saved");
+            return Promise.resolve(persistence).then(function (result: any) {
+                if (!saveResultSucceeded(result)) {
+                    restoreDraftState();
+                    return false;
+                }
+                state.settingsDraft = null;
+                var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
+                if (savedTypeDef && savedTypeDef.afterSave) {
+                    savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
+                }
+                renderPreview();
+                return true;
+            }).catch(function () {
+                restoreDraftState();
+                showBanner("Could not save the configuration. Check the connection and try again.", "error");
+                return false;
+            });
         }
         function bindField(this: any, input?: any, field?: any, rerender?: any) {
             function syncValue(this: any) {
@@ -798,16 +864,21 @@ export function createButtonSettingsFeature(
             rightGroup.appendChild(editSubBtn);
         }
         var saveBtn: any = createActionButton("sp-action-btn sp-save-btn", "Save");
-        saveBtn.addEventListener("click", function (this: any) {
+        saveBtn.addEventListener("click", async function (this: any) {
+            if (saveBtn.disabled)
+                return;
             if (!validateSettingsDraft())
                 return;
             if (!validateImageCardLimit())
                 return;
             if (!validateConfigSize())
                 return;
-            if (!applySettingsDraft())
+            saveBtn.disabled = true;
+            if (await applySettingsDraft()) {
+                closeSettings();
                 return;
-            closeSettings();
+            }
+            saveBtn.disabled = false;
         });
         rightGroup.appendChild(saveBtn);
         saveRow.appendChild(rightGroup);

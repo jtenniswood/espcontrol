@@ -10,10 +10,10 @@
   },
   "summary": {
     "deviceProfiles": 7,
-    "cardTypes": 40,
+    "cardTypes": 42,
     "entityNames": 101,
-    "icons": 334,
-    "structuralIcons": 19,
+    "icons": 335,
+    "structuralIcons": 20,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -122,6 +122,8 @@
         },
         "display": {
           "wrapTallLabels": true,
+          "widthCompensationPercent": 95,
+          "textWidthCompensationPercent": 100,
           "volumeWidthCompensationPercent": 95,
           "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,
@@ -320,6 +322,8 @@
         },
         "display": {
           "wrapTallLabels": true,
+          "widthCompensationPercent": 95,
+          "textWidthCompensationPercent": 100,
           "volumeWidthCompensationPercent": 95,
           "refreshRebuildsSubpages": true,
           "mediaArtworkWidthCompensationPercent": 98,
@@ -1489,7 +1493,8 @@
         "sensor",
         "subpage",
         "weather",
-        "image"
+        "image",
+        "wifi_qr"
       ],
       "capabilities": [
         "informationOnly",
@@ -1992,6 +1997,30 @@
             "numericControl": false,
             "modal": true,
             "runtimeAllocation": true,
+            "subpage": true
+          }
+        },
+        "wifi_qr": {
+          "driver": "wifi_qr",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
+            "actions": true,
+            "numericControl": false,
+            "modal": true,
+            "runtimeAllocation": false,
+            "subpage": true
+          }
+        },
+        "wifi_qr_card": {
+          "driver": "wifi_qr",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
+            "actions": true,
+            "numericControl": false,
+            "modal": true,
+            "runtimeAllocation": false,
             "subpage": true
           }
         },
@@ -5626,6 +5655,208 @@
           "options": ""
         }
       },
+      "wifi_qr": {
+        "label": "Wifi Sharing",
+        "allowInSubpage": true,
+        "domains": [],
+        "options": [
+          {
+            "name": "ssid64",
+            "label": "Network name",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "security",
+            "label": "Security",
+            "kind": "choice",
+            "values": [
+              "wpa",
+              "open"
+            ],
+            "defaultValue": "wpa",
+            "omitDefault": true
+          },
+          {
+            "name": "pass64",
+            "label": "Password",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "hidden",
+            "label": "Hidden network",
+            "kind": "flag",
+            "omitDefault": true
+          },
+          {
+            "name": "wifi_tabs",
+            "label": "Visible Tabs",
+            "kind": "text",
+            "values": [
+              "qr",
+              "credentials"
+            ],
+            "defaultValue": "qr|credentials",
+            "omitDefault": true
+          }
+        ],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "clear"
+            },
+            "label": {
+              "policy": "default_if_empty",
+              "value": "Connect"
+            },
+            "icon": {
+              "policy": "default_if_empty",
+              "value": "Wifi"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "wifi_qr"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "keep"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": [
+            "ssid64",
+            "security",
+            "pass64",
+            "hidden",
+            "wifi_tabs"
+          ]
+        },
+        "default": {
+          "entity": "",
+          "label": "Connect",
+          "icon": "Wifi",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "wifi_qr",
+          "precision": "",
+          "options": ""
+        }
+      },
+      "wifi_qr_card": {
+        "label": "QR Card",
+        "allowInSubpage": true,
+        "pickerKey": "wifi_qr",
+        "domains": [],
+        "options": [
+          {
+            "name": "ssid64",
+            "label": "Network name",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "security",
+            "label": "Security",
+            "kind": "choice",
+            "values": [
+              "wpa",
+              "open"
+            ],
+            "defaultValue": "wpa",
+            "omitDefault": true
+          },
+          {
+            "name": "pass64",
+            "label": "Password",
+            "kind": "text",
+            "omitDefault": true
+          },
+          {
+            "name": "hidden",
+            "label": "Hidden network",
+            "kind": "flag",
+            "omitDefault": true
+          },
+          {
+            "name": "wifi_tabs",
+            "label": "Visible Tabs",
+            "kind": "text",
+            "values": [
+              "qr",
+              "credentials"
+            ],
+            "defaultValue": "qr|credentials",
+            "omitDefault": true
+          }
+        ],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "clear"
+            },
+            "label": {
+              "policy": "clear"
+            },
+            "icon": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "wifi_qr_card"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "keep"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": [
+            "ssid64",
+            "security",
+            "pass64",
+            "hidden",
+            "wifi_tabs"
+          ]
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Auto",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "wifi_qr_card",
+          "precision": "",
+          "options": ""
+        }
+      },
       "weather_forecast": {
         "label": "Weather Forecast",
         "allowInSubpage": true,
@@ -7074,43 +7305,49 @@
         "comment": "Firmware update entities"
       },
       {
-        "name": "Wi-Fi Startup",
-        "codepoint": "F05A9",
-        "mdi": "wifi",
-        "comment": "Setup screens"
+        "name": "Wifi QR Tab",
+        "codepoint": "F0432",
+        "mdi": "qrcode",
+        "comment": "Wifi Share QR tab"
       },
       {
-        "name": "Wi-Fi",
+        "name": "Wifi Password Tab",
+        "codepoint": "F0306",
+        "mdi": "key",
+        "comment": "Wifi Share credentials tab"
+      },
+      {
+        "name": "Wifi Setup",
         "codepoint": "F0928",
         "mdi": "wifi-strength-4",
         "comment": "Setup screens"
       },
       {
-        "name": "Wi-Fi Strength Outline",
+        "name": "Wifi Strength Outline",
         "codepoint": "F092F",
         "mdi": "wifi-strength-outline",
         "comment": "Network status"
       },
       {
-        "name": "Wi-Fi Strength 1",
+        "name": "Wifi Strength 1",
         "codepoint": "F091F",
         "mdi": "wifi-strength-1",
         "comment": "Network status"
       },
       {
-        "name": "Wi-Fi Strength 2",
+        "name": "Wifi Strength 2",
         "codepoint": "F0922",
         "mdi": "wifi-strength-2",
         "comment": "Network status"
       },
       {
-        "name": "Wi-Fi Strength 3",
+        "name": "Wifi Strength 3",
         "codepoint": "F0925",
         "mdi": "wifi-strength-3",
         "comment": "Network status"
       },
       {
-        "name": "Wi-Fi Strength Off Outline",
+        "name": "Wifi Strength Off Outline",
         "codepoint": "F092E",
         "mdi": "wifi-strength-off-outline",
         "comment": "Network status"
@@ -8788,6 +9025,11 @@
         "name": "Weather Windy Variant",
         "codepoint": "F059E",
         "mdi": "weather-windy-variant"
+      },
+      {
+        "name": "Wifi",
+        "codepoint": "F05A9",
+        "mdi": "wifi"
       },
       {
         "name": "Wind Power",

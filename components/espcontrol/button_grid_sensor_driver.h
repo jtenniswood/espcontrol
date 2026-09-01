@@ -59,20 +59,20 @@ inline bool sensor_driver_setup_visual(
     const char *icon = (config.icon.empty() || config.icon == "Auto")
       ? find_icon("Auto")
       : find_icon(config.icon.c_str());
-    lv_label_set_text(slot.icon_lbl, icon);
-    if (!config.label.empty()) lv_label_set_text(slot.text_lbl, config.label.c_str());
+    lv_label_set_display_text(slot.icon_lbl, icon);
+    if (!config.label.empty()) lv_label_set_display_text(slot.text_lbl, config.label.c_str());
     return true;
   }
 
   lv_obj_add_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  if (local) lv_label_set_text(slot.sensor_lbl, "--");
-  if (config.precision == "time") lv_label_set_text(slot.unit_lbl, "");
+  if (local) lv_label_set_display_text(slot.sensor_lbl, "--");
+  if (config.precision == "time") lv_label_set_display_text(slot.unit_lbl, "");
   if (!config.unit.empty()) {
     const std::string unit = trim_display_unit(config.unit);
-    lv_label_set_text(slot.unit_lbl, unit.c_str());
+    lv_label_set_display_text(slot.unit_lbl, unit.c_str());
   }
-  if (!config.label.empty()) lv_label_set_text(slot.text_lbl, config.label.c_str());
+  if (!config.label.empty()) lv_label_set_display_text(slot.text_lbl, config.label.c_str());
   return true;
 }
 
@@ -158,7 +158,7 @@ inline void sensor_driver_register_local_value(
         if (control.precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", esp_sensor->state);
         else if (control.precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", esp_sensor->state);
         else snprintf(buffer, sizeof(buffer), "%.0f", esp_sensor->state);
-        lv_label_set_text(control.sensor_lbl, buffer);
+        lv_label_set_display_text(control.sensor_lbl, buffer);
       }
       break;
     }

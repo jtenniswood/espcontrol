@@ -83,6 +83,8 @@
       "presence": "product/v2/cards/presence.json",
       "lawn_mower": "product/v2/cards/lawn_mower.json",
       "vacuum": "product/v2/cards/vacuum.json",
+      "wifi_qr": "product/v2/cards/wifi_qr.json",
+      "wifi_qr_card": "product/v2/cards/wifi_qr_card.json",
       "webhook": "product/v2/cards/webhook.json",
       "": "product/v2/cards/default_switch.json"
     },
