@@ -259,6 +259,7 @@ export function normalizeCompanionCard(card: any): void {
     if (metric) {
         card.type = "companion";
         card.sensor = "";
+        card.label = card.label || metric.label;
         card.unit = card.unit || metric.unit;
         card.precision = card.precision === "0" || card.precision === "2" ? card.precision : "1";
         card.options = String(card.options || "").split(",").filter((option) =>
@@ -347,6 +348,9 @@ export function registerCompanionCardTypes(
                             }
                             if (card.label === previousGeneratedLabel) card.label = "";
                         }
+                        if (previousGeneratedLabel && card.label === previousGeneratedLabel) {
+                            card.label = "";
+                        }
                         resetCompanionMediaPresentation(card, this.value);
                         resetCompanionMetricPresentation(card, this.value);
                         const selectedMetric = COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
@@ -355,7 +359,7 @@ export function registerCompanionCardTypes(
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
                         } else if (selectedMetric) {
-                            card.label = "";
+                            if (!card.label) card.label = selectedMetric.label;
                             card.unit = selectedMetric.unit;
                             card.precision = "1";
                             card.options = "";

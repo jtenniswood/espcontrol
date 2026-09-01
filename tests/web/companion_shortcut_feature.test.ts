@@ -49,6 +49,16 @@ export function runCompanionShortcutFeatureTests(): void {
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
     throw new Error("Companion cards must use one mode-appropriate label field");
   }
+  const generatedMetricCard = { entity: "stat.cpu", label: "", icon: "Auto" };
+  normalizeCompanionCard(generatedMetricCard);
+  if (generatedMetricCard.label !== "Processor") {
+    throw new Error("Companion statistics must prefill their type label");
+  }
+  const customMetricCard = { entity: "stat.memory", label: "Mac RAM", icon: "Auto" };
+  normalizeCompanionCard(customMetricCard);
+  if (customMetricCard.label !== "Mac RAM") {
+    throw new Error("Companion statistics must preserve a custom label");
+  }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
   }
