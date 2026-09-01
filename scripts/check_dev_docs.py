@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import re
 import sys
@@ -76,7 +77,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`python3 scripts/generate_device_manifest.py --check` and `npm run check:product`",
     ),
     SourceTruthRow(
-        "dev-docs/build-flag-notes.json and per-device YAML `build_flags`",
+        "dev-docs/build-flag-notes.json and device or included shared package YAML `build_flags`",
         ("generated section inside `dev-docs/devices-and-builds.md`",),
         "python3 scripts/check_dev_docs.py --update",
         "`npm run check:dev-docs`",
@@ -285,48 +286,92 @@ def read_json(path: str) -> object:
 
 
 def normalize_build_flag(value: str) -> str:
-    value = value.strip().strip('"\'')
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    value = value.replace(r'\"', '"').replace(r"\'", "'")
     return value[2:] if value.startswith("-D") else value
 
 
-def device_build_flags() -> dict[str, set[str]]:
-    """Return exact flag-to-device mappings from device YAML build flag lists."""
-    mappings: dict[str, set[str]] = {}
+def included_yaml_paths(path: Path) -> list[Path]:
+    """Return local YAML files included directly by path."""
+    include_re = re.compile(
+        r"!include\b\s*(?:\{\s*file:\s*)?(?P<path>\"[^\"]+\"|'[^']+'|[^\s,}#]+)"
+    )
+    included: list[Path] = []
+    for match in include_re.finditer(path.read_text()):
+        include_value = match.group("path").strip('"\'')
+        include_pattern = re.sub(r"\$\{[^}]+\}", "*", include_value)
+        candidates = [Path(value).resolve() for value in glob.glob(str(path.parent / include_pattern))]
+        for include_path in candidates:
+            try:
+                include_path.relative_to(ROOT)
+            except ValueError as error:
+                raise ValueError(
+                    f"{rel(path)} includes YAML outside the repository: {include_value}"
+                ) from error
+            if include_path.suffix in {".yaml", ".yml"} and include_path.is_file():
+                included.append(include_path)
+    return included
+
+
+def device_yaml_graph(device_root: Path) -> set[Path]:
+    """Return device YAML plus local shared YAML reachable through includes."""
+    pending = list(device_root.glob("**/*.yaml"))
+    visited: set[Path] = set()
+    while pending:
+        path = pending.pop().resolve()
+        if path in visited:
+            continue
+        visited.add(path)
+        pending.extend(included_yaml_paths(path))
+    return visited
+
+
+def yaml_build_flags(path: Path) -> set[str]:
+    """Return build flags authored in YAML list form in one file."""
+    flags: set[str] = set()
     key_re = re.compile(r"^(\s*)(?:build_flags|build_src_flags):\s*$")
     unsupported_key_re = re.compile(r"^\s*(?:build_flags|build_src_flags):\s*\S")
     item_re = re.compile(r"^\s*-\s*(.+?)\s*$")
-
-    for path in sorted((ROOT / "devices").glob("**/*.yaml")):
-        parts = path.relative_to(ROOT).parts
-        if len(parts) < 2:
-            continue
-        device = parts[1]
-        lines = path.read_text().splitlines()
-        index = 0
-        while index < len(lines):
-            if unsupported_key_re.match(lines[index]):
-                raise ValueError(
-                    f"{rel(path)} uses inline build flags; use a YAML list so documentation can validate each flag"
-                )
-            key_match = key_re.match(lines[index])
-            if not key_match:
-                index += 1
-                continue
-            base_indent = len(key_match.group(1))
+    lines = path.read_text().splitlines()
+    index = 0
+    while index < len(lines):
+        if unsupported_key_re.match(lines[index]):
+            raise ValueError(
+                f"{rel(path)} uses inline build flags; use a YAML list so documentation can validate each flag"
+            )
+        key_match = key_re.match(lines[index])
+        if not key_match:
             index += 1
-            while index < len(lines):
-                line = lines[index]
-                stripped = line.strip()
-                indent = len(line) - len(line.lstrip())
-                if stripped and not stripped.startswith("#") and indent <= base_indent:
-                    break
-                item_match = item_re.match(line)
-                if item_match:
-                    raw = item_match.group(1).split(" #", 1)[0].strip()
-                    flag = normalize_build_flag(raw)
-                    if flag:
-                        mappings.setdefault(flag, set()).add(device)
-                index += 1
+            continue
+        base_indent = len(key_match.group(1))
+        index += 1
+        while index < len(lines):
+            line = lines[index]
+            stripped = line.strip()
+            indent = len(line) - len(line.lstrip())
+            if stripped and not stripped.startswith("#") and indent <= base_indent:
+                break
+            item_match = item_re.match(line)
+            if item_match:
+                raw = item_match.group(1).split(" #", 1)[0].strip()
+                flag = normalize_build_flag(raw)
+                if flag:
+                    flags.add(flag)
+            index += 1
+    return flags
+
+
+def device_build_flags() -> dict[str, set[str]]:
+    """Return flag-to-device mappings from device and included shared YAML."""
+    mappings: dict[str, set[str]] = {}
+    for device_root in sorted((ROOT / "devices").iterdir()):
+        if not device_root.is_dir():
+            continue
+        for path in device_yaml_graph(device_root):
+            for flag in yaml_build_flags(path):
+                mappings.setdefault(flag, set()).add(device_root.name)
     return mappings
 
 

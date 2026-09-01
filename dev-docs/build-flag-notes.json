@@ -23,6 +23,10 @@
     "purpose": "Excludes the weather-forecast card from the constrained S3 firmware.",
     "remove_when": "The card compiles and runs with safe flash and heap headroom on that panel."
   },
+  "ESPCONTROL_DEVICE_SLUG=\"${device_slug}\"": {
+    "purpose": "Injects the selected device profile slug into the compiled firmware for diagnostics and runtime identification.",
+    "remove_when": "The device slug is supplied through generated component configuration instead of a preprocessor definition."
+  },
   "ESPCONTROL_ESPHOME_2026_5_REBUILD=1": {
     "purpose": "Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler and watchdog changes.",
     "remove_when": "Stale 2026.4 objects are no longer present in supported caches, or a later marker supersedes it."
@@ -94,5 +98,9 @@
   "ESPCONTROL_MAX_GRID_SLOTS=9": {
     "purpose": "Caps runtime grid allocation to nine slots.",
     "remove_when": "Grid slot capacity is generated from device profile data."
+  },
+  "LV_USE_BIDI=1": {
+    "purpose": "Enables LVGL bidirectional text ordering for right-to-left scripts such as Hebrew and Arabic.",
+    "remove_when": "ESPHome enables LVGL bidirectional text for every supported display without this compile definition."
   }
 }

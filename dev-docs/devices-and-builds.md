@@ -120,9 +120,10 @@ public firmware expectations.
 
 Per-device `platformio_options.build_flags` are escape hatches. Prefer manifest
 data, shared packages, or generated device slots for normal device differences.
-The exact flag/device mapping below is generated from every device YAML
-`build_flags` or `build_src_flags` list. Maintainers own the purpose and removal
-criteria in `dev-docs/build-flag-notes.json`.
+The exact flag/device mapping below is generated from every device YAML and its
+local shared-package include graph, including `build_flags` and
+`build_src_flags` lists. Maintainers own the purpose and removal criteria in
+`dev-docs/build-flag-notes.json`.
 
 Run `python3 scripts/check_dev_docs.py --update` after a device flag or its notes
 change. `npm run check:dev-docs` fails for a stale mapping, an undocumented flag,
@@ -135,6 +136,7 @@ or notes for a flag that no device uses.
 | `-Wno-deprecated-declarations` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses deprecation warnings emitted by current ESPHome/ESP-IDF dependencies in P4 builds. | Supported dependencies compile these device profiles without the deprecated declarations. |
 | `-Wno-literal-suffix` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Suppresses the ESP-IDF header literal-suffix warning in P4 C++ builds. | The upstream headers compile cleanly without the suppression. |
 | `-mtext-section-literals` | `guition-esp32-s3-4848s040` | Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link. | The S3 firmware is split into smaller translation units or the toolchain makes the flag unnecessary. |
+| `ESPCONTROL_DEVICE_SLUG="${device_slug}"` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Injects the selected device profile slug into the compiled firmware for diagnostics and runtime identification. | The device slug is supplied through generated component configuration instead of a preprocessor definition. |
 | `ESPCONTROL_DISABLE_TODO=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Keeps the todo card firmware out of memory-constrained production builds. | Todo support compiles and runs with safe flash and heap headroom on every supported panel. |
 | `ESPCONTROL_DISABLE_WEATHER_FORECAST=1` | `guition-esp32-s3-4848s040` | Excludes the weather-forecast card from the constrained S3 firmware. | The card compiles and runs with safe flash and heap headroom on that panel. |
 | `ESPCONTROL_ESPHOME_2026_5_REBUILD=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2` | Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler and watchdog changes. | Stale 2026.4 objects are no longer present in supported caches, or a later marker supersedes it. |
@@ -155,6 +157,7 @@ or notes for a flag that no device uses.
 | `ESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1` | `guition-esp32-s3-4848s040` | Uses the reduced-memory media modal path on the constrained S3 panel. | The full media path fits with safe runtime heap headroom. |
 | `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443` | Caps runtime grid allocation to six slots. | Grid slot capacity is generated from device profile data. |
 | `ESPCONTROL_MAX_GRID_SLOTS=9` | `esp32-p4-86`<br>`guition-esp32-s3-4848s040` | Caps runtime grid allocation to nine slots. | Grid slot capacity is generated from device profile data. |
+| `LV_USE_BIDI=1` | `esp32-p4-86`<br>`guition-esp32-p4-jc1060p470`<br>`guition-esp32-p4-jc1060p470-v2`<br>`guition-esp32-p4-jc4880p443`<br>`guition-esp32-p4-jc8012p4a1`<br>`guition-esp32-p4-jc8012p4a1-v2`<br>`guition-esp32-s3-4848s040` | Enables LVGL bidirectional text ordering for right-to-left scripts such as Hebrew and Arabic. | ESPHome enables LVGL bidirectional text for every supported display without this compile definition. |
 <!-- END GENERATED DEVICE BUILD FLAGS -->
 
 ## Changing Device Support
