@@ -134,6 +134,21 @@ export function companionWindowActionLabel(actionId: string): string {
     return COMPANION_WINDOW_ACTIONS.find((action) => action.id === actionId)?.label || "";
 }
 
+export function companionModeChangeLabel(
+    currentLabel: string,
+    previousMode: string,
+    previousEntity: string,
+    previousAppLabel: string,
+    nextMode: string,
+    nextEntity: string,
+): string {
+    const previousGeneratedLabel = previousMode === "window" ? companionWindowActionLabel(previousEntity)
+        : previousMode === "shortcut" ? formatCompanionShortcutActionId(previousEntity) : previousAppLabel;
+    const nextGeneratedLabel = nextMode === "window" ? companionWindowActionLabel(nextEntity)
+        : nextMode === "shortcut" ? formatCompanionShortcutActionId(nextEntity) : "";
+    return companionAppLabel(currentLabel, previousGeneratedLabel, nextGeneratedLabel);
+}
+
 const COMPANION_CARD_METADATA = {
     mode: {
         label: "Action",
@@ -218,11 +233,33 @@ export function registerCompanionCardTypes(
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
                     onChange: function (this: HTMLSelectElement) {
-                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
+                        const previousMode = companionCardMode(card);
+                        const previousEntity = typeof card.entity === "string" ? card.entity : "";
+                        const currentLabel = typeof card.label === "string" ? card.label : "";
+                        const appSelect = document.getElementById(
+                            helpers.idPrefix + "companion-action",
+                        ) as HTMLSelectElement | null;
+                        const previousAppLabel = (previousMode === "app" || previousMode === "url")
+                            && appSelect?.value === previousEntity
+                            ? (appSelect?.selectedOptions[0]?.textContent || "") : "";
+                        const nextEntity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
                             : this.value === "window" ? (COMPANION_WINDOW_ACTIONS[0]?.id || "window.close") : "";
+                        const nextLabel = companionModeChangeLabel(
+                            currentLabel,
+                            previousMode,
+                            previousEntity,
+                            previousAppLabel,
+                            this.value,
+                            nextEntity,
+                        );
+                        card.entity = nextEntity;
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
+                        if (nextLabel !== currentLabel) {
+                            card.label = nextLabel;
+                            helpers.saveField("label", nextLabel);
+                        }
                         renderButtonSettings();
                     },
                 },

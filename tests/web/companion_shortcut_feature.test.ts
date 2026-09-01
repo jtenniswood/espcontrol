@@ -2,6 +2,7 @@ import {
   COMPANION_WINDOW_ACTIONS,
   companionAppLabel,
   companionCardMode,
+  companionModeChangeLabel,
   companionShortcutActionId,
   companionUrlConfig,
   companionUrlValue,
@@ -54,6 +55,14 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionAppLabel("Centre", "Centre", "Left") !== "Left"
       || companionAppLabel("Work layout", "Centre", "Left") !== "Work layout") {
     throw new Error("Window preset changes must update generated labels and preserve custom labels");
+  }
+  if (companionModeChangeLabel("Safari", "app", "com.apple.Safari", "Safari",
+      "window", "window.close") !== "Close") {
+    throw new Error("Switching an app card to Window controls must replace its generated app label");
+  }
+  if (companionModeChangeLabel("Work browser", "app", "com.apple.Safari", "Safari",
+      "window", "window.close") !== "Work browser") {
+    throw new Error("Switching to Window controls must preserve a custom card label");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));
