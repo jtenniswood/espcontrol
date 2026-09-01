@@ -45,7 +45,6 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (!companionCardIsMetric({ entity: "stat.memory" }) ||
       !companionCardIsMetric({ entity: "stat.memory_free" }) ||
-      !companionCardIsMetric({ entity: "stat.memory_pressure" }) ||
       companionCardIsMetric({ entity: "sensor.memory_use" })) {
     throw new Error("Companion statistics must remain separate from Home Assistant sensors");
   }
@@ -75,13 +74,6 @@ export function runCompanionShortcutFeatureTests(): void {
   if (customMetricCard.label !== "Mac RAM" || customMetricCard.precision !== "1") {
     throw new Error("Companion statistics must preserve custom labels and precision");
   }
-  const pressureCard: any = {
-    entity: "stat.memory_pressure", label: "", icon: "Auto", precision: "2", unit: "%",
-  };
-  normalizeCompanionCard(pressureCard);
-  if (pressureCard.label !== "Memory Pressure" || pressureCard.precision !== "" || pressureCard.unit !== "") {
-    throw new Error("Memory pressure must use its text state without numeric precision");
-  }
   const networkCard: any = { entity: "stat.network_throughput", label: "", icon: "Auto" };
   normalizeCompanionCard(networkCard);
   if (networkCard.label !== "Network Throughput" || networkCard.unit !== "KB/s") {
@@ -100,7 +92,6 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionEntityForMode("processor") !== "stat.cpu" ||
       companionEntityForMode("memory_usage") !== "stat.memory" ||
-      companionEntityForMode("memory_pressure") !== "stat.memory_pressure" ||
       companionEntityForMode("network_throughput") !== "stat.network_throughput") {
     throw new Error("System statistic subtypes must select their Companion metric entities");
   }

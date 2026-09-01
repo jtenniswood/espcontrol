@@ -17,7 +17,7 @@ const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
 export const COMPANION_FOLDER_PREFIX = "folder.";
 const COMPANION_FINDER_ID = "com.apple.finder";
-const COMPANION_STATS_MODES = "stats,processor,memory_usage,storage,battery,memory_pressure,network_throughput".split(",");
+const COMPANION_STATS_MODES = "stats,processor,memory_usage,storage,battery,network_throughput".split(",");
 export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
     app: "Monitor",
     shortcut: "Shortcut Command",
@@ -36,7 +36,6 @@ interface CompanionSystemMetric {
     readonly label: string;
     readonly unit: string;
     readonly freeId?: string;
-    readonly text?: boolean;
 }
 
 export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
@@ -44,7 +43,6 @@ export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
     { mode: "memory_usage", id: "stat.memory", freeId: "stat.memory_free", label: "Memory", unit: "%" },
     { mode: "storage", id: "stat.storage", freeId: "stat.storage_free", label: "Storage", unit: "%" },
     { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
-    { mode: "memory_pressure", id: "stat.memory_pressure", label: "Memory Pressure", unit: "", text: true },
     { mode: "network_throughput", id: "stat.network_throughput", label: "Network Throughput", unit: "KB/s" },
 ];
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
@@ -192,7 +190,6 @@ const COMPANION_CARD_METADATA = {
             ["memory_usage", "Memory usage"],
             ["storage", "Storage usage"],
             ["battery", "Battery level"],
-            ["memory_pressure", "Memory pressure"],
             ["network_throughput", "Network throughput"],
         ],
         value: companionCardMode,
@@ -289,10 +286,9 @@ export function normalizeCompanionCard(card: any): void {
         card.type = "companion";
         card.sensor = "";
         card.label = card.label || metric.label;
-        card.unit = metric.text ? "" : (card.unit || metric.unit);
-        card.precision = metric.text ? "" :
-            (card.precision === "0" || card.precision === "1" || card.precision === "2"
-                ? card.precision : "0");
+        card.unit = card.unit || metric.unit;
+        card.precision = card.precision === "0" || card.precision === "1" || card.precision === "2"
+            ? card.precision : "0";
         card.options = String(card.options || "").split(",").filter((option) =>
             option === "large_numbers" || option === "large_numbers=off").join(",");
         card.icon_on = "Auto";
@@ -392,7 +388,7 @@ export function registerCompanionCardTypes(
                         } else if (selectedMetric) {
                             if (!card.label) card.label = selectedMetric.label;
                             card.unit = selectedMetric.unit;
-                            card.precision = selectedMetric.text ? "" : "0";
+                            card.precision = "0";
                             card.options = "";
                         }
                         card.icon = companionSubtypeIcon(
@@ -443,10 +439,6 @@ export function registerCompanionCardTypes(
                     });
                     displayField.appendChild(displaySelect);
                     panel?.appendChild(displayField);
-                }
-                if (metric?.text) {
-                    helpers.renderCardLargeNumbersToggle(panel, card, helpers, COMPANION_CARD_METADATA);
-                    return;
                 }
                 helpers.renderCardTextField(panel, card, helpers, {
                     label: "Unit", idSuffix: "unit", field: "unit",
@@ -720,7 +712,7 @@ export function registerCompanionCardTypes(
                 const metric = companionMetricForEntity(card.entity);
                 return {
                     iconHtml: cardSensorPreviewHtml(
-                        card, helpers, metric?.text ? "Normal" : companionMetricPreviewValue(card.precision),
+                        card, helpers, companionMetricPreviewValue(card.precision),
                         card.unit || metric?.unit || "%",
                     ),
                     labelHtml: cardBadgeLabelHtml(helpers, card.label || metric?.label || "Mac"),

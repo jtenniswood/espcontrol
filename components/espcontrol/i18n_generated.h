@@ -247,11 +247,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Paměť";
   if (std::strcmp(text, "Storage") == 0) return "Úložiště";
   if (std::strcmp(text, "Battery") == 0) return "Baterie";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Tlak paměti";
   if (std::strcmp(text, "Network Throughput") == 0) return "Síťová propustnost";
-  if (std::strcmp(text, "Normal") == 0) return "Normální";
-  if (std::strcmp(text, "Warning") == 0) return "Varování";
-  if (std::strcmp(text, "Critical") == 0) return "Kritický";
   return text;
 }
 
@@ -480,10 +476,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Hukommelse";
   if (std::strcmp(text, "Storage") == 0) return "Lager";
   if (std::strcmp(text, "Battery") == 0) return "Batteri";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Hukommelsespres";
   if (std::strcmp(text, "Network Throughput") == 0) return "Netværkshastighed";
-  if (std::strcmp(text, "Warning") == 0) return "Advarsel";
-  if (std::strcmp(text, "Critical") == 0) return "Kritisk";
   return text;
 }
 
@@ -711,10 +704,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Arbeitsspeicher";
   if (std::strcmp(text, "Storage") == 0) return "Speicher";
   if (std::strcmp(text, "Battery") == 0) return "Batterie";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Speicherdruck";
   if (std::strcmp(text, "Network Throughput") == 0) return "Netzwerkdurchsatz";
-  if (std::strcmp(text, "Warning") == 0) return "Warnung";
-  if (std::strcmp(text, "Critical") == 0) return "Kritisch";
   return text;
 }
 
@@ -949,10 +939,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memoria";
   if (std::strcmp(text, "Storage") == 0) return "Almacenamiento";
   if (std::strcmp(text, "Battery") == 0) return "Batería";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Presión de memoria";
   if (std::strcmp(text, "Network Throughput") == 0) return "Rendimiento de red";
-  if (std::strcmp(text, "Warning") == 0) return "Advertencia";
-  if (std::strcmp(text, "Critical") == 0) return "Crítico";
   return text;
 }
 
@@ -1197,11 +1184,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Muisti";
   if (std::strcmp(text, "Storage") == 0) return "Tallennustila";
   if (std::strcmp(text, "Battery") == 0) return "Akku";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Muistipaine";
   if (std::strcmp(text, "Network Throughput") == 0) return "Verkon siirtonopeus";
-  if (std::strcmp(text, "Normal") == 0) return "Normaali";
-  if (std::strcmp(text, "Warning") == 0) return "Varoitus";
-  if (std::strcmp(text, "Critical") == 0) return "Kriittinen";
   return text;
 }
 
@@ -1429,10 +1412,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Mémoire";
   if (std::strcmp(text, "Storage") == 0) return "Stockage";
   if (std::strcmp(text, "Battery") == 0) return "Batterie";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Pression mémoire";
   if (std::strcmp(text, "Network Throughput") == 0) return "Débit réseau";
-  if (std::strcmp(text, "Warning") == 0) return "Avertissement";
-  if (std::strcmp(text, "Critical") == 0) return "Critique";
   return text;
 }
 
@@ -1685,11 +1665,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "זיכרון";
   if (std::strcmp(text, "Storage") == 0) return "אחסון";
   if (std::strcmp(text, "Battery") == 0) return "סוללה";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "לחץ זיכרון";
   if (std::strcmp(text, "Network Throughput") == 0) return "קצב רשת";
-  if (std::strcmp(text, "Normal") == 0) return "רגיל";
-  if (std::strcmp(text, "Warning") == 0) return "אזהרה";
-  if (std::strcmp(text, "Critical") == 0) return "קריטי";
   return text;
 }
 
@@ -1934,11 +1910,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memória";
   if (std::strcmp(text, "Storage") == 0) return "Tárhely";
   if (std::strcmp(text, "Battery") == 0) return "Akkumulátor";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Memórianyomás";
   if (std::strcmp(text, "Network Throughput") == 0) return "Hálózati átviteli sebesség";
-  if (std::strcmp(text, "Normal") == 0) return "Normál";
-  if (std::strcmp(text, "Warning") == 0) return "Figyelmeztetés";
-  if (std::strcmp(text, "Critical") == 0) return "Kritikus";
   return text;
 }
 
@@ -2174,11 +2146,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memoria";
   if (std::strcmp(text, "Storage") == 0) return "Archiviazione";
   if (std::strcmp(text, "Battery") == 0) return "Batteria";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Pressione memoria";
   if (std::strcmp(text, "Network Throughput") == 0) return "Velocità di rete";
-  if (std::strcmp(text, "Normal") == 0) return "Normale";
-  if (std::strcmp(text, "Warning") == 0) return "Avviso";
-  if (std::strcmp(text, "Critical") == 0) return "Critico";
   return text;
 }
 
@@ -2411,10 +2379,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Minne";
   if (std::strcmp(text, "Storage") == 0) return "Lagring";
   if (std::strcmp(text, "Battery") == 0) return "Batteri";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Minnetrykk";
   if (std::strcmp(text, "Network Throughput") == 0) return "Nettverkshastighet";
-  if (std::strcmp(text, "Warning") == 0) return "Advarsel";
-  if (std::strcmp(text, "Critical") == 0) return "Kritisk";
   return text;
 }
 
@@ -2647,11 +2612,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Geheugen";
   if (std::strcmp(text, "Storage") == 0) return "Opslag";
   if (std::strcmp(text, "Battery") == 0) return "Batterij";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Geheugendruk";
   if (std::strcmp(text, "Network Throughput") == 0) return "Netwerkdoorvoer";
-  if (std::strcmp(text, "Normal") == 0) return "Normaal";
-  if (std::strcmp(text, "Warning") == 0) return "Waarschuwing";
-  if (std::strcmp(text, "Critical") == 0) return "Kritiek";
   return text;
 }
 
@@ -2884,11 +2845,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Pamięć";
   if (std::strcmp(text, "Storage") == 0) return "Pamięć masowa";
   if (std::strcmp(text, "Battery") == 0) return "Bateria";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Obciążenie pamięci";
   if (std::strcmp(text, "Network Throughput") == 0) return "Przepustowość sieci";
-  if (std::strcmp(text, "Normal") == 0) return "Normalne";
-  if (std::strcmp(text, "Warning") == 0) return "Ostrzeżenie";
-  if (std::strcmp(text, "Critical") == 0) return "Krytyczne";
   return text;
 }
 
@@ -3123,10 +3080,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memória";
   if (std::strcmp(text, "Storage") == 0) return "Armazenamento";
   if (std::strcmp(text, "Battery") == 0) return "Bateria";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Pressão de memória";
   if (std::strcmp(text, "Network Throughput") == 0) return "Taxa de rede";
-  if (std::strcmp(text, "Warning") == 0) return "Aviso";
-  if (std::strcmp(text, "Critical") == 0) return "Crítico";
   return text;
 }
 
@@ -3362,10 +3316,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memória";
   if (std::strcmp(text, "Storage") == 0) return "Armazenamento";
   if (std::strcmp(text, "Battery") == 0) return "Bateria";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Pressão da memória";
   if (std::strcmp(text, "Network Throughput") == 0) return "Taxa de rede";
-  if (std::strcmp(text, "Warning") == 0) return "Aviso";
-  if (std::strcmp(text, "Critical") == 0) return "Crítico";
   return text;
 }
 
@@ -3610,10 +3561,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memorie";
   if (std::strcmp(text, "Storage") == 0) return "Stocare";
   if (std::strcmp(text, "Battery") == 0) return "Baterie";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Presiune memorie";
   if (std::strcmp(text, "Network Throughput") == 0) return "Debit rețea";
-  if (std::strcmp(text, "Warning") == 0) return "Avertisment";
-  if (std::strcmp(text, "Critical") == 0) return "Critic";
   return text;
 }
 
@@ -3865,11 +3813,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Память";
   if (std::strcmp(text, "Storage") == 0) return "Хранилище";
   if (std::strcmp(text, "Battery") == 0) return "Батарея";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Нагрузка на память";
   if (std::strcmp(text, "Network Throughput") == 0) return "Пропускная способность сети";
-  if (std::strcmp(text, "Normal") == 0) return "Норма";
-  if (std::strcmp(text, "Warning") == 0) return "Предупреждение";
-  if (std::strcmp(text, "Critical") == 0) return "Критично";
   return text;
 }
 
@@ -4106,11 +4050,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Pamäť";
   if (std::strcmp(text, "Storage") == 0) return "Úložisko";
   if (std::strcmp(text, "Battery") == 0) return "Batéria";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Tlak pamäte";
   if (std::strcmp(text, "Network Throughput") == 0) return "Priepustnosť siete";
-  if (std::strcmp(text, "Normal") == 0) return "Normálne";
-  if (std::strcmp(text, "Warning") == 0) return "Varovanie";
-  if (std::strcmp(text, "Critical") == 0) return "Kritické";
   return text;
 }
 
@@ -4351,11 +4291,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Pomnilnik";
   if (std::strcmp(text, "Storage") == 0) return "Shramba";
   if (std::strcmp(text, "Battery") == 0) return "Baterija";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Pritisk pomnilnika";
   if (std::strcmp(text, "Network Throughput") == 0) return "Prepustnost omrežja";
-  if (std::strcmp(text, "Normal") == 0) return "Normalno";
-  if (std::strcmp(text, "Warning") == 0) return "Opozorilo";
-  if (std::strcmp(text, "Critical") == 0) return "Kritično";
   return text;
 }
 
@@ -4587,10 +4523,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Minne";
   if (std::strcmp(text, "Storage") == 0) return "Lagring";
   if (std::strcmp(text, "Battery") == 0) return "Batteri";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Minnestryck";
   if (std::strcmp(text, "Network Throughput") == 0) return "Nätverkshastighet";
-  if (std::strcmp(text, "Warning") == 0) return "Varning";
-  if (std::strcmp(text, "Critical") == 0) return "Kritisk";
   return text;
 }
 
@@ -4835,10 +4768,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Bellek";
   if (std::strcmp(text, "Storage") == 0) return "Depolama";
   if (std::strcmp(text, "Battery") == 0) return "Pil";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Bellek baskısı";
   if (std::strcmp(text, "Network Throughput") == 0) return "Ağ aktarım hızı";
-  if (std::strcmp(text, "Warning") == 0) return "Uyarı";
-  if (std::strcmp(text, "Critical") == 0) return "Kritik";
   return text;
 }
 
@@ -5085,11 +5015,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Пам’ять";
   if (std::strcmp(text, "Storage") == 0) return "Сховище";
   if (std::strcmp(text, "Battery") == 0) return "Батарея";
-  if (std::strcmp(text, "Memory Pressure") == 0) return "Навантаження на пам’ять";
   if (std::strcmp(text, "Network Throughput") == 0) return "Пропускна здатність мережі";
-  if (std::strcmp(text, "Normal") == 0) return "Норма";
-  if (std::strcmp(text, "Warning") == 0) return "Попередження";
-  if (std::strcmp(text, "Critical") == 0) return "Критично";
   return text;
 }
 
@@ -5344,11 +5270,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memory";
   if (std::strcmp(key, "storage") == 0) return "Storage";
   if (std::strcmp(key, "battery") == 0) return "Battery";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Memory Pressure";
   if (std::strcmp(key, "network_throughput") == 0) return "Network Throughput";
-  if (std::strcmp(key, "normal") == 0) return "Normal";
-  if (std::strcmp(key, "warning") == 0) return "Warning";
-  if (std::strcmp(key, "critical") == 0) return "Critical";
   return key;
 }
 
@@ -5585,11 +5507,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Paměť";
   if (std::strcmp(key, "storage") == 0) return "Úložiště";
   if (std::strcmp(key, "battery") == 0) return "Baterie";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Tlak paměti";
   if (std::strcmp(key, "network_throughput") == 0) return "Síťová propustnost";
-  if (std::strcmp(key, "normal") == 0) return "Normální";
-  if (std::strcmp(key, "warning") == 0) return "Varování";
-  if (std::strcmp(key, "critical") == 0) return "Kritický";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5819,10 +5737,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Hukommelse";
   if (std::strcmp(key, "storage") == 0) return "Lager";
   if (std::strcmp(key, "battery") == 0) return "Batteri";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Hukommelsespres";
   if (std::strcmp(key, "network_throughput") == 0) return "Netværkshastighed";
-  if (std::strcmp(key, "warning") == 0) return "Advarsel";
-  if (std::strcmp(key, "critical") == 0) return "Kritisk";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6051,10 +5966,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Arbeitsspeicher";
   if (std::strcmp(key, "storage") == 0) return "Speicher";
   if (std::strcmp(key, "battery") == 0) return "Batterie";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Speicherdruck";
   if (std::strcmp(key, "network_throughput") == 0) return "Netzwerkdurchsatz";
-  if (std::strcmp(key, "warning") == 0) return "Warnung";
-  if (std::strcmp(key, "critical") == 0) return "Kritisch";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6290,10 +6202,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memoria";
   if (std::strcmp(key, "storage") == 0) return "Almacenamiento";
   if (std::strcmp(key, "battery") == 0) return "Batería";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Presión de memoria";
   if (std::strcmp(key, "network_throughput") == 0) return "Rendimiento de red";
-  if (std::strcmp(key, "warning") == 0) return "Advertencia";
-  if (std::strcmp(key, "critical") == 0) return "Crítico";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6539,11 +6448,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Muisti";
   if (std::strcmp(key, "storage") == 0) return "Tallennustila";
   if (std::strcmp(key, "battery") == 0) return "Akku";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Muistipaine";
   if (std::strcmp(key, "network_throughput") == 0) return "Verkon siirtonopeus";
-  if (std::strcmp(key, "normal") == 0) return "Normaali";
-  if (std::strcmp(key, "warning") == 0) return "Varoitus";
-  if (std::strcmp(key, "critical") == 0) return "Kriittinen";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6772,10 +6677,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Mémoire";
   if (std::strcmp(key, "storage") == 0) return "Stockage";
   if (std::strcmp(key, "battery") == 0) return "Batterie";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Pression mémoire";
   if (std::strcmp(key, "network_throughput") == 0) return "Débit réseau";
-  if (std::strcmp(key, "warning") == 0) return "Avertissement";
-  if (std::strcmp(key, "critical") == 0) return "Critique";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7029,11 +6931,7 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "זיכרון";
   if (std::strcmp(key, "storage") == 0) return "אחסון";
   if (std::strcmp(key, "battery") == 0) return "סוללה";
-  if (std::strcmp(key, "memory_pressure") == 0) return "לחץ זיכרון";
   if (std::strcmp(key, "network_throughput") == 0) return "קצב רשת";
-  if (std::strcmp(key, "normal") == 0) return "רגיל";
-  if (std::strcmp(key, "warning") == 0) return "אזהרה";
-  if (std::strcmp(key, "critical") == 0) return "קריטי";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7279,11 +7177,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memória";
   if (std::strcmp(key, "storage") == 0) return "Tárhely";
   if (std::strcmp(key, "battery") == 0) return "Akkumulátor";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Memórianyomás";
   if (std::strcmp(key, "network_throughput") == 0) return "Hálózati átviteli sebesség";
-  if (std::strcmp(key, "normal") == 0) return "Normál";
-  if (std::strcmp(key, "warning") == 0) return "Figyelmeztetés";
-  if (std::strcmp(key, "critical") == 0) return "Kritikus";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7520,11 +7414,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memoria";
   if (std::strcmp(key, "storage") == 0) return "Archiviazione";
   if (std::strcmp(key, "battery") == 0) return "Batteria";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Pressione memoria";
   if (std::strcmp(key, "network_throughput") == 0) return "Velocità di rete";
-  if (std::strcmp(key, "normal") == 0) return "Normale";
-  if (std::strcmp(key, "warning") == 0) return "Avviso";
-  if (std::strcmp(key, "critical") == 0) return "Critico";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7758,10 +7648,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Minne";
   if (std::strcmp(key, "storage") == 0) return "Lagring";
   if (std::strcmp(key, "battery") == 0) return "Batteri";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Minnetrykk";
   if (std::strcmp(key, "network_throughput") == 0) return "Nettverkshastighet";
-  if (std::strcmp(key, "warning") == 0) return "Advarsel";
-  if (std::strcmp(key, "critical") == 0) return "Kritisk";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7994,11 +7881,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Geheugen";
   if (std::strcmp(key, "storage") == 0) return "Opslag";
   if (std::strcmp(key, "battery") == 0) return "Batterij";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Geheugendruk";
   if (std::strcmp(key, "network_throughput") == 0) return "Netwerkdoorvoer";
-  if (std::strcmp(key, "normal") == 0) return "Normaal";
-  if (std::strcmp(key, "warning") == 0) return "Waarschuwing";
-  if (std::strcmp(key, "critical") == 0) return "Kritiek";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8232,11 +8115,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Pamięć";
   if (std::strcmp(key, "storage") == 0) return "Pamięć masowa";
   if (std::strcmp(key, "battery") == 0) return "Bateria";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Obciążenie pamięci";
   if (std::strcmp(key, "network_throughput") == 0) return "Przepustowość sieci";
-  if (std::strcmp(key, "normal") == 0) return "Normalne";
-  if (std::strcmp(key, "warning") == 0) return "Ostrzeżenie";
-  if (std::strcmp(key, "critical") == 0) return "Krytyczne";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8472,10 +8351,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memória";
   if (std::strcmp(key, "storage") == 0) return "Armazenamento";
   if (std::strcmp(key, "battery") == 0) return "Bateria";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Pressão de memória";
   if (std::strcmp(key, "network_throughput") == 0) return "Taxa de rede";
-  if (std::strcmp(key, "warning") == 0) return "Aviso";
-  if (std::strcmp(key, "critical") == 0) return "Crítico";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8712,10 +8588,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memória";
   if (std::strcmp(key, "storage") == 0) return "Armazenamento";
   if (std::strcmp(key, "battery") == 0) return "Bateria";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Pressão da memória";
   if (std::strcmp(key, "network_throughput") == 0) return "Taxa de rede";
-  if (std::strcmp(key, "warning") == 0) return "Aviso";
-  if (std::strcmp(key, "critical") == 0) return "Crítico";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8961,10 +8834,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memorie";
   if (std::strcmp(key, "storage") == 0) return "Stocare";
   if (std::strcmp(key, "battery") == 0) return "Baterie";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Presiune memorie";
   if (std::strcmp(key, "network_throughput") == 0) return "Debit rețea";
-  if (std::strcmp(key, "warning") == 0) return "Avertisment";
-  if (std::strcmp(key, "critical") == 0) return "Critic";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9217,11 +9087,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Память";
   if (std::strcmp(key, "storage") == 0) return "Хранилище";
   if (std::strcmp(key, "battery") == 0) return "Батарея";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Нагрузка на память";
   if (std::strcmp(key, "network_throughput") == 0) return "Пропускная способность сети";
-  if (std::strcmp(key, "normal") == 0) return "Норма";
-  if (std::strcmp(key, "warning") == 0) return "Предупреждение";
-  if (std::strcmp(key, "critical") == 0) return "Критично";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9459,11 +9325,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Pamäť";
   if (std::strcmp(key, "storage") == 0) return "Úložisko";
   if (std::strcmp(key, "battery") == 0) return "Batéria";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Tlak pamäte";
   if (std::strcmp(key, "network_throughput") == 0) return "Priepustnosť siete";
-  if (std::strcmp(key, "normal") == 0) return "Normálne";
-  if (std::strcmp(key, "warning") == 0) return "Varovanie";
-  if (std::strcmp(key, "critical") == 0) return "Kritické";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9705,11 +9567,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Pomnilnik";
   if (std::strcmp(key, "storage") == 0) return "Shramba";
   if (std::strcmp(key, "battery") == 0) return "Baterija";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Pritisk pomnilnika";
   if (std::strcmp(key, "network_throughput") == 0) return "Prepustnost omrežja";
-  if (std::strcmp(key, "normal") == 0) return "Normalno";
-  if (std::strcmp(key, "warning") == 0) return "Opozorilo";
-  if (std::strcmp(key, "critical") == 0) return "Kritično";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9942,10 +9800,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Minne";
   if (std::strcmp(key, "storage") == 0) return "Lagring";
   if (std::strcmp(key, "battery") == 0) return "Batteri";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Minnestryck";
   if (std::strcmp(key, "network_throughput") == 0) return "Nätverkshastighet";
-  if (std::strcmp(key, "warning") == 0) return "Varning";
-  if (std::strcmp(key, "critical") == 0) return "Kritisk";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10191,10 +10046,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Bellek";
   if (std::strcmp(key, "storage") == 0) return "Depolama";
   if (std::strcmp(key, "battery") == 0) return "Pil";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Bellek baskısı";
   if (std::strcmp(key, "network_throughput") == 0) return "Ağ aktarım hızı";
-  if (std::strcmp(key, "warning") == 0) return "Uyarı";
-  if (std::strcmp(key, "critical") == 0) return "Kritik";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10442,11 +10294,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Пам’ять";
   if (std::strcmp(key, "storage") == 0) return "Сховище";
   if (std::strcmp(key, "battery") == 0) return "Батарея";
-  if (std::strcmp(key, "memory_pressure") == 0) return "Навантаження на пам’ять";
   if (std::strcmp(key, "network_throughput") == 0) return "Пропускна здатність мережі";
-  if (std::strcmp(key, "normal") == 0) return "Норма";
-  if (std::strcmp(key, "warning") == 0) return "Попередження";
-  if (std::strcmp(key, "critical") == 0) return "Критично";
   return espcontrol_i18n_key_en(key);
 }
 

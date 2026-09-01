@@ -342,7 +342,6 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             "cpuUsagePercent": snapshot.cpuUsagePercent,
             "memoryUsagePercent": snapshot.memoryUsagePercent,
             "storageUsagePercent": snapshot.storageUsagePercent,
-            "memoryPressure": snapshot.memoryPressure,
         ]
         if let battery = snapshot.batteryPercent { message["batteryPercent"] = battery }
         if let throughput = snapshot.networkThroughputKBps {

@@ -528,7 +528,6 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       snapshot.memory_usage_percent = root["memoryUsagePercent"] | NAN;
       snapshot.storage_usage_percent = root["storageUsagePercent"] | NAN;
       snapshot.battery_percent = root["batteryPercent"] | NAN;
-      snapshot.memory_pressure = root["memoryPressure"] | "";
       snapshot.network_throughput_kbps = root["networkThroughputKBps"] | NAN;
       const std::array<float, 3> required{{
           snapshot.cpu_usage_percent,
@@ -540,8 +539,6 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
           })) return false;
       if (std::isfinite(snapshot.battery_percent) &&
           (snapshot.battery_percent < 0.0f || snapshot.battery_percent > 100.0f)) return false;
-      if (!snapshot.memory_pressure.empty() && snapshot.memory_pressure != "normal" &&
-          snapshot.memory_pressure != "warning" && snapshot.memory_pressure != "critical") return false;
       if (std::isfinite(snapshot.network_throughput_kbps) &&
           (snapshot.network_throughput_kbps < 0.0f || snapshot.network_throughput_kbps > 1.0e9f)) return false;
       this->defer([snapshot]() mutable {

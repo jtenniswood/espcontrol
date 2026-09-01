@@ -39,7 +39,6 @@ int main() {
   metrics.cpu_usage_percent = 42.5f;
   metrics.memory_usage_percent = 61.0f;
   metrics.storage_usage_percent = 73.0f;
-  metrics.memory_pressure = "warning";
   metrics.network_throughput_kbps = 512.5f;
   companion_set_system_metrics(metrics);
   float metric_value = 0.0f;
@@ -51,9 +50,6 @@ int main() {
   assert(metric_value == 27.0f);
   assert(companion_metric_value(companion_runtime_snapshot(), "stat.network_throughput", metric_value));
   assert(metric_value == 512.5f);
-  std::string metric_text;
-  assert(companion_metric_text(companion_runtime_snapshot(), "stat.memory_pressure", metric_text));
-  assert(metric_text == "warning");
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.battery", metric_value));
   companion_set_focused_application("com.apple.Safari");
   assert(companion_application_focused("com.apple.Safari"));

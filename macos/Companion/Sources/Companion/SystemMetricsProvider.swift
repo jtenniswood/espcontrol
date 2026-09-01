@@ -9,7 +9,6 @@ struct CompanionSystemMetricsSnapshot: Equatable {
     let memoryUsagePercent: Double
     let storageUsagePercent: Double
     let batteryPercent: Double?
-    let memoryPressure: String
     let networkThroughputKBps: Double?
 }
 
@@ -21,8 +20,6 @@ final class SystemMetricsProvider {
     private var generation: UInt32 = 0
     private var previousCPUTicks: (active: UInt64, total: UInt64)?
     private var previousNetworkCounters: NetworkCounters?
-    private var memoryPressureSource: DispatchSourceMemoryPressure?
-    private var memoryPressure = "normal"
     private(set) var lastSnapshot: CompanionSystemMetricsSnapshot?
 
     private struct NetworkCounters {
@@ -34,7 +31,6 @@ final class SystemMetricsProvider {
 
     func start() {
         stop()
-        startMemoryPressureMonitoring()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -44,9 +40,6 @@ final class SystemMetricsProvider {
     func stop() {
         timer?.invalidate()
         timer = nil
-        memoryPressureSource?.cancel()
-        memoryPressureSource = nil
-        memoryPressure = "normal"
         previousCPUTicks = nil
         previousNetworkCounters = nil
     }
@@ -63,32 +56,10 @@ final class SystemMetricsProvider {
             memoryUsagePercent: memory,
             storageUsagePercent: storage,
             batteryPercent: Self.batteryPercent(),
-            memoryPressure: memoryPressure,
             networkThroughputKBps: sampleNetworkThroughputKBps()
         )
         lastSnapshot = snapshot
         onSnapshot?(snapshot)
-    }
-
-    private func startMemoryPressureMonitoring() {
-        let source = DispatchSource.makeMemoryPressureSource(eventMask: .all, queue: .main)
-        source.setEventHandler { [weak self] in
-            Task { @MainActor in self?.updateMemoryPressure() }
-        }
-        memoryPressureSource = source
-        source.activate()
-    }
-
-    private func updateMemoryPressure() {
-        guard let event = memoryPressureSource?.data else { return }
-        if event.contains(.critical) {
-            memoryPressure = "critical"
-        } else if event.contains(.warning) {
-            memoryPressure = "warning"
-        } else if event.contains(.normal) {
-            memoryPressure = "normal"
-        }
-        refresh()
     }
 
     private func sampleNetworkThroughputKBps() -> Double? {

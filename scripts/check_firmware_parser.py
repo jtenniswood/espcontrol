@@ -381,9 +381,6 @@ int main() {
   assert(companion_metric.precision == "0");
   assert(companion_metric.options == "large_numbers");
   assert(card_large_numbers_enabled(companion_metric));
-  auto companion_pressure = parse_cfg("stat.memory_pressure;Memory Pressure;Gauge;Auto;;;companion;2;");
-  assert(companion_system_metric_config(companion_pressure));
-  assert(companion_pressure.unit == "");
   auto companion_network = parse_cfg("stat.network_throughput;Network Throughput;Gauge;Auto;;;companion;;");
   assert(companion_system_metric_config(companion_network));
   assert(companion_network.unit == "KB/s");
