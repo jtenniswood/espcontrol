@@ -261,7 +261,8 @@ export function normalizeCompanionCard(card: any): void {
         card.sensor = "";
         card.label = card.label || metric.label;
         card.unit = card.unit || metric.unit;
-        card.precision = card.precision === "0" || card.precision === "2" ? card.precision : "1";
+        card.precision = card.precision === "0" || card.precision === "1" || card.precision === "2"
+            ? card.precision : "0";
         card.options = String(card.options || "").split(",").filter((option) =>
             option === "large_numbers" || option === "large_numbers=off").join(",");
         card.icon_on = "Auto";
@@ -361,7 +362,7 @@ export function registerCompanionCardTypes(
                         } else if (selectedMetric) {
                             if (!card.label) card.label = selectedMetric.label;
                             card.unit = selectedMetric.unit;
-                            card.precision = "1";
+                            card.precision = "0";
                             card.options = "";
                         }
                         card.icon = companionSubtypeIcon(
@@ -395,7 +396,7 @@ export function registerCompanionCardTypes(
                     placeholder: "%", rerender: true,
                 });
                 const precision = helpers.precisionField(
-                    helpers.idPrefix + "precision", card.precision || "1", function (this: HTMLSelectElement) {
+                    helpers.idPrefix + "precision", card.precision || "0", function (this: HTMLSelectElement) {
                         card.precision = this.value;
                         helpers.saveField("precision", card.precision);
                     });

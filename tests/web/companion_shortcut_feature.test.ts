@@ -49,15 +49,17 @@ export function runCompanionShortcutFeatureTests(): void {
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
     throw new Error("Companion cards must use one mode-appropriate label field");
   }
-  const generatedMetricCard = { entity: "stat.cpu", label: "", icon: "Auto" };
+  const generatedMetricCard: any = { entity: "stat.cpu", label: "", icon: "Auto" };
   normalizeCompanionCard(generatedMetricCard);
-  if (generatedMetricCard.label !== "Processor") {
-    throw new Error("Companion statistics must prefill their type label");
+  if (generatedMetricCard.label !== "Processor" || generatedMetricCard.precision !== "0") {
+    throw new Error("Companion statistics must prefill their type label and whole-number precision");
   }
-  const customMetricCard = { entity: "stat.memory", label: "Mac RAM", icon: "Auto" };
+  const customMetricCard = {
+    entity: "stat.memory", label: "Mac RAM", icon: "Auto", precision: "1",
+  };
   normalizeCompanionCard(customMetricCard);
-  if (customMetricCard.label !== "Mac RAM") {
-    throw new Error("Companion statistics must preserve a custom label");
+  if (customMetricCard.label !== "Mac RAM" || customMetricCard.precision !== "1") {
+    throw new Error("Companion statistics must preserve custom labels and precision");
   }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
@@ -160,7 +162,7 @@ export function runCompanionShortcutFeatureTests(): void {
     unit: "", precision: "", options: "large_numbers,active_color", icon_on: "Auto",
   };
   normalizeCompanionCard(metricCard);
-  if (metricCard.sensor !== "" || metricCard.unit !== "%" || metricCard.precision !== "1" ||
+  if (metricCard.sensor !== "" || metricCard.unit !== "%" || metricCard.precision !== "0" ||
       metricCard.options !== "large_numbers") {
     throw new Error("Companion statistics must normalize their own sensor-style fields");
   }

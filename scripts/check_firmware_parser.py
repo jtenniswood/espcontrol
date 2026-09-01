@@ -378,7 +378,7 @@ int main() {
   assert(companion_system_metric_config(companion_metric));
   assert(companion_metric.sensor == "");
   assert(companion_metric.unit == "%");
-  assert(companion_metric.precision == "1");
+  assert(companion_metric.precision == "0");
   assert(companion_metric.options == "large_numbers");
   assert(card_large_numbers_enabled(companion_metric));
   auto companion_action = parse_cfg("com.apple.Safari;Safari;Monitor;Auto;;;companion;2;large_numbers");

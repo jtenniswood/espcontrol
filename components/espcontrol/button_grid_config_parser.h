@@ -1369,7 +1369,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (companion_system_metric_config(p)) {
       p.sensor.clear();
       if (p.unit.empty()) p.unit = "%";
-      if (p.precision != "0" && p.precision != "1" && p.precision != "2") p.precision = "1";
+      if (p.precision != "0" && p.precision != "1" && p.precision != "2") p.precision = "0";
       p.options = date_time_card_options_normalized(p.options, p);
     } else {
       p.unit.clear();
