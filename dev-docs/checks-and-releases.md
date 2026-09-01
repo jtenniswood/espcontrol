@@ -136,7 +136,8 @@ Run `python3 scripts/build.py` after changing:
 - `product/v2/entity_names.json`
 - `product/v2/icons.json`
 - firmware translation strings under `product/v2/translations/strings.*.txt`
-- `devices/manifest.json`
+- `product/v2/device_catalog.json` after first regenerating
+  `devices/manifest.json` with `python3 scripts/generate_device_manifest.py`
 - `src/webserver/`
 
 Run `python3 scripts/generate_device_slots.py` after changing device font roles
@@ -170,6 +171,10 @@ Treat these as release-facing:
 - `builds/*.factory.yaml`
 - `devices/manifest.json`
 - `docs/public/device-profiles.json`
+- `docs/public/webserver/www.js`
+- `docs/public/webserver/web-assets.json`
+- `docs/public/webserver/embedded/www.js`
+- `docs/public/webserver/bundles/*/www.js`
 - `docs/public/webserver/*/www.js`
 - `docs/generated/screens/*.md`
 - `docs/generated/cards/capabilities.md`

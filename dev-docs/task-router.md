@@ -51,12 +51,14 @@ Use this for a new display, slot count, orientation, device profile, firmware
 package, release build, font mapping, Ethernet/WiFi variant, or install docs.
 
 1. Edit first:
-   - `devices/manifest.json`
+   - `product/v2/device_catalog.json`
    - `devices/<slug>/packages.yaml`
    - `devices/<slug>/dev.yaml`
    - `devices/<slug>/esphome.yaml`
    - `devices/<slug>/device/*.yaml`
-2. Regenerate with `python3 scripts/build.py` and
+2. Regenerate `devices/manifest.json` with
+   `python3 scripts/generate_device_manifest.py`, then run
+   `python3 scripts/build.py` and
    `python3 scripts/generate_device_slots.py`.
 3. Verify first with `npm run check:device-profiles` and
    `npm run check:device-matrix`.
@@ -77,7 +79,8 @@ bindings, font roles, image download limits, or device-specific UI sizing.
 2. Edit the smallest card/runtime header first. Avoid changing generated device
    YAML directly.
 3. If a new font role or device profile value is needed, update
-   `devices/manifest.json`, then regenerate slot files.
+   `product/v2/device_catalog.json`, then regenerate the compatibility manifest
+   and slot files.
 4. Verify first with the focused firmware check from [Check Matrix](check-matrix.md).
 5. Stop if the smallest supported screen has not been considered, if a modal can
    remain open across navigation unexpectedly, or if Home Assistant subscriptions
@@ -90,7 +93,8 @@ navigation, or card type documentation.
 
 1. Edit handwritten docs under `docs/`.
 2. If generated public docs are stale, update the source in
-   `devices/manifest.json` or `product/v2/card_contract.json`, then regenerate.
+   `product/v2/device_catalog.json` or `product/v2/card_contract.json`, then
+   regenerate.
 3. Verify with `npm run docs:build` and `npm run check:dev-docs`.
 4. Stop if a generated docs page was edited directly or if a public card page no
    longer maps to a saved card type.

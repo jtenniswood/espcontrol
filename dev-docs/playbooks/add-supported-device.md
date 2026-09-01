@@ -54,7 +54,7 @@ Expected generated files commonly include:
 - `docs/generated/screens/*.md`
 - generated blocks in `devices/*/packages.yaml`
 - generated blocks in `devices/*/device/sensors.yaml`
-- `docs/public/webserver/*/www.js` when web profile data changes
+- generated files under `docs/public/webserver/` when web profile data changes
 
 ## Stop If
 

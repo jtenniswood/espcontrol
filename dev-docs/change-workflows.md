@@ -94,7 +94,7 @@ Fonts and icons are memory-sensitive on embedded displays.
 3. Add or adjust per-device font definitions in
    `devices/<slug>/device/fonts.yaml`.
 4. If exposing a new firmware font role, update:
-   - `devices/manifest.json`
+   - `product/v2/device_catalog.json`
    - `scripts/device_profiles.py`
    - `scripts/generate_device_slots.py`
    - the consuming C++ config structures
@@ -102,6 +102,7 @@ Fonts and icons are memory-sensitive on embedded displays.
 
 ```bash
 python3 scripts/build.py icons
+python3 scripts/generate_device_manifest.py
 python3 scripts/generate_device_slots.py
 npm run check:product
 ```
@@ -120,7 +121,9 @@ npm run check:web-smoke
 npm run check:web-browser-smoke
 ```
 
-Commit the rebuilt `docs/public/webserver/*/www.js` bundles when they change.
+Commit all rebuilt files under `docs/public/webserver/` when they change,
+including the bridge, asset manifest, embedded fallback, immutable bundle, and
+per-device compatibility loaders.
 The Python command prepares device configuration and delegates bundling to the
 single esbuild API pipeline in `scripts/build_web_bundle.js`; tests use its
 temporary-output mode to avoid relying on tracked bundles.
