@@ -366,6 +366,23 @@ export function registerCompanionCardTypes(
 ): void {
     const { cardBadgePreview, cardBadgeLabelHtml, cardSensorPreviewHtml, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
+    let companionActionsCache: readonly CompanionAction[] | null = null;
+    let companionActionsRequest: Promise<readonly CompanionAction[]> | null = null;
+
+    function loadCompanionActions(refresh = false): Promise<readonly CompanionAction[]> {
+        if (companionActionsRequest) return companionActionsRequest;
+        if (!refresh && companionActionsCache) return Promise.resolve(companionActionsCache);
+        const request = fetchCompanionActions(fetchImpl).then(function (actions) {
+            companionActionsCache = actions;
+            return actions;
+        });
+        companionActionsRequest = request;
+        void request.then(
+            function () { if (companionActionsRequest === request) companionActionsRequest = null; },
+            function () { if (companionActionsRequest === request) companionActionsRequest = null; },
+        );
+        return request;
+    }
 
     registry.register("companion", {
         label: function () { return cardContractCardLabel("companion"); },
@@ -741,7 +758,7 @@ export function registerCompanionCardTypes(
             });
 
             let companionActions: readonly CompanionAction[] = [];
-            fetchCompanionActions(fetchImpl).then(function (actions) {
+            loadCompanionActions(true).then(function (actions) {
                 companionActions = actions;
                 const applicationActions = companionApplicationActions(actions);
                 const folderActions = companionFolderActions(actions);
