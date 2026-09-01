@@ -147,9 +147,8 @@ and allocation cleanup while retaining their specialised playback, artwork,
 playlist, progress, volume, Home Assistant, and modal implementations. This
 completes the reviewed rich-card migrations. The former catch-all firmware
 fallback is retired: canonical cards and supported aliases resolve through the
-generated metadata and shared drivers. Removed Todo cards remain readable only
-through the narrow legacy compatibility driver; unknown card types stay inert
-instead of being treated as switches.
+generated metadata and shared drivers. Unknown card types stay inert instead
+of being treated as switches.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and

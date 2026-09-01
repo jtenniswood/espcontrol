@@ -170,7 +170,6 @@ swing=Kývanie
 target=Cieľ
 temporaryhold=Temporaryhold
 today=Dnes
-todo=Úloha
 too_many=Príliš veľa
 toggle_this_device=Prepnúť toto zariadenie?
 tomorrow=Zajtra

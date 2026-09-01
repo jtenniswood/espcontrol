@@ -170,7 +170,6 @@ swing=Oscilação
 target=Alvo
 temporaryhold=Temporaryhold
 today=Hoje
-todo=Tarefa
 too_many=Muitos
 toggle_this_device=Alternar este dispositivo?
 tomorrow=Amanhã

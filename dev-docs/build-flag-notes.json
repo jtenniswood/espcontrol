@@ -15,10 +15,6 @@
     "purpose": "Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link.",
     "remove_when": "The S3 firmware is split into smaller translation units or the toolchain makes the flag unnecessary."
   },
-  "ESPCONTROL_DISABLE_TODO=1": {
-    "purpose": "Keeps the todo card firmware out of memory-constrained production builds.",
-    "remove_when": "Todo support compiles and runs with safe flash and heap headroom on every supported panel."
-  },
   "ESPCONTROL_DISABLE_WEATHER_FORECAST=1": {
     "purpose": "Excludes the weather-forecast card from the constrained S3 firmware.",
     "remove_when": "The card compiles and runs with safe flash and heap headroom on that panel."

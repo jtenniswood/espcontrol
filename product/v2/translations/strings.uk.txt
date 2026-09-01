@@ -170,7 +170,6 @@ swing=Коливання
 target=Ціль
 temporaryhold=Тимчасове утримання
 today=Сьогодні
-todo=Справи
 too_many=Забагато
 toggle_this_device=Перемкнути цей пристрій?
 tomorrow=Завтра
