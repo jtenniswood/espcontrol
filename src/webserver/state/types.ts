@@ -143,6 +143,7 @@ export interface AppState {
   subpageChevronsOn: boolean;
   presenceEntity: string;
   screensaverCameraEntity: string;
+  screensaverCameraImageMode: string;
   mediaPlayerSleepPreventionOn: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaverOn: boolean;
