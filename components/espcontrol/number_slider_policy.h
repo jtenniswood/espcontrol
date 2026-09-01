@@ -9,7 +9,9 @@
 namespace espcontrol::number_slider {
 
 constexpr int MAX_SLIDER_POSITIONS = 10000;
-constexpr int MAX_DECIMAL_PLACES = 15;
+constexpr int MAX_DECIMAL_PLACES = std::numeric_limits<double>::max_digits10;
+constexpr int GENERAL_FORMAT_DECIMAL_PLACES = MAX_DECIMAL_PLACES + 1;
+constexpr double MAX_STEP_COUNT_TOLERANCE = 1e-3;
 
 struct Metadata {
   double minimum = 0.0;
@@ -52,11 +54,25 @@ inline long long legal_step_count(const Metadata &metadata) {
   const double raw = (metadata.maximum - metadata.minimum) / metadata.step;
   if (!std::isfinite(raw) || raw <= 0.0) return 0;
   const double nearest = std::round(raw);
-  const double integer_tolerance = std::max(
-    1e-6, std::min(1e-3, std::fabs(raw) * 1e-7));
-  const double rounded = std::fabs(raw - nearest) < integer_tolerance
+  const bool float_precision =
+    static_cast<double>(static_cast<float>(metadata.minimum)) == metadata.minimum &&
+    static_cast<double>(static_cast<float>(metadata.maximum)) == metadata.maximum &&
+    static_cast<double>(static_cast<float>(metadata.step)) == metadata.step;
+  const double source_epsilon = float_precision
+    ? static_cast<double>(std::numeric_limits<float>::epsilon())
+    : std::numeric_limits<double>::epsilon();
+  const double range = metadata.maximum - metadata.minimum;
+  const double cancellation_scale = std::max(
+    1.0,
+    std::max(std::fabs(metadata.minimum), std::fabs(metadata.maximum)) /
+      std::fabs(range));
+  const double integer_tolerance = std::min(
+    MAX_STEP_COUNT_TOLERANCE,
+    source_epsilon * std::max(1.0, std::fabs(raw)) *
+      2.0 * (1.0 + cancellation_scale));
+  const double rounded = std::fabs(raw - nearest) <= integer_tolerance
     ? nearest
-    : std::floor(raw);
+    : std::ceil(raw);
   if (rounded >= static_cast<double>(std::numeric_limits<long long>::max()))
     return std::numeric_limits<long long>::max();
   return std::max(1LL, static_cast<long long>(rounded));
@@ -74,6 +90,8 @@ inline int clamp_position(const Metadata &metadata, int position) {
 inline long long nearest_step_index(const Metadata &metadata, double value) {
   if (!metadata_valid(metadata) || !std::isfinite(value)) return 0;
   const long long count = legal_step_count(metadata);
+  if (value >= metadata.maximum) return count;
+  if (value <= metadata.minimum) return 0;
   const double raw_index = (value - metadata.minimum) / metadata.step;
   if (!std::isfinite(raw_index)) return value <= metadata.minimum ? 0 : count;
   if (raw_index >= static_cast<double>(count))
@@ -118,26 +136,47 @@ inline int position_for_value(const Metadata &metadata, double value) {
 
 inline int decimal_places(double step) {
   if (!std::isfinite(step) || step <= 0.0) return 0;
+  const bool float_precision =
+    static_cast<double>(static_cast<float>(step)) == step;
+  const double source_epsilon = float_precision
+    ? static_cast<double>(std::numeric_limits<float>::epsilon())
+    : std::numeric_limits<double>::epsilon();
   double scaled = step;
   for (int places = 0; places <= MAX_DECIMAL_PLACES; places++) {
     const double rounded = std::round(scaled);
-    if (rounded >= 1.0 && std::fabs(scaled - rounded) < 1e-6) return places;
+    const double tolerance = source_epsilon *
+                             std::max(1.0, std::fabs(scaled)) * 2.0;
+    if (rounded >= 1.0 && std::fabs(scaled - rounded) <= tolerance)
+      return places;
     scaled *= 10.0;
   }
-  return MAX_DECIMAL_PLACES;
+  return GENERAL_FORMAT_DECIMAL_PLACES;
 }
 
 inline int decimal_places(const Metadata &metadata) {
   if (!metadata_valid(metadata)) return 0;
-  return std::max(decimal_places(metadata.step),
-                  decimal_places(std::fabs(metadata.minimum)));
+  return std::max({decimal_places(metadata.step),
+                   decimal_places(std::fabs(metadata.minimum)),
+                   decimal_places(std::fabs(metadata.maximum))});
 }
 
 inline std::string format_value(double value, const Metadata &metadata) {
   char buffer[48];
   const int places = decimal_places(metadata);
-  if (std::fabs(value) < 0.5 * std::pow(10.0, -places)) value = 0.0;
-  std::snprintf(buffer, sizeof(buffer), "%.*f", places, value);
+  const double magnitude = std::fabs(value);
+  const int integer_places = magnitude >= 1.0
+    ? static_cast<int>(std::floor(std::log10(magnitude))) + 1
+    : 1;
+  const bool fixed_format_fits = places <= MAX_DECIMAL_PLACES &&
+                                 integer_places + places + 3 <=
+                                   static_cast<int>(sizeof(buffer));
+  if (fixed_format_fits) {
+    if (magnitude < 0.5 * std::pow(10.0, -places)) value = 0.0;
+    std::snprintf(buffer, sizeof(buffer), "%.*f", places, value);
+  } else {
+    if (value == 0.0) value = std::fabs(value);
+    std::snprintf(buffer, sizeof(buffer), "%.*g", MAX_DECIMAL_PLACES, value);
+  }
   return buffer;
 }
 

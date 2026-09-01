@@ -25,6 +25,7 @@ describe("browserless application contracts", () => {
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
   const { createEntityStateFeature } = loadTypescriptTest("src/webserver/application/entity_state.ts");
   const { createConfigModalTabOptionsFeature } = loadTypescriptTest("src/webserver/application/config_modal_tab_options.ts");
+  const { createConfigConfirmationOptionsFeature } = loadTypescriptTest("src/webserver/application/config_confirmation_options.ts");
 
   test("plans clipboard transfers", () => {
     runClipboardFeatureTests();
@@ -723,6 +724,37 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(entry, /registerCompatibility\(registerActionCardTypes/);
     assert.match(entry, /actionCardStateEntity: \(button\) => confirmationOptions\.actionCardStateEntity\(button\)/);
     assert.doesNotMatch(globals, /\bvar (?:ACTION_CARD_ACTIONS|ACTION_CARD_METADATA|actionCardInfo|actionCardIsLocal|actionCardIsOptionSelect|actionCardNeedsExtraValue|actionCardStateDisplayMode|actionCardStateEntity|actionCardStatePrecision|actionCardStateUnit|normalizeActionCardConfig|normalizeSavedConfigActionFields|renderActionCardLocalSettings|setActionCardStateOptions):/);
+  });
+
+  test("preserves number action changes during editor rerenders", () => {
+    const options = createConfigConfirmationOptionsFeature({
+      normalizeGarageOptions: (value) => value,
+      connectGarageConfirmationNormalizer: () => {},
+    });
+    const editing = {
+      type: "action",
+      sensor: "input_number.set_value",
+      entity: "number.target_level",
+      options: "",
+    };
+    options.normalizeActionCardConfig(editing);
+    assert.equal(editing.sensor, "input_number.set_value");
+
+    const saved = { ...editing };
+    options.normalizeSavedConfigActionFields(saved);
+    assert.equal(saved.sensor, "number.set_value");
+
+    const reverseEditing = {
+      ...editing,
+      sensor: "number.set_value",
+      entity: "input_number.target_level",
+    };
+    options.normalizeActionCardConfig(reverseEditing);
+    assert.equal(reverseEditing.sensor, "number.set_value");
+
+    const reverseSaved = { ...reverseEditing };
+    options.normalizeSavedConfigActionFields(reverseSaved);
+    assert.equal(reverseSaved.sensor, "input_number.set_value");
   });
 
   test("registers light card families through an explicit shared interface", () => {

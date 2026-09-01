@@ -1474,12 +1474,12 @@ inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
   lv_area_t slider_area;
   lv_obj_get_coords(slider, &slider_area);
 
-  const int max_position = ctx->numeric
+  const int positions = ctx->numeric
     ? espcontrol::number_slider::slider_position_count(slider_numeric_metadata(ctx))
     : 100;
   int value = 0;
   if (!espcontrol::slider_geometry::vertical_pointer_position(
-        point.y, slider_area.y1, slider_area.y2, max_position, value)) {
+        point.y, slider_area.y1, slider_area.y2, positions, value)) {
     return false;
   }
   if (lv_slider_get_value(slider) == value) return true;
@@ -2761,8 +2761,8 @@ inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
 inline void slider_numeric_restore_visual(SliderCtx *ctx) {
   if (!ctx || !ctx->numeric) return;
   if (ctx->sensor_container) lv_obj_add_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, "");
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->sensor_lbl) lv_label_set_display_text(ctx->sensor_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
   if (ctx->icon_lbl) lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -2774,8 +2774,8 @@ inline void slider_numeric_show_value(lv_obj_t *slider, SliderCtx *ctx) {
   const std::string formatted = espcontrol::number_slider::format_value(
     value, metadata);
   if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, formatted.c_str());
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
+  if (ctx->sensor_lbl) lv_label_set_display_text(ctx->sensor_lbl, formatted.c_str());
+  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
   if (ctx->sensor_container) lv_obj_clear_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
 }
 
