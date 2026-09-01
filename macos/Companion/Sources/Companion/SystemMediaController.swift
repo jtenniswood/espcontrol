@@ -6,6 +6,16 @@ import MediaRemoteShim
 final class SystemMediaController {
     static let outputVolumeID = "media.output_volume"
     static let inputVolumeID = "media.input_volume"
+    static let volumeControlIDs = Set([outputVolumeID, inputVolumeID])
+
+    static func unavailableVolumeIDs(
+        values: [String: Int],
+        previousValues: [String: Int],
+        force: Bool
+    ) -> Set<String> {
+        let candidates = force ? volumeControlIDs : Set(previousValues.keys)
+        return candidates.subtracting(values.keys)
+    }
 
     private enum RemoteCommand: UInt32 {
         case togglePlayPause = 2

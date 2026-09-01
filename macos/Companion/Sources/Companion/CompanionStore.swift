@@ -274,7 +274,11 @@ final class CompanionStore: NSObject, ObservableObject {
         guard isConnected else { return }
         let values = mediaController.values()
         guard force || values != lastMediaControlValues else { return }
-        let unavailable = Set(lastMediaControlValues.keys).subtracting(values.keys)
+        let unavailable = SystemMediaController.unavailableVolumeIDs(
+            values: values,
+            previousValues: lastMediaControlValues,
+            force: force
+        )
         lastMediaControlValues = values
         connection.publishMediaControlValues(values, unavailable: unavailable)
     }
