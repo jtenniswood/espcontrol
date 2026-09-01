@@ -194,6 +194,13 @@ export function companionCardMode(card: any): string {
     return "app";
 }
 
+export function companionEntityForMode(mode: string): string {
+    if (mode === "shortcut") return COMPANION_SHORTCUT_PREFIX;
+    if (mode === "folder") return COMPANION_FOLDER_PREFIX;
+    if (mode === "media") return COMPANION_MEDIA_ACTIONS[0].id;
+    return "";
+}
+
 export function companionApplicationActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
     return actions.filter((action) =>
         action.id !== COMPANION_FINDER_ID && !action.id.startsWith(COMPANION_FOLDER_PREFIX));
@@ -291,8 +298,7 @@ export function registerCompanionCardTypes(
                             if (card.label === previousGeneratedLabel) card.label = "";
                         }
                         resetCompanionMediaPresentation(card, this.value);
-                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
-                            : this.value === "media" ? COMPANION_MEDIA_ACTIONS[0].id : "";
+                        card.entity = companionEntityForMode(this.value);
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);

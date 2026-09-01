@@ -4,6 +4,7 @@ import {
   companionApplicationActions,
   companionCardMode,
   companionFolderActions,
+  companionEntityForMode,
   companionMediaIcon,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
@@ -39,6 +40,11 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionCardMode({ entity: "media.thirdparty.app", sensor: "" }) !== "app") {
     throw new Error("Installed apps beginning with media. must remain app actions");
+  }
+  const emptyFolderEntity = companionEntityForMode("folder");
+  if (emptyFolderEntity !== "folder." ||
+      companionCardMode({ entity: emptyFolderEntity, sensor: "" }) !== "folder") {
+    throw new Error("Open folder must retain its subtype while waiting for a folder selection");
   }
   if (companionSubtypeDefaultIcon("url") !== "Web" ||
       companionSubtypeDefaultIcon("folder") !== "Folder Outline" ||
