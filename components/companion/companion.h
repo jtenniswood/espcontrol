@@ -7,6 +7,7 @@
 #include <esp_https_server.h>
 
 #include <array>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -39,11 +40,12 @@ class CompanionService final : public Component {
   // Called by the panel web setup page. It rotates the eight-letter setup code
   // and invalidates any unfinished attempt. The resulting trust is persistent.
   void begin_pairing();
-  const std::string &pairing_code() const { return this->pairing_code_; }
+  std::string pairing_code() const;
   bool pairing_active() const;
   uint32_t pairing_expires_in_seconds() const;
-  bool paired() const { return this->identity_.paired != 0; }
+  bool paired() const;
   void revoke_pairing();
+  void request_now_playing_artwork();
 
  protected:
   static esp_err_t websocket_handler_(httpd_req_t *request);
@@ -66,6 +68,7 @@ class CompanionService final : public Component {
                    const std::string &request_id);
   bool invoke_value_(const std::string &control_id, int value,
                      const std::string &request_id);
+  bool pairing_active_locked_(uint32_t now) const;
 
   ESPPreferenceObject preferences_;
   CompanionIdentityPreference identity_{};
@@ -76,6 +79,7 @@ class CompanionService final : public Component {
   uint32_t pairing_expires_at_{0};
   uint32_t next_attempt_at_{0};
   uint8_t failed_attempts_{0};
+  mutable std::mutex pairing_mutex_;
   std::string pairing_code_;
   RAMAllocator<uint8_t> artwork_allocator_{};
   uint8_t *artwork_buffer_{nullptr};
@@ -84,6 +88,7 @@ class CompanionService final : public Component {
   uint32_t artwork_generation_{0};
   std::array<uint8_t, 32> artwork_sha256_{};
   uint32_t now_playing_generation_{0};
+  bool now_playing_artwork_follows_{false};
   uint32_t disconnect_grace_expires_at_{0};
 };
 
@@ -93,5 +98,6 @@ void begin_companion_pairing();
 std::string companion_pairing_code();
 bool companion_pairing_active();
 void revoke_companion_pairing();
+void request_companion_now_playing_artwork();
 
 }  // namespace esphome::companion

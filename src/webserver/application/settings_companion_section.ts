@@ -8,6 +8,7 @@ export interface CompanionPairingState {
     paired: boolean;
     connected: boolean;
     expires_in_seconds: number;
+    port?: number;
     pairing_code: string;
     mdns_name?: string;
 }
@@ -32,9 +33,11 @@ export function companionPairingStatusText(state: CompanionPairingState): string
 
 export function formatCompanionPairingDetails(host: string, state: CompanionPairingState): string {
     const mdnsName = String(state.mdns_name || "").trim().replace(/\.$/, "");
+    const panelHost = mdnsName || host;
+    const panel = state.port && state.port !== 8443 ? panelHost + ":" + state.port : panelHost;
     return [
         "EspControl Companion pairing",
-        "Panel: " + (mdnsName || host),
+        "Panel: " + panel,
         "Pairing code: " + state.pairing_code,
     ].join("\n");
 }

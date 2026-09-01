@@ -1,7 +1,7 @@
 {
   "label": "Action",
   "allowInSubpage": true,
-  "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "input_number", "input_select", "select"],
+  "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "number", "input_number", "input_select", "select"],
   "options": [
     { "name": "large_numbers", "label": "Large State Numbers", "kind": "flag", "omitDefault": true, "applicabilityHook": "action_large_numbers_supported" },
     { "name": "state_entity", "label": "State Entity", "kind": "text", "hidden": true, "docsHidden": true, "omitDefault": true },

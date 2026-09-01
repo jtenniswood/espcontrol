@@ -19,7 +19,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var artworkData: Data?
     private var artworkGeneration: UInt32 = 0
     private var artworkOffset = 0
+    private var lastArtworkGeneration: UInt32 = 0
+    private var lastArtworkSHA256: String?
     private static let artworkChunkBytes = 12 * 1024
+    private static let maximumTextFrameBytes = 16 * 1024
 
     init(store: CompanionStore) { self.store = store }
 
@@ -31,7 +34,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             if case .authenticate = mode { return true }
             return false
         }()
-        guard !store.panelHost.isEmpty, let url = URL(string: "wss://\(store.panelHost):8443/companion/v1") else {
+        guard !store.panelHost.isEmpty, let url = connectionURL() else {
             shouldReconnect = false
             store.updateStatus("Enter the panel address first")
             return
@@ -104,6 +107,18 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             self.startConnectionTimeout(for: webSocketTask)
             self.send("\(signed)|\(signature.map { String(format: "%02x", $0) }.joined())")
         }
+    }
+
+    private func connectionURL() -> URL? {
+        let raw = store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = URL(string: raw.contains("://") ? raw : "wss://\(raw)"),
+              let host = parsed.host else { return nil }
+        var components = URLComponents()
+        components.scheme = "wss"
+        components.host = host
+        components.port = parsed.port ?? 8443
+        components.path = "/companion/v1"
+        return components.url
     }
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
@@ -219,7 +234,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         case "PAIRED":
             guard parts.count == 2, let credential = Data(hex: parts[1]) else { store.updateStatus("Pairing failed"); return }
             guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return }
-            KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost)
+            guard KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost) else {
+                store.updateStatus("Pairing failed: the credential could not be saved in Keychain")
+                return
+            }
             store.setPreference(fingerprint, forKey: certificateFingerprintKey)
             store.removePreference(forKey: authenticationSequenceKey)
             pendingCertificateFingerprint = nil
@@ -231,6 +249,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
             if let task { startHeartbeat(for: task) }
             publishCatalogue()
+            store.republishCurrentNowPlaying()
         case "CATALOGUE":
             publishCatalogue()
         case "INVOKE":
@@ -263,17 +282,24 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         } else if type == "artwork.abort" {
             artworkData = nil
             artworkOffset = 0
+            lastArtworkGeneration = 0
+            lastArtworkSHA256 = nil
+        } else if type == "artwork.request",
+                  let generation = (object["generation"] as? NSNumber)?.uint32Value {
+            store.republishNowPlayingArtwork(generation: generation)
         }
         return true
     }
 
-    func publishNowPlaying(_ snapshot: CompanionNowPlayingSnapshot) {
-        if artworkData != nil {
+    func publishNowPlaying(_ snapshot: CompanionNowPlayingSnapshot, forceArtwork: Bool = false) {
+        let artworkHash = snapshot.artworkSHA256
+        let shouldSendArtwork = snapshot.artworkJPEG != nil && (forceArtwork ||
+            snapshot.generation != lastArtworkGeneration || artworkHash != lastArtworkSHA256)
+        if artworkData != nil && (shouldSendArtwork || snapshot.generation != artworkGeneration) {
             sendJSON(["type": "artwork.abort", "version": 2, "generation": artworkGeneration])
+            artworkData = nil
+            artworkOffset = 0
         }
-        artworkData = nil
-        artworkOffset = 0
-        artworkGeneration = snapshot.generation
         var message: [String: Any] = [
             "type": "now_playing", "version": 2, "generation": snapshot.generation,
             "applicationIdentifier": snapshot.applicationIdentifier,
@@ -281,14 +307,19 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             "contentIdentifier": snapshot.contentIdentifier, "title": snapshot.title,
             "artist": snapshot.artist, "album": snapshot.album,
             "durationMs": snapshot.durationMilliseconds, "positionMs": snapshot.positionMilliseconds,
-            "playbackRate": snapshot.playbackRate, "hasArtwork": snapshot.artworkJPEG != nil,
+            "playbackRate": snapshot.playbackRate, "hasArtwork": shouldSendArtwork,
         ]
-        if let hash = snapshot.artworkSHA256 { message["artworkSHA256"] = hash }
+        if shouldSendArtwork, let artworkHash { message["artworkSHA256"] = artworkHash }
         sendJSON(message)
-        guard let artwork = snapshot.artworkJPEG else { return }
+        guard shouldSendArtwork, let artwork = snapshot.artworkJPEG else { return }
+        artworkData = nil
+        artworkOffset = 0
+        artworkGeneration = snapshot.generation
         artworkData = artwork
+        lastArtworkGeneration = snapshot.generation
+        lastArtworkSHA256 = artworkHash
         sendJSON(["type": "artwork.begin", "version": 2, "generation": snapshot.generation,
-                  "byteLength": artwork.count, "sha256": snapshot.artworkSHA256 ?? "",
+                  "byteLength": artwork.count, "sha256": artworkHash ?? "",
                   "mimeType": "image/jpeg"])
     }
 
@@ -309,13 +340,19 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         frame.append(artworkData[artworkOffset..<end])
         artworkOffset = end
         task?.send(.data(frame)) { [weak self] error in
-            if error != nil { Task { @MainActor in self?.artworkData = nil } }
+            if error != nil {
+                Task { @MainActor in
+                    self?.artworkData = nil
+                    self?.lastArtworkGeneration = 0
+                    self?.lastArtworkSHA256 = nil
+                }
+            }
         }
     }
 
     private func sendJSON(_ object: [String: Any]) {
         guard JSONSerialization.isValidJSONObject(object),
-              let data = try? JSONSerialization.data(withJSONObject: object), data.count <= 16 * 1024,
+              let data = try? JSONSerialization.data(withJSONObject: object), data.count <= Self.maximumTextFrameBytes,
               let value = String(data: data, encoding: .utf8) else { return }
         send(value)
     }
@@ -325,11 +362,17 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         send("CAPABILITIES|media_actions")
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
-        let catalogue = store.launchableApps().compactMap { app -> String? in
+        let entries = store.launchableApps().compactMap { app -> String? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
             return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
-        }.joined(separator: ",")
-        send("CATALOG|\(catalogue)")
+        }
+        var catalogue = "CATALOG|"
+        for entry in entries {
+            let separator = catalogue.count == "CATALOG|".count ? "" : ","
+            guard catalogue.utf8.count + separator.utf8.count + entry.utf8.count <= Self.maximumTextFrameBytes else { break }
+            catalogue += separator + entry
+        }
+        send(catalogue)
     }
 
     func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {

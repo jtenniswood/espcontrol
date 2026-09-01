@@ -38,6 +38,7 @@ final class CompanionStore: NSObject, ObservableObject {
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
     private let mediaController = SystemMediaController()
+    private var latestNowPlayingSnapshot: CompanionNowPlayingSnapshot?
     private var mediaControlTimer: Timer?
     private var lastMediaControlValues: [String: Int] = [:]
 
@@ -62,6 +63,7 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingApplication = snapshot.applicationName
             nowPlayingTitle = snapshot.title
             nowPlayingArtwork = snapshot.artworkJPEG.flatMap(NSImage.init(data:))
+            latestNowPlayingSnapshot = snapshot
             if isConnected { connection.publishNowPlaying(snapshot) }
         }
         refreshLaunchAtLoginStatus()
@@ -136,6 +138,7 @@ final class CompanionStore: NSObject, ObservableObject {
         let standardRoots = [
             URL(fileURLWithPath: "/Applications"),
             URL(fileURLWithPath: "/System/Applications"),
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true),
         ]
         let cryptexRoots = [
             // Current macOS releases install Safari in the protected Cryptex
@@ -178,10 +181,8 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Enter the panel address first", connected: isConnected)
             return
         }
-        var components = URLComponents()
-        components.scheme = "http"
-        components.host = host
-        guard let url = components.url, NSWorkspace.shared.open(url) else {
+        guard let url = URL(string: host.contains("://") ? host : "http://\(host)"),
+              NSWorkspace.shared.open(url) else {
             updateStatus("Could not open the panel webserver", connected: isConnected)
             return
         }
@@ -227,6 +228,18 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingStatus = nowPlayingSharingEnabled
                 ? "Waiting for a panel connection" : "Now Playing sharing is disabled"
         }
+    }
+
+    func republishNowPlayingArtwork(generation: UInt32) {
+        guard isConnected, nowPlayingSharingEnabled,
+              let snapshot = latestNowPlayingSnapshot,
+              snapshot.generation == generation else { return }
+        connection.publishNowPlaying(snapshot, forceArtwork: true)
+    }
+
+    func republishCurrentNowPlaying() {
+        guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
+        connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
@@ -284,7 +297,7 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {
-        guard encodedURL.utf8.count <= 1024,
+        guard encodedURL.utf8.count <= 128,
               let value = encodedURL.removingPercentEncoding,
               let components = URLComponents(string: value),
               let scheme = components.scheme?.lowercased(),

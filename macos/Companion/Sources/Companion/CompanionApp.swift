@@ -258,7 +258,7 @@ private struct CompanionPairingDetails {
               let pairingCode = values["pairing code"] else { return nil }
         if let url = URL(string: panel.contains("://") ? panel : "http://\(panel)"),
            let host = url.host {
-            panel = host
+            panel = url.port.map { "\(host):\($0)" } ?? host
         }
         guard !panel.isEmpty, !pairingCode.isEmpty else { return nil }
         return CompanionPairingDetails(

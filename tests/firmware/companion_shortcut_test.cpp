@@ -23,6 +23,7 @@ int main() {
   assert(companion_encoded_url("url.file%3A%2F%2Fetc%2Fpasswd").empty());
   assert(companion_encoded_url("url.javascript%3Aalert(1)").empty());
   assert(companion_encoded_url("url.https%3A%2F%2Fexample.com|INVOKE").empty());
+  assert(companion_encoded_url("url." + std::string(129, 'a')).empty());
 
   companion_set_actions({{"com.apple.Safari", "Safari"}});
   companion_set_connected(true);

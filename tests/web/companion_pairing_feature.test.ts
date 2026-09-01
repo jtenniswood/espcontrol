@@ -12,10 +12,11 @@ export function runCompanionPairingFeatureTests(): void {
     expires_in_seconds: 900,
     pairing_code: "ABCD-EFGH",
     mdns_name: "espcontrol-4inch-s3.local",
+    port: 9443,
   });
   const expected = [
     "EspControl Companion pairing",
-    "Panel: espcontrol-4inch-s3.local",
+    "Panel: espcontrol-4inch-s3.local:9443",
     "Pairing code: ABCD-EFGH",
   ].join("\n");
   if (details !== expected) throw new Error("Companion pairing details must match the Mac paste format");

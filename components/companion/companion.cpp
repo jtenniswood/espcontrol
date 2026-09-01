@@ -114,6 +114,7 @@ void CompanionService::setup() {
       this->paired(),
       runtime.connected,
       this->pairing_expires_in_seconds(),
+      this->port_,
       this->pairing_active() ? this->pairing_code() : "",
       App.get_name() + ".local",
     };
@@ -127,9 +128,13 @@ void CompanionService::setup() {
 }
 
 void CompanionService::loop() {
-  if (!this->pairing_code_.empty() && static_cast<int32_t>(millis() - this->pairing_expires_at_) >= 0) {
-    this->pairing_code_.clear();
-    this->pairing_expires_at_ = 0;
+  {
+    std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+    if (!this->pairing_code_.empty() && static_cast<int32_t>(millis() - this->pairing_expires_at_) >= 0) {
+      this->pairing_code_.clear();
+      this->pairing_expires_at_ = 0;
+      this->next_attempt_at_ = 0;
+    }
   }
   if (this->disconnect_grace_expires_at_ != 0 &&
       static_cast<int32_t>(millis() - this->disconnect_grace_expires_at_) >= 0) {
@@ -270,6 +275,7 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
 bool CompanionService::authenticate_(const std::vector<std::string> &parts) {
   // AUTH|sequence|nonce|hmac-sha256(AUTH|sequence|nonce). Sequence is strictly
   // increasing, so a captured authenticated frame cannot be replayed.
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
   if (!this->identity_.paired || parts.size() != 4 || parts[0] != "AUTH") return false;
   if (!safe_field(parts[1], 10) || !safe_field(parts[2], 96) || parts[3].size() != 64) return false;
   const uint32_t sequence = strtoul(parts[1].c_str(), nullptr, 10);
@@ -303,8 +309,12 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     this->authenticated_socket_ = socket_fd;
     companion_set_media_actions_supported(false);
     this->set_connected_(true);
-    this->pairing_code_.clear();
-    this->pairing_expires_at_ = 0;
+    {
+      std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+      this->pairing_code_.clear();
+      this->pairing_expires_at_ = 0;
+      this->next_attempt_at_ = 0;
+    }
     this->send_(socket_fd, "AUTHENTICATED|1");
     this->publish_catalogue_();
     return;
@@ -314,9 +324,23 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     // webserver. The trusted credential itself does not expire.
     // Mac receives a fresh credential only inside this TLS connection, then
     // stores it in Keychain and pins this certificate's fingerprint.
-    if (!this->pairing_active() || millis() < this->next_attempt_at_ || parts.size() != 2 || !constant_time_equal(parts[1], this->pairing_code_)) {
+    if (parts.size() != 2) {
+      this->send_(socket_fd, "ERROR|pairing_failed");
+      return;
+    }
+    const uint32_t now = millis();
+    std::unique_lock<std::mutex> pairing_lock(this->pairing_mutex_);
+    if (!this->pairing_active_locked_(now)) {
+      this->send_(socket_fd, "ERROR|pairing_failed");
+      return;
+    }
+    if (this->next_attempt_at_ != 0 && static_cast<int32_t>(now - this->next_attempt_at_) < 0) {
+      this->send_(socket_fd, "ERROR|pairing_throttled");
+      return;
+    }
+    if (!constant_time_equal(parts[1], this->pairing_code_)) {
       this->failed_attempts_++;
-      this->next_attempt_at_ = millis() + RETRY_DELAY_MS;
+      this->next_attempt_at_ = now + RETRY_DELAY_MS;
       this->send_(socket_fd, "ERROR|pairing_failed");
       return;
     }
@@ -336,7 +360,9 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     }
     this->pairing_code_.clear();
     this->pairing_expires_at_ = 0;
+    this->next_attempt_at_ = 0;
     this->failed_attempts_ = 0;
+    pairing_lock.unlock();
     this->send_(socket_fd, "PAIRED|" + hex(this->identity_.credential, sizeof(this->identity_.credential)));
     return;
   }
@@ -421,8 +447,10 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       snapshot.position = static_cast<float>(position_ms / 1000.0);
       snapshot.playback_rate = static_cast<float>(playback_rate);
       snapshot.artwork_follows = root["hasArtwork"] | false;
-      this->reset_artwork_transfer_("new now-playing generation");
+      if (generation != this->now_playing_generation_)
+        this->reset_artwork_transfer_("new now-playing generation");
       this->now_playing_generation_ = generation;
+      this->now_playing_artwork_follows_ = snapshot.artwork_follows;
       this->defer([snapshot = std::move(snapshot)]() mutable {
         companion_set_now_playing(std::move(snapshot));
       });
@@ -430,14 +458,13 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
     }
 
     if (type == "artwork.begin") {
-      const auto runtime = companion_runtime_snapshot();
       const size_t length = root["byteLength"] | 0;
       const std::string sha256 = root["sha256"] | "";
       const std::string mime_type = root["mimeType"] | "";
       std::array<uint8_t, 32> expected{};
       const bool hash_valid = parse_hex_sha256(sha256, expected);
-      if (!protocol::artwork_begin_valid(true, generation, runtime.now_playing.generation,
-                                         runtime.now_playing.artwork_follows, length,
+      if (!protocol::artwork_begin_valid(true, generation, this->now_playing_generation_,
+                                         this->now_playing_artwork_follows_, length,
                                          mime_type == "image/jpeg", hash_valid) ||
           generation != this->now_playing_generation_) return false;
       this->reset_artwork_transfer_("replaced artwork transfer");
@@ -574,7 +601,7 @@ bool CompanionService::invoke_(const std::string &action_id, const std::string &
 bool CompanionService::invoke_url_(const std::string &app_id, const std::string &encoded_url,
                                    const std::string &request_id) {
   if (this->authenticated_socket_ < 0 || !safe_field(app_id, 96) ||
-      !safe_field(encoded_url, 1024) || !safe_field(request_id, 64)) return false;
+      !safe_field(encoded_url, 128) || !safe_field(request_id, 64)) return false;
   this->send_(this->authenticated_socket_,
               "OPEN_URL|" + request_id + "|" + app_id + "|" + encoded_url);
   return true;
@@ -591,6 +618,7 @@ bool CompanionService::invoke_value_(const std::string &control_id, int value,
 }
 
 void CompanionService::begin_pairing() {
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
   this->pairing_code_.clear();
   for (size_t i = 0; i < 8; i++) {
     if (i == 4) this->pairing_code_ += '-';
@@ -601,16 +629,41 @@ void CompanionService::begin_pairing() {
 }
 
 bool CompanionService::pairing_active() const {
-  return !this->pairing_code_.empty() &&
-    static_cast<int32_t>(millis() - this->pairing_expires_at_) < 0;
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+  return this->pairing_active_locked_(millis());
 }
 
 uint32_t CompanionService::pairing_expires_in_seconds() const {
-  if (!this->pairing_active()) return 0;
-  return (this->pairing_expires_at_ - millis() + 999) / 1000;
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+  const uint32_t now = millis();
+  if (!this->pairing_active_locked_(now)) return 0;
+  return (this->pairing_expires_at_ - now + 999) / 1000;
+}
+
+bool CompanionService::pairing_active_locked_(uint32_t now) const {
+  return !this->pairing_code_.empty() &&
+    static_cast<int32_t>(now - this->pairing_expires_at_) < 0;
+}
+
+std::string CompanionService::pairing_code() const {
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+  return this->pairing_code_;
+}
+
+bool CompanionService::paired() const {
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+  return this->identity_.paired != 0;
+}
+
+void CompanionService::request_now_playing_artwork() {
+  if (this->authenticated_socket_ < 0 || this->now_playing_generation_ == 0) return;
+  this->send_(this->authenticated_socket_,
+              "{\"type\":\"artwork.request\",\"version\":2,\"generation\":" +
+              std::to_string(this->now_playing_generation_) + "}");
 }
 
 void CompanionService::revoke_pairing() {
+  std::lock_guard<std::mutex> lock(this->pairing_mutex_);
   const int previous_socket = this->authenticated_socket_;
   this->identity_.paired = 0;
   std::fill(this->identity_.credential, this->identity_.credential + sizeof(this->identity_.credential), 0);
@@ -623,5 +676,8 @@ void begin_companion_pairing() { if (global_companion_service) global_companion_
 std::string companion_pairing_code() { return global_companion_service ? global_companion_service->pairing_code() : ""; }
 bool companion_pairing_active() { return global_companion_service && global_companion_service->pairing_active(); }
 void revoke_companion_pairing() { if (global_companion_service) global_companion_service->revoke_pairing(); }
+void request_companion_now_playing_artwork() {
+  if (global_companion_service) global_companion_service->request_now_playing_artwork();
+}
 
 }  // namespace esphome::companion

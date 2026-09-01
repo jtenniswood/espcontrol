@@ -87,6 +87,8 @@ export function registerSliderCardTypes(
                 bindName: "entity",
                 rerender: true,
                 requiredMessage: "Add an entity before saving.",
+                validateDomains: opts.type === "slider",
+                domainValidationMessage: "Choose a light, fan, number, or input_number entity.",
             },
             labelField: {
                 label: "Label",
@@ -333,6 +335,12 @@ export function registerSliderCardTypes(
                 var entityField: any = helpers.renderCardEntityField(panel, b, helpers, metadata);
                 if (opts.companionVolumeModes && companionSupported && sliderMode !== "home_assistant")
                     entityField.field.style.display = "none";
+                if (metadata.entity.validateDomains) {
+                    helpers.requireEntityDomain(
+                        entityField.input,
+                        cardContractDomains(opts.type),
+                        metadata.entity.domainValidationMessage);
+                }
                 if (opts.coverControlTabs) {
                     cardSettingsPanel = document.createElement("div");
                     modalSettingsPanel = document.createElement("div");
