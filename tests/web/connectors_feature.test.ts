@@ -58,11 +58,11 @@ export function runConnectorsFeatureTests(): void {
     throw new Error("Connected Home Assistant setup must still request action permission");
   }
   if (cardTypeConnector("companion") !== "mac_companion" ||
-      cardTypeConnector("slider", true) !== "mixed" ||
-      cardTypeConnector("slider", false) !== "home_assistant" ||
+      cardTypeConnector("slider") !== "home_assistant" ||
       cardTypeConnector("action") !== "home_assistant_or_local" ||
       cardTypeConnector("sensor") !== "home_assistant_or_local" ||
       cardTypeConnector("calendar") !== "home_assistant_or_local" ||
+      cardTypeConnector("subpage") !== "home_assistant_or_local" ||
       cardTypeConnector("push") !== "home_assistant" ||
       cardTypeConnector("webhook") !== "network" ||
       cardTypeConnector("wifi_qr") !== "local" ||

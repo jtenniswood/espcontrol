@@ -84,7 +84,6 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
             !!dependencies.layout.config.infoOnly,
             !!isSub,
             selectedTypeKey,
-            !!dependencies.layout.config.features?.companion,
         );
     }
     function buttonTypePickerKeys(this: any, isSub?: any, selectedTypeKey?: any) {
