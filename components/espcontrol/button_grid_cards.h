@@ -174,6 +174,8 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     : p.label;
   lv_label_set_text(s.text_lbl, label.c_str());
   const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
+  lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_text(s.icon_lbl, icon);
   companion_track_card(s.btn, p.entity, p.sensor);
   const bool available = url_card

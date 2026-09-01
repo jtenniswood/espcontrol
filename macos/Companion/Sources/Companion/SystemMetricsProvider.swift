@@ -30,8 +30,8 @@ final class SystemMetricsProvider {
     }
 
     func start() {
+        guard timer == nil else { return }
         stop()
-        refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -122,7 +122,7 @@ final class SystemMetricsProvider {
         let active = UInt64(ticks.0) + UInt64(ticks.1) + UInt64(ticks.3)
         let total = active + UInt64(ticks.2)
         defer { previousCPUTicks = (active, total) }
-        guard let previous = previousCPUTicks, total > previous.total else { return 0 }
+        guard let previous = previousCPUTicks, total > previous.total else { return nil }
         let activeDelta = active >= previous.active ? active - previous.active : 0
         let totalDelta = total - previous.total
         return Self.clampedPercent(Double(activeDelta) * 100 / Double(totalDelta))

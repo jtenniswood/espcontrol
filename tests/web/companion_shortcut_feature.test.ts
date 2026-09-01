@@ -64,8 +64,8 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   const generatedMetricCard: any = { entity: "stat.cpu", label: "", icon: "Auto" };
   normalizeCompanionCard(generatedMetricCard);
-  if (generatedMetricCard.label !== "Processor" || generatedMetricCard.precision !== "0") {
-    throw new Error("Companion statistics must prefill their type label and whole-number precision");
+  if (generatedMetricCard.label !== "" || generatedMetricCard.precision !== "0") {
+    throw new Error("Companion statistics must leave generated labels empty and use whole-number precision");
   }
   const customMetricCard = {
     entity: "stat.memory", label: "Mac RAM", icon: "Auto", precision: "1",
@@ -76,7 +76,7 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   const networkCard: any = { entity: "stat.network_throughput", label: "", icon: "Auto" };
   normalizeCompanionCard(networkCard);
-  if (networkCard.label !== "Network Throughput" || networkCard.unit !== "KB/s") {
+  if (networkCard.label !== "" || networkCard.unit !== "KB/s") {
     throw new Error("Network throughput must use its rate label and unit");
   }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {

@@ -370,7 +370,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
       this->pairing_expires_at_ = 0;
       this->next_attempt_at_ = 0;
     }
-    this->send_(socket_fd, "AUTHENTICATED|1");
+  this->send_(socket_fd, "AUTHENTICATED|2");
     this->publish_catalogue_();
     return;
   }
@@ -522,6 +522,10 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
     }
 
     if (type == "system_metrics") {
+      if (!(root["available"] | true)) {
+        this->defer([] { companion_set_system_metrics({}); });
+        return true;
+      }
       CompanionSystemMetricsSnapshot snapshot;
       snapshot.generation = generation;
       snapshot.cpu_usage_percent = root["cpuUsagePercent"] | NAN;

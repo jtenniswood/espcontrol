@@ -272,7 +272,8 @@ export function resetCompanionMediaPresentation(card: any, nextMode: string): vo
 export function resetCompanionMetricPresentation(card: any, nextMode: string): void {
     if (!card) return;
     const previous = companionMetricForEntity(card.entity);
-    if (!previous || previous.mode === nextMode) return;
+    const nextMetric = COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
+    if (!previous || previous.mode === nextMode || nextMetric) return;
     if (card.label === previous.label) card.label = "";
     card.unit = "";
     card.precision = "";
@@ -285,7 +286,6 @@ export function normalizeCompanionCard(card: any): void {
     if (metric) {
         card.type = "companion";
         card.sensor = "";
-        card.label = card.label || metric.label;
         card.unit = card.unit || metric.unit;
         card.precision = card.precision === "0" || card.precision === "1" || card.precision === "2"
             ? card.precision : "0";
@@ -386,10 +386,11 @@ export function registerCompanionCardTypes(
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
                         } else if (selectedMetric) {
-                            if (!card.label) card.label = selectedMetric.label;
-                            card.unit = selectedMetric.unit;
-                            card.precision = "0";
-                            card.options = "";
+                            if (!companionMetricForEntity(previousEntity)) {
+                                card.unit = selectedMetric.unit;
+                                card.precision = "0";
+                                card.options = "";
+                            }
                         }
                         card.icon = companionSubtypeIcon(
                             card.icon, previousMode, this.value, previousEntity, card.entity);

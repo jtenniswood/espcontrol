@@ -48,6 +48,7 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
     @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
+    @Published private(set) var systemMetricsSupported = false
 
     private enum Keys {
         static let host = "panelHost"
@@ -100,6 +101,7 @@ final class CompanionStore: NSObject, ObservableObject {
         }
         systemMetricsProvider.onSnapshot = { [weak self] snapshot in
             guard let self else { return }
+            guard isConnected && systemMetricsSharingEnabled && systemMetricsSupported else { return }
             latestSystemMetricsSnapshot = snapshot
             systemMetricsStatus = "Sharing processor, memory, storage, network and battery statistics"
             if isConnected { connection.publishSystemMetrics(snapshot) }
@@ -299,6 +301,7 @@ final class CompanionStore: NSObject, ObservableObject {
         print("[EspControl Companion] \(message)")
         statusDescription = message
         isConnected = connected
+        if !connected { systemMetricsSupported = false }
         updateNowPlayingProvider()
         updateSystemMetricsProvider()
         if connected {
@@ -311,14 +314,23 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateSystemMetricsProvider() {
-        if isConnected && systemMetricsSharingEnabled {
+        if isConnected && systemMetricsSharingEnabled && systemMetricsSupported {
             systemMetricsStatus = "Collecting Mac system statistics…"
             systemMetricsProvider.start()
         } else {
+            if isConnected && systemMetricsSupported && !systemMetricsSharingEnabled {
+                connection.publishSystemMetricsUnavailable()
+                latestSystemMetricsSnapshot = nil
+            }
             systemMetricsProvider.stop()
             systemMetricsStatus = systemMetricsSharingEnabled
                 ? "Waiting for a panel connection" : "Mac system statistics sharing is disabled"
         }
+    }
+
+    func setSystemMetricsSupported(_ supported: Bool) {
+        systemMetricsSupported = supported
+        updateSystemMetricsProvider()
     }
 
     private func updateNowPlayingProvider() {
@@ -347,9 +359,15 @@ final class CompanionStore: NSObject, ObservableObject {
         connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
     func republishCurrentSystemMetrics() {
-        guard isConnected, systemMetricsSharingEnabled,
+        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported,
               let snapshot = latestSystemMetricsSnapshot else { return }
         connection.publishSystemMetrics(snapshot)
+    }
+
+    func publishSystemMetricsUnavailable() {
+        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported else { return }
+        latestSystemMetricsSnapshot = nil
+        connection.publishSystemMetricsUnavailable()
     }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }

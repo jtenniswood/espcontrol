@@ -252,6 +252,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            let supportsMetrics = parts.count >= 2 && parts[1] == "2"
+            store.setSystemMetricsSupported(supportsMetrics)
             if let task { startHeartbeat(for: task) }
             publishCatalogue()
             store.republishCurrentNowPlaying()
@@ -348,6 +350,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             message["networkThroughputKBps"] = throughput
         }
         sendJSON(message)
+    }
+
+    func publishSystemMetricsUnavailable() {
+        sendJSON(["type": "system_metrics", "version": 2, "generation": 1, "available": false])
     }
 
     private func sendNextArtworkChunk() {

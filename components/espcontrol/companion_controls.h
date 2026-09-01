@@ -552,6 +552,7 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
     return ref.button == button;
   });
   if (existing != refs.end()) {
+    if (companion_metric_key_valid(action_id) && !existing->metric_key.empty()) return;
     existing->action_id = action_id;
     existing->url_config = url_config;
     existing->metric_key.clear();
