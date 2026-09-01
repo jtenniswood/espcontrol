@@ -364,7 +364,9 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
-        send("CAPABILITIES|media_actions")
+        if SystemMediaController.mediaActionsAvailable {
+            send("CAPABILITIES|media_actions")
+        }
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
         let entries = store.launchableApps().compactMap { app -> String? in

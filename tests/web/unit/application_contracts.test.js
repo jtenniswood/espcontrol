@@ -638,6 +638,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?context\.device\.profile\.features\?\.companion,[\s\S]*?cardUi,[\s\S]*?\);/);
+    assert.match(card, /metadata\.entity\.validateDomains && sliderMode === "home_assistant"/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerSliderCardTypes/);
     assert.doesNotMatch(globals, /\bvar (?:renderCoverControlTabSettings|sliderCardMetadata|sliderTypeFactory):/);
   });

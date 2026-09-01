@@ -38,6 +38,10 @@ static BOOL ECLoadMediaRemote(void) {
 
 + (BOOL)isAvailable { return ECLoadMediaRemote(); }
 
++ (BOOL)isCommandAvailable {
+  return ECLoadMediaRemote() && ECSendCommand != NULL;
+}
+
 + (void)fetchNowPlaying:(ECMediaRemoteSnapshotHandler)handler {
   if (!ECLoadMediaRemote()) {
     dispatch_async(dispatch_get_main_queue(), ^{ handler(nil, nil); });
@@ -79,7 +83,7 @@ static BOOL ECLoadMediaRemote(void) {
 }
 
 + (BOOL)sendCommand:(uint32_t)command {
-  if (!ECLoadMediaRemote() || ECSendCommand == NULL) return NO;
+  if (![self isCommandAvailable]) return NO;
   return ECSendCommand(command, NULL);
 }
 

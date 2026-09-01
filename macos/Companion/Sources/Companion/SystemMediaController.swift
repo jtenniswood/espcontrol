@@ -7,6 +7,7 @@ final class SystemMediaController {
     static let outputVolumeID = "media.output_volume"
     static let inputVolumeID = "media.input_volume"
     static let volumeControlIDs = Set([outputVolumeID, inputVolumeID])
+    static var mediaActionsAvailable: Bool { ECMediaRemoteBridge.isCommandAvailable() }
 
     static func unavailableVolumeIDs(
         values: [String: Int],

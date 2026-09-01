@@ -8,6 +8,7 @@ typedef void (^ECMediaRemoteChangeHandler)(void);
 
 @interface ECMediaRemoteBridge : NSObject
 + (BOOL)isAvailable;
++ (BOOL)isCommandAvailable;
 + (void)fetchNowPlaying:(ECMediaRemoteSnapshotHandler)handler;
 + (BOOL)startObservingChanges:(ECMediaRemoteChangeHandler)handler;
 + (void)stopObservingChanges;

@@ -335,7 +335,7 @@ export function registerSliderCardTypes(
                 var entityField: any = helpers.renderCardEntityField(panel, b, helpers, metadata);
                 if (opts.companionVolumeModes && companionSupported && sliderMode !== "home_assistant")
                     entityField.field.style.display = "none";
-                if (metadata.entity.validateDomains) {
+                if (metadata.entity.validateDomains && sliderMode === "home_assistant") {
                     helpers.requireEntityDomain(
                         entityField.input,
                         cardContractDomains(opts.type),
