@@ -539,9 +539,6 @@ select:
       - "Fill"
     web_server:
       sorting_group_id: sg_screensaver
-    on_value:
-      then:
-        - script.execute: camera_screensaver_image_mode_changed
 
   - platform: template
     name: "${entity_screen_temperature_unit}"
