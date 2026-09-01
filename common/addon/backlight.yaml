@@ -189,10 +189,11 @@ script:
           then:
             - lambda: |-
                 const auto transition = id(espcontrol_app).display().resolve();
-                const bool schedule_owned = transition.winning_source.has_value() &&
+                const bool display_takeover_owned = transition.winning_source.has_value() &&
                     (*transition.winning_source == espcontrol::DisplayRequestSource::BOOT_GUARD ||
-                     *transition.winning_source == espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
-                if (schedule_owned && transition.target_mode == espcontrol::DisplayMode::CLOCK) {
+                     *transition.winning_source == espcontrol::DisplayRequestSource::SCREEN_SCHEDULE ||
+                     *transition.winning_source == espcontrol::DisplayRequestSource::COMPANION_SESSION);
+                if (display_takeover_owned && transition.target_mode == espcontrol::DisplayMode::CLOCK) {
                   backlight_close_modals_for_display_takeover();
                 }
             - if:
