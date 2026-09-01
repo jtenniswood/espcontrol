@@ -21,6 +21,7 @@
 
 #ifdef USE_LVGL
 #include "esphome/components/lvgl/lvgl_esphome.h"
+#include "display_text.h"
 #endif
 
 struct CompanionAction {
