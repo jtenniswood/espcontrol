@@ -1335,21 +1335,6 @@
     }
   },
   {
-    "name": "todo: accepted_legacy_input",
-    "input": "~todo.example,,,,,,todo,,",
-    "expected": {
-      "entity": "todo.example",
-      "label": "",
-      "icon": "Check",
-      "icon_on": "Auto",
-      "sensor": "",
-      "unit": "",
-      "type": "todo",
-      "precision": "",
-      "options": ""
-    }
-  },
-  {
     "name": "media_cover_art: obsolete_implementation_residue",
     "input": "~media_player.example,,Auto,Auto,cover_art,,media,,",
     "expected": {

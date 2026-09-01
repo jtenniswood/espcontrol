@@ -266,7 +266,6 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_climate_control_driver.h"
 #include "button_grid_alarm_driver.h"
 #include "button_grid_media_driver.h"
-#include "button_grid_legacy_compatibility_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -674,10 +673,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
         s, p, context, cfg, display)) {
     espcontrol::cards::navigation_driver_attach_interaction(s, p, context);
     espcontrol::cards::navigation_driver_refresh_layout(s, p, context, cfg);
-    return;
-  }
-  if (espcontrol::cards::legacy_compatibility_driver_setup_visual(
-        s, p, context, palette, display, row_span, col_span)) {
     return;
   }
   clear_unsupported_card_slot_visuals(s);
@@ -1943,8 +1938,6 @@ inline void grid_phase2(
     navigation_state.icon_on = &icon_on_cp[idx - 1];
     if (espcontrol::cards::navigation_driver_bind_main(
           s, p, context, navigation_state)) continue;
-    if (espcontrol::cards::legacy_compatibility_driver_bind(
-          s, p, context, palette, display, row_span, col_span)) continue;
     ESP_LOGE("card_runtime", "Card has no main-grid data driver: type=%s",
              p.type.c_str());
   }
@@ -2215,8 +2208,6 @@ inline void grid_phase2(
         };
       if (espcontrol::cards::access_cover_driver_bind_subpage(
             sub_slot, sb_cfg, context, access_cover_environment)) continue;
-      if (espcontrol::cards::legacy_compatibility_driver_bind(
-            sub_slot, sb_cfg, context, palette, display, rs, cs)) continue;
       ESP_LOGE("card_runtime", "Card has no subpage data driver: type=%s",
                sb_cfg.type.c_str());
     }

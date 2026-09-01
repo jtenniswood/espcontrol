@@ -15,7 +15,6 @@ enum class ControlModalKind {
   ALARM_CONTROL,
   IMAGE_CARD,
   WIFI_QR,
-  TODO_LIST,
   COVER_CONTROL,
   LIGHT_CONTROL,
   MEDIA_CONTROL,

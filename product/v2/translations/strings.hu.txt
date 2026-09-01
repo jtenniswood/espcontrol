@@ -170,7 +170,6 @@ swing=Legyezés
 target=Célérték
 temporaryhold=Ideiglenes tartás
 today=Ma
-todo=Teendő
 too_many=Túl sok
 toggle_this_device=Átváltja ezt az eszközt?
 tomorrow=Holnap

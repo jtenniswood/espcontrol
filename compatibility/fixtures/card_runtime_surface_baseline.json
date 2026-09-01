@@ -2803,38 +2803,6 @@
       }
     },
     {
-      "name": "todo: accepted_legacy_input",
-      "sourceKind": "runtime_only",
-      "sourceType": "todo",
-      "mode": "accepted_legacy_input",
-      "canonicalType": "todo",
-      "web": {
-        "registration": null,
-        "picker": {
-          "main": false,
-          "subpage": false,
-          "infoOnly": false
-        },
-        "preview": {
-          "available": false,
-          "fingerprint": ""
-        }
-      },
-      "firmware": {
-        "family": "TODO"
-      },
-      "lifecycle": {
-        "subscriptions": [
-          "action_response"
-        ],
-        "actions": [
-          "home_assistant_service",
-          "modal"
-        ],
-        "modalOwner": "todo"
-      }
-    },
-    {
       "name": "media_cover_art: obsolete_implementation_residue",
       "sourceKind": "runtime_only",
       "sourceType": "media_cover_art",

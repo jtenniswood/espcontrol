@@ -170,7 +170,6 @@ swing=Zwenken
 target=Doel
 temporaryhold=Temporaryhold
 today=Vandaag
-todo=Taken
 too_many=Te veel
 toggle_this_device=Dit apparaat schakelen?
 tomorrow=Morgen
