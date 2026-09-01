@@ -3686,13 +3686,19 @@ def firmware_camera_screensaver_retained_token_errors(
         text,
         re.DOTALL,
     )
-    if retained_token_subscription:
-        return []
     rel = path.relative_to(root)
-    return [
-        f"{rel}: retain the camera screensaver access-token subscription "
-        "so retained Home Assistant reads can complete"
-    ]
+    errors: list[str] = []
+    if not retained_token_subscription:
+        errors.append(
+            f"{rel}: retain the camera screensaver access-token subscription "
+            "so retained Home Assistant reads can complete"
+        )
+    if "ha_reannounce_state_subscriptions();" not in text:
+        errors.append(
+            f"{rel}: re-announce the late camera screensaver subscription "
+            "so Home Assistant publishes its current token immediately"
+        )
+    return errors
 
 
 def run_scan() -> int:
@@ -4802,8 +4808,16 @@ def run_self_test() -> int:
         "camera token subscription is retained",
         'ha_subscribe_attribute(entity, std::string("access_token"), callback,\n'
         '  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);\n'
+        'ha_reannounce_state_subscriptions();\n'
         'ha_read_retained_attribute(entity, std::string("access_token"), callback);\n',
         (),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "late camera token subscription is not announced",
+        'ha_subscribe_attribute(entity, std::string("access_token"), callback,\n'
+        '  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);\n'
+        'ha_read_retained_attribute(entity, std::string("access_token"), callback);\n',
+        ("re-announce the late camera screensaver subscription",),
     )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
