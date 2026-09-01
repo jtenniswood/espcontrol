@@ -3539,13 +3539,12 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
             errors.append(f"{rel}: keep API connection recovery centralised in core_infra.yaml")
         restore_body = yaml_script_body(text, "ha_restore_after_api")
         if restore_body is None:
-            errors.append(f"{rel}: define the Home Assistant initial-setup continuation script")
+            errors.append(f"{rel}: define the connector setup continuation script")
         elif (
-            "ha_api_connected()" not in restore_body
-            or "lv_scr_act() == id(ha_setup_page)->obj" not in restore_body
+            "connector_onboarding_complete()" not in restore_body
             or restore_body.count("script.execute: navigate_after_api") != 1
         ):
-            errors.append(f"{rel}: only navigate away when the initial Home Assistant setup page is active")
+            errors.append(f"{rel}: continue setup only after at least one connector is configured")
         body = yaml_script_body(text, "ha_reconnect_flow")
         if body is not None or "Connecting to\\nHome Assistant" in text:
             errors.append(f"{rel}: keep the current display visible when Home Assistant disconnects")

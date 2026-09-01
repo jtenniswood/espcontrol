@@ -45,7 +45,6 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
     const { appendSettingsSection, buildAlarmDelayAudioSettingsCard, createScreensaverThenControls, createTimeInput, statusBadge, syncClockScreensaverControls, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = helpers;
     const { buildScreenScheduleSettingsCard } = scheduleSection;
     const { buildCoverArtSettingsCard } = coverArtSection;
-    const { buildCompanionSettingsCard } = companionSection;
     const { buildSystemSettingsCards } = systemSection;
     const { colorField, condField, createRangeSlider, fieldLabel, makeCollapsibleCard, segmentControl, selectField, textInput, toggleRow } = fields;
     const { createActionButton, buildApplyBar } = shell;
@@ -520,9 +519,6 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             timeSettingsCard,
             temperatureCard,
         ]);
-        if (layout.config.features?.companion) {
-            appendSettingsSection(config, "Companion", [buildCompanionSettingsCard()]);
-        }
         appendSettingsSection(config, "System", [
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,

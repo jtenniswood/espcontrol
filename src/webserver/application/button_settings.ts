@@ -603,6 +603,15 @@ export function createButtonSettingsFeature(
                 var copy: any = document.createElement("span");
                 copy.className = "sp-card-type-copy";
                 copy.appendChild(textSpan(o.label, "sp-card-type-title"));
+                var sourceLabels: Record<string, string> = {
+                    home_assistant: "Home Assistant",
+                    mac_companion: "Mac Companion",
+                    mixed: "Home Assistant or Mac",
+                    local: "On this display",
+                    network: "Direct network",
+                };
+                var sourceLabel: any = sourceLabels[o.connector || "home_assistant"];
+                copy.appendChild(textSpan(sourceLabel, "sp-card-type-connector sp-card-type-connector-" + (o.connector || "home_assistant")));
                 copy.appendChild(textSpan(o.description || "", "sp-card-type-description"));
                 item.appendChild(copy);
                 item.addEventListener("click", function (this: any) {
