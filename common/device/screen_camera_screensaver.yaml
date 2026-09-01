@@ -167,7 +167,9 @@ script:
                       if (next == id(camera_screensaver_access_token)) return;
                       id(camera_screensaver_access_token) = next;
                       id(camera_screensaver_request_image).execute();
-                    }));
+                    }),
+                    HA_SUBSCRIPTION_SCOPE_DEFAULT,
+                    true);
                 }
                 if (image_card_valid_access_token(id(camera_screensaver_access_token))) {
                   const std::string path = image_card_proxy_path_with_token(
