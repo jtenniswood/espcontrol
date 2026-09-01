@@ -8,13 +8,15 @@ import {
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 
-interface CompanionAction {
+export interface CompanionAction {
     readonly id: string;
     readonly label: string;
 }
 
 const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
+export const COMPANION_FOLDER_PREFIX = "folder.";
+const COMPANION_FINDER_ID = "com.apple.finder";
 export const COMPANION_MEDIA_ACTIONS = [
     { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
     { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
@@ -133,6 +135,7 @@ const COMPANION_CARD_METADATA = {
             ["app", "Launch app"],
             ["shortcut", "Keyboard shortcut"],
             ["url", "Open URL"],
+            ["folder", "Open folder"],
             ["media", "Media control"],
         ],
         value: companionCardMode,
@@ -150,9 +153,19 @@ export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
+    if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
     if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
+}
+
+export function companionApplicationActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
+    return actions.filter((action) =>
+        action.id !== COMPANION_FINDER_ID && !action.id.startsWith(COMPANION_FOLDER_PREFIX));
+}
+
+export function companionFolderActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
+    return actions.filter((action) => action.id.startsWith(COMPANION_FOLDER_PREFIX));
 }
 
 export function resetCompanionMediaPresentation(card: any, nextMode: string): void {
@@ -227,6 +240,15 @@ export function registerCompanionCardTypes(
                             if (selectedOption && selectedOption.value === card.entity) {
                                 previousGeneratedLabel = selectedOption.textContent || "";
                             }
+                        } else if (previousMode === "folder") {
+                            const folderSelect = document.getElementById(
+                                helpers.idPrefix + "companion-folder") as HTMLSelectElement | null;
+                            const selectedOption = folderSelect?.selectedOptions[0];
+                            if (selectedOption && selectedOption.value === card.entity) {
+                                previousGeneratedLabel = selectedOption.textContent || "";
+                            }
+                            if (card.icon === "Folder") card.icon = "Monitor";
+                            if (card.label === previousGeneratedLabel) card.label = "";
                         }
                         resetCompanionMediaPresentation(card, this.value);
                         card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
@@ -234,6 +256,8 @@ export function registerCompanionCardTypes(
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
+                        } else if (this.value === "folder") {
+                            card.icon = companionMediaIcon(card.icon, "Monitor", "Folder");
                         }
                         if (card.label !== previousLabel) helpers.saveField("label", card.label);
                         if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);
@@ -265,6 +289,29 @@ export function registerCompanionCardTypes(
             select.appendChild(loading);
             appField.appendChild(select);
             panel?.appendChild(appField);
+
+            const folderField = document.createElement("div");
+            folderField.className = "sp-field";
+            folderField.appendChild(fieldLabel("Folder", helpers.idPrefix + "companion-folder"));
+            const folderSelect = document.createElement("select");
+            folderSelect.className = "sp-select";
+            folderSelect.id = helpers.idPrefix + "companion-folder";
+            folderSelect.disabled = true;
+            const folderLoading = document.createElement("option");
+            folderLoading.value = "";
+            folderLoading.textContent = "Loading approved folders…";
+            folderSelect.appendChild(folderLoading);
+            folderField.appendChild(folderSelect);
+            const folderNote = document.createElement("div");
+            folderNote.className = "sp-field-info-text";
+            folderNote.textContent = "Add folders from the Folders tab in the EspControl Companion app.";
+            folderField.appendChild(folderNote);
+            panel?.appendChild(folderField);
+            helpers.requireField(folderSelect, "Choose a folder before saving.", function () {
+                return initialMode === "folder";
+            }, function (value: string) {
+                return value.startsWith(COMPANION_FOLDER_PREFIX);
+            });
 
             const shortcutField = document.createElement("div");
             shortcutField.className = "sp-field";
@@ -327,6 +374,7 @@ export function registerCompanionCardTypes(
             function syncMode(mode: string): void {
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
+                folderField.style.display = mode === "folder" ? "" : "none";
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
@@ -377,26 +425,52 @@ export function registerCompanionCardTypes(
             let companionActions: readonly CompanionAction[] = [];
             fetchCompanionActions(fetchImpl).then(function (actions) {
                 companionActions = actions;
+                const applicationActions = companionApplicationActions(actions);
+                const folderActions = companionFolderActions(actions);
                 select.replaceChildren();
                 const placeholder = document.createElement("option");
                 placeholder.value = "";
-                placeholder.textContent = actions.length ? "Choose a Mac app…" : "No Mac companion is connected";
+                placeholder.textContent = applicationActions.length ? "Choose a Mac app…" : "No Mac apps are available";
                 select.appendChild(placeholder);
-                actions.forEach(function (action) {
+                applicationActions.forEach(function (action) {
                     const option = document.createElement("option");
                     option.value = action.id;
                     option.textContent = action.label;
                     option.selected = action.id === card.entity;
                     select.appendChild(option);
                 });
-                if (card.entity && !actions.some(function (action) { return action.id === card.entity; })) {
+                if ((initialMode === "app" || initialMode === "url") && card.entity &&
+                    !applicationActions.some(function (action) { return action.id === card.entity; })) {
                     const unavailable = document.createElement("option");
                     unavailable.value = card.entity;
                     unavailable.textContent = "Unavailable (" + card.entity + ")";
                     unavailable.selected = true;
                     select.appendChild(unavailable);
                 }
-                select.disabled = actions.length === 0;
+                select.disabled = applicationActions.length === 0;
+
+                folderSelect.replaceChildren();
+                const folderPlaceholder = document.createElement("option");
+                folderPlaceholder.value = "";
+                folderPlaceholder.textContent = folderActions.length
+                    ? "Choose a folder…" : "Add a folder in the Companion app";
+                folderSelect.appendChild(folderPlaceholder);
+                folderActions.forEach(function (action) {
+                    const option = document.createElement("option");
+                    option.value = action.id;
+                    option.textContent = action.label;
+                    option.selected = action.id === card.entity;
+                    folderSelect.appendChild(option);
+                });
+                if (initialMode === "folder" && card.entity &&
+                    !folderActions.some(function (action) { return action.id === card.entity; })) {
+                    const unavailable = document.createElement("option");
+                    unavailable.value = card.entity;
+                    unavailable.textContent = "Unavailable folder";
+                    unavailable.selected = true;
+                    folderSelect.appendChild(unavailable);
+                }
+                folderSelect.disabled = folderActions.length === 0;
             }).catch(function () {
                 select.replaceChildren();
                 const unavailable = document.createElement("option");
@@ -404,6 +478,13 @@ export function registerCompanionCardTypes(
                 unavailable.textContent = card.entity ? "Unavailable (companion offline)" : "Mac companion unavailable";
                 unavailable.selected = true;
                 select.appendChild(unavailable);
+                folderSelect.replaceChildren();
+                const folderUnavailable = document.createElement("option");
+                folderUnavailable.value = card.entity.startsWith(COMPANION_FOLDER_PREFIX) ? card.entity : "";
+                folderUnavailable.textContent = card.entity.startsWith(COMPANION_FOLDER_PREFIX)
+                    ? "Unavailable folder" : "Mac companion unavailable";
+                folderUnavailable.selected = true;
+                folderSelect.appendChild(folderUnavailable);
             });
             select.addEventListener("change", function () {
                 const previousAction = companionActions.find(function (action) { return action.id === card.entity; });
@@ -423,15 +504,36 @@ export function registerCompanionCardTypes(
                     helpers.saveField("label", nextLabel);
                 }
             });
+            folderSelect.addEventListener("change", function () {
+                const previousAction = companionActions.find(function (action) { return action.id === card.entity; });
+                const selectedAction = companionActions.find(function (action) { return action.id === folderSelect.value; });
+                const currentLabel = typeof card.label === "string" ? card.label : "";
+                const nextLabel = companionAppLabel(
+                    currentLabel,
+                    previousAction?.label || "",
+                    selectedAction?.label || "",
+                );
+                card.entity = folderSelect.value;
+                card.icon = companionMediaIcon(card.icon, "Monitor", "Folder");
+                helpers.saveField("entity", card.entity);
+                helpers.saveField("icon", card.icon);
+                if (nextLabel !== currentLabel) {
+                    card.label = nextLabel;
+                    const labelInput = document.getElementById(helpers.idPrefix + "label") as HTMLInputElement | null;
+                    if (labelInput) labelInput.value = nextLabel;
+                    helpers.saveField("label", nextLabel);
+                }
+            });
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
         },
         renderPreview: function (card?: any, helpers?: any) {
+            const mode = companionCardMode(card);
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
             return cardBadgePreview(card, helpers, {
-                label: card.label || shortcutLabel || urlLabel || card.entity || "Mac App",
-                iconFallback: "Monitor",
+                label: card.label || shortcutLabel || urlLabel || card.entity || (mode === "folder" ? "Folder" : "Mac App"),
+                iconFallback: mode === "folder" ? "Folder" : "Monitor",
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });
         },

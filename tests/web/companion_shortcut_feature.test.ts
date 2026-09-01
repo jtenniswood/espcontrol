@@ -1,7 +1,9 @@
 import {
   applyCompanionMediaPresentation,
   companionAppLabel,
+  companionApplicationActions,
   companionCardMode,
+  companionFolderActions,
   companionMediaIcon,
   companionShortcutActionId,
   companionUrlConfig,
@@ -35,6 +37,22 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionCardMode({ entity: "media.thirdparty.app", sensor: "" }) !== "app") {
     throw new Error("Installed apps beginning with media. must remain app actions");
+  }
+  const folderAction = "folder.00000000-0000-0000-0000-000000000001";
+  if (companionCardMode({ entity: folderAction, sensor: "" }) !== "folder" ||
+      companionCardMode({ entity: "com.apple.finder", sensor: "" }) !== "folder") {
+    throw new Error("Folder actions and legacy Finder cards must use the folder subtype");
+  }
+  const catalogue = [
+    { id: "com.apple.Safari", label: "Safari" },
+    { id: "com.apple.finder", label: "Finder" },
+    { id: folderAction, label: "Projects" },
+  ];
+  if (companionApplicationActions(catalogue).map((action) => action.id).join() !== "com.apple.Safari") {
+    throw new Error("Finder and approved folders must not appear in the application list");
+  }
+  if (companionFolderActions(catalogue).map((action) => action.id).join() !== folderAction) {
+    throw new Error("Approved folders must appear only in the folder list");
   }
   if (companionSliderMode({ entity: COMPANION_OUTPUT_VOLUME_ID }) !== "mac_output") {
     throw new Error("Output volume must be available as a Slider control");

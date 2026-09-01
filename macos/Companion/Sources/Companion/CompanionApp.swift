@@ -311,6 +311,16 @@ private struct CompanionSettings: View {
             }
 
             ScrollView {
+                GroupBox("Folders available to cards") {
+                    folderSettings.padding(8)
+                }
+                .padding()
+            }
+            .tabItem {
+                Label("Folders", systemImage: "folder")
+            }
+
+            ScrollView {
                 GroupBox("Mac Now Playing") {
                     nowPlayingSettings.padding(8)
                 }
@@ -400,6 +410,49 @@ private struct CompanionSettings: View {
             Text(store.launchAtLoginMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var folderSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Choose folders here, then select one for each Open folder card in the device webserver. Folder paths stay on this Mac; the display receives only an anonymous identifier and friendly name.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if store.approvedFolders.isEmpty {
+                Text("No folders have been added.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(store.approvedFolders) { folder in
+                    HStack(spacing: 12) {
+                        Image(systemName: "folder.fill")
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(folder.name).font(.headline)
+                            Text(folder.path)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            store.removeFolder(folder)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Remove folder")
+                    }
+                    Divider()
+                }
+            }
+
+            Button("Add Folder…") { store.chooseFolder() }
+                .controlSize(.large)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
