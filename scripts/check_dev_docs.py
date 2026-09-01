@@ -114,9 +114,15 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "src/webserver/",
-        ("docs/public/webserver/www.js",),
+        (
+            "docs/public/webserver/www.js",
+            "docs/public/webserver/web-assets.json",
+            "docs/public/webserver/embedded/www.js",
+            "docs/public/webserver/bundles/*/www.js",
+            "docs/public/webserver/*/www.js",
+        ),
         "python3 scripts/build.py www",
-        "`npm run check:web-smoke` and `npm run check:product`",
+        "`npm run check:web-smoke`, `npm run check:web-asset-manifest`, and `npm run check:product`",
     ),
     SourceTruthRow(
         "product/v2/product_compatibility.json",
@@ -211,9 +217,9 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when compact config, backup, or migration behavior changes",
     ),
     CheckMatrixRow(
-        "`devices/manifest.json`, `devices/<slug>/`, `builds/*.yaml`",
+        "`product/v2/device_catalog.json`, `devices/<slug>/`, `builds/*.yaml`",
         "Supported hardware, layout slots, firmware package shape, release build metadata",
-        "`npm run check:device-profiles` and `npm run check:device-matrix`",
+        "`python3 scripts/check_tasks.py run-task device-manifest-output`, `npm run check:device-profiles`, and `npm run check:device-matrix`",
         "`npm run check:product`; compile affected firmware before publishing new or changed device support",
     ),
     CheckMatrixRow(

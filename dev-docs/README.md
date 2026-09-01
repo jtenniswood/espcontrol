@@ -20,7 +20,9 @@ Developer tooling expects:
 
 - Node.js for the web bundle and JavaScript checks.
 - Python 3 for `scripts/build.py` and Python validators.
-- ESPHome CLI for compiling, flashing, and logging firmware.
+- The ESPHome CLI version pinned in `.github/esphome.env` for compiling,
+  flashing, and logging firmware. `scripts/local_esphome.py` rejects a different
+  installed version before a local compile or flash.
 
 Common starting commands:
 
@@ -59,7 +61,7 @@ or upstream project instead.
 | Work out which check to run | [Check Matrix](check-matrix.md) |
 | Diagnose a broken behavior | [Failure Cookbook](failure-cookbook.md) |
 | Understand why the repo is shaped this way | [Architecture Decision Records](adr/README.md) |
-| Compare compiled firmware module size and RAM | [Firmware Module Migration Baseline](firmware-module-baseline.md) |
+| Compare compiled firmware module size and RAM with the 2026-07-14 migration baseline | [Firmware Module Migration Baseline](firmware-module-baseline.md) |
 
 ## Fast Orientation
 
@@ -72,7 +74,9 @@ or upstream project instead.
 - Firmware UI code lives in `components/espcontrol/`, with `button_grid.h` as
   the compatibility entry point and focused headers/compiled modules behind it.
 - Device entry points live under `devices/<device-slug>/`.
-- Generated public web bundles are written to `docs/public/webserver/<slug>/www.js`.
+- Generated web assets are written under `docs/public/webserver/`: an embedded
+  fallback, a hosted bridge and manifest, an immutable content-addressed bundle,
+  and per-device compatibility loaders.
 - Generated public docs are written under `docs/generated/`.
 
 ## Repository Layout
@@ -84,7 +88,7 @@ or upstream project instead.
 | `components/espcontrol/` | C++ for the on-device LVGL UI. `button_grid.h` is the YAML compatibility facade; focused headers and compiled modules own the implementation. |
 | `src/webserver/` | TypeScript web configurator source. `cards/<card>.ts` holds card-specific registrations; `application/` holds shared setup-page logic. |
 | `devices/<slug>/` | Per-device ESPHome entry points, package manifests, fonts, display drivers, pins, and local development config. |
-| `docs/public/webserver/<slug>/www.js` | Generated configurator bundles served to devices at runtime. |
+| `docs/public/webserver/` | Generated embedded and hosted configurator assets, asset manifest, immutable bundle, and per-device compatibility loaders. |
 | `scripts/` | Build scripts, generators, validators, smoke checks, and release helpers. |
 
 The firmware and web configurator share card facts through generated files, so a
@@ -114,7 +118,10 @@ start in the contract and flow outward from there.
 - [Architecture Decision Records](adr/README.md) - accepted structural decisions
   that should not be undone casually.
 - [Firmware Module Migration Baseline](firmware-module-baseline.md) - clean
-  factory-build flash, static-RAM, duration, and linker results for module work.
+  factory-build flash, static-RAM, duration, and linker results captured on
+  2026-07-14 for module work.
+- [ESP32-P4-86 Audio Stack Investigation Record](p4-86-audio-stack-test.md) - historical
+  2026-07-11 investigation record; use the current device YAML for live values.
 - [Card Contract](card-contract.md) - how card metadata moves from JSON into the
   web UI and firmware.
 - [Saved-Configuration Normalization Baseline](saved-config-normalization-baseline.md) -

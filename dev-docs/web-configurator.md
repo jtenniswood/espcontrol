@@ -1,8 +1,9 @@
 # Web Configurator
 
 The web configurator is the browser setup page loaded from a device's web
-server. It is written in TypeScript and bundled into a single
-`www.js` file per supported device.
+server. It is written in TypeScript and built as one shared application bundle,
+an embedded offline fallback, a hosted compatibility bridge and asset manifest,
+plus small per-device loader files.
 
 ## Source Layout
 
@@ -16,7 +17,9 @@ server. It is written in TypeScript and bundled into a single
 | `src/webserver/api/*.ts` | Injectable HTTP transport, ordered POST queue, typed request results, and failure classification. |
 | `src/webserver/generated/*.ts` | Typed card metadata, entity catalogue, and icon data generated from their shared sources. |
 | `src/webserver/testing/*.ts` | Browser test hooks, included only in test bundles. |
-| `docs/public/webserver/<slug>/www.js` | Generated per-device bundles used for bundled firmware and hosted compatibility. |
+| `docs/public/webserver/<slug>/www.js` | Generated per-device compatibility loader for older hosted URLs. |
+| `docs/public/webserver/embedded/www.js` | Generated offline editor included by current firmware build entry points. |
+| `docs/public/webserver/bundles/<sha256>/www.js` | Generated immutable hosted application bundle selected through `web-assets.json`. |
 
 `entry.ts` imports every application installer and card registration directly.
 The visible call order is the runtime order; the build does not discover files,
@@ -38,8 +41,9 @@ python3 scripts/build.py www
 That command writes `docs/public/webserver/<slug>/www.js` for each supported
 device. The shared `docs/public/webserver/www.js` is a small hosted bridge: it
 uses `web-assets.json` to select an immutable content-addressed editor for the
-development build and the five supported stable release versions. The matching
-offline editor is written to `docs/public/webserver/embedded/www.js`. Firmware
+development build and the stable release/rollback versions declared by the
+generator. The matching offline editor is written to
+`docs/public/webserver/embedded/www.js`. Firmware
 loads that local editor first as a fallback, then asks the hosted bridge for its
 declared compatible bundle; if the manifest or bundle cannot be loaded, the
 local editor starts automatically. Commit these generated files when web
@@ -147,10 +151,12 @@ Typical physical-device loop:
 python3 scripts/build.py www
 ```
 
-2. Serve the generated device bundle from the development machine:
+2. Serve the generated embedded editor from the development machine. Using the
+   embedded application directly avoids the hosted compatibility loader and its
+   cross-origin asset-manifest fetch during local testing:
 
 ```bash
-python3 -m http.server 8080 --directory docs/public/webserver/<slug>
+python3 -m http.server 8080 --directory docs/public/webserver/embedded
 ```
 
 3. Override `js_url` in the device's local `dev.yaml`:
