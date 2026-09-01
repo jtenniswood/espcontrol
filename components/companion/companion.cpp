@@ -151,7 +151,6 @@ void CompanionService::loop() {
     if (!this->server_ || httpd_queue_work(this->server_, &CompanionService::authentication_expiry_work_, this) != ESP_OK)
       this->authentication_expiry_queued_.store(false);
   }
-  companion_refresh_cards_if_requested();
 }
 
 void CompanionService::dump_config() {

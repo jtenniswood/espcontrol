@@ -148,6 +148,7 @@ interval:
   - interval: 500ms
     then:
       - lambda: |-
+          companion_refresh_cards_if_requested();
           static bool previous_companion_connection = false;
           const bool connected = companion_connected();
           if (connected != previous_companion_connection) {

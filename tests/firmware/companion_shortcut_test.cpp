@@ -4,6 +4,7 @@
 
 int main() {
   assert(!companion_connected());
+  assert(!companion_card_refresh_requested().load());
   assert(companion_shortcut_action_valid("shortcut.command+a"));
   assert(companion_shortcut_label("shortcut.command+a") == "\U000F0633" "A");
   assert(companion_shortcut_action_valid("shortcut.control+shift+tab"));
@@ -26,6 +27,7 @@ int main() {
   assert(companion_encoded_url("url." + std::string(129, 'a')).empty());
 
   companion_set_actions({{"com.apple.Safari", "Safari"}});
+  assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
   assert(companion_media_action_valid("media.play_pause"));

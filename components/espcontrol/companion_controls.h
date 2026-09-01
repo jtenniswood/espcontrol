@@ -78,6 +78,15 @@ using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t 
 
 inline void companion_request_card_refresh();
 
+inline std::atomic<bool> &companion_card_refresh_requested() {
+  static std::atomic<bool> requested{false};
+  return requested;
+}
+
+inline void companion_request_card_refresh() {
+  companion_card_refresh_requested().store(true);
+}
+
 struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
@@ -405,11 +414,6 @@ inline std::vector<CompanionSliderRef> &companion_slider_refs() {
   return refs;
 }
 
-inline std::atomic<bool> &companion_card_refresh_requested() {
-  static std::atomic<bool> requested{false};
-  return requested;
-}
-
 inline void companion_forget_card(lv_obj_t *button) {
   auto &refs = companion_card_refs();
   refs.erase(std::remove_if(refs.begin(), refs.end(), [button](const CompanionCardRef &ref) {
@@ -466,8 +470,6 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
 }
 
-inline void companion_request_card_refresh() { companion_card_refresh_requested().store(true); }
-
 inline void companion_refresh_cards_if_requested() {
   if (!companion_card_refresh_requested().exchange(false)) return;
   auto &refs = companion_card_refs();
@@ -514,7 +516,6 @@ inline void companion_refresh_cards_if_requested() {
 inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
 inline void companion_track_slider(void *, const std::string &, void *, bool,
                                    const char *, const char *) {}
-inline void companion_request_card_refresh() {}
 inline void companion_refresh_cards_if_requested() {}
 #endif
 
