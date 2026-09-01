@@ -16,6 +16,7 @@ import {
   companionSubtypeIcon,
   companionUrlConfig,
   companionUrlValue,
+  companionWindowActionLabel,
   formatCompanionShortcutActionId,
   normalizeCompanionCard,
   resetCompanionMediaPresentation,
@@ -334,6 +335,26 @@ export function runCompanionShortcutFeatureTests(): void {
   if (metricCard.label !== "" || String(metricCard.unit) !== "" || String(metricCard.precision) !== "" ||
       String(metricCard.options) !== "") {
     throw new Error("Leaving a generated statistic card must clear its generated presentation");
+  }
+
+  if (COMPANION_WINDOW_ACTIONS.length !== 19) {
+    throw new Error("Companion window controls must expose the complete approved preset list");
+  }
+  const windowIds = new Set(COMPANION_WINDOW_ACTIONS.map((action) => action.id));
+  if (windowIds.size !== COMPANION_WINDOW_ACTIONS.length || !windowIds.has("window.close")
+      || !windowIds.has("window.arrange.bottom-quarters")) {
+    throw new Error("Companion window action identifiers must be unique and complete");
+  }
+  if (companionCardMode({ entity: "window.left", sensor: "" }) !== "window") {
+    throw new Error("Window actions must restore as the Window controls subtype");
+  }
+  if (companionWindowActionLabel("window.center") !== "Centre"
+      || companionWindowActionLabel("window.unknown") !== "") {
+    throw new Error("Window actions must use allow-listed display labels");
+  }
+  if (companionAppLabel("Centre", "Centre", "Left") !== "Left"
+      || companionAppLabel("Work layout", "Centre", "Left") !== "Work layout") {
+    throw new Error("Window preset changes must update generated labels and preserve custom labels");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));

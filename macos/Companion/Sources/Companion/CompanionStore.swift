@@ -443,6 +443,10 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)
             return false
         }
+        guard shortcut.isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else {
+            updateStatus("Window tiling requires macOS 15 or later", connected: isConnected)
+            return false
+        }
         guard shortcut.replay() else {
             updateStatus("Allow EspControl Companion in Privacy & Security → Accessibility", connected: isConnected)
             return false

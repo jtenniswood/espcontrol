@@ -580,6 +580,34 @@ export function registerCompanionCardTypes(
                 return companionShortcutActionIdValid(card.entity);
             });
 
+            const windowField = document.createElement("div");
+            windowField.className = "sp-field";
+            windowField.appendChild(fieldLabel("Window action", helpers.idPrefix + "companion-window-action"));
+            const windowSelect = document.createElement("select");
+            windowSelect.className = "sp-select";
+            windowSelect.id = helpers.idPrefix + "companion-window-action";
+            const groups = new Map<string, HTMLOptGroupElement>();
+            COMPANION_WINDOW_ACTIONS.forEach(function (action) {
+                let group = groups.get(action.group);
+                if (!group) {
+                    group = document.createElement("optgroup");
+                    group.label = action.group;
+                    groups.set(action.group, group);
+                    windowSelect.appendChild(group);
+                }
+                const option = document.createElement("option");
+                option.value = action.id;
+                option.textContent = action.label;
+                option.selected = action.id === card.entity;
+                group.appendChild(option);
+            });
+            windowField.appendChild(windowSelect);
+            const windowNote = document.createElement("div");
+            windowNote.className = "sp-field-info-text sp-visible";
+            windowNote.textContent = "Controls the active Mac window. Tiling actions require macOS 15 or later.";
+            windowField.appendChild(windowNote);
+            panel?.appendChild(windowField);
+
             const urlField = document.createElement("div");
             urlField.className = "sp-field";
             urlField.appendChild(fieldLabel("URL", helpers.idPrefix + "companion-url"));
@@ -647,6 +675,7 @@ export function registerCompanionCardTypes(
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
                 folderField.style.display = mode === "folder" ? "" : "none";
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
+                windowField.style.display = mode === "window" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
                 shortcutFolderField.style.display = !shortcutOnly && mode === "app" &&
@@ -668,6 +697,21 @@ export function registerCompanionCardTypes(
                 shortcutInput.value = formatCompanionShortcutActionId(actionId);
                 helpers.clearFieldError(shortcutInput);
                 helpers.saveField("entity", card.entity);
+            });
+
+            windowSelect.addEventListener("change", function () {
+                const currentLabel = typeof card.label === "string" ? card.label : "";
+                const previousLabel = companionWindowActionLabel(card.entity);
+                const nextLabel = companionWindowActionLabel(windowSelect.value);
+                card.entity = windowSelect.value;
+                helpers.saveField("entity", card.entity);
+                const updatedLabel = companionAppLabel(currentLabel, previousLabel, nextLabel);
+                if (updatedLabel !== currentLabel) {
+                    card.label = updatedLabel;
+                    const labelInput = document.getElementById(helpers.idPrefix + "label") as HTMLInputElement | null;
+                    if (labelInput) labelInput.value = updatedLabel;
+                    helpers.saveField("label", updatedLabel);
+                }
             });
 
             function saveUrl(): void {
@@ -834,6 +878,7 @@ export function registerCompanionCardTypes(
                 });
             }
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
+            const windowLabel = companionWindowActionLabel(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
             const preview = cardBadgePreview(card, helpers, {

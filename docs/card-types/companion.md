@@ -38,7 +38,7 @@ The folder is created with those five controls once. You can then edit their lab
 
 The first time you use one of these controls, macOS may ask for Accessibility permission. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**. If Safari is no longer approved or the Companion is offline, the Safari card is disabled and the folder is not opened.
 
-The first time a shortcut is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts are sent to whichever Mac application is active at that time.
+The first time a shortcut or window control is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts and window controls are sent to whichever Mac application is active at that time.
 
 Action cards are disabled when the Mac is offline, when an app or URL card references an unavailable application, when a folder has been removed from the Mac app, or when a URL is incomplete. System-statistic cards show `--` while their reading is unavailable. Play / Pause is also disabled when **Now Playing** sharing is off, macOS has no usable session, or the required system command is unavailable. Paused and stopped sessions remain tappable. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards.
 

@@ -168,6 +168,7 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     return;
   }
   const std::string shortcut_label = companion_shortcut_label(p.entity);
+  const std::string window_label = companion_window_action_label(p.entity);
   const bool url_card = !companion_encoded_url(p.sensor).empty();
   const bool media_play_pause = p.entity == "media.play_pause";
   const bool available = url_card
