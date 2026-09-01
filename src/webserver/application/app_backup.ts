@@ -469,7 +469,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedScreensaverMode: any = importedSettings.screensaverMode;
                     postScreensaverMode(importedScreensaverMode);
                     postPresenceSensorEntity(importedSettings.presenceSensorEntity);
-                    if (CFG.features && CFG.features.cameraScreensaver)
+                    if (controllers.layout.config.features?.cameraScreensaver)
                         postText(entityName("screen_saver_camera_entity"), importedSettings.screensaverCameraEntity);
                     postMediaPlayerSleepPrevention(importedSettings.mediaPlayerSleepPrevention);
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
@@ -489,7 +489,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     }
                     var importedScreensaverAction: any = importedSettings.screensaverAction;
                     if (importedScreensaverAction === "camera" &&
-                        !(CFG.features && CFG.features.cameraScreensaver))
+                        !controllers.layout.config.features?.cameraScreensaver)
                         importedScreensaverAction = "off";
                     var importedScreensaverDimmedBrightness: any = importedSettings.screensaverDimmedBrightness;
                     var importedScreensaverDimmedBrightnessDay: any = importedSettings.screensaverDimmedBrightnessDay;
