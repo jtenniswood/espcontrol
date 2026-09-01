@@ -93,11 +93,12 @@ export function createConfigConfirmationOptionsFeature(
     function actionCardNeedsExtraValue(this: any, value?: any) {
         return value === "number.set_value" || value === "input_number.set_value";
     }
-    function normalizeSavedConfigActionFields(this: any, button?: any) {
+    function normalizeActionCardFields(this: any, button?: any, matchNumericActionToEntity?: any) {
         if (!button) return;
         if (button.sensor === "select.select_option") button.sensor = ACTION_CARD_OPTION_SELECT_ACTION;
         var entityDomain: any = String(button.entity || "").split(".")[0];
-        if ((button.sensor === "number.set_value" || button.sensor === "input_number.set_value") &&
+        if (matchNumericActionToEntity &&
+            (button.sensor === "number.set_value" || button.sensor === "input_number.set_value") &&
             (entityDomain === "number" || entityDomain === "input_number")) {
             button.sensor = entityDomain + ".set_value";
         }
@@ -112,9 +113,12 @@ export function createConfigConfirmationOptionsFeature(
             if (!button.icon || button.icon === "Auto" || button.icon === "Flash") button.icon = "Gesture Tap";
         }
     }
+    function normalizeSavedConfigActionFields(this: any, button?: any) {
+        normalizeActionCardFields(button, true);
+    }
     function normalizeActionCardConfig(this: any, button?: any) {
         if (!button) return;
-        normalizeSavedConfigActionFields(button);
+        normalizeActionCardFields(button, false);
         button.options = normalizeActionOptions(button.options, button.sensor);
     }
     const { normalizeGarageOptions } = accessOptions;

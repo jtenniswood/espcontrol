@@ -141,4 +141,15 @@ func testRestartRepublishesAnUnchangedSnapshot() {
     XCTAssertEqual(snapshots.count, 2)
     XCTAssertEqual(snapshots.map(\.generation), [1, 1])
 }
+
+func testPanelWebServerURLDropsCompanionPort() {
+    XCTAssertEqual(
+        CompanionStore.panelWebServerURL(from: "192.168.6.100:9443")?.absoluteString,
+        "http://192.168.6.100"
+    )
+    XCTAssertEqual(
+        CompanionStore.panelWebServerURL(from: "https://panel.example:9443")?.absoluteString,
+        "https://panel.example"
+    )
+}
 }
