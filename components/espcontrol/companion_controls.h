@@ -102,6 +102,7 @@ struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
+  std::string focused_application_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -111,6 +112,7 @@ struct CompanionRuntimeState {
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
+  std::string focused_application_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -125,7 +127,7 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.values, state.media_actions_supported,
+  return {state.actions, state.values, state.focused_application_id, state.media_actions_supported,
           state.connected, state.now_playing, state.system_metrics};
 }
 
@@ -292,6 +294,23 @@ inline void companion_remove_value(const std::string &control_id) {
   companion_request_card_refresh();
 }
 
+inline void companion_set_focused_application(std::string application_id) {
+  if (application_id.size() > 96) application_id.clear();
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.focused_application_id = std::move(application_id);
+  }
+  companion_request_card_refresh();
+}
+
+inline bool companion_application_focused(const std::string &action_id) {
+  if (action_id.empty() || action_id.rfind("folder.", 0) == 0 ||
+      action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
+  const auto snapshot = companion_runtime_snapshot();
+  return snapshot.connected && snapshot.focused_application_id == action_id;
+}
+
 inline uint32_t companion_next_request_number() {
   static std::atomic<uint32_t> request_number{0};
   return ++request_number;
@@ -304,6 +323,7 @@ inline void companion_set_connected(bool connected) {
     state.connected = connected;
     if (!connected) {
       state.values.clear();
+      state.focused_application_id.clear();
       state.media_actions_supported = false;
       state.system_metrics = {};
     }
@@ -456,6 +476,12 @@ struct CompanionSliderRef {
   const char *icon_on = nullptr;
 };
 
+inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
+  if (!button) return;
+  if (companion_application_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
+  else lv_obj_clear_state(button, LV_STATE_CHECKED);
+}
+
 inline std::vector<CompanionCardRef> &companion_card_refs() {
   static std::vector<CompanionCardRef> refs;
   return refs;
@@ -586,6 +612,7 @@ inline void companion_refresh_cards_if_requested() {
     } else {
       lv_obj_add_state(it->button, LV_STATE_DISABLED);
     }
+    companion_apply_card_focus(it->button, it->action_id);
     ++it;
   }
   auto &sliders = companion_slider_refs();
@@ -615,6 +642,7 @@ inline void companion_refresh_cards_if_requested() {
 inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
 inline void companion_track_metric_card(void *, void *, void *, const std::string &,
                                         const std::string &, int) {}
+inline void companion_apply_card_focus(void *, const std::string &) {}
 inline void companion_track_slider(void *, const std::string &, void *, bool,
                                    const char *, const char *) {}
 inline void companion_refresh_cards_if_requested() {}

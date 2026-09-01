@@ -462,6 +462,9 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     if (end && *end == '\0' && value >= 0 && value <= 100) {
       companion_set_value(parts[1], static_cast<int>(value));
     }
+  } else if (parts[0] == "FOCUS" && parts.size() == 2 &&
+             (parts[1].empty() || safe_field(parts[1], 96))) {
+    companion_set_focused_application(parts[1]);
   } else if (parts[0] == "HEARTBEAT") {
     this->send_(socket_fd, "HEARTBEAT|ok");
   }
