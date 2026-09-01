@@ -3642,6 +3642,17 @@ def firmware_camera_screensaver_retained_token_errors(
         errors.append(
             f"{rel}: cancel stale camera screensaver downloads when the entity changes"
         )
+    if (
+        "lv_image_set_src(id(camera_screensaver_image)" not in text
+        or not re.search(
+            r"lvgl\.image\.update:\s*\n\s*id:\s*camera_screensaver_image\s*\n"
+            r"\s*src:\s*camera_screensaver_downloaded_image",
+            text,
+        )
+    ):
+        errors.append(
+            f"{rel}: rebind the downloaded camera buffer to the LVGL image widget"
+        )
     return errors
 
 
@@ -4718,6 +4729,10 @@ def run_self_test() -> int:
         'ha_reannounce_state_subscriptions();\n'
         'ha_read_retained_attribute(entity, std::string("access_token"),\n'
         '  std::function<void(esphome::StringRef)>([](esphome::StringRef) {}), camera_owner);\n'
+        'lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));\n'
+        'lvgl.image.update:\n'
+        '  id: camera_screensaver_image\n'
+        '  src: camera_screensaver_downloaded_image\n'
     )
     expect_camera_screensaver_retained_token_errors(
         "camera token subscription is not retained",
@@ -4754,6 +4769,13 @@ def run_self_test() -> int:
             'id(camera_screensaver_downloaded_image)->cancel_update();\n', ''
         ),
         ("cancel stale camera screensaver downloads",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "downloaded camera image is not rebound",
+        valid_camera_screensaver.replace(
+            'lv_image_set_src(id(camera_screensaver_image), static_cast<const void *>(nullptr));\n', ''
+        ),
+        ("rebind the downloaded camera buffer",),
     )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
