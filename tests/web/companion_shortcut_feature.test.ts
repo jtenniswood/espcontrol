@@ -1,4 +1,5 @@
 import {
+  applyCompanionMediaPresentation,
   companionAppLabel,
   companionCardMode,
   companionMediaIcon,
@@ -67,6 +68,16 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionMediaIcon("Music", "Play Pause", "Skip Next") !== "Music") {
     throw new Error("Changing media actions must preserve a custom icon");
+  }
+  const generatedAppCard = { entity: "com.apple.Safari", label: "Safari", icon: "Monitor" };
+  applyCompanionMediaPresentation(generatedAppCard, "Safari");
+  if (generatedAppCard.label !== "Play / Pause" || generatedAppCard.icon !== "Play Pause") {
+    throw new Error("Entering Media Control must refresh generated app presentation fields");
+  }
+  const customAppCard = { entity: "com.apple.Safari", label: "Work", icon: "Briefcase" };
+  applyCompanionMediaPresentation(customAppCard, "Safari");
+  if (customAppCard.label !== "Work" || customAppCard.icon !== "Briefcase") {
+    throw new Error("Entering Media Control must preserve custom presentation fields");
   }
   const generatedMediaCard = { entity: "media.play_pause", label: "Play / Pause", icon: "Play Pause" };
   resetCompanionMediaPresentation(generatedMediaCard, "app");

@@ -301,6 +301,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     }
     if (this->authenticated_socket_ != -1 && this->authenticated_socket_ != socket_fd) httpd_sess_trigger_close(this->server_, this->authenticated_socket_);
     this->authenticated_socket_ = socket_fd;
+    companion_set_media_actions_supported(false);
     this->set_connected_(true);
     this->pairing_code_.clear();
     this->pairing_expires_at_ = 0;
@@ -343,7 +344,13 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     this->send_(socket_fd, "ERROR|authenticate_first");
     return;
   }
-  if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
+  if (parts[0] == "CAPABILITIES" && (parts.size() == 1 || parts.size() == 2)) {
+    const auto capabilities = parts.size() == 2
+      ? split(parts[1], ',') : std::vector<std::string>{};
+    companion_set_media_actions_supported(
+      std::find(capabilities.begin(), capabilities.end(), "media_actions") != capabilities.end());
+    this->send_(socket_fd, "RESULT|capabilities|ok");
+  } else if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
     const auto catalogue = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
     std::vector<CompanionAction> actions;
     for (const auto &entry : catalogue) {

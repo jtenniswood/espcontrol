@@ -116,6 +116,15 @@ export function companionMediaIcon(
         ? selectedGeneratedIcon : currentIcon;
 }
 
+export function applyCompanionMediaPresentation(card: any, previousGeneratedLabel = ""): void {
+    if (!card) return;
+    const selected = COMPANION_MEDIA_ACTIONS[0];
+    const currentLabel = typeof card.label === "string" ? card.label : "";
+    const currentIcon = typeof card.icon === "string" ? card.icon : "";
+    card.label = companionAppLabel(currentLabel, previousGeneratedLabel, selected.label);
+    card.icon = companionMediaIcon(currentIcon, "Monitor", selected.icon);
+}
+
 const COMPANION_CARD_METADATA = {
     mode: {
         label: "Action",
@@ -209,15 +218,22 @@ export function registerCompanionCardTypes(
                     onChange: function (this: HTMLSelectElement) {
                         const previousLabel = card.label;
                         const previousIcon = card.icon;
+                        const previousMode = companionCardMode(card);
+                        let previousGeneratedLabel = "";
+                        if (previousMode === "app" || previousMode === "url") {
+                            const appSelect = document.getElementById(
+                                helpers.idPrefix + "companion-action") as HTMLSelectElement | null;
+                            const selectedOption = appSelect?.selectedOptions[0];
+                            if (selectedOption && selectedOption.value === card.entity) {
+                                previousGeneratedLabel = selectedOption.textContent || "";
+                            }
+                        }
                         resetCompanionMediaPresentation(card, this.value);
                         card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
                             : this.value === "media" ? COMPANION_MEDIA_ACTIONS[0].id : "";
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
-                            card.label = COMPANION_MEDIA_ACTIONS[0].label;
-                            card.icon = COMPANION_MEDIA_ACTIONS[0].icon;
-                            helpers.saveField("label", card.label);
-                            helpers.saveField("icon", card.icon);
+                            applyCompanionMediaPresentation(card, previousGeneratedLabel);
                         }
                         if (card.label !== previousLabel) helpers.saveField("label", card.label);
                         if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);

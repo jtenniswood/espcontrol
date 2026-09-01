@@ -80,6 +80,7 @@ struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
+  bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
 };
@@ -87,6 +88,7 @@ struct CompanionRuntimeState {
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
+  bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
 };
@@ -99,7 +101,8 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.values, state.connected, state.now_playing};
+  return {state.actions, state.values, state.media_actions_supported,
+          state.connected, state.now_playing};
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
@@ -178,6 +181,15 @@ inline bool companion_media_action_valid(const std::string &action_id) {
          action_id == "media.next";
 }
 
+inline void companion_set_media_actions_supported(bool supported) {
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.media_actions_supported = supported;
+  }
+  companion_request_card_refresh();
+}
+
 inline bool companion_volume_control_valid(const std::string &control_id) {
   return control_id == "media.output_volume" || control_id == "media.input_volume";
 }
@@ -233,7 +245,10 @@ inline void companion_set_connected(bool connected) {
   {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.connected = connected;
-    if (!connected) state.values.clear();
+    if (!connected) {
+      state.values.clear();
+      state.media_actions_supported = false;
+    }
   }
   companion_request_card_refresh();
 }
@@ -340,7 +355,7 @@ inline bool companion_action_available(const std::string &action_id) {
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
   if (companion_shortcut_action_valid(action_id)) return true;
-  if (companion_media_action_valid(action_id)) return true;
+  if (companion_media_action_valid(action_id)) return snapshot.media_actions_supported;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;
   });
@@ -483,7 +498,7 @@ inline void companion_refresh_cards_if_requested() {
       lv_slider_set_value(it->slider, value->value, LV_ANIM_OFF);
       lv_obj_send_event(it->slider, LV_EVENT_VALUE_CHANGED, nullptr);
       if (it->has_icon_on && it->icon_label && lv_obj_is_valid(it->icon_label)) {
-        lv_label_set_display_text(
+        lv_label_set_text(
           it->icon_label, value->value > 0 ? it->icon_on : it->icon_off);
       }
       lv_obj_clear_state(it->slider, LV_STATE_DISABLED);
