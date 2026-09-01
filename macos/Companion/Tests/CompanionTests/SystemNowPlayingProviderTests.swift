@@ -127,4 +127,18 @@ func testNonFiniteAndOversizedPlaybackTimesAreSafe() {
     XCTAssertEqual(SystemNowPlayingProvider.clampedMilliseconds(-1), 0)
     XCTAssertEqual(SystemNowPlayingProvider.clampedMilliseconds(100_000), 86_400_000)
 }
+
+func testRestartRepublishesAnUnchangedSnapshot() {
+    let source = FakeMediaRemoteSource()
+    source.payload = ["Title": "Paused", "UniqueIdentifier": "paused", "PlaybackRate": 0]
+    let provider = SystemNowPlayingProvider(source: source)
+    var snapshots: [CompanionNowPlayingSnapshot] = []
+    provider.onSnapshot = { snapshots.append($0) }
+    provider.start()
+    provider.stop()
+    provider.start()
+    provider.stop()
+    XCTAssertEqual(snapshots.count, 2)
+    XCTAssertEqual(snapshots.map(\.generation), [1, 1])
+}
 }

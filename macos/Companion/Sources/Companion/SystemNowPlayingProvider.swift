@@ -75,6 +75,9 @@ final class SystemNowPlayingProvider {
         }
         active = true
         lifecycleToken &+= 1
+        // A restarted provider represents a new panel connection. The panel may
+        // have discarded its runtime state even when the track is unchanged.
+        lastSnapshot = nil
         _ = source.startObserving { [weak self] in self?.refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
