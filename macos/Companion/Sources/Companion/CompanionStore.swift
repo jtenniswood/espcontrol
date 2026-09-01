@@ -17,6 +17,7 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
     @Published var panelName: String { didSet { defaults.set(panelName, forKey: Keys.name) } }
     @Published private(set) var availableApps: [LaunchableApp] = []
+    @Published private(set) var allowedBundleIdentifiers: Set<String>
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
@@ -32,14 +33,20 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
 
-    private enum Keys { static let host = "panelHost"; static let name = "panelName" }
+    private enum Keys {
+        static let host = "panelHost"
+        static let name = "panelName"
+        static let allowed = "allowedApps"
+    }
     private let defaults = UserDefaults.standard
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
+    private var latestNowPlayingSnapshot: CompanionNowPlayingSnapshot?
 
     override init() {
         panelHost = defaults.string(forKey: Keys.host) ?? ""
         panelName = defaults.string(forKey: Keys.name) ?? "My EspControl"
+        allowedBundleIdentifiers = Set(defaults.stringArray(forKey: Keys.allowed) ?? [])
         nowPlayingSharingEnabled = defaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
         super.init()
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
@@ -48,6 +55,7 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingApplication = snapshot.applicationName
             nowPlayingTitle = snapshot.title
             nowPlayingArtwork = snapshot.artworkJPEG.flatMap(NSImage.init(data:))
+            latestNowPlayingSnapshot = snapshot
             if isConnected { connection.publishNowPlaying(snapshot) }
         }
         refreshLaunchAtLoginStatus()
@@ -56,6 +64,34 @@ final class CompanionStore: NSObject, ObservableObject {
 
     var hasSavedPairing: Bool { KeychainStore.load(service: KeychainStore.service, account: panelHost) != nil }
     var connectionSymbol: String { isConnected ? "laptopcomputer" : "laptopcomputer.slash" }
+    var allAvailableAppsAllowed: Bool {
+        !availableApps.isEmpty && availableApps.allSatisfy { allowedBundleIdentifiers.contains($0.bundleIdentifier) }
+    }
+    var allowedAvailableAppCount: Int {
+        availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) }.count
+    }
+    var hasAllowedApps: Bool { !allowedBundleIdentifiers.isEmpty }
+
+    func allowedBinding(for app: LaunchableApp) -> Binding<Bool> {
+        Binding(
+            get: { self.allowedBundleIdentifiers.contains(app.bundleIdentifier) },
+            set: { enabled in
+                if enabled { self.allowedBundleIdentifiers.insert(app.bundleIdentifier) }
+                else { self.allowedBundleIdentifiers.remove(app.bundleIdentifier) }
+                self.persistAllowedApplications()
+            }
+        )
+    }
+
+    func allowAllApplications() {
+        allowedBundleIdentifiers = Set(availableApps.map(\.bundleIdentifier))
+        persistAllowedApplications()
+    }
+
+    func disallowAllApplications() {
+        allowedBundleIdentifiers.removeAll()
+        persistAllowedApplications()
+    }
     func launchAtLoginBinding() -> Binding<Bool> {
         Binding(
             get: { self.launchAtLoginEnabled },
@@ -97,10 +133,16 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
 
+    private func persistAllowedApplications() {
+        defaults.set(Array(allowedBundleIdentifiers).sorted(), forKey: Keys.allowed)
+        connection.publishCatalogue()
+    }
+
     func refreshApplications() {
         let standardRoots = [
             URL(fileURLWithPath: "/Applications"),
             URL(fileURLWithPath: "/System/Applications"),
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true),
         ]
         let cryptexRoots = [
             // Current macOS releases install Safari in the protected Cryptex
@@ -134,7 +176,9 @@ final class CompanionStore: NSObject, ObservableObject {
         if isConnected { connection.publishCatalogue() }
     }
 
-    func launchableApps() -> [LaunchableApp] { availableApps }
+    func launchableApps() -> [LaunchableApp] {
+        availableApps.filter { allowedBundleIdentifiers.contains($0.bundleIdentifier) }
+    }
     func connect() { connection.connect(mode: .authenticate) }
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
@@ -143,10 +187,8 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Enter the panel address first", connected: isConnected)
             return
         }
-        var components = URLComponents()
-        components.scheme = "http"
-        components.host = host
-        guard let url = components.url, NSWorkspace.shared.open(url) else {
+        guard let url = URL(string: host.contains("://") ? host : "http://\(host)"),
+              NSWorkspace.shared.open(url) else {
             updateStatus("Could not open the panel webserver", connected: isConnected)
             return
         }
@@ -187,6 +229,18 @@ final class CompanionStore: NSObject, ObservableObject {
                 ? "Waiting for a panel connection" : "Now Playing sharing is disabled"
         }
     }
+
+    func republishNowPlayingArtwork(generation: UInt32) {
+        guard isConnected, nowPlayingSharingEnabled,
+              let snapshot = latestNowPlayingSnapshot,
+              snapshot.generation == generation else { return }
+        connection.publishNowPlaying(snapshot, forceArtwork: true)
+    }
+
+    func republishCurrentNowPlaying() {
+        guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
+        connection.publishNowPlaying(snapshot, forceArtwork: true)
+    }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
         if app.bundleIdentifier == "com.apple.finder" {
@@ -212,7 +266,7 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {
-        guard encodedURL.utf8.count <= 1024,
+        guard encodedURL.utf8.count <= 128,
               let value = encodedURL.removingPercentEncoding,
               let components = URLComponents(string: value),
               let scheme = components.scheme?.lowercased(),
@@ -222,7 +276,7 @@ final class CompanionStore: NSObject, ObservableObject {
               components.password == nil,
               let url = components.url,
               let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
-            updateStatus("Blocked an invalid URL or unavailable app", connected: isConnected)
+            updateStatus("Blocked an invalid URL or unapproved app", connected: isConnected)
             return false
         }
         NSWorkspace.shared.open([url], withApplicationAt: app.url, configuration: .init()) { _, _ in }

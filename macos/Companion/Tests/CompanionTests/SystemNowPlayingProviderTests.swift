@@ -120,4 +120,11 @@ func testUtf8FieldsNeverExceedProtocolLimit() {
     XCTAssertLessThanOrEqual(clamped.utf8.count, 256)
     XCTAssertNotNil(clamped.data(using: .utf8))
 }
+
+func testNonFiniteAndOversizedPlaybackTimesAreSafe() {
+    XCTAssertEqual(SystemNowPlayingProvider.clampedMilliseconds(.nan), 0)
+    XCTAssertEqual(SystemNowPlayingProvider.clampedMilliseconds(.infinity), 0)
+    XCTAssertEqual(SystemNowPlayingProvider.clampedMilliseconds(-1), 0)
+    XCTAssertEqual(SystemNowPlayingProvider.clampedMilliseconds(100_000), 86_400_000)
+}
 }

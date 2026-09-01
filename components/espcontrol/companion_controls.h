@@ -15,6 +15,7 @@
 
 #ifdef USE_WEBSERVER
 #include "esphome/components/web_server_idf/web_server_idf.h"
+#include "panel_config_http_context.h"
 #endif
 
 #ifdef USE_LVGL
@@ -35,6 +36,7 @@ struct CompanionPairingSnapshot {
   bool paired{false};
   bool connected{false};
   uint32_t expires_in_seconds{0};
+  uint16_t port{8443};
   std::string pairing_code;
   std::string mdns_name;
 };
@@ -277,7 +279,7 @@ inline std::string companion_encoded_url(const std::string &url_config) {
   static const std::string prefix = "url.";
   if (url_config.rfind(prefix, 0) != 0 || url_config.size() <= prefix.size()) return "";
   const std::string encoded = url_config.substr(prefix.size());
-  if (encoded.size() > 1024 ||
+  if (encoded.size() > 128 ||
       (encoded.rfind("http%3A%2F%2F", 0) != 0 && encoded.rfind("https%3A%2F%2F", 0) != 0)) return "";
   if (!std::all_of(encoded.begin(), encoded.end(), [](unsigned char byte) {
         return byte >= 0x21 && byte <= 0x7e && byte != '|' && byte != ',';
@@ -375,6 +377,26 @@ inline bool invoke_companion_url(const std::string &app_id,
 }
 
 #ifdef USE_WEBSERVER
+inline bool companion_authorize_web_request(
+    esphome::web_server_idf::AsyncWebServerRequest *request) {
+#ifdef USE_WEBSERVER_AUTH
+  auto &context = espcontrol::configuration::panel_config_http_context();
+  if (!espcontrol::configuration::panel_config_http_context_ready()) {
+    httpd_req_t *raw_request = *request;
+    httpd_resp_set_status(raw_request, "503 Service Unavailable");
+    httpd_resp_set_type(raw_request, "text/plain");
+    httpd_resp_send(raw_request, "Web authentication is starting",
+                    HTTPD_RESP_USE_STRLEN);
+    return false;
+  }
+  if (!request->authenticate(context.username, context.password)) {
+    request->requestAuthentication();
+    return false;
+  }
+#endif
+  return true;
+}
+
 inline std::string companion_json_escape(const std::string &value) {
   std::string result;
   result.reserve(value.size() + 8);
@@ -401,6 +423,7 @@ class CompanionActionsHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    if (!companion_authorize_web_request(request)) return;
     std::string json = "[";
     bool first = true;
     const auto snapshot = companion_runtime_snapshot();
@@ -427,6 +450,7 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"paired\":" + (snapshot.paired ? "true" : "false") +
     ",\"connected\":" + (snapshot.connected ? "true" : "false") +
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
+    ",\"port\":" + std::to_string(snapshot.port) +
     ",\"pairing_code\":\"" + companion_json_escape(snapshot.pairing_code) +
     "\",\"mdns_name\":\"" + companion_json_escape(snapshot.mdns_name) + "\"}";
 }
@@ -440,6 +464,7 @@ class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    if (!companion_authorize_web_request(request)) return;
     CompanionPairingSnapshot snapshot;
     if (request->method() == HTTP_POST) {
       if (companion_pairing_starter()) snapshot = companion_pairing_starter()();

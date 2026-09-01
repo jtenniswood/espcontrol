@@ -62,6 +62,9 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionUrlConfig("https://user:password@example.com") !== "") {
     throw new Error("Companion URL cards must reject embedded credentials");
   }
+  if (companionUrlConfig("https://example.com/" + "a".repeat(200)) !== "") {
+    throw new Error("Companion URL cards must stay within the main-grid storage limit");
+  }
   const urlCard = { entity: "com.apple.Safari", sensor: urlConfig, icon: "Monitor" };
   normalizeCompanionCard(urlCard);
   if (urlCard.sensor !== urlConfig) throw new Error("Companion URL configuration must survive card normalization");

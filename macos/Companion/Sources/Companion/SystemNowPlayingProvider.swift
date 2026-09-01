@@ -54,6 +54,10 @@ final class SystemNowPlayingProvider {
     private var lastIdentity = ""
     private var lastState: CompanionPlaybackState = .unavailable
     private var lastSnapshot: CompanionNowPlayingSnapshot?
+    // Tests and one-shot callers may explicitly refresh before observation starts;
+    // stop() still invalidates every outstanding asynchronous result.
+    private var active = true
+    private var lifecycleToken: UInt64 = 0
     private let source: MediaRemoteProviding
 
     init(source: MediaRemoteProviding = MediaRemoteSystemSource()) {
@@ -69,6 +73,8 @@ final class SystemNowPlayingProvider {
             publishUnavailable()
             return
         }
+        active = true
+        lifecycleToken &+= 1
         _ = source.startObserving { [weak self] in self?.refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -77,6 +83,8 @@ final class SystemNowPlayingProvider {
     }
 
     func stop() {
+        active = false
+        lifecycleToken &+= 1
         timer?.invalidate()
         timer = nil
         source.stopObserving()
@@ -88,8 +96,10 @@ final class SystemNowPlayingProvider {
     }
 
     func refresh() {
+        guard active else { return }
+        let token = lifecycleToken
         source.fetch { [weak self] raw, pid in
-            guard let self else { return }
+            guard let self, self.active, self.lifecycleToken == token else { return }
             guard let raw, !raw.isEmpty else {
                 self.onStatus?("No active macOS Now Playing session")
                 self.publishUnavailable()
@@ -102,7 +112,8 @@ final class SystemNowPlayingProvider {
             let contentIdentifier = Self.string(values, keys: ["uniqueidentifier", "contentidentifier"])
             let duration = Self.number(values, keys: ["duration"])
             let position = Self.number(values, keys: ["elapsedtime", "elapsed"])
-            let rate = Self.number(values, keys: ["playbackrate", "rate"])
+            let rawRate = Self.number(values, keys: ["playbackrate", "rate"])
+            let rate = rawRate.isFinite ? min(16, max(-16, rawRate)) : 0
             let state: CompanionPlaybackState = rate > 0 ? .playing : (title.isEmpty ? .stopped : .paused)
             let application: NSRunningApplication?
             if let processIdentifier = pid {
@@ -130,8 +141,8 @@ final class SystemNowPlayingProvider {
                 title: Self.clamped(title, bytes: 256),
                 artist: Self.clamped(artist, bytes: 256),
                 album: Self.clamped(album, bytes: 256),
-                durationMilliseconds: max(0, Int64(duration * 1000)),
-                positionMilliseconds: max(0, Int64(position * 1000)),
+                durationMilliseconds: Self.clampedMilliseconds(duration),
+                positionMilliseconds: Self.clampedMilliseconds(position),
                 playbackRate: rate,
                 artworkJPEG: artwork
             )
@@ -193,6 +204,11 @@ final class SystemNowPlayingProvider {
         var data = Data(value.utf8.prefix(bytes))
         while !data.isEmpty && String(data: data, encoding: .utf8) == nil { data.removeLast() }
         return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    static func clampedMilliseconds(_ seconds: Double) -> Int64 {
+        guard seconds.isFinite, seconds > 0 else { return 0 }
+        return Int64(min(seconds, 86_400) * 1000)
     }
 
     static func normalizedArtwork(_ data: Data) -> Data? {

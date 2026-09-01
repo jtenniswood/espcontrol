@@ -77,7 +77,7 @@ export function companionUrlConfig(rawValue: string): string {
         if ((url.protocol !== "http:" && url.protocol !== "https:") || !url.hostname ||
             url.username || url.password) return "";
         const encoded = encodeURIComponent(url.href);
-        return encoded.length <= 1024 ? COMPANION_URL_PREFIX + encoded : "";
+        return encoded.length <= 128 ? COMPANION_URL_PREFIX + encoded : "";
     } catch {
         return "";
     }

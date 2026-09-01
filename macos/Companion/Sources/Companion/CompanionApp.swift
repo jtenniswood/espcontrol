@@ -254,7 +254,7 @@ private struct CompanionPairingDetails {
               let pairingCode = values["pairing code"] else { return nil }
         if let url = URL(string: panel.contains("://") ? panel : "http://\(panel)"),
            let host = url.host {
-            panel = host
+            panel = url.port.map { "\(host):\($0)" } ?? host
         }
         guard !panel.isEmpty, !pairingCode.isEmpty else { return nil }
         return CompanionPairingDetails(
@@ -291,6 +291,16 @@ private struct CompanionSettings: View {
             }
             .tabItem {
                 Label("Connection", systemImage: "network")
+            }
+
+            ScrollView {
+                GroupBox("Approved applications") {
+                    supportedAppsSettings.padding(8)
+                }
+                .padding()
+            }
+            .tabItem {
+                Label("Apps", systemImage: "square.grid.2x2")
             }
 
             ScrollView {
@@ -389,6 +399,34 @@ private struct CompanionSettings: View {
             Text(store.launchAtLoginMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var supportedAppsSettings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Only applications enabled here are published to the display or accepted for remote launch and Open URL cards.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if store.availableApps.isEmpty {
+                Text("No applications found yet.").foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 10) {
+                    Button("Enable All") { store.allowAllApplications() }
+                        .disabled(store.allAvailableAppsAllowed)
+                    Button("Disable All") { store.disallowAllApplications() }
+                        .disabled(!store.hasAllowedApps)
+                    Spacer()
+                    Text("\(store.allowedAvailableAppCount) enabled")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Divider()
+                ForEach(store.availableApps) { app in
+                    Toggle(app.name, isOn: store.allowedBinding(for: app))
+                }
+            }
+            Button("Rescan Applications") { store.refreshApplications() }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
