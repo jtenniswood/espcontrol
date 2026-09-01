@@ -27,7 +27,11 @@ export class NativePanelConfigController {
   private saveQueue_: Promise<NativePanelConfigSaveOutcome> = Promise.resolve("saved");
   private legacyFallback_ = false;
   private retryDelayMs_ = 250;
-  private maxDiscoveryRetries_ = 20;
+  // P4 panels can still be completing their deferred native-configuration
+  // setup when the web editor first loads. Allow enough time for that API to
+  // become ready before deciding that the firmware only supports legacy
+  // entity configuration.
+  private maxDiscoveryRetries_ = 40;
 
   constructor(private readonly dependencies: NativePanelConfigControllerDependencies) {
     this.client_ = dependencies.fetch ? createNativePanelConfigClient(dependencies.fetch) : null;
@@ -60,6 +64,8 @@ export class NativePanelConfigController {
       this.dependencies.showBanner("Configuration changed in another browser. Reload before saving again.", "error");
     } else if (result === "mirror-failed") {
       this.dependencies.showBanner("The configuration saved, but its older-firmware copy did not. Do not downgrade this panel yet.", "error");
+    } else if (result === "authentication-required") {
+      this.dependencies.showBanner("This firmware requires web authentication for Wifi Sharing passwords. Sign in, enable web_server_auth, or update the panel firmware.", "error");
     } else if (result === "failed") {
       this.dependencies.showBanner("Could not save the configuration. Check the connection and try again.", "error");
     }
@@ -134,6 +140,18 @@ export class NativePanelConfigController {
       }
     }
     return false;
+  }
+
+  writeButtonAndOrder(slot: number, value: string, order: string): Promise<NativePanelConfigSaveOutcome> | null | false {
+    if (!Number.isInteger(slot) || slot < 1 || slot > this.dependencies.slotCount()) return false;
+    return this.schedule((current) => {
+      const withButton = updateNativePanelConfigDocument(
+        current, this.dependencies.deviceProfile(), "buttons", slot, value,
+      );
+      return updateNativePanelConfigDocument(
+        withButton, this.dependencies.deviceProfile(), "settings", "button_order", order,
+      );
+    });
   }
 
   writeDocument(document: PanelConfigDocument): Promise<NativePanelConfigSaveOutcome> | null {
