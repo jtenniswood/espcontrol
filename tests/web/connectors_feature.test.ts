@@ -62,6 +62,8 @@ export function runConnectorsFeatureTests(): void {
       cardTypeConnector("slider", false) !== "home_assistant" ||
       cardTypeConnector("action") !== "home_assistant_or_local" ||
       cardTypeConnector("sensor") !== "home_assistant_or_local" ||
+      cardTypeConnector("calendar") !== "home_assistant_or_local" ||
+      cardTypeConnector("push") !== "home_assistant" ||
       cardTypeConnector("webhook") !== "network" ||
       cardTypeConnector("wifi_qr") !== "local" ||
       cardTypeConnector("wifi_qr_card") !== "local" ||

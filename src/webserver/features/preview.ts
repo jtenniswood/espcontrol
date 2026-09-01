@@ -92,14 +92,16 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
 };
 
 const LOCAL_CARD_TYPES = new Set([
-  "internal", "local_sensor", "push", "screen_lock", "subpage", "timezone",
+  "internal", "local_sensor", "screen_lock", "subpage", "timezone",
   "wifi_qr", "wifi_qr_card",
 ]);
 
 export function cardTypeConnector(key: string, companionSupported = false): CardPickerOption["connector"] {
   if (key === "companion") return "mac_companion";
   if (key === "slider") return companionSupported ? "mixed" : "home_assistant";
-  if (key === "action" || key === "sensor") return "home_assistant_or_local";
+  if (key === "action" || key === "sensor" || key === "calendar") {
+    return "home_assistant_or_local";
+  }
   if (key === "webhook") return "network";
   if (LOCAL_CARD_TYPES.has(key)) return "local";
   return "home_assistant";
