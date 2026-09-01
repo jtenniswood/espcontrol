@@ -270,7 +270,14 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             let changed = store.setMediaControlValue(value, controlIdentifier: parts[2])
             send("RESULT|\(parts[1])|\(changed ? "performed" : "not_allowed")")
         case "ERROR":
-            store.updateStatus(parts.dropFirst().joined(separator: " "))
+            if parts.count == 3, parts[1] == "authentication_sequence",
+               let panelSequence = UInt32(parts[2]), panelSequence < UInt32.max {
+                UserDefaults.standard.set(Int(panelSequence), forKey: authenticationSequenceKey)
+                store.updateStatus("Authentication counter repaired — reconnecting")
+                connect(mode: .authenticate)
+            } else {
+                store.updateStatus(parts.dropFirst().joined(separator: " "))
+            }
         default: break
         }
     }

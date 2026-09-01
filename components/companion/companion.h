@@ -6,6 +6,7 @@
 
 #include <esp_https_server.h>
 
+#include <atomic>
 #include <array>
 #include <mutex>
 #include <string>
@@ -48,12 +49,16 @@ class CompanionService final : public Component {
   void request_now_playing_artwork();
 
  protected:
+  enum class AuthenticationResult : uint8_t { FAILED, STALE_SEQUENCE, AUTHENTICATED };
+
   static esp_err_t websocket_handler_(httpd_req_t *request);
   static void session_close_(httpd_handle_t server, int socket_fd);
+  static void disconnect_expiry_work_(void *context);
   esp_err_t handle_websocket_(httpd_req_t *request);
   bool start_server_();
   bool ensure_identity_();
-  bool authenticate_(const std::vector<std::string> &parts);
+  AuthenticationResult authenticate_(const std::vector<std::string> &parts,
+                                     uint32_t &last_sequence);
   void handle_message_(int socket_fd, const std::string &message);
   void handle_json_(int socket_fd, const std::string &message);
   void handle_binary_(int socket_fd, const uint8_t *data, size_t size);
@@ -89,7 +94,8 @@ class CompanionService final : public Component {
   std::array<uint8_t, 32> artwork_sha256_{};
   uint32_t now_playing_generation_{0};
   bool now_playing_artwork_follows_{false};
-  uint32_t disconnect_grace_expires_at_{0};
+  std::atomic<uint32_t> disconnect_grace_expires_at_{0};
+  std::atomic<bool> disconnect_expiry_queued_{false};
 };
 
 // The display owns the interaction. These narrow helpers avoid exposing the

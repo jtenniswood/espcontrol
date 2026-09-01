@@ -136,10 +136,12 @@ void CompanionService::loop() {
       this->next_attempt_at_ = 0;
     }
   }
-  if (this->disconnect_grace_expires_at_ != 0 &&
-      static_cast<int32_t>(millis() - this->disconnect_grace_expires_at_) >= 0) {
-    this->disconnect_grace_expires_at_ = 0;
-    this->expire_now_playing_();
+  const uint32_t disconnect_deadline = this->disconnect_grace_expires_at_.load();
+  if (disconnect_deadline != 0 &&
+      static_cast<int32_t>(millis() - disconnect_deadline) >= 0 &&
+      !this->disconnect_expiry_queued_.exchange(true)) {
+    if (!this->server_ || httpd_queue_work(this->server_, &CompanionService::disconnect_expiry_work_, this) != ESP_OK)
+      this->disconnect_expiry_queued_.store(false);
   }
   companion_refresh_cards_if_requested();
 }
@@ -235,6 +237,16 @@ void CompanionService::session_close_(httpd_handle_t server, int socket_fd) {
   close(socket_fd);
 }
 
+void CompanionService::disconnect_expiry_work_(void *context) {
+  auto *service = static_cast<CompanionService *>(context);
+  if (!service) return;
+  service->disconnect_expiry_queued_.store(false);
+  uint32_t deadline = service->disconnect_grace_expires_at_.load();
+  if (deadline == 0 || static_cast<int32_t>(millis() - deadline) < 0) return;
+  if (service->disconnect_grace_expires_at_.compare_exchange_strong(deadline, 0))
+    service->expire_now_playing_();
+}
+
 esp_err_t CompanionService::websocket_handler_(httpd_req_t *request) {
   auto *service = static_cast<CompanionService *>(request->user_ctx);
   return service ? service->handle_websocket_(request) : ESP_FAIL;
@@ -272,21 +284,27 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
   return ESP_OK;
 }
 
-bool CompanionService::authenticate_(const std::vector<std::string> &parts) {
+CompanionService::AuthenticationResult CompanionService::authenticate_(
+    const std::vector<std::string> &parts, uint32_t &last_sequence) {
   // AUTH|sequence|nonce|hmac-sha256(AUTH|sequence|nonce). Sequence is strictly
   // increasing, so a captured authenticated frame cannot be replayed.
   std::lock_guard<std::mutex> lock(this->pairing_mutex_);
-  if (!this->identity_.paired || parts.size() != 4 || parts[0] != "AUTH") return false;
-  if (!safe_field(parts[1], 10) || !safe_field(parts[2], 96) || parts[3].size() != 64) return false;
+  last_sequence = this->last_sequence_;
+  if (!this->identity_.paired || parts.size() != 4 || parts[0] != "AUTH")
+    return AuthenticationResult::FAILED;
+  if (!safe_field(parts[1], 10) || !safe_field(parts[2], 96) || parts[3].size() != 64)
+    return AuthenticationResult::FAILED;
   const uint32_t sequence = strtoul(parts[1].c_str(), nullptr, 10);
-  if (sequence <= this->last_sequence_) return false;
   std::string signed_message = parts[0] + "|" + parts[1] + "|" + parts[2];
   uint8_t digest[32]{};
   mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), this->identity_.credential, sizeof(this->identity_.credential),
                   reinterpret_cast<const unsigned char *>(signed_message.data()), signed_message.size(), digest);
-  if (!constant_time_equal(hex(digest, sizeof(digest)), parts[3])) return false;
+  if (!constant_time_equal(hex(digest, sizeof(digest)), parts[3]))
+    return AuthenticationResult::FAILED;
+  if (sequence <= this->last_sequence_) return AuthenticationResult::STALE_SEQUENCE;
   this->last_sequence_ = sequence;
-  return true;
+  last_sequence = sequence;
+  return AuthenticationResult::AUTHENTICATED;
 }
 
 void CompanionService::handle_message_(int socket_fd, const std::string &message) {
@@ -301,7 +319,13 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
   const auto parts = split(message, '|');
   if (parts.empty()) return;
   if (parts[0] == "AUTH") {
-    if (!this->authenticate_(parts)) {
+    uint32_t last_sequence = 0;
+    const auto authentication = this->authenticate_(parts, last_sequence);
+    if (authentication == AuthenticationResult::STALE_SEQUENCE) {
+      this->send_(socket_fd, "ERROR|authentication_sequence|" + std::to_string(last_sequence));
+      return;
+    }
+    if (authentication != AuthenticationResult::AUTHENTICATED) {
       this->send_(socket_fd, "ERROR|authentication_failed");
       return;
     }
@@ -581,10 +605,10 @@ void CompanionService::send_(int socket_fd, const std::string &message) {
 void CompanionService::set_connected_(bool connected) {
   if (!connected) this->authenticated_socket_ = -1;
   if (connected) {
-    this->disconnect_grace_expires_at_ = 0;
+    this->disconnect_grace_expires_at_.store(0);
   } else {
     this->reset_artwork_transfer_("connection closed");
-    this->disconnect_grace_expires_at_ = millis() + NOW_PLAYING_RECONNECT_GRACE_MS;
+    this->disconnect_grace_expires_at_.store(millis() + NOW_PLAYING_RECONNECT_GRACE_MS);
   }
   companion_set_connected(connected);
   if (!connected) companion_set_actions({});
