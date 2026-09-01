@@ -9,6 +9,9 @@
 #include "../espcontrol/companion_controls.h"
 
 #include <esp_random.h>
+#if defined(USE_ESP32) && defined(USE_MDNS)
+#include <mdns.h>
+#endif
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/pk.h>
@@ -70,6 +73,19 @@ static bool constant_time_equal(const std::string &left, const std::string &righ
   return different == 0;
 }
 
+static std::string companion_mdns_name() {
+#if defined(USE_ESP32) && defined(USE_MDNS)
+  // ESP-IDF resolves duplicate hostnames by appending a suffix (for example,
+  // "-2"). App.get_name() remains the configured name, so using it here can
+  // send the Mac to a different panel when two matching displays are online.
+  char hostname[MDNS_NAME_BUF_LEN]{};
+  if (mdns_hostname_get(hostname) == ESP_OK && hostname[0] != '\0') {
+    return std::string(hostname) + ".local";
+  }
+#endif
+  return App.get_name() + ".local";
+}
+
 static bool parse_hex_sha256(const std::string &value, std::array<uint8_t, 32> &result) {
   if (value.size() != 64) return false;
   auto nibble = [](char byte) -> int {
@@ -117,7 +133,7 @@ void CompanionService::setup() {
       this->pairing_expires_in_seconds(),
       this->port_,
       this->pairing_active() ? this->pairing_code() : "",
-      App.get_name() + ".local",
+      companion_mdns_name(),
     };
   };
   register_companion_pairing_callbacks(pairing_snapshot, [this, pairing_snapshot]() {
