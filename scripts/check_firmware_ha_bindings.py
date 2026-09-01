@@ -3620,6 +3620,28 @@ def firmware_camera_screensaver_retained_token_errors(
             f"{rel}: re-announce the late camera screensaver subscription "
             "so Home Assistant publishes its current token immediately"
         )
+    if 'espcontrol_i18n_key("unavailable")' not in text:
+        errors.append(
+            f"{rel}: translate the camera screensaver unavailable label"
+        )
+    if (
+        "HaCallbackOwnerScope camera_subscription_owner(camera_owner);" not in text
+        or "ha_release_callbacks_for_owner(camera_owner);" not in text
+        or "ha_release_callbacks_for_owner(&id(camera_screensaver_subscribed_entity));" not in text
+        or not re.search(
+            r'ha_read_retained_attribute\(\s*entity,\s*std::string\("access_token"\),'
+            r'.*?\}\)\s*,\s*camera_owner\s*\);',
+            text,
+            re.DOTALL,
+        )
+    ):
+        errors.append(
+            f"{rel}: own and release camera screensaver callbacks when the entity changes"
+        )
+    if "id(camera_screensaver_downloaded_image)->cancel_update();" not in text:
+        errors.append(
+            f"{rel}: cancel stale camera screensaver downloads when the entity changes"
+        )
     return errors
 
 
@@ -4684,26 +4706,54 @@ def expect_camera_screensaver_retained_token_errors(
 
 
 def run_self_test() -> int:
+    valid_camera_screensaver = (
+        'text: !lambda \'return std::string(espcontrol_i18n_key("unavailable"));\'\n'
+        'ha_release_callbacks_for_owner(&id(camera_screensaver_subscribed_entity));\n'
+        'id(camera_screensaver_downloaded_image)->cancel_update();\n'
+        'void *const camera_owner = &id(camera_screensaver_subscribed_entity);\n'
+        'ha_release_callbacks_for_owner(camera_owner);\n'
+        'HaCallbackOwnerScope camera_subscription_owner(camera_owner);\n'
+        'ha_subscribe_attribute(entity, std::string("access_token"), callback,\n'
+        '  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);\n'
+        'ha_reannounce_state_subscriptions();\n'
+        'ha_read_retained_attribute(entity, std::string("access_token"),\n'
+        '  std::function<void(esphome::StringRef)>([](esphome::StringRef) {}), camera_owner);\n'
+    )
     expect_camera_screensaver_retained_token_errors(
         "camera token subscription is not retained",
-        'ha_subscribe_attribute(entity, std::string("access_token"), callback);\n'
-        'ha_read_retained_attribute(entity, std::string("access_token"), callback);\n',
+        valid_camera_screensaver.replace(
+            ',\n  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);', ');'
+        ),
         ("retain the camera screensaver access-token subscription",),
     )
     expect_camera_screensaver_retained_token_errors(
         "camera token subscription is retained",
-        'ha_subscribe_attribute(entity, std::string("access_token"), callback,\n'
-        '  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);\n'
-        'ha_reannounce_state_subscriptions();\n'
-        'ha_read_retained_attribute(entity, std::string("access_token"), callback);\n',
+        valid_camera_screensaver,
         (),
     )
     expect_camera_screensaver_retained_token_errors(
         "late camera token subscription is not announced",
-        'ha_subscribe_attribute(entity, std::string("access_token"), callback,\n'
-        '  HA_SUBSCRIPTION_SCOPE_DEFAULT, true);\n'
-        'ha_read_retained_attribute(entity, std::string("access_token"), callback);\n',
+        valid_camera_screensaver.replace('ha_reannounce_state_subscriptions();\n', ''),
         ("re-announce the late camera screensaver subscription",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera unavailable label is not translated",
+        valid_camera_screensaver.replace('espcontrol_i18n_key("unavailable")', '"Unavailable"'),
+        ("translate the camera screensaver unavailable label",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "camera subscriptions are not owned",
+        valid_camera_screensaver.replace(
+            'HaCallbackOwnerScope camera_subscription_owner(camera_owner);\n', ''
+        ),
+        ("own and release camera screensaver callbacks",),
+    )
+    expect_camera_screensaver_retained_token_errors(
+        "stale camera download is not cancelled",
+        valid_camera_screensaver.replace(
+            'id(camera_screensaver_downloaded_image)->cancel_update();\n', ''
+        ),
+        ("cancel stale camera screensaver downloads",),
     )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
