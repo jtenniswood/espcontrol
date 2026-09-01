@@ -228,7 +228,8 @@ void EspControlApp::setup() {
   home_assistant_endpoint_.setup();
   connectors::connector_state_service().setup(
       panel_config_button_order_ != nullptr &&
-      !panel_config_button_order_->state.empty());
+          !panel_config_button_order_->state.empty(),
+      web_auth_username_, web_auth_password_);
   if (core_.start()) {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
   } else {

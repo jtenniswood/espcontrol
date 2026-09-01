@@ -25,6 +25,7 @@ BACKLIGHT_SCHEDULE_PATH = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
+CONNECTOR_STATE_PATH = ROOT / "components" / "espcontrol" / "connector_state.h"
 S3_DEVICE_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
 S3_PACKAGES_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "packages.yaml"
 DEVICE_DEVICE_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/device.yaml")))
@@ -3551,6 +3552,22 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
     return errors
 
 
+def firmware_connector_endpoint_auth_errors(path: Path, root: Path) -> list[str]:
+    if not path.exists():
+        return [f"{path.relative_to(root)}: define connector status endpoints"]
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "#ifdef USE_WEBSERVER_AUTH",
+        "request->authenticate(service.web_auth_username(),",
+        "request->requestAuthentication();",
+    )
+    if all(token in text for token in required):
+        return []
+    return [
+        f"{path.relative_to(root)}: authenticate connector endpoints when web authentication is enabled"
+    ]
+
+
 def firmware_wifi_setup_display_text_errors(
     loading_path: Path,
     wifi_setup_path: Path,
@@ -3757,6 +3774,7 @@ def run_scan() -> int:
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(firmware_connector_endpoint_auth_errors(CONNECTOR_STATE_PATH, ROOT))
     errors.extend(
         firmware_wifi_setup_display_text_errors(
             SCREEN_LOADING_PATH,
