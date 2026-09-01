@@ -119,6 +119,24 @@ lvgl:
                 hidden: true
 
 script:
+  - id: camera_screensaver_image_mode_changed
+    mode: restart
+    then:
+      - lambda: |-
+          id(camera_screensaver_downloaded_image)->cancel_update();
+          id(camera_screensaver_downloaded_image)->set_resize_mode(
+              id(screensaver_camera_image_mode).current_option() == "Fill"
+                  ? esphome::artwork_image::ImageResizeMode::COVER
+                  : esphome::artwork_image::ImageResizeMode::FIT);
+      - globals.set: { id: camera_screensaver_image_available, value: 'false' }
+      - lvgl.widget.hide: camera_screensaver_image
+      - lvgl.widget.show: camera_screensaver_unavailable
+      - if:
+          condition:
+            lambda: 'return id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);'
+          then:
+            - script.execute: camera_screensaver_request_image
+
   - id: camera_screensaver_config_changed
     mode: restart
     then:

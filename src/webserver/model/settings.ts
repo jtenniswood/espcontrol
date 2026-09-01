@@ -164,6 +164,10 @@ export function screensaverActionOption(value: unknown): string {
   return "Display Off";
 }
 
+export function normalizeScreensaverCameraImageMode(value: unknown): string {
+  return String(value || "").trim().toLowerCase() === "fill" ? "Fill" : "Fit";
+}
+
 export function scheduleModeOption(value: unknown): string {
   const mode = normalizeScheduleMode(value);
   if (mode === "screen_dimmed") return "Screen Dimmed";
@@ -358,6 +362,7 @@ export interface BackupPanelSettingsState {
   screensaverMode: string;
   presenceSensorEntity: string;
   screensaverCameraEntity: string;
+  screensaverCameraImageMode: string;
   mediaPlayerSleepPrevention: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
@@ -502,6 +507,9 @@ export function normalizeBackupPanelSettings(
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
     screensaverCameraEntity: String(settings.screensaver_camera_entity || ""),
+    screensaverCameraImageMode: normalizeScreensaverCameraImageMode(
+      settings.screensaver_camera_image_mode,
+    ),
     mediaPlayerSleepPrevention: objectValue(settings, "media_player_sleep_prevention") != null
       ? !!settings.media_player_sleep_prevention
       : true,
