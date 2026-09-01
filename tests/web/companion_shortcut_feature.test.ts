@@ -1,5 +1,8 @@
 import {
+  COMPANION_MEDIA_PLAY_PAUSE_ACTION,
+  companionApplicationActions,
   companionAppLabel,
+  companionCardMode,
   companionShortcutActionId,
   companionUrlConfig,
   companionUrlValue,
@@ -28,6 +31,16 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionAppLabel("Work browser", "Safari", "Google Chrome") !== "Work browser") {
     throw new Error("Changing a Companion app must preserve a custom card label");
+  }
+  if (companionCardMode({ entity: COMPANION_MEDIA_PLAY_PAUSE_ACTION, sensor: "" }) !== "media_play_pause") {
+    throw new Error("The built-in Play/Pause action must retain its Companion subtype");
+  }
+  const appActions = companionApplicationActions([
+    { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Media Play/Pause" },
+    { id: "com.apple.Safari", label: "Safari" },
+  ]);
+  if (appActions.length !== 1 || appActions[0]?.id !== "com.apple.Safari") {
+    throw new Error("The built-in Play/Pause action must not appear in the Mac app picker");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));
@@ -68,4 +81,10 @@ export function runCompanionShortcutFeatureTests(): void {
   const urlCard = { entity: "com.apple.Safari", sensor: urlConfig, icon: "Monitor" };
   normalizeCompanionCard(urlCard);
   if (urlCard.sensor !== urlConfig) throw new Error("Companion URL configuration must survive card normalization");
+  const mediaCard = { entity: COMPANION_MEDIA_PLAY_PAUSE_ACTION, sensor: "", icon: "Monitor" };
+  normalizeCompanionCard(mediaCard);
+  if (mediaCard.entity !== COMPANION_MEDIA_PLAY_PAUSE_ACTION || mediaCard.sensor !== "" ||
+      mediaCard.icon !== "Play Pause") {
+    throw new Error("The Play/Pause action must round-trip with its fixed default icon");
+  }
 }

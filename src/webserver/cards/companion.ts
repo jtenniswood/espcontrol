@@ -15,6 +15,7 @@ interface CompanionAction {
 
 const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
+export const COMPANION_MEDIA_PLAY_PAUSE_ACTION = "media.play_pause";
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
     Space: "space", Enter: "enter", Tab: "tab", Escape: "escape",
@@ -110,6 +111,7 @@ const COMPANION_CARD_METADATA = {
             ["app", "Launch app"],
             ["shortcut", "Keyboard shortcut"],
             ["url", "Open URL"],
+            ["media_play_pause", "Media Play/Pause"],
         ],
         value: companionCardMode,
     },
@@ -122,12 +124,19 @@ const COMPANION_CARD_METADATA = {
     preview: { badge: "monitor" },
 };
 
-function companionCardMode(card: any): string {
+export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
+    if (entity === COMPANION_MEDIA_PLAY_PAUSE_ACTION) return "media_play_pause";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
+}
+
+export function companionApplicationActions(
+    actions: readonly CompanionAction[],
+): readonly CompanionAction[] {
+    return actions.filter((action) => action.id !== COMPANION_MEDIA_PLAY_PAUSE_ACTION);
 }
 
 export function normalizeCompanionCard(card: any): void {
@@ -140,7 +149,10 @@ export function normalizeCompanionCard(card: any): void {
     card.precision = "";
     card.options = "";
     card.icon_on = "Auto";
-    if (!card.icon || card.icon === "Auto") card.icon = "Monitor";
+    const mediaPlayPause = companionCardMode(card) === "media_play_pause";
+    if (!card.icon || card.icon === "Auto" || (mediaPlayPause && card.icon === "Monitor")) {
+        card.icon = mediaPlayPause ? "Play Pause" : "Monitor";
+    }
 }
 
 async function fetchCompanionActions(fetchImpl: typeof fetch): Promise<readonly CompanionAction[]> {
@@ -183,8 +195,18 @@ export function registerCompanionCardTypes(
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
                     onChange: function (this: HTMLSelectElement) {
-                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX : "";
+                        const previousMode = companionCardMode(card);
+                        card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
+                            : this.value === "media_play_pause" ? COMPANION_MEDIA_PLAY_PAUSE_ACTION : "";
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
+                        if (this.value === "media_play_pause" &&
+                            (!card.icon || card.icon === "Auto" || card.icon === "Monitor")) {
+                            card.icon = "Play Pause";
+                            helpers.saveField("icon", card.icon);
+                        } else if (previousMode === "media_play_pause" && card.icon === "Play Pause") {
+                            card.icon = "Monitor";
+                            helpers.saveField("icon", card.icon);
+                        }
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
                         renderButtonSettings();
@@ -293,26 +315,28 @@ export function registerCompanionCardTypes(
             let companionActions: readonly CompanionAction[] = [];
             fetchCompanionActions(fetchImpl).then(function (actions) {
                 companionActions = actions;
+                const applicationActions = companionApplicationActions(actions);
                 select.replaceChildren();
                 const placeholder = document.createElement("option");
                 placeholder.value = "";
-                placeholder.textContent = actions.length ? "Choose a Mac app…" : "No Mac companion is connected";
+                placeholder.textContent = applicationActions.length ? "Choose a Mac app…" : "No Mac companion is connected";
                 select.appendChild(placeholder);
-                actions.forEach(function (action) {
+                applicationActions.forEach(function (action) {
                     const option = document.createElement("option");
                     option.value = action.id;
                     option.textContent = action.label;
                     option.selected = action.id === card.entity;
                     select.appendChild(option);
                 });
-                if (card.entity && !actions.some(function (action) { return action.id === card.entity; })) {
+                if ((initialMode === "app" || initialMode === "url") && card.entity &&
+                    !applicationActions.some(function (action) { return action.id === card.entity; })) {
                     const unavailable = document.createElement("option");
                     unavailable.value = card.entity;
                     unavailable.textContent = "Unavailable (" + card.entity + ")";
                     unavailable.selected = true;
                     select.appendChild(unavailable);
                 }
-                select.disabled = actions.length === 0;
+                select.disabled = applicationActions.length === 0;
             }).catch(function () {
                 select.replaceChildren();
                 const unavailable = document.createElement("option");
@@ -342,12 +366,14 @@ export function registerCompanionCardTypes(
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
         },
         renderPreview: function (card?: any, helpers?: any) {
+            const mode = companionCardMode(card);
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
             return cardBadgePreview(card, helpers, {
-                label: card.label || shortcutLabel || urlLabel || card.entity || "Mac App",
-                iconFallback: "Monitor",
+                label: mode === "media_play_pause"
+                    ? "Play/Pause" : card.label || shortcutLabel || urlLabel || card.entity || "Mac App",
+                iconFallback: mode === "media_play_pause" ? "Play Pause" : "Monitor",
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });
         },

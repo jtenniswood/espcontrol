@@ -315,9 +315,12 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         guard store.isConnected || task != nil else { return }
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
-        let entries = store.launchableApps().compactMap { app -> String? in
+        var entries = store.launchableApps().compactMap { app -> String? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
             return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
+        }
+        if store.mediaPlayPauseActionAvailable {
+            entries.insert("\(SystemNowPlayingProvider.playPauseActionIdentifier):Media Play/Pause", at: 0)
         }
         var catalogue = "CATALOG|"
         for entry in entries {

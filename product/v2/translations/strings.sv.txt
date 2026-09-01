@@ -161,6 +161,7 @@ start=Starta
 still=Still
 subpage=Undersida
 stop=Stoppa
+stopped=Stoppad
 sunny=Soligt
 sunny_alert=Solvarning
 sunset=Solnedgång

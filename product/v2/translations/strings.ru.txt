@@ -161,6 +161,7 @@ start=Старт
 still=Неподвижно
 subpage=Подстраница
 stop=Стоп
+stopped=Остановлено
 sunny=Солнечно
 sunny_alert=Солнечно, предупреждение
 sunset=Закат

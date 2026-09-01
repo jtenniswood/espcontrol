@@ -28,13 +28,18 @@ struct CompanionNowPlayingSnapshot: Equatable {
 
 protocol MediaRemoteProviding {
     var isAvailable: Bool { get }
+    var isCommandAvailable: Bool { get }
     func startObserving(_ handler: @escaping () -> Void) -> Bool
     func stopObserving()
     func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void)
+    func sendPlayPause() -> Bool
 }
 
 struct MediaRemoteSystemSource: MediaRemoteProviding {
+    private enum Command: UInt32 { case togglePlayPause = 2 }
+
     var isAvailable: Bool { ECMediaRemoteBridge.isAvailable() }
+    var isCommandAvailable: Bool { ECMediaRemoteBridge.isCommandAvailable() }
     func startObserving(_ handler: @escaping () -> Void) -> Bool {
         ECMediaRemoteBridge.startObservingChanges(handler)
     }
@@ -42,10 +47,12 @@ struct MediaRemoteSystemSource: MediaRemoteProviding {
     func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void) {
         ECMediaRemoteBridge.fetchNowPlaying(completion)
     }
+    func sendPlayPause() -> Bool { ECMediaRemoteBridge.sendCommand(Command.togglePlayPause.rawValue) }
 }
 
 @MainActor
 final class SystemNowPlayingProvider {
+    static let playPauseActionIdentifier = "media.play_pause"
     var onSnapshot: ((CompanionNowPlayingSnapshot) -> Void)?
     var onStatus: ((String) -> Void)?
 
@@ -65,6 +72,12 @@ final class SystemNowPlayingProvider {
     }
 
     var isAvailable: Bool { source.isAvailable }
+    var isPlayPauseAvailable: Bool { source.isCommandAvailable }
+
+    func performMediaAction(_ actionIdentifier: String) -> Bool? {
+        guard actionIdentifier == Self.playPauseActionIdentifier else { return nil }
+        return source.isCommandAvailable && source.sendPlayPause()
+    }
 
     func start() {
         stop()

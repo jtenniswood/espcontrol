@@ -161,6 +161,7 @@ start=Začni
 still=Mirovanje
 subpage=Podstran
 stop=Ustavi
+stopped=Ustavljeno
 sunny=Sončno
 sunny_alert=Opozorilo za sonce
 sunset=Sončni zahod

@@ -254,6 +254,7 @@ final class CompanionStore: NSObject, ObservableObject {
         guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
+    var mediaPlayPauseActionAvailable: Bool { nowPlayingProvider.isPlayPauseAvailable }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
         if app.bundleIdentifier == "com.apple.finder" {
@@ -264,6 +265,13 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func perform(actionIdentifier: String) -> Bool {
+        if actionIdentifier == SystemNowPlayingProvider.playPauseActionIdentifier &&
+            !nowPlayingSharingEnabled {
+            return false
+        }
+        if let performed = nowPlayingProvider.performMediaAction(actionIdentifier) {
+            return performed
+        }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
             return launch(bundleIdentifier: actionIdentifier)
         }
