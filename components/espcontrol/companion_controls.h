@@ -276,6 +276,15 @@ inline bool companion_application_focused(const std::string &action_id) {
   return snapshot.connected && snapshot.focused_application_id == action_id;
 }
 
+inline bool companion_action_active(const std::string &action_id) {
+  const auto snapshot = companion_runtime_snapshot();
+  if (action_id == "media.play_pause") {
+    return snapshot.connected && snapshot.media_actions_supported &&
+           snapshot.now_playing.playback_state == CompanionPlaybackState::PLAYING;
+  }
+  return companion_application_focused(action_id);
+}
+
 inline uint32_t companion_next_request_number() {
   static std::atomic<uint32_t> request_number{0};
   return ++request_number;
@@ -441,7 +450,7 @@ struct CompanionSliderRef {
 
 inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
   if (!button) return;
-  if (companion_application_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
+  if (companion_action_active(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
   else lv_obj_clear_state(button, LV_STATE_CHECKED);
 }
 

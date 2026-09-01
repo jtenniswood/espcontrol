@@ -25,7 +25,7 @@ Use the normal browser layout editor and select an empty home-screen or subpage 
 - **Keyboard shortcut** — click the shortcut field and press a combination such as Command-A. The browser records and displays the combination on the card.
 - **Open URL** — enter an `http://` or `https://` address and choose the approved installed application that should open it, such as Safari or Chrome.
 - **Open folder** — first add one or more folders from the Mac app's **Folders** tab, then choose the folder for this card. The display receives an anonymous identifier and friendly name; the filesystem path remains on the Mac.
-- **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application. Play / Pause reads **Playing**, **Paused**, **Stopped**, or **Unavailable** from the Mac and does not guess the result after a tap.
+- **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application. Play / Pause reads **Playing**, **Paused**, **Stopped**, or **Unavailable** from the Mac and does not guess the result after a tap. While playback is confirmed as **Playing**, the card lights in the panel's configured active colour; it returns to its normal colour when paused or stopped.
 
 Use a [Slider card](/card-types/sliders) when you want to control the Mac's output or input volume.
 

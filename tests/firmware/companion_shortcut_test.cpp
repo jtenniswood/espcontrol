@@ -50,6 +50,12 @@ int main() {
   paused_snapshot.playback_state = CompanionPlaybackState::PAUSED;
   companion_set_now_playing(paused_snapshot);
   assert(companion_action_available("media.play_pause"));
+  assert(!companion_action_active("media.play_pause"));
+  CompanionNowPlayingSnapshot playing_snapshot;
+  playing_snapshot.playback_state = CompanionPlaybackState::PLAYING;
+  companion_set_now_playing(playing_snapshot);
+  assert(companion_action_active("media.play_pause"));
+  companion_set_now_playing(paused_snapshot);
   bool media_invoked = false;
   register_companion_action_sender([&media_invoked](const std::string &action,
                                                     const std::string &request) {
@@ -92,6 +98,7 @@ int main() {
   assert(invoked);
   companion_set_connected(false);
   assert(!companion_application_focused("com.apple.Safari"));
+  assert(!companion_action_active("media.play_pause"));
   assert(companion_runtime_snapshot().now_playing.playback_state == CompanionPlaybackState::UNAVAILABLE);
   companion_set_connected(true);
   assert(!companion_action_available("media.play_pause"));
