@@ -21,7 +21,7 @@ struct CompanionApp: App {
 }
 
 @MainActor
-final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
@@ -75,6 +75,15 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         store.refreshLaunchAtLoginStatus()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === settingsWindow else { return }
+        DispatchQueue.main.async {
+            guard self.settingsWindow?.isVisible != true else { return }
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
@@ -191,6 +200,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
             window.title = "EspControl Companion Settings"
             window.contentMinSize = NSSize(width: 520, height: 420)
             window.contentViewController = controller
+            window.delegate = self
             window.isReleasedWhenClosed = false
             window.center()
             settingsWindow = window
