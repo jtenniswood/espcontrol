@@ -200,6 +200,10 @@ def check_root(root: Path) -> list[str]:
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage setup through the shared card context"
             )
         phase2_body = function_body(text, "grid_phase2") or ""
+        if "companion_forget_card(" in phase2_body:
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: preserve Phase 1 Companion card bindings during Phase 2"
+            )
         setup_subpage = phase2_body.find("setup_card_visual(sub_slot")
         refresh_subpage = phase2_body.find("refresh_card_layout(sub_slot")
         bind_subpage = phase2_body.find("image_driver_bind_subpage")
