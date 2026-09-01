@@ -23,6 +23,7 @@ import {
 } from "../../src/webserver/cards/slider";
 import {
   companionAppShortcutFolderEnabled,
+  companionShortcutActionIdValid,
   companionShortcutFolderCardAllowed,
   companionShortcutFolderEditorAvailable,
   createSafariShortcutSubpage,
@@ -57,6 +58,15 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard })) {
     throw new Error("Saved Safari shortcut folders must expose their editor");
   }
+  const safariUrlFolderCard = {
+    ...safariFolderCard,
+    sensor: "url.https%3A%2F%2Fexample.com",
+    options: "app_shortcuts",
+  };
+  if (normalizeCompanionAppShortcutOptions(safariUrlFolderCard) !== "" ||
+      companionAppShortcutFolderEnabled(safariUrlFolderCard)) {
+    throw new Error("Safari Open URL cards must not retain the shortcut-folder option");
+  }
   const chromeFolderCard = {
     type: "companion", entity: "com.google.Chrome", options: "app_shortcuts",
   };
@@ -77,6 +87,12 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (!safariPreset.every(companionShortcutFolderCardAllowed)) {
     throw new Error("Safari presets must contain only Companion keyboard shortcuts");
+  }
+  if (companionShortcutActionIdValid("shortcut.") ||
+      companionShortcutActionIdValid("shortcut.shift+a") ||
+      companionShortcutActionIdValid("shortcut.command+command+a") ||
+      companionShortcutFolderCardAllowed({ type: "companion", entity: "shortcut." })) {
+    throw new Error("Incomplete or invalid shortcuts must not be accepted in Safari folders");
   }
   const safariSubpage = createSafariShortcutSubpage();
   if (safariSubpage.backLabel !== "Back" || safariSubpage.order.join("|") !== "B|1|2|3|4|5") {

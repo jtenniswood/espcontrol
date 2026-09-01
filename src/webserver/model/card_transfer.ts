@@ -30,10 +30,11 @@ export interface CardTransferEnvelope {
   cards: CardTransferEntry[];
 }
 
-export function cardTransferOwnsSubpage(card: Pick<CardConfig, "type" | "entity" | "options">): boolean {
+export function cardTransferOwnsSubpage(card: Pick<CardConfig, "type" | "entity" | "sensor" | "options">): boolean {
   return card.type === "subpage" || (
     card.type === "companion" &&
     card.entity === "com.apple.Safari" &&
+    !card.sensor &&
     configOptionEnabled(card.options, "app_shortcuts")
   );
 }

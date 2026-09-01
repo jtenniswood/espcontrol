@@ -259,6 +259,7 @@ const safariShortcutFolderCard = {
   ...transferSubpageCard,
   type: "companion",
   entity: "com.apple.Safari",
+  sensor: "",
   options: "app_shortcuts",
 };
 assert.deepStrictEqual(
@@ -269,6 +270,10 @@ assert.deepStrictEqual(
   plain(safariShortcutFolderCard),
   "card transfer preserves a Safari shortcut folder",
 );
+assertTransferError({
+  format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" },
+  cards: [{ ...safariShortcutFolderCard, sensor: "url.https%3A%2F%2Fexample.com" }],
+}, "only a subpage-owning card");
 const extraLargeSubpageCard = {
   ...transferSubpageCard,
   subpage: {

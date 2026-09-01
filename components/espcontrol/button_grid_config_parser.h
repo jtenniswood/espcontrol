@@ -1322,6 +1322,7 @@ inline std::string normalize_saved_config_subpage_options(
 
 inline bool companion_app_shortcuts_enabled(const ParsedCfg &p) {
   return p.type == "companion" && p.entity == "com.apple.Safari" &&
+         p.sensor.empty() &&
          cfg_option_token_present(p.options, "app_shortcuts");
 }
 

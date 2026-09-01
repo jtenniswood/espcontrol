@@ -14,6 +14,7 @@ import {
     COMPANION_SHORTCUT_PREFIX,
     SAFARI_BUNDLE_ID,
     companionAppShortcutFolderEnabled,
+    companionShortcutActionIdValid,
     companionShortcutFolderEditorAvailable,
     createSafariShortcutSubpage,
     normalizeCompanionAppShortcutOptions,
@@ -82,7 +83,7 @@ export function companionShortcutActionId(event: Pick<KeyboardEvent,
 }
 
 export function formatCompanionShortcutActionId(actionId: string): string {
-    if (!actionId.startsWith(COMPANION_SHORTCUT_PREFIX)) return "";
+    if (!companionShortcutActionIdValid(actionId)) return "";
     const parts = actionId.slice(COMPANION_SHORTCUT_PREFIX.length).split("+");
     const key = parts.pop() || "";
     if (!key || !parts.length || parts.some((part) =>
@@ -396,6 +397,11 @@ export function registerCompanionCardTypes(
             shortcutNote.textContent = "Use Command, Control, or Option with a key. The shortcut is replayed on the active Mac app.";
             shortcutField.appendChild(shortcutNote);
             panel?.appendChild(shortcutField);
+            helpers.requireField(shortcutInput, "Capture a valid keyboard shortcut before saving.", function () {
+                return initialMode === "shortcut";
+            }, function () {
+                return companionShortcutActionIdValid(card.entity);
+            });
 
             const urlField = document.createElement("div");
             urlField.className = "sp-field";
@@ -480,6 +486,7 @@ export function registerCompanionCardTypes(
                 }
                 card.entity = actionId;
                 shortcutInput.value = formatCompanionShortcutActionId(actionId);
+                helpers.clearFieldError(shortcutInput);
                 helpers.saveField("entity", card.entity);
             });
 

@@ -4,6 +4,13 @@ import { cardTransferOwnsSubpage } from "../model/card_transfer";
 export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
 export const COMPANION_SHORTCUT_PREFIX = "shortcut.";
+const COMPANION_SHORTCUT_MODIFIERS = new Set(["command", "control", "option", "shift"]);
+const COMPANION_SHORTCUT_KEYS = new Set([
+    "space", "enter", "tab", "escape", "delete", "forwarddelete",
+    "left", "right", "up", "down", "home", "end", "pageup", "pagedown",
+    "keycomma", "keyperiod", "keyslash", "keysemicolon", "keyquote", "keybackslash",
+    "keyminus", "keyequal", "keybracketleft", "keybracketright", "keybackquote",
+]);
 
 export interface CompanionShortcutPresetCard {
     entity: string;
@@ -19,11 +26,12 @@ export interface CompanionShortcutPresetCard {
 
 export function companionAppShortcutFolderEnabled(card: any): boolean {
     return !!card && card.type === "companion" && card.entity === SAFARI_BUNDLE_ID &&
+        !card.sensor &&
         configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_OPTION);
 }
 
 export function normalizeCompanionAppShortcutOptions(card: any): string {
-    if (!card || card.entity !== SAFARI_BUNDLE_ID) return "";
+    if (!card || card.type !== "companion" || card.entity !== SAFARI_BUNDLE_ID || card.sensor) return "";
     return setConfigOption(
         "",
         COMPANION_APP_SHORTCUTS_OPTION,
@@ -36,7 +44,7 @@ export function setCompanionAppShortcutFolderEnabled(card: any, enabled: boolean
     card.options = setConfigOption(
         card.options,
         COMPANION_APP_SHORTCUTS_OPTION,
-        enabled && card.entity === SAFARI_BUNDLE_ID,
+        enabled && card.type === "companion" && card.entity === SAFARI_BUNDLE_ID && !card.sensor,
     );
 }
 
@@ -55,8 +63,22 @@ export function companionShortcutFolderParent(buttons: readonly any[], homeSlot:
 }
 
 export function companionShortcutFolderCardAllowed(card: any): boolean {
-    return !!card && card.type === "companion" && typeof card.entity === "string" &&
-        card.entity.startsWith(COMPANION_SHORTCUT_PREFIX);
+    return !!card && card.type === "companion" && companionShortcutActionIdValid(card.entity);
+}
+
+export function companionShortcutActionIdValid(actionId: unknown): boolean {
+    if (typeof actionId !== "string" || !actionId.startsWith(COMPANION_SHORTCUT_PREFIX)) return false;
+    const parts = actionId.slice(COMPANION_SHORTCUT_PREFIX.length).split("+");
+    if (parts.length < 2 || parts.length > 5) return false;
+    const key = parts.pop() || "";
+    const modifiers = parts;
+    if (new Set(modifiers).size !== modifiers.length ||
+        modifiers.some((modifier) => !COMPANION_SHORTCUT_MODIFIERS.has(modifier)) ||
+        !modifiers.some((modifier) => modifier === "command" || modifier === "control" || modifier === "option")) {
+        return false;
+    }
+    if (/^[a-z0-9]$/.test(key) || COMPANION_SHORTCUT_KEYS.has(key)) return true;
+    return /^f(?:[1-9]|1[0-9]|20)$/.test(key);
 }
 
 function shortcutCard(entity: string, label: string, icon: string): CompanionShortcutPresetCard {

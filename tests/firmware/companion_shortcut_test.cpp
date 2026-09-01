@@ -1,6 +1,12 @@
 #include <cassert>
+#include <string>
+
+struct lv_obj_t {};
+inline void lv_label_set_text(lv_obj_t *, const char *) {}
+inline std::string espcontrol_i18n(const std::string &value) { return value; }
 
 #include "companion_controls.h"
+#include "button_grid_config_parser.h"
 
 int main() {
   assert(!companion_connected());
@@ -18,6 +24,14 @@ int main() {
   assert(!companion_shortcut_action_valid("shortcut.command+volumeup"));
   assert(!companion_shortcut_action_valid("shortcut.command+f21"));
   assert(!companion_shortcut_action_valid("com.apple.Safari"));
+
+  ParsedCfg safari_launch;
+  safari_launch.type = "companion";
+  safari_launch.entity = "com.apple.Safari";
+  safari_launch.options = "app_shortcuts";
+  assert(companion_app_shortcuts_enabled(safari_launch));
+  safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
+  assert(!companion_app_shortcuts_enabled(safari_launch));
 
   const std::string url_config = "url.https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice";
   assert(companion_encoded_url(url_config) == "https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice");
