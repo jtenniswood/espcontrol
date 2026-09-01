@@ -12,7 +12,7 @@
     "deviceProfiles": 7,
     "cardTypes": 43,
     "entityNames": 102,
-    "icons": 335,
+    "icons": 337,
     "structuralIcons": 26,
     "compatibilityFixtureGroups": 2
   },
@@ -8001,6 +8001,11 @@
         "mdi": "folder-music-outline"
       },
       {
+        "name": "Folder Outline",
+        "codepoint": "F0256",
+        "mdi": "folder-outline"
+      },
+      {
         "name": "Folder Play",
         "codepoint": "F19FA",
         "mdi": "folder-play"
@@ -9139,6 +9144,11 @@
         "name": "Weather Windy Variant",
         "codepoint": "F059E",
         "mdi": "weather-windy-variant"
+      },
+      {
+        "name": "Web",
+        "codepoint": "F059F",
+        "mdi": "web"
       },
       {
         "name": "Wifi",
