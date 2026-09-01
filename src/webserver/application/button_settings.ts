@@ -21,6 +21,13 @@ import type { ButtonSettingsSelectionFeature } from "./button_settings_selection
 import type { PreviewRenderFeature } from "./preview_render";
 import type { PreviewInteractionsFeature } from "./preview_interactions";
 import type { ControlsFieldsFeature } from "./controls_fields";
+
+export function entityMatchesDomains(entityId?: any, domains?: any): boolean {
+    var value: any = String(entityId || "").trim();
+    var dot: any = value.indexOf(".");
+    return dot > 0 && !!domains && domains.indexOf(value.slice(0, dot)) >= 0;
+}
+
 export interface ButtonSettingsFeature {
     openCardSettings(...args: any[]): any;
     renderBackButtonSettings(...args: any[]): any;
@@ -250,12 +257,44 @@ export function createButtonSettingsFeature(
             input.addEventListener("input", maybeClearError);
             input.addEventListener("change", maybeClearError);
         }
+        function requireEntityDomain(this: any, input?: any, domains?: any, message?: any, isActive?: any) {
+            if (!input || !domains || !domains.length)
+                return;
+            requiredFields.push({
+                input: input,
+                message: message || "Choose a compatible entity before saving.",
+                isActive: isActive || function (this: any) { return true; },
+                allowEmpty: true,
+                isValid: function (this: any, value?: any) {
+                    return entityMatchesDomains(value, domains);
+                },
+            });
+            function maybeClearError(this: any) {
+                var value: any = String(input.value || "").trim();
+                if ((!isActive || isActive()) && value) {
+                    if (entityMatchesDomains(value, domains))
+                        clearFieldError(input);
+                }
+                else if (isActive && !isActive()) {
+                    clearFieldError(input);
+                }
+            }
+            input.addEventListener("input", maybeClearError);
+            input.addEventListener("change", maybeClearError);
+        }
         function validateSettingsDraft(this: any) {
             var validation: any = cardEditorValidationController.validateRequiredFields(requiredFields.map(function (this: any, rule?: any) {
+                var value: any = String(rule.input.value || "").trim();
                 return {
                     value: rule.input.value,
                     active: !rule.isActive || rule.isActive(),
-                    present: rule.hasValue ? Boolean(rule.hasValue(rule.input.value)) : undefined,
+                    present: rule.allowEmpty && !value
+                        ? true
+                        : rule.hasValue
+                            ? Boolean(rule.hasValue(rule.input.value))
+                            : rule.isValid
+                                ? Boolean(value && rule.isValid(value))
+                                : undefined,
                 };
             }));
             var firstInvalid: any = validation.firstInvalidIndex >= 0 ? requiredFields[validation.firstInvalidIndex].input : null;
@@ -265,7 +304,13 @@ export function createButtonSettingsFeature(
                     clearFieldError(rule.input);
                     continue;
                 }
-                if (rule.hasValue ? rule.hasValue(rule.input.value) : String(rule.input.value || "").trim()) {
+                var value: any = String(rule.input.value || "").trim();
+                if (!value && rule.allowEmpty)
+                    continue;
+                var isPresent: any = rule.hasValue
+                    ? rule.hasValue(rule.input.value)
+                    : Boolean(value);
+                if (isPresent && (!rule.isValid || rule.isValid(value))) {
                     clearFieldError(rule.input);
                     continue;
                 }
@@ -744,6 +789,7 @@ export function createButtonSettingsFeature(
             renderBasicCardFields: renderBasicCardFields,
             renderCardSegmentControl: renderCardSegmentControl,
             requireField: requireField,
+            requireEntityDomain: requireEntityDomain,
             clearFieldError: clearFieldError,
             toggleRow: toggleRow,
             cardSize: c.sizes[slot] || 1,

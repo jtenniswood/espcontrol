@@ -1,7 +1,7 @@
 {
   "label": "Slider",
   "allowInSubpage": true,
-  "domains": ["light", "fan"],
+  "domains": ["light", "fan", "number", "input_number"],
   "normalization": {
     "fields": {
       "entity": { "policy": "keep" }, "label": { "policy": "keep" },

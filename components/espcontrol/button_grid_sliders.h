@@ -2,6 +2,7 @@
 
 #include "button_grid_slider_geometry.h"
 #include "media_volume_capability.h"
+#include "number_slider_policy.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -83,6 +84,22 @@ struct SliderCtx {
   lv_coord_t content_pad_bottom = 0;
   bool available = true;
   bool interactive = true;
+  bool numeric = false;
+  bool numeric_dragging = false;
+  bool numeric_metadata_ready = false;
+  bool numeric_min_known = false;
+  bool numeric_max_known = false;
+  bool numeric_step_known = false;
+  bool numeric_state_known = false;
+  double numeric_min = 0.0;
+  double numeric_max = 0.0;
+  double numeric_step = 0.0;
+  double numeric_state = 0.0;
+  std::string numeric_unit;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *sensor_container = nullptr;
+  lv_obj_t *sensor_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
   // light_temperature fields
   bool light_temp = false;
   int kelvin_min = 2000;
@@ -96,6 +113,21 @@ struct SliderCtx {
   lv_obj_t *text_lbl = nullptr;
   std::string cached_label;
 };
+
+inline espcontrol::number_slider::Metadata slider_numeric_metadata(const SliderCtx *ctx) {
+  if (!ctx) return {};
+  return {ctx->numeric_min, ctx->numeric_max, ctx->numeric_step};
+}
+
+inline int slider_position_percent(const SliderCtx *ctx, int position) {
+  if (!ctx || !ctx->numeric) return std::max(0, std::min(100, position));
+  const int positions = espcontrol::number_slider::slider_position_count(
+    slider_numeric_metadata(ctx));
+  if (positions <= 0) return 0;
+  position = std::max(0, std::min(positions, position));
+  return static_cast<int>(
+    std::llround(static_cast<double>(position) * 100.0 / positions));
+}
 
 struct MediaNowPlayingCtx {
   lv_obj_t *icon_lbl = nullptr;
@@ -1379,7 +1411,8 @@ inline void slider_refresh_geometry(lv_obj_t *slider) {
 
   slider_fit_to_button(slider, btn, c->horizontal);
   int val = lv_slider_get_value(slider);
-  int fill_val = c->inverted ? 100 - val : val;
+  int pct = slider_position_percent(c, val);
+  int fill_val = c->inverted ? 100 - pct : pct;
   slider_update_ctx_fill(c, btn, fill_val);
 }
 
@@ -1430,7 +1463,8 @@ inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
 inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
   if (!slider) return false;
   SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
-  if (!ctx || ctx->horizontal || !ctx->interactive) return false;
+  if (!ctx || ctx->horizontal || !ctx->interactive || !ctx->available ||
+      (ctx->numeric && !ctx->numeric_metadata_ready)) return false;
 
   lv_indev_t *indev = lv_indev_active();
   if (!indev || lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER) return false;
@@ -1440,13 +1474,16 @@ inline bool slider_apply_vertical_pointer_value(lv_obj_t *slider) {
   lv_area_t slider_area;
   lv_obj_get_coords(slider, &slider_area);
 
-  int percent = 0;
-  if (!espcontrol::slider_geometry::vertical_pointer_percent(
-        point.y, slider_area.y1, slider_area.y2, percent)) {
+  const int max_position = ctx->numeric
+    ? espcontrol::number_slider::slider_position_count(slider_numeric_metadata(ctx))
+    : 100;
+  int value = 0;
+  if (!espcontrol::slider_geometry::vertical_pointer_position(
+        point.y, slider_area.y1, slider_area.y2, max_position, value)) {
     return false;
   }
-  if (lv_slider_get_value(slider) == percent) return true;
-  lv_slider_set_value(slider, percent, LV_ANIM_OFF);
+  if (lv_slider_get_value(slider) == value) return true;
+  lv_slider_set_value(slider, value, LV_ANIM_OFF);
   lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, nullptr);
   return true;
 }
@@ -2721,6 +2758,77 @@ inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
+inline void slider_numeric_restore_visual(SliderCtx *ctx) {
+  if (!ctx || !ctx->numeric) return;
+  if (ctx->sensor_container) lv_obj_add_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
+  if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, "");
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (ctx->icon_lbl) lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+}
+
+inline void slider_numeric_show_value(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!slider || !ctx || !ctx->numeric || !ctx->numeric_metadata_ready) return;
+  const auto metadata = slider_numeric_metadata(ctx);
+  const double value = espcontrol::number_slider::value_for_position(
+    metadata, lv_slider_get_value(slider));
+  const std::string formatted = espcontrol::number_slider::format_value(
+    value, metadata);
+  if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, formatted.c_str());
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
+  if (ctx->sensor_container) lv_obj_clear_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
+}
+
+inline void slider_numeric_apply_state(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!slider || !ctx || !ctx->numeric || !ctx->numeric_metadata_ready ||
+      !ctx->numeric_state_known || ctx->numeric_dragging) return;
+  const auto metadata = slider_numeric_metadata(ctx);
+  const int position = espcontrol::number_slider::position_for_value(
+    metadata, ctx->numeric_state);
+  lv_slider_set_value(slider, position, LV_ANIM_OFF);
+  slider_update_ctx_fill(
+    ctx, lv_obj_get_parent(slider), slider_position_percent(ctx, position));
+}
+
+inline void slider_numeric_update_interaction(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!slider || !ctx || !ctx->numeric) return;
+  if (ctx->interactive && ctx->available && ctx->numeric_metadata_ready)
+    lv_obj_add_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+  else
+    lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+}
+
+inline void slider_numeric_cancel_drag(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!ctx || !ctx->numeric) return;
+  ctx->numeric_dragging = false;
+  slider_numeric_restore_visual(ctx);
+  slider_numeric_apply_state(slider, ctx);
+}
+
+inline void slider_numeric_refresh_metadata(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!slider || !ctx || !ctx->numeric) return;
+  const auto metadata = slider_numeric_metadata(ctx);
+  const bool complete = ctx->numeric_min_known && ctx->numeric_max_known &&
+                        ctx->numeric_step_known;
+  const bool ready = complete && espcontrol::number_slider::metadata_valid(metadata);
+  const bool was_dragging = ctx->numeric_dragging;
+  ctx->numeric_metadata_ready = ready;
+  if (ready) {
+    lv_slider_set_range(
+      slider, 0, espcontrol::number_slider::slider_position_count(metadata));
+  } else if (complete) {
+    ESP_LOGW("slider", "Invalid numeric range metadata for %s (min=%g max=%g step=%g)",
+             ctx->entity_id.c_str(), ctx->numeric_min, ctx->numeric_max,
+             ctx->numeric_step);
+  }
+  if (was_dragging) {
+    ctx->numeric_dragging = false;
+    slider_numeric_restore_visual(ctx);
+  }
+  if (ready) slider_numeric_apply_state(slider, ctx);
+  slider_numeric_update_interaction(slider, ctx);
+}
+
 // Full slider button setup: visual + event handlers + HA action on release
 inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                                 bool interactive) {
@@ -2770,9 +2878,15 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->label_pad_top = padding.top;
   ctx->label_pad_bottom = padding.bottom;
   ctx->interactive = interactive;
+  ctx->numeric = espcontrol::number_slider::is_numeric_entity(p.entity);
+  ctx->available = !ctx->numeric;
+  ctx->icon_lbl = s.icon_lbl;
+  ctx->sensor_container = s.sensor_container;
+  ctx->sensor_lbl = s.sensor_lbl;
+  ctx->unit_lbl = s.unit_lbl;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
-  if (!interactive) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+  if (!interactive || ctx->numeric) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -2780,19 +2894,29 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
     if (!c) return;
     int val = lv_slider_get_value(sl);
-    int fill_val = c->inverted ? 100 - val : val;
+    int pct = slider_position_percent(c, val);
+    int fill_val = c->inverted ? 100 - pct : pct;
     slider_update_ctx_fill(c, lv_obj_get_parent(sl), fill_val);
+    if (c->numeric && c->numeric_dragging) slider_numeric_show_value(sl, c);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   if (interactive) {
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
+      if (c && c->numeric) {
+        if (!c->available || !c->numeric_metadata_ready) return;
+        c->numeric_dragging = true;
+      }
       slider_apply_vertical_pointer_value(sl);
+      if (c && c->numeric) slider_numeric_show_value(sl, c);
     }, LV_EVENT_PRESSED, nullptr);
 
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       slider_apply_vertical_pointer_value(sl);
+      SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
+      if (c && c->numeric && c->numeric_dragging) slider_numeric_show_value(sl, c);
     }, LV_EVENT_PRESSING, nullptr);
 
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
@@ -2800,12 +2924,33 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
       if (!sl) return;
       SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
       if (c && !c->entity_id.empty()) {
-        if (!c->available) return;
+        if (!c->available) {
+          slider_numeric_cancel_drag(sl, c);
+          return;
+        }
         slider_apply_vertical_pointer_value(sl);
         int val = lv_slider_get_value(sl);
-        send_slider_action(c->entity_id, val, c->cover_tilt);
+        if (c->numeric) {
+          if (!c->numeric_metadata_ready) {
+            slider_numeric_cancel_drag(sl, c);
+            return;
+          }
+          const auto metadata = slider_numeric_metadata(c);
+          const double value = espcontrol::number_slider::value_for_position(metadata, val);
+          c->numeric_dragging = false;
+          slider_numeric_restore_visual(c);
+          send_numeric_slider_action(c->entity_id, value, metadata);
+        } else {
+          send_slider_action(c->entity_id, val, c->cover_tilt);
+        }
       }
     }, LV_EVENT_RELEASED, nullptr);
+
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
+      slider_numeric_cancel_drag(sl, c);
+    }, LV_EVENT_PRESS_LOST, nullptr);
   }
 }
 
@@ -2834,6 +2979,24 @@ inline bool slider_attribute_missing_ref(esphome::StringRef val) {
          value == "unknown" || value == "unavailable";
 }
 
+inline void slider_numeric_apply_metadata_value(lv_obj_t *slider, SliderCtx *ctx,
+                                                int field,
+                                                esphome::StringRef value) {
+  if (!slider || !ctx || !ctx->numeric) return;
+  double parsed = 0.0;
+  const bool valid = !slider_attribute_missing_ref(value) &&
+                     parse_double_ref(value, parsed) && std::isfinite(parsed);
+  bool *known = field == 0 ? &ctx->numeric_min_known
+                           : (field == 1 ? &ctx->numeric_max_known
+                                         : &ctx->numeric_step_known);
+  double *target = field == 0 ? &ctx->numeric_min
+                              : (field == 1 ? &ctx->numeric_max
+                                            : &ctx->numeric_step);
+  *known = valid;
+  if (valid) *target = parsed;
+  slider_numeric_refresh_metadata(slider, ctx);
+}
+
 inline bool slider_entity_is_light(const std::string &entity_id) {
   return entity_id.size() > 6 && entity_id.compare(0, 6, "light.") == 0;
 }
@@ -2846,7 +3009,7 @@ inline void slider_set_icon_safe(lv_obj_t *icon_lbl, const char *icon) {
   if (icon_lbl && icon) lv_label_set_display_text(icon_lbl, icon);
 }
 
-// Subscribe to HA state for a slider entity (light brightness, fan percentage, or cover position/tilt)
+// Subscribe to HA state for a slider entity.
 inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                   lv_obj_t *slider,
                                   bool has_icon_on,
@@ -2866,7 +3029,41 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   bool is_cover = is_cover_entity(entity_id);
   bool is_fan = is_fan_entity(entity_id);
   bool is_light = slider_entity_is_light(entity_id);
-  if (is_cover) {
+  bool is_numeric = espcontrol::number_slider::is_numeric_entity(entity_id);
+  if (is_numeric) {
+    ha_subscribe_attribute(
+      entity_id, std::string("min"),
+      std::function<void(esphome::StringRef)>(
+        [slider, sctx](esphome::StringRef value) {
+          slider_numeric_apply_metadata_value(slider, sctx, 0, value);
+        })
+    );
+    ha_subscribe_attribute(
+      entity_id, std::string("max"),
+      std::function<void(esphome::StringRef)>(
+        [slider, sctx](esphome::StringRef value) {
+          slider_numeric_apply_metadata_value(slider, sctx, 1, value);
+        })
+    );
+    ha_subscribe_attribute(
+      entity_id, std::string("step"),
+      std::function<void(esphome::StringRef)>(
+        [slider, sctx](esphome::StringRef value) {
+          slider_numeric_apply_metadata_value(slider, sctx, 2, value);
+        })
+    );
+    ha_subscribe_attribute(
+      entity_id, std::string("unit_of_measurement"),
+      std::function<void(esphome::StringRef)>(
+        [slider, sctx](esphome::StringRef value) {
+          if (!sctx) return;
+          sctx->numeric_unit = slider_attribute_missing_ref(value)
+            ? ""
+            : string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
+          if (sctx->numeric_dragging) slider_numeric_show_value(slider, sctx);
+        })
+    );
+  } else if (is_cover) {
     ha_subscribe_attribute(
       entity_id, std::string(cover_tilt ? "current_tilt_position" : "current_position"),
       std::function<void(esphome::StringRef)>(
@@ -2913,20 +3110,35 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         })
     );
   } else {
-    ESP_LOGW("slider", "No brightness attribute subscription for non-light slider entity %s",
+    ESP_LOGW("slider", "No state attribute subscription for unsupported slider entity %s",
       entity_id.c_str());
   }
   ESP_LOGI("slider", "Subscribing slider state for %s", entity_id.c_str());
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
-      [slider, btn_ptr, fill, horiz, inv, rad, icon_lbl, has_icon_on, icon_off, icon_on, sctx](esphome::StringRef state) {
+      [slider, btn_ptr, fill, horiz, inv, rad, icon_lbl, has_icon_on, icon_off, icon_on, sctx, is_numeric](esphome::StringRef state) {
         if (sctx && !sctx->logged_state) {
           sctx->logged_state = true;
           ESP_LOGI("slider", "First slider state for %s: %s",
             sctx->entity_id.c_str(), string_ref_limited(state, HA_SHORT_STATE_MAX_LEN).c_str());
         }
         bool unavailable = ha_state_unavailable_ref(state);
+        if (is_numeric) {
+          double numeric_value = 0.0;
+          const bool valid = !unavailable && parse_double_ref(state, numeric_value) &&
+                             std::isfinite(numeric_value);
+          if (sctx) {
+            sctx->available = valid;
+            sctx->numeric_state_known = valid;
+            if (valid) sctx->numeric_state = numeric_value;
+            if (!valid && sctx->numeric_dragging)
+              slider_numeric_cancel_drag(slider, sctx);
+            slider_numeric_update_interaction(slider, sctx);
+            if (valid) slider_numeric_apply_state(slider, sctx);
+          }
+          return;
+        }
         if (sctx) sctx->available = !unavailable;
         bool on = is_entity_on_ref(state);
         if (!on) {
