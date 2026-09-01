@@ -21,10 +21,11 @@ static void activate_priority(DisplayModeController &controller, int priority) {
     case 3: controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF); break;
     case 4: controller.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE); break;
     case 5: controller.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::CLOCK); break;
-    case 6: controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE); break;
-    case 7: controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART); break;
-    case 8: controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED); break;
-    case 9: controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED); break;
+    case 6: controller.request(DisplayRequestSource::COMPANION_SESSION, DisplayMode::CLOCK); break;
+    case 7: controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE); break;
+    case 8: controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART); break;
+    case 9: controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED); break;
+    case 10: controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED); break;
     default: break;
   }
 }
@@ -33,8 +34,8 @@ static DisplayMode expected_mode_for_priority(int priority) {
   const DisplayMode modes[] = {
       DisplayMode::ACTIVE, DisplayMode::ACTIVE, DisplayMode::ACTIVE,
       DisplayMode::DISPLAY_OFF, DisplayMode::ACTIVE, DisplayMode::CLOCK,
-      DisplayMode::ACTIVE, DisplayMode::COVER_ART, DisplayMode::DIMMED,
-      DisplayMode::SETUP_DIMMED};
+      DisplayMode::CLOCK, DisplayMode::ACTIVE, DisplayMode::COVER_ART,
+      DisplayMode::DIMMED, DisplayMode::SETUP_DIMMED};
   return modes[priority];
 }
 
@@ -65,11 +66,11 @@ int main() {
   CHECK(!presence_can_wake_display(scheduled_presence.resolve()));
 
   // Every higher-priority policy beats every lower-priority policy.
-  for (int higher = 1; higher <= 9; ++higher) {
-    for (int lower = higher + 1; lower <= 10; ++lower) {
+  for (int higher = 1; higher <= 10; ++higher) {
+    for (int lower = higher + 1; lower <= 11; ++lower) {
       // Setup timeout is deliberately nested inside onboarding: it may dim
       // instructions but cannot expose any other lower-priority policy.
-      if (higher == 2 && lower == 9) continue;
+      if (higher == 2 && lower == 10) continue;
       DisplayModeController pair;
       activate_priority(pair, lower);
       activate_priority(pair, higher);
@@ -186,6 +187,7 @@ int main() {
       {DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED},
       {DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::CLOCK},
       {DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::ACTIVE},
+      {DisplayRequestSource::COMPANION_SESSION, DisplayMode::CLOCK},
       {DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF},
       {DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART},
       {DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED},
@@ -210,8 +212,19 @@ int main() {
   const auto first_art = cover_art.resolve();
   CHECK(decision_is(cover_art, DisplayMode::COVER_ART,
                     DisplayRequestSource::MEDIA_PLAYBACK));
+
   CHECK(!cover_art.generation_is_current(activation_generation));
   CHECK(cover_art.complete_transition(first_art));
+
+  // Locking the paired Mac temporarily replaces media and idle presentation
+  // with the clock, then unlocking restores the live request underneath.
+  CHECK(cover_art.request(DisplayRequestSource::COMPANION_SESSION,
+                          DisplayMode::CLOCK));
+  CHECK(decision_is(cover_art, DisplayMode::CLOCK,
+                    DisplayRequestSource::COMPANION_SESSION));
+  CHECK(cover_art.clear(DisplayRequestSource::COMPANION_SESSION));
+  CHECK(decision_is(cover_art, DisplayMode::COVER_ART,
+                    DisplayRequestSource::MEDIA_PLAYBACK));
 
   CHECK(cover_art.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED));
   const uint32_t artwork_generation = cover_art.generation();

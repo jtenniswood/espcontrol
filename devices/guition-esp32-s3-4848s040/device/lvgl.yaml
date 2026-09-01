@@ -182,3 +182,16 @@ interval:
             previous_companion_connection = connected;
             id(clock_bar_apply).execute();
           }
+          static bool previous_mac_session_locked = false;
+          const bool mac_session_locked = companion_runtime_snapshot().session_locked;
+          if (mac_session_locked != previous_mac_session_locked) {
+            previous_mac_session_locked = mac_session_locked;
+            auto &display = id(espcontrol_app).display();
+            if (mac_session_locked) {
+              display.request(espcontrol::DisplayRequestSource::COMPANION_SESSION,
+                              espcontrol::DisplayMode::CLOCK);
+            } else {
+              display.clear(espcontrol::DisplayRequestSource::COMPANION_SESSION);
+            }
+            id(display_mode_reconcile).execute();
+          }

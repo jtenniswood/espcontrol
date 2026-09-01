@@ -22,6 +22,7 @@ enum class DisplayRequestSource : uint8_t {
   IDLE_TIMER,
   PRESENCE_SENSOR,
   SCREEN_SCHEDULE,
+  COMPANION_SESSION,
   MANUAL_SLEEP,
   MEDIA_PLAYBACK,
   SETUP_TIMEOUT,
@@ -139,6 +140,7 @@ class DisplayModeController {
     if (apply_source(DisplayRequestSource::USER_WAKE, result)) return result;
     if (apply_source(DisplayRequestSource::BOOT_GUARD, result)) return result;
     if (apply_source(DisplayRequestSource::SCREEN_SCHEDULE, result)) return result;
+    if (apply_source(DisplayRequestSource::COMPANION_SESSION, result)) return result;
 
     if (takeover_active(DisplayTakeoverKind::INTERACTIVE)) {
       result.target_mode = DisplayMode::ACTIVE;
@@ -231,6 +233,8 @@ class DisplayModeController {
       case DisplayRequestSource::SCREEN_SCHEDULE:
         return mode == DisplayMode::ACTIVE || mode == DisplayMode::CLOCK ||
                mode == DisplayMode::DISPLAY_OFF;
+      case DisplayRequestSource::COMPANION_SESSION:
+        return mode == DisplayMode::CLOCK;
       case DisplayRequestSource::IDLE_TIMER:
       case DisplayRequestSource::PRESENCE_SENSOR:
         return mode == DisplayMode::DIMMED || mode == DisplayMode::CLOCK ||
@@ -246,7 +250,7 @@ class DisplayModeController {
     bool active{false};
   };
 
-  static constexpr std::size_t kRequestCount = 9;
+  static constexpr std::size_t kRequestCount = 10;
   static constexpr std::size_t kTakeoverCount = 2;
 
   static constexpr std::size_t source_index(DisplayRequestSource source) {
@@ -310,6 +314,7 @@ inline const char *display_request_source_name(
     case DisplayRequestSource::IDLE_TIMER: return "idle_timer";
     case DisplayRequestSource::PRESENCE_SENSOR: return "presence_sensor";
     case DisplayRequestSource::SCREEN_SCHEDULE: return "screen_schedule";
+    case DisplayRequestSource::COMPANION_SESSION: return "companion_session";
     case DisplayRequestSource::MANUAL_SLEEP: return "manual_sleep";
     case DisplayRequestSource::MEDIA_PLAYBACK: return "media_playback";
     case DisplayRequestSource::SETUP_TIMEOUT: return "setup_timeout";

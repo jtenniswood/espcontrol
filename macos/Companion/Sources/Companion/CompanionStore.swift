@@ -48,6 +48,7 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
     @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
+    private(set) var isMacSessionLocked = false
 
     private enum Keys {
         static let host = "panelHost"
@@ -86,6 +87,18 @@ final class CompanionStore: NSObject, ObservableObject {
             self,
             selector: #selector(frontmostApplicationDidChange(_:)),
             name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(macSessionDidLock(_:)),
+            name: Notification.Name("com.apple.screenIsLocked"),
+            object: nil
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(macSessionDidUnlock(_:)),
+            name: Notification.Name("com.apple.screenIsUnlocked"),
             object: nil
         )
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
@@ -222,6 +235,20 @@ final class CompanionStore: NSObject, ObservableObject {
 
     @objc private func frontmostApplicationDidChange(_: Notification) {
         if isConnected { connection.publishFocusedApplication() }
+    }
+
+    @objc private func macSessionDidLock(_: Notification) {
+        setMacSessionLocked(true)
+    }
+
+    @objc private func macSessionDidUnlock(_: Notification) {
+        setMacSessionLocked(false)
+    }
+
+    private func setMacSessionLocked(_ locked: Bool) {
+        guard isMacSessionLocked != locked else { return }
+        isMacSessionLocked = locked
+        if isConnected { connection.publishSessionLockState() }
     }
 
     func chooseFolder() {

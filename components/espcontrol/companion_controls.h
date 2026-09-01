@@ -108,6 +108,7 @@ struct CompanionRuntimeState {
   std::string focused_application_id;
   bool media_actions_supported{false};
   bool connected{false};
+  bool session_locked{false};
   CompanionNowPlayingSnapshot now_playing;
   CompanionSystemMetricsSnapshot system_metrics;
 };
@@ -118,6 +119,7 @@ struct CompanionRuntimeSnapshot {
   std::string focused_application_id;
   bool media_actions_supported{false};
   bool connected{false};
+  bool session_locked{false};
   CompanionNowPlayingSnapshot now_playing;
   CompanionSystemMetricsSnapshot system_metrics;
 };
@@ -131,7 +133,16 @@ inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
   return {state.actions, state.values, state.focused_application_id, state.media_actions_supported,
-          state.connected, state.now_playing, state.system_metrics};
+          state.connected, state.session_locked, state.now_playing, state.system_metrics};
+}
+
+inline void companion_set_session_locked(bool locked) {
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.session_locked == locked) return;
+    state.session_locked = locked;
+  }
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
@@ -347,6 +358,7 @@ inline void companion_set_connected(bool connected) {
     if (!connected) {
       state.values.clear();
       state.focused_application_id.clear();
+      state.session_locked = false;
       state.media_actions_supported = false;
       state.system_metrics = {};
     }

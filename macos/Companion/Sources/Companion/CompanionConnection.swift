@@ -254,6 +254,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
             if let task { startHeartbeat(for: task) }
             publishCatalogue()
+            publishSessionLockState()
             store.republishCurrentNowPlaying()
             store.republishCurrentSystemMetrics()
         case "CATALOGUE":
@@ -413,6 +414,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         let identifier = store.focusedLaunchableApplicationIdentifier()
         guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
         send("FOCUS|\(identifier)")
+    }
+
+    func publishSessionLockState() {
+        send("SESSION|\(store.isMacSessionLocked ? "locked" : "active")")
     }
 
     func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {

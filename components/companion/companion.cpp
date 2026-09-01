@@ -465,6 +465,9 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
   } else if (parts[0] == "FOCUS" && parts.size() == 2 &&
              (parts[1].empty() || safe_field(parts[1], 96))) {
     companion_set_focused_application(parts[1]);
+  } else if (parts[0] == "SESSION" && parts.size() == 2 &&
+             (parts[1] == "locked" || parts[1] == "active")) {
+    companion_set_session_locked(parts[1] == "locked");
   } else if (parts[0] == "HEARTBEAT") {
     this->send_(socket_fd, "HEARTBEAT|ok");
   }

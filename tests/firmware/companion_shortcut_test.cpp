@@ -31,6 +31,8 @@ int main() {
   assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
+  companion_set_session_locked(true);
+  assert(companion_runtime_snapshot().session_locked);
   assert(companion_metric_key_valid("stat.cpu"));
   assert(!companion_metric_key_valid("sensor.cpu"));
   assert(std::string(companion_metric_label_key("stat.memory")) == "memory");
@@ -98,6 +100,7 @@ int main() {
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
   companion_set_connected(false);
+  assert(!companion_runtime_snapshot().session_locked);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.cpu", metric_value));
   assert(!companion_application_focused("com.apple.Safari"));
   companion_set_connected(true);
