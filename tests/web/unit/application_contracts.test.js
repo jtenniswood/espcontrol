@@ -433,6 +433,22 @@ describe("browserless application contracts", () => {
     assert.match(source, /renderCardModeSelector\(panel, b, helpers, WIFI_QR_CARD_TYPE_METADATA\)/);
   });
 
+  test("keeps Wifi Sharing available without web authentication", () => {
+    const nativeRead = fs.readFileSync(path.join(ROOT, "components/espcontrol/panel_config_read_endpoint.h"), "utf8");
+    const nativeWrite = fs.readFileSync(path.join(ROOT, "components/espcontrol/panel_config_write_endpoint.h"), "utf8");
+    const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
+    const app = fs.readFileSync(path.join(ROOT, "components/espcontrol/espcontrol_app.cpp"), "utf8");
+    const nativeController = fs.readFileSync(path.join(ROOT, "src/webserver/controllers/native_panel_config_controller.ts"), "utf8");
+    const docs = fs.readFileSync(path.join(ROOT, "docs/card-types/wifi-share.md"), "utf8");
+
+    assert.doesNotMatch(nativeRead, /panel_config_contains_wifi_password|Wifi Sharing passwords require web authentication/);
+    assert.doesNotMatch(nativeWrite, /panel_config_contains_wifi_password|Wifi Sharing passwords require web authentication/);
+    assert.doesNotMatch(webServer, /event_payload_is_legacy_panel_config/);
+    assert.doesNotMatch(app, /panel_config_legacy_entity_guard/);
+    assert.match(nativeController, /Sign in, enable web_server_auth, or update the panel firmware/);
+    assert.match(docs, /web_server_auth` package is not required for Wifi Sharing/);
+  });
+
   test("normalizes and preserves Wifi modal tab settings", () => {
     const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
     assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);

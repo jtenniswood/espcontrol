@@ -109,14 +109,14 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     return response(200, document, "\"1\"");
   });
   equal(await authenticationRequiredClient.save((current) => current), "authentication-required",
-    "a password rejected by unauthenticated firmware is reported clearly");
+    "a rejected authenticated write is reported clearly");
 
   const protectedReadClient = createNativePanelConfigClient(async (path) => {
     if (path === "/api/v1/capabilities") return response(200);
     return response(403);
   });
   equal(await protectedReadClient.save((current) => current), "authentication-required",
-    "a protected password document is not treated as a generic save failure");
+    "a protected configuration read is not treated as a generic save failure");
 
   const challengedWriteClient = createNativePanelConfigClient(async (path, request) => {
     if (path === "/api/v1/capabilities") return response(200);
