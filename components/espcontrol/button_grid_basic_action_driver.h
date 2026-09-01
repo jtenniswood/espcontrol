@@ -498,6 +498,9 @@ inline bool basic_action_driver_handle_main_click(
         : invoke_companion_url(config.entity, config.sensor, request_id);
       if (!invoked) {
         ESP_LOGW("companion", "Action unavailable: %s", config.entity.c_str());
+      } else if (companion_app_shortcuts_enabled(config) && button) {
+        lv_obj_t *screen = static_cast<lv_obj_t *>(lv_obj_get_user_data(button));
+        if (screen) lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
       }
       break;
     }

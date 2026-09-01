@@ -1871,6 +1871,14 @@
       "label": "Companion",
       "allowInSubpage": true,
       "domains": [],
+      "options": [
+        {
+          "name": "app_shortcuts",
+          "label": "App Shortcut Folder",
+          "kind": "flag",
+          "omitDefault": true
+        }
+      ],
       "normalization": {
         "fields": {
           "entity": { "policy": "keep" },
@@ -1881,10 +1889,10 @@
           "unit": { "policy": "clear" },
           "type": { "policy": "default", "value": "companion" },
           "precision": { "policy": "clear" },
-          "options": { "policy": "clear" }
+          "options": { "policy": "keep" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": []
+        "canonicalOptionOrder": ["app_shortcuts"]
       },
       "default": {
         "entity": "",

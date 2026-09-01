@@ -16,6 +16,14 @@ import {
   companionSliderIcon,
   companionSliderMode,
 } from "../../src/webserver/cards/slider";
+import {
+  companionAppShortcutFolderEnabled,
+  companionShortcutFolderCardAllowed,
+  createSafariShortcutSubpage,
+  normalizeCompanionAppShortcutOptions,
+  safariShortcutPresetCards,
+  setCompanionAppShortcutFolderEnabled,
+} from "../../src/webserver/application/companion_shortcut_folder";
 
 function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
   "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"> {
@@ -30,6 +38,38 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  const safariFolderCard = {
+    type: "companion", entity: "com.apple.Safari", options: "", sensor: "", icon: "Monitor",
+  };
+  setCompanionAppShortcutFolderEnabled(safariFolderCard, true);
+  if (!companionAppShortcutFolderEnabled(safariFolderCard) || safariFolderCard.options !== "app_shortcuts") {
+    throw new Error("Safari launch cards must retain the shortcut-folder option");
+  }
+  const chromeFolderCard = {
+    type: "companion", entity: "com.google.Chrome", options: "app_shortcuts",
+  };
+  if (normalizeCompanionAppShortcutOptions(chromeFolderCard) !== "" ||
+      companionAppShortcutFolderEnabled(chromeFolderCard)) {
+    throw new Error("Unsupported apps must not retain the shortcut-folder option");
+  }
+  const safariPreset = safariShortcutPresetCards();
+  const expectedSafariShortcuts = [
+    "shortcut.command+keybracketleft",
+    "shortcut.command+keybracketright",
+    "shortcut.command+r",
+    "shortcut.command+t",
+    "shortcut.command+w",
+  ];
+  if (safariPreset.map((card) => card.entity).join("|") !== expectedSafariShortcuts.join("|")) {
+    throw new Error("Safari shortcut defaults changed");
+  }
+  if (!safariPreset.every(companionShortcutFolderCardAllowed)) {
+    throw new Error("Safari presets must contain only Companion keyboard shortcuts");
+  }
+  const safariSubpage = createSafariShortcutSubpage();
+  if (safariSubpage.backLabel !== "Back" || safariSubpage.order.join("|") !== "B|1|2|3|4|5") {
+    throw new Error("Safari shortcut folder layout changed");
+  }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
   }

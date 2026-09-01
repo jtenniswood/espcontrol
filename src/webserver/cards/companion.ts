@@ -7,13 +7,23 @@ import {
 } from "../generated/card_contract";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
+import type { ConfigCodecFeature } from "../application/config_codec";
+import type { ButtonSettingsSelectionFeature } from "../application/button_settings_selection";
+import { state } from "../state/app_instance";
+import {
+    COMPANION_SHORTCUT_PREFIX,
+    SAFARI_BUNDLE_ID,
+    companionAppShortcutFolderEnabled,
+    createSafariShortcutSubpage,
+    normalizeCompanionAppShortcutOptions,
+    setCompanionAppShortcutFolderEnabled,
+} from "../application/companion_shortcut_folder";
 
 interface CompanionAction {
     readonly id: string;
     readonly label: string;
 }
 
-const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
 export const COMPANION_MEDIA_ACTIONS = [
     { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
@@ -171,7 +181,7 @@ export function normalizeCompanionCard(card: any): void {
     card.sensor = urlConfig;
     card.unit = "";
     card.precision = "";
-    card.options = "";
+    card.options = normalizeCompanionAppShortcutOptions(card);
     card.icon_on = "Auto";
     if (!card.icon || card.icon === "Auto") card.icon = "Monitor";
 }
@@ -193,6 +203,8 @@ export function registerCompanionCardTypes(
     fetchImpl: typeof fetch,
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
+    codec: Pick<ConfigCodecFeature, "buildSubpageGrid" | "enterSubpage" | "saveSubpageConfig">,
+    selection: Pick<ButtonSettingsSelectionFeature, "closeSettings">,
 ): void {
     const { cardBadgePreview, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
@@ -206,15 +218,20 @@ export function registerCompanionCardTypes(
         defaultConfig: function () { return cardContractDefaultConfig("companion"); },
         cardMetadata: COMPANION_CARD_METADATA,
         isAvailable: function () { return supported; },
+        normalizeConfig: normalizeCompanionCard,
         onSelect: function (card?: any) {
             const defaults: any = cardContractDefaultConfig("companion");
             Object.keys(defaults).forEach(function (key) { card[key] = defaults[key]; });
         },
         renderSettingsBeforeLabel: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
+            const shortcutOnly = !!helpers.shortcutOnly;
             helpers.renderCardModeSelector(panel, card, helpers, {
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
+                    options: shortcutOnly
+                        ? [["shortcut", "Keyboard shortcut"]]
+                        : COMPANION_CARD_METADATA.mode.options,
                     onChange: function (this: HTMLSelectElement) {
                         const previousLabel = card.label;
                         const previousIcon = card.icon;
@@ -232,6 +249,7 @@ export function registerCompanionCardTypes(
                         card.entity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
                             : this.value === "media" ? COMPANION_MEDIA_ACTIONS[0].id : "";
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
+                        card.options = "";
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
                         }
@@ -239,16 +257,18 @@ export function registerCompanionCardTypes(
                         if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
+                        helpers.saveField("options", card.options);
                         renderButtonSettings();
                     },
                 },
             });
         },
-        renderSettings: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
+        renderSettings: function (panel?: HTMLElement, card?: any, slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
             card.entity = currentEntity;
             const initialMode = companionCardMode(card);
+            const shortcutOnly = !!helpers.shortcutOnly;
 
             const appField = document.createElement("div");
             appField.className = "sp-field";
@@ -324,12 +344,32 @@ export function registerCompanionCardTypes(
             mediaField.appendChild(mediaSelect);
             panel?.appendChild(mediaField);
 
+            const folderField = document.createElement("div");
+            folderField.className = "sp-field";
+            const folderToggle = helpers.toggleRow(
+                "Add shortcut folder",
+                helpers.idPrefix + "companion-app-shortcuts",
+                companionAppShortcutFolderEnabled(card),
+            );
+            folderField.appendChild(folderToggle.row);
+            const folderNote = document.createElement("div");
+            folderNote.className = "sp-field-info-text";
+            folderNote.textContent = "Launch Safari, then open an editable folder of Safari keyboard shortcuts.";
+            folderField.appendChild(folderNote);
+            panel?.appendChild(folderField);
+            folderToggle.input.addEventListener("change", function () {
+                setCompanionAppShortcutFolderEnabled(card, folderToggle.input.checked);
+                helpers.saveField("options", card.options);
+                renderButtonSettings();
+            });
+
             function syncMode(mode: string): void {
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
+                folderField.style.display = !shortcutOnly && mode === "app" && card.entity === SAFARI_BUNDLE_ID ? "" : "none";
             }
             syncMode(initialMode);
 
@@ -415,25 +455,56 @@ export function registerCompanionCardTypes(
                     selectedAction?.label || "",
                 );
                 card.entity = select.value;
+                card.options = normalizeCompanionAppShortcutOptions(card);
                 helpers.saveField("entity", card.entity);
+                helpers.saveField("options", card.options);
                 if (nextLabel !== currentLabel) {
                     card.label = nextLabel;
                     const labelInput = document.getElementById(helpers.idPrefix + "label") as HTMLInputElement | null;
                     if (labelInput) labelInput.value = nextLabel;
                     helpers.saveField("label", nextLabel);
                 }
+                renderButtonSettings();
             });
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
+            if (!helpers.isSub && companionAppShortcutFolderEnabled(card)) {
+                const editButton = document.createElement("button");
+                editButton.className = "sp-action-btn sp-edit-subpage-btn";
+                editButton.textContent = "Edit Safari Shortcuts";
+                editButton.addEventListener("click", function () {
+                    selection.closeSettings();
+                    codec.enterSubpage(slot);
+                });
+                panel?.appendChild(editButton);
+            }
         },
         renderPreview: function (card?: any, helpers?: any) {
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
-            return cardBadgePreview(card, helpers, {
+            const preview = cardBadgePreview(card, helpers, {
                 label: card.label || shortcutLabel || urlLabel || card.entity || "Mac App",
                 iconFallback: "Monitor",
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });
+            if (companionAppShortcutFolderEnabled(card)) {
+                const label = card.label || card.entity || "Safari";
+                preview.labelHtml = '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
+                    helpers.escHtml(label) +
+                    '</span><span class="sp-subpage-badge mdi mdi-chevron-right"></span></span>';
+            }
+            return preview;
+        },
+        contextMenuItems: function (slot?: any, card?: any, helpers?: any) {
+            if (!companionAppShortcutFolderEnabled(card)) return;
+            helpers.addCtxItem("cog", "Edit Safari Shortcuts", function () { codec.enterSubpage(slot); });
+        },
+        afterSave: function (card?: any, slot?: any, context?: any) {
+            if (context?.isSub || !companionAppShortcutFolderEnabled(card) || state.subpages[slot]) return;
+            const subpage = createSafariShortcutSubpage();
+            codec.buildSubpageGrid(subpage);
+            state.subpages[slot] = subpage;
+            codec.saveSubpageConfig(slot);
         },
     });
 }
