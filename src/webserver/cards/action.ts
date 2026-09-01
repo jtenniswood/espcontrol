@@ -21,6 +21,7 @@ export function registerActionCardTypes(
     const {
         actionCardActions: ACTION_CARD_ACTIONS,
         actionCardInfo,
+        actionCardEntityMatchesAction,
         actionCardIsOptionSelect,
         actionCardIsLocal,
         normalizeSavedConfigActionFields,
@@ -135,9 +136,10 @@ export function registerActionCardTypes(
                 mode: Object.assign({}, ACTION_CARD_METADATA.mode, {
                     onChange: function (this: any) {
                         var wasLocal: any = actionCardIsLocal(b);
+                        var entityMatchesAction: any = actionCardEntityMatchesAction(b.entity, this.value);
                         b.sensor = this.value;
                         helpers.saveField("sensor", b.sensor);
-                        if (wasLocal !== actionCardIsLocal(b)) {
+                        if (wasLocal !== actionCardIsLocal(b) || !entityMatchesAction) {
                             b.entity = "";
                             helpers.saveField("entity", "");
                         }

@@ -48,6 +48,12 @@ export function createConfigConfirmationOptionsFeature(
             if (actionCardActions[i].value === value) return actionCardActions[i];
         return null;
     }
+    function actionCardEntityMatchesAction(this: any, entity?: any, action?: any) {
+        var info: any = actionCardInfo(action);
+        var entityDomain: any = String(entity || "").split(".")[0];
+        return !entityDomain || !info || !info.domains.length ||
+            info.domains.indexOf(entityDomain) >= 0;
+    }
     function actionCardIsOptionSelect(this: any, button?: any) {
         var value: any = typeof button === "string" ? button : button && button.sensor;
         return value === ACTION_CARD_OPTION_SELECT_ACTION || value === "select.select_option";
@@ -411,6 +417,7 @@ export function createConfigConfirmationOptionsFeature(
     return {
         actionCardActions,
         actionCardInfo,
+        actionCardEntityMatchesAction,
         actionCardIsOptionSelect,
         actionCardIsLocal,
         normalizeSavedConfigActionFields,
