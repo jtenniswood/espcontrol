@@ -55,6 +55,10 @@ export function runCompanionShortcutFeatureTests(): void {
       companionCardMode({ entity: emptyFolderEntity, sensor: "" }) !== "folder") {
     throw new Error("Open folder must retain its subtype while waiting for a folder selection");
   }
+  if (companionEntityForMode("processor") !== "stat.cpu" ||
+      companionEntityForMode("memory_usage") !== "stat.memory") {
+    throw new Error("System statistic subtypes must select their Companion metric entities");
+  }
   if (companionSubtypeDefaultIcon("url") !== "Web" ||
       companionSubtypeDefaultIcon("folder") !== "Folder Outline" ||
       companionSubtypeDefaultIcon("stats") !== "Gauge" ||
