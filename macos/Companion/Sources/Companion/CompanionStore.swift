@@ -92,7 +92,6 @@ final class CompanionStore: NSObject, ObservableObject {
     var hasSavedPairing: Bool {
         !panelHost.isEmpty && KeychainStore.accounts(service: KeychainStore.service).contains(panelHost)
     }
-    var connectionSymbol: String { isConnected ? "laptopcomputer" : "laptopcomputer.slash" }
     var supportsLaunchAtLogin: Bool {
         Bundle.main.bundleURL.pathExtension.lowercased() == "app"
     }

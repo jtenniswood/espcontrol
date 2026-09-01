@@ -55,10 +55,10 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "EspControl Companion"
         }
-        updateStatusItemImage()
+        updateStatusItemImage(connected: store.isConnected)
         connectionObservation = store.$isConnected
             .removeDuplicates()
-            .sink { [weak self] _ in self?.updateStatusItemImage() }
+            .sink { [weak self] connected in self?.updateStatusItemImage(connected: connected) }
         if store.hasSavedPairing && !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             store.connect()
         }
@@ -142,10 +142,11 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    private func updateStatusItemImage() {
+    private func updateStatusItemImage(connected: Bool) {
         guard let button = statusItem?.button else { return }
-        let description = store.isConnected ? "EspControl Companion connected" : "EspControl Companion disconnected"
-        let image = NSImage(systemSymbolName: store.connectionSymbol, accessibilityDescription: description)
+        let description = connected ? "EspControl Companion connected" : "EspControl Companion disconnected"
+        let symbol = connected ? "laptopcomputer" : "laptopcomputer.slash"
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
         image?.isTemplate = true
         button.image = image
     }
