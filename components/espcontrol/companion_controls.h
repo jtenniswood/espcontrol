@@ -371,7 +371,11 @@ struct CompanionCardRef {
 
 struct CompanionSliderRef {
   lv_obj_t *slider = nullptr;
+  lv_obj_t *icon_label = nullptr;
   std::string control_id;
+  bool has_icon_on = false;
+  const char *icon_off = nullptr;
+  const char *icon_on = nullptr;
 };
 
 inline std::vector<CompanionCardRef> &companion_card_refs() {
@@ -408,7 +412,9 @@ inline void companion_slider_deleted(lv_event_t *event) {
   }), refs.end());
 }
 
-inline void companion_track_slider(lv_obj_t *slider, const std::string &control_id) {
+inline void companion_track_slider(lv_obj_t *slider, const std::string &control_id,
+                                   lv_obj_t *icon_label, bool has_icon_on,
+                                   const char *icon_off, const char *icon_on) {
   if (!slider || !companion_volume_control_valid(control_id)) return;
   auto &refs = companion_slider_refs();
   auto existing = std::find_if(refs.begin(), refs.end(), [slider](const CompanionSliderRef &ref) {
@@ -416,8 +422,12 @@ inline void companion_track_slider(lv_obj_t *slider, const std::string &control_
   });
   if (existing != refs.end()) {
     existing->control_id = control_id;
+    existing->icon_label = icon_label;
+    existing->has_icon_on = has_icon_on;
+    existing->icon_off = icon_off;
+    existing->icon_on = icon_on;
   } else {
-    refs.push_back({slider, control_id});
+    refs.push_back({slider, icon_label, control_id, has_icon_on, icon_off, icon_on});
     lv_obj_add_event_cb(slider, companion_slider_deleted, LV_EVENT_DELETE, nullptr);
   }
   companion_request_card_refresh();
@@ -472,6 +482,10 @@ inline void companion_refresh_cards_if_requested() {
     if (available) {
       lv_slider_set_value(it->slider, value->value, LV_ANIM_OFF);
       lv_obj_send_event(it->slider, LV_EVENT_VALUE_CHANGED, nullptr);
+      if (it->has_icon_on && it->icon_label && lv_obj_is_valid(it->icon_label)) {
+        lv_label_set_display_text(
+          it->icon_label, value->value > 0 ? it->icon_on : it->icon_off);
+      }
       lv_obj_clear_state(it->slider, LV_STATE_DISABLED);
     } else {
       lv_obj_add_state(it->slider, LV_STATE_DISABLED);
@@ -481,7 +495,8 @@ inline void companion_refresh_cards_if_requested() {
 }
 #else
 inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
-inline void companion_track_slider(void *, const std::string &) {}
+inline void companion_track_slider(void *, const std::string &, void *, bool,
+                                   const char *, const char *) {}
 inline void companion_request_card_refresh() {}
 inline void companion_refresh_cards_if_requested() {}
 #endif
@@ -503,8 +518,8 @@ inline bool invoke_companion_url(const std::string &app_id,
 inline bool invoke_companion_value(const std::string &control_id, int value,
                                    const std::string &request_id) {
   if (!companion_connected() || !companion_volume_control_valid(control_id) ||
-      !companion_value_sender()) return false;
-  return companion_value_sender()(control_id, std::max(0, std::min(100, value)), request_id);
+      value < 0 || value > 100 || !companion_value_sender()) return false;
+  return companion_value_sender()(control_id, value, request_id);
 }
 
 #ifdef USE_WEBSERVER

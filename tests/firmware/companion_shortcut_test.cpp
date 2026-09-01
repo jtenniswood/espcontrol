@@ -48,6 +48,8 @@ int main() {
     volume_invoked = control == "media.output_volume" && value == 64 && request == "volume-1";
     return volume_invoked;
   });
+  assert(!invoke_companion_value("media.output_volume", -1, "volume-toggle"));
+  assert(!volume_invoked);
   assert(invoke_companion_value("media.output_volume", 64, "volume-1"));
   assert(volume_invoked);
   assert(companion_url_available("com.apple.Safari", url_config));
