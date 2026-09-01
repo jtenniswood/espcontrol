@@ -161,7 +161,11 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     private func scheduleReconnect() {
         guard !hasTerminalConnectionError else { return }
-        guard shouldReconnect, store.hasSavedPairing else {
+        // Pairing failures deliberately close their unauthenticated socket.
+        // Keep the specific server error visible instead of replacing it with
+        // a generic disconnect message during that expected teardown.
+        guard shouldReconnect else { return }
+        guard store.hasSavedPairing else {
             store.updateStatus("Panel disconnected")
             return
         }
