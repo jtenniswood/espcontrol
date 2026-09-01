@@ -36,12 +36,7 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    @Published var nowPlayingSharingEnabled: Bool {
-        didSet {
-            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
-            updateNowPlayingProvider()
-        }
-    }
+    private let nowPlayingSharingEnabled = false
     @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
@@ -73,10 +68,6 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
-        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool
-            ?? legacyDefaults?.object(forKey: "nowPlayingSharingEnabled") as? Bool
-            ?? UserDefaults.standard.object(forKey: "nowPlayingSharingEnabled") as? Bool
-            ?? true
         super.init()
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }

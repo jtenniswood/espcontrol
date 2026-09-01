@@ -388,7 +388,8 @@ function normalizeScreensaverMode(value: unknown): string {
 }
 
 export function normalizeCoverArtSource(value: unknown): string {
-  return String(value || "") === "Mac Companion" ? "Mac Companion" : "Home Assistant";
+  void value;
+  return "Home Assistant";
 }
 
 function normalizeScreenRotationValue(value: unknown, options: readonly string[]): string {
