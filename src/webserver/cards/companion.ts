@@ -17,6 +17,14 @@ const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
 export const COMPANION_FOLDER_PREFIX = "folder.";
 const COMPANION_FINDER_ID = "com.apple.finder";
+const COMPANION_STATS_MODES = "stats,processor,memory,storage,battery".split(",");
+export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
+    app: "Monitor",
+    shortcut: "Shortcut Command",
+    url: "Web",
+    folder: "Folder Outline",
+    stats: "Gauge",
+} as const;
 export const COMPANION_MEDIA_ACTIONS = [
     { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
     { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
@@ -118,6 +126,32 @@ export function companionMediaIcon(
         ? selectedGeneratedIcon : currentIcon;
 }
 
+export function companionSubtypeDefaultIcon(mode: string, entity = ""): string {
+    if (mode === "media") {
+        return COMPANION_MEDIA_ACTIONS.find((action) => action.id === entity)?.icon
+            || COMPANION_MEDIA_ACTIONS[0].icon;
+    }
+    if (COMPANION_STATS_MODES.includes(mode)) {
+        return COMPANION_SUBTYPE_DEFAULT_ICONS.stats;
+    }
+    return COMPANION_SUBTYPE_DEFAULT_ICONS[mode as keyof typeof COMPANION_SUBTYPE_DEFAULT_ICONS]
+        || COMPANION_SUBTYPE_DEFAULT_ICONS.app;
+}
+
+export function companionSubtypeIcon(
+    currentIcon: string,
+    previousMode: string,
+    nextMode: string,
+    previousEntity = "",
+    nextEntity = "",
+): string {
+    const previousGeneratedIcon = companionSubtypeDefaultIcon(previousMode, previousEntity);
+    const legacyFolderIcon = previousMode === "folder" && currentIcon === "Folder";
+    return !currentIcon || currentIcon === "Auto" || currentIcon === "Monitor" ||
+        currentIcon === previousGeneratedIcon || legacyFolderIcon
+        ? companionSubtypeDefaultIcon(nextMode, nextEntity) : currentIcon;
+}
+
 export function applyCompanionMediaPresentation(card: any, previousGeneratedLabel = ""): void {
     if (!card) return;
     const selected = COMPANION_MEDIA_ACTIONS[0];
@@ -155,6 +189,7 @@ export function companionCardMode(card: any): string {
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
     if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
     if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
+    if (entity.startsWith("stat.")) return "stats";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
 }
@@ -186,7 +221,12 @@ export function normalizeCompanionCard(card: any): void {
     card.precision = "";
     card.options = "";
     card.icon_on = "Auto";
-    if (!card.icon || card.icon === "Auto") card.icon = "Monitor";
+    const mode = companionCardMode(card);
+    if (!card.icon || card.icon === "Auto" ||
+        (card.icon === "Monitor" && mode !== "app") ||
+        (card.icon === "Folder" && mode === "folder")) {
+        card.icon = companionSubtypeDefaultIcon(mode, card.entity);
+    }
 }
 
 async function fetchCompanionActions(fetchImpl: typeof fetch): Promise<readonly CompanionAction[]> {
@@ -232,6 +272,7 @@ export function registerCompanionCardTypes(
                         const previousLabel = card.label;
                         const previousIcon = card.icon;
                         const previousMode = companionCardMode(card);
+                        const previousEntity = card.entity;
                         let previousGeneratedLabel = "";
                         if (previousMode === "app" || previousMode === "url") {
                             const appSelect = document.getElementById(
@@ -247,7 +288,6 @@ export function registerCompanionCardTypes(
                             if (selectedOption && selectedOption.value === card.entity) {
                                 previousGeneratedLabel = selectedOption.textContent || "";
                             }
-                            if (card.icon === "Folder") card.icon = "Monitor";
                             if (card.label === previousGeneratedLabel) card.label = "";
                         }
                         resetCompanionMediaPresentation(card, this.value);
@@ -256,9 +296,9 @@ export function registerCompanionCardTypes(
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
-                        } else if (this.value === "folder") {
-                            card.icon = companionMediaIcon(card.icon, "Monitor", "Folder");
                         }
+                        card.icon = companionSubtypeIcon(
+                            card.icon, previousMode, this.value, previousEntity, card.entity);
                         if (card.label !== previousLabel) helpers.saveField("label", card.label);
                         if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);
                         helpers.saveField("entity", card.entity);
@@ -514,7 +554,7 @@ export function registerCompanionCardTypes(
                     selectedAction?.label || "",
                 );
                 card.entity = folderSelect.value;
-                card.icon = companionMediaIcon(card.icon, "Monitor", "Folder");
+                card.icon = companionSubtypeIcon(card.icon, "folder", "folder", card.entity, card.entity);
                 helpers.saveField("entity", card.entity);
                 helpers.saveField("icon", card.icon);
                 if (nextLabel !== currentLabel) {
@@ -533,7 +573,7 @@ export function registerCompanionCardTypes(
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
             return cardBadgePreview(card, helpers, {
                 label: card.label || shortcutLabel || urlLabel || card.entity || (mode === "folder" ? "Folder" : "Mac App"),
-                iconFallback: mode === "folder" ? "Folder" : "Monitor",
+                iconFallback: companionSubtypeDefaultIcon(mode, card.entity),
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });
         },

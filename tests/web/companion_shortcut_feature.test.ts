@@ -6,6 +6,8 @@ import {
   companionFolderActions,
   companionMediaIcon,
   companionShortcutActionId,
+  companionSubtypeDefaultIcon,
+  companionSubtypeIcon,
   companionUrlConfig,
   companionUrlValue,
   formatCompanionShortcutActionId,
@@ -37,6 +39,18 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionCardMode({ entity: "media.thirdparty.app", sensor: "" }) !== "app") {
     throw new Error("Installed apps beginning with media. must remain app actions");
+  }
+  if (companionSubtypeDefaultIcon("url") !== "Web" ||
+      companionSubtypeDefaultIcon("folder") !== "Folder Outline" ||
+      companionSubtypeDefaultIcon("stats") !== "Gauge" ||
+      companionSubtypeDefaultIcon("shortcut") !== "Shortcut Command") {
+    throw new Error("Companion subtypes must use their requested default icons");
+  }
+  if (companionSubtypeIcon("Shortcut Command", "shortcut", "url") !== "Web") {
+    throw new Error("Changing Companion subtypes must refresh a generated default icon");
+  }
+  if (companionSubtypeIcon("Star", "shortcut", "url") !== "Star") {
+    throw new Error("Changing Companion subtypes must preserve a custom icon");
   }
   const folderAction = "folder.00000000-0000-0000-0000-000000000001";
   if (companionCardMode({ entity: folderAction, sensor: "" }) !== "folder" ||
@@ -146,4 +160,18 @@ export function runCompanionShortcutFeatureTests(): void {
   const urlCard = { entity: "com.apple.Safari", sensor: urlConfig, icon: "Monitor" };
   normalizeCompanionCard(urlCard);
   if (urlCard.sensor !== urlConfig) throw new Error("Companion URL configuration must survive card normalization");
+  if (urlCard.icon !== "Web") throw new Error("Existing URL cards must adopt the Web default icon");
+  const shortcutCard = { entity: "shortcut.command+a", sensor: "", icon: "Monitor" };
+  normalizeCompanionCard(shortcutCard);
+  if (shortcutCard.icon !== "Shortcut Command") {
+    throw new Error("Existing shortcut cards must adopt the command default icon");
+  }
+  const folderCard = { entity: folderAction, sensor: "", icon: "Folder" };
+  normalizeCompanionCard(folderCard);
+  if (folderCard.icon !== "Folder Outline") {
+    throw new Error("Existing folder cards must adopt the Folder Outline default icon");
+  }
+  const statsCard = { entity: "stat.cpu", sensor: "", icon: "Monitor" };
+  normalizeCompanionCard(statsCard);
+  if (statsCard.icon !== "Gauge") throw new Error("Existing stats cards must adopt the Gauge default icon");
 }
