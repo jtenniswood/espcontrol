@@ -27,8 +27,14 @@ struct CompanionAction {
   std::string label;
 };
 
+struct CompanionValue {
+  std::string id;
+  int value{0};
+};
+
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
 using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
+using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
 
 struct CompanionPairingSnapshot {
   bool available{false};
@@ -80,15 +86,30 @@ using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t 
 
 inline void companion_request_card_refresh();
 
+inline std::atomic<bool> &companion_card_refresh_requested() {
+  static std::atomic<bool> requested{false};
+  return requested;
+}
+
+inline void companion_request_card_refresh() {
+  companion_card_refresh_requested().store(true);
+}
+
 struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
+  std::vector<CompanionValue> values;
+  std::string focused_application_id;
+  bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
 };
 
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
+  std::vector<CompanionValue> values;
+  std::string focused_application_id;
+  bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
 };
@@ -101,7 +122,8 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.connected, state.now_playing};
+  return {state.actions, state.values, state.focused_application_id, state.media_actions_supported,
+          state.connected, state.now_playing};
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
@@ -148,6 +170,11 @@ inline CompanionUrlSender &companion_url_sender() {
   return sender;
 }
 
+inline CompanionValueSender &companion_value_sender() {
+  static CompanionValueSender sender;
+  return sender;
+}
+
 inline CompanionPairingProvider &companion_pairing_provider() {
   static CompanionPairingProvider provider;
   return provider;
@@ -171,6 +198,82 @@ inline void companion_set_actions(std::vector<CompanionAction> actions) {
   companion_request_card_refresh();
 }
 
+inline bool companion_media_action_valid(const std::string &action_id) {
+  return action_id == "media.play_pause" || action_id == "media.previous" ||
+         action_id == "media.next";
+}
+
+inline void companion_set_media_actions_supported(bool supported) {
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.media_actions_supported = supported;
+  }
+  companion_request_card_refresh();
+}
+
+inline bool companion_volume_control_valid(const std::string &control_id) {
+  return control_id == "media.output_volume" || control_id == "media.input_volume";
+}
+
+inline const char *companion_volume_control_label(const std::string &control_id) {
+  if (control_id == "media.output_volume") return "Output Volume";
+  if (control_id == "media.input_volume") return "Input Volume";
+  return "Volume";
+}
+
+inline bool companion_value(const std::string &control_id, int &value) {
+  const auto snapshot = companion_runtime_snapshot();
+  const auto item = std::find_if(snapshot.values.begin(), snapshot.values.end(),
+    [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; });
+  if (item == snapshot.values.end()) return false;
+  value = item->value;
+  return true;
+}
+
+inline void companion_set_value(const std::string &control_id, int value) {
+  if (!companion_volume_control_valid(control_id)) return;
+  value = std::max(0, std::min(100, value));
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    auto item = std::find_if(state.values.begin(), state.values.end(),
+      [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; });
+    if (item == state.values.end()) state.values.push_back({control_id, value});
+    else item->value = value;
+  }
+  companion_request_card_refresh();
+}
+
+inline void companion_remove_value(const std::string &control_id) {
+  if (!companion_volume_control_valid(control_id)) return;
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.values.erase(std::remove_if(state.values.begin(), state.values.end(),
+      [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; }),
+      state.values.end());
+  }
+  companion_request_card_refresh();
+}
+
+inline void companion_set_focused_application(std::string application_id) {
+  if (application_id.size() > 96) application_id.clear();
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.focused_application_id = std::move(application_id);
+  }
+  companion_request_card_refresh();
+}
+
+inline bool companion_application_focused(const std::string &action_id) {
+  if (action_id.empty() || action_id.rfind("folder.", 0) == 0 ||
+      action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
+  const auto snapshot = companion_runtime_snapshot();
+  return snapshot.connected && snapshot.focused_application_id == action_id;
+}
+
 inline uint32_t companion_next_request_number() {
   static std::atomic<uint32_t> request_number{0};
   return ++request_number;
@@ -181,6 +284,12 @@ inline void companion_set_connected(bool connected) {
   {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.connected = connected;
+    if (!connected) {
+      state.values.clear();
+      state.focused_application_id.clear();
+      state.media_actions_supported = false;
+      state.now_playing = {};
+    }
   }
   companion_request_card_refresh();
 }
@@ -191,6 +300,10 @@ inline void register_companion_action_sender(CompanionActionSender sender) {
 
 inline void register_companion_url_sender(CompanionUrlSender sender) {
   companion_url_sender() = std::move(sender);
+}
+
+inline void register_companion_value_sender(CompanionValueSender sender) {
+  companion_value_sender() = std::move(sender);
 }
 
 inline void register_companion_pairing_callbacks(CompanionPairingProvider provider,
@@ -247,16 +360,20 @@ inline std::string companion_shortcut_label(const std::string &action_id) {
   const auto parts = companion_shortcut_parts(action_id);
   std::string label;
   for (size_t i = 0; i + 1 < parts.size(); i++) {
-    if (parts[i] == "command") label += "Cmd+";
-    else if (parts[i] == "control") label += "Ctrl+";
-    else if (parts[i] == "option") label += "Opt+";
-    else if (parts[i] == "shift") label += "Shift+";
+    if (parts[i] == "command") label += "\U000F0633";
+    else if (parts[i] == "control") label += "\U000F0634";
+    else if (parts[i] == "option") label += "\U000F0635";
+    else if (parts[i] == "shift") label += "\U000F0636";
   }
   std::string key = parts.back();
   if (key.size() == 1 && key[0] >= 'a' && key[0] <= 'z') key[0] = static_cast<char>(key[0] - 'a' + 'A');
   else if (key == "enter") key = "Return";
   else if (key == "escape") key = "Esc";
   else if (key == "forwarddelete") key = "Forward Delete";
+  else if (key == "left") key = "\U000F004D";
+  else if (key == "right") key = "\U000F0054";
+  else if (key == "up") key = "\U000F005D";
+  else if (key == "down") key = "\U000F0045";
   else if (key == "pageup") key = "Page Up";
   else if (key == "pagedown") key = "Page Down";
   else if (key == "keycomma") key = ",";
@@ -281,6 +398,7 @@ inline bool companion_action_available(const std::string &action_id) {
   if (action_id == "media.play_pause" &&
       snapshot.now_playing.playback_state == CompanionPlaybackState::UNAVAILABLE) return false;
   if (companion_shortcut_action_valid(action_id)) return true;
+  if (companion_media_action_valid(action_id)) return snapshot.media_actions_supported;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;
   });
@@ -310,14 +428,29 @@ struct CompanionCardRef {
   std::string url_config;
 };
 
+struct CompanionSliderRef {
+  lv_obj_t *slider = nullptr;
+  lv_obj_t *icon_label = nullptr;
+  std::string control_id;
+  bool has_icon_on = false;
+  const char *icon_off = nullptr;
+  const char *icon_on = nullptr;
+};
+
+inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
+  if (!button) return;
+  if (companion_application_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
+  else lv_obj_clear_state(button, LV_STATE_CHECKED);
+}
+
 inline std::vector<CompanionCardRef> &companion_card_refs() {
   static std::vector<CompanionCardRef> refs;
   return refs;
 }
 
-inline std::atomic<bool> &companion_card_refresh_requested() {
-  static std::atomic<bool> requested{false};
-  return requested;
+inline std::vector<CompanionSliderRef> &companion_slider_refs() {
+  static std::vector<CompanionSliderRef> refs;
+  return refs;
 }
 
 inline void companion_forget_card(lv_obj_t *button) {
@@ -329,6 +462,35 @@ inline void companion_forget_card(lv_obj_t *button) {
 
 inline void companion_card_deleted(lv_event_t *event) {
   companion_forget_card(static_cast<lv_obj_t *>(lv_event_get_target(event)));
+}
+
+inline void companion_slider_deleted(lv_event_t *event) {
+  lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(event));
+  auto &refs = companion_slider_refs();
+  refs.erase(std::remove_if(refs.begin(), refs.end(), [slider](const CompanionSliderRef &ref) {
+    return ref.slider == slider;
+  }), refs.end());
+}
+
+inline void companion_track_slider(lv_obj_t *slider, const std::string &control_id,
+                                   lv_obj_t *icon_label, bool has_icon_on,
+                                   const char *icon_off, const char *icon_on) {
+  if (!slider || !companion_volume_control_valid(control_id)) return;
+  auto &refs = companion_slider_refs();
+  auto existing = std::find_if(refs.begin(), refs.end(), [slider](const CompanionSliderRef &ref) {
+    return ref.slider == slider;
+  });
+  if (existing != refs.end()) {
+    existing->control_id = control_id;
+    existing->icon_label = icon_label;
+    existing->has_icon_on = has_icon_on;
+    existing->icon_off = icon_off;
+    existing->icon_on = icon_on;
+  } else {
+    refs.push_back({slider, icon_label, control_id, has_icon_on, icon_off, icon_on});
+    lv_obj_add_event_cb(slider, companion_slider_deleted, LV_EVENT_DELETE, nullptr);
+  }
+  companion_request_card_refresh();
 }
 
 inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
@@ -349,8 +511,6 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
 }
 
-inline void companion_request_card_refresh() { companion_card_refresh_requested().store(true); }
-
 inline void companion_refresh_cards_if_requested() {
   if (!companion_card_refresh_requested().exchange(false)) return;
   auto &refs = companion_card_refs();
@@ -367,19 +527,46 @@ inline void companion_refresh_cards_if_requested() {
       const auto snapshot = companion_runtime_snapshot();
       const char *status = companion_play_pause_status(
         snapshot.now_playing.playback_state, available);
-      lv_label_set_display_text(it->text_label, espcontrol_i18n(std::string(status)));
+      const std::string translated_status = espcontrol_i18n(std::string(status));
+      lv_label_set_display_text(it->text_label, translated_status.c_str());
     }
     if (available) {
       lv_obj_clear_state(it->button, LV_STATE_DISABLED);
     } else {
       lv_obj_add_state(it->button, LV_STATE_DISABLED);
     }
+    companion_apply_card_focus(it->button, it->action_id);
+    ++it;
+  }
+  auto &sliders = companion_slider_refs();
+  const auto snapshot = companion_runtime_snapshot();
+  for (auto it = sliders.begin(); it != sliders.end();) {
+    if (!it->slider || !lv_obj_is_valid(it->slider)) {
+      it = sliders.erase(it);
+      continue;
+    }
+    const auto value = std::find_if(snapshot.values.begin(), snapshot.values.end(),
+      [it](const CompanionValue &candidate) { return candidate.id == it->control_id; });
+    const bool available = snapshot.connected && value != snapshot.values.end();
+    if (available) {
+      lv_slider_set_value(it->slider, value->value, LV_ANIM_OFF);
+      lv_obj_send_event(it->slider, LV_EVENT_VALUE_CHANGED, nullptr);
+      if (it->has_icon_on && it->icon_label && lv_obj_is_valid(it->icon_label)) {
+        lv_label_set_text(
+          it->icon_label, value->value > 0 ? it->icon_on : it->icon_off);
+      }
+      lv_obj_clear_state(it->slider, LV_STATE_DISABLED);
+    } else {
+      lv_obj_add_state(it->slider, LV_STATE_DISABLED);
+    }
     ++it;
   }
 }
 #else
 inline void companion_track_card(void *, const std::string &, const std::string & = "", void * = nullptr) {}
-inline void companion_request_card_refresh() {}
+inline void companion_apply_card_focus(void *, const std::string &) {}
+inline void companion_track_slider(void *, const std::string &, void *, bool,
+                                   const char *, const char *) {}
 inline void companion_refresh_cards_if_requested() {}
 #endif
 
@@ -395,6 +582,13 @@ inline bool invoke_companion_url(const std::string &app_id,
   const std::string encoded_url = companion_encoded_url(url_config);
   if (encoded_url.empty() || !companion_action_available(app_id) || !companion_url_sender()) return false;
   return companion_url_sender()(app_id, encoded_url, request_id);
+}
+
+inline bool invoke_companion_value(const std::string &control_id, int value,
+                                   const std::string &request_id) {
+  if (!companion_connected() || !companion_volume_control_valid(control_id) ||
+      value < 0 || value > 100 || !companion_value_sender()) return false;
+  return companion_value_sender()(control_id, value, request_id);
 }
 
 #ifdef USE_WEBSERVER

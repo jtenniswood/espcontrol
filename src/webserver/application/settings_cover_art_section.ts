@@ -13,7 +13,7 @@ export interface SettingsCoverArtSectionFeature {
     buildCoverArtSettingsCard(...args: any[]): any;
 }
 
-export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeature, "bindTextPost">, runtime: UiRuntimeState, entityState: Pick<EntityStateFeature, "entityName" | "entityInput">, statusPreview: Pick<AppStatusPreviewFeature, "syncInput">, artworkPostApi: ArtworkPostApiFeature, fields: Pick<ControlsFieldsFeature, "condField" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">, helpers: Pick<SettingsPageHelpersFeature, "applyCoverArtScreensaverState" | "applyMediaPlaybackState" | "coverArtScreensaverState" | "coverArtTrackOverlayDurationSupported" | "infoPanel" | "inlineDisclosure" | "mediaPlaybackState" | "statusBadge" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">, coverArtScreensaver: CoverArtScreensaverController, mediaPlayback: MediaPlaybackController, companionSupported = false): SettingsCoverArtSectionFeature {
+export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeature, "bindTextPost">, runtime: UiRuntimeState, entityState: Pick<EntityStateFeature, "entityName" | "entityInput">, statusPreview: Pick<AppStatusPreviewFeature, "syncInput">, artworkPostApi: ArtworkPostApiFeature, fields: Pick<ControlsFieldsFeature, "condField" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">, helpers: Pick<SettingsPageHelpersFeature, "applyCoverArtScreensaverState" | "applyMediaPlaybackState" | "coverArtScreensaverState" | "coverArtTrackOverlayDurationSupported" | "infoPanel" | "inlineDisclosure" | "mediaPlaybackState" | "statusBadge" | "syncCoverArtScreensaverUi" | "syncMediaPlayerSleepPreventionUi">, coverArtScreensaver: CoverArtScreensaverController, mediaPlayback: MediaPlaybackController, _companionSupported = false): SettingsCoverArtSectionFeature {
     const { applyCoverArtScreensaverState, applyMediaPlaybackState, coverArtScreensaverState, coverArtTrackOverlayDurationSupported, infoPanel, inlineDisclosure, mediaPlaybackState, statusBadge, syncCoverArtScreensaverUi, syncMediaPlayerSleepPreventionUi } = helpers;
     const _coverArtScreensaverController = coverArtScreensaver;
     const _mediaPlaybackController = mediaPlayback;
@@ -26,7 +26,6 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtScreensaver,
-        postCoverArtSource,
         postCoverArtMediaPlayerEntity,
         postCoverArtSecondaryMediaPlayerEntity,
         postCoverArtConditions,
@@ -48,29 +47,6 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         var coverArtOptions: any = condField();
         var coverArtOnlyOptions: any = condField();
         var coverArtHomeAssistantOptions: any = condField();
-        if (companionSupported) {
-            var sourceField: any = document.createElement("div");
-            sourceField.className = "sp-field";
-            sourceField.appendChild(fieldLabel("Cover Art Source", "sp-set-ss-cover-art-source"));
-            var sourceSelect: any = document.createElement("select");
-            sourceSelect.className = "sp-select";
-            sourceSelect.id = "sp-set-ss-cover-art-source";
-            [["Home Assistant", "Home Assistant"], ["Mac Companion", "Mac Companion"]].forEach(function (option) {
-                var element: any = document.createElement("option");
-                element.value = option[0];
-                element.textContent = option[1];
-                sourceSelect.appendChild(element);
-            });
-            sourceSelect.value = state.coverArtSource;
-            sourceSelect.addEventListener("change", function (this: any) {
-                state.coverArtSource = this.value === "Mac Companion" ? "Mac Companion" : "Home Assistant";
-                coverArtHomeAssistantOptions.classList.toggle("sp-visible", state.coverArtSource === "Home Assistant");
-                postCoverArtSource(state.coverArtSource);
-            });
-            sourceField.appendChild(sourceSelect);
-            coverArtOnlyOptions.appendChild(sourceField);
-            els.setCoverArtSource = sourceSelect;
-        }
         var coverArtAdvancedBody: any = document.createElement("div");
         var coverArtScreensaverSettingsBody: any = document.createElement("div");
         var sleepPreventionToggle: any = toggleRow("Keep Screen Awake During Playback", "sp-set-ss-media-sleep-prevention", state.mediaPlayerSleepPreventionOn);
@@ -221,7 +197,7 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         els.setCoverArtConditions = coverArtConditionsInp;
         els.setCoverArtFilterOptions = coverArtFilterOptions;
         coverArtHomeAssistantOptions.appendChild(inlineDisclosure("Advanced Options", coverArtAdvancedBody, !!state.coverArtAttributeConditions));
-        coverArtHomeAssistantOptions.classList.toggle("sp-visible", !companionSupported || state.coverArtSource === "Home Assistant");
+        coverArtHomeAssistantOptions.classList.add("sp-visible");
         coverArtOnlyOptions.appendChild(coverArtHomeAssistantOptions);
         els.setCoverArtHomeAssistantOptions = coverArtHomeAssistantOptions;
         els.setCoverArtOnlyOptions = coverArtOnlyOptions;

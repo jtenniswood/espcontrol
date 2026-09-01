@@ -4,13 +4,10 @@ import XCTest
 
 private final class FakeMediaRemoteSource: MediaRemoteProviding {
     var isAvailable = true
-    var isCommandAvailable = false
-    var commandResult = false
     var payload: [AnyHashable: Any]?
     var pid: NSNumber?
     var observer: (() -> Void)?
     private(set) var fetchCount = 0
-    private(set) var playPauseCount = 0
     private(set) var stopped = false
 
     func startObserving(_ handler: @escaping () -> Void) -> Bool {
@@ -21,10 +18,6 @@ private final class FakeMediaRemoteSource: MediaRemoteProviding {
     func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void) {
         fetchCount += 1
         completion(payload, pid)
-    }
-    func sendPlayPause() -> Bool {
-        playPauseCount += 1
-        return commandResult
     }
 }
 
@@ -149,42 +142,19 @@ func testRestartRepublishesAnUnchangedSnapshot() {
     XCTAssertEqual(snapshots.map(\.generation), [1, 1])
 }
 
-func testPlayPauseRequiresTheMediaRemoteCommand() {
+func testPlaybackStateChangesOnlyAfterAConfirmedSnapshot() {
     let source = FakeMediaRemoteSource()
-    let provider = SystemNowPlayingProvider(source: source)
-    XCTAssertFalse(provider.isPlayPauseAvailable)
-    XCTAssertEqual(provider.performMediaAction(SystemNowPlayingProvider.playPauseActionIdentifier), false)
-    XCTAssertEqual(source.playPauseCount, 0)
-    XCTAssertNil(provider.performMediaAction("media.next"))
-}
-
-func testPlayPauseWaitsForAConfirmedPlaybackSnapshot() {
-    let source = FakeMediaRemoteSource()
-    source.isCommandAvailable = true
-    source.commandResult = true
     source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 1]
     let provider = SystemNowPlayingProvider(source: source)
     var states: [CompanionPlaybackState] = []
     provider.onSnapshot = { states.append($0.state) }
     provider.refresh()
 
-    XCTAssertTrue(provider.isPlayPauseAvailable)
-    XCTAssertEqual(provider.performMediaAction(SystemNowPlayingProvider.playPauseActionIdentifier), true)
-    XCTAssertEqual(source.playPauseCount, 1)
     XCTAssertEqual(states, [.playing])
 
     source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 0]
     provider.refresh()
     XCTAssertEqual(states, [.playing, .paused])
-}
-
-func testPlayPauseReportsCommandFailureWithoutChangingState() {
-    let source = FakeMediaRemoteSource()
-    source.isCommandAvailable = true
-    source.commandResult = false
-    let provider = SystemNowPlayingProvider(source: source)
-    XCTAssertEqual(provider.performMediaAction(SystemNowPlayingProvider.playPauseActionIdentifier), false)
-    XCTAssertEqual(source.playPauseCount, 1)
 }
 
 func testPanelWebServerURLDropsCompanionPort() {

@@ -4,22 +4,24 @@
 
 int main() {
   assert(!companion_connected());
+  assert(!companion_card_refresh_requested().load());
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PLAYING)) == "Playing");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PAUSED)) == "Paused");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::STOPPED)) == "Stopped");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::UNAVAILABLE)) == "Unavailable");
   assert(companion_shortcut_action_valid("shortcut.command+a"));
-  assert(companion_shortcut_label("shortcut.command+a") == "Cmd+A");
+  assert(companion_shortcut_label("shortcut.command+a") == "\U000F0633" "A");
   assert(companion_shortcut_action_valid("shortcut.control+shift+tab"));
-  assert(companion_shortcut_label("shortcut.control+shift+tab") == "Ctrl+Shift+Tab");
+  assert(companion_shortcut_label("shortcut.control+shift+tab") == "\U000F0634\U000F0636" "Tab");
   assert(companion_shortcut_action_valid("shortcut.option+f20"));
+  assert(companion_shortcut_label("shortcut.option+f20") == "\U000F0635" "F20");
+  assert(companion_shortcut_label("shortcut.command+left") == "\U000F0633\U000F004D");
 
   assert(!companion_shortcut_action_valid("shortcut.shift+a"));
   assert(!companion_shortcut_action_valid("shortcut.command+command+a"));
   assert(!companion_shortcut_action_valid("shortcut.command+volumeup"));
   assert(!companion_shortcut_action_valid("shortcut.command+f21"));
   assert(!companion_shortcut_action_valid("com.apple.Safari"));
-  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PLAYING)) == "Playing");
-  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PAUSED)) == "Paused");
-  assert(std::string(companion_play_pause_status(CompanionPlaybackState::STOPPED)) == "Stopped");
-  assert(std::string(companion_play_pause_status(CompanionPlaybackState::UNAVAILABLE)) == "Unavailable");
-  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PLAYING, false)) == "Unavailable");
 
   const std::string url_config = "url.https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice";
   assert(companion_encoded_url(url_config) == "https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice");
@@ -28,17 +30,58 @@ int main() {
   assert(companion_encoded_url("url.https%3A%2F%2Fexample.com|INVOKE").empty());
   assert(companion_encoded_url("url." + std::string(129, 'a')).empty());
 
-  companion_set_actions({{"com.apple.Safari", "Safari"}, {"media.play_pause", "Media Play/Pause"}});
+  const std::string folder_action = "folder.00000000-0000-0000-0000-000000000001";
+  companion_set_actions({{"com.apple.Safari", "Safari"}, {folder_action, "Projects"}});
+  assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
+  companion_set_focused_application("com.apple.Safari");
+  assert(companion_application_focused("com.apple.Safari"));
+  assert(!companion_application_focused("com.google.Chrome"));
+  assert(!companion_application_focused(folder_action));
+  assert(companion_media_action_valid("media.play_pause"));
+  assert(companion_media_action_valid("media.previous"));
+  assert(companion_media_action_valid("media.next"));
+  assert(!companion_media_action_valid("media.delete_everything"));
   assert(!companion_action_available("media.play_pause"));
-  CompanionNowPlayingSnapshot now_playing;
-  now_playing.generation = 1;
-  now_playing.playback_state = CompanionPlaybackState::PAUSED;
-  companion_set_now_playing(now_playing);
+  companion_set_media_actions_supported(true);
+  assert(!companion_action_available("media.play_pause"));
+  CompanionNowPlayingSnapshot paused_snapshot;
+  paused_snapshot.playback_state = CompanionPlaybackState::PAUSED;
+  companion_set_now_playing(paused_snapshot);
   assert(companion_action_available("media.play_pause"));
+  bool media_invoked = false;
+  register_companion_action_sender([&media_invoked](const std::string &action,
+                                                    const std::string &request) {
+    media_invoked = action == "media.play_pause" && request == "media-1";
+    return media_invoked;
+  });
+  assert(invoke_companion_action("media.play_pause", "media-1"));
+  assert(media_invoked);
+  assert(companion_runtime_snapshot().now_playing.playback_state == CompanionPlaybackState::PAUSED);
+  assert(companion_volume_control_valid("media.output_volume"));
+  assert(companion_volume_control_valid("media.input_volume"));
+  assert(!companion_volume_control_valid("media.screen_brightness"));
+  companion_set_value("media.output_volume", 72);
+  int output_volume = 0;
+  assert(companion_value("media.output_volume", output_volume));
+  assert(output_volume == 72);
+  companion_remove_value("media.output_volume");
+  assert(!companion_value("media.output_volume", output_volume));
+  companion_set_value("media.output_volume", 72);
+  bool volume_invoked = false;
+  register_companion_value_sender([&volume_invoked](const std::string &control, int value,
+                                                     const std::string &request) {
+    volume_invoked = control == "media.output_volume" && value == 64 && request == "volume-1";
+    return volume_invoked;
+  });
+  assert(!invoke_companion_value("media.output_volume", -1, "volume-toggle"));
+  assert(!volume_invoked);
+  assert(invoke_companion_value("media.output_volume", 64, "volume-1"));
+  assert(volume_invoked);
   assert(companion_url_available("com.apple.Safari", url_config));
   assert(!companion_url_available("com.google.Chrome", url_config));
+  assert(companion_action_available(folder_action));
   bool invoked = false;
   register_companion_url_sender([&invoked](const std::string &app, const std::string &url,
                                            const std::string &request) {
@@ -47,19 +90,11 @@ int main() {
   });
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
-  bool media_invoked = false;
-  register_companion_action_sender([&media_invoked](const std::string &action,
-                                                     const std::string &request) {
-    media_invoked = action == "media.play_pause" && request == "test-media";
-    return media_invoked;
-  });
-  assert(invoke_companion_action("media.play_pause", "test-media"));
-  assert(media_invoked);
-  now_playing.playback_state = CompanionPlaybackState::UNAVAILABLE;
-  companion_set_now_playing(now_playing);
-  assert(!companion_action_available("media.play_pause"));
-  assert(!invoke_companion_action("media.play_pause", "test-media-unavailable"));
   companion_set_connected(false);
+  assert(!companion_application_focused("com.apple.Safari"));
+  assert(companion_runtime_snapshot().now_playing.playback_state == CompanionPlaybackState::UNAVAILABLE);
+  companion_set_connected(true);
   assert(!companion_action_available("media.play_pause"));
+  assert(!companion_value("media.output_volume", output_volume));
   return 0;
 }

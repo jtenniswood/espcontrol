@@ -103,6 +103,10 @@ void CompanionService::setup() {
                                        const std::string &request) {
     return this->invoke_url_(app, url, request);
   });
+  register_companion_value_sender([this](const std::string &control, int value,
+                                         const std::string &request) {
+    return this->invoke_value_(control, value, request);
+  });
   auto pairing_snapshot = [this]() {
     const auto runtime = companion_runtime_snapshot();
     return CompanionPairingSnapshot{
@@ -147,7 +151,6 @@ void CompanionService::loop() {
     if (!this->server_ || httpd_queue_work(this->server_, &CompanionService::authentication_expiry_work_, this) != ESP_OK)
       this->authentication_expiry_queued_.store(false);
   }
-  companion_refresh_cards_if_requested();
 }
 
 void CompanionService::dump_config() {
@@ -357,6 +360,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     }
     if (this->authenticated_socket_ != -1 && this->authenticated_socket_ != socket_fd) httpd_sess_trigger_close(this->server_, this->authenticated_socket_);
     this->authenticated_socket_ = socket_fd;
+    companion_set_media_actions_supported(false);
     this->forget_unauthenticated_socket_(socket_fd);
     this->set_connected_(true);
     {
@@ -426,7 +430,13 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     this->expire_unauthenticated_socket_(socket_fd);
     return;
   }
-  if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
+  if (parts[0] == "CAPABILITIES" && (parts.size() == 1 || parts.size() == 2)) {
+    const auto capabilities = parts.size() == 2
+      ? split(parts[1], ',') : std::vector<std::string>{};
+    companion_set_media_actions_supported(
+      std::find(capabilities.begin(), capabilities.end(), "media_actions") != capabilities.end());
+    this->send_(socket_fd, "RESULT|capabilities|ok");
+  } else if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
     const auto catalogue = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
     std::vector<CompanionAction> actions;
     for (const auto &entry : catalogue) {
@@ -440,6 +450,20 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     // Result messages are intentionally shown only in diagnostics/logging;
     // cards do not optimistically claim a Mac app opened.
     ESP_LOGD(TAG, "Mac result: %s", message.c_str());
+  } else if (parts[0] == "STATE" && parts.size() == 3 &&
+             companion_volume_control_valid(parts[1])) {
+    if (parts[2] == "unavailable") {
+      companion_remove_value(parts[1]);
+      return;
+    }
+    char *end = nullptr;
+    const long value = std::strtol(parts[2].c_str(), &end, 10);
+    if (end && *end == '\0' && value >= 0 && value <= 100) {
+      companion_set_value(parts[1], static_cast<int>(value));
+    }
+  } else if (parts[0] == "FOCUS" && parts.size() == 2 &&
+             (parts[1].empty() || safe_field(parts[1], 96))) {
+    companion_set_focused_application(parts[1]);
   } else if (parts[0] == "HEARTBEAT") {
     this->send_(socket_fd, "HEARTBEAT|ok");
   }
@@ -695,6 +719,16 @@ bool CompanionService::invoke_url_(const std::string &app_id, const std::string 
       !safe_field(encoded_url, 128) || !safe_field(request_id, 64)) return false;
   this->send_(this->authenticated_socket_,
               "OPEN_URL|" + request_id + "|" + app_id + "|" + encoded_url);
+  return true;
+}
+
+bool CompanionService::invoke_value_(const std::string &control_id, int value,
+                                     const std::string &request_id) {
+  if (this->authenticated_socket_ < 0 ||
+      !companion_volume_control_valid(control_id) ||
+      value < 0 || value > 100 || !safe_field(request_id, 64)) return false;
+  this->send_(this->authenticated_socket_,
+              "SET_VALUE|" + request_id + "|" + control_id + "|" + std::to_string(value));
   return true;
 }
 

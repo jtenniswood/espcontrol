@@ -12,6 +12,8 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var mode: Mode = .authenticate
     private var receiveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var connectionTimeoutTask: Task<Void, Never>?
+    private var heartbeatTask: Task<Void, Never>?
     private var pendingCertificateFingerprint: String?
     private var shouldReconnect = false
     private var hasTerminalConnectionError = false
@@ -51,6 +53,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         task.resume()
         store.updateStatus("Connecting…")
         receive(from: task)
+        startConnectionTimeout(for: task)
     }
 
     func disconnect() {
@@ -62,6 +65,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     private func tearDownConnection() {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         receiveTask?.cancel()
         receiveTask = nil
         task?.cancel(with: .goingAway, reason: nil)
@@ -75,16 +82,32 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         switch mode {
         case .pair(let code): send("PAIR|\(code)")
         case .authenticate:
-            guard let credential = KeychainStore.load(service: KeychainStore.service, account: store.panelHost) else {
-                store.updateStatus("Start pairing in the panel web settings")
+            authenticate(on: webSocketTask)
+        }
+    }
+
+    private func authenticate(on webSocketTask: URLSessionWebSocketTask) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        let host = store.panelHost
+        store.updateStatus("Authenticating…")
+        Task { [weak self, weak webSocketTask] in
+            let credential = await Task.detached(priority: .userInitiated) {
+                KeychainStore.load(service: KeychainStore.service, account: host)
+            }.value
+            guard let self, let webSocketTask, self.task === webSocketTask else { return }
+            guard let credential else {
+                self.store.updateStatus("Unlock the Mac or allow Keychain access to reconnect")
+                self.handleConnectionFailure(for: webSocketTask)
                 return
             }
-            let sequence = nextAuthenticationSequence()
+            let sequence = self.nextAuthenticationSequence()
             let nonce = UUID().uuidString
             let signed = "AUTH|\(sequence)|\(nonce)"
             let key = SymmetricKey(data: credential)
             let signature = HMAC<SHA256>.authenticationCode(for: Data(signed.utf8), using: key)
-            send("\(signed)|\(signature.map { String(format: "%02x", $0) }.joined())")
+            self.startConnectionTimeout(for: webSocketTask)
+            self.send("\(signed)|\(signature.map { String(format: "%02x", $0) }.joined())")
         }
     }
 
@@ -101,13 +124,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
-        guard task === webSocketTask else { return }
-        task = nil
-        receiveTask?.cancel()
-        receiveTask = nil
-        session?.invalidateAndCancel()
-        session = nil
-        scheduleReconnect()
+        handleConnectionFailure(for: webSocketTask)
     }
 
     func urlSession(_: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
@@ -118,7 +135,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             completionHandler(.performDefaultHandling, nil); return
         }
         let fingerprint = SHA256.hash(data: SecCertificateCopyData(certificate) as Data).map { String(format: "%02x", $0) }.joined()
-        let saved = UserDefaults.standard.string(forKey: certificateFingerprintKey)
+        let saved = store.stringPreference(forKey: certificateFingerprintKey)
         if let saved, saved != fingerprint {
             shouldReconnect = false
             hasTerminalConnectionError = true
@@ -147,16 +164,54 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
                     guard !Task.isCancelled, self.task === task else { return }
                     if case .string(let value) = message { self.handle(value) }
                 } catch {
-                    guard !Task.isCancelled, self.task === task else { return }
-                    self.task = nil
-                    self.receiveTask = nil
-                    self.session?.invalidateAndCancel()
-                    self.session = nil
-                    self.scheduleReconnect()
+                    guard !Task.isCancelled else { return }
+                    self.handleConnectionFailure(for: task)
                     return
                 }
             }
         }
+    }
+
+    private func startConnectionTimeout(for task: URLSessionWebSocketTask) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, let self, self.task === task, !self.store.isConnected else { return }
+            self.store.updateStatus("Panel did not respond — reconnecting…")
+            self.handleConnectionFailure(for: task)
+        }
+    }
+
+    private func startHeartbeat(for task: URLSessionWebSocketTask) {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled, let self, self.task === task else { return }
+                task.sendPing { [weak self, weak task] error in
+                    guard error != nil else { return }
+                    Task { @MainActor in
+                        guard let self, let task else { return }
+                        self.handleConnectionFailure(for: task)
+                    }
+                }
+            }
+        }
+    }
+
+    private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
+        guard task === failedTask else { return }
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        receiveTask?.cancel()
+        receiveTask = nil
+        task = nil
+        failedTask.cancel(with: .goingAway, reason: nil)
+        session?.invalidateAndCancel()
+        session = nil
+        scheduleReconnect()
     }
 
     private func scheduleReconnect() {
@@ -192,13 +247,16 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
                 store.updateStatus("Pairing failed: the credential could not be saved in Keychain")
                 return
             }
-            UserDefaults.standard.set(fingerprint, forKey: certificateFingerprintKey)
-            UserDefaults.standard.removeObject(forKey: authenticationSequenceKey)
+            store.setPreference(fingerprint, forKey: certificateFingerprintKey)
+            store.removePreference(forKey: authenticationSequenceKey)
             pendingCertificateFingerprint = nil
             store.updateStatus("Paired — reconnecting")
             connect(mode: .authenticate)
         case "AUTHENTICATED":
-            store.updateStatus("Connected to \(store.panelName)", connected: true)
+            connectionTimeoutTask?.cancel()
+            connectionTimeoutTask = nil
+            store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            if let task { startHeartbeat(for: task) }
             publishCatalogue()
             store.republishCurrentNowPlaying()
         case "CATALOGUE":
@@ -211,6 +269,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             guard parts.count == 4 else { return }
             let opened = store.openURL(encodedURL: parts[3], bundleIdentifier: parts[2])
             send("RESULT|\(parts[1])|\(opened ? "opened" : "not_allowed")")
+        case "SET_VALUE":
+            guard parts.count == 4, let value = Int(parts[3]), (0...100).contains(value) else { return }
+            let changed = store.setMediaControlValue(value, controlIdentifier: parts[2])
+            send("RESULT|\(parts[1])|\(changed ? "performed" : "not_allowed")")
         case "ERROR":
             if parts.count == 3, parts[1] == "authentication_sequence",
                let panelSequence = UInt32(parts[2]), panelSequence < UInt32.max {
@@ -313,14 +375,17 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
+        if SystemMediaController.mediaActionsAvailable {
+            send("CAPABILITIES|media_actions")
+        }
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
-        var entries = store.launchableApps().compactMap { app -> String? in
+        let entries = store.launchableApps().compactMap { app -> String? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
             return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
-        }
-        if store.mediaPlayPauseActionAvailable {
-            entries.insert("\(SystemNowPlayingProvider.playPauseActionIdentifier):Media Play/Pause", at: 0)
+        } + store.folderActions().compactMap { folder -> String? in
+            guard Self.validCatalogueIdentifier(folder.actionIdentifier) else { return nil }
+            return "\(folder.actionIdentifier):\(Self.catalogueLabel(folder.name, fallback: "Folder"))"
         }
         var catalogue = "CATALOG|"
         for entry in entries {
@@ -329,6 +394,23 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             catalogue += separator + entry
         }
         send(catalogue)
+        publishFocusedApplication()
+    }
+
+    func publishFocusedApplication() {
+        let identifier = store.focusedLaunchableApplicationIdentifier()
+        guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
+        send("FOCUS|\(identifier)")
+    }
+
+    func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {
+        for identifier in unavailable.sorted() where Self.validMediaControlIdentifier(identifier) {
+            send("STATE|\(identifier)|unavailable")
+        }
+        for (identifier, value) in values.sorted(by: { $0.key < $1.key }) {
+            guard Self.validMediaControlIdentifier(identifier), (0...100).contains(value) else { continue }
+            send("STATE|\(identifier)|\(value)")
+        }
     }
 
     private func send(_ value: String) { task?.send(.string(value)) { _ in } }
@@ -337,9 +419,9 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var authenticationSequenceKey: String { "companion.authenticationSequence.\(store.panelHost)" }
 
     private func nextAuthenticationSequence() -> UInt32 {
-        let previous = UInt32(clamping: UserDefaults.standard.integer(forKey: authenticationSequenceKey))
+        let previous = UInt32(clamping: store.integerPreference(forKey: authenticationSequenceKey))
         let next = previous &+ 1
-        UserDefaults.standard.set(Int(next), forKey: authenticationSequenceKey)
+        store.setPreference(Int(next), forKey: authenticationSequenceKey)
         return next
     }
 
@@ -347,6 +429,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         !value.isEmpty && value.utf8.count <= 96 && value.utf8.allSatisfy {
             $0 >= 0x20 && $0 <= 0x7e && $0 != 0x7c && $0 != 0x3a && $0 != 0x2c
         }
+    }
+
+    private static func validMediaControlIdentifier(_ value: String) -> Bool {
+        value == SystemMediaController.outputVolumeID || value == SystemMediaController.inputVolumeID
     }
 
     private static func catalogueLabel(_ value: String, fallback: String) -> String {
