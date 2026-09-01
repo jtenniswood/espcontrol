@@ -2183,6 +2183,7 @@
           "button",
           "input_button",
           "input_boolean",
+          "number",
           "input_number",
           "input_select",
           "select"
@@ -5255,7 +5256,9 @@
         "allowInSubpage": true,
         "domains": [
           "light",
-          "fan"
+          "fan",
+          "number",
+          "input_number"
         ],
         "normalization": {
           "fields": {
