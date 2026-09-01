@@ -146,7 +146,9 @@ export function companionModeChangeLabel(
         : previousMode === "shortcut" ? formatCompanionShortcutActionId(previousEntity) : previousAppLabel;
     const nextGeneratedLabel = nextMode === "window" ? companionWindowActionLabel(nextEntity)
         : nextMode === "shortcut" ? formatCompanionShortcutActionId(nextEntity) : "";
-    return companionAppLabel(currentLabel, previousGeneratedLabel, nextGeneratedLabel);
+    const trimmedLabel = currentLabel.trim();
+    return !trimmedLabel || (!!previousGeneratedLabel && trimmedLabel === previousGeneratedLabel)
+        ? nextGeneratedLabel : currentLabel;
 }
 
 const COMPANION_CARD_METADATA = {
@@ -213,6 +215,23 @@ export function registerCompanionCardTypes(
 ): void {
     const { cardBadgePreview, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
+    let companionActionsCache: readonly CompanionAction[] | null = null;
+    let companionActionsRequest: Promise<readonly CompanionAction[]> | null = null;
+
+    function loadCompanionActions(refresh = false): Promise<readonly CompanionAction[]> {
+        if (companionActionsRequest) return companionActionsRequest;
+        if (!refresh && companionActionsCache) return Promise.resolve(companionActionsCache);
+        const request = fetchCompanionActions(fetchImpl).then(function (actions) {
+            companionActionsCache = actions;
+            return actions;
+        });
+        companionActionsRequest = request;
+        void request.then(
+            function () { if (companionActionsRequest === request) companionActionsRequest = null; },
+            function () { if (companionActionsRequest === request) companionActionsRequest = null; },
+        );
+        return request;
+    }
 
     registry.register("companion", {
         label: function () { return cardContractCardLabel("companion"); },
@@ -232,28 +251,35 @@ export function registerCompanionCardTypes(
             helpers.renderCardModeSelector(panel, card, helpers, {
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
-                    onChange: function (this: HTMLSelectElement) {
+                    onChange: async function (this: HTMLSelectElement) {
                         const previousMode = companionCardMode(card);
                         const previousEntity = typeof card.entity === "string" ? card.entity : "";
                         const currentLabel = typeof card.label === "string" ? card.label : "";
-                        const appSelect = document.getElementById(
-                            helpers.idPrefix + "companion-action",
-                        ) as HTMLSelectElement | null;
-                        const previousAppLabel = (previousMode === "app" || previousMode === "url")
-                            && appSelect?.value === previousEntity
-                            ? (appSelect?.selectedOptions[0]?.textContent || "") : "";
-                        const nextEntity = this.value === "shortcut" ? COMPANION_SHORTCUT_PREFIX
-                            : this.value === "window" ? (COMPANION_WINDOW_ACTIONS[0]?.id || "window.close") : "";
+                        const nextMode = this.value;
+                        let previousAppLabel = "";
+                        if (previousMode === "app" || previousMode === "url") {
+                            try {
+                                const actions = await loadCompanionActions();
+                                previousAppLabel = actions.find(function (action) {
+                                    return action.id === previousEntity;
+                                })?.label || "";
+                            } catch {
+                                this.value = previousMode;
+                                return;
+                            }
+                        }
+                        const nextEntity = nextMode === "shortcut" ? COMPANION_SHORTCUT_PREFIX
+                            : nextMode === "window" ? (COMPANION_WINDOW_ACTIONS[0]?.id || "window.close") : "";
                         const nextLabel = companionModeChangeLabel(
                             currentLabel,
                             previousMode,
                             previousEntity,
                             previousAppLabel,
-                            this.value,
+                            nextMode,
                             nextEntity,
                         );
                         card.entity = nextEntity;
-                        card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
+                        card.sensor = nextMode === "url" ? COMPANION_URL_PREFIX : "";
                         helpers.saveField("entity", card.entity);
                         helpers.saveField("sensor", card.sensor);
                         if (nextLabel !== currentLabel) {
@@ -419,7 +445,7 @@ export function registerCompanionCardTypes(
             urlInput.addEventListener("change", saveUrl);
 
             let companionActions: readonly CompanionAction[] = [];
-            fetchCompanionActions(fetchImpl).then(function (actions) {
+            loadCompanionActions(true).then(function (actions) {
                 companionActions = actions;
                 select.replaceChildren();
                 const placeholder = document.createElement("option");

@@ -64,6 +64,14 @@ export function runCompanionShortcutFeatureTests(): void {
       "window", "window.close") !== "Work browser") {
     throw new Error("Switching to Window controls must preserve a custom card label");
   }
+  if (companionModeChangeLabel("Close", "window", "window.close", "",
+      "app", "") !== "") {
+    throw new Error("Leaving Window controls must clear its generated label before selecting an app");
+  }
+  if (companionModeChangeLabel("Desk close", "window", "window.close", "",
+      "shortcut", "shortcut.") !== "Desk close") {
+    throw new Error("Leaving Window controls must preserve a custom card label");
+  }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));
   if (selectAll !== "shortcut.command+a") throw new Error("Command-A shortcut encoding changed");
