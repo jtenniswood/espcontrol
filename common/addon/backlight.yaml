@@ -555,6 +555,28 @@ script:
               espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
       - script.execute: display_mode_reconcile
 
+  # Finish every return to the normal home screen from one place. LVGL page
+  # changes settle asynchronously, so wait briefly before resolving top-layer
+  # visibility, then restore the configured brightness and idle handling only
+  # if the normal active UI still owns the display.
+  - id: display_active_finalize
+    mode: restart
+    then:
+      - delay: 50ms
+      - if:
+          condition:
+            lambda: |-
+              return lv_scr_act() == id(main_page)->obj &&
+                     id(espcontrol_app).display().target_mode_is(
+                         espcontrol::DisplayMode::ACTIVE);
+          then:
+            - script.execute: clock_bar_apply
+            - script.wait: clock_bar_apply
+            - script.execute: backlight_apply_brightness
+            - script.wait: backlight_apply_brightness
+            - script.execute: screensaver_idle_check
+            - script.execute: home_screen_idle_check
+
   # Typed takeover ownership is recorded directly in the controller. Requests
   # continue to update underneath a takeover, so ending it resolves current
   # schedule, presence, media, and idle state instead of restoring a snapshot.

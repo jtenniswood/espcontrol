@@ -53,6 +53,9 @@ globals:
   - id: brightness_mode_last_observed
     type: std::string
     initial_value: '"Sunrise and sunset"'
+  - id: screen_schedule_normal_wake_pending
+    type: bool
+    initial_value: 'false'
   - id: backlight_expected_internal_level
     type: float
     initial_value: '1.0'
@@ -671,14 +674,10 @@ script:
     mode: restart
     then:
       - script.stop: screen_schedule_wake_timeout_check
-      - lambda: |-
-          id(espcontrol_app).display().clear(
-              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
-      - script.execute: screensaver_idle_check
-      - script.execute: home_screen_idle_check
+      - script.execute: display_active_finalize
 
   # ---------------------------------------------------------------------------
   # Keep the screen awake during the scheduled night period
@@ -719,6 +718,17 @@ script:
     then:
       - lambda: |-
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          const bool schedule_was_active = id(espcontrol_app).display().request_active(
+              espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
+          const bool schedule_night = screen_schedule_night_active(
+              id(screen_schedule_trigger).state,
+              id(schedule_enabled).state,
+              id(schedule_presence_detected),
+              now.is_valid(),
+              now.is_valid() ? now.hour : 0,
+              (int) id(schedule_on_hour).state,
+              (int) id(schedule_off_hour).state,
+              id(screen_schedule_sensor_activation).current_option());
           const bool normal_active = screen_schedule_normal_active(
               id(screen_schedule_trigger).state,
               id(schedule_enabled).state,
@@ -742,7 +752,16 @@ script:
             uint32_t timeout_ms = (uint32_t) (timeout_s * 1000.0f);
             if (elapsed >= timeout_ms) id(manual_wake_ms) = 0;
           }
-          id(display_mode_reconcile).execute();
+          id(screen_schedule_normal_wake_pending) =
+              schedule_was_active && !schedule_night;
+      - if:
+          condition:
+            lambda: 'return id(screen_schedule_normal_wake_pending);'
+          then:
+            - globals.set: { id: screen_schedule_normal_wake_pending, value: 'false' }
+            - script.execute: screen_schedule_wake
+          else:
+            - script.execute: display_mode_reconcile
 
   # ---------------------------------------------------------------------------
   # Put the screen back to sleep after a temporary off-hours wake
