@@ -33,7 +33,6 @@ static void jpeg_error_exit(j_common_ptr cinfo) {
 
 static constexpr size_t MAX_JPEG_DOWNLOAD_SIZE = 2 * 1024 * 1024;  // 2 MB
 static constexpr uint32_t JPEG_DECODE_BUDGET_MS = 12;
-static constexpr int JPEG_SCANLINE_BATCH = 8;
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 static jpeg_decoder_handle_t p4_jpeg_decoder() {
@@ -422,40 +421,44 @@ int JpegDecoder::decode_scanlines_() {
 
   const uint32_t start = millis();
   while (this->cinfo_.output_scanline < this->cinfo_.output_height) {
-    for (int i = 0; i < JPEG_SCANLINE_BATCH && this->cinfo_.output_scanline < this->cinfo_.output_height; i++) {
-      uint8_t *row_ptr = this->row_buffer_;
-      jpeg_read_scanlines(&this->cinfo_, &row_ptr, 1);
+    uint8_t *row_ptr = this->row_buffer_;
+    jpeg_read_scanlines(&this->cinfo_, &row_ptr, 1);
 
-      if (this->use_rgb565_) {
-        // Convert RGB888 -> RGB565 in-place (2 bpp fits within the 3 bpp
-        // source buffer, so no separate allocation needed). We read forward
-        // and write forward; the write pointer never overtakes the read
-        // pointer because 2 < 3.
-        uint8_t *dst = this->row_buffer_;
-        for (int x = 0; x < this->out_w_; x++) {
-          uint8_t r = this->row_buffer_[x * 3 + 0];
-          uint8_t g = this->row_buffer_[x * 3 + 1];
-          uint8_t b = this->row_buffer_[x * 3 + 2];
-          uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-          if (this->big_endian_) {
-            dst[0] = rgb565 >> 8;
-            dst[1] = rgb565 & 0xFF;
-          } else {
-            dst[0] = rgb565 & 0xFF;
-            dst[1] = rgb565 >> 8;
-          }
-          dst += 2;
+    if (this->use_rgb565_) {
+      // Convert RGB888 -> RGB565 in-place (2 bpp fits within the 3 bpp
+      // source buffer, so no separate allocation needed). We read forward
+      // and write forward; the write pointer never overtakes the read
+      // pointer because 2 < 3.
+      uint8_t *dst = this->row_buffer_;
+      for (int x = 0; x < this->out_w_; x++) {
+        uint8_t r = this->row_buffer_[x * 3 + 0];
+        uint8_t g = this->row_buffer_[x * 3 + 1];
+        uint8_t b = this->row_buffer_[x * 3 + 2];
+        uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+        if (this->big_endian_) {
+          dst[0] = rgb565 >> 8;
+          dst[1] = rgb565 & 0xFF;
+        } else {
+          dst[0] = rgb565 & 0xFF;
+          dst[1] = rgb565 >> 8;
         }
-        this->draw_rgb565_block(0, this->y_, this->out_w_, 1, this->row_buffer_);
-      } else {
-        for (int x = 0; x < this->out_w_; x++) {
-          Color color(this->row_buffer_[x * 3 + 0], this->row_buffer_[x * 3 + 1], this->row_buffer_[x * 3 + 2]);
-          this->draw(x, this->y_, 1, 1, color);
-        }
+        dst += 2;
       }
-      this->y_++;
+      this->draw_rgb565_block(0, this->y_, this->out_w_, 1,
+                              this->row_buffer_);
+    } else {
+      for (int x = 0; x < this->out_w_; x++) {
+        Color color(this->row_buffer_[x * 3 + 0],
+                    this->row_buffer_[x * 3 + 1],
+                    this->row_buffer_[x * 3 + 2]);
+        this->draw(x, this->y_, 1, 1, color);
+      }
     }
+    this->y_++;
     App.feed_wdt();
+    // Check after every row. Scaling one camera scanline may be noticeably
+    // more expensive than an unscaled line, so an eight-row batch could
+    // overrun the cooperative decode budget and delay LVGL input handling.
     if (millis() - start >= JPEG_DECODE_BUDGET_MS) {
       break;
     }

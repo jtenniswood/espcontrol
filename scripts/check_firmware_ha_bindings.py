@@ -2127,7 +2127,15 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
     errors: list[str] = []
     if "IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX" not in text:
         errors.append(f"{rel}: cap high-resolution image card modal downloads")
-    if "IMAGE_CARD_MAX_CONTEXTS = 6" not in text:
+    if (
+        "IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX" not in text
+        or "image_pipeline_modal_max_target_side" not in text
+    ):
+        errors.append(f"{rel}: cap constrained-display image card modals at 320 pixels")
+    if (
+        "#define ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS 6" not in text
+        or "IMAGE_CARD_MAX_CONTEXTS = ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS" not in text
+    ):
         errors.append(f"{rel}: support six concurrent image cards on P4 displays")
     if "image_card_limit_target_size" not in text:
         errors.append(f"{rel}: scale image card modal downloads to a display-appropriate size")
@@ -2135,7 +2143,23 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: check free memory before image-card downloads")
     if "MALLOC_CAP_SPIRAM" not in text or "external_largest" not in text:
         errors.append(f"{rel}: include PSRAM in image-card memory checks")
-    if "ctx->image->cancel_update();" not in text:
+    if (
+        "image_pipeline_memory_failure" not in text
+        or "IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES" not in text
+        or "IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES" not in text
+    ):
+        errors.append(f"{rel}: guard constrained internal RAM separately from PSRAM")
+    if (
+        "image_card_release_modal_cache" not in text
+        or "image_card_retain_modal_cache" not in text
+        or "modal_image->release()" not in text
+    ):
+        errors.append(f"{rel}: release constrained modal image buffers after closing")
+    if (
+        "image_card_preempt_active_tile_for_modal" not in text
+        or "candidate->image->request_is_active()" not in text
+        or "candidate->image->cancel_update();" not in text
+    ):
         errors.append(f"{rel}: cancel in-flight image downloads before opening image card modals")
     if "Deferring image refresh while modal is open" not in text:
         errors.append(f"{rel}: defer image downloads while image card modals are open")
@@ -2334,7 +2358,7 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
     errors: list[str] = []
     image_header = root / "components" / "espcontrol" / "button_grid_image.h"
     p4_package = root / "common" / "device" / "image_cards_6.yaml"
-    s3_package = root / "common" / "device" / "image_cards_1.yaml"
+    s3_package = root / "common" / "device" / "image_cards_2.yaml"
     if not image_header.exists() or not p4_package.exists() or not s3_package.exists():
         return errors
 
@@ -2355,7 +2379,8 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
         "ctx->camera_refresh_pending",
         "image_card_handle_picture(ctx, picture)",
         "IMAGE_CARD_MIN_REPEAT_REFRESH_MS",
-        "image_card_active_download_context()",
+        "ctx->download_active && source_changed",
+        "image_card_pipeline_suspended()",
         "image_card_modal_active_for(ctx)",
     )
     if any(token not in image_text for token in camera_refresh_contract):
@@ -2378,13 +2403,13 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
         )
     if "refresh_camera_cards" in s3_text or "refresh_visible_camera_cards" in s3_text:
         errors.append(
-            "common/device/image_cards_1.yaml: keep the unsupported S3 camera refresh action disabled"
+            "common/device/image_cards_2.yaml: keep the unsupported S3 camera refresh action disabled"
         )
 
     for package_path in sorted((root / "devices").glob("*/packages.yaml")):
         slug = package_path.parent.name
         package_text = package_path.read_text(encoding="utf-8")
-        expected = "image_cards_1.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
+        expected = "image_cards_2.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
         if expected not in package_text:
             errors.append(
                 f"{package_path.relative_to(root)}: include {expected} so camera refresh action support "
@@ -6742,23 +6767,34 @@ def run_self_test() -> int:
     )
     expect_image_card_quality_errors(
         "image card modal requests capped image",
-        "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
+        "#ifndef ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS\n"
+        "#define ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS 6\n"
+        "#endif\n"
+        "constexpr int IMAGE_CARD_MAX_CONTEXTS = ESPCONTROL_IMAGE_CARD_MAX_CONTEXTS;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
+        "constexpr int IMAGE_CARD_CONSTRAINED_MODAL_MAX_TARGET_SIDE_PX = 320;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
+        "constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_FREE_BYTES = 40 * 1024;\n"
+        "constexpr size_t IMAGE_CARD_CONSTRAINED_INTERNAL_LARGEST_BYTES = 24 * 1024;\n"
         "struct ImageCardModalCache {};\n"
         "inline ImageCardModalCache &image_card_modal_cache();\n"
+        "inline bool image_card_retain_modal_cache() { return true; }\n"
+        "inline void image_card_release_modal_cache(ArtworkImage *modal_image) { modal_image->release(); }\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"
         "inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,\n"
         "                                        int width, int height) {\n"
         "  size_t external_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);\n"
+        "  image_pipeline_memory_failure(true, 0, 0, 0, external_largest, 0, 0, 0, 0, 0);\n"
         "  return external_largest > 0;\n"
         "}\n"
         "inline bool image_card_modal_refresh_supported() {\n"
         "  return true;\n"
         "}\n"
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
-        "                                         int *target_width, int *target_height) {}\n"
+        "                                         int *target_width, int *target_height) {\n"
+        "  image_pipeline_modal_max_target_side(false);\n"
+        "}\n"
         "inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {\n"
         "  lv_obj_set_size(ui.loading_widget, width, height);\n"
         "  lv_obj_align(icon, LV_ALIGN_CENTER, 0, -18);\n"
@@ -6781,6 +6817,10 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_modal_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);\n"
+        "  image_card_preempt_active_tile_for_modal();\n"
+        "}\n"
+        "inline void image_card_preempt_active_tile_for_modal() {\n"
+        "  if (candidate->image->request_is_active()) candidate->image->cancel_update();\n"
         "}\n"
         "inline void image_card_show_modal_download_failure(ImageCardCtx *ctx) {\n"
         "  if (image_card_modal_has_preview(ctx)) {\n"
