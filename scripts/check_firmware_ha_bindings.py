@@ -2156,6 +2156,26 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: retain one shared modal image cache for instant reopen")
     if 'image_card_set_loading_state(loading, "Too many")' not in text:
         errors.append(f"{rel}: show a visible image-card limit message when downloaders run out")
+    loading_state = re.search(
+        r"inline\s+void\s+image_card_set_loading_state\s*\(\s*lv_obj_t\s*\*loading_widget.*?"
+        r"(?=\ninline\s+void\s+image_card_set_loading_state\s*\(\s*ImageCardCtx)",
+        text,
+        re.S,
+    )
+    configure_icon = re.search(
+        r"inline\s+void\s+image_card_configure_icon.*?(?=\ninline\s+std::string\s+image_card_join_url)",
+        text,
+        re.S,
+    )
+    loading_state_body = loading_state.group(0) if loading_state else ""
+    configure_icon_body = configure_icon.group(0) if configure_icon else ""
+    if (
+        not loading_state_body
+        or "IMAGE_CARD_LOADING_ICON" in loading_state_body
+        or "lv_label_set_display_text(label, espcontrol_i18n(text))" not in loading_state_body
+        or "lv_label_set_display_text(loading_icon, glyph)" not in configure_icon_body
+    ):
+        errors.append(f"{rel}: preserve the configured image-card icon while loading")
     modal_refresh = re.search(
         r"inline\s+bool\s+image_card_modal_refresh_supported\s*\(\s*\)\s*\{\s*return\s+true\s*;",
         text,
@@ -6545,6 +6565,7 @@ def run_self_test() -> int:
             "check free memory before image-card downloads",
             "include PSRAM in image-card memory checks",
             "show a visible image-card limit message when downloaders run out",
+            "preserve the configured image-card icon while loading",
             "keep modal-quality image refresh enabled on the 4.3-inch P4 screen",
             "size every image-card tile request to its on-screen bounds",
             "log image-card modal close events",
@@ -6632,7 +6653,17 @@ def run_self_test() -> int:
         "  lv_obj_t *loading = image_card_loading_widget(widget);\n"
         "  image_card_set_loading_state(loading, \"Too many\");\n"
         "  return true;\n"
-        "}\n",
+        "}\n"
+        "inline void image_card_set_loading_state(lv_obj_t *loading_widget, const char *text) {\n"
+        "  lv_obj_t *label = image_card_loading_label(loading_widget);\n"
+        "  lv_label_set_display_text(label, espcontrol_i18n(text));\n"
+        "}\n"
+        "inline void image_card_set_loading_state(ImageCardCtx *ctx, const char *text) {}\n"
+        "inline void image_card_configure_icon(BtnSlot &s, const ParsedCfg &p) {\n"
+        "  const char *glyph = find_icon(p.icon.c_str());\n"
+        "  lv_label_set_display_text(loading_icon, glyph);\n"
+        "}\n"
+        "inline std::string image_card_join_url(const std::string &base, const std::string &path) {}\n",
         (),
     )
     expect_image_card_startup_errors(
