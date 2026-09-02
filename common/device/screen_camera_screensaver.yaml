@@ -138,7 +138,7 @@ lvgl:
                 id: camera_screensaver_loading
                 align: CENTER
                 text: !lambda 'return std::string(espcontrol_i18n_key("loading"));'
-                text_color: 0x777777
+                text_color: 0xFFFFFF
                 text_font: ${label_font}
                 hidden: true
 
