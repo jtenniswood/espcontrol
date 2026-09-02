@@ -57,10 +57,11 @@ export function runCompanionShortcutFeatureTests(): void {
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
     throw new Error("Companion cards must use one mode-appropriate label field");
   }
-  if (companionMetricPreviewValue("0") !== "42" ||
-      companionMetricPreviewValue("1") !== "42.0" ||
-      companionMetricPreviewValue("2") !== "42.00") {
-    throw new Error("Companion statistic previews must match the selected precision");
+  if (companionMetricPreviewValue("0", 0.4) !== "42" ||
+      companionMetricPreviewValue("1", 0.4) !== "42.0" ||
+      companionMetricPreviewValue("2", 0.4) !== "42.00" ||
+      companionMetricPreviewValue("0", 0.1) === companionMetricPreviewValue("0", 0.9)) {
+    throw new Error("Companion statistic previews must randomize while matching the selected precision");
   }
   const generatedMetricCard: any = { entity: "stat.cpu", label: "", icon: "Auto" };
   normalizeCompanionCard(generatedMetricCard);
