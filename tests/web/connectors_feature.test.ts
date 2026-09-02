@@ -3,7 +3,6 @@ import {
   homeAssistantConnectorStatusText,
   type ConnectorsStatus,
 } from "../../src/webserver/application/connectors_page";
-import { cardTypeConnector } from "../../src/webserver/features/preview";
 
 function status(overrides: Partial<ConnectorsStatus> = {}): ConnectorsStatus {
   return {
@@ -56,18 +55,5 @@ export function runConnectorsFeatureTests(): void {
   });
   if (!permissionStatus.includes("confirm action permission")) {
     throw new Error("Connected Home Assistant setup must still request action permission");
-  }
-  if (cardTypeConnector("companion") !== "mac_companion" ||
-      cardTypeConnector("slider") !== "home_assistant" ||
-      cardTypeConnector("action") !== "home_assistant_or_local" ||
-      cardTypeConnector("sensor") !== "home_assistant_or_local" ||
-      cardTypeConnector("calendar") !== "home_assistant_or_local" ||
-      cardTypeConnector("subpage") !== "home_assistant_or_local" ||
-      cardTypeConnector("push") !== "home_assistant" ||
-      cardTypeConnector("webhook") !== "network" ||
-      cardTypeConnector("wifi_qr") !== "local" ||
-      cardTypeConnector("wifi_qr_card") !== "local" ||
-      cardTypeConnector("climate") !== "home_assistant") {
-    throw new Error("Card picker connector classifications must remain explicit");
   }
 }

@@ -33,8 +33,6 @@ export interface CardPickerOption {
   readonly icon: string;
   readonly description: string;
   readonly disabled: boolean;
-  readonly connector: "home_assistant" | "mac_companion" | "mixed" |
-    "home_assistant_or_local" | "local" | "network";
 }
 
 interface PickerDetails {
@@ -90,22 +88,6 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   light_brightness: "light_control",
   media_control: "media",
 };
-
-const LOCAL_CARD_TYPES = new Set([
-  "internal", "local_sensor", "screen_lock", "timezone",
-  "wifi_qr", "wifi_qr_card",
-]);
-
-export function cardTypeConnector(key: string): CardPickerOption["connector"] {
-  if (key === "companion") return "mac_companion";
-  if (key === "slider") return "home_assistant";
-  if (key === "action" || key === "sensor" || key === "calendar" || key === "subpage") {
-    return "home_assistant_or_local";
-  }
-  if (key === "webhook") return "network";
-  if (LOCAL_CARD_TYPES.has(key)) return "local";
-  return "home_assistant";
-}
 
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {
   return preview && Object.prototype.hasOwnProperty.call(preview, key) ? preview[key] as T : fallback;
@@ -170,13 +152,7 @@ export function cardTypePickerOptions(
     if (pickerKey && pickerKey !== typeKey) continue;
     if (isSub && !allowInSubpage) continue;
     if (definition.isAvailable && !definition.isAvailable({ isSub }) && selectedTypeKey !== typeKey) continue;
-    options.push({
-      key: typeKey,
-      label,
-      disabled: false,
-      connector: cardTypeConnector(typeKey),
-      ...cardTypePickerDetails(typeKey, label),
-    });
+    options.push({ key: typeKey, label, disabled: false, ...cardTypePickerDetails(typeKey, label) });
   }
   if (selectedUnsupported) {
     const label = `${selectedUnsupported.label} (not available)`;
@@ -184,7 +160,6 @@ export function cardTypePickerOptions(
       key: selectedUnsupported.key,
       label,
       disabled: true,
-      connector: cardTypeConnector(selectedUnsupported.key),
       ...cardTypePickerDetails(selectedUnsupported.key, label),
     });
   }

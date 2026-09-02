@@ -39,9 +39,6 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-connector-status-connected::before{background:var(--success);box-shadow:0 0 0 3px rgba(48,164,108,.16)}" +
         ".sp-connector-steps{margin:0 0 18px;padding-left:22px;color:var(--text2);font-size:.86rem;line-height:1.55}" +
         ".sp-connector-steps li+li{margin-top:7px}" +
-        ".sp-card-type-connector{display:inline-flex;width:max-content;margin:5px 0 3px;padding:2px 7px;border-radius:999px;background:var(--surface2);color:var(--text2);font-size:.65rem;font-weight:600}" +
-        ".sp-card-type-connector-mac_companion{background:rgba(92,115,231,.18);color:var(--accent-hover)}" +
-        ".sp-card-type-connector-home_assistant{background:rgba(65,154,245,.14);color:#8fc5ff}" +
         ".sp-support-btn{position:fixed;right:28px;bottom:28px;z-index:150;display:inline-block;line-height:0}" +
         ".sp-support-link{display:block;width:214px;height:60px;border-radius:999px;overflow:hidden;text-indent:-9999px;white-space:nowrap}" +
         ".sp-support-btn.sp-support-hidden{display:none}" +

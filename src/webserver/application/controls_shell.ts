@@ -124,7 +124,6 @@ export function createControlsShellFeature(
         nav.setAttribute("aria-label", "Primary");
         var tabs: any = [
             { id: "screen", label: "Screen" },
-            { id: "connectors", label: "Connectors" },
             { id: "settings", label: "Settings" },
         ];
         tabs.forEach(function (this: any, t?: any) {
@@ -246,12 +245,13 @@ export function createControlsShellFeature(
         state.activeTab = tab;
         if (els.root)
             els.root.setAttribute("data-active-tab", tab);
-        ["screen", "connectors", "settings"].forEach(function (this: any, t?: any) {
+        ["screen", "settings"].forEach(function (this: any, t?: any) {
             els["tab_" + t].className = "sp-tab" + (tab === t ? " active" : "");
             els["tab_" + t].setAttribute("aria-selected", tab === t ? "true" : "false");
         });
         els.screenPage.className = "sp-page" + (tab === "screen" ? " active" : "");
-        els.connectorsPage.className = "sp-page" + (tab === "connectors" ? " active" : "");
+        if (els.connectorsPage)
+            els.connectorsPage.className = "sp-page" + (tab === "connectors" ? " active" : "");
         els.settingsPage.className = "sp-page" + (tab === "settings" ? " active" : "");
         syncTabChrome();
     }

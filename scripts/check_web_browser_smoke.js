@@ -1021,7 +1021,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
     options.slug === "esp32-p4-86"
       ? ["Display", "Voice & Sounds", "Sleep & Schedule", "Preferences", "System"]
-      : ["Display", "Sleep & Schedule", "Preferences", "System"],
+      : options.slug === "guition-esp32-s3-4848s040"
+        ? ["Display", "Sleep & Schedule", "Preferences", "Companion", "System"]
+        : ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -1730,24 +1732,6 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
   await assertVoiceClockBarPreview(page, label, options.slug === "esp32-p4-86");
-}
-
-async function assertConnectorsPage(page, label, options = {}) {
-  await page.getByRole("tab", { name: "Connectors" }).click();
-  await page.waitForSelector("#sp-connectors.sp-page.active");
-  await page.waitForFunction(() => {
-    const heading = document.querySelector("#sp-connectors .sp-connectors-heading");
-    return heading && heading.textContent === "Connectors";
-  });
-  assert.deepStrictEqual(
-    await page
-      .locator("#sp-connectors .card-header h3")
-      .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    options.slug === "guition-esp32-s3-4848s040"
-      ? ["Home Assistant", "Mac Companion"]
-      : ["Home Assistant"],
-    `${label}: connectors should match the device capabilities`,
-  );
 }
 
 async function assertVoiceClockBarPreview(page, label, supported) {
@@ -5425,7 +5409,6 @@ async function runCase(browser, testCase) {
     );
     await assertCardIconsTopLeft(page, testCase.name);
     await assertMediaCoverArtCompactPreview(page, testCase.name);
-    await assertConnectorsPage(page, testCase.name, testCase);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
