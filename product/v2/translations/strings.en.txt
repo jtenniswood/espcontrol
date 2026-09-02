@@ -170,7 +170,6 @@ swing=Swing
 target=Target
 temporaryhold=Temporaryhold
 today=Today
-todo=Todo
 too_many=Too many
 toggle_this_device=Toggle this device?
 tomorrow=Tomorrow

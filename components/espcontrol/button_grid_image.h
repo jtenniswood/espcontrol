@@ -453,8 +453,6 @@ inline void image_card_set_loading_state(lv_obj_t *loading_widget, const char *t
   if (!loading_widget) return;
   lv_obj_t *btn = lv_obj_get_parent(loading_widget);
   image_card_position_widget(btn, loading_widget, nullptr, nullptr);
-  lv_obj_t *icon = image_card_loading_icon(loading_widget);
-  if (icon) lv_label_set_display_text(icon, IMAGE_CARD_LOADING_ICON);
   lv_obj_t *label = image_card_loading_label(loading_widget);
   if (label) lv_label_set_display_text(label, espcontrol_i18n(text));
   image_card_refresh_loading_layout(loading_widget);
@@ -1364,8 +1362,14 @@ inline void image_card_configure_icon(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     return;
   }
-  lv_label_set_display_text(s.icon_lbl, find_icon(
-    p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon.c_str()));
+  const char *glyph = find_icon(
+    p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon.c_str());
+  lv_label_set_display_text(s.icon_lbl, glyph);
+  lv_obj_t *widget = s.sensor_container
+    ? static_cast<lv_obj_t *>(lv_obj_get_user_data(s.sensor_container))
+    : nullptr;
+  lv_obj_t *loading_icon = image_card_loading_icon(image_card_loading_widget(widget));
+  if (loading_icon) lv_label_set_display_text(loading_icon, glyph);
   lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   image_card_align_icon(s.icon_lbl, s.btn);
 }

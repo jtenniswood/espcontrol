@@ -170,7 +170,6 @@ swing=Sving
 target=Mål
 temporaryhold=Temporaryhold
 today=I dag
-todo=Oppgave
 too_many=For mange
 toggle_this_device=Veksle denne enheten?
 tomorrow=I morgen

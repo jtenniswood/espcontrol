@@ -3,7 +3,7 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "todo", "wifi_qr"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr"]
   },
   "types": {
     "": {
@@ -345,14 +345,6 @@
       "firmwareFamily": "SENSOR",
       "config": { "entity": "sensor.example", "type": "text_sensor" },
       "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" }
-    },
-    "todo": {
-      "classification": "accepted_legacy_input",
-      "canonicalType": "todo",
-      "surfaces": ["web_parser", "firmware"],
-      "firmwareFamily": "TODO",
-      "config": { "entity": "todo.example", "type": "todo" },
-      "lifecycle": { "subscriptions": ["action_response"], "actions": ["home_assistant_service", "modal"], "modalOwner": "todo" }
     },
     "media_cover_art": {
       "classification": "obsolete_implementation_residue",

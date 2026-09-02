@@ -883,9 +883,6 @@ inline void image_card_open_modal(ImageCardCtx *ctx);
 inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj, bool turn_on);
 struct OptionSelectCtx;
 inline void option_select_open_modal(OptionSelectCtx *ctx);
-struct TodoCardCtx;
-inline bool todo_card_context_valid(TodoCardCtx *ctx);
-inline void todo_card_open_modal(TodoCardCtx *ctx);
 struct AlarmCardCtx;
 inline void alarm_card_open_page(AlarmCardCtx *ctx);
 inline bool alarm_card_context_valid(AlarmCardCtx *ctx);
@@ -929,8 +926,6 @@ inline bool alarm_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool media_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
-inline bool legacy_compatibility_driver_handle_main_click(
-    const Context &context, lv_obj_t *button);
 }
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -970,8 +965,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
         context, p, btn_obj)) return;
   if (espcontrol::cards::media_driver_handle_main_click(
         context, p, btn_obj)) return;
-  if (espcontrol::cards::legacy_compatibility_driver_handle_main_click(
-        context, btn_obj)) return;
   ESP_LOGE("card_runtime", "Card has no main-grid action driver: type=%s",
            p.type.c_str());
 }

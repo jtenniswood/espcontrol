@@ -8,7 +8,6 @@
 namespace espcontrol::cards {
 
 inline bool media_driver_matches(const Context &context) {
-  if (context.legacy_dispatch) return false;
   using Driver = card_runtime::CardDriverId;
   switch (context.runtime.driver) {
     case Driver::MEDIA:

@@ -8,8 +8,7 @@
 namespace espcontrol::cards {
 
 inline bool light_control_driver_matches(const Context &context) {
-  return !context.legacy_dispatch &&
-         context.runtime.driver == card_runtime::CardDriverId::LIGHT_CONTROL;
+  return context.runtime.driver == card_runtime::CardDriverId::LIGHT_CONTROL;
 }
 
 inline bool light_control_driver_setup_visual(

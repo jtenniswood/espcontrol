@@ -8,7 +8,7 @@ Use this when adding icon names, glyphs, or firmware font mappings.
 - `common/assets/*glyphs.yaml`
 - `devices/<slug>/device/fonts.yaml`
 
-Only edit manifest font roles or firmware structs after confirming an existing
+Only edit catalog font roles or firmware structs after confirming an existing
 font role cannot solve the layout need.
 
 ## Ask Before
@@ -26,7 +26,7 @@ font role cannot solve the layout need.
 - [ ] Add required text glyphs when labels use new characters.
 - [ ] Update `devices/<slug>/device/fonts.yaml` only for affected devices.
 - [ ] If a new reusable font role is approved, update:
-      `devices/manifest.json`, `scripts/device_profiles.py`,
+      `product/v2/device_catalog.json`, `scripts/device_profiles.py`,
       `scripts/generate_device_slots.py`, and the consuming firmware config
       structure.
 
@@ -41,6 +41,7 @@ python3 scripts/build.py icons
 For font roles or slot/profile data:
 
 ```bash
+python3 scripts/generate_device_manifest.py
 python3 scripts/generate_device_slots.py
 ```
 

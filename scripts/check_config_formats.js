@@ -2647,10 +2647,6 @@ assert.strictEqual(
   hooks.buttonTypePickerKeysFor(false, "fan_speed").indexOf("fan_speed") >= 0,
   true,
   "fan type remains selectable");
-assert.strictEqual(hooks.buttonTypeRuntimeSpec("todo"), null, "todo card type is removed from the webserver");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", false), false, "todo picker is removed");
-assert.deepStrictEqual(Array.from(hooks.cardContractDomains("todo")), [], "todo card has no webserver entity contract");
-assert.strictEqual(hooks.cardLargeNumbersEnabled({ type: "todo", options: "large_numbers" }), false, "todo no longer supports webserver large numbers");
 
 const subpageStateOff = buttonShape({
   label: "Windows",

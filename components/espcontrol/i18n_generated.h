@@ -171,7 +171,6 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Kývání";
   if (std::strcmp(text, "Target") == 0) return "Cíl";
   if (std::strcmp(text, "Today") == 0) return "Dnes";
-  if (std::strcmp(text, "Todo") == 0) return "Úkol";
   if (std::strcmp(text, "Too many") == 0) return "Příliš mnoho";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Přepnout toto zařízení?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Zítra";
@@ -397,7 +396,6 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Sving";
   if (std::strcmp(text, "Target") == 0) return "Mål";
   if (std::strcmp(text, "Today") == 0) return "I dag";
-  if (std::strcmp(text, "Todo") == 0) return "Opgave";
   if (std::strcmp(text, "Too many") == 0) return "For mange";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Skift denne enhed?";
   if (std::strcmp(text, "Tomorrow") == 0) return "I morgen";
@@ -620,7 +618,6 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Schwenken";
   if (std::strcmp(text, "Target") == 0) return "Ziel";
   if (std::strcmp(text, "Today") == 0) return "Heute";
-  if (std::strcmp(text, "Todo") == 0) return "Aufgabe";
   if (std::strcmp(text, "Too many") == 0) return "Zu viele";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Dieses Gerät umschalten?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Morgen";
@@ -850,7 +847,6 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscilación";
   if (std::strcmp(text, "Target") == 0) return "Objetivo";
   if (std::strcmp(text, "Today") == 0) return "Hoy";
-  if (std::strcmp(text, "Todo") == 0) return "Tarea";
   if (std::strcmp(text, "Too many") == 0) return "Demasiados";
   if (std::strcmp(text, "Toggle this device?") == 0) return "¿Alternar este dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Mañana";
@@ -1089,7 +1085,6 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Tavoite";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Väliaikainen pito";
   if (std::strcmp(text, "Today") == 0) return "Tänään";
-  if (std::strcmp(text, "Todo") == 0) return "Tehtävä";
   if (std::strcmp(text, "Too many") == 0) return "Liian monta";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Vaihda tämän laitteen tila?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Huomenna";
@@ -1313,7 +1308,6 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscillation";
   if (std::strcmp(text, "Target") == 0) return "Cible";
   if (std::strcmp(text, "Today") == 0) return "Aujourd'hui";
-  if (std::strcmp(text, "Todo") == 0) return "Tâche";
   if (std::strcmp(text, "Too many") == 0) return "Trop nombreux";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Basculer cet appareil ?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Demain";
@@ -1557,7 +1551,6 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "יעד";
   if (std::strcmp(text, "Temporaryhold") == 0) return "החזקה זמנית";
   if (std::strcmp(text, "Today") == 0) return "היום";
-  if (std::strcmp(text, "Todo") == 0) return "מטלות";
   if (std::strcmp(text, "Too many") == 0) return "יותר מדי";
   if (std::strcmp(text, "Toggle this device?") == 0) return "להחליף את מצב המכשיר?";
   if (std::strcmp(text, "Tomorrow") == 0) return "מחר";
@@ -1799,7 +1792,6 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Célérték";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Ideiglenes tartás";
   if (std::strcmp(text, "Today") == 0) return "Ma";
-  if (std::strcmp(text, "Todo") == 0) return "Teendő";
   if (std::strcmp(text, "Too many") == 0) return "Túl sok";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Átváltja ezt az eszközt?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Holnap";
@@ -2033,7 +2025,6 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscillazione";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Temporaneo";
   if (std::strcmp(text, "Today") == 0) return "Oggi";
-  if (std::strcmp(text, "Todo") == 0) return "Da fare";
   if (std::strcmp(text, "Too many") == 0) return "Troppi";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Commutare questo dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Domani";
@@ -2260,7 +2251,6 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Sving";
   if (std::strcmp(text, "Target") == 0) return "Mål";
   if (std::strcmp(text, "Today") == 0) return "I dag";
-  if (std::strcmp(text, "Todo") == 0) return "Oppgave";
   if (std::strcmp(text, "Too many") == 0) return "For mange";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Veksle denne enheten?";
   if (std::strcmp(text, "Tomorrow") == 0) return "I morgen";
@@ -2491,7 +2481,6 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Zwenken";
   if (std::strcmp(text, "Target") == 0) return "Doel";
   if (std::strcmp(text, "Today") == 0) return "Vandaag";
-  if (std::strcmp(text, "Todo") == 0) return "Taken";
   if (std::strcmp(text, "Too many") == 0) return "Te veel";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Dit apparaat schakelen?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Morgen";
@@ -2717,7 +2706,6 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Ruch wahadłowy";
   if (std::strcmp(text, "Target") == 0) return "Cel";
   if (std::strcmp(text, "Today") == 0) return "Dziś";
-  if (std::strcmp(text, "Todo") == 0) return "Zadanie";
   if (std::strcmp(text, "Too many") == 0) return "Za dużo";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Przełączyć to urządzenie?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Jutro";
@@ -2948,7 +2936,6 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscilação";
   if (std::strcmp(text, "Target") == 0) return "Alvo";
   if (std::strcmp(text, "Today") == 0) return "Hoje";
-  if (std::strcmp(text, "Todo") == 0) return "Tarefa";
   if (std::strcmp(text, "Too many") == 0) return "Muitos";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Amanhã";
@@ -3179,7 +3166,6 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscilação";
   if (std::strcmp(text, "Target") == 0) return "Alvo";
   if (std::strcmp(text, "Today") == 0) return "Hoje";
-  if (std::strcmp(text, "Todo") == 0) return "Tarefa";
   if (std::strcmp(text, "Too many") == 0) return "Demasiados";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Amanhã";
@@ -3416,7 +3402,6 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Țintă";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Menținere temporară";
   if (std::strcmp(text, "Today") == 0) return "Astăzi";
-  if (std::strcmp(text, "Todo") == 0) return "De făcut";
   if (std::strcmp(text, "Too many") == 0) return "Prea multe";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Comuți acest dispozitiv?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Mâine";
@@ -3661,7 +3646,6 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Цель";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Временное удержание";
   if (std::strcmp(text, "Today") == 0) return "Сегодня";
-  if (std::strcmp(text, "Todo") == 0) return "Задачи";
   if (std::strcmp(text, "Too many") == 0) return "Слишком много";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Переключить это устройство?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Завтра";
@@ -3896,7 +3880,6 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Kývanie";
   if (std::strcmp(text, "Target") == 0) return "Cieľ";
   if (std::strcmp(text, "Today") == 0) return "Dnes";
-  if (std::strcmp(text, "Todo") == 0) return "Úloha";
   if (std::strcmp(text, "Too many") == 0) return "Príliš veľa";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Prepnúť toto zariadenie?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Zajtra";
@@ -4132,7 +4115,6 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Cilj";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Začasno zadržanje";
   if (std::strcmp(text, "Today") == 0) return "Danes";
-  if (std::strcmp(text, "Todo") == 0) return "Opravilo";
   if (std::strcmp(text, "Too many") == 0) return "Preveč";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Preklopim to napravo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Jutri";
@@ -4361,7 +4343,6 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Svängning";
   if (std::strcmp(text, "Target") == 0) return "Mål";
   if (std::strcmp(text, "Today") == 0) return "Idag";
-  if (std::strcmp(text, "Todo") == 0) return "Uppgift";
   if (std::strcmp(text, "Too many") == 0) return "För många";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Växla denna enhet?";
   if (std::strcmp(text, "Tomorrow") == 0) return "I morgon";
@@ -4599,7 +4580,6 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Hedef";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Geçici tutma";
   if (std::strcmp(text, "Today") == 0) return "Bugün";
-  if (std::strcmp(text, "Todo") == 0) return "Yapılacak";
   if (std::strcmp(text, "Too many") == 0) return "Çok fazla";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Bu cihazın durumunu değiştir?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Yarın";
@@ -4841,7 +4821,6 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Ціль";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Тимчасове утримання";
   if (std::strcmp(text, "Today") == 0) return "Сьогодні";
-  if (std::strcmp(text, "Todo") == 0) return "Справи";
   if (std::strcmp(text, "Too many") == 0) return "Забагато";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Перемкнути цей пристрій?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Завтра";
@@ -5088,7 +5067,6 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Target";
   if (std::strcmp(key, "temporaryhold") == 0) return "Temporaryhold";
   if (std::strcmp(key, "today") == 0) return "Today";
-  if (std::strcmp(key, "todo") == 0) return "Todo";
   if (std::strcmp(key, "too_many") == 0) return "Too many";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Toggle this device?";
   if (std::strcmp(key, "tomorrow") == 0) return "Tomorrow";
@@ -5324,7 +5302,6 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Kývání";
   if (std::strcmp(key, "target") == 0) return "Cíl";
   if (std::strcmp(key, "today") == 0) return "Dnes";
-  if (std::strcmp(key, "todo") == 0) return "Úkol";
   if (std::strcmp(key, "too_many") == 0) return "Příliš mnoho";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Přepnout toto zařízení?";
   if (std::strcmp(key, "tomorrow") == 0) return "Zítra";
@@ -5551,7 +5528,6 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Sving";
   if (std::strcmp(key, "target") == 0) return "Mål";
   if (std::strcmp(key, "today") == 0) return "I dag";
-  if (std::strcmp(key, "todo") == 0) return "Opgave";
   if (std::strcmp(key, "too_many") == 0) return "For mange";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Skift denne enhed?";
   if (std::strcmp(key, "tomorrow") == 0) return "I morgen";
@@ -5775,7 +5751,6 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Schwenken";
   if (std::strcmp(key, "target") == 0) return "Ziel";
   if (std::strcmp(key, "today") == 0) return "Heute";
-  if (std::strcmp(key, "todo") == 0) return "Aufgabe";
   if (std::strcmp(key, "too_many") == 0) return "Zu viele";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Dieses Gerät umschalten?";
   if (std::strcmp(key, "tomorrow") == 0) return "Morgen";
@@ -6006,7 +5981,6 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscilación";
   if (std::strcmp(key, "target") == 0) return "Objetivo";
   if (std::strcmp(key, "today") == 0) return "Hoy";
-  if (std::strcmp(key, "todo") == 0) return "Tarea";
   if (std::strcmp(key, "too_many") == 0) return "Demasiados";
   if (std::strcmp(key, "toggle_this_device") == 0) return "¿Alternar este dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Mañana";
@@ -6246,7 +6220,6 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Tavoite";
   if (std::strcmp(key, "temporaryhold") == 0) return "Väliaikainen pito";
   if (std::strcmp(key, "today") == 0) return "Tänään";
-  if (std::strcmp(key, "todo") == 0) return "Tehtävä";
   if (std::strcmp(key, "too_many") == 0) return "Liian monta";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Vaihda tämän laitteen tila?";
   if (std::strcmp(key, "tomorrow") == 0) return "Huomenna";
@@ -6471,7 +6444,6 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscillation";
   if (std::strcmp(key, "target") == 0) return "Cible";
   if (std::strcmp(key, "today") == 0) return "Aujourd'hui";
-  if (std::strcmp(key, "todo") == 0) return "Tâche";
   if (std::strcmp(key, "too_many") == 0) return "Trop nombreux";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Basculer cet appareil ?";
   if (std::strcmp(key, "tomorrow") == 0) return "Demain";
@@ -6716,7 +6688,6 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "target") == 0) return "יעד";
   if (std::strcmp(key, "temporaryhold") == 0) return "החזקה זמנית";
   if (std::strcmp(key, "today") == 0) return "היום";
-  if (std::strcmp(key, "todo") == 0) return "מטלות";
   if (std::strcmp(key, "too_many") == 0) return "יותר מדי";
   if (std::strcmp(key, "toggle_this_device") == 0) return "להחליף את מצב המכשיר?";
   if (std::strcmp(key, "tomorrow") == 0) return "מחר";
@@ -6959,7 +6930,6 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Célérték";
   if (std::strcmp(key, "temporaryhold") == 0) return "Ideiglenes tartás";
   if (std::strcmp(key, "today") == 0) return "Ma";
-  if (std::strcmp(key, "todo") == 0) return "Teendő";
   if (std::strcmp(key, "too_many") == 0) return "Túl sok";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Átváltja ezt az eszközt?";
   if (std::strcmp(key, "tomorrow") == 0) return "Holnap";
@@ -7194,7 +7164,6 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscillazione";
   if (std::strcmp(key, "temporaryhold") == 0) return "Temporaneo";
   if (std::strcmp(key, "today") == 0) return "Oggi";
-  if (std::strcmp(key, "todo") == 0) return "Da fare";
   if (std::strcmp(key, "too_many") == 0) return "Troppi";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Commutare questo dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Domani";
@@ -7422,7 +7391,6 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Sving";
   if (std::strcmp(key, "target") == 0) return "Mål";
   if (std::strcmp(key, "today") == 0) return "I dag";
-  if (std::strcmp(key, "todo") == 0) return "Oppgave";
   if (std::strcmp(key, "too_many") == 0) return "For mange";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Veksle denne enheten?";
   if (std::strcmp(key, "tomorrow") == 0) return "I morgen";
@@ -7653,7 +7621,6 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Zwenken";
   if (std::strcmp(key, "target") == 0) return "Doel";
   if (std::strcmp(key, "today") == 0) return "Vandaag";
-  if (std::strcmp(key, "todo") == 0) return "Taken";
   if (std::strcmp(key, "too_many") == 0) return "Te veel";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Dit apparaat schakelen?";
   if (std::strcmp(key, "tomorrow") == 0) return "Morgen";
@@ -7880,7 +7847,6 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Ruch wahadłowy";
   if (std::strcmp(key, "target") == 0) return "Cel";
   if (std::strcmp(key, "today") == 0) return "Dziś";
-  if (std::strcmp(key, "todo") == 0) return "Zadanie";
   if (std::strcmp(key, "too_many") == 0) return "Za dużo";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Przełączyć to urządzenie?";
   if (std::strcmp(key, "tomorrow") == 0) return "Jutro";
@@ -8112,7 +8078,6 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscilação";
   if (std::strcmp(key, "target") == 0) return "Alvo";
   if (std::strcmp(key, "today") == 0) return "Hoje";
-  if (std::strcmp(key, "todo") == 0) return "Tarefa";
   if (std::strcmp(key, "too_many") == 0) return "Muitos";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Amanhã";
@@ -8344,7 +8309,6 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscilação";
   if (std::strcmp(key, "target") == 0) return "Alvo";
   if (std::strcmp(key, "today") == 0) return "Hoje";
-  if (std::strcmp(key, "todo") == 0) return "Tarefa";
   if (std::strcmp(key, "too_many") == 0) return "Demasiados";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Amanhã";
@@ -8582,7 +8546,6 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Țintă";
   if (std::strcmp(key, "temporaryhold") == 0) return "Menținere temporară";
   if (std::strcmp(key, "today") == 0) return "Astăzi";
-  if (std::strcmp(key, "todo") == 0) return "De făcut";
   if (std::strcmp(key, "too_many") == 0) return "Prea multe";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Comuți acest dispozitiv?";
   if (std::strcmp(key, "tomorrow") == 0) return "Mâine";
@@ -8828,7 +8791,6 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Цель";
   if (std::strcmp(key, "temporaryhold") == 0) return "Временное удержание";
   if (std::strcmp(key, "today") == 0) return "Сегодня";
-  if (std::strcmp(key, "todo") == 0) return "Задачи";
   if (std::strcmp(key, "too_many") == 0) return "Слишком много";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Переключить это устройство?";
   if (std::strcmp(key, "tomorrow") == 0) return "Завтра";
@@ -9064,7 +9026,6 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Kývanie";
   if (std::strcmp(key, "target") == 0) return "Cieľ";
   if (std::strcmp(key, "today") == 0) return "Dnes";
-  if (std::strcmp(key, "todo") == 0) return "Úloha";
   if (std::strcmp(key, "too_many") == 0) return "Príliš veľa";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Prepnúť toto zariadenie?";
   if (std::strcmp(key, "tomorrow") == 0) return "Zajtra";
@@ -9301,7 +9262,6 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Cilj";
   if (std::strcmp(key, "temporaryhold") == 0) return "Začasno zadržanje";
   if (std::strcmp(key, "today") == 0) return "Danes";
-  if (std::strcmp(key, "todo") == 0) return "Opravilo";
   if (std::strcmp(key, "too_many") == 0) return "Preveč";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Preklopim to napravo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Jutri";
@@ -9531,7 +9491,6 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Svängning";
   if (std::strcmp(key, "target") == 0) return "Mål";
   if (std::strcmp(key, "today") == 0) return "Idag";
-  if (std::strcmp(key, "todo") == 0) return "Uppgift";
   if (std::strcmp(key, "too_many") == 0) return "För många";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Växla denna enhet?";
   if (std::strcmp(key, "tomorrow") == 0) return "I morgon";
@@ -9770,7 +9729,6 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Hedef";
   if (std::strcmp(key, "temporaryhold") == 0) return "Geçici tutma";
   if (std::strcmp(key, "today") == 0) return "Bugün";
-  if (std::strcmp(key, "todo") == 0) return "Yapılacak";
   if (std::strcmp(key, "too_many") == 0) return "Çok fazla";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Bu cihazın durumunu değiştir?";
   if (std::strcmp(key, "tomorrow") == 0) return "Yarın";
@@ -10013,7 +9971,6 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Ціль";
   if (std::strcmp(key, "temporaryhold") == 0) return "Тимчасове утримання";
   if (std::strcmp(key, "today") == 0) return "Сьогодні";
-  if (std::strcmp(key, "todo") == 0) return "Справи";
   if (std::strcmp(key, "too_many") == 0) return "Забагато";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Перемкнути цей пристрій?";
   if (std::strcmp(key, "tomorrow") == 0) return "Завтра";
