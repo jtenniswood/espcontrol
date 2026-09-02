@@ -450,8 +450,7 @@ struct CompanionSliderRef {
 
 inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
   if (!button) return;
-  if (companion_action_active(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
-  else lv_obj_clear_state(button, LV_STATE_CHECKED);
+  set_card_checked_state(button, companion_action_active(action_id));
 }
 
 inline std::vector<CompanionCardRef> &companion_card_refs() {
@@ -515,7 +514,10 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
   if (existing != refs.end()) {
     existing->action_id = action_id;
     existing->url_config = url_config;
-    existing->text_label = text_label;
+    // The periodic config tracker does not have the label pointer. Preserve
+    // the pointer registered while the card was rendered so state updates can
+    // continue replacing the Play/Pause label.
+    if (text_label) existing->text_label = text_label;
     return;
   }
   refs.push_back({button, text_label, action_id, url_config});
