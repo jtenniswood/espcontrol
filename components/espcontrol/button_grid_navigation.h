@@ -238,6 +238,7 @@ inline bool navigation_restore_subpage_slot(int slot) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr || entry->screen == nullptr) return false;
   lv_scr_load_anim(entry->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  refresh_visible_image_cards();
   return true;
 }
 
@@ -299,6 +300,7 @@ inline bool navigation_open_first_kind(const std::string &kind,
     return false;
   }
   lv_scr_load_anim(target->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  refresh_visible_image_cards();
   return true;
 }
 

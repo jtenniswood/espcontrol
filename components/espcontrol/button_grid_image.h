@@ -2596,6 +2596,26 @@ inline void refresh_visible_camera_cards() {
   }
 }
 
+// Re-entering a subpage after the S3 camera screensaver suspended the image
+// pipeline must explicitly rebuild any image or media-artwork card that was
+// hidden while the dashboard was handed back to the camera.
+inline void refresh_visible_image_cards() {
+  if (!ha_api_connected() || image_card_pipeline_suspended()) return;
+  ImageCardCtx *contexts = image_card_contexts();
+  const uint32_t now = esphome::millis();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ImageCardCtx *ctx = &contexts[i];
+    if (!image_card_context_visible_on_active_screen(ctx)) continue;
+    if (!ctx->image_ready) {
+      ctx->retry_deadline_ms = now + IMAGE_CARD_STARTUP_RETRY_MS;
+      image_card_set_loading_state(ctx, "Loading", true);
+    }
+    ctx->next_picture_retry_ms = 0;
+    ctx->next_download_retry_ms = 0;
+    image_card_refresh_current_picture(ctx);
+  }
+}
+
 inline void refresh_image_cards() {
   if (!ha_api_connected()) return;
   if (image_card_pipeline_suspended()) return;

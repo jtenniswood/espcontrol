@@ -2036,6 +2036,7 @@ inline void grid_phase2(
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+      refresh_visible_image_cards();
     }, LV_EVENT_CLICKED, main_page_obj);
     screen_lock_register_controlled_button(back_btn);
     navigation_register_subpage_back_button(si + 1, back_slot);

@@ -539,6 +539,15 @@ select:
       - "Fill"
     web_server:
       sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::CAMERA);
+            then:
+              - script.execute: camera_screensaver_request_image
 
   - platform: template
     name: "${entity_screen_temperature_unit}"
