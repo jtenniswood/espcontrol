@@ -34,7 +34,7 @@ When the screensaver activates, you can choose what happens:
 - **Screen Dimmed** — keeps the normal screen visible, but lowers the backlight. The first tap wakes the screen instead of pressing a card.
 - **Clock** — shows a large drifting clock at reduced brightness (the default). The clock repositions itself periodically to prevent burn-in.
 - **Display Off** — switches to a black screen and turns the backlight off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk; this should not be visible.
-- **Camera** — on ESP32-P4 panels, shows the selected `camera.*` or `image.*` entity full-screen. The whole image is kept visible, with black space where its shape does not match the panel; it is never cropped. The image refreshes when Home Assistant reports an update and the previous successful image stays visible while a replacement downloads. If no image is available, the panel shows **Camera unavailable** and retries safely.
+- **Camera** — on ESP32-P4 panels and the 4-inch 4848S040 ESP32-S3 panel, shows the selected `camera.*` or `image.*` entity full-screen. Choose **Fit** to keep the whole image visible (with black space where its shape does not match the panel) or **Fill** to crop the image to the screen. The image refreshes when Home Assistant reports an update and the previous successful image stays visible while a replacement downloads. If no image is available, the panel shows **Camera unavailable** and retries safely.
 
 When Screen Dimmed is selected, Manual brightness mode uses **Dimmed Screen Brightness**. Automatic and Timed brightness modes use separate **Daytime Dimmed Screen Brightness** and **Nighttime Dimmed Screen Brightness** values, changing at the same sunrise/sunset or dawn/dusk boundary as the main screen. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values.
 
@@ -44,7 +44,7 @@ Instead of a timer, the screensaver is controlled by a motion or presence sensor
 
 To use this, enter the name of your motion or presence sensor from Home Assistant (for example, `binary_sensor.hallway_presence`) in **Presence Entity**. This remains the Screensaver's own sensor; Night Schedule has a separate **Sensor Entity** when it uses Sensor mode.
 
-Below the presence entity, use **Then** to choose whether the panel dims the screen, shows the clock, displays a camera/image, or turns the display off when nobody is detected. Camera is available on ESP32-P4 panels and uses the same **Camera Entity** setting as Timer mode.
+Below the presence entity, use **Then** to choose whether the panel dims the screen, shows the clock, displays a camera/image, or turns the display off when nobody is detected. Camera is available on ESP32-P4 panels and the 4-inch 4848S040 ESP32-S3 panel, using the same **Camera Entity** setting as Timer mode. The **Fit** and **Fill** choices apply here too.
 
 Presence wakes the panel from those dimmed, clock, camera, or display-off states. When the normal cards or media cover art are already visible, presence does not change the page or restart the cover-art timer.
 
