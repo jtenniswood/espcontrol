@@ -5,6 +5,10 @@
 #include "grid_navigation_service.h"
 #include "espcontrol_app_core.h"
 
+// Implemented by button_grid_image.h; navigation calls this when a subpage
+// becomes active after the S3 camera screensaver released image buffers.
+inline void refresh_visible_image_cards();
+
 // ── Home Assistant-driven home-screen navigation ─────────────────────
 
 struct NavigationHomeTargetEntry {

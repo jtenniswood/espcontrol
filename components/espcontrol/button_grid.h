@@ -30,10 +30,6 @@
 #include "backlight.h"
 #include "alarm_delay_audio.h"
 
-// Implemented by button_grid_image.h; navigation calls this when a subpage
-// becomes active after the S3 camera screensaver released image buffers.
-inline void refresh_visible_image_cards();
-
 // Public compatibility include. Device YAML includes this file, while the
 // implementation is split into focused headers below for easier review.
 #include "button_grid_limits.h"
