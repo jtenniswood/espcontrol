@@ -13,7 +13,7 @@ Camera cards are display cards. They do not stream live video, pan the camera, o
 ::: info Display limits
 ESP32-P4 screens support up to six Camera or Media Cover Art cards. The 4-inch ESP32-S3 supports two shared image cards, allowing one Camera Card alongside one Media Cover Art card.
 
-On ESP32-P4 panels, the same `camera.*` and `image.*` entities can also be selected as the **Camera** screensaver action in **Settings > Sleep & Schedule > Screensaver**. That full-screen view is separate from the Camera-card pool, always uses **Show full image** framing, and does not consume a Camera-card slot.
+On ESP32-P4 panels and the 4-inch ESP32-S3, the same `camera.*` and `image.*` entities can also be selected as the **Camera** screensaver action in **Settings > Sleep & Schedule > Screensaver**. That full-screen view is separate from the Camera-card pool, supports **Crop to fit** and **Show full image** framing, and does not consume a Camera-card slot.
 
 :::
 
