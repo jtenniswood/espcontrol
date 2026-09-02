@@ -252,7 +252,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
-            let supportsMetrics = parts.count >= 2 && parts[1] == "2"
+            // Version 1 explicitly predates system metrics. A short legacy
+            // authentication response has no capability declaration, so
+            // retain the original connected-panel behaviour for it.
+            let supportsMetrics = parts.count < 2 || (UInt32(parts[1]) ?? 0) >= 2
             store.setSystemMetricsSupported(supportsMetrics)
             if let task { startHeartbeat(for: task) }
             publishCatalogue()
