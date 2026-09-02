@@ -75,12 +75,14 @@ artwork_image:
                 id: camera_screensaver_image
                 src: camera_screensaver_downloaded_image
             - lvgl.widget.hide: camera_screensaver_unavailable
+            - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_image
     on_error:
       - if:
           condition:
             lambda: 'return !id(camera_screensaver_image_available);'
           then:
+            - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_unavailable
       - if:
           condition:
@@ -132,6 +134,13 @@ lvgl:
                 text_color: 0x777777
                 text_font: ${label_font}
                 hidden: true
+            - label:
+                id: camera_screensaver_loading
+                align: CENTER
+                text: !lambda 'return std::string(espcontrol_i18n_key("loading"));'
+                text_color: 0x777777
+                text_font: ${label_font}
+                hidden: true
 
 script:
   - id: camera_screensaver_config_changed
@@ -162,6 +171,12 @@ script:
               return ${screensaver_camera_supported} &&
                      id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);
           then:
+            - if:
+                condition:
+                  lambda: 'return !id(camera_screensaver_image_available);'
+                then:
+                  - lvgl.widget.hide: camera_screensaver_unavailable
+                  - lvgl.widget.show: camera_screensaver_loading
             - lambda: |-
                 #if defined(CONFIG_IDF_TARGET_ESP32S3)
                 constexpr int camera_decode_width = 320;
@@ -273,6 +288,7 @@ script:
             lambda: 'return !id(camera_screensaver_image_available);'
           then:
             - lvgl.widget.hide: camera_screensaver_image
+            - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_unavailable
 
   - id: display_mode_effect_camera
