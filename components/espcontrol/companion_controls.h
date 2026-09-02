@@ -450,7 +450,8 @@ struct CompanionSliderRef {
 
 inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
   if (!button) return;
-  set_card_checked_state(button, companion_action_active(action_id));
+  if (companion_action_active(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
+  else lv_obj_clear_state(button, LV_STATE_CHECKED);
 }
 
 inline std::vector<CompanionCardRef> &companion_card_refs() {
