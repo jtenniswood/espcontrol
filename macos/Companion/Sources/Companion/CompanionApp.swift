@@ -321,25 +321,20 @@ private struct CompanionSettings: View {
             }
 
             ScrollView {
-                GroupBox("Mac system statistics") {
-                    systemMetricsSettings.padding(8)
+                VStack(spacing: 12) {
+                    GroupBox("Mac system statistics") {
+                        systemMetricsSettings.padding(8)
+                    }
+                    if store.supportsLaunchAtLogin {
+                        GroupBox("Startup") {
+                            startupSettings.padding(8)
+                        }
+                    }
                 }
                 .padding()
             }
             .tabItem {
-                Label("System Stats", systemImage: "gauge.with.dots.needle.67percent")
-            }
-            if store.supportsLaunchAtLogin {
-                ScrollView {
-                    GroupBox("Startup") {
-                        startupSettings
-                            .padding(8)
-                    }
-                    .padding()
-                }
-                .tabItem {
-                    Label("General", systemImage: "gearshape")
-                }
+                Label("General", systemImage: "gearshape")
             }
         }
         .onAppear {
