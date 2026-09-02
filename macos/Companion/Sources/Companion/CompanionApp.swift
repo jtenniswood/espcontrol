@@ -102,6 +102,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
 
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
+        settingsItem.image = nil
         menu.addItem(settingsItem)
         menu.addItem(.separator())
 
