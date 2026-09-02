@@ -1,5 +1,6 @@
 import {
   cardTypePickerOptions,
+  cardTypeVisibleForConnector,
   clampMenuPosition,
   closestGridCell,
   defaultCardTypeForPicker,
@@ -24,6 +25,11 @@ export function runPreviewFeatureTests(): void {
   equal(infoOnlyCardVisible("sensor", true), true, "sensors remain visible in info-only mode");
   equal(infoOnlyCardVisible("action", true), false, "actions are hidden in info-only mode");
   equal(defaultCardTypeForPicker("climate"), "climate_control", "picker aliases retain their defaults");
+  equal(cardTypeVisibleForConnector("slider", "home_assistant"), true, "Home Assistant-only cards remain in the Home Assistant picker");
+  equal(cardTypeVisibleForConnector("slider", "mac_companion"), false, "Home Assistant-only cards are hidden from Companion");
+  equal(cardTypeVisibleForConnector("action", "mac_companion"), true, "mixed action cards appear for Companion");
+  equal(cardTypeVisibleForConnector("webhook", "home_assistant"), true, "shared webhook cards appear for Home Assistant");
+  equal(cardTypeVisibleForConnector("webhook", "mac_companion"), true, "shared webhook cards appear for Companion");
 
   const definitions = {
     action: { label: "Action", allowInSubpage: true },
@@ -37,6 +43,11 @@ export function runPreviewFeatureTests(): void {
     cardTypePickerOptions(definitions, [], false, true, null).map((option) => option.key),
     ["action", "sensor", "wifi_qr"],
     "subpage picker filters unsupported and aliased entries",
+  );
+  deepEqual(
+    cardTypePickerOptions({ ...definitions, slider: { label: "Slider", allowInSubpage: true } }, [], false, false, null, "mac_companion").map((option) => option.key),
+    ["action", "sensor", "wifi_qr"],
+    "Companion picker keeps shared cards and excludes HA-only cards",
   );
   const infoOnlyOptions = cardTypePickerOptions(definitions, [], true, false, "action");
   equal(infoOnlyOptions[0]?.key, "action", "selected hidden type remains visible for editing");

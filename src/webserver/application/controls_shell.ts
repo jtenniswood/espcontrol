@@ -7,6 +7,7 @@ export interface ControlsShellDependencies {
     readonly schedule: typeof setTimeout;
     readonly cancelSchedule: (handle: any) => void;
     readonly buildSettingsPage: (parent: HTMLElement) => void;
+    readonly buildConnectorsPage: (parent: HTMLElement) => void;
     readonly closeSettings: () => void;
     readonly postButtonPress: (name: string) => Promise<Response>;
     readonly waitForReboot: () => void;
@@ -96,6 +97,8 @@ export function createControlsShellFeature(
         els.banner = banner;
         buildHeader(root);
         buildScreenPage(root);
+        dependencies.buildConnectorsPage(root);
+        els.connectorsPage = root.querySelector("#sp-connectors");
         dependencies.buildSettingsPage(root);
         var app: any = document.querySelector("esp-app");
         if (app) {
@@ -119,6 +122,7 @@ export function createControlsShellFeature(
         nav.setAttribute("aria-label", "Primary");
         var tabs: any = [
             { id: "screen", label: "Screen" },
+            { id: "connectors", label: "Connectors" },
             { id: "settings", label: "Settings" },
         ];
         tabs.forEach(function (this: any, t?: any) {
@@ -240,11 +244,12 @@ export function createControlsShellFeature(
         state.activeTab = tab;
         if (els.root)
             els.root.setAttribute("data-active-tab", tab);
-        ["screen", "settings"].forEach(function (this: any, t?: any) {
+        ["screen", "connectors", "settings"].forEach(function (this: any, t?: any) {
             els["tab_" + t].className = "sp-tab" + (tab === t ? " active" : "");
             els["tab_" + t].setAttribute("aria-selected", tab === t ? "true" : "false");
         });
         els.screenPage.className = "sp-page" + (tab === "screen" ? " active" : "");
+        els.connectorsPage.className = "sp-page" + (tab === "connectors" ? " active" : "");
         els.settingsPage.className = "sp-page" + (tab === "settings" ? " active" : "");
         syncTabChrome();
     }

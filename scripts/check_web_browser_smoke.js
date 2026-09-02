@@ -1019,11 +1019,9 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     await page
       .locator("#sp-settings .sp-settings-status-title")
       .evaluateAll((nodes) => nodes.map((node) => node.textContent)),
-    options.slug === "esp32-p4-86"
-      ? ["Display", "Voice & Sounds", "Sleep & Schedule", "Preferences", "System"]
-      : options.slug === "guition-esp32-s3-4848s040"
-        ? ["Display", "Sleep & Schedule", "Preferences", "Companion", "System"]
-        : ["Display", "Sleep & Schedule", "Preferences", "System"],
+      options.slug === "esp32-p4-86"
+        ? ["Display", "Voice & Sounds", "Sleep & Schedule", "Preferences", "System"]
+      : ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
   const settingsPlacement = await page.locator("#sp-settings .sp-config").evaluate((config) => {
@@ -2116,6 +2114,25 @@ async function assertEmptyCellSettings(page, posts, label) {
     await page.locator("#sp-card-type-picker").isVisible(),
     `${label}: new card draft shows the card type grid`,
   );
+  assert.strictEqual(
+    await page.locator(".sp-card-type-source, [data-card-connector], .sp-card-type-connector").count(),
+    0,
+    `${label}: card choices do not display connector source labels`,
+  );
+  const pickerTabs = page.locator(".sp-card-type-tab");
+  if ((await pickerTabs.count()) === 2) {
+    assert.deepStrictEqual(
+      await pickerTabs.allTextContents(),
+      ["Home Assistant", "Mac Companion"],
+      `${label}: Companion-capable picker exposes Home Assistant and Mac Companion tabs`,
+    );
+    await pickerTabs.nth(1).click();
+    assert(
+      await page.getByRole("button", { name: "Webhook card type" }).isVisible(),
+      `${label}: shared webhook card appears in the Companion picker`,
+    );
+    await pickerTabs.nth(0).click();
+  }
   const switchTypeOption = page.getByRole("button", {
     name: "Switch card type",
   });
@@ -2230,19 +2247,7 @@ async function assertEmptyCellSettings(page, posts, label) {
 
   await page.locator(`.sp-main [data-pos="${pos}"]`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Action card type" }).click();
-  await page.locator("#sp-inp-type").waitFor({ state: "visible" });
-  await page
-    .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Card Settings" })
-    .first()
-    .locator(".sp-disclosure-button")
-    .click();
-  await page.locator("#sp-inp-label").fill("Keep this label");
-  await page.locator("#sp-inp-entity").fill("switch.keep_this_entity");
-  await page.locator("#sp-inp-action").selectOption({ label: "Run Script" });
-  await page.locator("#sp-inp-type").selectOption({ label: "Switch" });
-  await page.locator("#sp-inp-entity").waitFor({ state: "visible" });
+  await chooseCardType(page, "Switch");
   const switchCardSettings = page
     .locator(".sp-settings-modal .sp-disclosure")
     .filter({ hasText: "Card Settings" })
@@ -2255,6 +2260,10 @@ async function assertEmptyCellSettings(page, posts, label) {
     !(await switchCardSettings.getAttribute("class")).includes("sp-open"),
     `${label}: Switch Card Settings should start collapsed`,
   );
+  await switchCardSettings.locator(".sp-disclosure-button").click();
+  await page.locator("#sp-inp-label").fill("Keep this label");
+  await page.locator("#sp-inp-entity").fill("switch.keep_this_entity");
+  await page.locator("#sp-inp-entity").waitFor({ state: "visible" });
   assert.strictEqual(
     await page
       .locator("#sp-inp-entity")
@@ -2275,7 +2284,6 @@ async function assertEmptyCellSettings(page, posts, label) {
       `${label}: Switch ${fieldLabel} should sit inside Card Settings`,
     );
   }
-  await switchCardSettings.locator(".sp-disclosure-button").click();
   assert(
     await page.locator("#sp-inp-label").isVisible(),
     `${label}: opening Switch Card Settings should reveal its controls`,
@@ -2309,84 +2317,6 @@ async function assertEmptyCellSettings(page, posts, label) {
     0,
     `${label}: unsaved new card keeps Delete hidden after type selection`,
   );
-  await page.locator("#sp-inp-type").selectOption({ label: "Sensor" });
-  await page
-    .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Card Settings" })
-    .first()
-    .locator(".sp-disclosure-button")
-    .click();
-  const sensorTypeOptions = await page.locator("#sp-inp-sensor-type option").allTextContents();
-  assert.deepStrictEqual(
-    sensorTypeOptions,
-    ["Numeric", "Time", "Text", "Icon"],
-    `${label}: Home Assistant Sensor uses the Numeric, Time, Text, and Icon Type dropdown`,
-  );
-  const sensorActiveColor = page.locator("#sp-inp-sensor-active-color");
-  const sensorActiveColorRow = sensorActiveColor.locator("xpath=../..");
-  assert(
-    await sensorActiveColorRow.isVisible(),
-    `${label}: Numeric Sensor exposes Lit When Active`,
-  );
-  await sensorActiveColorRow.getByText("Lit When Active", { exact: true }).click();
-  await page.locator("#sp-inp-sensor-type").selectOption("time");
-  assert.strictEqual(
-    await sensorActiveColorRow.isVisible(),
-    false,
-    `${label}: Time Sensor hides Lit When Active`,
-  );
-  assert(
-    await page.locator("#sp-inp-time-unit").isVisible(),
-    `${label}: Time type shows the input unit dropdown`,
-  );
-  assert(
-    await page.getByText("Incoming Value Unit", { exact: true }).isVisible(),
-    `${label}: Time input unit uses the clearer incoming-value label`,
-  );
-  assert(
-    await page.getByText("Auto uses the unit reported by Home Assistant. A manual choice overrides it.", { exact: true }).isVisible(),
-    `${label}: Time input unit explains Auto and manual override behaviour`,
-  );
-  assert.strictEqual(
-    await page.locator("#sp-inp-time-unit").inputValue(),
-    "",
-    `${label}: Time input unit defaults to Auto`,
-  );
-  assert.strictEqual(
-    await page.locator("#sp-inp-unit").isVisible(),
-    false,
-    `${label}: Time type hides the normal unit field`,
-  );
-  await page.locator("#sp-inp-time-unit").selectOption("hours");
-  await page.locator("#sp-inp-sensor-type").selectOption("numeric");
-  assert.strictEqual(
-    await sensorActiveColor.isChecked(),
-    false,
-    `${label}: switching through Time clears Lit When Active`,
-  );
-  await page.locator("#sp-inp-sensor-type").selectOption("time");
-  assert.strictEqual(
-    await page.locator("#sp-inp-time-unit").inputValue(),
-    "",
-    `${label}: switching away from Time clears its manual input unit`,
-  );
-  await page.getByRole("button", { name: "Local Sensor", exact: true }).click();
-  await page
-    .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Card Settings" })
-    .first()
-    .locator(".sp-disclosure-button")
-    .click();
-  assert.strictEqual(
-    await page.locator("#sp-inp-sensor-type").count(),
-    0,
-    `${label}: Local Sensor keeps its existing configuration controls`,
-  );
-  assert(
-    await page.getByRole("button", { name: "Numeric", exact: true }).isVisible() &&
-      await page.getByRole("button", { name: "Text", exact: true }).isVisible(),
-    `${label}: Local Sensor retains its Numeric and Text mode buttons`,
-  );
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");
@@ -2404,7 +2334,7 @@ async function assertEmptyCellSettings(page, posts, label) {
 
   await page.locator(`.sp-main [data-pos="${pos}"]`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
+  await chooseCardType(page, "Switch");
   await page
     .locator(".sp-settings-modal .sp-disclosure")
     .filter({ hasText: "Card Settings" })
@@ -2437,6 +2367,34 @@ async function assertEmptyCellSettings(page, posts, label) {
   );
 }
 
+async function assertConnectorsManagement(page, label) {
+  await page.getByRole("tab", { name: "Connectors" }).click();
+  await page.waitForSelector("#sp-connectors.sp-page.active");
+  assert(
+    await page.locator("#sp-connectors").getByRole("heading", { name: "Home Assistant", exact: true }).isVisible(),
+    `${label}: Connectors tab shows Home Assistant setup`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-connectors .sp-card-type-source, #sp-connectors [data-card-connector]").count(),
+    0,
+    `${label}: connector cards do not expose card-source badges`,
+  );
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+}
+
+async function chooseCardType(page, label) {
+  const option = page.getByRole("button", { name: `${label} card type` });
+  await option.waitFor({ state: "visible" });
+  await option.click();
+  await page.waitForSelector(".sp-card-type-readonly");
+  assert.strictEqual(
+    await page.locator("#sp-inp-type").count(),
+    0,
+    `${label}: selected card does not expose a card type dropdown`,
+  );
+}
+
 async function assertNewMediaCardDefaults(page, posts, label) {
   const emptyCell = page
     .locator(".sp-empty-cell:not(.sp-info-only-hidden)")
@@ -2447,7 +2405,7 @@ async function assertNewMediaCardDefaults(page, posts, label) {
   const pos = await emptyCell.getAttribute("data-pos");
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Media card type" }).click();
+  await chooseCardType(page, "Media");
   await page.locator("#sp-inp-media-mode").waitFor({ state: "visible" });
 
   assert.strictEqual(
@@ -2468,28 +2426,6 @@ async function assertNewMediaCardDefaults(page, posts, label) {
     return overlay && !overlay.classList.contains("sp-visible");
   });
 
-  await page.locator(`.sp-main [data-pos="${pos}"].sp-empty-cell`).click();
-  await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Action card type" }).click();
-  await page
-    .locator(".sp-settings-modal .sp-disclosure")
-    .filter({ hasText: "Card Settings" })
-    .first()
-    .locator(".sp-disclosure-button")
-    .click();
-  await page.locator("#sp-inp-label").fill("Custom media label");
-  await page.locator("#sp-inp-type").selectOption("media");
-  await page.locator("#sp-inp-media-mode").selectOption("play_pause");
-  assert.strictEqual(
-    await page.locator("#sp-inp-label").inputValue(),
-    "Custom media label",
-    `${label}: changing a labelled card to Media preserves its custom label`,
-  );
-  await page.locator(".sp-settings-close").click();
-  await page.waitForFunction(() => {
-    const overlay = document.querySelector(".sp-settings-overlay");
-    return overlay && !overlay.classList.contains("sp-visible");
-  });
   assert.strictEqual(
     posts.length,
     before,
@@ -2507,7 +2443,7 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
+  await chooseCardType(page, "Switch");
 
   async function assertGrouped(context) {
     const result = await page.evaluate(() => {
@@ -2572,74 +2508,12 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
   }
 
-  const cardOptions = await page
-    .locator("#sp-inp-type option:not([disabled])")
-    .evaluateAll((options) =>
-      options.map((option) => ({ value: option.value, label: option.textContent })),
-    );
-  for (const cardOption of cardOptions) {
-    await page.locator("#sp-inp-type").selectOption(cardOption.value);
-    await assertGrouped(cardOption.label);
-
-    if (cardOption.value === "screen_lock") {
-      assert.strictEqual(
-        await page.locator("#sp-inp-entity").count(),
-        0,
-        `${label}: Screen Lock should not show an unused Entity field`,
-      );
-      assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
-        0,
-        `${label}: Screen Lock should not show unused generic Card Settings`,
-      );
-    }
-
-    if (cardOption.value === "weather") {
-      assert.strictEqual(
-        await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
-        0,
-        `${label}: Weather current conditions should not show empty Card Settings`,
-      );
-    }
-
-    const typeSelect = page.locator(
-      '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
-    );
-    if ((await typeSelect.count()) > 0) {
-      if (cardOption.value === "fan_speed") {
-        assert.deepStrictEqual(
-          await typeSelect.locator("option").evaluateAll((options) =>
-            options.map((option) => option.textContent),
-          ),
-          ["All Controls", "Switch", "Speed", "Oscillation", "Direction", "Preset"],
-          `${label}: Fans should label the complete fan modal All Controls`,
-        );
-      }
-      const typeOptions = await typeSelect
-        .locator("option:not([disabled])")
-        .evaluateAll((options) => options.map((option) => option.value));
-      for (const typeValue of typeOptions) {
-        await typeSelect.selectOption(typeValue);
-        await assertGrouped(`${cardOption.label} / ${typeValue || "default"}`);
-        if (cardOption.value === "weather" && typeValue) {
-          assert.strictEqual(
-            await page.locator(".sp-settings-modal .sp-panel > .sp-disclosure").count(),
-            1,
-            `${label}: Weather forecasts should group their extra settings`,
-          );
-        }
-      }
-    }
-
-    const typeButtons = page.locator(
-      '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] button',
-    );
-    const typeButtonCount = await typeButtons.count();
-    for (let index = 0; index < typeButtonCount; index += 1) {
-      await typeButtons.nth(index).click();
-      await assertGrouped(`${cardOption.label} / type button ${index + 1}`);
-    }
-  }
+  await assertGrouped("Switch");
+  assert.strictEqual(
+    await page.locator(".sp-settings-modal .sp-card-type-readonly").count(),
+    1,
+    `${label}: selected cards show read-only type context`,
+  );
 
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
@@ -2662,8 +2536,7 @@ async function assertFanOptionalLightSettings(page, label) {
   if ((await emptyCell.count()) === 0) return;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
-  await page.locator("#sp-inp-type").selectOption("fan_speed");
+  await chooseCardType(page, "Fans");
   const fanType = page.locator(
     '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
   );
@@ -2733,13 +2606,9 @@ async function assertInternalControlsPanel(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
-
-  const internalOption = page.locator(
-    '#sp-inp-type option[value="internal"]:not([disabled])',
-  );
+  const internalOption = page.getByRole("button", { name: "Internal card type" });
   if ((await internalOption.count()) > 0) {
-    await page.locator("#sp-inp-type").selectOption("internal");
+    await chooseCardType(page, "Internal");
     const controlsButton = page.getByRole("button", {
       name: "Controls",
       exact: true,
@@ -2813,8 +2682,7 @@ async function assertWebhookSettingsPanel(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
-  await page.locator("#sp-inp-type").selectOption("webhook");
+  await chooseCardType(page, "Webhook");
 
   const webhookSettingsButton = page.getByRole("button", {
     name: "Webhook Settings",
@@ -2952,11 +2820,11 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   assert.strictEqual(
-    await page.locator('#sp-inp-type option[value="media_cover_art"]').count(),
+    await page.locator("#sp-inp-type").count(),
     0,
-    `${label}: Cover Art should not appear as a top-level card type`,
+    `${label}: existing Cover Art should not show a card type dropdown`,
   );
-  assert.strictEqual(await page.locator("#sp-inp-type").inputValue(), "media", `${label}: existing Cover Art card should open as Media`);
+  assert.strictEqual(await page.locator("#sp-card-type-readonly").textContent(), "Media", `${label}: existing Cover Art card should show Media as read-only type context`);
   assert.strictEqual(await page.locator("#sp-inp-media-mode").inputValue(), "cover_art", `${label}: existing Cover Art card should retain its subtype`);
   assert.strictEqual(await page.locator("#sp-inp-entity").inputValue(), "media_player.living", `${label}: existing Cover Art card should retain its entity`);
   assert.deepStrictEqual(
@@ -3205,7 +3073,7 @@ async function assertNumberActionRequiresValue(page, posts, label) {
   const before = posts.length;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Action card type" }).click();
+  await chooseCardType(page, "Action");
   await page.locator("#sp-inp-action").selectOption("number.set_value");
   await page.locator("#sp-inp-entity").fill("number.target_level");
   await page
@@ -5409,6 +5277,7 @@ async function runCase(browser, testCase) {
     );
     await assertCardIconsTopLeft(page, testCase.name);
     await assertMediaCoverArtCompactPreview(page, testCase.name);
+    await assertConnectorsManagement(page, testCase.name);
     await assertSettingsPage(page, testCase.name, testCase, posts);
     if (testCase.exerciseInteractions) {
       await assertNightScheduleSensorControls(page, posts, testCase.name);
