@@ -80,10 +80,12 @@ export function createSettingsCompanionSectionFeature(
 
     function buildCompanionSettingsCard(onStatus?: (state: CompanionPairingState) => void): HTMLElement {
         const body = document.createElement("div");
+        const instructions = document.createElement("div");
+        instructions.className = "sp-connector-instructions";
         const note = document.createElement("p");
         note.className = "sp-setting-note sp-companion-note";
         note.textContent = "Pair this display with EspControl Companion on a trusted local network. The setup code expires after 15 minutes or as soon as the Mac connects; the trusted pairing remains saved across reboots.";
-        body.appendChild(note);
+        instructions.appendChild(note);
 
         const steps = document.createElement("ol");
         steps.className = "sp-connector-steps";
@@ -96,7 +98,8 @@ export function createSettingsCompanionSectionFeature(
             item.textContent = text;
             steps.appendChild(item);
         });
-        body.appendChild(steps);
+        instructions.appendChild(steps);
+        body.appendChild(instructions);
 
         const status = document.createElement("div");
         status.className = "sp-companion-status";
@@ -122,6 +125,13 @@ export function createSettingsCompanionSectionFeature(
         actions.appendChild(copyButton);
         body.appendChild(actions);
 
+        const badge = document.createElement("span");
+        badge.className = "sp-card-badge sp-hidden";
+        const badgeDot = document.createElement("span");
+        badgeDot.className = "sp-card-badge-dot";
+        badge.appendChild(badgeDot);
+        badge.appendChild(document.createTextNode("ON"));
+
         let current: CompanionPairingState | null = null;
         const pairingValue = pairingRow.querySelector("strong") as HTMLElement;
 
@@ -130,6 +140,8 @@ export function createSettingsCompanionSectionFeature(
             if (onStatus) onStatus(value);
             status.textContent = companionPairingStatusText(value);
             status.classList.toggle("sp-companion-status-connected", value.connected);
+            instructions.classList.toggle("sp-hidden", value.connected);
+            badge.classList.toggle("sp-hidden", !value.paired);
             if (value.active && value.pairing_code) {
                 pairingValue.textContent = value.pairing_code;
                 details.classList.remove("sp-hidden");
@@ -175,7 +187,7 @@ export function createSettingsCompanionSectionFeature(
             status.textContent = "Companion pairing is unavailable";
             startButton.disabled = true;
         });
-        const card = fields.makeCollapsibleCard("Mac Companion", body, true);
+        const card = fields.makeCollapsibleCard("Mac Companion", body, true, badge);
         let refreshInProgress = false;
         const refreshTimer = window.setInterval(async function () {
             if (!card.isConnected) {

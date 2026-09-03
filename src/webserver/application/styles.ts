@@ -30,7 +30,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-tab-docs .mdi{font-size:16px;line-height:1;opacity:.7}" +
         ".sp-page{display:none}.sp-page.active{display:block}" +
         ".sp-onboarding .sp-nav{display:none}" +
-        ".sp-connectors-config{max-width:760px;margin:0 auto;padding-top:32px}" +
+        ".sp-connectors-config{max-width:960px;margin:0 auto;padding-top:32px}" +
         ".sp-connectors-heading{margin:0 0 8px;font-size:1.65rem;letter-spacing:-.025em}" +
         ".sp-connectors-intro{margin:0 0 24px;color:var(--text2);line-height:1.5}" +
         ".sp-connector-status{display:flex;align-items:center;gap:8px;margin:0 0 16px;color:var(--text2);font-size:.86rem}" +
@@ -39,6 +39,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-connector-status-connected::before{background:var(--success);box-shadow:0 0 0 3px rgba(48,164,108,.16)}" +
         ".sp-connector-steps{margin:0 0 18px;padding-left:22px;color:var(--text2);font-size:.86rem;line-height:1.55}" +
         ".sp-connector-steps li+li{margin-top:7px}" +
+        ".sp-connector-info{margin:0 0 18px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.86rem;line-height:1.5}" +
+        ".sp-hidden{display:none!important}" +
         ".sp-support-btn{position:fixed;right:28px;bottom:28px;z-index:150;display:inline-block;line-height:0}" +
         ".sp-support-link{display:block;width:214px;height:60px;border-radius:999px;overflow:hidden;text-indent:-9999px;white-space:nowrap}" +
         ".sp-support-btn.sp-support-hidden{display:none}" +

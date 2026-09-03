@@ -65,13 +65,20 @@ class ConnectorStateService {
   const char *web_auth_username() const { return web_auth_username_; }
   const char *web_auth_password() const { return web_auth_password_; }
 
-  ConnectorStatus status() const {
+  ConnectorStatus status() {
     const CompanionPairingSnapshot companion = companion_pairing_provider()
         ? companion_pairing_provider()()
         : CompanionPairingSnapshot{};
     ConnectorStatus result;
-    result.home_assistant_configured = state_.home_assistant_configured != 0;
     result.home_assistant_connected = ha_api_state_connected();
+    // A live Home Assistant connection establishes the connector. The action
+    // permission is a separate device setting shown in the web setup guide;
+    // there is no additional browser confirmation step.
+    if (result.home_assistant_connected && state_.home_assistant_configured == 0) {
+      state_.home_assistant_configured = 1;
+      save_();
+    }
+    result.home_assistant_configured = state_.home_assistant_configured != 0;
     result.home_assistant_actions_confirmed =
         state_.home_assistant_actions_confirmed != 0;
     result.companion_available = companion.available;

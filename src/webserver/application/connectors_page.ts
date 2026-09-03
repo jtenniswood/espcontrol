@@ -32,8 +32,7 @@ export interface ConnectorsPageFeature {
 }
 
 export function homeAssistantConnectorStatusText(state: HomeAssistantConnectorState): string {
-    if (state.connected && state.actions_confirmed) return "Home Assistant connected and actions confirmed";
-    if (state.connected) return "Home Assistant connected — confirm action permission below";
+    if (state.connected) return "Home Assistant connected";
     if (state.configured) return "Home Assistant configured, but currently offline";
     return "Waiting for Home Assistant";
 }
@@ -44,7 +43,7 @@ export function connectorOnboardingComplete(status: ConnectorsStatus): boolean {
 
 export function createConnectorsPageFeature(
     dom: Pick<ApplicationDomServices, "document" | "window" | "fetch">,
-    shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner" | "setOnboardingComplete">,
+    shell: Pick<ControlsShellFeature, "setOnboardingComplete">,
     fields: Pick<ControlsFieldsFeature, "makeCollapsibleCard">,
     companionSection: SettingsCompanionSectionFeature,
     companionSupported: boolean,
@@ -53,7 +52,8 @@ export function createConnectorsPageFeature(
     let heading: HTMLElement | null = null;
     let intro: HTMLElement | null = null;
     let homeAssistantStatus: HTMLElement | null = null;
-    let confirmButton: HTMLButtonElement | null = null;
+    let homeAssistantInstructions: HTMLElement | null = null;
+    let homeAssistantBadge: HTMLElement | null = null;
     let current: ConnectorsStatus | null = null;
     let timer: number | null = null;
     let refreshInProgress = false;
@@ -99,13 +99,8 @@ export function createConnectorsPageFeature(
             homeAssistantStatus.classList.toggle(
                 "sp-connector-status-connected", value.home_assistant.connected);
         }
-        if (confirmButton) {
-            confirmButton.disabled = !value.home_assistant.connected ||
-                value.home_assistant.actions_confirmed;
-            confirmButton.textContent = value.home_assistant.actions_confirmed
-                ? "Actions confirmed"
-                : "I've enabled actions";
-        }
+        homeAssistantInstructions?.classList.toggle("sp-hidden", value.home_assistant.connected);
+        homeAssistantBadge?.classList.toggle("sp-hidden", !value.home_assistant.configured);
         if (heading) {
             heading.textContent = value.onboarding_complete ? "Connectors" : "Connect EspControl";
         }
@@ -133,10 +128,13 @@ export function createConnectorsPageFeature(
 
     function buildHomeAssistantCard(): HTMLElement {
         const body = document.createElement("div");
+        homeAssistantInstructions = document.createElement("div");
+        homeAssistantInstructions.className = "sp-connector-instructions";
+
         const note = document.createElement("p");
         note.className = "sp-setting-note";
         note.textContent = "Add this display in Home Assistant, then allow it to perform Home Assistant actions.";
-        body.appendChild(note);
+        homeAssistantInstructions.appendChild(note);
 
         homeAssistantStatus = document.createElement("div");
         homeAssistantStatus.className = "sp-connector-status";
@@ -150,40 +148,27 @@ export function createConnectorsPageFeature(
         [
             "In Home Assistant, open Settings → Devices & services.",
             "Add the discovered EspControl device. If it is not shown, add ESPHome and enter " + window.location.hostname + ".",
-            "Open the device configuration and enable ‘Allow the device to perform Home Assistant actions’.",
         ].forEach(function (text) {
             const item = document.createElement("li");
             item.textContent = text;
             steps.appendChild(item);
         });
-        body.appendChild(steps);
+        homeAssistantInstructions.appendChild(steps);
 
-        confirmButton = shell.createActionButton(
-            "sp-backup-btn", "I've enabled actions", "check-circle");
-        confirmButton.disabled = true;
-        confirmButton.addEventListener("click", async function () {
-            if (!confirmButton) return;
-            confirmButton.disabled = true;
-            try {
-                const response = await fetch("/connectors/home-assistant/complete", {
-                    method: "POST",
-                    cache: "no-store",
-                    headers: { Accept: "application/json" },
-                    body: "",
-                });
-                if (!response.ok) throw new Error("Home Assistant must be connected first");
-                applyStatus(await response.json() as ConnectorsStatus);
-                shell.showBanner("Home Assistant connector configured.", "success");
-            } catch (error) {
-                shell.showBanner(error instanceof Error ? error.message : "Could not finish Home Assistant setup", "error");
-                await refreshStatus();
-            }
-        });
-        const actions = document.createElement("div");
-        actions.className = "sp-backup-btns";
-        actions.appendChild(confirmButton);
-        body.appendChild(actions);
-        return fields.makeCollapsibleCard("Home Assistant", body, true);
+        const actionInfo = document.createElement("div");
+        actionInfo.className = "sp-connector-info";
+        actionInfo.setAttribute("role", "note");
+        actionInfo.textContent = "3. Enable ‘Allow the device to perform Home Assistant actions’ in the device configuration. Without this, the screen cannot perform actions in Home Assistant.";
+        homeAssistantInstructions.appendChild(actionInfo);
+        body.insertBefore(homeAssistantInstructions, homeAssistantStatus);
+
+        homeAssistantBadge = document.createElement("span");
+        homeAssistantBadge.className = "sp-card-badge sp-hidden";
+        const badgeDot = document.createElement("span");
+        badgeDot.className = "sp-card-badge-dot";
+        homeAssistantBadge.appendChild(badgeDot);
+        homeAssistantBadge.appendChild(document.createTextNode("ON"));
+        return fields.makeCollapsibleCard("Home Assistant", body, true, homeAssistantBadge);
     }
 
     function applyCompanionStatus(value: CompanionPairingState): void {

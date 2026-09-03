@@ -53,7 +53,7 @@ export function runConnectorsFeatureTests(): void {
     connected: true,
     actions_confirmed: false,
   });
-  if (!permissionStatus.includes("confirm action permission")) {
-    throw new Error("Connected Home Assistant setup must still request action permission");
+  if (permissionStatus !== "Home Assistant connected") {
+    throw new Error("Connected Home Assistant setup must not show a confirmation action");
   }
 }

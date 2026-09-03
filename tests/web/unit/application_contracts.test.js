@@ -45,6 +45,21 @@ describe("browserless application contracts", () => {
     runConnectorsFeatureTests();
   });
 
+  test("renders connector badges and connection-specific setup guidance", () => {
+    const connectors = fs.readFileSync(path.join(ROOT, "src/webserver/application/connectors_page.ts"), "utf8");
+    const companion = fs.readFileSync(path.join(ROOT, "src/webserver/application/settings_companion_section.ts"), "utf8");
+    const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
+    assert.match(connectors, /sp-card-badge sp-hidden/);
+    assert.match(connectors, /homeAssistantInstructions\?\.classList\.toggle\("sp-hidden", value\.home_assistant\.connected\)/);
+    assert.match(connectors, /sp-connector-info/);
+    assert.match(connectors, /cannot perform actions in Home Assistant/);
+    assert.doesNotMatch(connectors, /Actions confirmed/);
+    assert.match(companion, /instructions\.classList\.toggle\("sp-hidden", value\.connected\)/);
+    assert.match(companion, /badge\.classList\.toggle\("sp-hidden", !value\.paired\)/);
+    assert.match(styles, /\.sp-connectors-config\{max-width:960px/);
+    assert.match(styles, /\.sp-hidden\{display:none!important\}/);
+  });
+
   test("owns browser composition and compatibility layout state", () => {
     runApplicationContextTests();
   });
