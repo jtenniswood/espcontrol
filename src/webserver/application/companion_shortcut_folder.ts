@@ -137,6 +137,7 @@ export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
     return [
         shortcutCard("shortcut.command+k", "Command", "Application"),
         shortcutCard("shortcut.command+enter", "Approve", "Check"),
+        shortcutCard("shortcut.command+t", "Browser", "Web"),
         shortcutCard("shortcut.command+b", "Sidebar", "View Headline"),
         shortcutCard("shortcut.option+command+b", "Side panel", "Tab"),
         shortcutCard("shortcut.command+j", "Terminal", "Application"),
