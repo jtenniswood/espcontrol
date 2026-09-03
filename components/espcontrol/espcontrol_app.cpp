@@ -26,6 +26,7 @@
 #include "panel_config_write_endpoint.h"
 #include "panel_config_http_context.h"
 #include "button_grid.h"
+#include "connector_state.h"
 
 extern "C" void espcontrol_register_web_server_handlers(
     esphome::web_server_idf::AsyncWebServer *server) {
@@ -34,6 +35,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
   register_companion_actions_endpoint(*server);
+  espcontrol::connectors::register_connector_status_endpoint(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);
   espcontrol::configuration::register_panel_config_read_endpoint(*server);
   espcontrol::configuration::register_panel_config_write_endpoint(*server);
@@ -85,6 +87,10 @@ class EspControlApp::NativeConfigurationRuntime {
 EspControlApp::EspControlApp() = default;
 
 EspControlApp::~EspControlApp() = default;
+
+bool EspControlApp::connector_onboarding_complete() const {
+  return connectors::onboarding_complete();
+}
 
 void EspControlApp::set_panel_config_device_profile(const char *device_profile) {
   panel_config_device_profile_ = device_profile;
@@ -220,6 +226,10 @@ void EspControlApp::apply_boot_configuration() {
 
 void EspControlApp::setup() {
   home_assistant_endpoint_.setup();
+  connectors::connector_state_service().setup(
+      panel_config_button_order_ != nullptr &&
+          !panel_config_button_order_->state.empty(),
+      web_auth_username_, web_auth_password_);
   if (core_.start()) {
     cards::set_card_runtime_registry_service(&core_.card_runtime_registry());
   } else {

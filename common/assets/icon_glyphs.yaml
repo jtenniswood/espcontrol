@@ -20,6 +20,12 @@
 - "\U000F0456"  # mdi-repeat (Media modal repeat control)
 - "\U000F0458"  # mdi-repeat-once (Media modal repeat-one state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
+- "\U000F0633"  # mdi-apple-keyboard-command (Companion shortcut labels)
+- "\U000F0634"  # mdi-apple-keyboard-control (Companion shortcut labels)
+- "\U000F0635"  # mdi-apple-keyboard-option (Companion shortcut labels)
+- "\U000F0636"  # mdi-apple-keyboard-shift (Companion shortcut labels)
+- "\U000F004D"  # mdi-arrow-left (Companion shortcut labels)
+- "\U000F0054"  # mdi-arrow-right (Companion shortcut labels)
 - "\U000F0141"  # mdi-chevron-left
 - "\U000F0142"  # mdi-chevron-right
 - "\U000F0004"  # mdi-account
@@ -118,6 +124,7 @@
 - "\U000F0241"  # mdi-flash
 - "\U000F08DD"  # mdi-floor-lamp
 - "\U000F135A"  # mdi-folder-music-outline
+- "\U000F0256"  # mdi-folder-outline
 - "\U000F19FA"  # mdi-folder-play
 - "\U000F096B"  # mdi-fountain
 - "\U000F0290"  # mdi-fridge
@@ -343,6 +350,7 @@
 - "\U000F0F38"  # mdi-weather-tornado
 - "\U000F059D"  # mdi-weather-windy
 - "\U000F059E"  # mdi-weather-windy-variant
+- "\U000F059F"  # mdi-web
 - "\U000F05A9"  # mdi-wifi
 - "\U000F1A88"  # mdi-wind-power
 - "\U000F0DA5"  # mdi-wind-turbine

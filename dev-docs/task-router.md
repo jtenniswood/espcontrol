@@ -1,113 +1,56 @@
 # Task Router
 
-Start here when the request is broad and you need the shortest safe path through
-the repo. Each route gives the first files to inspect, the generator boundary,
-the first check to run, and the condition that should stop the change.
+Use this page only to choose a workflow. The linked playbook owns the exact
+files, generators, checks, and stop conditions.
 
-## I Want to Change a Card
+## Card Type or Card Behavior
 
-Use this for a new card type, a card setting, card preview behavior, on-device
-rendering, Home Assistant actions, or subpage card behavior.
+Use [Add or Change a Card Type](playbooks/add-card-type.md) for card metadata,
+settings, previews, saved options, firmware rendering, Home Assistant actions,
+subscriptions, or subpage behavior.
 
-1. Read [Card Type Map](card-type-map.md) for the saved type and related files.
-2. Edit first:
-   - `product/v2/card_contract.json`
-   - `src/webserver/cards/<type>.ts`
-   - `components/espcontrol/button_grid_<type>.h`
-3. Regenerate with `python3 scripts/build.py` when the contract or web bundle
-   changes.
-4. Verify first with `npm run check:card-contract-outputs`,
-   `npm run check:web-smoke`, and the relevant firmware check from
-   [Check Matrix](check-matrix.md).
-5. Stop if saved config would become unreadable, if web and firmware parse the
-   same option differently, or if generated outputs change outside the expected
-   list.
+## Saved Settings or Backups
 
-Use [Add or Change a Card Type](playbooks/add-card-type.md) for the full
-checklist.
+Use [Change Saved Config](playbooks/change-saved-config.md) for compact card
+strings, backup/import/export shape, aliases, normalization, or migrations.
 
-## I Want to Change a Saved Setting
+## Supported Hardware or Device Profiles
 
-Use this for button config strings, subpage config chunks, backup shape, import
-or export behavior, model fields, aliases, or compatibility fixtures.
+Use [Add or Change a Supported Device](playbooks/add-supported-device.md) for a
+new display, orientation, grid, device profile, package, build target, or
+release-facing device name.
 
-1. Read [Compatibility Contract](compatibility-contract.md).
-2. Edit first:
-   - `src/webserver/application/config_codec.ts`
-   - `components/espcontrol/button_grid_config.h`
-   - `product/v2/product_compatibility.json`
-3. Regenerate only if contract, model, or web generated inputs also changed.
-4. Verify first with `npm run check:backup-contract`,
-   `npm run check:model-contract`, and `npm run check:firmware-parser`.
-5. Stop if old backups fail, if an old compact config string no longer parses,
-   or if a user would need to manually recreate cards after updating.
+## Fonts or Icons
 
-Use [Change Saved Config](playbooks/change-saved-config.md) for the full
-checklist.
+Use [Change Fonts or Icons](playbooks/change-fonts-or-icons.md) for icon names,
+glyph sets, per-device font definitions, or firmware font roles.
 
-## I Want to Add or Change Hardware
+## Web Configurator
 
-Use this for a new display, slot count, orientation, device profile, firmware
-package, release build, font mapping, Ethernet/WiFi variant, or install docs.
+Use [Change the Web Configurator](playbooks/change-web-configurator.md) for
+shared setup-page behavior, card editors, previews, browser state, or generated
+web bundles.
 
-1. Edit first:
-   - `product/v2/device_catalog.json`
-   - `devices/<slug>/packages.yaml`
-   - `devices/<slug>/dev.yaml`
-   - `devices/<slug>/esphome.yaml`
-   - `devices/<slug>/device/*.yaml`
-2. Regenerate `devices/manifest.json` with
-   `python3 scripts/generate_device_manifest.py`, then run
-   `python3 scripts/build.py` and
-   `python3 scripts/generate_device_slots.py`.
-3. Verify first with `npm run check:device-profiles` and
-   `npm run check:device-matrix`.
-4. Stop if a generated block was edited by hand, release-facing build names
-   changed unexpectedly, or the new hardware needs a one-off exception in shared
-   code that could be manifest data instead.
+## Firmware UI
 
-Use [Add or Change a Supported Device](playbooks/add-supported-device.md) for
-the full checklist.
+Use [Change Firmware UI](playbooks/change-firmware-ui.md) for LVGL layout,
+runtime state, modals, display lifecycle, Home Assistant bindings, or
+device-specific UI behavior.
 
-## I Want to Change Firmware UI
+## Release Workflow
 
-Use this for LVGL layout, modal behavior, card runtime state, Home Assistant
-bindings, font roles, image download limits, or device-specific UI sizing.
+Use [Change the Release Workflow](playbooks/change-release-workflow.md) for
+release manifests, draft publication, firmware assets, workflow definitions,
+public URLs, or release-confidence checks.
 
-1. Find the relevant runtime path in [Firmware](firmware.md) and
-   [Card Type Map](card-type-map.md).
-2. Edit the smallest card/runtime header first. Avoid changing generated device
-   YAML directly.
-3. If a new font role or device profile value is needed, update
-   `product/v2/device_catalog.json`, then regenerate the compatibility manifest
-   and slot files.
-4. Verify first with the focused firmware check from [Check Matrix](check-matrix.md).
-5. Stop if the smallest supported screen has not been considered, if a modal can
-   remain open across navigation unexpectedly, or if Home Assistant subscriptions
-   are not cleaned up on reconfigure.
+## Public Documentation
 
-## I Want to Change Public Docs
+Edit handwritten pages under `docs/`. If the page is generated, use
+[Source of Truth Contract](source-of-truth.md) to choose the authored input,
+then use [Check Matrix](check-matrix.md) for verification.
 
-Use this for files under `docs/`, generated public docs, screenshots, VitePress
-navigation, or card type documentation.
+## Unsure or Diagnosing a Failure
 
-1. Edit handwritten docs under `docs/`.
-2. If generated public docs are stale, update the source in
-   `product/v2/device_catalog.json` or `product/v2/card_contract.json`, then
-   regenerate.
-3. Verify with `npm run docs:build` and `npm run check:dev-docs`.
-4. Stop if a generated docs page was edited directly or if a public card page no
-   longer maps to a saved card type.
-
-## I Want to Change Release Behavior
-
-Use this for firmware manifests, public firmware URLs, release confidence,
-GitHub Pages assets, update scripts, or release changelog checks.
-
-1. Read [Checks and Releases](checks-and-releases.md) and
-   [Compatibility Contract](compatibility-contract.md).
-2. Keep public URLs, device slugs, and existing release asset names stable unless
-   the migration is explicit.
-3. Verify with `npm run check:release-preflight` before publishing.
-4. Stop if an existing installed panel would look for a firmware bundle, manifest
-   URL, or web bundle that no longer exists.
+Use [Failure Cookbook](failure-cookbook.md) when behavior is already broken, or
+[Check Matrix](check-matrix.md) when the changed paths are known but no playbook
+matches.

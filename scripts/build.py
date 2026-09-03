@@ -3348,6 +3348,7 @@ def gen_card_contract_h(data):
         "  if (type == \"sensor\") return precision != \"icon\" && precision != \"text\";\n",
         "  if (type == \"weather\") return precision == \"today\" || precision == \"tomorrow\";\n",
         "  return type == \"\" || type == \"action\" || type == \"calendar\" || type == \"clock\" ||\n",
+        "         type == \"companion\" ||\n",
         "         type == \"climate\" || type == \"media\" || type == \"subpage\" ||\n",
         "         type == \"timezone\";\n",
         "}\n",

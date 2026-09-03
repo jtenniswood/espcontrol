@@ -1,11 +1,11 @@
 ---
 title: Companion Cards
-description: Launch approved macOS applications, control windows, open web links, or replay keyboard shortcuts from a 4848S040 EspControl panel.
+description: Show Mac system statistics, launch approved macOS applications, control windows and media, open Finder folders and web links, or replay keyboard shortcuts from a 4848S040 EspControl panel.
 ---
 
 # Companion Cards
 
-Companion cards are a proof-of-concept card type for the **4-inch 4848S040** panel. They let you launch an approved application, control the active window, open a web address with an approved application, or replay a saved keyboard shortcut on one paired Mac. They do not run shell commands or expose your Mac to incoming network connections.
+Companion cards are a proof-of-concept card type for the **4-inch 4848S040** panel. They can show processor, memory, storage, network, or battery usage; launch an approved application; open an approved Finder folder; control Mac media playback or the active window; open a web address; or replay a saved keyboard shortcut on one paired Mac. They do not run shell commands or expose your Mac to incoming network connections.
 
 ## Before adding cards
 
@@ -29,16 +29,19 @@ Companion reads the session macOS shows in Control Centre. This can include Appl
 
 ## Add a Companion card
 
-Use the normal browser layout editor and select an empty home-screen or subpage slot, then choose **Companion**. Under **Action**, choose one of:
+Use the normal browser layout editor and select an empty home-screen or subpage slot, then choose **Companion**. Under **Type**, choose one of:
 
 - **Launch app** — select one of the applications approved in the Mac app.
 - **Keyboard shortcut** — click the shortcut field and press a combination such as Command-A. The browser records and displays the combination on the card.
 - **Open URL** — enter an `http://` or `https://` address and choose the approved installed application that should open it, such as Safari or Chrome.
+- **Open folder** — add one or more folders from the Mac app's **Folders** tab, then choose the folder for this card. The filesystem path remains on the Mac.
+- **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application.
+- **Processor usage**, **Memory usage**, **Storage usage**, **Network throughput**, or **Battery level** — show a read-only live reading from the paired Mac. Memory and storage can show used or free capacity and support large-number presentation.
 - **Window controls** — choose one fixed action for the active Mac window. Standard actions include Close, Minimise, Hide App, Full Screen, and Fill Desktop. The macOS 15-or-later tiling actions can move a window to a half, centre or restore it, and arrange two or three windows using Apple's built-in layouts.
 
 The first time a shortcut or window control is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts and window controls are sent to whichever Mac application is active at that time.
 
-The card is disabled when the Mac is offline, when an app or URL card references an application that has been removed from the approved list, or when a URL is incomplete. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards; no separate Mac layout editor is needed.
+Action cards are disabled when the Mac is offline, when an app or URL card references an application that has been removed from the approved list, when a folder has been removed, or when a URL is incomplete. System-statistic cards show `--` while unavailable. Play / Pause is disabled when Now Playing is unavailable; paused and stopped sessions remain tappable. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards; no separate Mac layout editor is needed.
 
 ## Limits in this proof of concept
 
@@ -46,6 +49,7 @@ The card is disabled when the Mac is offline, when an app or URL card references
 - Keyboard shortcuts require Command, Control, or Option plus a supported key. Modifier-only and unsupported system keys are rejected.
 - URL cards accept only `http://` and `https://` addresses without embedded usernames or passwords.
 - Companion does not control playback, files, or arbitrary commands directly. Window controls use a fixed allow-list of documented macOS shortcuts; a card cannot provide a custom window command.
+- Media buttons control the application currently registered with macOS Now Playing. Support depends on that application's media integration.
 - Built-in window tiling requires macOS 15 or later. Close, Minimise, Hide App, and Full Screen continue to use the standard shortcuts available on older supported macOS versions.
 - Reading other applications' Now Playing data uses macOS's private `MediaRemote` framework because Apple's public API only lets an application publish its own session. The framework is loaded dynamically. If a macOS update removes the required symbols, Companion reports the system feed as unavailable and its existing cards continue to work.
 - Companion is only offered on the 4848S040 profile. Other panels continue to behave normally.
