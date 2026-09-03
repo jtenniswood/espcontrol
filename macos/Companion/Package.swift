@@ -1,5 +1,8 @@
 // swift-tools-version: 5.9
+import Foundation
 import PackageDescription
+
+let appStoreBuild = ProcessInfo.processInfo.environment["ESPCONTROL_APP_STORE"] == "1"
 
 let package = Package(
     name: "EspControlCompanion",
@@ -14,7 +17,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "Companion",
-            dependencies: ["MediaRemoteShim"],
+            dependencies: appStoreBuild ? [] : ["MediaRemoteShim"],
             path: "Sources/Companion",
             linkerSettings: [
                 .linkedFramework("IOKit"),

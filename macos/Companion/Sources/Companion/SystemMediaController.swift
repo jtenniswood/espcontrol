@@ -1,6 +1,8 @@
 import CoreAudio
 import Foundation
+#if !APP_STORE
 import MediaRemoteShim
+#endif
 
 protocol MediaCommandProviding {
     var isAvailable: Bool { get }
@@ -8,8 +10,13 @@ protocol MediaCommandProviding {
 }
 
 struct MediaRemoteCommandSource: MediaCommandProviding {
+#if APP_STORE
+    var isAvailable: Bool { false }
+    func send(command: UInt32) -> Bool { false }
+#else
     var isAvailable: Bool { ECMediaRemoteBridge.isCommandAvailable() }
     func send(command: UInt32) -> Bool { ECMediaRemoteBridge.sendCommand(command) }
+#endif
 }
 
 @MainActor
@@ -18,7 +25,13 @@ final class SystemMediaController {
     static let outputVolumeID = "media.output_volume"
     static let inputVolumeID = "media.input_volume"
     static let volumeControlIDs = Set([outputVolumeID, inputVolumeID])
-    static var mediaActionsAvailable: Bool { MediaRemoteCommandSource().isAvailable }
+    static var mediaActionsAvailable: Bool {
+#if APP_STORE
+        false
+#else
+        MediaRemoteCommandSource().isAvailable
+#endif
+    }
 
     private let commandSource: MediaCommandProviding
 
@@ -48,6 +61,9 @@ final class SystemMediaController {
     }
 
     func perform(actionIdentifier: String) -> Bool {
+#if APP_STORE
+        return false
+#else
         let command: RemoteCommand
         switch actionIdentifier {
         case Self.playPauseID: command = .togglePlayPause
@@ -56,6 +72,7 @@ final class SystemMediaController {
         default: return false
         }
         return commandSource.isAvailable && commandSource.send(command: command.rawValue)
+#endif
     }
 
     func values() -> [String: Int] {

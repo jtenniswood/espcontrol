@@ -586,9 +586,9 @@ private struct CompanionSettings: View {
                             .foregroundStyle(.secondary)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(folder.name).font(.headline)
-                            Text(folder.path)
+                            Text(folder.needsReapproval ? "Select this folder again to restore access" : folder.path)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(folder.needsReapproval ? .orange : .secondary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
@@ -647,6 +647,15 @@ private struct CompanionSettings: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    private var aboutSettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
+            Link("EspControl support", destination: CompanionStore.supportURL)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var connectionStatusPanel: some View {
         SettingsCard {
             SettingsActionRow(

@@ -1,0 +1,45 @@
+---
+title: Privacy Policy
+description: How EspControl Companion handles pairing information, selected folders, and optional Mac system statistics.
+---
+
+# Privacy Policy
+
+EspControl Companion is a local-network menu-bar app for connecting a Mac to
+an EspControl touchscreen.
+
+## Information stored on your Mac
+
+The app stores the panel address and connection preferences in the app's local
+preferences. The paired credential is stored in the macOS Keychain. Folders
+you choose for Companion cards are represented by security-scoped macOS
+bookmarks so the app can reopen them after a restart. Folder paths remain on
+your Mac and are not sent to the display.
+
+## Information sent to your display
+
+When enabled, the app sends the paired display optional processor, memory,
+storage, network-throughput, and battery percentages. It can also send the
+names and opaque identifiers of installed applications and user-approved
+folders so the display can present Companion cards. These messages stay on
+your local network and are sent only to the panel you pair.
+
+The app does not collect analytics, advertising identifiers, browsing history,
+file contents, application contents, or network-content data. It does not
+send this information to EspControl or an analytics provider.
+
+## Permissions
+
+Folder access is granted only when you choose a folder in the app. Accessibility
+access is optional and is used only to replay a keyboard shortcut requested by
+a Companion card. You can remove either permission in macOS System Settings.
+
+## Deletion and support
+
+Use **Forget this panel** to remove the panel credential and certificate data.
+Remove folders from the Folders tab to remove their bookmarks. Uninstalling
+the app removes its local preferences; Keychain items can be removed by
+forgetting the panel before uninstalling.
+
+For questions or deletion requests, contact the project owner through the
+[EspControl support page](https://github.com/jtenniswood/espcontrol/issues).
