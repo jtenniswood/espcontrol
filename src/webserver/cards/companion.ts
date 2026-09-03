@@ -613,6 +613,9 @@ export function registerCompanionCardTypes(
             select.appendChild(loading);
             appField.appendChild(select);
             panel?.appendChild(appField);
+            if (initialMode === "app") {
+                helpers.markCardPrimaryField(appField, "entity");
+            }
 
             const folderField = document.createElement("div");
             folderField.className = "sp-field";
