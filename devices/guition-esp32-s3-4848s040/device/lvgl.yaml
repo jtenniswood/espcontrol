@@ -177,6 +177,7 @@ interval:
           }
           companion_request_card_refresh();
           companion_refresh_cards_if_requested();
+          navigation_return_from_companion_shortcuts_if_needed(id(main_page)->obj);
           static bool previous_companion_connection = false;
           const bool connected = companion_connected();
           if (connected != previous_companion_connection) {

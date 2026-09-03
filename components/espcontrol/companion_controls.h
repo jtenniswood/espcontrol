@@ -383,14 +383,29 @@ inline void companion_remove_value(const std::string &control_id) {
   companion_request_card_refresh();
 }
 
+inline std::atomic<bool> &companion_subpage_return_requested();
+
 inline void companion_set_focused_action(std::string action_id) {
   if (action_id.size() > 96) action_id.clear();
+  bool should_return_from_subpage = false;
   auto &state = companion_runtime_state();
   {
     std::lock_guard<std::mutex> lock(state.mutex);
+    should_return_from_subpage = state.connected && !state.focused_action_id.empty() &&
+      action_id.empty();
     state.focused_action_id = std::move(action_id);
   }
+  if (should_return_from_subpage) companion_subpage_return_requested().store(true);
   companion_request_card_refresh();
+}
+
+inline std::atomic<bool> &companion_subpage_return_requested() {
+  static std::atomic<bool> requested{false};
+  return requested;
+}
+
+inline bool companion_consume_subpage_return_request() {
+  return companion_subpage_return_requested().exchange(false);
 }
 
 inline bool companion_action_focused(const std::string &action_id) {
@@ -455,7 +470,10 @@ inline void companion_set_connected(bool connected) {
       state.system_metrics = {};
     }
   }
-  if (!connected) companion_cancel_action_result();
+  if (!connected) {
+    companion_cancel_action_result();
+    companion_subpage_return_requested().store(false);
+  }
   companion_request_card_refresh();
 }
 

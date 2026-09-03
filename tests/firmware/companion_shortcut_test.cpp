@@ -95,6 +95,12 @@ int main() {
   companion_set_focused_action(folder_action);
   assert(companion_action_focused(folder_action));
   assert(!companion_action_focused("com.apple.Safari"));
+  assert(!companion_consume_subpage_return_request());
+  companion_set_focused_action("com.apple.Safari");
+  assert(!companion_consume_subpage_return_request());
+  companion_set_focused_action("");
+  assert(companion_consume_subpage_return_request());
+  assert(!companion_consume_subpage_return_request());
   assert(companion_media_action_valid("media.play_pause"));
   assert(companion_media_action_valid("media.previous"));
   assert(companion_media_action_valid("media.next"));

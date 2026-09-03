@@ -231,18 +231,22 @@ final class CompanionStore: NSObject, ObservableObject {
     func launchableApps() -> [LaunchableApp] { availableApps }
     func folderActions() -> [ApprovedFolder] { approvedFolders }
     func focusedLaunchableApplicationIdentifier() -> String {
-        guard let identifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+        guard let application = NSWorkspace.shared.frontmostApplication,
+              CompanionWindowDetector.hasVisibleWindow(for: application),
+              let identifier = application.bundleIdentifier,
               availableApps.contains(where: { $0.bundleIdentifier == identifier }) else { return "" }
         return identifier
     }
 
     func focusedCompanionActionIdentifier() -> String {
         guard let application = NSWorkspace.shared.frontmostApplication,
-              let bundleIdentifier = application.bundleIdentifier else { return "" }
+              let bundleIdentifier = application.bundleIdentifier,
+              CompanionWindowDetector.hasVisibleWindow(for: application) else { return "" }
         if bundleIdentifier == "com.apple.finder" {
-            return focusedFinderFolderActionIdentifier()
+            let folderAction = focusedFinderFolderActionIdentifier()
+            return folderAction.isEmpty ? bundleIdentifier : folderAction
         }
-        return focusedLaunchableApplicationIdentifier()
+        return bundleIdentifier
     }
 
     private func focusedFinderFolderActionIdentifier() -> String {

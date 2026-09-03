@@ -234,6 +234,25 @@ inline int navigation_active_subpage_slot() {
   return 0;
 }
 
+inline bool navigation_return_from_companion_shortcuts_if_needed(
+    lv_obj_t *main_page_obj) {
+  if (!companion_subpage_return_requested().load()) return false;
+  const int slot = navigation_active_subpage_slot();
+  NavigationSubpageEntry *entry = navigation_find_slot(slot);
+  NavigationHomeTargetEntry *parent = navigation_find_slot_target(slot);
+  if (entry == nullptr || entry->kind != "app_shortcuts" || parent == nullptr) {
+    companion_consume_subpage_return_request();
+    return false;
+  }
+  const ParsedCfg parent_config = parse_cfg(parent->config);
+  if (!companion_app_shortcuts_enabled(parent_config)) {
+    companion_consume_subpage_return_request();
+    return false;
+  }
+  companion_consume_subpage_return_request();
+  return navigation_return_home(main_page_obj);
+}
+
 inline bool navigation_restore_subpage_slot(int slot) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr || entry->screen == nullptr) return false;
