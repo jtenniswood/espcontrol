@@ -17,6 +17,8 @@ function sourceFiles(directory) {
 
 describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
+  const { runCompanionPairingFeatureTests } = loadTypescriptTest("tests/web/companion_pairing_feature.test.ts");
+  const { runCompanionShortcutFeatureTests } = loadTypescriptTest("tests/web/companion_shortcut_feature.test.ts");
   const { runApplicationContextTests } = loadTypescriptTest("tests/web/application_context.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
@@ -27,6 +29,14 @@ describe("browserless application contracts", () => {
 
   test("plans clipboard transfers", () => {
     runClipboardFeatureTests();
+  });
+
+  test("formats Companion pairing details for the Mac app", () => {
+    runCompanionPairingFeatureTests();
+  });
+
+  test("captures and formats Companion keyboard shortcuts", () => {
+    runCompanionShortcutFeatureTests();
   });
 
   test("owns browser composition and compatibility layout state", () => {
@@ -553,6 +563,15 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(globals, /\bvar (?:WEBHOOK_CARD_METADATA|WEBHOOK_HEADERS_OPTION|WEBHOOK_METHODS|normalizeWebhookConfig|setWebhookHeaders|webhookHeaders|webhookMethod):/);
   });
 
+  test("registers the Companion card through profile and browser services", () => {
+    const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
+    const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/companion.ts"), "utf8");
+    assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal|CFG)\b/);
+    assert.match(entry, /registerCompanionCardTypes\(\s*registry,\s*!!context\.device\.profile\.features\?\.companion,\s*context\.dom\.document,\s*context\.dom\.fetch,\s*fields,\s*cardUi,?\s*\);/);
+    assert.match(card, /fetchImpl\("\/companion\/actions", \{ cache: "no-store" \}\)/);
+    assert.doesNotMatch(entry, /registerCompatibility\(registerCompanionCardTypes/);
+  });
+
   test("registers the internal relay card with profile-owned options", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/internal.ts"), "utf8");
@@ -618,7 +637,8 @@ describe("browserless application contracts", () => {
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/slider.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
-    assert.match(entry, /registerSliderCardTypes\(registry, context\.configuration\.modalTabs, lightCards, fields, context\.controllers\.settingsUi\);/);
+    assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?context\.device\.profile\.features\?\.companion,[\s\S]*?cardUi,[\s\S]*?\);/);
+    assert.match(card, /metadata\.entity\.validateDomains && sliderMode === "home_assistant"/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerSliderCardTypes/);
     assert.doesNotMatch(globals, /\bvar (?:renderCoverControlTabSettings|sliderCardMetadata|sliderTypeFactory):/);
   });
@@ -746,7 +766,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(light, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(entry, /const lightCards = registerLightTemperatureCardTypes\(registry, context\.configuration\.modalTabs, fields, cardUi\);/);
-    assert.match(entry, /registerSliderCardTypes\(registry, context\.configuration\.modalTabs, lightCards, fields, context\.controllers\.settingsUi\);/);
+    assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?cardUi,[\s\S]*?\);/);
     assert.match(entry, /registerSwitchCardTypes\(registry, context\.configuration\.confirmationOptions, lightCards, fields\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerLightTemperatureCardTypes/);
     assert.match(slider, /lightCards: LightCardRegistration/);
@@ -1059,6 +1079,7 @@ describe("browserless application contracts", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     for (const file of [
       "controls_fields.ts",
+      "settings_companion_section.ts",
       "settings_system_section.ts",
       "settings_page.ts",
       "settings_page_helpers.ts",
@@ -1247,6 +1268,7 @@ describe("browserless application contracts", () => {
     assert.match(entry, /settingsHelpers = createSettingsPageHelpersFeature\(/);
     assert.match(entry, /const scheduleSection = createSettingsScheduleSectionFeature\(/);
     assert.match(entry, /const coverArtSection = createSettingsCoverArtSectionFeature\(/);
+    assert.match(entry, /const companionSection = createSettingsCompanionSectionFeature\(dom, shell, fields\)/);
     assert.match(entry, /const systemSection = createSettingsSystemSectionFeature\(/);
     assert.match(entry, /settingsPage = createSettingsPageFeature\(/);
     assert.doesNotMatch(entry, /installSettings(?:PageHelpers|ScheduleSection|CoverArtSection|SystemSection|Page)Module/);

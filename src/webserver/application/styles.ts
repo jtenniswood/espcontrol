@@ -517,6 +517,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-banner.sp-warning{display:block;background:rgba(234,179,8,.16);color:#f9b44e;border-bottom:1px solid rgba(234,179,8,.25)}" +
         ".sp-local-picker-fallback .sp-banner{margin-bottom:28px}" +
         ".sp-backup-btns{display:flex;gap:8px}" +
+        ".sp-companion-note{margin-top:0}.sp-companion-status{display:flex;align-items:center;gap:8px;margin:0 0 16px;color:var(--text2);font-size:.86rem}.sp-companion-status::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--text3);flex:0 0 auto}.sp-companion-status.sp-companion-status-connected{color:var(--success)}.sp-companion-status.sp-companion-status-connected::before{background:var(--success);box-shadow:0 0 0 3px rgba(48,164,108,.16)}.sp-companion-details{display:grid;gap:10px;margin:0 0 16px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}" +
+        ".sp-companion-code-row{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--text2);font-size:.8rem}.sp-companion-code{color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1rem;letter-spacing:.06em;user-select:all}.sp-companion-actions{flex-wrap:wrap}" +
         ".sp-backup-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;" +
         "padding:10px 16px;border:1px solid var(--border);border-radius:var(--action-r);font-size:.8rem;font-weight:500;" +
         "cursor:pointer;font-family:inherit;transition:all .25s;background:var(--surface2);" +

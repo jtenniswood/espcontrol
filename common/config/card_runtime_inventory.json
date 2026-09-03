@@ -255,6 +255,11 @@
       "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
       "modes": [{ "name": "event", "config": { "label": "Trigger" } }]
     },
+    "companion": {
+      "classification": "canonical", "canonicalType": "companion", "webRegistration": "companion", "firmwareFamily": "COMPANION",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [{ "name": "approved_app", "config": { "entity": "com.apple.Safari", "label": "Safari" } }]
+    },
     "screen_lock": {
       "classification": "canonical", "canonicalType": "screen_lock", "webRegistration": "screen_lock", "firmwareFamily": "SCREEN_LOCK",
       "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },

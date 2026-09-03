@@ -2986,6 +2986,77 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "companion": {
+    "label": "Companion",
+    "allowInSubpage": true,
+    "domains": [],
+    "options": [
+      {
+        "name": "large_numbers",
+        "label": "Large Sensor Numbers",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "default_if_empty",
+          "value": "Monitor"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "keep"
+        },
+        "unit": {
+          "policy": "keep"
+        },
+        "type": {
+          "policy": "default",
+          "value": "companion"
+        },
+        "precision": {
+          "policy": "allowed",
+          "values": [
+            "",
+            "0",
+            "1",
+            "2"
+          ],
+          "fallback": ""
+        },
+        "options": {
+          "policy": "hook",
+          "hook": "normalize_date_time_options"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "large_numbers"
+      ],
+      "optionHook": "normalize_date_time_options"
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Monitor",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "companion",
+      "precision": "",
+      "options": ""
+    }
+  },
   "screen_lock": {
     "label": "Screen Lock",
     "allowInSubpage": true,
@@ -4386,6 +4457,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subpage": true
     }
   },
+  "companion": {
+    "driver": "companion",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": false,
+      "actions": true,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
+  },
   "screen_lock": {
     "driver": "screen_lock",
     "capabilities": {
@@ -4598,6 +4681,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "climate": "H",
   "climate_control": "HC",
   "push": "P",
+  "companion": "CP",
   "screen_lock": "SL",
   "webhook": "WH",
   "internal": "I",
@@ -4638,6 +4722,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string
   "H": "climate",
   "HC": "climate_control",
   "P": "push",
+  "CP": "companion",
   "SL": "screen_lock",
   "WH": "webhook",
   "I": "internal",

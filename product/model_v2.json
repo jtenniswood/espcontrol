@@ -74,6 +74,7 @@
       "action": "product/v2/cards/action.json",
       "option_select": "product/v2/cards/option_select.json",
       "push": "product/v2/cards/push.json",
+      "companion": "product/v2/cards/companion.json",
       "slider": "product/v2/cards/slider.json",
       "subpage": "product/v2/cards/subpage.json",
       "climate": "product/v2/cards/climate.json",

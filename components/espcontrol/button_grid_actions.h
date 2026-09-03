@@ -538,6 +538,12 @@ inline bool send_numeric_slider_action(const std::string &entity_id, double valu
 
 // Send HA action for a percentage slider change or its on-card toggle.
 inline bool send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
+  if (companion_volume_control_valid(entity_id)) {
+    char request_id[24];
+    snprintf(request_id, sizeof(request_id), "volume-%08lx",
+             static_cast<unsigned long>(companion_next_request_number()));
+    return invoke_companion_value(entity_id, value, request_id);
+  }
   esphome::api::HomeassistantActionRequest req;
   if (value < 0) {
     if (espcontrol::number_slider::is_numeric_entity(entity_id)) {

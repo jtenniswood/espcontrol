@@ -1838,6 +1838,9 @@ inline void grid_phase2(
   reset_climate_control_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
+  // Phase 1 has just registered each Companion card against its persistent
+  // LVGL labels. Keep those bindings so live metric snapshots can refresh the
+  // value and unit during Phase 2 and afterwards.
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.

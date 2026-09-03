@@ -6,6 +6,7 @@ export interface ArtworkPostApiFeature {
     postMediaPlayerSleepPrevention(on?: any): any;
     postMediaPlayerSleepPreventionEntity(value?: any): any;
     postCoverArtScreensaver(on?: any): any;
+    postCoverArtSource(value?: any): any;
     postCoverArtMediaPlayerEntity(value?: any): any;
     postCoverArtSecondaryMediaPlayerEntity(value?: any): any;
     postCoverArtConditions(value?: any): any;
@@ -39,6 +40,10 @@ export function createArtworkPostApiFeature(
     }
     function postCoverArtScreensaver(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_cover_art"), entityObjectIds("screen_saver_cover_art"), on);
+    }
+    function postCoverArtSource(this: any, value?: any) {
+        const source = value === "Mac Companion" ? "Mac Companion" : "Home Assistant";
+        return postSelectWithObjectIds(entityName("cover_art_source"), entityObjectIds("cover_art_source"), source);
     }
     function postCoverArtMediaPlayerEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("screen_saver_cover_art_entity"), entityObjectIds("screen_saver_cover_art_entity"), value);
@@ -84,6 +89,7 @@ export function createArtworkPostApiFeature(
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtScreensaver,
+        postCoverArtSource,
         postCoverArtMediaPlayerEntity,
         postCoverArtSecondaryMediaPlayerEntity,
         postCoverArtConditions,

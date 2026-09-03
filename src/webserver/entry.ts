@@ -57,6 +57,7 @@ import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } fro
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
 import { createSettingsSystemSectionFeature } from "./application/settings_system_section";
+import { createSettingsCompanionSectionFeature } from "./application/settings_companion_section";
 import { createSettingsPageFeature, type SettingsPageFeature } from "./application/settings_page";
 import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./application/controls_fields";
 import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
@@ -98,6 +99,7 @@ import { createReconnectController } from "./features/reconnect";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
 import { registerCalendarCardTypes } from "./cards/calendar";
+import { registerCompanionCardTypes } from "./cards/companion";
 import { registerClimateCardTypes } from "./cards/climate";
 import { registerClockCardTypes } from "./cards/clock";
 import { createCoverLikeCardRegistration } from "./cards/cover_like_card";
@@ -150,6 +152,14 @@ function registerCards(context: ApplicationContext) {
   registerActionCardTypes(registry, context.configuration.confirmationOptions, context.controllers.entityState, fields, cardUi);
   registerAlarmCardTypes(registry, context.configuration.accessClimateAlarm, context.controllers.renderQueue, fields, cardUi);
   registerCalendarCardTypes(registry, context.configuration.dateTimeOptions, fields);
+  registerCompanionCardTypes(
+    registry,
+    !!context.device.profile.features?.companion,
+    context.dom.document,
+    context.dom.fetch,
+    fields,
+    cardUi,
+  );
   registerClimateCardTypes(
     registry,
     context.configuration.modalTabs,
@@ -191,7 +201,15 @@ function registerCards(context: ApplicationContext) {
   registerPushCardTypes(registry, fields);
   registerScreenLockCardTypes(registry, fields);
   registerSensorCardTypes(registry, context.configuration.options, fields, cardUi);
-  registerSliderCardTypes(registry, context.configuration.modalTabs, lightCards, fields, context.controllers.settingsUi);
+  registerSliderCardTypes(
+    registry,
+    context.configuration.modalTabs,
+    lightCards,
+    fields,
+    context.controllers.settingsUi,
+    !!context.device.profile.features?.companion,
+    cardUi,
+  );
   registerSubpageCardTypes(registry, context.configuration.codec, context.core, context.controllers.selection, fields, cardUi);
   registerSwitchCardTypes(registry, context.configuration.confirmationOptions, lightCards, fields);
   registerTimezoneCardTypes(registry, context.configuration.dateTimeOptions, context.dom.document, fields);
@@ -847,6 +865,7 @@ function composeApplicationContext(): ApplicationContext {
   const coverArtSection = createSettingsCoverArtSectionFeature(
     configurationCodec, runtime, entityState, statusPreview, artworkPostApi,
     fields, settingsHelpers, coverArtScreensaver, mediaPlayback,
+    !!layout.config.features?.companion,
   );
   const systemSection = createSettingsSystemSectionFeature({
     exportBackup: backupApplication.exportConfig,
@@ -854,12 +873,13 @@ function composeApplicationContext(): ApplicationContext {
   }, runtime, firmwareVersion, firmwareUpdate, c6Firmware, shell, requestApi,
   stateLoader, firmwarePostApi, artworkPostApi, publicFirmwareInstall, fields,
   settingsHelpers);
+  const companionSection = createSettingsCompanionSectionFeature(dom, shell, fields);
   settingsPage = createSettingsPageFeature(
     configurationCodec, runtime, core, layout, environment, screenScheduleState,
     screensaverTimeout, screenRotation, appearance, clockBarState, entityState,
     shell, requestApi, statusPreview, artworkPostApi, schedulePostApi,
     clockBarPostApi, fields, settingsHelpers, scheduleSection, coverArtSection,
-    systemSection, preview,
+    companionSection, systemSection, preview,
   );
   requestApi.connectReconnect(appEvents.connect);
   return createApplicationContext({

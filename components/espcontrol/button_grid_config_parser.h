@@ -863,6 +863,14 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   return card_runtime_large_numbers_supported(p.type, p.precision);
 }
 
+inline bool companion_system_metric_config(const ParsedCfg &p) {
+  return p.type == "companion" &&
+    (p.entity == "stat.cpu" || p.entity == "stat.memory" ||
+     p.entity == "stat.memory_free" || p.entity == "stat.storage" ||
+     p.entity == "stat.storage_free" || p.entity == "stat.battery" ||
+     p.entity == "stat.network_throughput");
+}
+
 inline std::string date_time_card_options_normalized(const std::string &options,
                                                      const ParsedCfg &p) {
   if (!card_large_numbers_supported(p)) return "";
@@ -1304,6 +1312,22 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
   normalize_saved_config_action(p, normalize_saved_config_action_fields,
                                 action_card_options_normalized);
+  if (p.type == "companion") {
+    p.icon_on = "Auto";
+    if (companion_system_metric_config(p)) {
+      p.sensor.clear();
+      if (p.unit.empty()) {
+        if (p.entity == "stat.network_throughput") p.unit = "KB/s";
+        else p.unit = "%";
+      }
+      if (p.precision != "0" && p.precision != "1" && p.precision != "2") p.precision = "0";
+      p.options = date_time_card_options_normalized(p.options, p);
+    } else {
+      p.unit.clear();
+      p.precision.clear();
+      p.options.clear();
+    }
+  }
   if (migrate_saved_config_vacuum_legacy(p)) {
     if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }

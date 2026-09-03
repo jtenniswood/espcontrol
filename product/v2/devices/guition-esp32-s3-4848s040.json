@@ -1,7 +1,7 @@
 {
   "profiles": { "platform": "esp32-s3", "modal": "compact-square-constrained", "fonts": "compact-panel" },
   "config": {
-    "slots": 9, "capabilities": { "imageSlots": 1 },
+    "slots": 9, "capabilities": { "imageSlots": 1, "companion": true },
     "public": { "name": "Guition 4848S040", "docsPath": "/screens/4848s040", "screenSize": "4 inches", "resolution": "480 x 480", "orientation": "Square" },
     "layout": { "cols": 3, "rows": 3, "firmwareGrid": "3x3" },
     "rotation": { "enabled": true, "options": ["0", "90", "180", "270"], "default": "180", "displayOffset": 180 },

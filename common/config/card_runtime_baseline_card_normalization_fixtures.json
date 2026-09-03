@@ -1020,6 +1020,21 @@
     }
   },
   {
+    "name": "companion: approved_app",
+    "input": "~com.apple.Safari,Safari,Monitor,Auto,,,companion,,",
+    "expected": {
+      "entity": "com.apple.Safari",
+      "label": "Safari",
+      "icon": "Monitor",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "companion",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "screen_lock: toggle",
     "input": "~,,Lock,Lock%20Open,,,screen_lock,,",
     "expected": {

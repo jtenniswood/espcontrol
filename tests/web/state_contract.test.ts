@@ -51,6 +51,7 @@ export function runStateContractTests(): void {
   equal(first.alarmDelayAudioOn, false, "alarm delay audio defaults off");
   equal(first.alarmDelayTtsOn, true, "alarm delay TTS defaults on");
   equal(first.alarmDelayFinalCountdown, 10, "alarm delay final countdown defaults to ten seconds");
+  equal(first.coverArtSource, "Home Assistant", "cover art defaults to the Home Assistant source");
   first.grid[0] = 9;
   first.buttons[0]!.label = "Changed";
   equal(second.grid[0], 0, "state factories do not share grid arrays");
@@ -110,6 +111,7 @@ export function runStateContractTests(): void {
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
+    coverArtSource: "select-cover_art_source",
     coverArtEntity: "text-screen_saver__cover_art_entity",
     coverArtSecondaryEntity: "text-screen_saver__external_source_media_entity",
     coverArtConditions: "text-screen_saver__cover_art_conditions",

@@ -156,6 +156,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "alarm_action": "docs/card-types/alarms.md",
     "calendar": "docs/card-types/calendar.md",
     "clock": "docs/card-types/calendar.md",
+    "companion": "docs/card-types/companion.md",
     "climate": "docs/card-types/climate.md",
     "climate_control": "docs/card-types/climate.md",
     "cover": "docs/card-types/covers.md",

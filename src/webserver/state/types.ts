@@ -13,6 +13,7 @@ export interface DeviceConfigFeatures {
   voiceServices?: boolean;
   battery?: boolean;
   alarmDelayAudio?: boolean;
+  companion?: boolean;
 }
 
 export interface DeviceConfig {
@@ -144,6 +145,7 @@ export interface AppState {
   mediaPlayerSleepPreventionOn: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaverOn: boolean;
+  coverArtSource: string;
   coverArtMediaPlayerEntity: string;
   coverArtSecondaryMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
