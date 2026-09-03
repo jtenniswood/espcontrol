@@ -4,6 +4,7 @@ import {
     cardContractDefaultConfig,
     cardContractHidden,
     cardContractPickerKey,
+    CARD_RUNTIME_SPECS,
 } from "../generated/card_contract";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
@@ -1004,6 +1005,7 @@ export function registerCompanionCardTypes(
             ...companionDefinition,
             label,
             pickerKey: null,
+            runtimeSpec: CARD_RUNTIME_SPECS.companion,
             onSelect: function (card?: any) {
                 companionDefinition.onSelect(card);
                 applyCompanionPickerPreset(card, mode);
