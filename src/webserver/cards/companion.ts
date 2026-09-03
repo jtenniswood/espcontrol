@@ -502,6 +502,7 @@ export function registerCompanionCardTypes(
                     renderButtonSettings();
                 });
                 statsField.appendChild(statsSelect);
+                helpers.markCardPrimaryField(statsField, "statistic");
                 panel?.appendChild(statsField);
                 if (metric?.freeId) {
                     const displayField = document.createElement("div");
