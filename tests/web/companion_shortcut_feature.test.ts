@@ -40,8 +40,8 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
-  if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "processor") {
-    throw new Error("Processor statistics must retain their Companion subtype");
+  if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "stats") {
+    throw new Error("Processor statistics must be grouped under the Stats Companion subtype");
   }
   if (!companionCardIsMetric({ entity: "stat.memory" }) ||
       !companionCardIsMetric({ entity: "stat.memory_free" }) ||
@@ -91,7 +91,8 @@ export function runCompanionShortcutFeatureTests(): void {
       companionCardMode({ entity: emptyFolderEntity, sensor: "" }) !== "folder") {
     throw new Error("Open folder must retain its subtype while waiting for a folder selection");
   }
-  if (companionEntityForMode("processor") !== "stat.cpu" ||
+  if (companionEntityForMode("stats") !== "stat.cpu" ||
+      companionEntityForMode("processor") !== "stat.cpu" ||
       companionEntityForMode("memory_usage") !== "stat.memory" ||
       companionEntityForMode("network_throughput") !== "stat.network_throughput") {
     throw new Error("System statistic subtypes must select their Companion metric entities");

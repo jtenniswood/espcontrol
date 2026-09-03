@@ -45,6 +45,13 @@ export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
     { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
     { mode: "network_throughput", id: "stat.network_throughput", label: "Network Throughput", unit: "KB/s" },
 ];
+const COMPANION_STATS_OPTIONS = [
+    ["processor", "Processor usage"],
+    ["memory_usage", "Memory usage"],
+    ["storage", "Storage usage"],
+    ["battery", "Battery level"],
+    ["network_throughput", "Network throughput"],
+] as const;
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
     Space: "space", Enter: "enter", Tab: "tab", Escape: "escape",
@@ -186,11 +193,7 @@ const COMPANION_CARD_METADATA = {
             ["url", "Open URL"],
             ["folder", "Open folder"],
             ["media", "Media control"],
-            ["processor", "Processor usage"],
-            ["memory_usage", "Memory usage"],
-            ["storage", "Storage usage"],
-            ["battery", "Battery level"],
-            ["network_throughput", "Network throughput"],
+            ["stats", "Stats"],
         ],
         value: companionCardMode,
     },
@@ -241,7 +244,7 @@ export function companionCardMode(card: any): string {
     if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
     if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
     const metric = companionMetricForEntity(entity);
-    if (metric) return metric.mode;
+    if (metric) return "stats";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
     return "app";
 }
@@ -250,6 +253,7 @@ export function companionEntityForMode(mode: string): string {
     if (mode === "shortcut") return COMPANION_SHORTCUT_PREFIX;
     if (mode === "folder") return COMPANION_FOLDER_PREFIX;
     if (mode === "media") return COMPANION_MEDIA_ACTIONS[0].id;
+    if (mode === "stats") return COMPANION_SYSTEM_METRICS[0]?.id || "";
     return COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === mode)?.id || "";
 }
 
@@ -273,7 +277,7 @@ export function resetCompanionMediaPresentation(card: any, nextMode: string): vo
 export function resetCompanionMetricPresentation(card: any, nextMode: string): void {
     if (!card) return;
     const previous = companionMetricForEntity(card.entity);
-    const nextMetric = COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
+    const nextMetric = nextMode === "stats" || COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
     if (!previous || previous.mode === nextMode || nextMetric) return;
     if (card.label === previous.label) card.label = "";
     card.unit = "";
@@ -381,7 +385,9 @@ export function registerCompanionCardTypes(
                         }
                         resetCompanionMediaPresentation(card, this.value);
                         resetCompanionMetricPresentation(card, this.value);
-                        const selectedMetric = COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
+                        const selectedMetric = this.value === "stats"
+                            ? COMPANION_SYSTEM_METRICS[0]
+                            : COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
                         card.entity = companionEntityForMode(this.value);
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
@@ -420,6 +426,28 @@ export function registerCompanionCardTypes(
 
             if (companionCardIsMetric(card)) {
                 const metric = companionMetricForEntity(card.entity);
+                const statsField = document.createElement("div");
+                statsField.className = "sp-field";
+                statsField.appendChild(fieldLabel("Statistic", helpers.idPrefix + "companion-stat"));
+                const statsSelect = document.createElement("select");
+                statsSelect.className = "sp-select";
+                statsSelect.id = helpers.idPrefix + "companion-stat";
+                COMPANION_STATS_OPTIONS.forEach(function (item) {
+                    const option = document.createElement("option");
+                    option.value = item[0];
+                    option.textContent = item[1];
+                    option.selected = item[0] === metric?.mode;
+                    statsSelect.appendChild(option);
+                });
+                statsSelect.addEventListener("change", function () {
+                    const selected = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.mode === this.value);
+                    if (!selected) return;
+                    card.entity = selected.id;
+                    helpers.saveField("entity", card.entity);
+                    renderButtonSettings();
+                });
+                statsField.appendChild(statsSelect);
+                panel?.appendChild(statsField);
                 if (metric?.freeId) {
                     const displayField = document.createElement("div");
                     displayField.className = "sp-field";
