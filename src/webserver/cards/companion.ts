@@ -329,6 +329,12 @@ export function companionApplicationActions(actions: readonly CompanionAction[])
         !COMPANION_MEDIA_ACTIONS.some((mediaAction) => mediaAction.id === action.id)));
 }
 
+export function companionApplicationActionIdValid(
+    actions: readonly CompanionAction[], actionId: string,
+): boolean {
+    return companionApplicationActions(actions).some((action) => action.id === actionId);
+}
+
 export function companionFolderActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
     return sortCompanionLabels(actions.filter((action) => action.id.startsWith(COMPANION_FOLDER_PREFIX)));
 }
@@ -479,6 +485,8 @@ export function registerCompanionCardTypes(
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
             card.entity = currentEntity;
             const initialMode = companionCardMode(card);
+            let companionActions: readonly CompanionAction[] = [];
+            let availableCompanionApps: readonly CompanionAction[] = [];
 
             helpers.renderCardTextField(panel, card, helpers, {
                 label: "Label", idSuffix: "label", field: "label",
@@ -566,6 +574,11 @@ export function registerCompanionCardTypes(
             if (initialMode === "app" || initialMode === "url") {
                 helpers.markCardPrimaryField(appField, "entity");
             }
+            helpers.requireField(select, "Choose a Mac app before saving.", function () {
+                return initialMode === "app" || initialMode === "url";
+            }, function (value: string) {
+                return companionApplicationActionIdValid(availableCompanionApps, value);
+            });
 
             const folderField = document.createElement("div");
             folderField.className = "sp-field";
@@ -799,10 +812,10 @@ export function registerCompanionCardTypes(
                 renderButtonSettings();
             });
 
-            let companionActions: readonly CompanionAction[] = [];
             loadCompanionActions(true).then(function (actions) {
                 companionActions = actions;
                 const applicationActions = companionApplicationActions(actions);
+                availableCompanionApps = applicationActions;
                 const folderActions = companionFolderActions(actions);
                 select.replaceChildren();
                 const placeholder = document.createElement("option");
@@ -844,6 +857,7 @@ export function registerCompanionCardTypes(
                 });
                 folderSelect.disabled = folderActions.length === 0;
             }).catch(function () {
+                availableCompanionApps = [];
                 select.replaceChildren();
                 const unavailable = document.createElement("option");
                 unavailable.value = card.entity || "";

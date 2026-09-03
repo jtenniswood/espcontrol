@@ -2,6 +2,7 @@ import {
   applyCompanionMediaPresentation,
   companionAppLabel,
   companionApplicationActions,
+  companionApplicationActionIdValid,
   companionCardMode,
   companionFolderActions,
   companionEntityForMode,
@@ -314,6 +315,11 @@ export function runCompanionShortcutFeatureTests(): void {
   ];
   if (companionApplicationActions(catalogue).map((action) => action.id).join() !== "com.google.Chrome,com.apple.Safari") {
     throw new Error("Finder and approved folders must not appear in the alphabetized application list");
+  }
+  if (!companionApplicationActionIdValid(catalogue, "com.apple.Safari") ||
+      companionApplicationActionIdValid(catalogue, "com.apple.finder") ||
+      companionApplicationActionIdValid([], "com.apple.Safari")) {
+    throw new Error("Companion app selections require an available application action");
   }
   if (companionFolderActions(catalogue).map((action) => action.label).join() !== "Archive,Projects") {
     throw new Error("Approved folders must appear alphabetically in the folder list");
