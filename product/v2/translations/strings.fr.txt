@@ -170,7 +170,6 @@ swing=Oscillation
 target=Cible
 temporaryhold=Temporaryhold
 today=Aujourd'hui
-todo=Tâche
 too_many=Trop nombreux
 toggle_this_device=Basculer cet appareil ?
 tomorrow=Demain

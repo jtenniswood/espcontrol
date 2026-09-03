@@ -170,7 +170,6 @@ swing=Balans
 target=Țintă
 temporaryhold=Menținere temporară
 today=Astăzi
-todo=De făcut
 too_many=Prea multe
 toggle_this_device=Comuți acest dispozitiv?
 tomorrow=Mâine

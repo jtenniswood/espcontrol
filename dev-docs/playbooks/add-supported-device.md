@@ -56,6 +56,26 @@ Expected generated files commonly include:
 - generated blocks in `devices/*/device/sensors.yaml`
 - generated files under `docs/public/webserver/` when web profile data changes
 
+## Compile or Upload Locally
+
+Run local firmware from the repository root with the pinned ESPHome wrapper:
+
+```bash
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run
+```
+
+When USB and OTA targets are both available, pass the target explicitly so a
+background run cannot stop at ESPHome's interactive prompt:
+
+```bash
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip>
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <usb-path>
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip> --no-logs
+```
+
+Use USB for first flash. OTA requires an existing EspControl installation that
+is already connected to the network.
+
 ## Stop If
 
 - Generated files for unrelated devices change without a manifest reason.

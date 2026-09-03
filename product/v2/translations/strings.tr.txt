@@ -170,7 +170,6 @@ swing=Salınım
 target=Hedef
 temporaryhold=Geçici tutma
 today=Bugün
-todo=Yapılacak
 too_many=Çok fazla
 toggle_this_device=Bu cihazın durumunu değiştir?
 tomorrow=Yarın

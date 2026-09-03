@@ -170,7 +170,6 @@ swing=נדנוד
 target=יעד
 temporaryhold=החזקה זמנית
 today=היום
-todo=מטלות
 too_many=יותר מדי
 toggle_this_device=להחליף את מצב המכשיר?
 tomorrow=מחר

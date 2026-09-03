@@ -170,7 +170,6 @@ swing=Kääntö
 target=Tavoite
 temporaryhold=Väliaikainen pito
 today=Tänään
-todo=Tehtävä
 too_many=Liian monta
 toggle_this_device=Vaihda tämän laitteen tila?
 tomorrow=Huomenna

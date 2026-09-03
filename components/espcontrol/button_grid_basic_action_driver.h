@@ -12,7 +12,6 @@ inline bool basic_action_driver_matches(const Context &context,
                                         const ParsedCfg &config) {
   using Driver = card_runtime::CardDriverId;
   using Type = card_runtime::CardTypeId;
-  if (context.legacy_dispatch) return false;
   switch (context.runtime.driver) {
     case Driver::TOGGLE:
     case Driver::ACTION:

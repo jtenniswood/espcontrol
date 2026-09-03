@@ -130,7 +130,7 @@ int main() {
 
   ModalOverlay overlay;
   ModalService &modal = app.modal_state_service<ModalService>();
-  modal.set_active(ControlModalKind::TODO_LIST, &overlay, nullptr,
+  modal.set_active(ControlModalKind::IMAGE_CARD, &overlay, nullptr,
                    ControlModalDismissPolicy::DISMISS);
   if (modal.active().overlay != &overlay) return EXIT_FAILURE;
 
