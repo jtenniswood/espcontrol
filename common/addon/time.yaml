@@ -502,6 +502,7 @@ script:
             update_timezone_cards(false, 0, active_timezone, use_12h);
           }
 
+interval:
   - interval: 5s
     then:
       - if:
