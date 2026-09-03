@@ -138,7 +138,8 @@ export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
         shortcutCard("shortcut.command+k", "Command", "Application"),
         shortcutCard("shortcut.command+o", "Open", "Folder Outline"),
         shortcutCard("shortcut.command+b", "Sidebar", "View Headline"),
-        shortcutCard("shortcut.command+j", "Panel", "Monitor"),
+        shortcutCard("shortcut.option+command+b", "Side panel", "Tab"),
+        shortcutCard("shortcut.command+j", "Terminal", "Application"),
         shortcutCard("shortcut.control+keybackquote", "Terminal", "Application"),
     ];
 }
@@ -161,9 +162,10 @@ export function companionShortcutPresetCards(bundleIdentifier: string): Companio
 }
 
 export function createCompanionShortcutSubpage(bundleIdentifier: string): any {
+    const buttons = companionShortcutPresetCards(bundleIdentifier);
     return {
-        order: ["B", "1", "2", "3", "4", "5"],
-        buttons: companionShortcutPresetCards(bundleIdentifier),
+        order: ["B"].concat(buttons.map((_button, index) => String(index + 1))),
+        buttons,
         grid: [],
         sizes: {},
         backLabel: "Back",

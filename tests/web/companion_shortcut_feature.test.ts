@@ -158,6 +158,7 @@ export function runCompanionShortcutFeatureTests(): void {
     "shortcut.command+k",
     "shortcut.command+o",
     "shortcut.command+b",
+    "shortcut.option+command+b",
     "shortcut.command+j",
     "shortcut.control+keybackquote",
   ];
@@ -167,7 +168,7 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!codexPreset.every((card) => card.type === "companion" && companionShortcutActionIdValid(card.entity))) {
     throw new Error("Codex presets must contain only Companion keyboard shortcuts");
   }
-  const expectedCodexLabels = ["Command", "Open", "Sidebar", "Panel", "Terminal"];
+  const expectedCodexLabels = ["Command", "Open", "Sidebar", "Side panel", "Terminal", "Terminal"];
   if (codexPreset.map((card) => card.label).join("|") !== expectedCodexLabels.join("|")) {
     throw new Error("Codex shortcut labels should stay short");
   }
@@ -214,7 +215,7 @@ export function runCompanionShortcutFeatureTests(): void {
     throw new Error("Safari app subpage layout changed");
   }
   const codexSubpage = createCodexShortcutSubpage();
-  if (codexSubpage.backLabel !== "Back" || codexSubpage.order.join("|") !== "B|1|2|3|4|5" ||
+  if (codexSubpage.backLabel !== "Back" || codexSubpage.order.join("|") !== "B|1|2|3|4|5|6" ||
       codexSubpage.buttons.map((card: any) => card.entity).join("|") !== expectedCodexShortcuts.join("|")) {
     throw new Error("Codex app subpage layout changed");
   }
