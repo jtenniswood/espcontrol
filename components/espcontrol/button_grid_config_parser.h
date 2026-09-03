@@ -884,6 +884,10 @@ inline bool subpage_companion_stat_config(const ParsedCfg &p) {
          subpage_companion_stat_entity_valid(p.entity);
 }
 
+inline bool companion_config_tracker_preserves_card_binding(const ParsedCfg &p) {
+  return p.type == "companion" || subpage_companion_stat_config(p);
+}
+
 inline const char *subpage_companion_stat_default_label(const std::string &entity) {
   if (entity == "stat.cpu") return "Processor";
   if (entity == "stat.memory" || entity == "stat.memory_free") return "Memory";

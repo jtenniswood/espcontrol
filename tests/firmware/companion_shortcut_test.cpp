@@ -44,6 +44,16 @@ int main() {
   safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
   assert(!companion_app_shortcuts_enabled(safari_launch));
 
+  ParsedCfg companion_stat_subpage;
+  companion_stat_subpage.type = "subpage";
+  companion_stat_subpage.entity = "stat.network_throughput";
+  companion_stat_subpage.options = "subpage_kind=companion_stat";
+  assert(companion_config_tracker_preserves_card_binding(companion_stat_subpage));
+  ParsedCfg ordinary_subpage = companion_stat_subpage;
+  ordinary_subpage.options = "subpage_kind=media";
+  assert(!companion_config_tracker_preserves_card_binding(ordinary_subpage));
+  assert(companion_config_tracker_preserves_card_binding(safari_launch));
+
   const std::string url_config = "url.https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice";
   assert(companion_encoded_url(url_config) == "https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice");
   assert(companion_encoded_url("url.file%3A%2F%2Fetc%2Fpasswd").empty());
