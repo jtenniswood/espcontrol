@@ -34,6 +34,7 @@ int main() {
   assert(companion_metric_key_valid("stat.cpu"));
   assert(!companion_metric_key_valid("sensor.cpu"));
   assert(std::string(companion_metric_label_key("stat.memory")) == "memory");
+  assert(std::string(companion_metric_default_unit("stat.network_throughput")) == "MB/s");
   CompanionSystemMetricsSnapshot metrics;
   metrics.generation = 1;
   metrics.cpu_usage_percent = 42.5f;
@@ -49,7 +50,7 @@ int main() {
   assert(companion_metric_value(companion_runtime_snapshot(), "stat.storage_free", metric_value));
   assert(metric_value == 27.0f);
   assert(companion_metric_value(companion_runtime_snapshot(), "stat.network_throughput", metric_value));
-  assert(metric_value == 512.5f);
+  assert(metric_value == 512.5f / 1024.0f);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.battery", metric_value));
   companion_set_focused_application("com.apple.Safari");
   assert(companion_application_focused("com.apple.Safari"));

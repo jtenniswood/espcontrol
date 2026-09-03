@@ -1317,8 +1317,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (companion_system_metric_config(p)) {
       p.sensor.clear();
       if (p.unit.empty()) {
-        if (p.entity == "stat.network_throughput") p.unit = "KB/s";
+        if (p.entity == "stat.network_throughput") p.unit = "MB/s";
         else p.unit = "%";
+      } else if (p.entity == "stat.network_throughput" && p.unit == "KB/s") {
+        p.unit = "MB/s";
       }
       if (p.precision != "0" && p.precision != "1" && p.precision != "2") p.precision = "0";
       p.options = date_time_card_options_normalized(p.options, p);

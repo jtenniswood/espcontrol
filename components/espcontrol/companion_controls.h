@@ -174,7 +174,7 @@ inline const char *companion_metric_label_key(const std::string &key) {
 }
 
 inline const char *companion_metric_default_unit(const std::string &key) {
-  if (key == "stat.network_throughput") return "KB/s";
+  if (key == "stat.network_throughput") return "MB/s";
   return companion_metric_key_valid(key) ? "%" : "";
 }
 
@@ -187,7 +187,10 @@ inline bool companion_metric_value(const CompanionRuntimeSnapshot &snapshot,
   else if (key == "stat.storage") value = snapshot.system_metrics.storage_usage_percent;
   else if (key == "stat.storage_free") value = 100.0f - snapshot.system_metrics.storage_usage_percent;
   else if (key == "stat.battery") value = snapshot.system_metrics.battery_percent;
-  else if (key == "stat.network_throughput") value = snapshot.system_metrics.network_throughput_kbps;
+  else if (key == "stat.network_throughput") {
+    // The Companion protocol remains in KB/s; cards display megabytes per second.
+    value = snapshot.system_metrics.network_throughput_kbps / 1024.0f;
+  }
   else return false;
   return std::isfinite(value);
 }
