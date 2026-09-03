@@ -12,7 +12,9 @@ import {
     // ── Subpage Card Options ───────────────────────────────────────────
     function normalizeSubpageKind(this: any, value?: any) {
         value = String(value || "").trim();
-        return subpagePresetDefaults(value) ? value : "";
+        return SUBPAGE_KIND_PRESET_DEFINITIONS.some(function (definition: any) {
+            return definition.value === value;
+        }) ? value : "";
     }
     function subpageKind(this: any, b?: any) {
         return normalizeSubpageKind(configOptionValue(b && b.options, SUBPAGE_KIND_OPTION));
@@ -34,6 +36,7 @@ import {
         { value: "weather", label: "Weather", preset: { label: "Weather", icon: "Weather Partly Cloudy", entityDomains: ["weather"], placeholder: "e.g. weather.home" } },
         { value: "sensor", label: "Sensor", preset: { label: "Sensor", icon: "Gauge", entityDomains: ["sensor", "binary_sensor", "text_sensor"], placeholder: "e.g. sensor.open_windows" } },
         { value: "image", label: "Camera/Image", preset: { label: "Camera", icon: "Camera", entityDomains: ["camera", "image"], placeholder: "e.g. camera.front_door" } },
+        { value: "companion_stat", label: "Companion Stat" },
     ];
     function subpageKindOptions(this: any) {
         return SUBPAGE_KIND_PRESET_DEFINITIONS.map(function (this: any, definition?: any) {

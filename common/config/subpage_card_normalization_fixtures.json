@@ -15,6 +15,16 @@
     "expected": { "entity": "", "label": "My Lights", "icon": "Star", "icon_on": "Auto", "sensor": "indicator", "unit": "", "type": "subpage", "precision": "", "options": "subpage_kind=lights" }
   },
   {
+    "name": "companion stat preset keeps the selected metric and title",
+    "input": "stat.memory_free;Mac RAM Free;Auto;Custom;indicator;%;subpage;;subpage_kind=companion_stat,unknown=1",
+    "expected": { "entity": "stat.memory_free", "label": "Mac RAM Free", "icon": "Gauge", "icon_on": "Auto", "sensor": "indicator", "unit": "%", "type": "subpage", "precision": "", "options": "subpage_kind=companion_stat" }
+  },
+  {
+    "name": "companion stat preset repairs an invalid metric entity",
+    "input": "sensor.cpu;CPU;Auto;Custom;indicator;%;subpage;;subpage_kind=companion_stat",
+    "expected": { "entity": "stat.cpu", "label": "CPU", "icon": "Gauge", "icon_on": "Auto", "sensor": "indicator", "unit": "%", "type": "subpage", "precision": "", "options": "subpage_kind=companion_stat" }
+  },
+  {
     "name": "invalid preset remains generic and drops the preset option",
     "input": ";Rooms;View Grid;Custom;sensor.room;C;subpage;1;subpage_kind=invalid,large_numbers=off,unknown=1",
     "expected": { "entity": "", "label": "Rooms", "icon": "View Grid", "icon_on": "Custom", "sensor": "sensor.room", "unit": "C", "type": "subpage", "precision": "1", "options": "large_numbers=off" }

@@ -2992,6 +2992,12 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "domains": [],
     "options": [
       {
+        "name": "app_shortcuts",
+        "label": "App Shortcut Folder",
+        "kind": "flag",
+        "omitDefault": true
+      },
+      {
         "name": "large_numbers",
         "label": "Large Sensor Numbers",
         "kind": "flag",
@@ -3041,6 +3047,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
+        "app_shortcuts",
         "large_numbers"
       ],
       "optionHook": "normalize_date_time_options"
@@ -3524,7 +3531,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "lawn_mower",
           "weather",
           "sensor",
-          "image"
+          "image",
+          "companion_stat"
         ],
         "defaultValue": "",
         "omitDefault": true
@@ -4755,6 +4763,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "app_shortcuts": "app_shortcuts",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
   "confirm_no": "confirm_no",

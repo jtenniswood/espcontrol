@@ -1,6 +1,7 @@
 import { state } from "../state/app_instance";
 import { setConfigOptionValue } from "../model/config_primitives";
 import { escHtml, iconSlug } from "../application/ui_primitives";
+import { COMPANION_SYSTEM_METRICS, companionMetricPreviewValue } from "./companion";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigCodecFeature } from "../application/config_codec";
 import type { CoreFeature } from "../application/core";
@@ -15,6 +16,22 @@ import {
     subpageKindOptions,
     subpagePresetDefaults,
 } from "../application/config_subpage_options";
+
+function companionStatMetric(entity: any): any {
+    return COMPANION_SYSTEM_METRICS.find(function (metric) {
+        return metric.id === entity || metric.freeId === entity;
+    });
+}
+
+function companionStatMode(entity: any): string {
+    var metric: any = companionStatMetric(entity);
+    return metric && metric.freeId === entity ? "free" : "used";
+}
+
+function companionStatEntity(metric: any, mode: string): string {
+    return mode === "free" && metric.freeId ? metric.freeId : metric.id;
+}
+
 export function registerSubpageCardTypes(
     registry: CardRegistry,
     codec: ConfigCodecFeature,
@@ -24,7 +41,7 @@ export function registerSubpageCardTypes(
     cardUi: CardUiServices,
 ): void {
     const { renderButtonSettings } = cardUi;
-    const { cardSensorPreviewHtml, condField } = fields;
+    const { cardSensorPreviewHtml, condField, fieldLabel } = fields;
     const { enterSubpage } = codec;
     const { subpageStateDisplayMode } = core;
     // Navigation folder: tap opens a nested grid screen with its own button layout
@@ -142,7 +159,19 @@ export function registerSubpageCardTypes(
                     onChange: function (this: any, button?: any, cardHelpers?: any) {
                         var nextKind: any = normalizeSubpageKind(this.value);
                         button.options = setConfigOptionValue(button.options, SUBPAGE_KIND_OPTION, nextKind);
-                        applySubpagePresetConfig(button, true);
+                        if (nextKind === "companion_stat") {
+                            var metric: any = COMPANION_SYSTEM_METRICS[0];
+                            button.entity = metric ? metric.id : "";
+                            button.label = metric ? metric.label : "Processor";
+                            button.icon = "Gauge";
+                            button.icon_on = "Auto";
+                            button.sensor = "indicator";
+                            button.unit = metric ? metric.unit : "%";
+                            button.precision = "";
+                        }
+                        else {
+                            applySubpagePresetConfig(button, true);
+                        }
                         button.options = normalizeSubpageOptions(button.options, button.sensor, button.precision);
                         cardHelpers.saveField("options", button.options);
                         cardHelpers.saveField("label", button.label || "");
@@ -155,6 +184,93 @@ export function registerSubpageCardTypes(
                     },
                 }),
             });
+            if (kind === "companion_stat") {
+                var initialMetric: any = companionStatMetric(b.entity) || COMPANION_SYSTEM_METRICS[0];
+                if (initialMetric && !companionStatMetric(b.entity)) {
+                    b.entity = initialMetric.id;
+                    b.sensor = "indicator";
+                    b.unit = initialMetric.unit;
+                }
+                helpers.renderCardTextField(panel, b, helpers, SUBPAGE_CARD_METADATA.labelField);
+                helpers.renderCardIconPicker(panel, b, helpers, SUBPAGE_CARD_METADATA.icon);
+
+                var statField: any = document.createElement("div");
+                statField.className = "sp-field";
+                statField.appendChild(fieldLabel("Statistic", helpers.idPrefix + "companion-stat"));
+                var statSelect: any = document.createElement("select");
+                statSelect.className = "sp-select";
+                statSelect.id = helpers.idPrefix + "companion-stat";
+                var statOptions: any = [
+                    ["processor", "Processor usage"],
+                    ["memory_usage", "Memory usage"],
+                    ["storage", "Storage usage"],
+                    ["battery", "Battery level"],
+                    ["network_throughput", "Network throughput"],
+                ];
+                statOptions.forEach(function (item: any) {
+                    var option: any = document.createElement("option");
+                    option.value = item[0];
+                    option.textContent = item[1];
+                    option.selected = item[0] === initialMetric.mode;
+                    statSelect.appendChild(option);
+                });
+                statField.appendChild(statSelect);
+                panel.appendChild(statField);
+
+                var displaySelect: any = null;
+                if (initialMetric.freeId) {
+                    var displayField: any = document.createElement("div");
+                    displayField.className = "sp-field";
+                    displayField.appendChild(fieldLabel("Show", helpers.idPrefix + "companion-stat-display"));
+                    displaySelect = document.createElement("select");
+                    displaySelect.className = "sp-select";
+                    displaySelect.id = helpers.idPrefix + "companion-stat-display";
+                    [["used", "Used"], ["free", "Free"]].forEach(function (item: any) {
+                        var option: any = document.createElement("option");
+                        option.value = item[0];
+                        option.textContent = item[1];
+                        displaySelect.appendChild(option);
+                    });
+                    displaySelect.value = companionStatMode(b.entity);
+                    displayField.appendChild(displaySelect);
+                    panel.appendChild(displayField);
+                }
+
+                function saveCompanionStat(metric: any, mode: string): void {
+                    if (!metric) return;
+                    var previousMetric: any = companionStatMetric(b.entity);
+                    var currentLabel: string = String(b.label || "");
+                    if (!currentLabel || (previousMetric && currentLabel === previousMetric.label)) {
+                        b.label = metric.label;
+                        helpers.saveField("label", b.label);
+                    }
+                    b.entity = companionStatEntity(metric, mode);
+                    b.sensor = "indicator";
+                    b.unit = metric.unit;
+                    b.precision = "";
+                    b.icon_on = "Auto";
+                    helpers.saveField("entity", b.entity);
+                    helpers.saveField("sensor", b.sensor);
+                    helpers.saveField("unit", b.unit);
+                    helpers.saveField("precision", b.precision);
+                    helpers.saveField("icon_on", b.icon_on);
+                    renderButtonSettings();
+                }
+                statSelect.addEventListener("change", function (this: any) {
+                    var selectedMode: string = this.value;
+                    var metric: any = COMPANION_SYSTEM_METRICS.find(function (candidate) {
+                        return candidate.mode === selectedMode;
+                    });
+                    saveCompanionStat(metric, displaySelect ? displaySelect.value : "used");
+                });
+                if (displaySelect) {
+                    displaySelect.addEventListener("change", function (this: any) {
+                        saveCompanionStat(companionStatMetric(b.entity) || initialMetric, this.value);
+                    });
+                }
+                appendEditSubpageButton(panel, slot);
+                return;
+            }
             if (subpagePresetDefaults(kind)) {
                 helpers.renderCardTextField(panel, b, helpers, SUBPAGE_CARD_METADATA.labelField);
                 helpers.renderCardIconPicker(panel, b, helpers, SUBPAGE_CARD_METADATA.icon);
@@ -322,6 +438,13 @@ export function registerSubpageCardTypes(
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var defaults: any = subpagePresetDefaults(subpageKind(b));
+            var companionMetric: any = subpageKind(b) === "companion_stat" ? companionStatMetric(b.entity) : null;
+            if (companionMetric) {
+                return {
+                    iconHtml: cardSensorPreviewHtml(b, helpers, companionMetricPreviewValue("0"), companionMetric.unit),
+                    labelHtml: subpageBadgeLabelHtml(helpers, b.label || companionMetric.label),
+                };
+            }
             var label: any = b.label || (defaults && defaults.label) || b.entity || "Configure";
             var mode: any = subpageStateDisplayMode(b);
             if (mode === "icon") {

@@ -1,6 +1,12 @@
 #include <cassert>
+#include <string>
+
+struct lv_obj_t {};
+inline void lv_label_set_text(lv_obj_t *, const char *) {}
+inline std::string espcontrol_i18n(const std::string &value) { return value; }
 
 #include "companion_controls.h"
+#include "button_grid_config_parser.h"
 
 int main() {
   assert(!companion_connected());
@@ -22,6 +28,20 @@ int main() {
   assert(!companion_shortcut_action_valid("shortcut.command+volumeup"));
   assert(!companion_shortcut_action_valid("shortcut.command+f21"));
   assert(!companion_shortcut_action_valid("com.apple.Safari"));
+
+  ParsedCfg safari_launch;
+  safari_launch.type = "companion";
+  safari_launch.entity = "com.apple.Safari";
+  safari_launch.options = "app_shortcuts";
+  assert(companion_app_shortcuts_enabled(safari_launch));
+  ParsedCfg codex_launch = safari_launch;
+  codex_launch.entity = "com.openai.codex";
+  assert(companion_app_shortcuts_enabled(codex_launch));
+  ParsedCfg slack_launch = safari_launch;
+  slack_launch.entity = "com.tinyspeck.slackmacgap";
+  assert(companion_app_shortcuts_enabled(slack_launch));
+  safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
+  assert(!companion_app_shortcuts_enabled(safari_launch));
 
   const std::string url_config = "url.https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice";
   assert(companion_encoded_url(url_config) == "https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice");
@@ -122,6 +142,30 @@ int main() {
   });
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
+  bool navigated = false;
+  companion_expect_action_result("launch-1", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("another-request", "performed");
+  assert(!navigated);
+  companion_deliver_action_result("launch-1", "not_allowed");
+  assert(!navigated);
+  companion_deliver_action_result("launch-1", "performed");
+  assert(!navigated);
+  companion_expect_action_result("launch-2", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-2", "performed");
+  assert(!navigated);
+  companion_expect_action_result("launch-3", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-3", "opened");
+  assert(!navigated);
+  companion_expect_action_result("launch-4", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-4", "activated");
+  assert(navigated);
+  navigated = false;
+  companion_expect_action_result("launch-focus", "com.apple.Safari",
+                                 [&navigated]() { navigated = true; });
+  companion_set_focused_application("com.apple.Safari");
+  assert(navigated);
+  companion_deliver_action_result("launch-focus", "activated");
+  assert(navigated);
   companion_set_connected(false);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.cpu", metric_value));
   assert(!companion_application_focused("com.apple.Safari"));

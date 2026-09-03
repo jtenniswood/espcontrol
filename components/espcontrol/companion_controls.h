@@ -38,6 +38,66 @@ struct CompanionValue {
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
 using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
 using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
+using CompanionActionResultHandler = std::function<void()>;
+
+struct CompanionPendingActionResult {
+  std::mutex mutex;
+  std::string request_id;
+  std::string expected_application_id;
+  CompanionActionResultHandler success;
+};
+
+inline CompanionPendingActionResult &companion_pending_action_result() {
+  static CompanionPendingActionResult pending;
+  return pending;
+}
+
+inline void companion_expect_action_result(const std::string &request_id,
+                                           CompanionActionResultHandler success) {
+  auto &pending = companion_pending_action_result();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  pending.request_id = request_id;
+  pending.expected_application_id.clear();
+  pending.success = std::move(success);
+}
+
+inline void companion_expect_action_result(
+    const std::string &request_id, const std::string &expected_application_id,
+    CompanionActionResultHandler success) {
+  auto &pending = companion_pending_action_result();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  pending.request_id = request_id;
+  pending.expected_application_id = expected_application_id;
+  pending.success = std::move(success);
+}
+
+inline void companion_cancel_action_result(const std::string &request_id = "") {
+  auto &pending = companion_pending_action_result();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  if (!request_id.empty() && pending.request_id != request_id) return;
+  pending.request_id.clear();
+  pending.expected_application_id.clear();
+  pending.success = nullptr;
+}
+
+inline void companion_deliver_action_result(const std::string &request_id,
+                                            const std::string &status) {
+  CompanionActionResultHandler success;
+  {
+    auto &pending = companion_pending_action_result();
+    std::lock_guard<std::mutex> lock(pending.mutex);
+    if (pending.request_id != request_id) return;
+    // Only a current Companion build sends "activated" after it has verified
+    // that a launched application is frontmost. Older builds report
+    // "performed" as soon as launch scheduling succeeds, which is not safe
+    // enough to expose keyboard shortcuts.
+    if (status == "activated") success = std::move(pending.success);
+    pending.request_id.clear();
+    pending.expected_application_id.clear();
+    pending.success = nullptr;
+  }
+  if (success) success();
+}
 
 struct CompanionPairingSnapshot {
   bool available{false};
@@ -318,11 +378,25 @@ inline void companion_remove_value(const std::string &control_id) {
 
 inline void companion_set_focused_application(std::string application_id) {
   if (application_id.size() > 96) application_id.clear();
+  const std::string focused_application_id = application_id;
   auto &state = companion_runtime_state();
   {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.focused_application_id = std::move(application_id);
   }
+  CompanionActionResultHandler success;
+  {
+    auto &pending = companion_pending_action_result();
+    std::lock_guard<std::mutex> lock(pending.mutex);
+    if (!pending.expected_application_id.empty() &&
+        pending.expected_application_id == focused_application_id) {
+      success = std::move(pending.success);
+      pending.request_id.clear();
+      pending.expected_application_id.clear();
+      pending.success = nullptr;
+    }
+  }
+  if (success) success();
   companion_request_card_refresh();
 }
 
@@ -360,6 +434,7 @@ inline void companion_set_connected(bool connected) {
       state.system_metrics = {};
     }
   }
+  if (!connected) companion_cancel_action_result();
   companion_request_card_refresh();
 }
 

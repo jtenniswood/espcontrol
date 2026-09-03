@@ -561,7 +561,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   // its own interaction policy.
   lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   set_subpage_chevron_visible(
-    s, family == espcontrol::cards::Family::SUBPAGE && cfg.subpage_chevrons_enabled,
+    s, (family == espcontrol::cards::Family::SUBPAGE || companion_app_shortcuts_enabled(p)) &&
+       cfg.subpage_chevrons_enabled,
     cfg.subpage_chevron_x, cfg.subpage_chevron_y,
     cfg.subpage_chevron_text_width_percent);
 
@@ -1127,8 +1128,9 @@ inline bool grid_refresh_subpage_layouts(
 
   bool refreshed = false;
   for (int si = 0; si < NS; si++) {
-    const auto parent_context = card_runtime_context(parse_cfg(slots[si].config->state));
-    if (!espcontrol::cards::navigation_driver_matches(parent_context)) {
+    const auto parent_config = parse_cfg(slots[si].config->state);
+    const auto parent_context = card_runtime_context(parent_config);
+    if (!espcontrol::cards::navigation_driver_owns_subpage(parent_context, parent_config)) {
       navigation_retire_subpage(si + 1, main_page_obj);
       continue;
     }
@@ -1980,7 +1982,7 @@ inline void grid_phase2(
   for (int si = 0; si < NS; si++) {
     ParsedCfg p = parse_cfg(slots[si].config->state);
     const auto parent_context = card_runtime_context(p);
-    if (!espcontrol::cards::navigation_driver_matches(parent_context)) continue;
+    if (!espcontrol::cards::navigation_driver_owns_subpage(parent_context, p)) continue;
 
     std::string sp_cfg = optional_text_state(sp_configs, si) +
       optional_text_state(sp_ext_configs, si) +

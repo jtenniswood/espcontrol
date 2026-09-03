@@ -643,6 +643,16 @@ int main() {
   assert(subpage_lawn_mower.options == "subpage_kind=lawn_mower");
   auto subpage_weather = parse_cfg("weather.home;Weather;Weather Partly Cloudy;Auto;indicator;;subpage;;subpage_kind=weather");
   assert(subpage_weather.options == "subpage_kind=weather");
+  auto subpage_companion_stat = parse_cfg("stat.memory_free;Mac RAM Free;Auto;Auto;indicator;%;subpage;;subpage_kind=companion_stat");
+  assert(subpage_companion_stat.entity == "stat.memory_free");
+  assert(subpage_companion_stat.label == "Mac RAM Free");
+  assert(subpage_companion_stat.icon == "Gauge");
+  assert(subpage_companion_stat.sensor == "indicator");
+  assert(subpage_companion_stat.unit == "%");
+  assert(subpage_companion_stat.options == "subpage_kind=companion_stat");
+  auto subpage_companion_stat_invalid = parse_cfg("sensor.cpu;CPU;Auto;Auto;indicator;%;subpage;;subpage_kind=companion_stat");
+  assert(subpage_companion_stat_invalid.entity == "stat.cpu");
+  assert(subpage_companion_stat_invalid.label == "CPU");
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 

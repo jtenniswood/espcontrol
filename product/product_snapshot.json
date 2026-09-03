@@ -4884,6 +4884,12 @@
         "domains": [],
         "options": [
           {
+            "name": "app_shortcuts",
+            "label": "App Shortcut Folder",
+            "kind": "flag",
+            "omitDefault": true
+          },
+          {
             "name": "large_numbers",
             "label": "Large Sensor Numbers",
             "kind": "flag",
@@ -4933,6 +4939,7 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "app_shortcuts",
             "large_numbers"
           ],
           "optionHook": "normalize_date_time_options"
@@ -5416,7 +5423,8 @@
               "lawn_mower",
               "weather",
               "sensor",
-              "image"
+              "image",
+              "companion_stat"
             ],
             "defaultValue": "",
             "omitDefault": true

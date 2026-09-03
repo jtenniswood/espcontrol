@@ -41,6 +41,7 @@ export {
   CARD_TRANSFER_MAX_BYTES,
   CARD_TRANSFER_MAX_CARDS,
   CARD_TRANSFER_VERSION,
+  cardTransferOwnsSubpage,
   createCardTransferCode,
   normalizeCardTransferEnvelope,
   parseCardTransferCode,

@@ -7,13 +7,25 @@ import {
 } from "../generated/card_contract";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
+import type { ConfigCodecFeature } from "../application/config_codec";
+import type { ButtonSettingsSelectionFeature } from "../application/button_settings_selection";
+import { state } from "../state/app_instance";
+import {
+    COMPANION_SHORTCUT_PREFIX,
+    companionAppShortcutFolderEnabled,
+    companionShortcutActionIdValid,
+    companionShortcutFolderAppLabel,
+    companionShortcutFolderEditorAvailable,
+    createCompanionShortcutSubpage,
+    normalizeCompanionAppShortcutOptions,
+    setCompanionAppShortcutFolderEnabled,
+} from "../application/companion_shortcut_folder";
 
 export interface CompanionAction {
     readonly id: string;
     readonly label: string;
 }
 
-const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
 const COMPANION_STATS_PLACEHOLDER = "stats";
 export const COMPANION_FOLDER_PREFIX = "folder.";
@@ -95,7 +107,7 @@ export function companionShortcutActionId(event: Pick<KeyboardEvent,
 }
 
 export function formatCompanionShortcutActionId(actionId: string): string {
-    if (!actionId.startsWith(COMPANION_SHORTCUT_PREFIX)) return "";
+    if (!companionShortcutActionIdValid(actionId)) return "";
     const parts = actionId.slice(COMPANION_SHORTCUT_PREFIX.length).split("+");
     const key = parts.pop() || "";
     if (!key || !parts.length || parts.some((part) =>
@@ -253,7 +265,7 @@ export function companionEntityForMode(mode: string): string {
     if (mode === "shortcut") return COMPANION_SHORTCUT_PREFIX;
     if (mode === "folder") return COMPANION_FOLDER_PREFIX;
     if (mode === "media") return COMPANION_MEDIA_ACTIONS[0].id;
-    if (mode === "stats") return COMPANION_STATS_PLACEHOLDER;
+    if (mode === "stats") return COMPANION_SYSTEM_METRICS[0]?.id || "";
     return COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === mode)?.id || "";
 }
 
@@ -278,7 +290,7 @@ export function resetCompanionMediaPresentation(card: any, nextMode: string): vo
 export function resetCompanionMetricPresentation(card: any, nextMode: string): void {
     if (!card) return;
     const previous = companionMetricForEntity(card.entity);
-    const nextMetric = COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
+    const nextMetric = nextMode === "stats" || COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
     if (!previous || previous.mode === nextMode || nextMetric) return;
     if (card.label === previous.label) card.label = "";
     card.unit = "";
@@ -321,7 +333,7 @@ export function normalizeCompanionCard(card: any): void {
     card.sensor = urlConfig;
     card.unit = "";
     card.precision = "";
-    card.options = "";
+    card.options = normalizeCompanionAppShortcutOptions(card);
     card.icon_on = "Auto";
     const mode = companionCardMode(card);
     if (!card.icon || card.icon === "Auto" ||
@@ -348,6 +360,8 @@ export function registerCompanionCardTypes(
     fetchImpl: typeof fetch,
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
+    codec: Pick<ConfigCodecFeature, "buildSubpageGrid" | "enterSubpage" | "saveSubpageConfig">,
+    selection: Pick<ButtonSettingsSelectionFeature, "closeSettings">,
 ): void {
     const { cardBadgePreview, cardBadgeLabelHtml, cardSensorPreviewHtml, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
@@ -362,15 +376,20 @@ export function registerCompanionCardTypes(
         defaultConfig: function () { return cardContractDefaultConfig("companion"); },
         cardMetadata: COMPANION_CARD_METADATA,
         isAvailable: function () { return supported; },
+        normalizeConfig: normalizeCompanionCard,
         onSelect: function (card?: any) {
             const defaults: any = cardContractDefaultConfig("companion");
             Object.keys(defaults).forEach(function (key) { card[key] = defaults[key]; });
         },
         renderSettingsBeforeLabel: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
+            const shortcutOnly = !!helpers.shortcutOnly;
             helpers.renderCardModeSelector(panel, card, helpers, {
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
+                    options: shortcutOnly
+                        ? [["shortcut", "Keyboard shortcut"]]
+                        : COMPANION_CARD_METADATA.mode.options,
                     onChange: function (this: HTMLSelectElement) {
                         const previousLabel = card.label;
                         const previousIcon = card.icon;
@@ -398,9 +417,12 @@ export function registerCompanionCardTypes(
                         }
                         resetCompanionMediaPresentation(card, this.value);
                         resetCompanionMetricPresentation(card, this.value);
-                        const selectedMetric = COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
+                        const selectedMetric = this.value === "stats"
+                            ? COMPANION_SYSTEM_METRICS[0]
+                            : COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
                         card.entity = companionEntityForMode(this.value);
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
+                        card.options = "";
                         if (this.value === "media") {
                             applyCompanionMediaPresentation(card, previousGeneratedLabel);
                         } else if (selectedMetric) {
@@ -424,18 +446,19 @@ export function registerCompanionCardTypes(
                 },
             });
         },
-        renderSettings: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
+        renderSettings: function (panel?: HTMLElement, card?: any, slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
             card.entity = currentEntity;
             const initialMode = companionCardMode(card);
+            const shortcutOnly = !!helpers.shortcutOnly;
 
             helpers.renderCardTextField(panel, card, helpers, {
                 label: "Label", idSuffix: "label", field: "label",
                 placeholder: companionLabelPlaceholder(card), rerender: true,
             });
 
-            if (companionCardIsMetric(card) || companionCardMode(card) === "stats") {
+            if (companionCardIsMetric(card)) {
                 const metric = companionMetricForEntity(card.entity);
                 const statsField = document.createElement("div");
                 statsField.className = "sp-field";
@@ -443,14 +466,6 @@ export function registerCompanionCardTypes(
                 const statsSelect = document.createElement("select");
                 statsSelect.className = "sp-select";
                 statsSelect.id = helpers.idPrefix + "companion-stat";
-                if (!metric) {
-                    const option = document.createElement("option");
-                    option.value = "";
-                    option.textContent = "Select a statistic…";
-                    option.disabled = true;
-                    option.selected = true;
-                    statsSelect.appendChild(option);
-                }
                 COMPANION_STATS_OPTIONS.forEach(function (item) {
                     const option = document.createElement("option");
                     option.value = item[0];
@@ -467,11 +482,6 @@ export function registerCompanionCardTypes(
                 });
                 statsField.appendChild(statsSelect);
                 panel?.appendChild(statsField);
-                helpers.requireField(statsSelect, "Choose a statistic before saving.", function () {
-                    return initialMode === "stats";
-                }, function (value: string) {
-                    return COMPANION_SYSTEM_METRICS.some((candidate) => candidate.mode === value);
-                });
                 if (metric?.freeId) {
                     const displayField = document.createElement("div");
                     displayField.className = "sp-field";
@@ -563,6 +573,11 @@ export function registerCompanionCardTypes(
             shortcutNote.textContent = "Use Command, Control, or Option with a key. The shortcut is replayed on the active Mac app.";
             shortcutField.appendChild(shortcutNote);
             panel?.appendChild(shortcutField);
+            helpers.requireField(shortcutInput, "Capture a valid keyboard shortcut before saving.", function () {
+                return initialMode === "shortcut";
+            }, function () {
+                return companionShortcutActionIdValid(card.entity);
+            });
 
             const urlField = document.createElement("div");
             urlField.className = "sp-field";
@@ -605,6 +620,27 @@ export function registerCompanionCardTypes(
             mediaField.appendChild(mediaSelect);
             panel?.appendChild(mediaField);
 
+            const shortcutFolderField = document.createElement("div");
+            shortcutFolderField.className = "sp-field";
+            const folderToggle = helpers.toggleRow(
+                "Add shortcut folder",
+                helpers.idPrefix + "companion-app-shortcuts",
+                companionAppShortcutFolderEnabled(card),
+            );
+            shortcutFolderField.appendChild(folderToggle.row);
+            const shortcutFolderNote = document.createElement("div");
+            shortcutFolderNote.className = "sp-field-info-text";
+            const shortcutFolderApp = companionShortcutFolderAppLabel(card.entity);
+            shortcutFolderNote.textContent = "Launch " + shortcutFolderApp +
+                ", then open an editable folder of " + shortcutFolderApp + " keyboard shortcuts.";
+            shortcutFolderField.appendChild(shortcutFolderNote);
+            panel?.appendChild(shortcutFolderField);
+            folderToggle.input.addEventListener("change", function () {
+                setCompanionAppShortcutFolderEnabled(card, folderToggle.input.checked);
+                helpers.saveField("options", card.options);
+                renderButtonSettings();
+            });
+
             function syncMode(mode: string): void {
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
@@ -612,6 +648,8 @@ export function registerCompanionCardTypes(
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
+                shortcutFolderField.style.display = !shortcutOnly && mode === "app" &&
+                    !!companionShortcutFolderAppLabel(card.entity) ? "" : "none";
             }
             syncMode(initialMode);
 
@@ -627,6 +665,7 @@ export function registerCompanionCardTypes(
                 }
                 card.entity = actionId;
                 shortcutInput.value = formatCompanionShortcutActionId(actionId);
+                helpers.clearFieldError(shortcutInput);
                 helpers.saveField("entity", card.entity);
             });
 
@@ -730,13 +769,16 @@ export function registerCompanionCardTypes(
                     selectedAction?.label || "",
                 );
                 card.entity = select.value;
+                card.options = normalizeCompanionAppShortcutOptions(card);
                 helpers.saveField("entity", card.entity);
+                helpers.saveField("options", card.options);
                 if (nextLabel !== currentLabel) {
                     card.label = nextLabel;
                     const labelInput = document.getElementById(helpers.idPrefix + "label") as HTMLInputElement | null;
                     if (labelInput) labelInput.value = nextLabel;
                     helpers.saveField("label", nextLabel);
                 }
+                renderButtonSettings();
             });
             folderSelect.addEventListener("change", function () {
                 const previousAction = companionActions.find(function (action) { return action.id === card.entity; });
@@ -759,6 +801,17 @@ export function registerCompanionCardTypes(
                 }
             });
             helpers.renderBasicCardFields(panel, card, helpers, COMPANION_CARD_METADATA, { entity: false });
+            const savedParent = !helpers.isSub && slot ? state.buttons[slot - 1] : null;
+            if (companionShortcutFolderEditorAvailable(card, savedParent)) {
+                const editButton = document.createElement("button");
+                editButton.className = "sp-action-btn sp-edit-subpage-btn";
+                editButton.textContent = "Edit " + companionShortcutFolderAppLabel(card.entity) + " Shortcuts";
+                editButton.addEventListener("click", function () {
+                    selection.closeSettings();
+                    codec.enterSubpage(slot);
+                });
+                panel?.appendChild(editButton);
+            }
         },
         renderPreview: function (card?: any, helpers?: any) {
             const mode = companionCardMode(card);
@@ -782,11 +835,31 @@ export function registerCompanionCardTypes(
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
-            return cardBadgePreview(card, helpers, {
+            const preview = cardBadgePreview(card, helpers, {
                 label: card.label || shortcutLabel || urlLabel || card.entity || (mode === "folder" ? "Folder" : "Mac App"),
                 iconFallback: companionSubtypeDefaultIcon(mode, card.entity),
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });
+            if (companionAppShortcutFolderEnabled(card)) {
+                const label = card.label || card.entity || "Safari";
+                preview.labelHtml = '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
+                    helpers.escHtml(label) +
+                    '</span><span class="sp-subpage-badge mdi mdi-chevron-right"></span></span>';
+            }
+            return preview;
+        },
+        contextMenuItems: function (slot?: any, card?: any, helpers?: any) {
+            if (!companionAppShortcutFolderEnabled(card)) return;
+            helpers.addCtxItem("cog", "Edit " + companionShortcutFolderAppLabel(card.entity) + " Shortcuts", function () {
+                codec.enterSubpage(slot);
+            });
+        },
+        afterSave: function (card?: any, slot?: any, context?: any) {
+            if (context?.isSub || !companionAppShortcutFolderEnabled(card) || state.subpages[slot]) return;
+            const subpage = createCompanionShortcutSubpage(card.entity);
+            codec.buildSubpageGrid(subpage);
+            state.subpages[slot] = subpage;
+            codec.saveSubpageConfig(slot);
         },
     });
 }

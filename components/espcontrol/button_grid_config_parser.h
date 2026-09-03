@@ -728,7 +728,7 @@ inline std::string normalize_subpage_kind(const std::string &value) {
     value == "lock" || value == "vacuum" ||
     value == "lawn_mower" ||
     value == "weather" || value == "sensor" ||
-    value == "image" ? value : "";
+    value == "image" || value == "companion_stat" ? value : "";
 }
 
 inline std::string subpage_card_options_normalized(const std::string &options,
@@ -869,6 +869,32 @@ inline bool companion_system_metric_config(const ParsedCfg &p) {
      p.entity == "stat.memory_free" || p.entity == "stat.storage" ||
      p.entity == "stat.storage_free" || p.entity == "stat.battery" ||
      p.entity == "stat.network_throughput");
+}
+
+inline bool subpage_companion_stat_entity_valid(const std::string &entity) {
+  return entity == "stat.cpu" || entity == "stat.memory" ||
+         entity == "stat.memory_free" || entity == "stat.storage" ||
+         entity == "stat.storage_free" || entity == "stat.battery" ||
+         entity == "stat.network_throughput";
+}
+
+inline bool subpage_companion_stat_config(const ParsedCfg &p) {
+  return p.type == "subpage" &&
+         cfg_option_value(p.options, "subpage_kind") == "companion_stat" &&
+         subpage_companion_stat_entity_valid(p.entity);
+}
+
+inline const char *subpage_companion_stat_default_label(const std::string &entity) {
+  if (entity == "stat.cpu") return "Processor";
+  if (entity == "stat.memory" || entity == "stat.memory_free") return "Memory";
+  if (entity == "stat.storage" || entity == "stat.storage_free") return "Storage";
+  if (entity == "stat.battery") return "Battery";
+  if (entity == "stat.network_throughput") return "Network Throughput";
+  return "Processor";
+}
+
+inline const char *subpage_companion_stat_default_unit(const std::string &entity) {
+  return entity == "stat.network_throughput" ? "KB/s" : "%";
 }
 
 inline std::string date_time_card_options_normalized(const std::string &options,
@@ -1269,6 +1295,16 @@ inline const char *saved_config_subpage_default_icon(const std::string &kind) {
 inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
   const std::string kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
   if (kind.empty()) return;
+  if (kind == "companion_stat") {
+    if (!subpage_companion_stat_entity_valid(p.entity)) p.entity = "stat.cpu";
+    if (p.label.empty()) p.label = subpage_companion_stat_default_label(p.entity);
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Gauge";
+    p.icon_on = "Auto";
+    p.sensor = "indicator";
+    if (p.unit.empty()) p.unit = subpage_companion_stat_default_unit(p.entity);
+    p.precision.clear();
+    return;
+  }
   if (p.label.empty()) p.label = saved_config_subpage_default_label(kind);
   if (p.icon.empty() || p.icon == "Auto") p.icon = saved_config_subpage_default_icon(kind);
   p.icon_on = "Auto";
@@ -1280,6 +1316,18 @@ inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
 inline std::string normalize_saved_config_subpage_options(
     const std::string &options, const ParsedCfg &p) {
   return subpage_card_options_normalized(options, p.sensor, p.precision);
+}
+
+inline bool companion_app_shortcuts_enabled(const ParsedCfg &p) {
+  return p.type == "companion" &&
+         (p.entity == "com.apple.Safari" || p.entity == "com.openai.codex" ||
+          p.entity == "com.tinyspeck.slackmacgap") &&
+         p.sensor.empty() &&
+         cfg_option_token_present(p.options, "app_shortcuts");
+}
+
+inline std::string companion_card_options_normalized(const ParsedCfg &p) {
+  return companion_app_shortcuts_enabled(p) ? "app_shortcuts" : "";
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
@@ -1310,6 +1358,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   normalize_saved_config_light_control(p, normalize_saved_config_light_control_options);
   normalize_saved_config_subpage(
       p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
+  if (p.type == "companion") p.options = companion_card_options_normalized(p);
   normalize_saved_config_action(p, normalize_saved_config_action_fields,
                                 action_card_options_normalized);
   if (p.type == "companion") {
@@ -1345,7 +1394,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "companion" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,

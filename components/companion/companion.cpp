@@ -448,9 +448,14 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     companion_set_actions(std::move(actions));
     this->send_(socket_fd, "RESULT|catalogue|ok");
   } else if (parts[0] == "RESULT") {
-    // Result messages are intentionally shown only in diagnostics/logging;
-    // cards do not optimistically claim a Mac app opened.
     ESP_LOGD(TAG, "Mac result: %s", message.c_str());
+    if (parts.size() == 3 && safe_field(parts[1], 64) && safe_field(parts[2], 32)) {
+      const std::string request_id = parts[1];
+      const std::string status = parts[2];
+      this->defer([request_id, status]() {
+        companion_deliver_action_result(request_id, status);
+      });
+    }
   } else if (parts[0] == "STATE" && parts.size() == 3 &&
              companion_volume_control_valid(parts[1])) {
     if (parts[2] == "unavailable") {
