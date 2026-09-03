@@ -602,7 +602,6 @@ export function createButtonSettingsFeature(
         function renderCardTypeGrid(this: any, isSub?: any, selectedTypeKey?: any) {
             var field: any = document.createElement("div");
             field.className = "sp-field sp-card-type-picker-field";
-            field.appendChild(fieldLabel("Card", "sp-card-type-picker"));
             var activeConnector: CardPickerConnector = "home_assistant";
             var hasCompanion: any = !!layout.config.features?.companion;
             if (hasCompanion) {
