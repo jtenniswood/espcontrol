@@ -514,6 +514,16 @@ assert(
   "image card icons use the same top-left placement",
 );
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
+const wifiSharePickerOption = pickerOptions.find((option) => option.key === "wifi_qr");
+assert.strictEqual(
+  wifiSharePickerOption,
+  undefined,
+  "Wifi Sharing stays hidden until native configuration support is confirmed",
+);
+assert(
+  !pickerOptions.some((option) => option.key === "wifi_qr_card"),
+  "QR Card is selected as a Wifi Sharing subtype rather than a top-level card",
+);
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"
@@ -612,13 +622,10 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), fals
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", true), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", false), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", true), false);
 assert(
   hooks.buttonTypePickerKeysFor(false, "fan_speed").includes("fan_speed"),
   "fan cards are available"
 );
-assert(!hooks.buttonTypeRuntimeSpec("todo"), "todo card type is not registered");
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "\u00b0C");

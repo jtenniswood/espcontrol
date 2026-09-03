@@ -526,10 +526,13 @@ if "configure_button_label_wrap(text_lbl);" not in subscriptions:
 for required in (
     "configure_button_label_wrap(entry->back_slot.text_lbl);",
     "configure_button_label_wrap(back_slot.text_lbl);",
-    "configure_button_label_wrap(sub_slot.text_lbl);",
 ):
     if required not in grid:
         raise SystemExit(f"Subpage label clamps must restore full-width wrapping: {required}")
+if "refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);" not in grid:
+    raise SystemExit(
+        "Subpage cards must refresh their layout after label clamping so slider label insets are restored"
+    )
 if "image_card_align_label_stack(label, btn, icon);" not in image_cards:
     raise SystemExit("Image loading-state relayouts must retain the label stack")
 if "lv_obj_align(icon, LV_ALIGN_TOP_LEFT, -parent_x, -parent_y);" not in image_cards:

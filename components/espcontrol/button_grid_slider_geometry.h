@@ -17,9 +17,9 @@ inline int32_t vertical_edge_inset(int32_t height) {
   return inset;
 }
 
-inline bool vertical_pointer_percent(int32_t pointer_y, int32_t top, int32_t bottom,
-                                     int &percent) {
-  if (bottom < top) return false;
+inline bool vertical_pointer_position(int32_t pointer_y, int32_t top, int32_t bottom,
+                                      int32_t position_count, int &position) {
+  if (bottom < top || position_count <= 0) return false;
 
   const int32_t height = bottom - top + 1;
   const int32_t inset = vertical_edge_inset(height);
@@ -28,18 +28,24 @@ inline bool vertical_pointer_percent(int32_t pointer_y, int32_t top, int32_t bot
   if (safe_bottom <= safe_top) return false;
 
   if (pointer_y <= safe_top) {
-    percent = 100;
+    position = position_count;
     return true;
   }
   if (pointer_y >= safe_bottom) {
-    percent = 0;
+    position = 0;
     return true;
   }
 
   const int32_t span = safe_bottom - safe_top;
   const int32_t distance_from_bottom = safe_bottom - pointer_y;
-  percent = static_cast<int>((distance_from_bottom * 100 + span / 2) / span);
+  position = static_cast<int>(
+    (static_cast<int64_t>(distance_from_bottom) * position_count + span / 2) / span);
   return true;
+}
+
+inline bool vertical_pointer_percent(int32_t pointer_y, int32_t top, int32_t bottom,
+                                     int &percent) {
+  return vertical_pointer_position(pointer_y, top, bottom, 100, percent);
 }
 
 }  // namespace slider_geometry

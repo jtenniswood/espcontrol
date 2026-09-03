@@ -57,7 +57,6 @@ ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
 COVER_MODAL_DRIVER_HEADER = "button_grid_cover_modal_driver.h"
 MEDIA_DRIVER_HEADER = "button_grid_media_driver.h"
 SUBPAGES_HEADER = "button_grid_subpages.h"
-LEGACY_COMPATIBILITY_DRIVER_HEADER = "button_grid_legacy_compatibility_driver.h"
 NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
 IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
 LIGHT_CONTROL_DRIVER_HEADER = "button_grid_light_control_driver.h"
@@ -118,17 +117,6 @@ def check_root(root: Path) -> list[str]:
     runtime_header = root / "components" / "espcontrol" / "button_grid_card_runtime.h"
     if runtime_header.exists():
         text = runtime_header.read_text(encoding="utf-8")
-        if "struct Context" in text and "driver_uses_legacy_dispatch" in text:
-            failures.append(
-                "components/espcontrol/button_grid_card_runtime.h: retire the broad driver fallback classifier"
-            )
-        if (
-            "struct Context" in text
-            and (text.count("context.legacy_dispatch = true;") != 1 or 'type == "todo"' not in text)
-        ):
-            failures.append(
-                "components/espcontrol/button_grid_card_runtime.h: keep exactly one explicit Todo compatibility path"
-            )
         for raw_alias in ('type == "local"', 'type == "text_sensor"'):
             if raw_alias in text:
                 failures.append(
@@ -185,7 +173,7 @@ def check_root(root: Path) -> list[str]:
                 )
         unsupported_clear_body = function_body(text, "clear_unsupported_card_slot_visuals")
         if unsupported_clear_body is None or any(
-            f"lv_label_set_text(s.{label}, \"\");" not in unsupported_clear_body
+            f"lv_label_set_display_text(s.{label}, \"\");" not in unsupported_clear_body
             for label in ("icon_lbl", "text_lbl", "sensor_lbl", "unit_lbl")
         ):
             failures.append(
@@ -208,6 +196,18 @@ def check_root(root: Path) -> list[str]:
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: gate Media Cover Art before acquiring an image downloader"
+            )
+        phase2_body = function_body(text, "grid_phase2") or ""
+        setup_subpage = phase2_body.find("setup_card_visual(sub_slot")
+        refresh_subpage = phase2_body.find("refresh_card_layout(sub_slot")
+        bind_subpage = phase2_body.find("image_driver_bind_subpage")
+        if not (
+            setup_subpage >= 0
+            and refresh_subpage > setup_subpage
+            and bind_subpage > refresh_subpage
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: refresh subpage card geometry after applying label clamps"
             )
         if (
             "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
@@ -236,9 +236,6 @@ def check_root(root: Path) -> list[str]:
             or "media_driver_setup_visual( s, p, context, palette, display, row_span, col_span)" not in compact_grid
             or "media_driver_bind_main( s, p, context, media_environment)" not in compact_grid
             or "media_driver_bind_subpage( sub_slot, sb_cfg, context, media_environment)" not in compact_grid
-            or "legacy_compatibility_driver_setup_visual( s, p, context, palette, display, row_span, col_span)" not in compact_grid
-            or "legacy_compatibility_driver_bind( s, p, context, palette, display, row_span, col_span)" not in compact_grid
-            or "legacy_compatibility_driver_bind( sub_slot, sb_cfg, context, palette, display, rs, cs)" not in compact_grid
             or "navigation_driver_setup_visual( s, p, context, cfg, display)" not in compact_grid
             or "navigation_driver_bind_main( s, p, context, navigation_state)" not in compact_grid
             or "navigation_driver_own_subpage( slots[si], p, parent_context, si + 1, display_order, sub_scr)" not in compact_grid
@@ -315,8 +312,6 @@ def check_root(root: Path) -> list[str]:
                 )
         for retired_fallback in (
             "Legacy setup fallback",
-            "family == espcontrol::cards::Family::TODO",
-            "create_todo_card_context(",
             "subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,",
             "bool switch_has_sensor = !sb_cfg.sensor.empty();",
         ):
@@ -370,7 +365,6 @@ def check_root(root: Path) -> list[str]:
             or "climate_control_driver_handle_main_click(" not in click_body
             or "alarm_driver_handle_main_click(" not in click_body
             or "media_driver_handle_main_click(" not in click_body
-            or "legacy_compatibility_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
@@ -398,7 +392,6 @@ def check_root(root: Path) -> list[str]:
                     )
             for retired_fallback in (
                 "Legacy action fallback",
-                'p.type == "todo"',
                 "send_toggle_action(p.entity)",
             ):
                 if retired_fallback in click_body:
@@ -414,12 +407,12 @@ def check_root(root: Path) -> list[str]:
             "LV_INDEV_TYPE_POINTER",
             "lv_indev_get_point",
             "lv_obj_get_coords",
-            "vertical_pointer_percent",
+            "vertical_pointer_position",
             "LV_EVENT_VALUE_CHANGED",
         )
         if any(needle not in pointer_body for needle in pointer_required):
             failures.append(
-                f"components/espcontrol/{SLIDERS_HEADER}: map direct vertical slider pointer input through the safe endpoint track"
+                f"components/espcontrol/{SLIDERS_HEADER}: map direct vertical slider pointer input through the full safe endpoint track"
             )
 
         setup_body = function_body(text, "setup_slider_visual") or ""
@@ -762,6 +755,11 @@ def check_root(root: Path) -> list[str]:
                 failures.append(
                     f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover lifecycle guard {needle}"
                 )
+        bind_slider_body = function_body(text, "access_cover_driver_bind_slider") or ""
+        if "subscribe_friendly_name_preserving_layout" not in bind_slider_body:
+            failures.append(
+                f"components/espcontrol/{ACCESS_COVER_HEADER}: preserve slider label padding when the cover friendly name arrives"
+            )
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover driver"
@@ -875,34 +873,6 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{SUBPAGES_HEADER}: preserve speaker-group media cards on subpages"
             )
-    compatibility_driver_header = (
-        root / "components" / "espcontrol" / LEGACY_COMPATIBILITY_DRIVER_HEADER
-    )
-    if compatibility_driver_header.exists():
-        text = compatibility_driver_header.read_text(encoding="utf-8")
-        required = (
-            "legacy_compatibility_driver_matches",
-            "legacy_compatibility_driver_setup_visual",
-            "legacy_compatibility_driver_bind",
-            "legacy_compatibility_driver_handle_main_click",
-            "context.family == Family::TODO",
-            "create_todo_card_context",
-            "subscribe_todo_state",
-            "subscribe_todo_friendly_name",
-        )
-        for needle in required:
-            if needle not in text:
-                failures.append(
-                    f"components/espcontrol/{LEGACY_COMPATIBILITY_DRIVER_HEADER}: missing narrow compatibility guard {needle}"
-                )
-        if 'config.type' in text or 'type == "todo"' in text:
-            failures.append(
-                f"components/espcontrol/{LEGACY_COMPATIBILITY_DRIVER_HEADER}: match compatibility through the shared runtime context"
-            )
-    elif grid_header.exists():
-        failures.append(
-            f"components/espcontrol/{LEGACY_COMPATIBILITY_DRIVER_HEADER}: missing narrow legacy compatibility driver"
-        )
     navigation_driver_header = root / "components" / "espcontrol" / NAVIGATION_DRIVER_HEADER
     if navigation_driver_header.exists():
         text = navigation_driver_header.read_text(encoding="utf-8")
@@ -1094,7 +1064,7 @@ inline bool slider_apply_vertical_pointer_value() {
   LV_INDEV_TYPE_POINTER;
   lv_indev_get_point();
   lv_obj_get_coords();
-  vertical_pointer_percent();
+  vertical_pointer_position();
   LV_EVENT_VALUE_CHANGED;
 }
 inline void slider_fit_to_button() {

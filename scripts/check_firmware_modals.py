@@ -72,6 +72,17 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
             errors.append(
                 "components/espcontrol/button_grid_sliders.h: keep the cover modal back button above tab and slider controls"
             )
+
+    wifi_qr_path = firmware_dir / "button_grid_wifi_qr.h"
+    if wifi_qr_path.exists():
+        text = wifi_qr_path.read_text(encoding="utf-8")
+        if (
+            "control_modal_calc_layout(modal_width_compensation_percent);" not in text
+            or "ui.tab_row, layout, tabs_layout, modal_width_compensation_percent);" not in text
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_wifi_qr.h: apply the active display width compensation to the Wifi modal"
+            )
     return errors
 
 
@@ -476,7 +487,7 @@ def firmware_cover_control_tab_errors(root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     if "bool show_tab_bar = visible_tabs.count > 1;" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: hide cover modal tabs when only one control is visible")
-    if "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);" not in text:
+    if "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: keep cover modal tab row hidden through the shared tab layout helper")
     if "control_modal_calc_content_layout(\n    layout, tabs_layout, show_tab_bar, 160)" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: position cover modal content with the shared content recipe")
@@ -499,7 +510,7 @@ def firmware_light_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: keep light modal tab visibility helper")
     if text.count("bool show_tab_bar = visible_tabs.count > 1;") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: hide light and cover modal tabs when only one control is visible")
-    if text.count("control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);") < 2:
+    if text.count("ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: keep single-tab modal rows hidden through the shared tab layout helper")
     if text.count("control_modal_calc_content_layout(\n    layout, tabs_layout, show_tab_bar, 160)") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: let single-control modals use the shared content recipe")
@@ -586,21 +597,21 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
     required_by_file = {
         "button_grid_climate.h": (
             "return control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);",
             "return control_modal_shared_tab_content_gap(layout);",
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_fan.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);",
             "control_modal_calc_content_layout(",
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_media.h": (
             "control_modal_calc_tab_layout(layout, media_control_tab_count, true)",
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);",
             "control_modal_calc_content_layout(",
             "ui.tab_row = control_modal_create_tab_row(ui.panel);",
@@ -608,7 +619,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
     }
     sliders_required = (
         "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
-        "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+        "ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);",
         "control_modal_layout_tab_button(",
         "control_modal_calc_content_layout(",
         "ui.tab_row = control_modal_create_tab_row(ui.panel);",
@@ -635,7 +646,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
                 break
         if (
             text.count("ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);") < 2
-            or text.count("control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);") < 2
+            or text.count("ui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);") < 2
             or text.count("control_modal_calc_content_layout(") < 2
             or text.count("ui.tab_row = control_modal_create_tab_row(ui.panel);") < 2
         ):
@@ -1346,39 +1357,39 @@ def valid_modal_tab_layout_files() -> dict[str, str]:
             "inline lv_coord_t control_modal_shared_tab_content_gap(const ControlModalLayout &layout) { return 0; }\n"
             "inline ControlModalTabLayout control_modal_calc_tab_layout(const ControlModalLayout &layout, int tab_count, bool show_tab_bar) { return espcontrol::modal::calculate_tabs(); }\n"
             "inline ContentLayout control_modal_calc_content_layout() {}\n"
-            "inline void control_modal_apply_tab_row(lv_obj_t *tab_row, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout) {}\n"
+            "inline void control_modal_apply_tab_row(lv_obj_t *tab_row, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout, int width_compensation_percent) {}\n"
             "inline lv_obj_t *control_modal_create_tab_row(lv_obj_t *panel) {}\n"
             "inline void control_modal_layout_tab_button(lv_obj_t *tab_btn, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout, int index, bool active) {}\n"
         ),
         "components/espcontrol/button_grid_climate.h": (
             "return control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
             "return control_modal_shared_tab_content_gap(layout);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_fan.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_media.h": (
             "control_modal_calc_tab_layout(layout, media_control_tab_count, true)\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_sliders.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
-            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_apply_tab_row(\nui.tab_row, layout, tabs_layout, ctx->width_compensation_percent);\n"
             "control_modal_layout_tab_button(\n"
             "control_modal_calc_content_layout(\n"
             "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"

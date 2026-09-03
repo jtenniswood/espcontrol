@@ -27,6 +27,18 @@ int main() {
 
   if (string_ref_limited(esphome::StringRef("calendar"), 4) != "cale") return EXIT_FAILURE;
   if (string_ref_limited(esphome::StringRef("clock"), 32) != "clock") return EXIT_FAILURE;
+  if (normalize_display_text("") != "") return EXIT_FAILURE;
+  if (normalize_display_text("Plain ASCII") != "Plain ASCII") return EXIT_FAILURE;
+  if (normalize_display_text("\xE1\xB9\xA2\xC3\xA0ng\xC3\xB3") != "S\xC3\xA0ng\xC3\xB3") {
+    return EXIT_FAILURE;
+  }
+  if (normalize_display_text("\xE1\xB9\xA3\xE1\xB9\xA2 \xE1\xB9\xA3") != "sS s") {
+    return EXIT_FAILURE;
+  }
+  if (normalize_display_text("Beyonc\xC3\xA9 \xE2\x80\x94 \xD7\xA9\xD7\x9C\xD7\x95\xD7\x9D") !=
+      "Beyonc\xC3\xA9 \xE2\x80\x94 \xD7\xA9\xD7\x9C\xD7\x95\xD7\x9D") {
+    return EXIT_FAILURE;
+  }
   if (decode_html_entities("Earth, Wind &amp; Fire") != "Earth, Wind & Fire") {
     return EXIT_FAILURE;
   }
@@ -48,6 +60,10 @@ int main() {
   }
   if (decode_html_entities("Leave &not_an_entity; unchanged") !=
       "Leave &not_an_entity; unchanged") {
+    return EXIT_FAILURE;
+  }
+  if (normalize_display_text(decode_html_entities("&#7778;ade &amp; &#7779;ade")) !=
+      "Sade & sade") {
     return EXIT_FAILURE;
   }
 
@@ -101,27 +117,21 @@ int main() {
   const auto gate = card_runtime_context("gate");
   const auto lock = card_runtime_context("lock");
   const auto subpage = card_runtime_context("subpage");
-  const auto todo_compatibility = card_runtime_context("todo");
   const auto unsupported = card_runtime_context("not_a_card");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
-      door.legacy_dispatch || presence.legacy_dispatch ||
+      !presence.known ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
       timezone.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
       calendar.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
-      clock.legacy_dispatch || timezone.legacy_dispatch || calendar.legacy_dispatch ||
       sensor.runtime.driver != espcontrol::card_runtime::CardDriverId::SENSOR ||
       local_sensor.runtime.driver != espcontrol::card_runtime::CardDriverId::SENSOR ||
-      sensor.legacy_dispatch || local_sensor.legacy_dispatch ||
-      raw_text_sensor_alias.known || raw_text_sensor_alias.legacy_dispatch ||
+      raw_text_sensor_alias.known ||
       weather.runtime.driver != espcontrol::card_runtime::CardDriverId::WEATHER ||
       weather_forecast.runtime.driver != espcontrol::card_runtime::CardDriverId::WEATHER ||
-      weather.legacy_dispatch || weather_forecast.legacy_dispatch ||
-      toggle.legacy_dispatch || action.legacy_dispatch ||
-      alarm_action.legacy_dispatch || fan_switch.legacy_dispatch ||
-      internal.legacy_dispatch || light_switch.legacy_dispatch ||
-      raw_local_action_alias.known || raw_local_action_alias.legacy_dispatch ||
-      push.legacy_dispatch ||
-      screen_lock.legacy_dispatch || webhook.legacy_dispatch ||
+      !toggle.known || !action.known || !alarm_action.known ||
+      !fan_switch.known || !internal.known || !light_switch.known ||
+      raw_local_action_alias.known ||
+      !push.known || !screen_lock.known || !webhook.known ||
       slider.runtime.driver != espcontrol::card_runtime::CardDriverId::NUMERIC ||
       light_brightness.runtime.driver != espcontrol::card_runtime::CardDriverId::NUMERIC ||
       light_temperature.runtime.driver !=
@@ -132,38 +142,25 @@ int main() {
       fan_preset.runtime.driver != espcontrol::card_runtime::CardDriverId::FAN ||
       option_select.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::OPTION_SELECT ||
-      slider.legacy_dispatch || light_brightness.legacy_dispatch ||
-      light_temperature.legacy_dispatch || fan_speed.legacy_dispatch ||
-      fan_oscillate.legacy_dispatch || fan_direction.legacy_dispatch ||
-      fan_preset.legacy_dispatch || option_select.legacy_dispatch ||
       vacuum.runtime.driver != espcontrol::card_runtime::CardDriverId::VACUUM ||
       mower.runtime.driver != espcontrol::card_runtime::CardDriverId::LAWN_MOWER ||
-      vacuum.legacy_dispatch || mower.legacy_dispatch ||
       garage.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
       gate.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
       lock.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
-      garage.legacy_dispatch || gate.legacy_dispatch || lock.legacy_dispatch ||
       subpage.runtime.driver != espcontrol::card_runtime::CardDriverId::SUBPAGE ||
-      subpage.legacy_dispatch || subpage.allow_in_subpage ||
+      subpage.allow_in_subpage ||
       !card_runtime_has_capability(
         subpage, espcontrol::card_runtime::CAPABILITY_ACTIONS) ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
-      image.legacy_dispatch ||
       light_control.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::LIGHT_CONTROL ||
-      light_control.legacy_dispatch ||
       fan_control.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::FAN_CONTROL ||
-      fan_control.legacy_dispatch ||
       climate.runtime.driver != espcontrol::card_runtime::CardDriverId::CLIMATE ||
       climate_control.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::CLIMATE ||
-      climate.legacy_dispatch || climate_control.legacy_dispatch ||
       alarm.runtime.driver != espcontrol::card_runtime::CardDriverId::ALARM ||
-      alarm.legacy_dispatch || !todo_compatibility.known ||
-      todo_compatibility.family != Family::TODO ||
-      !todo_compatibility.legacy_dispatch || unsupported.known ||
-      unsupported.legacy_dispatch) {
+      unsupported.known) {
     return EXIT_FAILURE;
   }
   struct TestConfig {
@@ -201,18 +198,15 @@ int main() {
   if (cover.runtime.type != espcontrol::card_runtime::CardTypeId::COVER ||
       cover.runtime.driver != espcontrol::card_runtime::CardDriverId::COVER_TILT ||
       cover.surface != espcontrol::cards::Surface::SUBPAGE ||
-      !cover.allow_in_subpage || cover.legacy_dispatch ||
+      !cover.allow_in_subpage ||
       cover_position.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::COVER_POSITION ||
       cover_toggle.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::COVER_TOGGLE ||
       cover_command.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::COVER_COMMAND ||
-      cover_position.legacy_dispatch || cover_toggle.legacy_dispatch ||
-      cover_command.legacy_dispatch ||
       cover_modal.runtime.driver !=
-        espcontrol::card_runtime::CardDriverId::COVER_MODAL ||
-      cover_modal.legacy_dispatch) {
+        espcontrol::card_runtime::CardDriverId::COVER_MODAL) {
     return EXIT_FAILURE;
   }
   if (media_control.runtime.driver !=
@@ -231,15 +225,10 @@ int main() {
       media_cover_art.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::MEDIA_COVER_ART ||
       media_playlist.runtime.driver !=
-        espcontrol::card_runtime::CardDriverId::MEDIA_PLAYLIST ||
-      media_control.legacy_dispatch || media_play_pause.legacy_dispatch ||
-      media_transport.legacy_dispatch || media_volume.legacy_dispatch ||
-      media_position.legacy_dispatch || media_now_playing.legacy_dispatch ||
-      media_cover_art.legacy_dispatch || media_playlist.legacy_dispatch) {
+        espcontrol::card_runtime::CardDriverId::MEDIA_PLAYLIST) {
     return EXIT_FAILURE;
   }
-  if (option_select_compatibility.legacy_dispatch ||
-      option_select_compatibility.runtime.driver !=
+  if (option_select_compatibility.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::ACTION) {
     return EXIT_FAILURE;
   }
@@ -260,12 +249,6 @@ int main() {
       card_runtime_main_click_opens_modal(media_transport) ||
       card_runtime_main_click_opens_modal(media_position) ||
       card_runtime_main_click_opens_modal(slider)) {
-    return EXIT_FAILURE;
-  }
-  const auto todo = card_runtime_context("todo");
-  if (!todo.known || todo.family != Family::TODO || !todo.allow_in_subpage ||
-      !card_runtime_has_capability(
-          todo, espcontrol::card_runtime::CAPABILITY_ACTIONS)) {
     return EXIT_FAILURE;
   }
   const char *contract_card_types[] = {

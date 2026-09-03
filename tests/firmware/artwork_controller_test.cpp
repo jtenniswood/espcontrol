@@ -32,8 +32,10 @@ using espcontrol::artwork::artwork_selection_needs_download;
 using espcontrol::artwork::source_response_can_apply_immediately;
 using espcontrol::cover_art::RuntimeState;
 using espcontrol::cover_art::media_card_artwork_suppressed;
+using espcontrol::cover_art::media_cover_art_idle_placeholder_visible;
 using espcontrol::cover_art::media_external_source_stale_for_current_content;
 using espcontrol::cover_art::media_now_playing_artist_visible;
+using espcontrol::cover_art::media_state_change_needs_content_resync;
 
 int main() {
   RefreshTrigger trigger;
@@ -60,6 +62,31 @@ int main() {
   assert(media_now_playing_artist_visible(true, false, true, false));
   assert(!media_now_playing_artist_visible(false, false, true, false));
   assert(!media_now_playing_artist_visible(true, false, false, false));
+
+  // Cover-art cards use their music icon only for a known, available inactive
+  // player. Loading, unavailable, active, and external-source fallback states
+  // must retain their distinct presentation.
+  assert(media_cover_art_idle_placeholder_visible(
+    true, true, "idle", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    false, true, "unknown", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, false, "unavailable", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, true, "playing", false, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, true, "idle", true, false));
+  assert(!media_cover_art_idle_placeholder_visible(
+    true, true, "idle", false, true));
+
+  // Attribute values can remain unchanged while a player passes through
+  // idle. Re-request the current snapshot when playback resumes without any
+  // locally retained track data so both the card and modal recover.
+  assert(media_state_change_needs_content_resync(true, "idle", "playing", false));
+  assert(media_state_change_needs_content_resync(true, "off", "paused", false));
+  assert(!media_state_change_needs_content_resync(true, "playing", "paused", false));
+  assert(!media_state_change_needs_content_resync(true, "idle", "playing", true));
+  assert(!media_state_change_needs_content_resync(false, "unknown", "playing", false));
 
   // A source attribute omitted from the latest Home Assistant state must not
   // leave a retained TV route active once current music content arrives.

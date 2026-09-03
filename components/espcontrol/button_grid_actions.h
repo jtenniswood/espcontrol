@@ -2,6 +2,7 @@
 
 #include "media_playback_modes.h"
 #include "media_volume_capability.h"
+#include "number_slider_policy.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -26,11 +27,11 @@ inline void send_turn_on_action(const std::string &entity_id) {
 }
 
 inline bool action_card_requires_value(const std::string &action) {
-  return action == "input_number.set_value";
+  return action == "number.set_value" || action == "input_number.set_value";
 }
 
 inline const char *action_card_value_key(const std::string &action) {
-  if (action == "input_number.set_value") return "value";
+  if (action_card_requires_value(action)) return "value";
   return nullptr;
 }
 
@@ -519,10 +520,36 @@ inline void send_cover_command_action(const CoverCommandCtx &ctx) {
     cover_command_use_tilt(p.sensor, ctx.supported_features_known, ctx.supported_features));
 }
 
-// Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
+inline bool send_numeric_slider_action(const std::string &entity_id, double value,
+                                       const espcontrol::number_slider::Metadata &metadata) {
+  const char *service = espcontrol::number_slider::service_for_entity(entity_id);
+  if (!service) {
+    ESP_LOGW("slider", "Ignoring numeric slider command for unsupported entity %s",
+             entity_id.c_str());
+    return false;
+  }
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, service, false, 2)) return false;
+  ha_action_add_entity(req, entity_id);
+  const std::string formatted = espcontrol::number_slider::format_value(value, metadata);
+  ha_action_add_data(req, "value", formatted.c_str());
+  return ha_action_send(req);
+}
+
+// Send HA action for a percentage slider change or its on-card toggle.
 inline bool send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
   esphome::api::HomeassistantActionRequest req;
   if (value < 0) {
+    if (espcontrol::number_slider::is_numeric_entity(entity_id)) {
+      ESP_LOGW("slider", "Numeric slider %s has no toggle action", entity_id.c_str());
+      return false;
+    }
+    if (!is_cover_entity(entity_id) && !is_fan_entity(entity_id) &&
+        !espcontrol::number_slider::has_domain(entity_id, "light")) {
+      ESP_LOGW("slider", "Ignoring slider toggle for unsupported entity %s",
+               entity_id.c_str());
+      return false;
+    }
     if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return false;
     ha_action_add_entity(req, entity_id);
   } else if (is_cover_entity(entity_id)) {
@@ -544,15 +571,19 @@ inline bool send_slider_action(const std::string &entity_id, int value, bool cov
       snprintf(buf, sizeof(buf), "%d", value);
       ha_action_add_data(req, "percentage", buf);
     }
-  } else if (value == 0) {
+  } else if (espcontrol::number_slider::has_domain(entity_id, "light") && value == 0) {
     if (!ha_action_begin(req, "light.turn_off", false, 1)) return false;
     ha_action_add_entity(req, entity_id);
-  } else {
+  } else if (espcontrol::number_slider::has_domain(entity_id, "light")) {
     if (!ha_action_begin(req, "light.turn_on", false, 2)) return false;
     ha_action_add_entity(req, entity_id);
     char buf[12];
     snprintf(buf, sizeof(buf), "%d", value);
     ha_action_add_data(req, "brightness_pct", buf);
+  } else {
+    ESP_LOGW("slider", "Ignoring slider command for unsupported entity %s",
+             entity_id.c_str());
+    return false;
   }
   return ha_action_send(req);
 }
@@ -852,9 +883,6 @@ inline void image_card_open_modal(ImageCardCtx *ctx);
 inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj, bool turn_on);
 struct OptionSelectCtx;
 inline void option_select_open_modal(OptionSelectCtx *ctx);
-struct TodoCardCtx;
-inline bool todo_card_context_valid(TodoCardCtx *ctx);
-inline void todo_card_open_modal(TodoCardCtx *ctx);
 struct AlarmCardCtx;
 inline void alarm_card_open_page(AlarmCardCtx *ctx);
 inline bool alarm_card_context_valid(AlarmCardCtx *ctx);
@@ -886,6 +914,8 @@ inline bool navigation_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool image_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool wifi_qr_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool light_control_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool fan_control_driver_handle_main_click(
@@ -896,8 +926,6 @@ inline bool alarm_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool media_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
-inline bool legacy_compatibility_driver_handle_main_click(
-    const Context &context, lv_obj_t *button);
 }
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -925,6 +953,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
         context, p, btn_obj)) return;
   if (espcontrol::cards::image_driver_handle_main_click(
         context, p, btn_obj)) return;
+  if (espcontrol::cards::wifi_qr_driver_handle_main_click(
+        context, p, btn_obj)) return;
   if (espcontrol::cards::light_control_driver_handle_main_click(
         context, p, btn_obj)) return;
   if (espcontrol::cards::fan_control_driver_handle_main_click(
@@ -935,8 +965,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
         context, p, btn_obj)) return;
   if (espcontrol::cards::media_driver_handle_main_click(
         context, p, btn_obj)) return;
-  if (espcontrol::cards::legacy_compatibility_driver_handle_main_click(
-        context, btn_obj)) return;
   ESP_LOGE("card_runtime", "Card has no main-grid action driver: type=%s",
            p.type.c_str());
 }

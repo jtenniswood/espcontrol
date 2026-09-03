@@ -12,6 +12,21 @@ esphome:
     - "-DLV_USE_BIDI=1"
     - '-DESPCONTROL_DEVICE_SLUG=\"${device_slug}\"'
 
+# This invisible widget enables LVGL's QR-code component in the configuration
+# ESPHome generates for every display. Build flags cannot enable LVGL features
+# because ESPHome's generated lv_conf.h deliberately overrides them.
+lvgl:
+  top_layer:
+    widgets:
+      - qrcode:
+          id: wifi_qr_feature_probe
+          # LVGL requires a non-empty payload and enough pixels to render its
+          # smallest QR matrix. The hidden widget only enables QR support for
+          # the cards that create their own QR code on demand.
+          text: "EspControl"
+          size: 64
+          hidden: true
+
 api:
   reboot_timeout: 0s
   homeassistant_states: true
@@ -59,7 +74,6 @@ api:
           - script.execute: timezone_after_homeassistant_time_sync
           - script.execute: backlight_recalc_sunrise_sunset
           - script.execute: screen_schedule_check
-          - lambda: 'todo_reload_active_modal();'
           - delay: 8s
           - lambda: |-
               if (ha_api_connected()) refresh_image_cards();
@@ -67,7 +81,6 @@ api:
                 refresh_weather_forecast_cards();
                 ha_flush_deferred_state_requests();
               }
-          - lambda: 'todo_reload_active_modal();'
           - delay: 20s
           - lambda: |-
               if (ha_api_connected()) refresh_image_cards();
@@ -75,14 +88,12 @@ api:
                 refresh_weather_forecast_cards();
                 ha_flush_deferred_state_requests();
               }
-          - lambda: 'todo_reload_active_modal();'
           - delay: 25s
           - lambda: |-
               if (ha_api_state_connected()) {
                 refresh_weather_forecast_cards();
                 ha_flush_deferred_state_requests();
               }
-          - lambda: 'todo_reload_active_modal();'
   on_client_disconnected:
     - lambda: |-
         ESP_LOGW("api", "API client disconnected: %s", client_info.c_str());
@@ -93,7 +104,6 @@ api:
         ha_invalidate_retained_state();
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
-        todo_cancel_pending_request("api disconnected");
 interval:
   - interval: 5s
     then:
@@ -101,7 +111,6 @@ interval:
           weather_forecast_cancel_stale_requests();
           weather_forecast_send_next_queued();
           ha_flush_deferred_state_requests();
-          todo_retry_waiting_modal();
 
   - interval: 1h
     then:

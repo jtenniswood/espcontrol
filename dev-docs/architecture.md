@@ -43,6 +43,10 @@ full source-to-output ownership table lives in
 - `docs/generated/cards/capabilities.md`
 - `docs/generated/screens/*.md`
 - `docs/public/device-profiles.json`
+- `docs/public/webserver/www.js`
+- `docs/public/webserver/web-assets.json`
+- `docs/public/webserver/embedded/www.js`
+- `docs/public/webserver/bundles/*/www.js`
 - `docs/public/webserver/*/www.js`
 - generated blocks inside `devices/*/packages.yaml`
 - generated blocks inside `devices/*/device/sensors.yaml`
@@ -97,12 +101,19 @@ product/v2/entity_names.json
   -> common/config/entity_names.yaml
   -> src/webserver/generated/entity_catalog.ts
 
+product/v2/device_catalog.json
+  -> devices/manifest.json
+
 devices/manifest.json
   -> docs/public/device-profiles.json
   -> docs/generated/screens/*.md
   -> generated package and sensor blocks
 
 src/webserver/**
+  -> docs/public/webserver/www.js
+  -> docs/public/webserver/web-assets.json
+  -> docs/public/webserver/embedded/www.js
+  -> docs/public/webserver/bundles/<sha256>/www.js
   -> docs/public/webserver/<slug>/www.js
 ```
 

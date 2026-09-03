@@ -83,6 +83,7 @@ struct ImageCardCtx {
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
+  bool camera_refresh_pending = false;
   bool media_artwork = false;
   bool media_artwork_suppressed = false;
   bool media_artwork_refresh_forced = false;
@@ -521,10 +522,8 @@ inline void image_card_set_loading_state(lv_obj_t *loading_widget, const char *t
   if (!loading_widget) return;
   lv_obj_t *btn = lv_obj_get_parent(loading_widget);
   image_card_position_widget(btn, loading_widget, nullptr, nullptr);
-  lv_obj_t *icon = image_card_loading_icon(loading_widget);
-  if (icon) lv_label_set_text(icon, IMAGE_CARD_LOADING_ICON);
   lv_obj_t *label = image_card_loading_label(loading_widget);
-  if (label) lv_label_set_text(label, espcontrol_i18n(text));
+  if (label) lv_label_set_display_text(label, espcontrol_i18n(text));
   image_card_set_configured_label_visible(loading_widget, false);
   image_card_refresh_loading_layout(loading_widget);
   lv_obj_clear_flag(loading_widget, LV_OBJ_FLAG_HIDDEN);
@@ -646,8 +645,8 @@ inline void image_card_show_modal_loading(ImageCardCtx *ctx, const char *text) {
   if (lv_obj_get_child_cnt(ui.loading_widget) >= 2) {
     lv_obj_t *icon = lv_obj_get_child(ui.loading_widget, 0);
     lv_obj_t *label = lv_obj_get_child(ui.loading_widget, 1);
-    lv_label_set_text(icon, IMAGE_CARD_LOADING_ICON);
-    lv_label_set_text(label, espcontrol_i18n(text));
+    lv_label_set_display_text(icon, IMAGE_CARD_LOADING_ICON);
+    lv_label_set_display_text(label, espcontrol_i18n(text));
   }
   lv_obj_clear_flag(ui.loading_widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_foreground(ui.loading_widget);
@@ -971,6 +970,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
+    contexts[i].camera_refresh_pending = false;
     contexts[i].media_artwork = false;
     contexts[i].media_artwork_suppressed = false;
     contexts[i].media_artwork_refresh_forced = false;
@@ -1283,14 +1283,15 @@ inline void setup_image_card(BtnSlot &s) {
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
   lv_obj_set_style_text_color(loading_icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
-  lv_label_set_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  apply_icon_width_compensation(loading_icon);
 
   lv_obj_t *loading_label = lv_label_create(loading);
   image_card_apply_loading_fonts(loading, loading_icon_font, loading_label_font);
   lv_obj_set_style_text_color(loading_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_label, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_text_align(loading_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-  lv_label_set_text(loading_label, espcontrol_i18n("Loading"));
+  lv_label_set_display_text(loading_label, espcontrol_i18n("Loading"));
 
   lv_obj_set_user_data(img, loading);
   lv_obj_set_user_data(loading, s.text_lbl);
@@ -1402,11 +1403,11 @@ inline void image_card_set_label_text(lv_obj_t *label, lv_obj_t *btn,
   if (!label) return;
   const char *safe_text = text ? text : "";
   lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  lv_label_set_text(label, safe_text);
+  lv_label_set_display_text(label, safe_text);
   lv_obj_t *shadow = image_card_label_shadow(label, btn);
   if (shadow) {
     lv_label_set_long_mode(shadow, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(shadow, safe_text);
+    lv_label_set_display_text(shadow, safe_text);
   }
   image_card_align_label_stack(label, btn, icon);
 }
@@ -1463,7 +1464,7 @@ inline void image_card_configure_icon(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     return;
   }
-  lv_label_set_text(s.icon_lbl, find_icon(
+  lv_label_set_display_text(s.icon_lbl, find_icon(
     p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon.c_str()));
   lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   image_card_align_icon(s.icon_lbl, s.btn);
@@ -2093,7 +2094,8 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   if (ctx->icon_font) lv_obj_set_style_text_font(loading_icon, ctx->icon_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(loading_icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_opa(loading_icon, LV_OPA_COVER, LV_PART_MAIN);
-  lv_label_set_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  lv_label_set_display_text(loading_icon, IMAGE_CARD_LOADING_ICON);
+  apply_icon_width_compensation(loading_icon);
 
   lv_obj_t *loading_label = lv_label_create(ui.loading_widget);
   if (!loading_label) {
@@ -2105,7 +2107,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   lv_obj_set_style_text_opa(loading_label, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_text_align(loading_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   lv_label_set_long_mode(loading_label, LV_LABEL_LONG_DOT);
-  lv_label_set_text(loading_label, espcontrol_i18n("Loading"));
+  lv_label_set_display_text(loading_label, espcontrol_i18n("Loading"));
 
   ImageCardModalCache &modal_cache = image_card_modal_cache();
   if (image_card_modal_cache_matches(ctx)) {
@@ -2506,6 +2508,78 @@ inline void image_card_refresh_media_artwork_on_metadata_change(ImageCardCtx *ct
     ctx->next_picture_retry_ms = 0;
   }
   image_card_schedule_media_artwork_refresh(ctx, true);
+}
+
+inline bool image_card_context_on_active_screen(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->media_artwork || !ctx->btn ||
+      lv_obj_has_flag(ctx->btn, LV_OBJ_FLAG_HIDDEN)) {
+    return false;
+  }
+  const ControlModalActive &active_modal = control_modal_active();
+  if (active_modal.kind != ControlModalKind::NONE &&
+      (active_modal.kind != ControlModalKind::IMAGE_CARD ||
+       !image_card_modal_active_for(ctx))) {
+    return false;
+  }
+  lv_obj_t *screen = ctx->btn;
+  while (lv_obj_get_parent(screen) != nullptr) screen = lv_obj_get_parent(screen);
+  return screen == lv_scr_act();
+}
+
+inline void image_card_request_camera_picture_attribute(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->media_artwork || ctx->entity_id.empty()) return;
+  const std::string entity_id = ctx->entity_id;
+  const uint32_t generation = ha_subscription_generation();
+  bool requested = ha_read_retained_attribute(
+    entity_id,
+    std::string("entity_picture"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef picture) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        ctx->camera_refresh_pending = false;
+        image_card_handle_picture(ctx, picture);
+      })
+  );
+  if (!requested) {
+    ctx->camera_refresh_pending = false;
+    image_card_log_diagnostics(ctx, "camera-action-picture-request-failed");
+  }
+}
+
+inline void image_card_refresh_camera_attributes(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || ctx->media_artwork || ctx->entity_id.empty() ||
+      ctx->camera_refresh_pending) {
+    return;
+  }
+  ctx->camera_refresh_pending = true;
+  const std::string entity_id = ctx->entity_id;
+  const uint32_t generation = ha_subscription_generation();
+  bool requested = ha_read_retained_attribute(
+    entity_id,
+    std::string("access_token"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef token_ref) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        std::string token = string_ref_limited(token_ref, 512);
+        if (image_card_valid_access_token(token)) {
+          ctx->access_token = token;
+        } else {
+          ctx->access_token.clear();
+        }
+        image_card_request_camera_picture_attribute(ctx);
+      })
+  );
+  if (!requested) image_card_request_camera_picture_attribute(ctx);
+}
+
+inline void refresh_visible_camera_cards() {
+  if (!ha_api_connected()) return;
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ImageCardCtx *ctx = &contexts[i];
+    if (!image_card_context_on_active_screen(ctx)) continue;
+    image_card_refresh_camera_attributes(ctx);
+  }
 }
 
 inline void refresh_image_cards() {

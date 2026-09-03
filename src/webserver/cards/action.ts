@@ -21,6 +21,7 @@ export function registerActionCardTypes(
     const {
         actionCardActions: ACTION_CARD_ACTIONS,
         actionCardInfo,
+        actionCardEntityMatchesAction,
         actionCardIsOptionSelect,
         actionCardIsLocal,
         normalizeSavedConfigActionFields,
@@ -135,9 +136,10 @@ export function registerActionCardTypes(
                 mode: Object.assign({}, ACTION_CARD_METADATA.mode, {
                     onChange: function (this: any) {
                         var wasLocal: any = actionCardIsLocal(b);
+                        var entityMatchesAction: any = actionCardEntityMatchesAction(b.entity, this.value);
                         b.sensor = this.value;
                         helpers.saveField("sensor", b.sensor);
-                        if (wasLocal !== actionCardIsLocal(b)) {
+                        if (wasLocal !== actionCardIsLocal(b) || !entityMatchesAction) {
                             b.entity = "";
                             helpers.saveField("entity", "");
                         }
@@ -202,6 +204,7 @@ export function registerActionCardTypes(
                 valueField.appendChild(valueInput);
                 panel.appendChild(valueField);
                 helpers.bindField(valueInput, "unit", true);
+                helpers.requireField(valueInput, "Enter a value before saving.");
             }
             if (!isOptionSelect) {
                 helpers.renderCardIconPicker(panel, b, helpers, {
@@ -213,6 +216,14 @@ export function registerActionCardTypes(
             }
             entityInp._entityDomains = info.domains || [];
             refreshEntityDatalist(entityInp);
+            if (isOptionSelect || actionCardNeedsExtraValue(b.sensor)) {
+                helpers.requireEntityDomain(
+                    entityInp,
+                    info.domains || [],
+                    isOptionSelect
+                        ? "Choose a select or input_select entity."
+                        : "Choose the number entity type that matches this action.");
+            }
             if (isOptionSelect)
                 return;
             if (actionCardIsScript(b)) {

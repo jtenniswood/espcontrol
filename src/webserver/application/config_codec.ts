@@ -114,7 +114,6 @@ export function createConfigCodecFeature(
         normalizeDoorWindowOptions,
         normalizePresenceOptions,
         normalizeSensorOptions,
-        normalizeTodoOptions,
     } = sensorOptions;
     const {
         mediaEditorMode,
@@ -176,6 +175,18 @@ export function createConfigCodecFeature(
     function cardRequiresSquareSize(this: any, b?: any) {
         return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
     }
+    function cardIsWifiSharing(this: any, b?: any) {
+        return !!(b && (b.type === "wifi_qr" || b.type === "wifi_qr_card"));
+    }
+    function cardSupportsWifiPortraitSizes(this: any, b?: any) {
+        return cardIsWifiSharing(b) && (
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1" ||
+            layout.deviceId === "guition-esp32-p4-jc8012p4a1-v2"
+        );
+    }
+    function cardSupportsExtraLargeSize(this: any, b?: any) {
+        return cardRequiresSquareSize(b) || cardIsWifiSharing(b);
+    }
     function cardSupportsMaxSize(this: any, b?: any) {
         return !!(b && b.type === "image");
     }
@@ -187,6 +198,16 @@ export function createConfigCodecFeature(
     }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        if (cardIsWifiSharing(b)) {
+            if (size === CARD_SIZE_SINGLE || size === CARD_SIZE_LARGE)
+                return size;
+            if (size === CARD_SIZE_EXTRA_LARGE)
+                return layout.gridCols >= 3 && layout.gridRows >= 3 ? size : CARD_SIZE_SINGLE;
+            if (cardSupportsWifiPortraitSizes(b) &&
+                (size === CARD_SIZE_MAX_TALL || size === CARD_SIZE_PORTRAIT_LARGE))
+                return size;
+            return CARD_SIZE_SINGLE;
+        }
         if (size === CARD_SIZE_LANDSCAPE_LARGE)
             return cardSupportsLandscapeLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_PORTRAIT_LARGE)
@@ -442,15 +463,6 @@ export function createConfigCodecFeature(
         var normalizedSavedStatic: any = !!(b && normalizeSavedConfigStatic(b));
         if (b)
             normalizeSavedConfigDateTime(b, normalizeSavedConfigDateTimeFields, normalizeSavedConfigDateTimeOptions);
-        if (b && b.type === "todo") {
-            b.sensor = "";
-            b.unit = "";
-            b.precision = "";
-            b.icon_on = "Auto";
-            if (!b.icon || b.icon === "Auto")
-                b.icon = "Check";
-            b.options = normalizeTodoOptions(b.options);
-        }
         if (b)
             normalizeSavedConfigImage(b, normalizeSavedConfigImageFields, normalizeSavedConfigImageOptions);
         if (b)
@@ -462,7 +474,7 @@ export function createConfigCodecFeature(
         var normalizedSavedSensor: any = !!(b && normalizeSavedConfigSensor(b, wasLegacyTextSensor, normalizeSavedConfigSensorFields, normalizeSensorOptions));
         var normalizedSavedOccupancy: any = !!(b && normalizeSavedConfigOccupancy(b, normalizeSavedConfigOccupancyFields, normalizeSavedConfigOccupancyOptions));
         var normalizedSavedSwitch: any = !!(b && !normalizedSavedSensor && normalizeSavedConfigSwitch(b, normalizeSwitchConfirmationOptions));
-        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
+        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
         return b;
@@ -583,14 +595,6 @@ export function createConfigCodecFeature(
             sensor = "";
             precision = normalizeWeatherCardMode(precision);
         }
-        if (type === "todo") {
-            sensor = "";
-            unit = "";
-            precision = "";
-            iconOn = "Auto";
-            if (!icon || icon === "Auto")
-                icon = "Check";
-        }
         if (type === "image") {
             iconOn = "Auto";
             sensor = "";
@@ -652,9 +656,6 @@ export function createConfigCodecFeature(
         else if (type === "lawn_mower") {
             options = "";
         }
-        else if (type === "todo") {
-            options = normalizeTodoOptions(options);
-        }
         else if (type === "sensor") {
             options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);
         }
@@ -666,6 +667,16 @@ export function createConfigCodecFeature(
         }
         else if (type === "image") {
             options = normalizeImageOptions(options);
+        }
+        else if (type === "wifi_qr" || type === "wifi_qr_card") {
+            var wifiButton: any = EspControlModel.cloneCardConfig(b || {});
+            wifiButton.options = options;
+            wifiButton.label = label;
+            wifiButton.icon = icon;
+            normalizeWithRegisteredCardType(wifiButton);
+            label = wifiButton.label;
+            icon = wifiButton.icon;
+            options = wifiButton.options;
         }
         else if (type === "light_control") {
             options = normalizeLightControlOptions(options);
@@ -977,7 +988,7 @@ export function createConfigCodecFeature(
     function saveSubpageConfig(this: any, homeSlot?: any) {
         var sp: any = getSubpage(homeSlot);
         sp.order = serializeSubpageGrid(sp);
-        saveSubpageEntity(homeSlot);
+        return saveSubpageEntity(homeSlot);
     }
     function subpageFirstFreeSlot(this: any, sp?: any) {
         var used: any = {};
@@ -1011,6 +1022,9 @@ export function createConfigCodecFeature(
         normalizeWithRegisteredCardType,
         normalizeButtonConfig,
         cardRequiresSquareSize,
+        cardIsWifiSharing,
+        cardSupportsWifiPortraitSizes,
+        cardSupportsExtraLargeSize,
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,

@@ -69,6 +69,52 @@ external_components:
 
 espcontrol:
   id: espcontrol_app
+  panel_config:
+    device_profile: ${device_slug}
+    storage: card_images
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3, subpage_1_config_ext_4, subpage_1_config_ext_5, subpage_1_config_ext_6, subpage_1_config_ext_7]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3, subpage_2_config_ext_4, subpage_2_config_ext_5, subpage_2_config_ext_6, subpage_2_config_ext_7]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3, subpage_3_config_ext_4, subpage_3_config_ext_5, subpage_3_config_ext_6, subpage_3_config_ext_7]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3, subpage_4_config_ext_4, subpage_4_config_ext_5, subpage_4_config_ext_6, subpage_4_config_ext_7]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3, subpage_5_config_ext_4, subpage_5_config_ext_5, subpage_5_config_ext_6, subpage_5_config_ext_7]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3, subpage_6_config_ext_4, subpage_6_config_ext_5, subpage_6_config_ext_6, subpage_6_config_ext_7]
+      - config: button_7_config
+        subpage_chunks: [subpage_7_config, subpage_7_config_ext, subpage_7_config_ext_2, subpage_7_config_ext_3, subpage_7_config_ext_4, subpage_7_config_ext_5, subpage_7_config_ext_6, subpage_7_config_ext_7]
+      - config: button_8_config
+        subpage_chunks: [subpage_8_config, subpage_8_config_ext, subpage_8_config_ext_2, subpage_8_config_ext_3, subpage_8_config_ext_4, subpage_8_config_ext_5, subpage_8_config_ext_6, subpage_8_config_ext_7]
+      - config: button_9_config
+        subpage_chunks: [subpage_9_config, subpage_9_config_ext, subpage_9_config_ext_2, subpage_9_config_ext_3, subpage_9_config_ext_4, subpage_9_config_ext_5, subpage_9_config_ext_6, subpage_9_config_ext_7]
+      - config: button_10_config
+        subpage_chunks: [subpage_10_config, subpage_10_config_ext, subpage_10_config_ext_2, subpage_10_config_ext_3, subpage_10_config_ext_4, subpage_10_config_ext_5, subpage_10_config_ext_6, subpage_10_config_ext_7]
+      - config: button_11_config
+        subpage_chunks: [subpage_11_config, subpage_11_config_ext, subpage_11_config_ext_2, subpage_11_config_ext_3, subpage_11_config_ext_4, subpage_11_config_ext_5, subpage_11_config_ext_6, subpage_11_config_ext_7]
+      - config: button_12_config
+        subpage_chunks: [subpage_12_config, subpage_12_config_ext, subpage_12_config_ext_2, subpage_12_config_ext_3, subpage_12_config_ext_4, subpage_12_config_ext_5, subpage_12_config_ext_6, subpage_12_config_ext_7]
+      - config: button_13_config
+        subpage_chunks: [subpage_13_config, subpage_13_config_ext, subpage_13_config_ext_2, subpage_13_config_ext_3, subpage_13_config_ext_4, subpage_13_config_ext_5, subpage_13_config_ext_6, subpage_13_config_ext_7]
+      - config: button_14_config
+        subpage_chunks: [subpage_14_config, subpage_14_config_ext, subpage_14_config_ext_2, subpage_14_config_ext_3, subpage_14_config_ext_4, subpage_14_config_ext_5, subpage_14_config_ext_6, subpage_14_config_ext_7]
+      - config: button_15_config
+        subpage_chunks: [subpage_15_config, subpage_15_config_ext, subpage_15_config_ext_2, subpage_15_config_ext_3, subpage_15_config_ext_4, subpage_15_config_ext_5, subpage_15_config_ext_6, subpage_15_config_ext_7]
+      - config: button_16_config
+        subpage_chunks: [subpage_16_config, subpage_16_config_ext, subpage_16_config_ext_2, subpage_16_config_ext_3, subpage_16_config_ext_4, subpage_16_config_ext_5, subpage_16_config_ext_6, subpage_16_config_ext_7]
+      - config: button_17_config
+        subpage_chunks: [subpage_17_config, subpage_17_config_ext, subpage_17_config_ext_2, subpage_17_config_ext_3, subpage_17_config_ext_4, subpage_17_config_ext_5, subpage_17_config_ext_6, subpage_17_config_ext_7]
+      - config: button_18_config
+        subpage_chunks: [subpage_18_config, subpage_18_config_ext, subpage_18_config_ext_2, subpage_18_config_ext_3, subpage_18_config_ext_4, subpage_18_config_ext_5, subpage_18_config_ext_6, subpage_18_config_ext_7]
+      - config: button_19_config
+        subpage_chunks: [subpage_19_config, subpage_19_config_ext, subpage_19_config_ext_2, subpage_19_config_ext_3, subpage_19_config_ext_4, subpage_19_config_ext_5, subpage_19_config_ext_6, subpage_19_config_ext_7]
+      - config: button_20_config
+        subpage_chunks: [subpage_20_config, subpage_20_config_ext, subpage_20_config_ext_2, subpage_20_config_ext_3, subpage_20_config_ext_4, subpage_20_config_ext_5, subpage_20_config_ext_6, subpage_20_config_ext_7]
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -77,7 +123,6 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-Wno-deprecated-declarations"
-    - "-DESPCONTROL_DISABLE_TODO=1"
     # Force cached ESPHome objects to rebuild after the 2026.5
     # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
     - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
@@ -222,6 +267,7 @@ output:
   - platform: ledc
     pin: GPIO23
     id: gpio_backlight_pwm
+    frequency: 20000Hz   # move above audible range to eliminate PWM whine
 
 light:
   - platform: monochromatic

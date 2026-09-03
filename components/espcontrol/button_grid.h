@@ -34,6 +34,8 @@
 // implementation is split into focused headers below for easier review.
 #include "button_grid_limits.h"
 #include "button_grid_string.h"
+#include "display_text.h"
+
 #include "button_grid_ha.h"
 #include "button_grid_config.h"
 #include "button_grid_style.h"
@@ -52,7 +54,6 @@
 #include "button_grid_climate.h"
 #include "button_grid_confirm.h"
 #include "button_grid_option_select.h"
-#include "button_grid_todo.h"
 #include "network_status.h"
 #include "battery_status.h"
 #include "button_grid_media.h"

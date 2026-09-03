@@ -106,7 +106,7 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
 
   ui.message_lbl = lv_label_create(ui.panel);
   std::string message = switch_confirmation_message(p);
-  lv_label_set_text(ui.message_lbl, message.c_str());
+  lv_label_set_display_text(ui.message_lbl, message.c_str());
   lv_label_set_long_mode(ui.message_lbl, LV_LABEL_LONG_WRAP);
   lv_obj_set_width(ui.message_lbl, content_w);
   lv_obj_set_style_text_color(ui.message_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);

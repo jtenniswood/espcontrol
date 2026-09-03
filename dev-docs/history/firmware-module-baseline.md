@@ -1,7 +1,12 @@
+<!-- DEV-DOC-STATUS: historical -->
+
 # Firmware Module Migration Baseline
 
+> Historical record: these measurements describe two revisions tested on
+> 2026-07-14. Use current firmware builds and checks for release decisions.
+
 This baseline supports the incremental compiled-module migration described by
-[ADR 0006](adr/0006-hybrid-compiled-firmware-modules.md). It compares the clean
+[ADR 0006](../adr/0006-hybrid-compiled-firmware-modules.md). It compares the clean
 `main` build at `f52b671d` with the foundation branch at `15fb7736`.
 
 ## Method

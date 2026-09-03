@@ -3,7 +3,7 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "todo"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr"]
   },
   "types": {
     "": {
@@ -313,6 +313,16 @@
       "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["modal"], "modalOwner": "image" },
       "modes": [{ "name": "image", "config": { "entity": "camera.example" } }]
     },
+    "wifi_qr": {
+      "classification": "canonical", "canonicalType": "wifi_qr", "webRegistration": "wifi_qr", "firmwareFamily": "WIFI_QR",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["modal"], "modalOwner": "wifi_qr" },
+      "modes": [{ "name": "share", "config": { "type": "wifi_qr", "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ" } }]
+    },
+    "wifi_qr_card": {
+      "classification": "canonical", "canonicalType": "wifi_qr_card", "webRegistration": "wifi_qr_card", "firmwareFamily": "WIFI_QR",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["modal"], "modalOwner": "wifi_qr" },
+      "modes": [{ "name": "tile_qr", "config": { "type": "wifi_qr_card", "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ" } }]
+    },
     "weather_forecast": {
       "classification": "accepted_legacy_input", "canonicalType": "weather", "webRegistration": "weather_forecast", "firmwareFamily": "WEATHER",
       "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["none"], "modalOwner": "none" },
@@ -335,14 +345,6 @@
       "firmwareFamily": "SENSOR",
       "config": { "entity": "sensor.example", "type": "text_sensor" },
       "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" }
-    },
-    "todo": {
-      "classification": "accepted_legacy_input",
-      "canonicalType": "todo",
-      "surfaces": ["web_parser", "firmware"],
-      "firmwareFamily": "TODO",
-      "config": { "entity": "todo.example", "type": "todo" },
-      "lifecycle": { "subscriptions": ["action_response"], "actions": ["home_assistant_service", "modal"], "modalOwner": "todo" }
     },
     "media_cover_art": {
       "classification": "obsolete_implementation_residue",

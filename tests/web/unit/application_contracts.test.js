@@ -22,6 +22,8 @@ describe("browserless application contracts", () => {
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
   const { createEntityStateFeature } = loadTypescriptTest("src/webserver/application/entity_state.ts");
+  const { createConfigModalTabOptionsFeature } = loadTypescriptTest("src/webserver/application/config_modal_tab_options.ts");
+  const { createConfigConfirmationOptionsFeature } = loadTypescriptTest("src/webserver/application/config_confirmation_options.ts");
 
   test("plans clipboard transfers", () => {
     runClipboardFeatureTests();
@@ -254,6 +256,18 @@ describe("browserless application contracts", () => {
     assert.match(entry, /createAppBackupFeature\(\{[\s\S]*statusPreview,[\s\S]*grid/);
   });
 
+  test("persists imported layouts before changing editor state or device settings", () => {
+    const backup = fs.readFileSync(path.join(ROOT, "src/webserver/application/app_backup.ts"), "utf8");
+    const discovery = backup.indexOf("await nativeController.waitForDiscovery()");
+    const nativeWrite = backup.indexOf("await nativeRestore");
+    const legacyWrite = backup.indexOf("await queueLegacyLayoutRestore()");
+    const editorMutation = backup.indexOf("state.buttons = []");
+    const settingsPost = backup.indexOf("postClockBarTemperatureEntities(");
+    assert.ok(discovery >= 0 && nativeWrite > discovery && legacyWrite > discovery);
+    assert.ok(editorMutation > nativeWrite && editorMutation > legacyWrite);
+    assert.ok(settingsPost > editorMutation);
+  });
+
   test("imports shared settings state helpers without application globals", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
@@ -341,6 +355,110 @@ describe("browserless application contracts", () => {
         `${registrationFunction}\\(\\s*registry(?:,\\s*(?:context\\.(?:configuration\\.[A-Za-z]+|controllers\\.[A-Za-z]+|core|device\\.id)|lightCards|fields|cardUi))*[,]?\\s*\\)`,
       ));
     }
+  });
+
+  test("groups Connect and QR cards under Wifi Sharing", () => {
+    const source = fs.readFileSync(path.join(ROOT, "src/webserver/cards/wifi_qr.ts"), "utf8");
+    const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
+    const { registerWifiQrCardTypes } = loadTypescriptTest("src/webserver/cards/wifi_qr.ts");
+    const definitions = {};
+    const modalTabs = {
+      wifiQrTabDefinitions() { return [{ value: "qr", label: "QR Code" }, { value: "credentials", label: "Connection Details" }]; },
+      wifiQrTabs(b) {
+        const match = String(b && b.options || "").match(/(?:^|,)wifi_tabs=([^,]+)/);
+        return match ? match[1].split("|") : ["qr", "credentials"];
+      },
+      normalizeWifiQrTabOptions(options) { return options || ""; },
+      setWifiQrTabs(b, tabs) {
+        b.options = String(b.options || "").replace(/(?:^|,)wifi_tabs=[^,]+/, "");
+        if (tabs.join("|") !== "qr|credentials") b.options += (b.options ? "," : "") + "wifi_tabs=" + tabs.join("|");
+        return b.options;
+      },
+      renderModalTabSettings() {},
+    };
+    let rerenders = 0;
+    let nativeSupported = false;
+    registerWifiQrCardTypes({
+      register(key, value) {
+        definitions[key] = value;
+      },
+    }, modalTabs, { cardBadgePreview() {} }, { renderButtonSettings() { rerenders += 1; } }, {
+      supported() { return nativeSupported; },
+    });
+    assert.deepEqual(Object.keys(definitions), ["wifi_qr", "wifi_qr_card"]);
+    assert.equal(definitions.wifi_qr.label(), "Wifi Sharing");
+    assert.equal(definitions.wifi_qr.pickerKey(), "");
+    assert.equal(definitions.wifi_qr_card.pickerKey(), "wifi_qr");
+    assert.equal(definitions.wifi_qr.hideLabel, true);
+    assert.equal(definitions.wifi_qr_card.hideLabel, true);
+    assert.equal(definitions.wifi_qr.isAvailable(), false);
+    nativeSupported = true;
+    assert.equal(definitions.wifi_qr.isAvailable(), true);
+    assert.match(source, /labelField:\s*\{\s*label:\s*"Card title"/);
+    assert.doesNotMatch(source, /renderBasicCardFields\([^\n]+label:\s*false/);
+    assert.match(source, /disclosureSection\("Wifi Network"/);
+    assert.match(source, /disclosureSection\("Modal Settings"/);
+    assert.match(source, /wifiQrTabDefinitions/);
+    assert.doesNotMatch(source, /Show password|wifi-reveal|input\.type\s*=\s*"password"/);
+    assert.match(source, /hasCredentialBytes/);
+    assert.match(source, /requireField\(ssidField\.input,[^\n]+hasCredentialBytes\)/);
+    assert.match(source, /requireField\(passwordField\.input,[^\n]+hasCredentialBytes\)/);
+    const legacy = { label: "Guests Wifi", options: "" };
+    definitions.wifi_qr.normalizeConfig(legacy);
+    assert.equal(legacy.label, "Connect");
+    const custom = { label: "Visitors", options: "" };
+    definitions.wifi_qr.normalizeConfig(custom);
+    assert.equal(custom.label, "Visitors");
+    const qrCard = { type: "wifi_qr_card", label: "Remove me", icon: "Wifi", options: "" };
+    definitions.wifi_qr_card.normalizeConfig(qrCard);
+    assert.equal(qrCard.type, "wifi_qr_card");
+    assert.equal(qrCard.label, "");
+    assert.equal(qrCard.icon, "Auto");
+    const qrPreview = definitions.wifi_qr_card.renderPreview(qrCard, {});
+    assert.equal(qrPreview.labelHtml, "");
+    assert.equal(qrPreview.buttonClass, "sp-wifi-qr-card");
+    assert.match(qrPreview.iconHtml, /viewBox="4 4 29 29"/);
+    assert.match(qrPreview.iconHtml, /shape-rendering="crispEdges"/);
+    assert.doesNotMatch(qrPreview.iconHtml, /viewBox="0 0 21 21"/);
+    assert.match(styles, /\.sp-wifi-qr-preview\{[^}]*width:84%;height:84%/);
+    assert.match(styles, /\.sp-wifi-qr-card:hover\{filter:none\}/);
+    assert.match(styles, /\.sp-wifi-qr-card\.sp-btn-big \.sp-wifi-qr-preview,[^}]*width:97%;height:97%/);
+    definitions.wifi_qr_card.cardMetadata.mode.onChange.call(
+      { value: "wifi_qr" }, qrCard, { saveField() {} },
+    );
+    assert.equal(qrCard.type, "wifi_qr");
+    assert.equal(qrCard.label, "Connect");
+    assert.equal(qrCard.icon, "Wifi");
+    assert.equal(rerenders, 1);
+    assert.match(source, /\[\["wifi_qr", "Connect Card"\], \["wifi_qr_card", "QR Card"\]\]/);
+    assert.match(source, /renderCardModeSelector\(panel, b, helpers, WIFI_QR_CARD_TYPE_METADATA\)/);
+  });
+
+  test("keeps Wifi Sharing available without web authentication", () => {
+    const nativeRead = fs.readFileSync(path.join(ROOT, "components/espcontrol/panel_config_read_endpoint.h"), "utf8");
+    const nativeWrite = fs.readFileSync(path.join(ROOT, "components/espcontrol/panel_config_write_endpoint.h"), "utf8");
+    const webServer = fs.readFileSync(path.join(ROOT, "components/web_server_idf/web_server_idf.cpp"), "utf8");
+    const app = fs.readFileSync(path.join(ROOT, "components/espcontrol/espcontrol_app.cpp"), "utf8");
+    const nativeController = fs.readFileSync(path.join(ROOT, "src/webserver/controllers/native_panel_config_controller.ts"), "utf8");
+    const docs = fs.readFileSync(path.join(ROOT, "docs/card-types/wifi-share.md"), "utf8");
+
+    assert.doesNotMatch(nativeRead, /panel_config_contains_wifi_password|Wifi Sharing passwords require web authentication/);
+    assert.doesNotMatch(nativeWrite, /panel_config_contains_wifi_password|Wifi Sharing passwords require web authentication/);
+    assert.doesNotMatch(webServer, /event_payload_is_legacy_panel_config/);
+    assert.doesNotMatch(app, /panel_config_legacy_entity_guard/);
+    assert.match(nativeController, /Sign in, enable web_server_auth, or update the panel firmware/);
+    assert.match(docs, /web_server_auth` package is not required for Wifi Sharing/);
+  });
+
+  test("normalizes and preserves Wifi modal tab settings", () => {
+    const modalTabs = createConfigModalTabOptionsFeature({ document: {}, renderButtonSettings() {} });
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|qr")), ["credentials", "qr"]);
+    assert.deepEqual(Array.from(modalTabs.normalizeWifiQrTabs("credentials|credentials|invalid")), ["credentials"]);
+    const card = { options: "ssid64=R3Vlc3Q" };
+    modalTabs.setWifiQrTabs(card, ["credentials"]);
+    assert.equal(card.options, "ssid64=R3Vlc3Q,wifi_tabs=credentials");
+    modalTabs.setWifiQrTabs(card, ["qr", "credentials"]);
+    assert.equal(card.options, "ssid64=R3Vlc3Q");
   });
 
   test("registers garage and gate through the explicit cover-card factory", () => {
@@ -570,12 +688,54 @@ describe("browserless application contracts", () => {
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/action.ts"), "utf8");
     const options = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_confirmation_options.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
+    const { createConfigConfirmationOptionsFeature } = loadTypescriptTest(
+      "src/webserver/application/config_confirmation_options.ts",
+    );
+    const actionOptions = createConfigConfirmationOptionsFeature({
+      normalizeGarageOptions: (value) => value,
+      connectGarageConfirmationNormalizer: () => {},
+    });
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(options, /const actionCardActions/);
+    assert.equal(actionOptions.actionCardEntityMatchesAction("number.target_level", "number.set_value"), true);
+    assert.equal(actionOptions.actionCardEntityMatchesAction("number.target_level", "input_number.set_value"), false);
+    assert.equal(actionOptions.actionCardEntityMatchesAction("", "input_number.set_value"), true);
+    assert.match(card, /actionCardEntityMatchesAction\(b\.entity, this\.value\)/);
     assert.match(entry, /registerActionCardTypes\(registry, context\.configuration\.confirmationOptions, context\.controllers\.entityState, fields, cardUi\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerActionCardTypes/);
     assert.match(entry, /actionCardStateEntity: \(button\) => confirmationOptions\.actionCardStateEntity\(button\)/);
     assert.doesNotMatch(globals, /\bvar (?:ACTION_CARD_ACTIONS|ACTION_CARD_METADATA|actionCardInfo|actionCardIsLocal|actionCardIsOptionSelect|actionCardNeedsExtraValue|actionCardStateDisplayMode|actionCardStateEntity|actionCardStatePrecision|actionCardStateUnit|normalizeActionCardConfig|normalizeSavedConfigActionFields|renderActionCardLocalSettings|setActionCardStateOptions):/);
+  });
+
+  test("preserves number action changes during editor rerenders", () => {
+    const options = createConfigConfirmationOptionsFeature({
+      normalizeGarageOptions: (value) => value,
+      connectGarageConfirmationNormalizer: () => {},
+    });
+    const editing = {
+      type: "action",
+      sensor: "input_number.set_value",
+      entity: "number.target_level",
+      options: "",
+    };
+    options.normalizeActionCardConfig(editing);
+    assert.equal(editing.sensor, "input_number.set_value");
+
+    const saved = { ...editing };
+    options.normalizeSavedConfigActionFields(saved);
+    assert.equal(saved.sensor, "number.set_value");
+
+    const reverseEditing = {
+      ...editing,
+      sensor: "number.set_value",
+      entity: "input_number.target_level",
+    };
+    options.normalizeActionCardConfig(reverseEditing);
+    assert.equal(reverseEditing.sensor, "number.set_value");
+
+    const reverseSaved = { ...reverseEditing };
+    options.normalizeSavedConfigActionFields(reverseSaved);
+    assert.equal(reverseSaved.sensor, "input_number.set_value");
   });
 
   test("registers light card families through an explicit shared interface", () => {
@@ -777,6 +937,7 @@ describe("browserless application contracts", () => {
   test("composes configuration persistence without compatibility globals", () => {
     const persistence = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_post_api.ts"), "utf8");
     const codec = fs.readFileSync(path.join(ROOT, "src/webserver/application/config_codec.ts"), "utf8");
+    const buttonSettings = fs.readFileSync(path.join(ROOT, "src/webserver/application/button_settings.ts"), "utf8");
     const backup = fs.readFileSync(path.join(ROOT, "src/webserver/application/app_backup.ts"), "utf8");
     const hooks = fs.readFileSync(path.join(ROOT, "src/webserver/testing/app_test_hooks_config.ts"), "utf8");
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
@@ -788,6 +949,13 @@ describe("browserless application contracts", () => {
     assert.match(hooks, /ConfigPersistenceFeature/);
     assert.match(entry, /createConfigCodecFeature\([\s\S]*configurationPersistence/);
     assert.match(entry, /configPersistence: configurationPersistence/);
+    assert.match(persistence, /return requests\(\)\.postText\(entityNameForSlot\("button_config", slot\)/);
+    assert.match(buttonSettings, /saveBtn\.addEventListener\("click", async function/);
+    assert.match(buttonSettings, /if \(await applySettingsDraft\(\)\)/);
+    assert.match(buttonSettings, /restoreDraftState\(\);[\s\S]*return false/);
+    assert.match(buttonSettings, /configPersistence\.saveButtonConfigAndOrder\(slot, serializeGrid\(state\.grid\)\)/);
+    assert.match(persistence, /nativePanelConfig\.writeButtonAndOrder/);
+    assert.match(persistence, /Wifi Sharing requires current device firmware/);
     assert.doesNotMatch(globals, /\bvar (?:SUBPAGE_RAW_CHUNK_FIELDS|saveButtonConfig|saveSubpageEntity|saveSubpageEntityLegacy|scheduleSliderSubpageMigration|subpageChunkShouldPost|subpageEntityKeys):/);
   });
 

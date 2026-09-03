@@ -1260,6 +1260,36 @@
     }
   },
   {
+    "name": "wifi_qr: share",
+    "input": "~,Connect,Wifi,Auto,,,wifi_qr,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
+    "expected": {
+      "entity": "",
+      "label": "Connect",
+      "icon": "Wifi",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "wifi_qr",
+      "precision": "",
+      "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ"
+    }
+  },
+  {
+    "name": "wifi_qr_card: tile_qr",
+    "input": "~,,Auto,Auto,,,wifi_qr_card,,ssid64%3DR3Vlc3Q%2Cpass64%3DUGFzc3dvcmQ",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "wifi_qr_card",
+      "precision": "",
+      "options": "ssid64=R3Vlc3Q,pass64=UGFzc3dvcmQ"
+    }
+  },
+  {
     "name": "weather_forecast: legacy_forecast",
     "input": "~weather.example,,Auto,Auto,,,weather_forecast,tomorrow,",
     "expected": {
@@ -1301,21 +1331,6 @@
       "unit": "",
       "type": "sensor",
       "precision": "text",
-      "options": ""
-    }
-  },
-  {
-    "name": "todo: accepted_legacy_input",
-    "input": "~todo.example,,,,,,todo,,",
-    "expected": {
-      "entity": "todo.example",
-      "label": "",
-      "icon": "Check",
-      "icon_on": "Auto",
-      "sensor": "",
-      "unit": "",
-      "type": "todo",
-      "precision": "",
       "options": ""
     }
   },

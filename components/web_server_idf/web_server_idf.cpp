@@ -1178,7 +1178,6 @@ bool AsyncEventSourceResponse::try_send_nodefer(const char *message, size_t mess
   if (this->fd_.load() == 0) {
     return false;
   }
-
   process_buffer_();
   if (!event_buffer_.empty()) {
     // there is still pending event data to send first

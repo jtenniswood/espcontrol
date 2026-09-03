@@ -45,6 +45,7 @@ CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
 LIMITS_HEADER = ROOT / "components" / "espcontrol" / "button_grid_limits.h"
 STRING_HEADER = ROOT / "components" / "espcontrol" / "button_grid_string.h"
+DISPLAY_TEXT_HEADER = ROOT / "components" / "espcontrol" / "display_text.h"
 BUTTON_GRID_FACADE = ROOT / "components" / "espcontrol" / "button_grid.h"
 CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
 DEVICES_DIR = ROOT / "devices"
@@ -82,6 +83,8 @@ class StringRef {
 
 struct lv_obj_t {
   int flags = 0;
+  int transform_scale_x = 256;
+  int transform_scale_y = 256;
   std::string text;
   void *user_data = nullptr;
 };
@@ -140,8 +143,12 @@ constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
 inline lv_obj_t *lv_scr_act() { return lv_active_screen; }
-inline void lv_obj_set_style_transform_scale_x(lv_obj_t *, int, int) {}
-inline void lv_obj_set_style_transform_scale_y(lv_obj_t *, int, int) {}
+inline void lv_obj_set_style_transform_scale_x(lv_obj_t *obj, int scale, int) {
+  if (obj) obj->transform_scale_x = scale;
+}
+inline void lv_obj_set_style_transform_scale_y(lv_obj_t *obj, int scale, int) {
+  if (obj) obj->transform_scale_y = scale;
+}
 inline void lv_obj_set_style_bg_color(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {}
@@ -622,32 +629,6 @@ int main() {
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
-  auto todo = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo");
-  assert(todo.entity == "todo.shopping");
-  assert(todo.label == "Shopping");
-  assert(todo.icon == "Check");
-  assert(todo.icon_on == "Auto");
-  assert(todo.type == "todo");
-  assert(todo.options == "");
-  assert(todo_card_show_count(todo));
-  auto todo_icon_display = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon");
-  assert(todo_icon_display.options == "count_display=icon");
-  assert(!todo_card_show_count(todo_icon_display));
-  assert(!card_large_numbers_supported(todo_icon_display));
-  auto todo_large = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;large_numbers");
-  assert(todo_large.options == "large_numbers");
-  assert(todo_card_show_count(todo_large));
-  assert(card_large_numbers_enabled(todo_large));
-  auto todo_icon_large = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon,large_numbers");
-  assert(todo_icon_large.options == "count_display=icon");
-  assert(!card_large_numbers_enabled(todo_icon_large));
-  auto todo_legacy_options = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=top_task,label_display=count,completed_display=hide,large_numbers");
-  assert(todo_legacy_options.options == "large_numbers");
-  assert(todo_card_show_count(todo_legacy_options));
-  assert(!todo_card_shows_top_task(todo_legacy_options));
-  assert(!todo_card_label_shows_count(todo_legacy_options));
-  assert(!todo_card_shows_completed_items(todo_legacy_options));
-  assert(card_large_numbers_enabled(todo_legacy_options));
 
   assert(cfg_option_token_present("large_numbers,active_color", "active_color"));
   assert(cfg_option_value("state_entity=sensor.room%2Ctemp,state_unit=%25", "state_entity") == "sensor.room,temp");
@@ -667,6 +648,30 @@ int main() {
   assert(normalize_width_compensation_percent(25) == 50);
   assert(normalize_width_compensation_percent(175) == 150);
   assert(width_compensation_scale(100) == 256);
+  lv_obj_t compensated_obj;
+  set_width_compensation_vertical_axis(false);
+  apply_width_compensation(&compensated_obj, 95);
+  assert(compensated_obj.transform_scale_x == width_compensation_scale(95));
+  assert(compensated_obj.transform_scale_y == 256);
+  set_icon_width_compensation_percent(95);
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 171);
+  assert(compensated_obj.transform_scale_y == 180);
+  set_text_width_compensation_percent(100);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
+  set_width_compensation_vertical_axis(true);
+  apply_width_compensation(&compensated_obj, 95);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == width_compensation_scale(95));
+  apply_icon_width_compensation(&compensated_obj, 180);
+  assert(compensated_obj.transform_scale_x == 180);
+  assert(compensated_obj.transform_scale_y == 171);
+  apply_text_width_compensation(&compensated_obj);
+  assert(compensated_obj.transform_scale_x == 256);
+  assert(compensated_obj.transform_scale_y == 256);
+  set_width_compensation_vertical_axis(false);
   assert(clamp_percent_value(-1) == 0);
   assert(clamp_percent_value(101) == 100);
   int brightness_pct = -1;
@@ -941,6 +946,7 @@ def main() -> int:
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
         shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
         shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
+        shutil.copy2(DISPLAY_TEXT_HEADER, tmp_path / "display_text.h")
         lvgl_stub = tmp_path / "esphome" / "components" / "lvgl" / "lvgl_esphome.h"
         lvgl_stub.parent.mkdir(parents=True, exist_ok=True)
         lvgl_stub.write_text("", encoding="utf-8")

@@ -13,6 +13,8 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE_DIR = ROOT / "components" / "espcontrol"
 CORE_INFRA_PATH = ROOT / "common" / "device" / "core_infra.yaml"
+SCREEN_LOADING_PATH = ROOT / "common" / "device" / "screen_loading.yaml"
+SCREEN_WIFI_SETUP_PATH = ROOT / "common" / "device" / "screen_wifi_setup.yaml"
 API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 C6_FIRMWARE_UPDATE_PATH = ROOT / "common" / "device" / "esp32_c6_firmware_update.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
@@ -147,10 +149,6 @@ SUBSCRIPTION_TRACKING_PATTERN = re.compile(
 )
 DEFERRED_CALLBACK_FANOUT_PATTERN = re.compile(
     r"for\s*\(\s*const\s+auto\s*&\s*callback(?:_ref)?\s*:\s*\*callback_refs\s*\)"
-)
-TODO_GET_ITEMS_HELPER_PATTERN = re.compile(
-    r"inline\s+bool\s+todo_begin_get_items_request\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
-    re.DOTALL,
 )
 WEATHER_FORECAST_REQUEST_PATTERN = re.compile(
     r"inline\s+void\s+request_weather_forecast_entity\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -318,94 +316,6 @@ def firmware_unavailable_retry_errors(
         core_text = core_infra_path.read_text(encoding="utf-8")
         if "ha_retry_unavailable_states" in core_text:
             errors.append(f"{core_rel}: do not retry unavailable HA states after reconnects or during maintenance")
-    return errors
-
-
-def firmware_todo_request_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_todo.h"
-    if not path.exists():
-        return []
-    rel = path.relative_to(root)
-    text = path.read_text(encoding="utf-8")
-    errors: list[str] = []
-
-    helper = TODO_GET_ITEMS_HELPER_PATTERN.search(text)
-    if not helper:
-        errors.append(f"{rel}: missing todo_begin_get_items_request helper")
-        return errors
-
-    body = helper.group("body")
-    if '"todo.get_items"' not in body:
-        errors.append(f"{rel}: todo_begin_get_items_request must call todo.get_items")
-    if "wants_response" not in body or "response_template" not in body:
-        errors.append(f"{rel}: todo.get_items requests must capture a compact response template")
-    if "std::string response_template" in body:
-        errors.append(f"{rel}: keep the todo response template alive until after the request is sent")
-    if "TODO_RESPONSE_KEY_MAX_LEN" not in text or "TODO_RESPONSE_SUMMARY_MAX_LEN" not in text:
-        errors.append(f"{rel}: bound todo response text before Home Assistant sends it")
-    if "std::to_string(TODO_RESPONSE_TEXT_MAX_LEN)" not in text or "|length" not in text:
-        errors.append(f"{rel}: cap rendered todo responses before Home Assistant sends them")
-    if 'ha_action_add_data(req, "status"' in body:
-        errors.append(f"{rel}: filter todo items in the response template, not in action data")
-    if "TODO_REQUEST_TIMEOUT_MS" not in text or text.count("todo_cancel_stale_request()") < 2:
-        errors.append(f"{rel}: bound pending todo item requests with a timeout")
-    if "stale_request_cancelled = todo_cancel_stale_request()" not in text:
-        errors.append(f"{rel}: periodically expire stale todo requests while the modal is open")
-    if 'todo_cancel_pending_request("modal closed"' not in text:
-        errors.append(f"{rel}: cancel pending todo item requests when the modal closes")
-    if 'todo_cancel_pending_request("modal closed", false)' not in text:
-        errors.append(f"{rel}: close todo modals without retrying their cancelled request")
-    if '"send failed"' in text and 'ui.waiting_for_ha = true;' not in text:
-        errors.append(f"{rel}: retry todo loads when Home Assistant disconnects during send")
-    pending_match = re.search(
-        r"if\s*\(\s*todo_request_state\(\)\.call_id\s*!=\s*0\s*\)\s*\{(?P<body>.*?)\n\s*\}",
-        text,
-        re.DOTALL,
-    )
-    if not pending_match or "ui.waiting_for_ha = true;" not in pending_match.group("body"):
-        errors.append(f"{rel}: retry todo loads when another todo request is already pending")
-    if text.count("todo_clear_request_state(call_id)") < 2:
-        errors.append(f"{rel}: clear pending todo request state when responses arrive")
-    if "ha_api_state_connected()" not in text:
-        errors.append(f"{rel}: wait for Home Assistant state subscription before todo actions")
-    callback_sections = [text]
-    lite_marker = "#elif defined(ESPCONTROL_TODO_LITE) && ESPCONTROL_TODO_LITE"
-    full_marker = "#else\n\nconstexpr int TODO_MAX_ITEMS"
-    if lite_marker in text and full_marker in text:
-        before_lite, lite_and_full = text.split(lite_marker, 1)
-        lite, full = lite_and_full.split(full_marker, 1)
-        callback_sections = [before_lite, lite, full]
-    if any(section.count("ha_register_action_response_callback(") > 1 for section in callback_sections):
-        errors.append(f"{rel}: only todo list loading should register a response callback")
-    return errors
-
-
-def firmware_todo_disconnect_errors(firmware_dir: Path, core_infra_path: Path, root: Path) -> list[str]:
-    todo_path = firmware_dir / "button_grid_todo.h"
-    if not todo_path.exists() or not core_infra_path.exists():
-        return []
-    todo_rel = todo_path.relative_to(root)
-    core_rel = core_infra_path.relative_to(root)
-    todo_text = todo_path.read_text(encoding="utf-8")
-    core_text = core_infra_path.read_text(encoding="utf-8")
-    errors: list[str] = []
-
-    if "todo_cancel_pending_request" not in todo_text:
-        errors.append(f"{todo_rel}: expose a helper to cancel pending todo requests")
-    if "todo_reload_active_modal" not in todo_text:
-        errors.append(f"{todo_rel}: expose a helper to reload an open todo modal after HA reconnects")
-    if "waiting_for_ha" not in todo_text or "todo_retry_waiting_modal" not in todo_text:
-        errors.append(f"{todo_rel}: retry open todo modals that are waiting for Home Assistant")
-    if "ctx->available) return" in todo_text:
-        errors.append(f"{todo_rel}: allow todo modals to open while waiting for Home Assistant availability")
-    if "apply_control_availability(ctx->btn, ctx->btn, ctx->available, false)" in todo_text:
-        errors.append(f"{todo_rel}: do not dim or disable todo cards for unavailable entity states")
-    if "on_client_disconnected:" not in core_text or "todo_cancel_pending_request" not in core_text:
-        errors.append(f"{core_rel}: cancel pending todo requests when the HA API disconnects")
-    if "on_client_connected:" not in core_text or "todo_reload_active_modal" not in core_text:
-        errors.append(f"{core_rel}: retry open todo modals when the HA API reconnects")
-    if "todo_retry_waiting_modal" not in core_text:
-        errors.append(f"{core_rel}: periodically retry todo modals waiting for Home Assistant")
     return errors
 
 
@@ -1080,11 +990,17 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: reset artwork retry state when playback resumes without a visible image")
     if playback_started_body and "espcontrol::cover_art::display_allowed(" in playback_started_body:
         errors.append(f"{rel}: let the playback-start event activate cover art before mirrored playback state settles")
-    if (
-        "cover_art_artist_label" in text
-        and "if (!id(cover_art_artist).empty()) return id(cover_art_artist);" not in text
+    sync_text_body = yaml_script_body(text, "cover_art_sync_track_text")
+    source_display_normalized = sync_text_body is not None and re.search(
+        r"normalize_display_text\(\s*decode_html_entities\(id\(cover_art_media_source\)\)\)",
+        sync_text_body,
+    )
+    if sync_text_body is not None and (
+        "normalize_display_text(id(cover_art_title))" not in sync_text_body
+        or "normalize_display_text(id(cover_art_artist))" not in sync_text_body
+        or source_display_normalized is None
     ):
-        errors.append(f"{rel}: prefer a real artist name over the external-source fallback label")
+        errors.append(f"{rel}: normalize decoded cover art metadata only at the label boundary")
     pause_body = yaml_script_body(text, "cover_art_pause_after_touch")
     if pause_body is not None and (
         "target_mode_is(espcontrol::DisplayMode::COVER_ART)" not in pause_body
@@ -2417,6 +2333,69 @@ def firmware_image_card_startup_errors(
     return errors
 
 
+def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
+    errors: list[str] = []
+    image_header = root / "components" / "espcontrol" / "button_grid_image.h"
+    p4_package = root / "common" / "device" / "image_cards_6.yaml"
+    s3_package = root / "common" / "device" / "image_cards_1.yaml"
+    if not image_header.exists() or not p4_package.exists() or not s3_package.exists():
+        return errors
+
+    image_text = image_header.read_text(encoding="utf-8")
+    p4_text = p4_package.read_text(encoding="utf-8")
+    s3_text = s3_package.read_text(encoding="utf-8")
+    camera_refresh_contract = (
+        "inline void refresh_visible_camera_cards()",
+        "image_card_context_on_active_screen(ctx)",
+        "ctx->media_artwork",
+        "const ControlModalActive &active_modal = control_modal_active()",
+        "active_modal.kind != ControlModalKind::NONE",
+        "active_modal.kind != ControlModalKind::IMAGE_CARD",
+        "!image_card_modal_active_for(ctx)",
+        "screen == lv_scr_act()",
+        'std::string("access_token")',
+        'std::string("entity_picture")',
+        "ctx->camera_refresh_pending",
+        "image_card_handle_picture(ctx, picture)",
+        "IMAGE_CARD_MIN_REPEAT_REFRESH_MS",
+        "image_card_active_download_context()",
+        "image_card_modal_active_for(ctx)",
+    )
+    if any(token not in image_text for token in camera_refresh_contract):
+        errors.append(
+            "components/espcontrol/button_grid_image.h: keep the Home Assistant camera "
+            "refresh action visible-only, camera-only, serialized, and throttled"
+        )
+    if (
+        "action: refresh_camera_cards" not in p4_text
+        or "refresh_visible_camera_cards();" not in p4_text
+        or "display.current_mode_is(espcontrol::DisplayMode::ACTIVE)" not in p4_text
+        or "display.current_mode_is(espcontrol::DisplayMode::DIMMED)" not in p4_text
+        or "display.target_mode_is(espcontrol::DisplayMode::ACTIVE)" not in p4_text
+        or "display.target_mode_is(espcontrol::DisplayMode::DIMMED)" not in p4_text
+        or "if (!page_visible) return;" not in p4_text
+    ):
+        errors.append(
+            "common/device/image_cards_6.yaml: expose the camera refresh action on P4 profiles "
+            "and keep it disabled behind full-screen display modes"
+        )
+    if "refresh_camera_cards" in s3_text or "refresh_visible_camera_cards" in s3_text:
+        errors.append(
+            "common/device/image_cards_1.yaml: keep the unsupported S3 camera refresh action disabled"
+        )
+
+    for package_path in sorted((root / "devices").glob("*/packages.yaml")):
+        slug = package_path.parent.name
+        package_text = package_path.read_text(encoding="utf-8")
+        expected = "image_cards_1.yaml" if slug == "guition-esp32-s3-4848s040" else "image_cards_6.yaml"
+        if expected not in package_text:
+            errors.append(
+                f"{package_path.relative_to(root)}: include {expected} so camera refresh action support "
+                "matches the display profile"
+            )
+    return errors
+
+
 def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
     if not path.exists():
         return []
@@ -3342,9 +3321,6 @@ def firmware_s3_api_errors(
         errors.append(f"{rel}: set an explicit S3 native API connection pool")
     elif int(connections_match.group(1)) < 3:
         errors.append(f"{rel}: keep enough S3 native API slots for HA reconnects after OTA")
-    if "ESPCONTROL_DISABLE_TODO=1" not in text:
-        errors.append(f"{rel}: keep the S3 todo list disabled until its HA action response path is stable")
-
     if api_navigate_path.exists():
         api_rel = api_navigate_path.relative_to(root)
         api_text = api_navigate_path.read_text(encoding="utf-8")
@@ -3465,18 +3441,6 @@ def firmware_navigation_target_errors(
     return errors
 
 
-def firmware_todo_disabled_errors(device_paths: tuple[Path, ...], root: Path) -> list[str]:
-    errors: list[str] = []
-    for path in device_paths:
-        if not path.exists():
-            continue
-        rel = path.relative_to(root)
-        text = path.read_text(encoding="utf-8")
-        if "ESPCONTROL_DISABLE_TODO=1" not in text:
-            errors.append(f"{rel}: keep the todo list disabled on every device")
-    return errors
-
-
 def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> list[str]:
     errors: list[str] = []
     for path in paths:
@@ -3502,6 +3466,37 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
         body = yaml_script_body(text, "ha_reconnect_flow")
         if body is not None or "Connecting to\\nHome Assistant" in text:
             errors.append(f"{rel}: keep the current display visible when Home Assistant disconnects")
+    return errors
+
+
+def firmware_wifi_setup_display_text_errors(
+    loading_path: Path,
+    wifi_setup_path: Path,
+    connectivity_path: Path,
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    expected_calls = (
+        (
+            loading_path,
+            "lv_label_set_display_text(id(loading_status_label), msg.c_str());",
+        ),
+        (
+            connectivity_path,
+            "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
+        ),
+        (
+            wifi_setup_path,
+            "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());",
+        ),
+    )
+    for path, expected_call in expected_calls:
+        if not path.exists():
+            continue
+        if expected_call not in path.read_text(encoding="utf-8"):
+            errors.append(
+                f"{path.relative_to(root)}: normalize user-controlled WiFi setup names before display"
+            )
     return errors
 
 
@@ -3599,8 +3594,6 @@ def run_scan() -> int:
     errors = firmware_ha_binding_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_display_controller_ownership_errors(DISPLAY_LIFECYCLE_ROOTS, ROOT))
     errors.extend(firmware_ha_boundary_errors(FIRMWARE_DIR, ROOT))
-    errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
-    errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_media_card_availability_errors(FIRMWARE_DIR, ROOT))
@@ -3633,6 +3626,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_camera_refresh_action_errors(ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(
         firmware_screensaver_wake_guard_errors(
@@ -3677,8 +3671,15 @@ def run_scan() -> int:
         )
     )
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
-    errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(
+        firmware_wifi_setup_display_text_errors(
+            SCREEN_LOADING_PATH,
+            SCREEN_WIFI_SETUP_PATH,
+            CONNECTIVITY_PATHS[0],
+            ROOT,
+        )
+    )
     errors.extend(firmware_ha_connection_screen_errors(CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_c6_update_status_errors(C6_FIRMWARE_UPDATE_PATH, ROOT))
     if errors:
@@ -3736,42 +3737,6 @@ def expect_unavailable_retry_errors(
         core_path.write_text(core_text, encoding="utf-8")
 
         errors = firmware_unavailable_retry_errors(firmware_dir, core_path, root)
-        for item in expected:
-            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
-        if not expected:
-            assert not errors, f"{name}: expected no errors, got {errors!r}"
-
-
-def expect_todo_request_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        firmware_dir = root / "components" / "espcontrol"
-        firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_todo.h").write_text(text, encoding="utf-8")
-
-        errors = firmware_todo_request_errors(firmware_dir, root)
-        for item in expected:
-            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
-        if not expected:
-            assert not errors, f"{name}: expected no errors, got {errors!r}"
-
-
-def expect_todo_disconnect_errors(
-    name: str,
-    todo_text: str,
-    core_text: str,
-    expected: tuple[str, ...],
-) -> None:
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        firmware_dir = root / "components" / "espcontrol"
-        core_path = root / "common" / "device" / "core_infra.yaml"
-        firmware_dir.mkdir(parents=True)
-        core_path.parent.mkdir(parents=True)
-        (firmware_dir / "button_grid_todo.h").write_text(todo_text, encoding="utf-8")
-        core_path.write_text(core_text, encoding="utf-8")
-
-        errors = firmware_todo_disconnect_errors(firmware_dir, core_path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3848,23 +3813,6 @@ def expect_local_sensor_binding_order_errors(
             (firmware_dir / filename).write_text(text, encoding="utf-8")
 
         errors = firmware_local_sensor_binding_order_errors(firmware_dir, root)
-        for item in expected:
-            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
-        if not expected:
-            assert not errors, f"{name}: expected no errors, got {errors!r}"
-
-
-def expect_todo_disabled_errors(name: str, files: dict[str, str], expected: tuple[str, ...]) -> None:
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        paths = []
-        for filename, text in files.items():
-            path = root / filename
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
-            paths.append(path)
-
-        errors = firmware_todo_disabled_errors(tuple(paths), root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -4620,6 +4568,33 @@ def expect_connectivity_api_errors(name: str, text: str, expected: tuple[str, ..
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_wifi_setup_display_text_errors(
+    name: str,
+    loading_text: str,
+    wifi_setup_text: str,
+    connectivity_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        loading_path = root / "common" / "device" / "screen_loading.yaml"
+        wifi_setup_path = root / "common" / "device" / "screen_wifi_setup.yaml"
+        connectivity_path = root / "common" / "addon" / "connectivity.yaml"
+        loading_path.parent.mkdir(parents=True)
+        connectivity_path.parent.mkdir(parents=True)
+        loading_path.write_text(loading_text, encoding="utf-8")
+        wifi_setup_path.write_text(wifi_setup_text, encoding="utf-8")
+        connectivity_path.write_text(connectivity_text, encoding="utf-8")
+
+        errors = firmware_wifi_setup_display_text_errors(
+            loading_path, wifi_setup_path, connectivity_path, root
+        )
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -5033,344 +5008,6 @@ def run_self_test() -> int:
             "do not keep removed unavailable HA state retry helpers",
             "do not retry unavailable HA states",
         ),
-    )
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        firmware_dir = root / "components" / "espcontrol"
-        firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_todo.h").write_text(
-            'inline bool todo_begin_get_items_request() {\n'
-            '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-            '  ha_action_add_entity(req, ctx->entity_id);\n'
-            '  return true;\n'
-            '}\n',
-            encoding="utf-8",
-        )
-        errors = firmware_todo_request_errors(firmware_dir, root)
-        assert any("must capture a compact response template" in error for error in errors), errors
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        firmware_dir = root / "components" / "espcontrol"
-        firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_todo.h").write_text(
-            'inline bool todo_begin_get_items_request() {\n'
-            '  ha_action_begin(req, "todo.get_items", false, 2, call_id);\n'
-            '  req.wants_response = true;\n'
-            '  req.response_template = response_template;\n'
-            '  ha_action_add_entity(req, ctx->entity_id);\n'
-            '  ha_action_add_data(req, "status", "needs_action");\n'
-            '  return true;\n'
-            '}\n',
-            encoding="utf-8",
-        )
-        errors = firmware_todo_request_errors(firmware_dir, root)
-        assert any("filter todo items in the response template" in error for error in errors), errors
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        firmware_dir = root / "components" / "espcontrol"
-        firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_todo.h").write_text(
-            'inline bool todo_begin_get_items_request() {\n'
-            '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-            '  req.wants_response = true;\n'
-            '  std::string response_template = todo_items_response_template(ctx->entity_id);\n'
-            '  req.response_template = response_template;\n'
-            '  ha_action_add_entity(req, ctx->entity_id);\n'
-            '  return true;\n'
-            '}\n',
-            encoding="utf-8",
-        )
-        errors = firmware_todo_request_errors(firmware_dir, root)
-        assert any("keep the todo response template alive" in error for error in errors), errors
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        firmware_dir = root / "components" / "espcontrol"
-        firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_todo.h").write_text(
-            'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-            'inline bool todo_begin_get_items_request() {\n'
-            '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-            '  req.wants_response = true;\n'
-            '  req.response_template = response_template;\n'
-            '  ha_action_add_entity(req, ctx->entity_id);\n'
-            '  return true;\n'
-            '}\n',
-            encoding="utf-8",
-        )
-        errors = firmware_todo_request_errors(firmware_dir, root)
-        assert any("bound todo response text" in error for error in errors), errors
-    expect_todo_request_errors(
-        "unbounded rendered todo response",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_RESPONSE_TEXT_MAX_LEN = 1536;\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n',
-        ("cap rendered todo responses",),
-    )
-    expect_todo_request_errors(
-        "unbounded pending todo request",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  if (!ha_register_action_response_callback(req.call_id, cb)) return;\n'
-        '}\n',
-        ("bound pending todo item requests with a timeout",),
-    )
-    expect_todo_request_errors(
-        "extra todo response callback",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_REQUEST_TIMEOUT_MS = 15000;\n'
-        'inline void todo_cancel_stale_request() {}\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  todo_cancel_stale_request();\n'
-        '  if (!ha_api_state_connected()) return;\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  ha_register_action_response_callback(req.call_id, cb);\n'
-        '  ha_register_action_response_callback(other_call_id, cb);\n'
-        '}\n',
-        ("only todo list loading should register a response callback",),
-    )
-    expect_todo_request_errors(
-        "timeout only checked while requesting",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_REQUEST_TIMEOUT_MS = 15000;\n'
-        'inline bool todo_cancel_stale_request() { return false; }\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  todo_cancel_stale_request();\n'
-        '  if (!ha_api_state_connected()) return;\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  ha_register_action_response_callback(req.call_id, cb);\n'
-        '}\n',
-        ("periodically expire stale todo requests",),
-    )
-    expect_todo_request_errors(
-        "modal close leaves todo request pending",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_REQUEST_TIMEOUT_MS = 15000;\n'
-        'inline bool todo_cancel_stale_request() { return false; }\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void todo_modal_hide() {\n'
-        '  ui = TodoModalUi();\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  todo_cancel_stale_request();\n'
-        '  bool stale_request_cancelled = todo_cancel_stale_request();\n'
-        '  if (!ha_api_state_connected()) return;\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  ha_register_action_response_callback(req.call_id, cb);\n'
-        '}\n',
-        ("cancel pending todo item requests when the modal closes",),
-    )
-    expect_todo_request_errors(
-        "modal close retries cancelled request",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_REQUEST_TIMEOUT_MS = 15000;\n'
-        'inline bool todo_cancel_stale_request() { return false; }\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void todo_modal_hide() {\n'
-        '  todo_cancel_pending_request("modal closed");\n'
-        '  ui = TodoModalUi();\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  todo_cancel_stale_request();\n'
-        '  bool stale_request_cancelled = todo_cancel_stale_request();\n'
-        '  if (!ha_api_state_connected()) return;\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  ha_register_action_response_callback(req.call_id, cb);\n'
-        '}\n',
-        ("close todo modals without retrying their cancelled request",),
-    )
-    expect_todo_request_errors(
-        "todo send failed has no retry",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_REQUEST_TIMEOUT_MS = 15000;\n'
-        'inline bool todo_cancel_stale_request() { return false; }\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void todo_modal_hide() {\n'
-        '  todo_cancel_pending_request("modal closed");\n'
-        '  ui = TodoModalUi();\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  todo_cancel_stale_request();\n'
-        '  bool stale_request_cancelled = todo_cancel_stale_request();\n'
-        '  if (!ha_api_state_connected()) return;\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  ha_register_action_response_callback(req.call_id, cb);\n'
-        '  if (!ha_action_send(req)) {\n'
-        '    todo_cancel_request(req.call_id, "send failed");\n'
-        '    todo_modal_set_status("Could not load");\n'
-        '  }\n'
-        '}\n',
-        ("retry todo loads when Home Assistant disconnects during send",),
-    )
-    expect_todo_request_errors(
-        "pending todo request leaves modal loading",
-        'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
-        'constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;\n'
-        'constexpr int TODO_REQUEST_TIMEOUT_MS = 15000;\n'
-        'inline bool todo_cancel_stale_request() { return false; }\n'
-        'inline bool todo_begin_get_items_request() {\n'
-        '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
-        '  req.wants_response = true;\n'
-        '  req.response_template = response_template;\n'
-        '  ha_action_add_entity(req, ctx->entity_id);\n'
-        '  return true;\n'
-        '}\n'
-        'inline void todo_modal_hide() {\n'
-        '  todo_cancel_pending_request("modal closed");\n'
-        '  ui = TodoModalUi();\n'
-        '}\n'
-        'inline void request_todo_items() {\n'
-        '  todo_cancel_stale_request();\n'
-        '  bool stale_request_cancelled = todo_cancel_stale_request();\n'
-        '  if (todo_request_state().call_id != 0) {\n'
-        '    return;\n'
-        '  }\n'
-        '  if (!ha_api_state_connected()) return;\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  todo_clear_request_state(call_id);\n'
-        '  ha_register_action_response_callback(req.call_id, cb);\n'
-        '  if (!ha_action_send(req)) {\n'
-        '    todo_cancel_request(req.call_id, "send failed");\n'
-        '    ui.waiting_for_ha = true;\n'
-        '  }\n'
-        '}\n',
-        ("retry todo loads when another todo request is already pending",),
-    )
-    expect_todo_disconnect_errors(
-        "missing disconnect cleanup",
-        "inline void todo_cancel_pending_request(const char *reason) {}\n"
-        "inline void todo_reload_active_modal() {}\n"
-        "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n",
-        "api:\n"
-        "  on_client_connected:\n"
-        "    - lambda: todo_reload_active_modal();\n"
-        "interval:\n"
-        "  - interval: 5s\n"
-        "    then:\n"
-        "      - lambda: todo_retry_waiting_modal();\n",
-        ("cancel pending todo requests when the HA API disconnects",),
-    )
-    expect_todo_disconnect_errors(
-        "missing reconnect retry",
-        "inline void todo_cancel_pending_request(const char *reason) {}\n"
-        "inline void todo_reload_active_modal() {}\n"
-        "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n",
-        "api:\n"
-        "  on_client_disconnected:\n"
-        "    - lambda: todo_cancel_pending_request(\"api disconnected\");\n"
-        "interval:\n"
-        "  - interval: 5s\n"
-        "    then:\n"
-        "      - lambda: todo_retry_waiting_modal();\n",
-        ("retry open todo modals when the HA API reconnects",),
-    )
-    expect_todo_disconnect_errors(
-        "missing waiting modal retry",
-        "inline void todo_cancel_pending_request(const char *reason) {}\n"
-        "inline void todo_reload_active_modal() {}\n",
-        "api:\n"
-        "  on_client_connected:\n"
-        "    - lambda: todo_reload_active_modal();\n"
-        "  on_client_disconnected:\n"
-        "    - lambda: todo_cancel_pending_request(\"api disconnected\");\n",
-        ("retry open todo modals that are waiting for Home Assistant",),
-    )
-    expect_todo_disconnect_errors(
-        "availability blocks todo modal",
-        "inline void todo_cancel_pending_request(const char *reason) {}\n"
-        "inline void todo_reload_active_modal() {}\n"
-        "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n"
-        "inline void todo_card_open_modal(TodoCardCtx *ctx) {\n"
-        "  if (!todo_card_context_valid(ctx) || ctx->entity_id.empty() || !ctx->available) return;\n"
-        "}\n",
-        "api:\n"
-        "  on_client_connected:\n"
-        "    - lambda: todo_reload_active_modal();\n"
-        "  on_client_disconnected:\n"
-        "    - lambda: todo_cancel_pending_request(\"api disconnected\");\n"
-        "interval:\n"
-        "  - interval: 5s\n"
-        "    then:\n"
-        "      - lambda: todo_retry_waiting_modal();\n",
-        ("allow todo modals to open while waiting",),
-    )
-    expect_todo_disconnect_errors(
-        "availability dims todo card",
-        "inline void todo_cancel_pending_request(const char *reason) {}\n"
-        "inline void todo_reload_active_modal() {}\n"
-        "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n"
-        "inline void todo_card_open_modal(TodoCardCtx *ctx) {\n"
-        "  if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;\n"
-        "}\n"
-        "inline void subscribe_todo_state(TodoCardCtx *ctx) {\n"
-        "  apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);\n"
-        "}\n",
-        "api:\n"
-        "  on_client_connected:\n"
-        "    - lambda: todo_reload_active_modal();\n"
-        "  on_client_disconnected:\n"
-        "    - lambda: todo_cancel_pending_request(\"api disconnected\");\n"
-        "interval:\n"
-        "  - interval: 5s\n"
-        "    then:\n"
-        "      - lambda: todo_retry_waiting_modal();\n",
-        ("do not dim or disable todo cards",),
     )
     expect_action_card_availability_errors(
         "stateless main action registered for availability",
@@ -5914,6 +5551,17 @@ def run_self_test() -> int:
         ("restart its countdown after every touch",),
     )
     expect_cover_art_refresh_errors(
+        "cover art metadata bypasses display normalization",
+        "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return id(cover_art_title);\n"
+        "          return id(cover_art_artist);\n"
+        "          return id(cover_art_media_source);\n",
+        ("normalize decoded cover art metadata only at the label boundary",),
+    )
+    expect_cover_art_refresh_errors(
         "stale cover refresh guard present",
         "globals:\n"
         "  - id: cover_art_runtime\n"
@@ -5922,6 +5570,13 @@ def run_self_test() -> int:
         "# cover_art_runtime).effective_download_url\n"
         "  - id: cover_art_album\n"
         "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return normalize_display_text(id(cover_art_title));\n"
+        "          return normalize_display_text(id(cover_art_artist));\n"
+        "          return normalize_display_text(\n"
+        "            decode_html_entities(id(cover_art_media_source)));\n"
         "  - id: cover_art_resolve_home_assistant_base_url\n"
         "    then:\n"
         "      - lambda: |-\n"
@@ -7718,52 +7373,19 @@ def run_self_test() -> int:
         ("keep enough S3 native API slots",),
     )
     expect_s3_api_errors(
-        "S3 todo enabled",
-        "esphome:\n  platformio_options:\n    build_flags:\n"
-        "      - \"-DESPCONTROL_TODO_LITE=1\"\n"
-        "api:\n  max_connections: 3\n  max_send_queue: 12\n",
-        ("keep the S3 todo list disabled",),
-    )
-    expect_todo_disabled_errors(
-        "todo enabled on one device",
-        {
-            "devices/a/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n",
-            "devices/b/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_TODO_LITE=1\"\n",
-        },
-        ("keep the todo list disabled",),
-    )
-    expect_todo_disabled_errors(
-        "todo disabled on all devices",
-        {
-            "devices/a/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n",
-            "devices/b/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n",
-        },
-        (),
-    )
-    expect_s3_api_errors(
         "S3 includes navigate API package",
-        "esphome:\n  platformio_options:\n    build_flags:\n"
-        "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n"
         "api:\n  max_connections: 3\n  max_send_queue: 12\n",
         ("omit the Home Assistant navigate API action on S3",),
         s3_packages_text="packages:\n  api_navigate: !include ../../common/device/api_navigate.yaml\n",
     )
     expect_s3_api_errors(
         "navigate action left in shared core",
-        "esphome:\n  platformio_options:\n    build_flags:\n"
-        "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n"
         "api:\n  max_connections: 3\n  max_send_queue: 12\n",
         ("keep the navigate action out of core_infra",),
         core_text="api:\n  actions:\n    - action: navigate\n",
     )
     expect_s3_api_errors(
         "P4 package missing navigate API package",
-        "esphome:\n  platformio_options:\n    build_flags:\n"
-        "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n"
         "api:\n  max_connections: 3\n  max_send_queue: 12\n",
         ("include the dedicated Home Assistant navigate API package",),
         extra_packages={"esp32-p4-86": "packages:\n  device: !include device/device.yaml\n"},
@@ -7803,6 +7425,24 @@ def run_self_test() -> int:
         "  on_client_connected:\n"
         "    - script.execute: navigate_after_api\n",
         ("wait for Home Assistant state subscription", "only navigate after a Home Assistant state connection"),
+    )
+    expect_wifi_setup_display_text_errors(
+        "raw WiFi setup display names",
+        "lv_label_set_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
+        "lv_label_set_text(id(wifi_setup_instructions), msg.c_str());\n",
+        (
+            "common/device/screen_loading.yaml: normalize user-controlled WiFi setup names",
+            "common/device/screen_wifi_setup.yaml: normalize user-controlled WiFi setup names",
+            "common/addon/connectivity.yaml: normalize user-controlled WiFi setup names",
+        ),
+    )
+    expect_wifi_setup_display_text_errors(
+        "normalized WiFi setup display names",
+        "lv_label_set_display_text(id(loading_status_label), msg.c_str());\n",
+        "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
+        "lv_label_set_display_text(id(wifi_setup_instructions), msg.c_str());\n",
+        (),
     )
     expect_connectivity_api_errors(
         "home assistant state connected navigation",

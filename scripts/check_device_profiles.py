@@ -219,6 +219,7 @@ def test_s3_low_heap_policy() -> None:
         'CONFIG_SPIRAM_USE_MALLOC: "y"',
         'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"',
         'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"',
+        'CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"',
     ):
         assert option in device, f"S3 device profile is missing {option}"
     assert "HTTP_CLIENT_BUFFER_SIZE = 4 * 1024" in artwork, (
@@ -244,8 +245,10 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     espcontrol = re.search(r"(?ms)^espcontrol:\n(?P<body>(?:^  .*\n|^\s*$\n)*)", device)
     assert espcontrol, f"{slug}: device.yaml is missing its espcontrol block"
     body = espcontrol.group("body")
-    if "  panel_config:\n" not in body:
-        return
+    assert "  panel_config:\n" in body, (
+        f"{slug}: device.yaml must enable native panel configuration so "
+        "cards that contain device-owned settings remain available"
+    )
 
     slots = int(profile["slots"])
     bindings = [
@@ -261,9 +264,12 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     assert len(chunk_rows) == slots, (
         f"{slug}: native panel config must provide subpage chunks for all {slots} slots"
     )
+    chunk_count = 4 if "button_template_4chunk.yaml" in (
+        ROOT / "devices" / slug / "packages.yaml"
+    ).read_text(encoding="utf-8") else 8
     for slot, row in enumerate(chunk_rows, start=1):
         expected = [f"subpage_{slot}_config", f"subpage_{slot}_config_ext"] + [
-            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, 8)
+            f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, chunk_count)
         ]
         actual = [value.strip() for value in row.split(",")]
         assert actual == expected, (
@@ -472,6 +478,34 @@ def test_rotation_refresh_rebuilds_subpages() -> None:
         )
 
 
+def test_seven_inch_width_compensation_rotates_with_screen() -> None:
+    profiles = load_device_profiles()
+    for slug in (
+        "guition-esp32-p4-jc1060p470",
+        "guition-esp32-p4-jc1060p470-v2",
+    ):
+        profile = profiles[slug]
+        assert profile["rotation"]["rotateWidthCompensation"], (
+            f"{slug}: portrait rotation must move pixel compensation to the rotated axis"
+        )
+        assert profile["firmware"]["display"]["widthCompensationPercent"] == 95, (
+            f"{slug}: 7-inch pixel compensation must remain at 95%"
+        )
+        assert profile["firmware"]["display"]["textWidthCompensationPercent"] == 100, (
+            f"{slug}: 7-inch text must retain its natural proportions"
+        )
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        assert "cfg.width_compensation_percent = 95;" in sensors, (
+            f"{slug}: generated firmware is missing 7-inch pixel compensation"
+        )
+        assert "cfg.width_compensation_vertical = portrait;" in sensors, (
+            f"{slug}: generated firmware does not rotate the compensation axis in portrait"
+        )
+        assert "apply_text_width_compensation(id(display_time));" in sensors, (
+            f"{slug}: clock-bar text must use the independent text compensation policy"
+        )
+
+
 def test_subpage_config_changes_schedule_live_refresh() -> None:
     templates = {
         "common/config/button_template.yaml": 8,
@@ -617,7 +651,7 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'set_weather_card_badge(s, "Weather Cloudy")' not in weather_visuals, (
         "current weather device card should not render a visible weather badge"
     )
-    assert 'lv_label_set_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
+    assert 'lv_label_set_display_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
         "current weather device card should render the same label as the web preview"
     )
     assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in weather_visuals, (
@@ -626,10 +660,10 @@ def test_weather_card_visual_matches_preview() -> None:
     assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
-    assert 'lv_label_set_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
+    assert 'lv_label_set_display_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
         "forecast weather placeholder should show the configured unit like the web preview"
     )
-    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
+    assert 'lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
@@ -791,8 +825,8 @@ def test_card_label_line_clamp_matches_preview_on_subpages() -> None:
     assert "apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);" in grid, (
         "subpage back labels must follow the configured line limit"
     )
-    assert "apply_card_label_line_clamp(sub_slot.text_lbl, cfg, rs);" in grid, (
-        "subpage card labels must follow the configured line limit"
+    assert "refresh_card_layout(sub_slot, sb_cfg, cfg, rs, cs);" in grid, (
+        "subpage card labels must follow the configured line limit before card-specific geometry is restored"
     )
 
 
@@ -890,6 +924,7 @@ def main() -> int:
     test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_rotation_refresh_rebuilds_subpages()
+    test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()

@@ -59,6 +59,24 @@ external_components:
 
 espcontrol:
   id: espcontrol_app
+  panel_config:
+    device_profile: ${device_slug}
+    storage: card_images
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3, subpage_1_config_ext_4, subpage_1_config_ext_5, subpage_1_config_ext_6, subpage_1_config_ext_7]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3, subpage_2_config_ext_4, subpage_2_config_ext_5, subpage_2_config_ext_6, subpage_2_config_ext_7]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3, subpage_3_config_ext_4, subpage_3_config_ext_5, subpage_3_config_ext_6, subpage_3_config_ext_7]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3, subpage_4_config_ext_4, subpage_4_config_ext_5, subpage_4_config_ext_6, subpage_4_config_ext_7]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3, subpage_5_config_ext_4, subpage_5_config_ext_5, subpage_5_config_ext_6, subpage_5_config_ext_7]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3, subpage_6_config_ext_4, subpage_6_config_ext_5, subpage_6_config_ext_6, subpage_6_config_ext_7]
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -67,7 +85,6 @@ esphome:
   friendly_name: ${friendly_name}
   build_flags:
     - "-Wno-deprecated-declarations"
-    - "-DESPCONTROL_DISABLE_TODO=1"
     - "-DESPCONTROL_MAX_GRID_SLOTS=6"
     # Force cached ESPHome objects to rebuild after the 2026.5
     # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.

@@ -40,6 +40,10 @@ esp32:
       CONFIG_SPIRAM_USE_MALLOC: "y"
       CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"
       CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"
+      # RGB bounce-buffer scan-out requires 64-byte data-cache lines. The
+      # default 32-byte lines can desynchronise PSRAM reads from panel DMA and
+      # leave the whole display vertically shifted until the next restart.
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
       # The RGB driver already restarts after a genuine DMA underflow. Restarting
       # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
       CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
@@ -61,6 +65,30 @@ external_components:
 
 espcontrol:
   id: espcontrol_app
+  panel_config:
+    device_profile: ${device_slug}
+    storage: card_images
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3]
+      - config: button_7_config
+        subpage_chunks: [subpage_7_config, subpage_7_config_ext, subpage_7_config_ext_2, subpage_7_config_ext_3]
+      - config: button_8_config
+        subpage_chunks: [subpage_8_config, subpage_8_config_ext, subpage_8_config_ext_2, subpage_8_config_ext_3]
+      - config: button_9_config
+        subpage_chunks: [subpage_9_config, subpage_9_config_ext, subpage_9_config_ext_2, subpage_9_config_ext_3]
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)
 # ---------------------------------------------------------------------------
@@ -75,7 +103,6 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   build_flags:
-    - "-DESPCONTROL_DISABLE_TODO=1"
     - "-DESPCONTROL_MAX_GRID_SLOTS=9"
     - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"

@@ -179,7 +179,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, climate, push, webhook, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -774,49 +774,6 @@ inline std::string presence_card_options_normalized(const std::string &options) 
   return cfg_option_token_present(options, "active_color") ? "active_color" : "";
 }
 
-inline std::string normalize_todo_count_display(const std::string &value) {
-  return value == "icon" ? "icon" : "count";
-}
-
-inline std::string normalize_todo_label_display(const std::string &value) {
-  (void) value;
-  return "label";
-}
-
-inline std::string normalize_todo_completed_display(const std::string &value) {
-  (void) value;
-  return "hide";
-}
-
-inline std::string todo_card_options_normalized(const std::string &options) {
-  bool show_count = normalize_todo_count_display(cfg_option_value(options, "count_display")) == "count";
-  std::string out = show_count ? "" : "count_display=icon";
-  if (show_count && (cfg_option_token_present(options, "large_numbers") ||
-      large_numbers_explicitly_disabled(options))) {
-    append_large_numbers_option(out, options);
-  }
-  return out;
-}
-
-inline bool todo_card_show_count(const ParsedCfg &p) {
-  return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
-}
-
-inline bool todo_card_shows_top_task(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
-inline bool todo_card_label_shows_count(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
-inline bool todo_card_shows_completed_items(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
 inline std::string normalize_climate_label_display(const std::string &value) {
   return card_runtime_climate_label_display(value);
 }
@@ -910,9 +867,6 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   if (p.type == "media") return p.sensor == "volume" || p.sensor == "position";
   if (climate_card_type(p.type)) {
     return normalize_climate_number_display(cfg_option_value(p.options, "number_display")) != "icon";
-  }
-  if (p.type == "todo") {
-    return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
   }
   if (p.type == "subpage") return !p.sensor.empty() && p.sensor != "indicator" && p.precision != "text";
   return card_runtime_large_numbers_supported(p.type, p.precision);
@@ -1117,6 +1071,13 @@ inline std::string action_card_options_normalized(const std::string &options,
 }
 
 inline void normalize_saved_config_action_fields(ParsedCfg &p) {
+  const bool number_entity = p.entity.size() > 7 && p.entity.compare(0, 7, "number.") == 0;
+  const bool input_number_entity =
+    p.entity.size() > 13 && p.entity.compare(0, 13, "input_number.") == 0;
+  if ((p.sensor == "number.set_value" || p.sensor == "input_number.set_value") &&
+      (number_entity || input_number_entity)) {
+    p.sensor = number_entity ? "number.set_value" : "input_number.set_value";
+  }
   if (action_card_option_select(p)) {
     p.sensor = card_runtime_option_select_canonical_action();
     p.unit.clear();
@@ -1344,14 +1305,6 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_static = normalize_saved_config_static(p);
   normalize_saved_config_date_time(
       p, normalize_saved_config_date_time_fields, date_time_card_options_normalized);
-  if (p.type == "todo") {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = "Check";
-    p.options = todo_card_options_normalized(p.options);
-  }
   normalize_saved_config_light_control(p, normalize_saved_config_light_control_options);
   normalize_saved_config_subpage(
       p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
@@ -1374,7 +1327,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
@@ -1805,13 +1758,19 @@ inline std::string sensor_state_display_text(const ParsedCfg &p,
 }
 
 inline void lv_label_set_text_limited(lv_obj_t *label, esphome::StringRef value, size_t max_len) {
-  std::string text = string_ref_limited(value, max_len);
+  std::string text = normalize_display_text(string_ref_limited(value, max_len));
   lv_label_set_text(label, text.c_str());
 }
 
 inline bool parse_float_ref(esphome::StringRef value, float &out) {
   char *end;
   out = strtof(value.c_str(), &end);
+  return end != value.c_str();
+}
+
+inline bool parse_double_ref(esphome::StringRef value, double &out) {
+  char *end;
+  out = std::strtod(value.c_str(), &end);
   return end != value.c_str();
 }
 

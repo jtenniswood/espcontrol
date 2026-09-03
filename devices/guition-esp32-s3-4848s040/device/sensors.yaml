@@ -104,9 +104,10 @@ script:
             return true;
           });
           set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
-          apply_width_compensation(id(display_time), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-          apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
+          set_text_width_compensation_percent(cfg.text_width_compensation_percent);
+          apply_text_width_compensation(id(display_time));
+          apply_text_width_compensation(id(temperatures));
+          apply_text_width_compensation(id(clock_label));
           // END GENERATED REFRESH GRID WIRING
           #define SP_CFG(n) subpage_##n##_config
           #define SP_EXT(n) subpage_##n##_config_ext
@@ -231,9 +232,10 @@ script:
             return true;
           });
           set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
-          apply_width_compensation(id(display_time), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-          apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
+          set_text_width_compensation_percent(cfg.text_width_compensation_percent);
+          apply_text_width_compensation(id(display_time));
+          apply_text_width_compensation(id(temperatures));
+          apply_text_width_compensation(id(clock_label));
           // END GENERATED SUBPAGE REFRESH WIRING
           #define SP_CFG(n) subpage_##n##_config
           #define SP_EXT(n) subpage_##n##_config_ext
@@ -353,9 +355,10 @@ esphome:
               return true;
             });
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
-            apply_width_compensation(id(display_time), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-            apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
+            set_text_width_compensation_percent(cfg.text_width_compensation_percent);
+            apply_text_width_compensation(id(display_time));
+            apply_text_width_compensation(id(temperatures));
+            apply_text_width_compensation(id(clock_label));
             // END GENERATED PHASE 1 GRID WIRING
             grid_phase1(slots, cfg,
               id(button_order).state,
@@ -471,9 +474,10 @@ esphome:
               return true;
             });
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
-            apply_width_compensation(id(display_time), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-            apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
+            set_text_width_compensation_percent(cfg.text_width_compensation_percent);
+            apply_text_width_compensation(id(display_time));
+            apply_text_width_compensation(id(temperatures));
+            apply_text_width_compensation(id(clock_label));
             // END GENERATED PHASE 2 GRID WIRING
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,
               id(button_order).state,
