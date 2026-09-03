@@ -285,8 +285,11 @@ export function companionLabelPlaceholder(card: any): string {
     return metric ? `e.g. ${metric.label}` : "e.g. Safari or Select all";
 }
 
-export function companionMetricPreviewValue(_precision: unknown, _sample?: number): string {
-    return "--";
+export function companionMetricPreviewValue(precision: unknown, sample = Math.random()): string {
+    const parsed = Number.parseInt(String(precision ?? "0"), 10);
+    const digits = parsed >= 0 && parsed <= 2 ? parsed : 0;
+    const normalizedSample = Number.isFinite(sample) ? Math.min(1, Math.max(0, sample)) : 0.5;
+    return (10 + normalizedSample * 80).toFixed(digits);
 }
 
 export function companionCardMode(card: any): string {
