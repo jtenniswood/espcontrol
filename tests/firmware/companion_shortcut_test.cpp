@@ -35,6 +35,11 @@ int main() {
   safari_launch.entity = "com.apple.Safari";
   safari_launch.options = "app_shortcuts";
   assert(companion_app_shortcuts_enabled(safari_launch));
+  assert(!companion_app_subpage_auto_switch_enabled(safari_launch));
+  safari_launch.options = "app_shortcuts,app_shortcuts_auto_switch";
+  assert(companion_app_subpage_auto_switch_enabled(safari_launch));
+  assert(companion_card_options_normalized(safari_launch) ==
+         "app_shortcuts,app_shortcuts_auto_switch");
   ParsedCfg codex_launch = safari_launch;
   codex_launch.entity = "com.openai.codex";
   assert(companion_app_shortcuts_enabled(codex_launch));
@@ -43,6 +48,7 @@ int main() {
   assert(companion_app_shortcuts_enabled(slack_launch));
   safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
   assert(!companion_app_shortcuts_enabled(safari_launch));
+  assert(!companion_app_subpage_auto_switch_enabled(safari_launch));
 
   ParsedCfg companion_stat_subpage;
   companion_stat_subpage.type = "subpage";
@@ -89,12 +95,20 @@ int main() {
   assert(metric_value == 512.5f / 1024.0f);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.battery", metric_value));
   companion_set_focused_action("com.apple.Safari");
+  assert(companion_pending_auto_subpage_action() == "com.apple.Safari");
+  assert(companion_consume_auto_subpage_action("com.apple.Safari"));
+  assert(companion_pending_auto_subpage_action().empty());
   assert(companion_action_focused("com.apple.Safari"));
   assert(!companion_action_focused("com.google.Chrome"));
   assert(!companion_action_focused(folder_action));
   companion_set_focused_action(folder_action);
   assert(companion_action_focused(folder_action));
   assert(!companion_action_focused("com.apple.Safari"));
+  assert(companion_pending_auto_subpage_action() == folder_action);
+  assert(!companion_consume_auto_subpage_action("com.apple.Safari"));
+  assert(companion_consume_auto_subpage_action(folder_action));
+  companion_set_focused_action(folder_action);
+  assert(companion_pending_auto_subpage_action().empty());
   assert(!companion_consume_subpage_return_request());
   companion_set_focused_action("com.apple.Safari");
   assert(!companion_consume_subpage_return_request());

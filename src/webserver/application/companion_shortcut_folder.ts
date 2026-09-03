@@ -2,6 +2,7 @@ import { configOptionEnabled, setConfigOption } from "../model/config_primitives
 import { cardTransferOwnsSubpage } from "../model/card_transfer";
 
 export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
+export const COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION = "app_shortcuts_auto_switch";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
 export const CODEX_BUNDLE_ID = "com.openai.codex";
 export const SLACK_BUNDLE_ID = "com.tinyspeck.slackmacgap";
@@ -43,21 +44,45 @@ export function companionAppShortcutFolderEnabled(card: any): boolean {
         configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_OPTION);
 }
 
+export function companionAppShortcutAutoSwitchEnabled(card: any): boolean {
+    return companionAppShortcutFolderEnabled(card) &&
+        configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION);
+}
+
 export function normalizeCompanionAppShortcutOptions(card: any): string {
     if (!card || card.type !== "companion" || !companionShortcutFolderAppLabel(card.entity) || card.sensor) return "";
-    return setConfigOption(
+    const options = setConfigOption(
         "",
         COMPANION_APP_SHORTCUTS_OPTION,
         configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_OPTION),
+    );
+    return setConfigOption(
+        options,
+        COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION,
+        configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_OPTION) &&
+            configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION),
     );
 }
 
 export function setCompanionAppShortcutFolderEnabled(card: any, enabled: boolean): void {
     if (!card) return;
-    card.options = setConfigOption(
+    const valid = enabled && card.type === "companion" &&
+        !!companionShortcutFolderAppLabel(card.entity) && !card.sensor;
+    let options = setConfigOption(
         card.options,
         COMPANION_APP_SHORTCUTS_OPTION,
-        enabled && card.type === "companion" && !!companionShortcutFolderAppLabel(card.entity) && !card.sensor,
+        valid,
+    );
+    if (!valid) options = setConfigOption(options, COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION, false);
+    card.options = options;
+}
+
+export function setCompanionAppShortcutAutoSwitchEnabled(card: any, enabled: boolean): void {
+    if (!card) return;
+    card.options = setConfigOption(
+        card.options,
+        COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION,
+        enabled && companionAppShortcutFolderEnabled(card),
     );
 }
 

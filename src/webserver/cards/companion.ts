@@ -13,6 +13,7 @@ import type { ButtonSettingsSelectionFeature } from "../application/button_setti
 import { state } from "../state/app_instance";
 import {
     COMPANION_SHORTCUT_PREFIX,
+    companionAppShortcutAutoSwitchEnabled,
     companionAppShortcutFolderEnabled,
     companionShortcutActionIdValid,
     companionShortcutFolderAppLabel,
@@ -20,6 +21,7 @@ import {
     createCompanionShortcutSubpage,
     normalizeCompanionAppShortcutOptions,
     setCompanionAppShortcutFolderEnabled,
+    setCompanionAppShortcutAutoSwitchEnabled,
 } from "../application/companion_shortcut_folder";
 
 export interface CompanionAction {
@@ -752,6 +754,25 @@ export function registerCompanionCardTypes(
                 renderButtonSettings();
             });
 
+            const autoSwitchField = document.createElement("div");
+            autoSwitchField.className = "sp-field";
+            const autoSwitchToggle = helpers.toggleRow(
+                "Auto switch to subpage",
+                helpers.idPrefix + "companion-app-shortcuts-auto-switch",
+                companionAppShortcutAutoSwitchEnabled(card),
+            );
+            autoSwitchField.appendChild(autoSwitchToggle.row);
+            const autoSwitchNote = document.createElement("div");
+            autoSwitchNote.className = "sp-field-info-text";
+            autoSwitchNote.textContent = "Automatically show this subpage when " + shortcutFolderApp +
+                " is opened or focused on the Mac.";
+            autoSwitchField.appendChild(autoSwitchNote);
+            panel?.appendChild(autoSwitchField);
+            autoSwitchToggle.input.addEventListener("change", function () {
+                setCompanionAppShortcutAutoSwitchEnabled(card, autoSwitchToggle.input.checked);
+                helpers.saveField("options", card.options);
+            });
+
             function syncMode(mode: string): void {
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";
                 appFieldLabel.textContent = mode === "url" ? "Open with" : "Mac App";
@@ -762,6 +783,8 @@ export function registerCompanionCardTypes(
                 mediaField.style.display = mode === "media" ? "" : "none";
                 shortcutFolderField.style.display = mode === "app" &&
                     !!companionShortcutFolderAppLabel(card.entity) ? "" : "none";
+                autoSwitchField.style.display = mode === "app" &&
+                    companionAppShortcutFolderEnabled(card) ? "" : "none";
             }
             syncMode(initialMode);
 

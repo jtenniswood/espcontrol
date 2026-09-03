@@ -36,6 +36,7 @@ import {
 } from "../../src/webserver/cards/slider";
 import {
   companionAppShortcutFolderEnabled,
+  companionAppShortcutAutoSwitchEnabled,
   companionShortcutActionIdValid,
   companionShortcutFolderEditorAvailable,
   CODEX_BUNDLE_ID,
@@ -48,6 +49,7 @@ import {
   normalizeCompanionAppShortcutOptions,
   safariShortcutPresetCards,
   setCompanionAppShortcutFolderEnabled,
+  setCompanionAppShortcutAutoSwitchEnabled,
 } from "../../src/webserver/application/companion_shortcut_folder";
 import { cardTransferOwnsSubpage } from "../../src/webserver/model/card_transfer";
 
@@ -78,6 +80,21 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!companionAppShortcutFolderEnabled(safariFolderCard) || safariFolderCard.options !== "app_shortcuts") {
     throw new Error("Safari launch cards must retain the shortcut-folder option");
   }
+  if (companionAppShortcutAutoSwitchEnabled(safariFolderCard)) {
+    throw new Error("App subpage auto-switch must be off by default");
+  }
+  setCompanionAppShortcutAutoSwitchEnabled(safariFolderCard, true);
+  if (!companionAppShortcutAutoSwitchEnabled(safariFolderCard) ||
+      String(safariFolderCard.options) !== "app_shortcuts,app_shortcuts_auto_switch" ||
+      normalizeCompanionAppShortcutOptions(safariFolderCard) !== "app_shortcuts,app_shortcuts_auto_switch") {
+    throw new Error("Safari app subpages must retain the auto-switch option");
+  }
+  setCompanionAppShortcutFolderEnabled(safariFolderCard, false);
+  if (companionAppShortcutFolderEnabled(safariFolderCard) ||
+      companionAppShortcutAutoSwitchEnabled(safariFolderCard) || String(safariFolderCard.options) !== "") {
+    throw new Error("Disabling app subpages must also clear auto-switch");
+  }
+  setCompanionAppShortcutFolderEnabled(safariFolderCard, true);
   if (companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard, options: "" })) {
     throw new Error("The Safari shortcut editor must wait until the folder option is saved");
   }
@@ -99,6 +116,13 @@ export function runCompanionShortcutFeatureTests(): void {
   if (normalizeCompanionAppShortcutOptions(chromeFolderCard) !== "" ||
       companionAppShortcutFolderEnabled(chromeFolderCard)) {
     throw new Error("Unsupported apps must not retain the shortcut-folder option");
+  }
+  const invalidAutoSwitchCard = {
+    ...safariFolderCard,
+    options: "app_shortcuts_auto_switch",
+  };
+  if (normalizeCompanionAppShortcutOptions(invalidAutoSwitchCard) !== "") {
+    throw new Error("Auto-switch must require the app subpage option");
   }
   const codexFolderCard = {
     type: "companion", entity: CODEX_BUNDLE_ID, options: "",

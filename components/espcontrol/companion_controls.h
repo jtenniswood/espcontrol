@@ -177,6 +177,7 @@ struct CompanionRuntimeState {
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
   std::string focused_action_id;
+  std::string pending_auto_subpage_action_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -393,6 +394,11 @@ inline void companion_set_focused_action(std::string action_id) {
     std::lock_guard<std::mutex> lock(state.mutex);
     should_return_from_subpage = state.connected && !state.focused_action_id.empty() &&
       action_id.empty();
+    if (action_id.empty() || !state.connected) {
+      state.pending_auto_subpage_action_id.clear();
+    } else if (state.focused_action_id != action_id) {
+      state.pending_auto_subpage_action_id = action_id;
+    }
     state.focused_action_id = std::move(action_id);
   }
   if (should_return_from_subpage) companion_subpage_return_requested().store(true);
@@ -408,6 +414,21 @@ inline bool companion_consume_subpage_return_request() {
   return companion_subpage_return_requested().exchange(false);
 }
 
+inline std::string companion_pending_auto_subpage_action() {
+  auto &state = companion_runtime_state();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  return state.pending_auto_subpage_action_id;
+}
+
+inline bool companion_consume_auto_subpage_action(const std::string &action_id) {
+  if (action_id.empty()) return false;
+  auto &state = companion_runtime_state();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  if (state.pending_auto_subpage_action_id != action_id) return false;
+  state.pending_auto_subpage_action_id.clear();
+  return true;
+}
+
 inline bool companion_action_focused(const std::string &action_id) {
   if (action_id.empty() ||
       action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
@@ -418,11 +439,7 @@ inline bool companion_action_focused(const std::string &action_id) {
 inline void companion_set_focused_application(std::string application_id) {
   if (application_id.size() > 96) application_id.clear();
   const std::string focused_application_id = application_id;
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.focused_action_id = std::move(application_id);
-  }
+  companion_set_focused_action(std::move(application_id));
   CompanionActionResultHandler success;
   {
     auto &pending = companion_pending_action_result();
@@ -465,6 +482,7 @@ inline void companion_set_connected(bool connected) {
     if (!connected) {
       state.values.clear();
       state.focused_action_id.clear();
+      state.pending_auto_subpage_action_id.clear();
       state.media_actions_supported = false;
       state.now_playing = {};
       state.system_metrics = {};

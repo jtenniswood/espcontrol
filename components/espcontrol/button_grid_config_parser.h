@@ -1330,8 +1330,15 @@ inline bool companion_app_shortcuts_enabled(const ParsedCfg &p) {
          cfg_option_token_present(p.options, "app_shortcuts");
 }
 
+inline bool companion_app_subpage_auto_switch_enabled(const ParsedCfg &p) {
+  return companion_app_shortcuts_enabled(p) &&
+         cfg_option_token_present(p.options, "app_shortcuts_auto_switch");
+}
+
 inline std::string companion_card_options_normalized(const ParsedCfg &p) {
-  return companion_app_shortcuts_enabled(p) ? "app_shortcuts" : "";
+  if (!companion_app_shortcuts_enabled(p)) return "";
+  return companion_app_subpage_auto_switch_enabled(p)
+    ? "app_shortcuts,app_shortcuts_auto_switch" : "app_shortcuts";
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {

@@ -4890,6 +4890,12 @@
             "omitDefault": true
           },
           {
+            "name": "app_shortcuts_auto_switch",
+            "label": "Auto switch to subpage",
+            "kind": "flag",
+            "omitDefault": true
+          },
+          {
             "name": "large_numbers",
             "label": "Large Sensor Numbers",
             "kind": "flag",
@@ -4940,6 +4946,7 @@
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
             "app_shortcuts",
+            "app_shortcuts_auto_switch",
             "large_numbers"
           ],
           "optionHook": "normalize_date_time_options"

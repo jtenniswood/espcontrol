@@ -253,6 +253,26 @@ inline bool navigation_return_from_companion_shortcuts_if_needed(
   return navigation_return_home(main_page_obj);
 }
 
+inline bool navigation_open_companion_subpage_if_requested(
+    lv_obj_t *main_page_obj) {
+  const std::string requested = companion_pending_auto_subpage_action();
+  if (requested.empty()) return false;
+  for (const auto &parent : navigation_home_targets()) {
+    const ParsedCfg parent_config = parse_cfg(parent.config);
+    if (!companion_app_subpage_auto_switch_enabled(parent_config) ||
+        parent_config.entity != requested) continue;
+    NavigationSubpageEntry *entry = navigation_find_slot(parent.slot);
+    if (entry == nullptr || entry->screen == nullptr) return false;
+    if (!companion_consume_auto_subpage_action(requested)) return false;
+    navigation_hide_modals();
+    if (lv_scr_act() != entry->screen) {
+      lv_scr_load_anim(entry->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+    }
+    return true;
+  }
+  return false;
+}
+
 inline bool navigation_restore_subpage_slot(int slot) {
   NavigationSubpageEntry *entry = navigation_find_slot(slot);
   if (entry == nullptr || entry->screen == nullptr) return false;

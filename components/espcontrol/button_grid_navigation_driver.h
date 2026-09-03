@@ -235,9 +235,12 @@ inline bool navigation_driver_own_subpage(
     BtnSlot &parent_slot, const ParsedCfg &config, const Context &context,
     int slot_number, int display_order, lv_obj_t *screen) {
   if (!navigation_driver_owns_subpage(context, config) || !screen) return false;
+  const std::string kind = companion_app_shortcuts_enabled(config)
+    ? "app_shortcuts"
+    : normalize_subpage_kind(cfg_option_value(config.options, "subpage_kind"));
   navigation_register_subpage(
     slot_number, display_order,
-    normalize_subpage_kind(cfg_option_value(config.options, "subpage_kind")),
+    kind,
     screen);
   if (parent_slot.btn) lv_obj_set_user_data(parent_slot.btn, screen);
   return true;
