@@ -62,6 +62,20 @@ describe("browserless application contracts", () => {
     assert.match(styles, /\.sp-hidden\{display:none!important\}/);
   });
 
+  test("gates Home Assistant and Companion screensaver modes by connector setup", () => {
+    const settings = fs.readFileSync(path.join(ROOT, "src/webserver/application/settings_page.ts"), "utf8");
+    const screensaver = fs.readFileSync(path.join(ROOT, "src/webserver/application/screensaver_state.ts"), "utf8");
+    const connectors = fs.readFileSync(path.join(ROOT, "src/webserver/application/connectors_page.ts"), "utf8");
+    assert.match(settings, /\["sensor", "Home Assistant"\]/);
+    assert.match(settings, /\["companion", "Companion App"\]/);
+    assert.match(settings, /sensorBtn\.hidden = !haAvailable/);
+    assert.match(settings, /companionBtn\.hidden = !companionAvailable/);
+    assert.match(settings, /onStatusChange\(syncScreensaverModeOptions\)/);
+    assert.match(screensaver, /state\.screensaverMode === "companion"/);
+    assert.match(connectors, /homeAssistantConfigured\(\)/);
+    assert.match(connectors, /companionConfigured\(\)/);
+  });
+
   test("owns browser composition and compatibility layout state", () => {
     runApplicationContextTests();
   });

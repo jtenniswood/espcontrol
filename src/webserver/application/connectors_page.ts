@@ -29,6 +29,9 @@ export interface ConnectorsStatus {
 export interface ConnectorsPageFeature {
     buildPage(parent: HTMLElement): void;
     start(): void;
+    homeAssistantConfigured(): boolean;
+    companionConfigured(): boolean;
+    onStatusChange(callback: () => void): void;
 }
 
 function setHidden(element: HTMLElement | null, hidden: boolean): void {
@@ -60,6 +63,7 @@ export function createConnectorsPageFeature(
     let homeAssistantInstructions: HTMLElement | null = null;
     let homeAssistantBadge: HTMLElement | null = null;
     let current: ConnectorsStatus | null = null;
+    const statusListeners: Array<() => void> = [];
     let timer: number | null = null;
     let refreshInProgress = false;
 
@@ -110,6 +114,7 @@ export function createConnectorsPageFeature(
             heading.textContent = value.onboarding_complete ? "Connectors" : "Connect EspControl";
         }
         shell.setOnboardingComplete(value.onboarding_complete, announceCompletion);
+        statusListeners.forEach((listener) => listener());
     }
 
     async function refreshStatus(): Promise<void> {
@@ -206,5 +211,23 @@ export function createConnectorsPageFeature(
         timer = window.setInterval(function () { void refreshStatus(); }, 2000);
     }
 
-    return { buildPage, start };
+    function homeAssistantConfigured(): boolean {
+        return !!current?.home_assistant.configured;
+    }
+
+    function companionConfigured(): boolean {
+        return !!current?.mac_companion.paired;
+    }
+
+    function onStatusChange(callback: () => void): void {
+        statusListeners.push(callback);
+    }
+
+    return {
+        buildPage,
+        start,
+        homeAssistantConfigured,
+        companionConfigured,
+        onStatusChange,
+    };
 }

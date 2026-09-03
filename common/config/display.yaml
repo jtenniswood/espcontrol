@@ -635,9 +635,15 @@ text:
       then:
         - if:
             condition:
-              lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
+              lambda: 'return id(screensaver_mode).state == "companion";'
             then:
-              - script.execute: screensaver_idle_check
+              - script.execute: screensaver_companion_reconcile
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
+                  then:
+                    - script.execute: screensaver_idle_check
 
   # Optional presence sensor for screensaver (e.g. mmWave)
   - platform: template

@@ -41,6 +41,7 @@ using CompanionActionSender = std::function<bool(const std::string &, const std:
 using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
 using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
 using CompanionActionResultHandler = std::function<void()>;
+using CompanionConnectionChangedHandler = std::function<void(bool)>;
 
 struct CompanionPendingActionResult {
   std::mutex mutex;
@@ -211,6 +212,16 @@ inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
   static CompanionNowPlayingHandler handler;
   return handler;
+}
+
+inline CompanionConnectionChangedHandler &companion_connection_changed_handler() {
+  static CompanionConnectionChangedHandler handler;
+  return handler;
+}
+
+inline void register_companion_connection_changed_handler(
+    CompanionConnectionChangedHandler handler) {
+  companion_connection_changed_handler() = std::move(handler);
 }
 
 inline CompanionArtworkHandler &companion_artwork_handler() {
@@ -495,6 +506,8 @@ inline void companion_set_connected(bool connected) {
     companion_subpage_return_requested().store(false);
   }
   companion_request_card_refresh();
+  auto &connection_changed = companion_connection_changed_handler();
+  if (connection_changed) connection_changed(connected);
 }
 
 inline void register_companion_action_sender(CompanionActionSender sender) {
