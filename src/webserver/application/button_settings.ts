@@ -159,6 +159,11 @@ export function createButtonSettingsFeature(
     }
     function renderButtonSettings(this: any, forceOpen?: any) {
         var container: any = els.buttonSettings;
+        var openDisclosureIds: any = {};
+        container.querySelectorAll(".sp-disclosure.sp-open").forEach(function (this: any, disclosure?: any) {
+            var button: any = disclosure.querySelector(".sp-disclosure-button");
+            if (button && button.id) openDisclosureIds[button.id] = true;
+        });
         container.innerHTML = "";
         var settingsModal: any = els.settingsOverlay ? els.settingsOverlay.querySelector(".sp-settings-modal") : null;
         if (settingsModal)
@@ -886,6 +891,14 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         groupCardSettingsFields(panel, idPrefix);
+        Object.keys(openDisclosureIds).forEach(function (this: any, id?: any) {
+            var disclosureButton: any = document.getElementById(id);
+            if (!disclosureButton || !container.contains(disclosureButton)) return;
+            var disclosure: any = disclosureButton.closest(".sp-disclosure");
+            if (!disclosure) return;
+            disclosure.classList.add("sp-open");
+            disclosureButton.setAttribute("aria-expanded", "true");
+        });
         var saveRow: any = document.createElement("div");
         saveRow.className = "sp-btn-row sp-btn-row--save";
         if (!isNewDraft) {
