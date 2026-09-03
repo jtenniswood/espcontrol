@@ -32,36 +32,24 @@ Visual setup and runtime wiring are separate. A new card often needs both.
 
 ## Adding Firmware Support for a Card
 
-1. Create `components/espcontrol/button_grid_<type>.h`.
-2. Include it in `components/espcontrol/button_grid.h`.
-3. Add visual setup in `components/espcontrol/button_grid_grid.h`.
-4. Add runtime/subscription behavior in `button_grid_grid.h` if the card reacts
-   to Home Assistant state or user taps.
-5. Update `components/espcontrol/button_grid_config.h` if the saved config or
-   options need parser support.
-6. Add modal enum/context behavior when the card opens a modal.
-
-Use an existing card with similar behavior as the template:
+Use an existing card with similar behavior as the architectural template:
 
 - Static display card: sensor-like or time-like cards.
 - Toggle/action card: switch/action cards.
 - Rich modal card: media, climate, or light cards.
 - Image loading card: camera or media cover-art behavior.
 
+The [firmware UI playbook](playbooks/change-firmware-ui.md) owns exact firmware
+edit and verification steps. Use the [card playbook](playbooks/add-card-type.md)
+when the contract and web configurator also change.
+
 ## Modal Pattern
 
-Cards that open a full-screen detail view use the shared modal system. See
-[Modal Layout System](modal-layout-system.md) for the full ownership model.
-
-1. Add a value to `ControlModalKind` in `button_grid_modal.h`.
-2. Add its presentation, chrome, and dismissal policy to
-   `control_modal_definition(...)`.
-3. Store the card's runtime state in a small context struct.
-4. Save the context on the button with `lv_obj_set_user_data`.
-5. Attach a click handler in the runtime pass.
-6. Open the modal with `control_modal_open_shell(...)`.
-7. Use the shared tab row and content layout recipes instead of repeating modal
-   frame geometry inside the card header.
+Cards that open a full-screen detail view use the shared modal system. A central
+definition owns presentation, chrome, and dismissal policy; a small context
+stores card state; the runtime pass attaches interaction; and the shared shell
+owns layout. See [Modal Layout System](modal-layout-system.md) for the full
+ownership model.
 
 For a simple static card, the context usually needs the button pointer, display
 font pointers, width compensation, and any text or state the modal should render.
@@ -71,12 +59,7 @@ below.
 
 Modal layout changes must preserve the geometry fixtures for every display
 profile or deliberately update the fixtures and generated visual reference.
-Run:
-
-```bash
-npm run check:firmware-modal-layouts
-npm run check:firmware-modals
-```
+The firmware UI playbook owns the required checks.
 
 ## Fonts and Glyphs
 
@@ -97,12 +80,7 @@ Cards that reflect Home Assistant state must subscribe to the entity or
 attribute they need. Keep subscriptions narrow because display memory and update
 work are limited.
 
-Useful checks:
-
-```bash
-npm run check:firmware-ha-bindings
-npm run check:firmware-card-runtime
-```
+Use the firmware UI playbook for subscription and runtime checks.
 
 ## Config Parser Rules
 
@@ -115,13 +93,9 @@ careful with:
 - default values that change behavior
 - clearing unknown options
 
-When parser behavior changes, update compatibility fixtures and run:
-
-```bash
-npm run check:firmware-parser
-npm run check:backup-contract
-npm run check:product
-```
+When parser behavior changes, update compatibility fixtures. Use the firmware UI
+playbook and, for saved-shape changes, the
+[saved-config playbook](playbooks/change-saved-config.md) for verification.
 
 ## ESPHome Entry Points
 

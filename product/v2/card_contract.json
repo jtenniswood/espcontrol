@@ -1871,20 +1871,29 @@
       "label": "Companion",
       "allowInSubpage": true,
       "domains": [],
+      "options": [
+        {
+          "name": "large_numbers",
+          "label": "Large Sensor Numbers",
+          "kind": "flag",
+          "omitDefault": true
+        }
+      ],
       "normalization": {
         "fields": {
           "entity": { "policy": "keep" },
           "label": { "policy": "keep" },
           "icon": { "policy": "default_if_empty", "value": "Monitor" },
           "icon_on": { "policy": "default", "value": "Auto" },
-          "sensor": { "policy": "clear" },
-          "unit": { "policy": "clear" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "keep" },
           "type": { "policy": "default", "value": "companion" },
-          "precision": { "policy": "clear" },
-          "options": { "policy": "clear" }
+          "precision": { "policy": "allowed", "values": ["", "0", "1", "2"], "fallback": "" },
+          "options": { "policy": "hook", "hook": "normalize_date_time_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": []
+        "canonicalOptionOrder": ["large_numbers"],
+        "optionHook": "normalize_date_time_options"
       },
       "default": {
         "entity": "",

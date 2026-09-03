@@ -202,7 +202,15 @@ function registerCards(context: ApplicationContext) {
   registerPushCardTypes(registry, fields);
   registerScreenLockCardTypes(registry, fields);
   registerSensorCardTypes(registry, context.configuration.options, fields, cardUi);
-  registerSliderCardTypes(registry, context.configuration.modalTabs, lightCards, fields, context.controllers.settingsUi);
+  registerSliderCardTypes(
+    registry,
+    context.configuration.modalTabs,
+    lightCards,
+    fields,
+    context.controllers.settingsUi,
+    !!context.device.profile.features?.companion,
+    cardUi,
+  );
   registerSubpageCardTypes(registry, context.configuration.codec, context.core, context.controllers.selection, fields, cardUi);
   registerSwitchCardTypes(registry, context.configuration.confirmationOptions, lightCards, fields);
   registerTimezoneCardTypes(registry, context.configuration.dateTimeOptions, context.dom.document, fields);

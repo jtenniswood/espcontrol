@@ -152,6 +152,21 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
 
 inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
+  if (companion_metric_key_valid(p.entity)) {
+    const std::string label = p.label.empty()
+      ? espcontrol_i18n_key(companion_metric_label_key(p.entity)) : p.label;
+    lv_label_set_display_text(s.text_lbl, label.c_str());
+    lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_label_set_display_text(s.sensor_lbl, "--");
+    const std::string unit = trim_display_unit(
+      p.unit.empty() ? companion_metric_default_unit(p.entity) : p.unit);
+    lv_label_set_display_text(s.unit_lbl, "");
+    companion_track_metric_card(s.btn, s.sensor_lbl, s.unit_lbl, p.entity, unit,
+                                parse_precision(p.precision));
+    return;
+  }
   const std::string shortcut_label = companion_shortcut_label(p.entity);
   const bool url_card = !companion_encoded_url(p.sensor).empty();
   std::string label = p.label.empty()
@@ -159,6 +174,8 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     : p.label;
   lv_label_set_text(s.text_lbl, label.c_str());
   const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
+  lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_text(s.icon_lbl, icon);
   companion_track_card(s.btn, p.entity, p.sensor);
   const bool available = url_card
@@ -171,6 +188,7 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_state(s.btn, LV_STATE_DISABLED);
     clear_push_button_transition(s.btn);
   }
+  companion_apply_card_focus(s.btn, p.entity);
 }
 
 inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
