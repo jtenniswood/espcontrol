@@ -88,7 +88,7 @@ You do not need to know a page number. Use the same label you gave the card on t
 
 If two home-screen cards use the same label, the first matching displayed slot is used. To avoid surprises, give cards you want to target a unique label. If Home Assistant sends a label or slot that does not exist, the panel logs a warning and stays on the current page.
 
-Targeting a normal home-screen card is the same as tapping it on the panel. Camera or image, climate, media volume, light control, cover, alarm, option-select, todo, and similar cards open their normal popup. Action, toggle, webhook, lock, garage, cover command, vacuum, mower, and other command cards can send real Home Assistant commands, so target those carefully.
+Targeting a normal home-screen card is the same as tapping it on the panel. Camera or image, climate, media volume, light control, cover, alarm, option-select, and similar cards open their normal popup. Action, toggle, webhook, lock, garage, cover command, vacuum, mower, and other command cards can send real Home Assistant commands, so target those carefully.
 
 The panel wakes before navigating, so the action works when the screen is off, dimmed, or showing the clock screensaver. It does not change long-press behavior. If you use the [Home screen timeout](/features/idle), the panel will still return to the home screen using that normal setting.
 

@@ -1,10 +1,20 @@
-# ESP32-P4-86 Audio Stack Test Notes
+<!-- DEV-DOC-STATUS: historical -->
 
-Last updated: 2026-07-11
+# ESP32-P4-86 Audio Stack Investigation Record
 
-## Current Status
+Test window: 2026-07-11
 
-The latest test build appears stable in user testing after reducing hosted WiFi/SDIO memory pressure as well as the normal ESP WiFi settings.
+> Historical record: this page captures the candidate tested on 2026-07-11. It
+> is not the source of truth for the current P4-86 audio or network
+> configuration. Use `devices/esp32-p4-86/device/voice_assistant.yaml` and
+> `devices/esp32-p4-86/device/device.yaml` for current values; the audio-stack
+> version and network high-performance setting have changed since this test.
+
+## Outcome at the End of the Test
+
+At the end of the test window, the candidate appeared stable in user testing
+after reducing hosted WiFi/SDIO memory pressure as well as the normal ESP WiFi
+settings.
 
 `logs (5).txt` did not show the earlier `sdio_rx_get_buffer` assert, panic, Guru Meditation, reboot, or backtrace markers. Media and TTS decoding reached the points that previously triggered the crash.
 
@@ -29,7 +39,7 @@ Follow-up test on 2026-07-11:
 - Raised ES7210 input gain from `30.0` to `33.0`, then to `36.0`; built and flashed successfully on `COM3`.
 - Returned the AFE diagnostic `input_volume` and `output_rms` update intervals to `500ms` and made them internal so they are not published back to Home Assistant, then built and flashed successfully on `COM3`.
 
-## Current Working Candidate
+## Tested Candidate
 
 Audio configuration:
 
@@ -41,7 +51,7 @@ Audio configuration:
 - `memory_alloc_mode: more_psram`, `feed_buf_in_psram: false`, `feed_ring_in_psram: true`, and `fetch_ring_in_psram: false`.
 - The feed and fetch frame buffers are kept internal to reduce latency and improve responsiveness, but the feed ring stays in PSRAM because moving it internal caused a memory-pressure segfault.
 - AFE diagnostic `input_volume` and `output_rms` sensors are internal and update every `500ms`.
-- ES7210 input gain is currently `36.0`.
+- ES7210 input gain was `36.0`.
 - TDM remapping is enabled with four slots:
   - slot 0: microphone 1
   - slot 1: hardware speaker/AEC reference
@@ -60,7 +70,7 @@ Network and memory workaround:
 - Normal ESP WiFi and hosted WiFi remote buffer counts are reduced.
 - Hosted WiFi remote AMPDU RX/TX is disabled.
 - LWIP TCP windows and receive mailboxes are reduced.
-- ESP32-C6 hosted SDIO clock is currently `20MHz`.
+- ESP32-C6 hosted SDIO clock was `20MHz`.
 
 The key discovery was that setting only `CONFIG_ESP_WIFI_*` was not enough for this board. The final SDK config was still being driven by the hosted WiFi remote `CONFIG_WIFI_RMT_*` options, so those had to be set too.
 
@@ -76,7 +86,7 @@ Earlier logs showed the failure as:
 
 The working candidate reduces network burst pressure and hosted WiFi buffer demand, leaving the audio stack less likely to collide with the SDIO receive path.
 
-## Remaining Risk
+## Risk Recorded During the Test
 
 DMA headroom is still tight during playback. In `logs (5).txt`, DMA free memory dropped to around 4.8 KB with the largest block around 1.5 KB during sustained audio. That is much better than crashing immediately, but it means this still needs longer soak testing with:
 
@@ -85,10 +95,10 @@ DMA headroom is still tight during playback. In `logs (5).txt`, DMA free memory 
 - normal media playback
 - barge-in during playback
 
-## Files Currently Involved
+## Files Involved at the Time
 
 - `devices/esp32-p4-86/device/voice_assistant.yaml`
 - `devices/esp32-p4-86/device/device.yaml`
-- `dev-docs/p4-86-audio-stack-test.md`
+- `dev-docs/history/p4-86-audio-stack-test.md`
 
 The temporary cover-art and image-card download gates have been removed again, so this branch is back to normal media artwork behaviour while keeping the audio/TDM and hosted-WiFi stability changes under test.

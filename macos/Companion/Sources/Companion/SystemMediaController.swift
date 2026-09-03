@@ -2,12 +2,29 @@ import CoreAudio
 import Foundation
 import MediaRemoteShim
 
+protocol MediaCommandProviding {
+    var isAvailable: Bool { get }
+    func send(command: UInt32) -> Bool
+}
+
+struct MediaRemoteCommandSource: MediaCommandProviding {
+    var isAvailable: Bool { ECMediaRemoteBridge.isCommandAvailable() }
+    func send(command: UInt32) -> Bool { ECMediaRemoteBridge.sendCommand(command) }
+}
+
 @MainActor
 final class SystemMediaController {
+    static let playPauseID = "media.play_pause"
     static let outputVolumeID = "media.output_volume"
     static let inputVolumeID = "media.input_volume"
     static let volumeControlIDs = Set([outputVolumeID, inputVolumeID])
-    static var mediaActionsAvailable: Bool { ECMediaRemoteBridge.isCommandAvailable() }
+    static var mediaActionsAvailable: Bool { MediaRemoteCommandSource().isAvailable }
+
+    private let commandSource: MediaCommandProviding
+
+    init(commandSource: MediaCommandProviding = MediaRemoteCommandSource()) {
+        self.commandSource = commandSource
+    }
 
     static func unavailableVolumeIDs(
         values: [String: Int],
@@ -25,7 +42,7 @@ final class SystemMediaController {
     }
 
     static func supports(actionIdentifier: String) -> Bool {
-        actionIdentifier == "media.play_pause" ||
+        actionIdentifier == playPauseID ||
             actionIdentifier == "media.previous" ||
             actionIdentifier == "media.next"
     }
@@ -33,12 +50,12 @@ final class SystemMediaController {
     func perform(actionIdentifier: String) -> Bool {
         let command: RemoteCommand
         switch actionIdentifier {
-        case "media.play_pause": command = .togglePlayPause
+        case Self.playPauseID: command = .togglePlayPause
         case "media.previous": command = .previousTrack
         case "media.next": command = .nextTrack
         default: return false
         }
-        return ECMediaRemoteBridge.sendCommand(command.rawValue)
+        return commandSource.isAvailable && commandSource.send(command: command.rawValue)
     }
 
     func values() -> [String: Int] {

@@ -216,7 +216,11 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     private func scheduleReconnect() {
         guard !hasTerminalConnectionError else { return }
-        guard shouldReconnect, store.hasSavedPairing else {
+        // Pairing failures deliberately close their unauthenticated socket.
+        // Keep the specific server error visible instead of replacing it with
+        // a generic disconnect message during that expected teardown.
+        guard shouldReconnect else { return }
+        guard store.hasSavedPairing else {
             store.updateStatus("Panel disconnected")
             return
         }
@@ -265,8 +269,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             publishCatalogue()
         case "INVOKE":
             guard parts.count == 3 else { return }
-            let performed = store.perform(actionIdentifier: parts[2])
-            send("RESULT|\(parts[1])|\(performed ? "performed" : "not_allowed")")
+            let requestIdentifier = parts[1]
+            let actionIdentifier = parts[2]
+            Task { [weak self] in
+                guard let self else { return }
+                let status = await self.store.performResultStatus(actionIdentifier: actionIdentifier)
+                self.send("RESULT|\(requestIdentifier)|\(status)")
+            }
         case "OPEN_URL":
             guard parts.count == 4 else { return }
             let opened = store.openURL(encodedURL: parts[3], bundleIdentifier: parts[2])

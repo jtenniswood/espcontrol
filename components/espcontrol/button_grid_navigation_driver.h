@@ -8,8 +8,12 @@
 namespace espcontrol::cards {
 
 inline bool navigation_driver_matches(const Context &context) {
-  return !context.legacy_dispatch &&
-         context.runtime.driver == card_runtime::CardDriverId::SUBPAGE;
+  return context.runtime.driver == card_runtime::CardDriverId::SUBPAGE;
+}
+
+inline bool navigation_driver_owns_subpage(
+    const Context &context, const ParsedCfg &config) {
+  return navigation_driver_matches(context) || companion_app_shortcuts_enabled(config);
 }
 
 inline bool navigation_driver_parent_sensor_state_enabled(
@@ -230,7 +234,7 @@ inline void navigation_driver_add_child_indicator(
 inline bool navigation_driver_own_subpage(
     BtnSlot &parent_slot, const ParsedCfg &config, const Context &context,
     int slot_number, int display_order, lv_obj_t *screen) {
-  if (!navigation_driver_matches(context) || !screen) return false;
+  if (!navigation_driver_owns_subpage(context, config) || !screen) return false;
   navigation_register_subpage(
     slot_number, display_order,
     normalize_subpage_kind(cfg_option_value(config.options, "subpage_kind")),

@@ -394,6 +394,26 @@ const encoded = hooks.serializeButtonConfig(button);
 assert.strictEqual(encoded, "light.kitchen;Kitchen;Auto;Lightbulb");
 assert.deepStrictEqual(plain(hooks.parseButtonConfig(encoded)), button);
 
+const safariShortcutFolderButton = {
+  entity: "com.apple.Safari",
+  label: "Safari",
+  icon: "Monitor",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "companion",
+  precision: "",
+  options: "app_shortcuts",
+};
+const safariShortcutFolderRoundTrip = hooks.parseButtonConfig(
+  hooks.serializeButtonConfig(safariShortcutFolderButton)
+);
+assert.strictEqual(
+  safariShortcutFolderRoundTrip.options,
+  "app_shortcuts",
+  "Safari shortcut-folder options must survive button serialization"
+);
+
 const confirmationButton = {
   entity: "switch.printer",
   label: "3D Printer",
@@ -618,13 +638,10 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), fals
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", true), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", false), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", true), false);
 assert(
   hooks.buttonTypePickerKeysFor(false, "fan_speed").includes("fan_speed"),
   "fan cards are available"
 );
-assert(!hooks.buttonTypeRuntimeSpec("todo"), "todo card type is not registered");
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "\u00b0C");

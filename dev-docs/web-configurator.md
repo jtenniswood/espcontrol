@@ -1,8 +1,9 @@
 # Web Configurator
 
 The web configurator is the browser setup page loaded from a device's web
-server. It is written in TypeScript and bundled into a single
-`www.js` file per supported device.
+server. It is written in TypeScript and built as one shared application bundle,
+an embedded offline fallback, a hosted compatibility bridge and asset manifest,
+plus small per-device loader files.
 
 ## Source Layout
 
@@ -16,7 +17,9 @@ server. It is written in TypeScript and bundled into a single
 | `src/webserver/api/*.ts` | Injectable HTTP transport, ordered POST queue, typed request results, and failure classification. |
 | `src/webserver/generated/*.ts` | Typed card metadata, entity catalogue, and icon data generated from their shared sources. |
 | `src/webserver/testing/*.ts` | Browser test hooks, included only in test bundles. |
-| `docs/public/webserver/<slug>/www.js` | Generated per-device bundles used for bundled firmware and hosted compatibility. |
+| `docs/public/webserver/<slug>/www.js` | Generated per-device compatibility loader for older hosted URLs. |
+| `docs/public/webserver/embedded/www.js` | Generated offline editor included by current firmware build entry points. |
+| `docs/public/webserver/bundles/<sha256>/www.js` | Generated immutable hosted application bundle selected through `web-assets.json`. |
 
 `entry.ts` imports every application installer and card registration directly.
 The visible call order is the runtime order; the build does not discover files,
@@ -31,19 +34,15 @@ keepalive requests, and JSON decoding.
 
 ## Build
 
-```bash
-python3 scripts/build.py www
-```
-
-That command writes `docs/public/webserver/<slug>/www.js` for each supported
+The web generator writes `docs/public/webserver/<slug>/www.js` for each supported
 device. The shared `docs/public/webserver/www.js` is a small hosted bridge: it
 uses `web-assets.json` to select an immutable content-addressed editor for the
-development build and the five supported stable release versions. The matching
-offline editor is written to `docs/public/webserver/embedded/www.js`. Firmware
+development build and the stable release/rollback versions declared by the
+generator. The matching offline editor is written to
+`docs/public/webserver/embedded/www.js`. Firmware
 loads that local editor first as a fallback, then asks the hosted bridge for its
 declared compatible bundle; if the manifest or bundle cannot be loaded, the
-local editor starts automatically. Commit these generated files when web
-behavior changes.
+local editor starts automatically.
 
 The configurator page itself is served by the device. New build entry points in
 `builds/*.yaml` bundle the matching JavaScript with `web_server.js_include`, so
@@ -86,30 +85,14 @@ REST response shows the exact compact string firmware will parse.
 
 ## Adding a Card Settings UI
 
-For a card type named `example`, create or update:
+Each card module registers its label/default providers, preview renderer,
+settings renderer, and selection initializer with the shared card registry.
+Contract helpers keep labels, defaults, picker behavior, and visibility aligned
+with firmware metadata. `entry.ts` owns deliberate registration order.
 
-```text
-src/webserver/cards/example.ts
-```
-
-The usual registration shape is:
-
-```js
-export function registerExampleCardTypes(registry: CardRegistry): void {
-  registry.register("example", {
-    label: function () { return cardContractCardLabel("example"); },
-    defaultConfig: function () { return cardContractDefaultConfig("example"); },
-    renderPreview: function (b, helpers) { /* return preview pieces */ },
-    renderSettings: function (panel, b, helpers) { /* add form fields */ },
-    onSelect: function (b) { /* initialize fields */ },
-  });
-}
-```
-
-Prefer contract helpers for labels, defaults, picker behavior, and visibility so
-the setup page stays aligned with firmware metadata. Import and call the new
-registration function with `context.cards` in the deliberate card order in
-`entry.ts`.
+Use [Change the Web Configurator](playbooks/change-web-configurator.md) for the
+exact edit, generation, and verification steps, or the
+[card playbook](playbooks/add-card-type.md) when both UI surfaces change.
 
 ## Preview and Persistence Rules
 
@@ -123,44 +106,6 @@ registration function with `context.cards` in the deliberate card order in
 
 ## Local Testing
 
-Run the lightweight web checks:
-
-```bash
-npm run check:web-smoke
-npm run check:web-browser-smoke
-```
-
-For full product-facing changes:
-
-```bash
-npm run check:product
-```
-
-To test on a physical display, rebuild `www.js`, serve it locally, and override
-the device `web_server.js_url` in a local `dev.yaml`.
-
-Typical physical-device loop:
-
-1. Rebuild the bundle:
-
-```bash
-python3 scripts/build.py www
-```
-
-2. Serve the generated device bundle from the development machine:
-
-```bash
-python3 -m http.server 8080 --directory docs/public/webserver/<slug>
-```
-
-3. Override `js_url` in the device's local `dev.yaml`:
-
-```yaml
-web_server:
-  js_url: "http://<your-computer-ip>:8080/www.js"
-```
-
-4. Open `http://<device-ip>/` in a browser and hard reload after each rebuild.
-
-Browsers cache `www.js` aggressively. Use Cmd/Ctrl+Shift+R after rebuilding or
-the page may keep running the previous bundle.
+The web playbook owns browser checks and the physical-display loop. Browsers
+cache `www.js` aggressively, so physical testing must hard reload after each
+rebuild.

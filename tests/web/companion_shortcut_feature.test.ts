@@ -10,6 +10,7 @@ import {
   companionMetricDisplayMode,
   companionMetricPreviewValue,
   companionMediaIcon,
+  COMPANION_MEDIA_PLAY_PAUSE_ACTION,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
   companionSubtypeIcon,
@@ -30,6 +31,22 @@ import {
   companionSliderIcon,
   companionSliderMode,
 } from "../../src/webserver/cards/slider";
+import {
+  companionAppShortcutFolderEnabled,
+  companionShortcutActionIdValid,
+  companionShortcutFolderCardAllowed,
+  companionShortcutFolderEditorAvailable,
+  CODEX_BUNDLE_ID,
+  SLACK_BUNDLE_ID,
+  createSafariShortcutSubpage,
+  createCodexShortcutSubpage,
+  codexShortcutPresetCards,
+  createSlackShortcutSubpage,
+  slackShortcutPresetCards,
+  normalizeCompanionAppShortcutOptions,
+  safariShortcutPresetCards,
+  setCompanionAppShortcutFolderEnabled,
+} from "../../src/webserver/application/companion_shortcut_folder";
 
 function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
   "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"> {
@@ -50,6 +67,118 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "stats") {
     throw new Error("Processor statistics must be grouped under the Stats Companion subtype");
+  }
+  const safariFolderCard = {
+    type: "companion", entity: "com.apple.Safari", options: "", sensor: "", icon: "Monitor",
+  };
+  setCompanionAppShortcutFolderEnabled(safariFolderCard, true);
+  if (!companionAppShortcutFolderEnabled(safariFolderCard) || safariFolderCard.options !== "app_shortcuts") {
+    throw new Error("Safari launch cards must retain the shortcut-folder option");
+  }
+  if (companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard, options: "" })) {
+    throw new Error("The Safari shortcut editor must wait until the folder option is saved");
+  }
+  if (!companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard })) {
+    throw new Error("Saved Safari shortcut folders must expose their editor");
+  }
+  const safariUrlFolderCard = {
+    ...safariFolderCard,
+    sensor: "url.https%3A%2F%2Fexample.com",
+    options: "app_shortcuts",
+  };
+  if (normalizeCompanionAppShortcutOptions(safariUrlFolderCard) !== "" ||
+      companionAppShortcutFolderEnabled(safariUrlFolderCard)) {
+    throw new Error("Safari Open URL cards must not retain the shortcut-folder option");
+  }
+  const chromeFolderCard = {
+    type: "companion", entity: "com.google.Chrome", options: "app_shortcuts",
+  };
+  if (normalizeCompanionAppShortcutOptions(chromeFolderCard) !== "" ||
+      companionAppShortcutFolderEnabled(chromeFolderCard)) {
+    throw new Error("Unsupported apps must not retain the shortcut-folder option");
+  }
+  const codexFolderCard = {
+    type: "companion", entity: CODEX_BUNDLE_ID, options: "",
+  };
+  setCompanionAppShortcutFolderEnabled(codexFolderCard, true);
+  if (!companionAppShortcutFolderEnabled(codexFolderCard) ||
+      normalizeCompanionAppShortcutOptions(codexFolderCard) !== "app_shortcuts") {
+    throw new Error("Codex launch cards must support shortcut folders");
+  }
+  const codexUrlFolderCard = { ...codexFolderCard, sensor: "url.https%3A%2F%2Fexample.com" };
+  if (normalizeCompanionAppShortcutOptions(codexUrlFolderCard) !== "" ||
+      companionAppShortcutFolderEnabled(codexUrlFolderCard)) {
+    throw new Error("Codex Open URL cards must not retain the shortcut-folder option");
+  }
+  const safariPreset = safariShortcutPresetCards();
+  const expectedSafariShortcuts = [
+    "shortcut.command+keybracketleft",
+    "shortcut.command+keybracketright",
+    "shortcut.command+r",
+    "shortcut.command+t",
+    "shortcut.command+w",
+  ];
+  if (safariPreset.map((card) => card.entity).join("|") !== expectedSafariShortcuts.join("|")) {
+    throw new Error("Safari shortcut defaults changed");
+  }
+  if (!safariPreset.every(companionShortcutFolderCardAllowed)) {
+    throw new Error("Safari presets must contain only Companion keyboard shortcuts");
+  }
+  const codexPreset = codexShortcutPresetCards();
+  const expectedCodexShortcuts = [
+    "shortcut.command+k",
+    "shortcut.command+o",
+    "shortcut.command+b",
+    "shortcut.command+j",
+    "shortcut.control+keybackquote",
+  ];
+  if (codexPreset.map((card) => card.entity).join("|") !== expectedCodexShortcuts.join("|")) {
+    throw new Error("Codex shortcut defaults changed");
+  }
+  if (!codexPreset.every(companionShortcutFolderCardAllowed)) {
+    throw new Error("Codex presets must contain only Companion keyboard shortcuts");
+  }
+  const slackFolderCard = {
+    type: "companion", entity: SLACK_BUNDLE_ID, options: "",
+  };
+  setCompanionAppShortcutFolderEnabled(slackFolderCard, true);
+  if (!companionAppShortcutFolderEnabled(slackFolderCard) ||
+      normalizeCompanionAppShortcutOptions(slackFolderCard) !== "app_shortcuts") {
+    throw new Error("Slack launch cards must support shortcut folders");
+  }
+  const slackPreset = slackShortcutPresetCards();
+  const expectedSlackShortcuts = [
+    "shortcut.command+n",
+    "shortcut.command+g",
+    "shortcut.command+shift+k",
+    "shortcut.command+j",
+    "shortcut.command+shift+a",
+  ];
+  if (slackPreset.map((card) => card.entity).join("|") !== expectedSlackShortcuts.join("|")) {
+    throw new Error("Slack shortcut defaults changed");
+  }
+  if (!slackPreset.every(companionShortcutFolderCardAllowed)) {
+    throw new Error("Slack presets must contain only Companion keyboard shortcuts");
+  }
+  if (companionShortcutActionIdValid("shortcut.") ||
+      companionShortcutActionIdValid("shortcut.shift+a") ||
+      companionShortcutActionIdValid("shortcut.command+command+a") ||
+      companionShortcutFolderCardAllowed({ type: "companion", entity: "shortcut." })) {
+    throw new Error("Incomplete or invalid shortcuts must not be accepted in Safari folders");
+  }
+  const safariSubpage = createSafariShortcutSubpage();
+  if (safariSubpage.backLabel !== "Back" || safariSubpage.order.join("|") !== "B|1|2|3|4|5") {
+    throw new Error("Safari shortcut folder layout changed");
+  }
+  const codexSubpage = createCodexShortcutSubpage();
+  if (codexSubpage.backLabel !== "Back" || codexSubpage.order.join("|") !== "B|1|2|3|4|5" ||
+      codexSubpage.buttons.map((card: any) => card.entity).join("|") !== expectedCodexShortcuts.join("|")) {
+    throw new Error("Codex shortcut folder layout changed");
+  }
+  const slackSubpage = createSlackShortcutSubpage();
+  if (slackSubpage.backLabel !== "Back" || slackSubpage.order.join("|") !== "B|1|2|3|4|5" ||
+      slackSubpage.buttons.map((card: any) => card.entity).join("|") !== expectedSlackShortcuts.join("|")) {
+    throw new Error("Slack shortcut folder layout changed");
   }
   if (!companionCardIsMetric({ entity: "stat.memory" }) ||
       !companionCardIsMetric({ entity: "stat.memory_free" }) ||
@@ -126,6 +255,7 @@ export function runCompanionShortcutFeatureTests(): void {
     { id: "com.apple.Safari", label: "Safari" },
     { id: "com.apple.finder", label: "Finder" },
     { id: folderAction, label: "Projects" },
+    { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Media Play/Pause" },
   ];
   if (companionApplicationActions(catalogue).map((action) => action.id).join() !== "com.apple.Safari") {
     throw new Error("Finder and approved folders must not appear in the application list");
@@ -253,4 +383,9 @@ export function runCompanionShortcutFeatureTests(): void {
   const statsCard = { entity: "stat.cpu", sensor: "", icon: "Monitor" };
   normalizeCompanionCard(statsCard);
   if (statsCard.icon !== "Gauge") throw new Error("Existing stats cards must adopt the Gauge default icon");
+  const mediaCard = { entity: COMPANION_MEDIA_PLAY_PAUSE_ACTION, sensor: "", icon: "Auto" };
+  normalizeCompanionCard(mediaCard);
+  if (mediaCard.entity !== "media.play_pause" || mediaCard.icon !== "Play Pause") {
+    throw new Error("Play / Pause cards must round-trip with their fixed default icon");
+  }
 }

@@ -1,10 +1,20 @@
 #include <cassert>
+#include <string>
+
+struct lv_obj_t {};
+inline void lv_label_set_text(lv_obj_t *, const char *) {}
+inline std::string espcontrol_i18n(const std::string &value) { return value; }
 
 #include "companion_controls.h"
+#include "button_grid_config_parser.h"
 
 int main() {
   assert(!companion_connected());
   assert(!companion_card_refresh_requested().load());
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PLAYING)) == "Playing");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::PAUSED)) == "Paused");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::STOPPED)) == "Stopped");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::UNAVAILABLE)) == "Unavailable");
   assert(companion_shortcut_action_valid("shortcut.command+a"));
   assert(companion_shortcut_label("shortcut.command+a") == "\U000F0633" "A");
   assert(companion_shortcut_action_valid("shortcut.control+shift+tab"));
@@ -18,6 +28,20 @@ int main() {
   assert(!companion_shortcut_action_valid("shortcut.command+volumeup"));
   assert(!companion_shortcut_action_valid("shortcut.command+f21"));
   assert(!companion_shortcut_action_valid("com.apple.Safari"));
+
+  ParsedCfg safari_launch;
+  safari_launch.type = "companion";
+  safari_launch.entity = "com.apple.Safari";
+  safari_launch.options = "app_shortcuts";
+  assert(companion_app_shortcuts_enabled(safari_launch));
+  ParsedCfg codex_launch = safari_launch;
+  codex_launch.entity = "com.openai.codex";
+  assert(companion_app_shortcuts_enabled(codex_launch));
+  ParsedCfg slack_launch = safari_launch;
+  slack_launch.entity = "com.tinyspeck.slackmacgap";
+  assert(companion_app_shortcuts_enabled(slack_launch));
+  safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
+  assert(!companion_app_shortcuts_enabled(safari_launch));
 
   const std::string url_config = "url.https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice";
   assert(companion_encoded_url(url_config) == "https%3A%2F%2Fexample.com%2Fdashboard%3Froom%3Doffice");
@@ -61,7 +85,26 @@ int main() {
   assert(!companion_media_action_valid("media.delete_everything"));
   assert(!companion_action_available("media.play_pause"));
   companion_set_media_actions_supported(true);
+  assert(!companion_action_available("media.play_pause"));
+  CompanionNowPlayingSnapshot paused_snapshot;
+  paused_snapshot.playback_state = CompanionPlaybackState::PAUSED;
+  companion_set_now_playing(paused_snapshot);
   assert(companion_action_available("media.play_pause"));
+  assert(!companion_action_active("media.play_pause"));
+  CompanionNowPlayingSnapshot playing_snapshot;
+  playing_snapshot.playback_state = CompanionPlaybackState::PLAYING;
+  companion_set_now_playing(playing_snapshot);
+  assert(companion_action_active("media.play_pause"));
+  companion_set_now_playing(paused_snapshot);
+  bool media_invoked = false;
+  register_companion_action_sender([&media_invoked](const std::string &action,
+                                                    const std::string &request) {
+    media_invoked = action == "media.play_pause" && request == "media-1";
+    return media_invoked;
+  });
+  assert(invoke_companion_action("media.play_pause", "media-1"));
+  assert(media_invoked);
+  assert(companion_runtime_snapshot().now_playing.playback_state == CompanionPlaybackState::PAUSED);
   assert(companion_volume_control_valid("media.output_volume"));
   assert(companion_volume_control_valid("media.input_volume"));
   assert(!companion_volume_control_valid("media.screen_brightness"));
@@ -93,9 +136,35 @@ int main() {
   });
   assert(invoke_companion_url("com.apple.Safari", url_config, "test-1"));
   assert(invoked);
+  bool navigated = false;
+  companion_expect_action_result("launch-1", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("another-request", "performed");
+  assert(!navigated);
+  companion_deliver_action_result("launch-1", "not_allowed");
+  assert(!navigated);
+  companion_deliver_action_result("launch-1", "performed");
+  assert(!navigated);
+  companion_expect_action_result("launch-2", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-2", "performed");
+  assert(!navigated);
+  companion_expect_action_result("launch-3", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-3", "opened");
+  assert(!navigated);
+  companion_expect_action_result("launch-4", [&navigated]() { navigated = true; });
+  companion_deliver_action_result("launch-4", "activated");
+  assert(navigated);
+  navigated = false;
+  companion_expect_action_result("launch-focus", "com.apple.Safari",
+                                 [&navigated]() { navigated = true; });
+  companion_set_focused_application("com.apple.Safari");
+  assert(navigated);
+  companion_deliver_action_result("launch-focus", "activated");
+  assert(navigated);
   companion_set_connected(false);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.cpu", metric_value));
   assert(!companion_application_focused("com.apple.Safari"));
+  assert(!companion_action_active("media.play_pause"));
+  assert(companion_runtime_snapshot().now_playing.playback_state == CompanionPlaybackState::UNAVAILABLE);
   companion_set_connected(true);
   assert(!companion_action_available("media.play_pause"));
   assert(!companion_value("media.output_volume", output_volume));

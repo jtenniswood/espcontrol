@@ -37,7 +37,6 @@ inline bool numeric_selectable_driver_fan_action(
 
 inline bool numeric_selectable_driver_matches(
     const Context &context, const ParsedCfg &config) {
-  if (context.legacy_dispatch) return false;
   return numeric_selectable_driver_option_select(context, config) ||
          numeric_selectable_driver_slider(context) ||
          numeric_selectable_driver_fan_action(context);

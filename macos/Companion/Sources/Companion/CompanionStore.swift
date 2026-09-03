@@ -36,7 +36,12 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    private let nowPlayingSharingEnabled = false
+    @Published var nowPlayingSharingEnabled: Bool {
+        didSet {
+            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
+            updateNowPlayingProvider()
+        }
+    }
     @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
@@ -78,6 +83,7 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
+        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
         systemMetricsSharingEnabled = stableDefaults.object(forKey: "systemMetricsSharingEnabled") as? Bool
             ?? legacyDefaults?.object(forKey: "systemMetricsSharingEnabled") as? Bool
             ?? UserDefaults.standard.object(forKey: "systemMetricsSharingEnabled") as? Bool
@@ -334,6 +340,10 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateNowPlayingProvider() {
+        if !isConnected || !nowPlayingSharingEnabled {
+            // Do not carry a confirmed session across disconnects or disabled sharing.
+            latestNowPlayingSnapshot = nil
+        }
         if isConnected && nowPlayingSharingEnabled {
             nowPlayingProvider.start()
         } else {
@@ -369,10 +379,34 @@ final class CompanionStore: NSObject, ObservableObject {
         latestSystemMetricsSnapshot = nil
         connection.publishSystemMetricsUnavailable()
     }
-    func launch(bundleIdentifier: String) -> Bool {
+    func launch(bundleIdentifier: String) async -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
-        NSWorkspace.shared.openApplication(at: app.url, configuration: .init()) { _, _ in }
-        return true
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        let runningApplication: NSRunningApplication? = await withCheckedContinuation { continuation in
+            NSWorkspace.shared.openApplication(at: app.url, configuration: configuration) { application, error in
+                continuation.resume(returning: error == nil ? application : nil)
+            }
+        }
+        guard let runningApplication else { return false }
+        _ = runningApplication.activate(options: [.activateIgnoringOtherApps])
+        for _ in 0..<30 {
+            if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == bundleIdentifier {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        updateStatus("\(app.name) did not become active", connected: isConnected)
+        return false
+    }
+
+    func performResultStatus(actionIdentifier: String) async -> String {
+        let isApplicationLaunch = !actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix)
+            && !SystemMediaController.supports(actionIdentifier: actionIdentifier)
+            && !actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix)
+        let performed = await perform(actionIdentifier: actionIdentifier)
+        guard performed else { return "not_allowed" }
+        return isApplicationLaunch ? "activated" : "performed"
     }
 
     func openFolder(actionIdentifier: String) -> Bool {
@@ -390,15 +424,20 @@ final class CompanionStore: NSObject, ObservableObject {
         return NSWorkspace.shared.open(URL(fileURLWithPath: folder.path, isDirectory: true))
     }
 
-    func perform(actionIdentifier: String) -> Bool {
+    func perform(actionIdentifier: String) async -> Bool {
         if actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix) {
             return openFolder(actionIdentifier: actionIdentifier)
         }
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
+            if actionIdentifier == SystemMediaController.playPauseID {
+                guard nowPlayingSharingEnabled,
+                      let snapshot = latestNowPlayingSnapshot,
+                      snapshot.state != .unavailable else { return false }
+            }
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
-            return launch(bundleIdentifier: actionIdentifier)
+            return await launch(bundleIdentifier: actionIdentifier)
         }
         guard let shortcut = CompanionKeyboardShortcut(actionIdentifier: actionIdentifier) else {
             updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)

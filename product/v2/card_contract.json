@@ -1873,6 +1873,12 @@
       "domains": [],
       "options": [
         {
+          "name": "app_shortcuts",
+          "label": "App Shortcut Folder",
+          "kind": "flag",
+          "omitDefault": true
+        },
+        {
           "name": "large_numbers",
           "label": "Large Sensor Numbers",
           "kind": "flag",
@@ -1892,7 +1898,7 @@
           "options": { "policy": "hook", "hook": "normalize_date_time_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["large_numbers"],
+        "canonicalOptionOrder": ["app_shortcuts", "large_numbers"],
         "optionHook": "normalize_date_time_options"
       },
       "default": {

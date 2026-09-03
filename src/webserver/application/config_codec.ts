@@ -44,6 +44,7 @@ import { normalizeSavedConfigWebhook } from "../generated/saved_config_webhook";
 import { normalizeSavedConfigSubpage } from "../generated/saved_config_subpage";
 import { COMPANION_SYSTEM_METRICS } from "../cards/companion";
 import { normalizeSavedConfigSwitch } from "../generated/saved_config_switch";
+import { normalizeCompanionAppShortcutOptions } from "./companion_shortcut_folder";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
 import type { ConfigMediaOptionsFeature } from "./config_media_options";
@@ -115,7 +116,6 @@ export function createConfigCodecFeature(
         normalizeDoorWindowOptions,
         normalizePresenceOptions,
         normalizeSensorOptions,
-        normalizeTodoOptions,
     } = sensorOptions;
     const {
         mediaEditorMode,
@@ -485,15 +485,6 @@ export function createConfigCodecFeature(
         var normalizedSavedStatic: any = !!(b && normalizeSavedConfigStatic(b));
         if (b)
             normalizeSavedConfigDateTime(b, normalizeSavedConfigDateTimeFields, normalizeSavedConfigDateTimeOptions);
-        if (b && b.type === "todo") {
-            b.sensor = "";
-            b.unit = "";
-            b.precision = "";
-            b.icon_on = "Auto";
-            if (!b.icon || b.icon === "Auto")
-                b.icon = "Check";
-            b.options = normalizeTodoOptions(b.options);
-        }
         if (b)
             normalizeSavedConfigImage(b, normalizeSavedConfigImageFields, normalizeSavedConfigImageOptions);
         if (b)
@@ -505,7 +496,7 @@ export function createConfigCodecFeature(
         var normalizedSavedSensor: any = !!(b && normalizeSavedConfigSensor(b, wasLegacyTextSensor, normalizeSavedConfigSensorFields, normalizeSensorOptions));
         var normalizedSavedOccupancy: any = !!(b && normalizeSavedConfigOccupancy(b, normalizeSavedConfigOccupancyFields, normalizeSavedConfigOccupancyOptions));
         var normalizedSavedSwitch: any = !!(b && !normalizedSavedSensor && normalizeSavedConfigSwitch(b, normalizeSwitchConfirmationOptions));
-        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
+        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && b.type !== "companion" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
         return b;
@@ -626,14 +617,6 @@ export function createConfigCodecFeature(
             sensor = "";
             precision = normalizeWeatherCardMode(precision);
         }
-        if (type === "todo") {
-            sensor = "";
-            unit = "";
-            precision = "";
-            iconOn = "Auto";
-            if (!icon || icon === "Auto")
-                icon = "Check";
-        }
         if (type === "image") {
             iconOn = "Auto";
             sensor = "";
@@ -674,6 +657,15 @@ export function createConfigCodecFeature(
         else if (type === "subpage") {
             options = normalizeSubpageOptions(options, sensor, precision);
         }
+        else if (type === "companion") {
+            options = normalizeCompanionAppShortcutOptions({
+                ...(b || {}),
+                type,
+                entity: b && b.entity,
+                sensor,
+                options,
+            });
+        }
         else if (type === "webhook") {
             var webhookButton: any = EspControlModel.cloneCardConfig(b || {});
             normalizeWebhookConfig(webhookButton);
@@ -694,9 +686,6 @@ export function createConfigCodecFeature(
         }
         else if (type === "lawn_mower") {
             options = "";
-        }
-        else if (type === "todo") {
-            options = normalizeTodoOptions(options);
         }
         else if (type === "sensor") {
             options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);

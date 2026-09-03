@@ -22,6 +22,7 @@
 #ifdef USE_LVGL
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "display_text.h"
+#include "i18n_generated.h"
 #endif
 
 struct CompanionAction {
@@ -37,6 +38,66 @@ struct CompanionValue {
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
 using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
 using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
+using CompanionActionResultHandler = std::function<void()>;
+
+struct CompanionPendingActionResult {
+  std::mutex mutex;
+  std::string request_id;
+  std::string expected_application_id;
+  CompanionActionResultHandler success;
+};
+
+inline CompanionPendingActionResult &companion_pending_action_result() {
+  static CompanionPendingActionResult pending;
+  return pending;
+}
+
+inline void companion_expect_action_result(const std::string &request_id,
+                                           CompanionActionResultHandler success) {
+  auto &pending = companion_pending_action_result();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  pending.request_id = request_id;
+  pending.expected_application_id.clear();
+  pending.success = std::move(success);
+}
+
+inline void companion_expect_action_result(
+    const std::string &request_id, const std::string &expected_application_id,
+    CompanionActionResultHandler success) {
+  auto &pending = companion_pending_action_result();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  pending.request_id = request_id;
+  pending.expected_application_id = expected_application_id;
+  pending.success = std::move(success);
+}
+
+inline void companion_cancel_action_result(const std::string &request_id = "") {
+  auto &pending = companion_pending_action_result();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  if (!request_id.empty() && pending.request_id != request_id) return;
+  pending.request_id.clear();
+  pending.expected_application_id.clear();
+  pending.success = nullptr;
+}
+
+inline void companion_deliver_action_result(const std::string &request_id,
+                                            const std::string &status) {
+  CompanionActionResultHandler success;
+  {
+    auto &pending = companion_pending_action_result();
+    std::lock_guard<std::mutex> lock(pending.mutex);
+    if (pending.request_id != request_id) return;
+    // Only a current Companion build sends "activated" after it has verified
+    // that a launched application is frontmost. Older builds report
+    // "performed" as soon as launch scheduling succeeds, which is not safe
+    // enough to expose keyboard shortcuts.
+    if (status == "activated") success = std::move(pending.success);
+    pending.request_id.clear();
+    pending.expected_application_id.clear();
+    pending.success = nullptr;
+  }
+  if (success) success();
+}
 
 struct CompanionPairingSnapshot {
   bool available{false};
@@ -59,6 +120,14 @@ enum class CompanionPlaybackState : uint8_t {
   PAUSED,
   PLAYING,
 };
+
+inline const char *companion_play_pause_status(CompanionPlaybackState state,
+                                                bool available = true) {
+  if (!available || state == CompanionPlaybackState::UNAVAILABLE) return "Unavailable";
+  if (state == CompanionPlaybackState::PLAYING) return "Playing";
+  if (state == CompanionPlaybackState::PAUSED) return "Paused";
+  return "Stopped";
+}
 
 struct CompanionNowPlayingSnapshot {
   uint32_t generation{0};
@@ -155,6 +224,7 @@ inline void companion_set_now_playing(CompanionNowPlayingSnapshot snapshot) {
     state.now_playing = snapshot;
   }
   if (companion_now_playing_handler()) companion_now_playing_handler()(snapshot);
+  companion_request_card_refresh();
 }
 
 inline bool companion_metric_key_valid(const std::string &key) {
@@ -308,11 +378,25 @@ inline void companion_remove_value(const std::string &control_id) {
 
 inline void companion_set_focused_application(std::string application_id) {
   if (application_id.size() > 96) application_id.clear();
+  const std::string focused_application_id = application_id;
   auto &state = companion_runtime_state();
   {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.focused_application_id = std::move(application_id);
   }
+  CompanionActionResultHandler success;
+  {
+    auto &pending = companion_pending_action_result();
+    std::lock_guard<std::mutex> lock(pending.mutex);
+    if (!pending.expected_application_id.empty() &&
+        pending.expected_application_id == focused_application_id) {
+      success = std::move(pending.success);
+      pending.request_id.clear();
+      pending.expected_application_id.clear();
+      pending.success = nullptr;
+    }
+  }
+  if (success) success();
   companion_request_card_refresh();
 }
 
@@ -321,6 +405,15 @@ inline bool companion_application_focused(const std::string &action_id) {
       action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
   const auto snapshot = companion_runtime_snapshot();
   return snapshot.connected && snapshot.focused_application_id == action_id;
+}
+
+inline bool companion_action_active(const std::string &action_id) {
+  const auto snapshot = companion_runtime_snapshot();
+  if (action_id == "media.play_pause") {
+    return snapshot.connected && snapshot.media_actions_supported &&
+           snapshot.now_playing.playback_state == CompanionPlaybackState::PLAYING;
+  }
+  return companion_application_focused(action_id);
 }
 
 inline uint32_t companion_next_request_number() {
@@ -337,9 +430,11 @@ inline void companion_set_connected(bool connected) {
       state.values.clear();
       state.focused_application_id.clear();
       state.media_actions_supported = false;
+      state.now_playing = {};
       state.system_metrics = {};
     }
   }
+  if (!connected) companion_cancel_action_result();
   companion_request_card_refresh();
 }
 
@@ -444,6 +539,8 @@ inline bool companion_action_available(const std::string &action_id) {
   if (action_id.empty()) return false;
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
+  if (action_id == "media.play_pause" &&
+      snapshot.now_playing.playback_state == CompanionPlaybackState::UNAVAILABLE) return false;
   if (companion_shortcut_action_valid(action_id)) return true;
   if (companion_media_action_valid(action_id)) return snapshot.media_actions_supported;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
@@ -470,6 +567,7 @@ inline bool companion_url_available(const std::string &app_id, const std::string
 #ifdef USE_LVGL
 struct CompanionCardRef {
   lv_obj_t *button = nullptr;
+  lv_obj_t *text_label = nullptr;
   std::string action_id;
   std::string url_config;
   lv_obj_t *value_label = nullptr;
@@ -490,7 +588,7 @@ struct CompanionSliderRef {
 
 inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
   if (!button) return;
-  if (companion_application_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
+  if (companion_action_active(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
   else lv_obj_clear_state(button, LV_STATE_CHECKED);
 }
 
@@ -545,7 +643,8 @@ inline void companion_track_slider(lv_obj_t *slider, const std::string &control_
 }
 
 inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
-                                 const std::string &url_config = "") {
+                                 const std::string &url_config = "",
+                                 lv_obj_t *text_label = nullptr) {
   if (!button) return;
   auto &refs = companion_card_refs();
   auto existing = std::find_if(refs.begin(), refs.end(), [button](const CompanionCardRef &ref) {
@@ -555,12 +654,17 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
     if (companion_metric_key_valid(action_id) && !existing->metric_key.empty()) return;
     existing->action_id = action_id;
     existing->url_config = url_config;
+    // The periodic config tracker does not have the label pointer. Preserve
+    // the pointer registered while the card was rendered so state updates can
+    // continue replacing the Play/Pause label.
+    if (text_label) existing->text_label = text_label;
     existing->metric_key.clear();
+    existing->metric_unit.clear();
     existing->value_label = nullptr;
     existing->unit_label = nullptr;
     return;
   }
-  refs.push_back({button, action_id, url_config, nullptr, nullptr, "", "", 0});
+  refs.push_back({button, text_label, action_id, url_config, nullptr, nullptr, "", "", 0});
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
 }
 
@@ -620,6 +724,14 @@ inline void companion_refresh_cards_if_requested() {
     const bool available = it->url_config.empty()
       ? companion_action_available(it->action_id)
       : companion_url_available(it->action_id, it->url_config);
+    if (it->action_id == "media.play_pause" && it->text_label &&
+        lv_obj_is_valid(it->text_label)) {
+      const auto snapshot = companion_runtime_snapshot();
+      const char *status = companion_play_pause_status(
+        snapshot.now_playing.playback_state, available);
+      const std::string translated_status = espcontrol_i18n(std::string(status));
+      lv_label_set_display_text(it->text_label, translated_status.c_str());
+    }
     if (available) {
       lv_obj_clear_state(it->button, LV_STATE_DISABLED);
     } else {
@@ -652,7 +764,7 @@ inline void companion_refresh_cards_if_requested() {
   }
 }
 #else
-inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
+inline void companion_track_card(void *, const std::string &, const std::string & = "", void * = nullptr) {}
 inline void companion_track_metric_card(void *, void *, void *, const std::string &,
                                         const std::string &, int) {}
 inline void companion_apply_card_focus(void *, const std::string &) {}

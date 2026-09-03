@@ -82,8 +82,9 @@ care as a new size.
 
 ## Firmware Font Role Map
 
-The cross-device role map lives in `devices/manifest.json` under each device's
-`firmware.fonts` section.
+The cross-device role map is authored in `product/v2/device_catalog.json` under
+each device's `firmware.fonts` section. It is expanded into the generated
+compatibility copy at `devices/manifest.json`.
 
 Those roles are read by `scripts/device_profiles.py` and written into generated
 slot setup by `scripts/generate_device_slots.py`. Firmware then receives the
@@ -173,14 +174,15 @@ Only use this path after the reuse options above have been exhausted.
 1. Add the physical font entry to each relevant
    `devices/<slug>/device/fonts.yaml`.
 2. Add the role mapping under each device's `firmware.fonts` in
-   `devices/manifest.json`.
+   `product/v2/device_catalog.json`.
 3. Read the role in `scripts/device_profiles.py`.
 4. Emit it in `scripts/generate_device_slots.py`.
 5. Add the corresponding field to the firmware grid/config structure.
 6. Pass the font pointer to the card or modal that needs it.
-7. Regenerate device slots.
+7. Regenerate the compatibility manifest and device slots.
 
 ```bash
+python3 scripts/generate_device_manifest.py
 python3 scripts/generate_device_slots.py
 npm run check:device-profiles
 npm run check:device-matrix
