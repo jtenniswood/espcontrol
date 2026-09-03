@@ -3,7 +3,7 @@ import CryptoKit
 import Security
 
 @MainActor
-final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @preconcurrency URLSessionWebSocketDelegate {
+final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSocketDelegate {
     enum Mode { case authenticate, pair(code: String) }
 
     private unowned let store: CompanionStore
@@ -191,7 +191,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
                 guard !Task.isCancelled, let self, self.task === task else { return }
                 task.sendPing { [weak self, weak task] error in
                     guard error != nil else { return }
-                    Task { @MainActor in
+                    Task { @MainActor [weak self, weak task] in
                         guard let self, let task else { return }
                         self.handleConnectionFailure(for: task)
                     }

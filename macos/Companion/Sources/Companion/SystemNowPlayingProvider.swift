@@ -98,7 +98,7 @@ final class SystemNowPlayingProvider {
         lastSnapshot = nil
         _ = source.startObserving { [weak self] in self?.refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            Task { @MainActor [weak self] in self?.refresh() }
         }
         refresh()
     }

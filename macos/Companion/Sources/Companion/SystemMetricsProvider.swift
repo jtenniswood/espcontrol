@@ -33,7 +33,7 @@ final class SystemMetricsProvider {
         guard timer == nil else { return }
         stop()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            Task { @MainActor [weak self] in self?.refresh() }
         }
     }
 
