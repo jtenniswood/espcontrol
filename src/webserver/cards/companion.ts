@@ -15,6 +15,7 @@ export interface CompanionAction {
 
 const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_URL_PREFIX = "url.";
+const COMPANION_STATS_PLACEHOLDER = "stats";
 export const COMPANION_FOLDER_PREFIX = "folder.";
 const COMPANION_FINDER_ID = "com.apple.finder";
 const COMPANION_STATS_MODES = "stats,processor,memory_usage,storage,battery,network_throughput".split(",");
@@ -230,11 +231,8 @@ export function companionLabelPlaceholder(card: any): string {
     return metric ? `e.g. ${metric.label}` : "e.g. Safari or Select all";
 }
 
-export function companionMetricPreviewValue(precision: unknown, sample = Math.random()): string {
-    const parsed = Number.parseInt(String(precision ?? "0"), 10);
-    const digits = parsed >= 0 && parsed <= 2 ? parsed : 0;
-    const normalizedSample = Number.isFinite(sample) ? Math.min(1, Math.max(0, sample)) : 0.5;
-    return (10 + normalizedSample * 80).toFixed(digits);
+export function companionMetricPreviewValue(_precision: unknown, _sample?: number): string {
+    return "--";
 }
 
 export function companionCardMode(card: any): string {
@@ -243,6 +241,7 @@ export function companionCardMode(card: any): string {
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
     if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
     if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
+    if (entity === COMPANION_STATS_PLACEHOLDER) return "stats";
     const metric = companionMetricForEntity(entity);
     if (metric) return "stats";
     if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
@@ -253,7 +252,7 @@ export function companionEntityForMode(mode: string): string {
     if (mode === "shortcut") return COMPANION_SHORTCUT_PREFIX;
     if (mode === "folder") return COMPANION_FOLDER_PREFIX;
     if (mode === "media") return COMPANION_MEDIA_ACTIONS[0].id;
-    if (mode === "stats") return COMPANION_SYSTEM_METRICS[0]?.id || "";
+    if (mode === "stats") return COMPANION_STATS_PLACEHOLDER;
     return COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === mode)?.id || "";
 }
 
@@ -277,7 +276,7 @@ export function resetCompanionMediaPresentation(card: any, nextMode: string): vo
 export function resetCompanionMetricPresentation(card: any, nextMode: string): void {
     if (!card) return;
     const previous = companionMetricForEntity(card.entity);
-    const nextMetric = nextMode === "stats" || COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
+    const nextMetric = COMPANION_SYSTEM_METRICS.some((metric) => metric.mode === nextMode);
     if (!previous || previous.mode === nextMode || nextMetric) return;
     if (card.label === previous.label) card.label = "";
     card.unit = "";
@@ -287,6 +286,18 @@ export function resetCompanionMetricPresentation(card: any, nextMode: string): v
 
 export function normalizeCompanionCard(card: any): void {
     if (!card) return;
+    if (card.entity === COMPANION_STATS_PLACEHOLDER) {
+        card.type = "companion";
+        card.sensor = "";
+        card.unit = "";
+        card.precision = "";
+        card.options = "";
+        card.icon_on = "Auto";
+        if (!card.icon || card.icon === "Auto" || card.icon === "Monitor") {
+            card.icon = companionSubtypeDefaultIcon("stats");
+        }
+        return;
+    }
     const metric = companionMetricForEntity(card.entity);
     if (metric) {
         card.type = "companion";
@@ -385,9 +396,7 @@ export function registerCompanionCardTypes(
                         }
                         resetCompanionMediaPresentation(card, this.value);
                         resetCompanionMetricPresentation(card, this.value);
-                        const selectedMetric = this.value === "stats"
-                            ? COMPANION_SYSTEM_METRICS[0]
-                            : COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
+                        const selectedMetric = COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
                         card.entity = companionEntityForMode(this.value);
                         card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
                         if (this.value === "media") {
@@ -424,7 +433,7 @@ export function registerCompanionCardTypes(
                 placeholder: companionLabelPlaceholder(card), rerender: true,
             });
 
-            if (companionCardIsMetric(card)) {
+            if (companionCardIsMetric(card) || companionCardMode(card) === "stats") {
                 const metric = companionMetricForEntity(card.entity);
                 const statsField = document.createElement("div");
                 statsField.className = "sp-field";
@@ -432,6 +441,14 @@ export function registerCompanionCardTypes(
                 const statsSelect = document.createElement("select");
                 statsSelect.className = "sp-select";
                 statsSelect.id = helpers.idPrefix + "companion-stat";
+                if (!metric) {
+                    const option = document.createElement("option");
+                    option.value = "";
+                    option.textContent = "Select a statistic…";
+                    option.disabled = true;
+                    option.selected = true;
+                    statsSelect.appendChild(option);
+                }
                 COMPANION_STATS_OPTIONS.forEach(function (item) {
                     const option = document.createElement("option");
                     option.value = item[0];
@@ -448,6 +465,11 @@ export function registerCompanionCardTypes(
                 });
                 statsField.appendChild(statsSelect);
                 panel?.appendChild(statsField);
+                helpers.requireField(statsSelect, "Choose a statistic before saving.", function () {
+                    return initialMode === "stats";
+                }, function (value: string) {
+                    return COMPANION_SYSTEM_METRICS.some((candidate) => candidate.mode === value);
+                });
                 if (metric?.freeId) {
                     const displayField = document.createElement("div");
                     displayField.className = "sp-field";
@@ -747,6 +769,13 @@ export function registerCompanionCardTypes(
                     ),
                     labelHtml: cardBadgeLabelHtml(helpers, card.label || metric?.label || "Mac"),
                 };
+            }
+            if (mode === "stats") {
+                return cardBadgePreview(card, helpers, {
+                    label: card.label || "Stats",
+                    iconFallback: companionSubtypeDefaultIcon("stats"),
+                    badge: COMPANION_CARD_METADATA.preview.badge,
+                });
             }
             const shortcutLabel = formatCompanionShortcutActionId(card.entity);
             let urlLabel = "";

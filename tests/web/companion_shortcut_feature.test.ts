@@ -57,11 +57,9 @@ export function runCompanionShortcutFeatureTests(): void {
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
     throw new Error("Companion cards must use one mode-appropriate label field");
   }
-  if (companionMetricPreviewValue("0", 0.4) !== "42" ||
-      companionMetricPreviewValue("1", 0.4) !== "42.0" ||
-      companionMetricPreviewValue("2", 0.4) !== "42.00" ||
-      companionMetricPreviewValue("0", 0.1) === companionMetricPreviewValue("0", 0.9)) {
-    throw new Error("Companion statistic previews must randomize while matching the selected precision");
+  if (companionMetricPreviewValue("0", 0.4) !== "--" ||
+      companionMetricPreviewValue("2", 0.9) !== "--") {
+    throw new Error("Companion statistic previews must not invent an unselected value");
   }
   const generatedMetricCard: any = { entity: "stat.cpu", label: "", icon: "Auto" };
   normalizeCompanionCard(generatedMetricCard);
@@ -91,7 +89,7 @@ export function runCompanionShortcutFeatureTests(): void {
       companionCardMode({ entity: emptyFolderEntity, sensor: "" }) !== "folder") {
     throw new Error("Open folder must retain its subtype while waiting for a folder selection");
   }
-  if (companionEntityForMode("stats") !== "stat.cpu" ||
+  if (companionEntityForMode("stats") !== "stats" ||
       companionEntityForMode("processor") !== "stat.cpu" ||
       companionEntityForMode("memory_usage") !== "stat.memory" ||
       companionEntityForMode("network_throughput") !== "stat.network_throughput") {
@@ -245,4 +243,10 @@ export function runCompanionShortcutFeatureTests(): void {
   const statsCard = { entity: "stat.cpu", sensor: "", icon: "Monitor" };
   normalizeCompanionCard(statsCard);
   if (statsCard.icon !== "Gauge") throw new Error("Existing stats cards must adopt the Gauge default icon");
+  const pendingStatsCard: any = { entity: "stats", sensor: "", icon: "Monitor", unit: "%", precision: "0" };
+  normalizeCompanionCard(pendingStatsCard);
+  if (companionCardMode(pendingStatsCard) !== "stats" || pendingStatsCard.unit !== "" ||
+      pendingStatsCard.precision !== "" || pendingStatsCard.icon !== "Gauge") {
+    throw new Error("Unselected statistics must not retain a value or unit");
+  }
 }
