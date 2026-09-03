@@ -34,7 +34,7 @@ Use a [Slider card](/card-types/sliders) when you want to control the Mac's outp
 
 For a supported **Launch app** card, turn on **Add app subpage**. The card will bring the app to the front and, after the Companion confirms it is active, open an app subpage on the panel containing default keyboard shortcuts. These controls use the app's standard shortcuts. If the app cannot become active, the panel stays on the home screen so a shortcut cannot reach another application.
 
-The subpage is created with those five controls once. You can then add any card type supported inside a normal subpage, as well as edit the default shortcut labels, icons, shortcuts, and order. Turning the option off does not discard those edits; turning it back on restores the same subpage. The app must remain approved in the Companion app.
+The subpage is created with an app-specific set of default controls once. You can then add any card type supported inside a normal subpage, as well as edit the default shortcut labels, icons, shortcuts, and order. Turning the option off does not discard those edits; turning it back on restores the same subpage. The app must remain approved in the Companion app.
 
 The first time you use one of these controls, macOS may ask for Accessibility permission. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**. If the app is no longer approved or the Companion is offline, the app card is disabled and the app subpage is not opened.
 

@@ -156,7 +156,7 @@ export function runCompanionShortcutFeatureTests(): void {
   const codexPreset = codexShortcutPresetCards();
   const expectedCodexShortcuts = [
     "shortcut.command+k",
-    "shortcut.command+o",
+    "shortcut.command+enter",
     "shortcut.command+b",
     "shortcut.option+command+b",
     "shortcut.command+j",
@@ -168,7 +168,7 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!codexPreset.every((card) => card.type === "companion" && companionShortcutActionIdValid(card.entity))) {
     throw new Error("Codex presets must contain only Companion keyboard shortcuts");
   }
-  const expectedCodexLabels = ["Command", "Open", "Sidebar", "Side panel", "Terminal", "Terminal"];
+  const expectedCodexLabels = ["Command", "Approve", "Sidebar", "Side panel", "Terminal", "Terminal"];
   if (codexPreset.map((card) => card.label).join("|") !== expectedCodexLabels.join("|")) {
     throw new Error("Codex shortcut labels should stay short");
   }
