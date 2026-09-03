@@ -85,7 +85,7 @@ export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
     { mode: "memory_usage", id: "stat.memory", freeId: "stat.memory_free", label: "Memory", unit: "%" },
     { mode: "storage", id: "stat.storage", freeId: "stat.storage_free", label: "Storage", unit: "%" },
     { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
-    { mode: "network_throughput", id: "stat.network_throughput", label: "Network Throughput", unit: "MB/s" },
+    { mode: "network_throughput", id: "stat.network_throughput", label: "Network", unit: "MB/s" },
 ];
 const COMPANION_STATS_OPTIONS = [
     ["processor", "Processor usage"],

@@ -49,6 +49,7 @@ int main() {
   companion_stat_subpage.entity = "stat.network_throughput";
   companion_stat_subpage.options = "subpage_kind=companion_stat";
   assert(companion_config_tracker_preserves_card_binding(companion_stat_subpage));
+  assert(std::string(subpage_companion_stat_default_label(companion_stat_subpage.entity)) == "Network");
   ParsedCfg ordinary_subpage = companion_stat_subpage;
   ordinary_subpage.options = "subpage_kind=media";
   assert(!companion_config_tracker_preserves_card_binding(ordinary_subpage));

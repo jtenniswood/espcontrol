@@ -250,4 +250,4 @@ processor=Processor
 memory=Memory
 storage=Storage
 battery=Battery
-network_throughput=Network Throughput
+network_throughput=Network

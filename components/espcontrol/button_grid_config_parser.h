@@ -893,7 +893,7 @@ inline const char *subpage_companion_stat_default_label(const std::string &entit
   if (entity == "stat.memory" || entity == "stat.memory_free") return "Memory";
   if (entity == "stat.storage" || entity == "stat.storage_free") return "Storage";
   if (entity == "stat.battery") return "Battery";
-  if (entity == "stat.network_throughput") return "Network Throughput";
+  if (entity == "stat.network_throughput") return "Network";
   return "Processor";
 }
 

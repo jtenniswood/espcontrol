@@ -198,6 +198,9 @@ export function runCompanionShortcutFeatureTests(): void {
       companionMetricDisplayMode({ entity: "stat.storage_free" }) !== "free") {
     throw new Error("Memory and storage statistics must retain their Used or Free display choice");
   }
+  if (companionLabelPlaceholder({ entity: "stat.network_throughput" }) !== "e.g. Network") {
+    throw new Error("Network throughput must use Network as its default label");
+  }
   if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
     throw new Error("Companion cards must use one mode-appropriate label field");

@@ -247,7 +247,6 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Paměť";
   if (std::strcmp(text, "Storage") == 0) return "Úložiště";
   if (std::strcmp(text, "Battery") == 0) return "Baterie";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Síťová propustnost";
   return text;
 }
 
@@ -476,7 +475,6 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Hukommelse";
   if (std::strcmp(text, "Storage") == 0) return "Lager";
   if (std::strcmp(text, "Battery") == 0) return "Batteri";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Netværkshastighed";
   return text;
 }
 
@@ -704,7 +702,6 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Arbeitsspeicher";
   if (std::strcmp(text, "Storage") == 0) return "Speicher";
   if (std::strcmp(text, "Battery") == 0) return "Batterie";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Netzwerkdurchsatz";
   return text;
 }
 
@@ -939,7 +936,6 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memoria";
   if (std::strcmp(text, "Storage") == 0) return "Almacenamiento";
   if (std::strcmp(text, "Battery") == 0) return "Batería";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Rendimiento de red";
   return text;
 }
 
@@ -1184,7 +1180,6 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Muisti";
   if (std::strcmp(text, "Storage") == 0) return "Tallennustila";
   if (std::strcmp(text, "Battery") == 0) return "Akku";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Verkon siirtonopeus";
   return text;
 }
 
@@ -1412,7 +1407,6 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Mémoire";
   if (std::strcmp(text, "Storage") == 0) return "Stockage";
   if (std::strcmp(text, "Battery") == 0) return "Batterie";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Débit réseau";
   return text;
 }
 
@@ -1665,7 +1659,6 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "זיכרון";
   if (std::strcmp(text, "Storage") == 0) return "אחסון";
   if (std::strcmp(text, "Battery") == 0) return "סוללה";
-  if (std::strcmp(text, "Network Throughput") == 0) return "קצב רשת";
   return text;
 }
 
@@ -1910,7 +1903,6 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memória";
   if (std::strcmp(text, "Storage") == 0) return "Tárhely";
   if (std::strcmp(text, "Battery") == 0) return "Akkumulátor";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Hálózati átviteli sebesség";
   return text;
 }
 
@@ -2146,7 +2138,6 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memoria";
   if (std::strcmp(text, "Storage") == 0) return "Archiviazione";
   if (std::strcmp(text, "Battery") == 0) return "Batteria";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Velocità di rete";
   return text;
 }
 
@@ -2379,7 +2370,6 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Minne";
   if (std::strcmp(text, "Storage") == 0) return "Lagring";
   if (std::strcmp(text, "Battery") == 0) return "Batteri";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Nettverkshastighet";
   return text;
 }
 
@@ -2612,7 +2602,6 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Geheugen";
   if (std::strcmp(text, "Storage") == 0) return "Opslag";
   if (std::strcmp(text, "Battery") == 0) return "Batterij";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Netwerkdoorvoer";
   return text;
 }
 
@@ -2845,7 +2834,6 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Pamięć";
   if (std::strcmp(text, "Storage") == 0) return "Pamięć masowa";
   if (std::strcmp(text, "Battery") == 0) return "Bateria";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Przepustowość sieci";
   return text;
 }
 
@@ -3080,7 +3068,6 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memória";
   if (std::strcmp(text, "Storage") == 0) return "Armazenamento";
   if (std::strcmp(text, "Battery") == 0) return "Bateria";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Taxa de rede";
   return text;
 }
 
@@ -3316,7 +3303,6 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memória";
   if (std::strcmp(text, "Storage") == 0) return "Armazenamento";
   if (std::strcmp(text, "Battery") == 0) return "Bateria";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Taxa de rede";
   return text;
 }
 
@@ -3561,7 +3547,6 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Memorie";
   if (std::strcmp(text, "Storage") == 0) return "Stocare";
   if (std::strcmp(text, "Battery") == 0) return "Baterie";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Debit rețea";
   return text;
 }
 
@@ -3813,7 +3798,6 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Память";
   if (std::strcmp(text, "Storage") == 0) return "Хранилище";
   if (std::strcmp(text, "Battery") == 0) return "Батарея";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Пропускная способность сети";
   return text;
 }
 
@@ -4050,7 +4034,6 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Pamäť";
   if (std::strcmp(text, "Storage") == 0) return "Úložisko";
   if (std::strcmp(text, "Battery") == 0) return "Batéria";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Priepustnosť siete";
   return text;
 }
 
@@ -4291,7 +4274,6 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Pomnilnik";
   if (std::strcmp(text, "Storage") == 0) return "Shramba";
   if (std::strcmp(text, "Battery") == 0) return "Baterija";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Prepustnost omrežja";
   return text;
 }
 
@@ -4523,7 +4505,6 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Minne";
   if (std::strcmp(text, "Storage") == 0) return "Lagring";
   if (std::strcmp(text, "Battery") == 0) return "Batteri";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Nätverkshastighet";
   return text;
 }
 
@@ -4768,7 +4749,6 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Bellek";
   if (std::strcmp(text, "Storage") == 0) return "Depolama";
   if (std::strcmp(text, "Battery") == 0) return "Pil";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Ağ aktarım hızı";
   return text;
 }
 
@@ -5015,7 +4995,6 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Memory") == 0) return "Пам’ять";
   if (std::strcmp(text, "Storage") == 0) return "Сховище";
   if (std::strcmp(text, "Battery") == 0) return "Батарея";
-  if (std::strcmp(text, "Network Throughput") == 0) return "Пропускна здатність мережі";
   return text;
 }
 
@@ -5270,7 +5249,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "memory") == 0) return "Memory";
   if (std::strcmp(key, "storage") == 0) return "Storage";
   if (std::strcmp(key, "battery") == 0) return "Battery";
-  if (std::strcmp(key, "network_throughput") == 0) return "Network Throughput";
+  if (std::strcmp(key, "network_throughput") == 0) return "Network";
   return key;
 }
 
