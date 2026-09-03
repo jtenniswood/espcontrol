@@ -379,13 +379,30 @@ inline void companion_remove_value(const std::string &control_id) {
   companion_request_card_refresh();
 }
 
+inline void companion_set_focused_action(std::string action_id) {
+  if (action_id.size() > 96) action_id.clear();
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.focused_action_id = std::move(action_id);
+  }
+  companion_request_card_refresh();
+}
+
+inline bool companion_action_focused(const std::string &action_id) {
+  if (action_id.empty() ||
+      action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
+  const auto snapshot = companion_runtime_snapshot();
+  return snapshot.connected && snapshot.focused_action_id == action_id;
+}
+
 inline void companion_set_focused_application(std::string application_id) {
   if (application_id.size() > 96) application_id.clear();
   const std::string focused_application_id = application_id;
   auto &state = companion_runtime_state();
   {
     std::lock_guard<std::mutex> lock(state.mutex);
-    state.focused_action_id = std::move(action_id);
+    state.focused_action_id = std::move(application_id);
   }
   CompanionActionResultHandler success;
   {
@@ -403,11 +420,8 @@ inline void companion_set_focused_application(std::string application_id) {
   companion_request_card_refresh();
 }
 
-inline bool companion_action_focused(const std::string &action_id) {
-  if (action_id.empty() ||
-      action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
-  const auto snapshot = companion_runtime_snapshot();
-  return snapshot.connected && snapshot.focused_action_id == action_id;
+inline bool companion_application_focused(const std::string &application_id) {
+  return companion_action_focused(application_id);
 }
 
 inline bool companion_action_active(const std::string &action_id) {
@@ -416,7 +430,7 @@ inline bool companion_action_active(const std::string &action_id) {
     return snapshot.connected && snapshot.media_actions_supported &&
            snapshot.now_playing.playback_state == CompanionPlaybackState::PLAYING;
   }
-  return companion_application_focused(action_id);
+  return companion_action_focused(action_id);
 }
 
 inline uint32_t companion_next_request_number() {
@@ -735,7 +749,7 @@ inline void companion_track_metric_card(lv_obj_t *button, lv_obj_t *value_label,
   auto existing = std::find_if(refs.begin(), refs.end(), [button](const CompanionCardRef &ref) {
     return ref.button == button;
   });
-  CompanionCardRef value{button, "", "", value_label, unit_label, metric_key, unit,
+  CompanionCardRef value{button, nullptr, "", "", value_label, unit_label, metric_key, unit,
                          std::max(0, std::min(2, precision))};
   if (existing != refs.end()) {
     *existing = std::move(value);
