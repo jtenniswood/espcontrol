@@ -32,7 +32,10 @@ import {
   companionShortcutActionIdValid,
   companionShortcutFolderCardAllowed,
   companionShortcutFolderEditorAvailable,
+  CODEX_BUNDLE_ID,
   createSafariShortcutSubpage,
+  createCodexShortcutSubpage,
+  codexShortcutPresetCards,
   normalizeCompanionAppShortcutOptions,
   safariShortcutPresetCards,
   setCompanionAppShortcutFolderEnabled,
@@ -80,6 +83,19 @@ export function runCompanionShortcutFeatureTests(): void {
       companionAppShortcutFolderEnabled(chromeFolderCard)) {
     throw new Error("Unsupported apps must not retain the shortcut-folder option");
   }
+  const codexFolderCard = {
+    type: "companion", entity: CODEX_BUNDLE_ID, options: "",
+  };
+  setCompanionAppShortcutFolderEnabled(codexFolderCard, true);
+  if (!companionAppShortcutFolderEnabled(codexFolderCard) ||
+      normalizeCompanionAppShortcutOptions(codexFolderCard) !== "app_shortcuts") {
+    throw new Error("Codex launch cards must support shortcut folders");
+  }
+  const codexUrlFolderCard = { ...codexFolderCard, sensor: "url.https%3A%2F%2Fexample.com" };
+  if (normalizeCompanionAppShortcutOptions(codexUrlFolderCard) !== "" ||
+      companionAppShortcutFolderEnabled(codexUrlFolderCard)) {
+    throw new Error("Codex Open URL cards must not retain the shortcut-folder option");
+  }
   const safariPreset = safariShortcutPresetCards();
   const expectedSafariShortcuts = [
     "shortcut.command+keybracketleft",
@@ -94,6 +110,20 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!safariPreset.every(companionShortcutFolderCardAllowed)) {
     throw new Error("Safari presets must contain only Companion keyboard shortcuts");
   }
+  const codexPreset = codexShortcutPresetCards();
+  const expectedCodexShortcuts = [
+    "shortcut.command+k",
+    "shortcut.command+o",
+    "shortcut.command+b",
+    "shortcut.command+j",
+    "shortcut.control+keybackquote",
+  ];
+  if (codexPreset.map((card) => card.entity).join("|") !== expectedCodexShortcuts.join("|")) {
+    throw new Error("Codex shortcut defaults changed");
+  }
+  if (!codexPreset.every(companionShortcutFolderCardAllowed)) {
+    throw new Error("Codex presets must contain only Companion keyboard shortcuts");
+  }
   if (companionShortcutActionIdValid("shortcut.") ||
       companionShortcutActionIdValid("shortcut.shift+a") ||
       companionShortcutActionIdValid("shortcut.command+command+a") ||
@@ -103,6 +133,11 @@ export function runCompanionShortcutFeatureTests(): void {
   const safariSubpage = createSafariShortcutSubpage();
   if (safariSubpage.backLabel !== "Back" || safariSubpage.order.join("|") !== "B|1|2|3|4|5") {
     throw new Error("Safari shortcut folder layout changed");
+  }
+  const codexSubpage = createCodexShortcutSubpage();
+  if (codexSubpage.backLabel !== "Back" || codexSubpage.order.join("|") !== "B|1|2|3|4|5" ||
+      codexSubpage.buttons.map((card: any) => card.entity).join("|") !== expectedCodexShortcuts.join("|")) {
+    throw new Error("Codex shortcut folder layout changed");
   }
   if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "processor") {
     throw new Error("Processor statistics must retain their Companion subtype");

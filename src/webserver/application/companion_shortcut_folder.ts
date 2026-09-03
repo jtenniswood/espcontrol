@@ -3,7 +3,12 @@ import { cardTransferOwnsSubpage } from "../model/card_transfer";
 
 export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
+export const CODEX_BUNDLE_ID = "com.openai.codex";
 export const COMPANION_SHORTCUT_PREFIX = "shortcut.";
+const COMPANION_SHORTCUT_FOLDER_APPS: Readonly<Record<string, string>> = {
+    [SAFARI_BUNDLE_ID]: "Safari",
+    [CODEX_BUNDLE_ID]: "Codex",
+};
 const COMPANION_SHORTCUT_MODIFIERS = new Set(["command", "control", "option", "shift"]);
 const COMPANION_SHORTCUT_KEYS = new Set([
     "space", "enter", "tab", "escape", "delete", "forwarddelete",
@@ -24,14 +29,20 @@ export interface CompanionShortcutPresetCard {
     options: string;
 }
 
+export function companionShortcutFolderAppLabel(bundleIdentifier: unknown): string {
+    return typeof bundleIdentifier === "string"
+        ? COMPANION_SHORTCUT_FOLDER_APPS[bundleIdentifier] || ""
+        : "";
+}
+
 export function companionAppShortcutFolderEnabled(card: any): boolean {
-    return !!card && card.type === "companion" && card.entity === SAFARI_BUNDLE_ID &&
+    return !!card && card.type === "companion" && !!companionShortcutFolderAppLabel(card.entity) &&
         !card.sensor &&
         configOptionEnabled(card.options, COMPANION_APP_SHORTCUTS_OPTION);
 }
 
 export function normalizeCompanionAppShortcutOptions(card: any): string {
-    if (!card || card.type !== "companion" || card.entity !== SAFARI_BUNDLE_ID || card.sensor) return "";
+    if (!card || card.type !== "companion" || !companionShortcutFolderAppLabel(card.entity) || card.sensor) return "";
     return setConfigOption(
         "",
         COMPANION_APP_SHORTCUTS_OPTION,
@@ -44,7 +55,7 @@ export function setCompanionAppShortcutFolderEnabled(card: any, enabled: boolean
     card.options = setConfigOption(
         card.options,
         COMPANION_APP_SHORTCUTS_OPTION,
-        enabled && card.type === "companion" && card.entity === SAFARI_BUNDLE_ID && !card.sensor,
+        enabled && card.type === "companion" && !!companionShortcutFolderAppLabel(card.entity) && !card.sensor,
     );
 }
 
@@ -105,12 +116,36 @@ export function safariShortcutPresetCards(): CompanionShortcutPresetCard[] {
     ];
 }
 
-export function createSafariShortcutSubpage(): any {
+export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
+    return [
+        shortcutCard("shortcut.command+k", "Command Menu", "Application"),
+        shortcutCard("shortcut.command+o", "Open Folder", "Folder Outline"),
+        shortcutCard("shortcut.command+b", "Toggle Sidebar", "View Headline"),
+        shortcutCard("shortcut.command+j", "Toggle Bottom Panel", "Monitor"),
+        shortcutCard("shortcut.control+keybackquote", "Toggle Terminal", "Application"),
+    ];
+}
+
+export function companionShortcutPresetCards(bundleIdentifier: string): CompanionShortcutPresetCard[] {
+    if (bundleIdentifier === SAFARI_BUNDLE_ID) return safariShortcutPresetCards();
+    if (bundleIdentifier === CODEX_BUNDLE_ID) return codexShortcutPresetCards();
+    return [];
+}
+
+export function createCompanionShortcutSubpage(bundleIdentifier: string): any {
     return {
         order: ["B", "1", "2", "3", "4", "5"],
-        buttons: safariShortcutPresetCards(),
+        buttons: companionShortcutPresetCards(bundleIdentifier),
         grid: [],
         sizes: {},
         backLabel: "Back",
     };
+}
+
+export function createSafariShortcutSubpage(): any {
+    return createCompanionShortcutSubpage(SAFARI_BUNDLE_ID);
+}
+
+export function createCodexShortcutSubpage(): any {
+    return createCompanionShortcutSubpage(CODEX_BUNDLE_ID);
 }

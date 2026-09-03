@@ -34,6 +34,9 @@ int main() {
   safari_launch.entity = "com.apple.Safari";
   safari_launch.options = "app_shortcuts";
   assert(companion_app_shortcuts_enabled(safari_launch));
+  ParsedCfg codex_launch = safari_launch;
+  codex_launch.entity = "com.openai.codex";
+  assert(companion_app_shortcuts_enabled(codex_launch));
   safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
   assert(!companion_app_shortcuts_enabled(safari_launch));
 

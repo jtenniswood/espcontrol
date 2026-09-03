@@ -308,7 +308,7 @@ export function createPreviewClipboardFeature(
                     parsed.buttons.some(function (subpageButton: any) {
                         return !companionShortcutFolderCardAllowed(subpageButton);
                     })) {
-                    throw cardTransferError("Safari shortcut folders can contain only Companion keyboard shortcuts.");
+                    throw cardTransferError("Companion shortcut folders can contain only Companion keyboard shortcuts.");
                 }
                 var prepared: any = prepareTransferredSubpage(parsed);
                 entry.subpageConfig = serializeSubpageConfig(prepared.subpage);
@@ -437,7 +437,7 @@ export function createPreviewClipboardFeature(
             var entry: any = entries[i];
             var normalizedEntry: any = clipboardButtonConfig(entry);
             if (shortcutOnly && !companionShortcutFolderCardAllowed(normalizedEntry)) {
-                return { error: "Safari shortcut folders can contain only Companion keyboard shortcuts." };
+                return { error: "Companion shortcut folders can contain only Companion keyboard shortcuts." };
             }
             var typeDef: any = dependencies.cards.definitions[entry.type || ""];
             if (entry.subpageConfig || entry.type === "subpage") {

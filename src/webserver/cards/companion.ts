@@ -12,11 +12,11 @@ import type { ButtonSettingsSelectionFeature } from "../application/button_setti
 import { state } from "../state/app_instance";
 import {
     COMPANION_SHORTCUT_PREFIX,
-    SAFARI_BUNDLE_ID,
     companionAppShortcutFolderEnabled,
     companionShortcutActionIdValid,
+    companionShortcutFolderAppLabel,
     companionShortcutFolderEditorAvailable,
-    createSafariShortcutSubpage,
+    createCompanionShortcutSubpage,
     normalizeCompanionAppShortcutOptions,
     setCompanionAppShortcutFolderEnabled,
 } from "../application/companion_shortcut_folder";
@@ -581,19 +581,21 @@ export function registerCompanionCardTypes(
             mediaField.appendChild(mediaSelect);
             panel?.appendChild(mediaField);
 
-            const safariShortcutField = document.createElement("div");
-            safariShortcutField.className = "sp-field";
+            const shortcutFolderField = document.createElement("div");
+            shortcutFolderField.className = "sp-field";
             const folderToggle = helpers.toggleRow(
                 "Add shortcut folder",
                 helpers.idPrefix + "companion-app-shortcuts",
                 companionAppShortcutFolderEnabled(card),
             );
-            safariShortcutField.appendChild(folderToggle.row);
-            const safariShortcutNote = document.createElement("div");
-            safariShortcutNote.className = "sp-field-info-text";
-            safariShortcutNote.textContent = "Launch Safari, then open an editable folder of Safari keyboard shortcuts.";
-            safariShortcutField.appendChild(safariShortcutNote);
-            panel?.appendChild(safariShortcutField);
+            shortcutFolderField.appendChild(folderToggle.row);
+            const shortcutFolderNote = document.createElement("div");
+            shortcutFolderNote.className = "sp-field-info-text";
+            const shortcutFolderApp = companionShortcutFolderAppLabel(card.entity);
+            shortcutFolderNote.textContent = "Launch " + shortcutFolderApp +
+                ", then open an editable folder of " + shortcutFolderApp + " keyboard shortcuts.";
+            shortcutFolderField.appendChild(shortcutFolderNote);
+            panel?.appendChild(shortcutFolderField);
             folderToggle.input.addEventListener("change", function () {
                 setCompanionAppShortcutFolderEnabled(card, folderToggle.input.checked);
                 helpers.saveField("options", card.options);
@@ -607,7 +609,8 @@ export function registerCompanionCardTypes(
                 shortcutField.style.display = mode === "shortcut" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
-                safariShortcutField.style.display = !shortcutOnly && mode === "app" && card.entity === SAFARI_BUNDLE_ID ? "" : "none";
+                shortcutFolderField.style.display = !shortcutOnly && mode === "app" &&
+                    !!companionShortcutFolderAppLabel(card.entity) ? "" : "none";
             }
             syncMode(initialMode);
 
@@ -763,7 +766,7 @@ export function registerCompanionCardTypes(
             if (companionShortcutFolderEditorAvailable(card, savedParent)) {
                 const editButton = document.createElement("button");
                 editButton.className = "sp-action-btn sp-edit-subpage-btn";
-                editButton.textContent = "Edit Safari Shortcuts";
+                editButton.textContent = "Edit " + companionShortcutFolderAppLabel(card.entity) + " Shortcuts";
                 editButton.addEventListener("click", function () {
                     selection.closeSettings();
                     codec.enterSubpage(slot);
@@ -801,11 +804,13 @@ export function registerCompanionCardTypes(
         },
         contextMenuItems: function (slot?: any, card?: any, helpers?: any) {
             if (!companionAppShortcutFolderEnabled(card)) return;
-            helpers.addCtxItem("cog", "Edit Safari Shortcuts", function () { codec.enterSubpage(slot); });
+            helpers.addCtxItem("cog", "Edit " + companionShortcutFolderAppLabel(card.entity) + " Shortcuts", function () {
+                codec.enterSubpage(slot);
+            });
         },
         afterSave: function (card?: any, slot?: any, context?: any) {
             if (context?.isSub || !companionAppShortcutFolderEnabled(card) || state.subpages[slot]) return;
-            const subpage = createSafariShortcutSubpage();
+            const subpage = createCompanionShortcutSubpage(card.entity);
             codec.buildSubpageGrid(subpage);
             state.subpages[slot] = subpage;
             codec.saveSubpageConfig(slot);
