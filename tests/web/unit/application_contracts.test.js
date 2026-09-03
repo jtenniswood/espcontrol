@@ -58,6 +58,7 @@ describe("browserless application contracts", () => {
     assert.match(companion, /setHidden\(badge, !value\.paired\)/);
     assert.match(companion, /copyButton\.hidden = true/);
     assert.match(styles, /\.sp-connectors-config\{max-width:960px/);
+    assert.doesNotMatch(connectors, /sp-connectors-intro|Manage the services that provide data and actions/);
     assert.match(styles, /\.sp-hidden\{display:none!important\}/);
   });
 

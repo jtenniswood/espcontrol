@@ -56,7 +56,6 @@ export function createConnectorsPageFeature(
 ): ConnectorsPageFeature {
     const { document, window, fetch } = dom;
     let heading: HTMLElement | null = null;
-    let intro: HTMLElement | null = null;
     let homeAssistantStatus: HTMLElement | null = null;
     let homeAssistantInstructions: HTMLElement | null = null;
     let homeAssistantBadge: HTMLElement | null = null;
@@ -109,13 +108,6 @@ export function createConnectorsPageFeature(
         setHidden(homeAssistantBadge, !value.home_assistant.configured);
         if (heading) {
             heading.textContent = value.onboarding_complete ? "Connectors" : "Connect EspControl";
-        }
-        if (intro) {
-            intro.textContent = value.onboarding_complete
-                ? "Manage the services that provide data and actions for this display."
-                : companionSupported
-                    ? "Choose Home Assistant or Mac Companion to finish setting up your display. You can add the other connector later."
-                    : "Connect Home Assistant to finish setting up your display.";
         }
         shell.setOnboardingComplete(value.onboarding_complete, announceCompletion);
     }
@@ -197,15 +189,9 @@ export function createConnectorsPageFeature(
         const config = document.createElement("div");
         config.className = "sp-config sp-connectors-config fade-in";
         heading = document.createElement("h1");
-        heading.className = "sp-connectors-heading";
+        heading.className = "sp-connectors-heading sp-settings-status-title";
         heading.textContent = "Connect EspControl";
-        intro = document.createElement("p");
-        intro.className = "sp-connectors-intro";
-        intro.textContent = companionSupported
-            ? "Choose Home Assistant or Mac Companion to finish setting up your display."
-            : "Connect Home Assistant to finish setting up your display.";
         config.appendChild(heading);
-        config.appendChild(intro);
         config.appendChild(buildHomeAssistantCard());
         if (companionSupported) {
             config.appendChild(companionSection.buildCompanionSettingsCard(applyCompanionStatus));
