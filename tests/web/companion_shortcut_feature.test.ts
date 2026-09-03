@@ -167,6 +167,10 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!codexPreset.every((card) => card.type === "companion" && companionShortcutActionIdValid(card.entity))) {
     throw new Error("Codex presets must contain only Companion keyboard shortcuts");
   }
+  const expectedCodexLabels = ["Command", "Open", "Sidebar", "Panel", "Terminal"];
+  if (codexPreset.map((card) => card.label).join("|") !== expectedCodexLabels.join("|")) {
+    throw new Error("Codex shortcut labels should stay short");
+  }
   const slackFolderCard = {
     type: "companion", entity: SLACK_BUNDLE_ID, options: "",
   };
@@ -188,6 +192,10 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (!slackPreset.every((card) => card.type === "companion" && companionShortcutActionIdValid(card.entity))) {
     throw new Error("Slack presets must contain only Companion keyboard shortcuts");
+  }
+  const expectedSlackLabels = ["Compose", "Search", "DMs", "Unread", "All Unread"];
+  if (slackPreset.map((card) => card.label).join("|") !== expectedSlackLabels.join("|")) {
+    throw new Error("Slack shortcut labels should stay short");
   }
   if (companionShortcutActionIdValid("shortcut.") ||
       companionShortcutActionIdValid("shortcut.shift+a") ||

@@ -135,21 +135,21 @@ export function safariShortcutPresetCards(): CompanionShortcutPresetCard[] {
 
 export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
     return [
-        shortcutCard("shortcut.command+k", "Command Menu", "Application"),
-        shortcutCard("shortcut.command+o", "Open Folder", "Folder Outline"),
-        shortcutCard("shortcut.command+b", "Toggle Sidebar", "View Headline"),
-        shortcutCard("shortcut.command+j", "Toggle Bottom Panel", "Monitor"),
-        shortcutCard("shortcut.control+keybackquote", "Toggle Terminal", "Application"),
+        shortcutCard("shortcut.command+k", "Command", "Application"),
+        shortcutCard("shortcut.command+o", "Open", "Folder Outline"),
+        shortcutCard("shortcut.command+b", "Sidebar", "View Headline"),
+        shortcutCard("shortcut.command+j", "Panel", "Monitor"),
+        shortcutCard("shortcut.control+keybackquote", "Terminal", "Application"),
     ];
 }
 
 export function slackShortcutPresetCards(): CompanionShortcutPresetCard[] {
     return [
-        shortcutCard("shortcut.command+n", "Compose Message", "Message Video"),
+        shortcutCard("shortcut.command+n", "Compose", "Message Video"),
         shortcutCard("shortcut.command+g", "Search", "Spotlight"),
-        shortcutCard("shortcut.command+shift+k", "Browse DMs", "Account"),
-        shortcutCard("shortcut.command+j", "Jump to Unread", "Bell"),
-        shortcutCard("shortcut.command+shift+a", "All Unreads", "View Headline"),
+        shortcutCard("shortcut.command+shift+k", "DMs", "Account"),
+        shortcutCard("shortcut.command+j", "Unread", "Bell"),
+        shortcutCard("shortcut.command+shift+a", "All Unread", "View Headline"),
     ];
 }
 
