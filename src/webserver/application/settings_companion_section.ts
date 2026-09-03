@@ -17,6 +17,11 @@ export interface SettingsCompanionSectionFeature {
     buildCompanionSettingsCard(onStatus?: (state: CompanionPairingState) => void): HTMLElement;
 }
 
+function setHidden(element: HTMLElement, hidden: boolean): void {
+    element.hidden = hidden;
+    element.classList.toggle("sp-hidden", hidden);
+}
+
 export function companionPairingStatusText(state: CompanionPairingState): string {
     if (state.active && state.pairing_code) {
         const hours = Math.ceil(state.expires_in_seconds / 3600);
@@ -110,6 +115,7 @@ export function createSettingsCompanionSectionFeature(
 
         const details = document.createElement("div");
         details.className = "sp-companion-details sp-hidden";
+        details.hidden = true;
         const pairingRow = document.createElement("div");
         pairingRow.className = "sp-companion-code-row";
         pairingRow.innerHTML = '<span>Pairing code</span><strong class="sp-companion-code"></strong>';
@@ -121,6 +127,7 @@ export function createSettingsCompanionSectionFeature(
         const startButton = shell.createActionButton("sp-backup-btn", "Start pairing", "link");
         const copyButton = shell.createActionButton("sp-backup-btn", "Copy pairing details", "copy");
         copyButton.classList.add("sp-hidden");
+        copyButton.hidden = true;
         actions.appendChild(startButton);
         actions.appendChild(copyButton);
         body.appendChild(actions);
@@ -140,17 +147,17 @@ export function createSettingsCompanionSectionFeature(
             if (onStatus) onStatus(value);
             status.textContent = companionPairingStatusText(value);
             status.classList.toggle("sp-companion-status-connected", value.connected);
-            instructions.classList.toggle("sp-hidden", value.connected);
-            badge.classList.toggle("sp-hidden", !value.paired);
+            setHidden(instructions, value.connected);
+            setHidden(badge, !value.paired);
             if (value.active && value.pairing_code) {
                 pairingValue.textContent = value.pairing_code;
-                details.classList.remove("sp-hidden");
-                copyButton.classList.remove("sp-hidden");
+                setHidden(details, false);
+                setHidden(copyButton, false);
                 startButton.textContent = "Generate new code";
                 return;
             }
-            details.classList.add("sp-hidden");
-            copyButton.classList.add("sp-hidden");
+            setHidden(details, true);
+            setHidden(copyButton, true);
             startButton.textContent = "Start pairing";
         }
 

@@ -31,6 +31,12 @@ export interface ConnectorsPageFeature {
     start(): void;
 }
 
+function setHidden(element: HTMLElement | null, hidden: boolean): void {
+    if (!element) return;
+    element.hidden = hidden;
+    element.classList.toggle("sp-hidden", hidden);
+}
+
 export function homeAssistantConnectorStatusText(state: HomeAssistantConnectorState): string {
     if (state.connected) return "Home Assistant connected";
     if (state.configured) return "Home Assistant configured, but currently offline";
@@ -99,8 +105,8 @@ export function createConnectorsPageFeature(
             homeAssistantStatus.classList.toggle(
                 "sp-connector-status-connected", value.home_assistant.connected);
         }
-        homeAssistantInstructions?.classList.toggle("sp-hidden", value.home_assistant.connected);
-        homeAssistantBadge?.classList.toggle("sp-hidden", !value.home_assistant.configured);
+        setHidden(homeAssistantInstructions, value.home_assistant.connected);
+        setHidden(homeAssistantBadge, !value.home_assistant.configured);
         if (heading) {
             heading.textContent = value.onboarding_complete ? "Connectors" : "Connect EspControl";
         }
