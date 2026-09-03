@@ -467,6 +467,10 @@ inline bool companion_url_available(const std::string &app_id, const std::string
   return !companion_encoded_url(url_config).empty() && companion_action_available(app_id);
 }
 
+inline bool companion_card_focus_allowed(const std::string &url_config) {
+  return url_config.empty();
+}
+
 #ifdef USE_LVGL
 struct CompanionCardRef {
   lv_obj_t *button = nullptr;
@@ -488,8 +492,15 @@ struct CompanionSliderRef {
   const char *icon_on = nullptr;
 };
 
-inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
+inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id,
+                                       const std::string &url_config = "") {
   if (!button) return;
+  // A URL card targets a page inside the app, but Companion only reports the
+  // frontmost app. Keep URL cards from appearing active for the wrong page.
+  if (!companion_card_focus_allowed(url_config)) {
+    lv_obj_clear_state(button, LV_STATE_CHECKED);
+    return;
+  }
   if (companion_application_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
   else lv_obj_clear_state(button, LV_STATE_CHECKED);
 }
@@ -625,7 +636,7 @@ inline void companion_refresh_cards_if_requested() {
     } else {
       lv_obj_add_state(it->button, LV_STATE_DISABLED);
     }
-    companion_apply_card_focus(it->button, it->action_id);
+    companion_apply_card_focus(it->button, it->action_id, it->url_config);
     ++it;
   }
   auto &sliders = companion_slider_refs();
@@ -655,7 +666,7 @@ inline void companion_refresh_cards_if_requested() {
 inline void companion_track_card(void *, const std::string &, const std::string & = "") {}
 inline void companion_track_metric_card(void *, void *, void *, const std::string &,
                                         const std::string &, int) {}
-inline void companion_apply_card_focus(void *, const std::string &) {}
+inline void companion_apply_card_focus(void *, const std::string &, const std::string & = "") {}
 inline void companion_track_slider(void *, const std::string &, void *, bool,
                                    const char *, const char *) {}
 inline void companion_refresh_cards_if_requested() {}

@@ -188,7 +188,7 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_state(s.btn, LV_STATE_DISABLED);
     clear_push_button_transition(s.btn);
   }
-  companion_apply_card_focus(s.btn, p.entity);
+  companion_apply_card_focus(s.btn, p.entity, p.sensor);
 }
 
 inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
