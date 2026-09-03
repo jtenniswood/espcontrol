@@ -73,6 +73,24 @@ export function createButtonSettingsFeature(
         renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
         textInput, toggleRow,
     } = fields;
+
+    function cardSettingsTitle(this: any, typeDefinition?: any, button?: any): string {
+        var label: any = buttonTypeRegistryValue(typeDefinition, "label", "Card");
+        var mode: any = typeDefinition && typeDefinition.cardMetadata && typeDefinition.cardMetadata.mode;
+        if (mode && Array.isArray(mode.options) && typeof mode.value === "function") {
+            var selectedMode: any = mode.value(button);
+            var selectedOption: any = mode.options.find(function (this: any, option?: any) {
+                return option && option[0] === selectedMode;
+            });
+            if (selectedOption && selectedOption[1])
+                label = selectedOption[1];
+        }
+        label = String(label || "Card").replace(/\b[a-z]/g, function (character?: any) {
+            return character.toUpperCase();
+        });
+        return label + " Settings";
+    }
+
     const {
         imageSlotCapacity,
         imageCardCountWithCandidate,
@@ -781,17 +799,7 @@ export function createButtonSettingsFeature(
                 container.appendChild(panel);
                 return;
             }
-            var tf: any = document.createElement("div");
-            tf.className = "sp-field sp-card-type-readonly";
-            tf.appendChild(fieldLabel("Card", "sp-card-type-readonly"));
-            var typeName: any = buttonTypeRegistryValue(rawTypeDef, "label", b.type || "Card");
-            var typeText: any = document.createElement("div");
-            typeText.className = "sp-readonly-value";
-            typeText.id = "sp-card-type-readonly";
-            typeText.textContent = typeName;
-            tf.appendChild(typeText);
-            panel.appendChild(tf);
-            markCardPrimaryField(tf, "card");
+            title.textContent = cardSettingsTitle(rawTypeDef, b);
         }
         var typeHelpers: any = {
             makeIconPicker: makeIconPicker,
