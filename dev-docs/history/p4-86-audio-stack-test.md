@@ -1,3 +1,5 @@
+<!-- DEV-DOC-STATUS: historical -->
+
 # ESP32-P4-86 Audio Stack Investigation Record
 
 Test window: 2026-07-11
@@ -97,6 +99,6 @@ DMA headroom is still tight during playback. In `logs (5).txt`, DMA free memory 
 
 - `devices/esp32-p4-86/device/voice_assistant.yaml`
 - `devices/esp32-p4-86/device/device.yaml`
-- `dev-docs/p4-86-audio-stack-test.md`
+- `dev-docs/history/p4-86-audio-stack-test.md`
 
 The temporary cover-art and image-card download gates have been removed again, so this branch is back to normal media artwork behaviour while keeping the audio/TDM and hosted-WiFi stability changes under test.

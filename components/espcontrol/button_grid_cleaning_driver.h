@@ -10,7 +10,6 @@ namespace espcontrol::cards {
 
 inline bool cleaning_driver_matches(const Context &context) {
   using Driver = card_runtime::CardDriverId;
-  if (context.legacy_dispatch) return false;
   return context.runtime.driver == Driver::VACUUM ||
          context.runtime.driver == Driver::LAWN_MOWER;
 }

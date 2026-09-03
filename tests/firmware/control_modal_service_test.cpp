@@ -51,9 +51,9 @@ int main() {
   espcontrol::EspControlAppCore app;
   assert(app.start());
   auto &core_modal = app.modal_state_service<ControlModalStateService<Overlay>>();
-  core_modal.set_active(ControlModalKind::TODO_LIST, &overlay, nullptr,
+  core_modal.set_active(ControlModalKind::IMAGE_CARD, &overlay, nullptr,
                         ControlModalDismissPolicy::DISMISS);
-  assert(core_modal.active().kind == ControlModalKind::TODO_LIST);
+  assert(core_modal.active().kind == ControlModalKind::IMAGE_CARD);
   assert(app.stop());
 
   return 0;

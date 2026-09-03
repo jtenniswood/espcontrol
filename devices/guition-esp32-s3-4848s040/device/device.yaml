@@ -110,7 +110,6 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   build_flags:
-    - "-DESPCONTROL_DISABLE_TODO=1"
     - "-DESPCONTROL_MAX_GRID_SLOTS=9"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
@@ -610,18 +609,12 @@ select:
     initial_option: "Home Assistant"
     options:
       - "Home Assistant"
-      - "Mac Companion"
     on_value:
       then:
         - lambda: |-
-            id(cover_art_companion_source_active) = x == "Mac Companion";
-            if (id(cover_art_companion_source_active)) {
-              companion_set_now_playing(companion_runtime_snapshot().now_playing);
-              esphome::companion::request_companion_now_playing_artwork();
-            } else {
-              id(cover_art_playback_stopped).execute();
-              id(cover_art_resubscribe).execute();
-            }
+            id(cover_art_companion_source_active) = false;
+            id(cover_art_playback_stopped).execute();
+            id(cover_art_resubscribe).execute();
 
   - platform: template
     name: "${entity_screen_rotation}"

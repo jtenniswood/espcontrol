@@ -800,8 +800,8 @@ assert.strictEqual(
     coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
     updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
   }).coverArtSource,
-  "Mac Companion",
-  "backup restore preserves the Mac Companion cover art source",
+  "Home Assistant",
+  "backup restore removes the unavailable Mac Companion cover art source",
 );
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantProtocol, "https", "legacy panel settings keep current Home Assistant artwork protocol");
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantPort, 80, "legacy panel settings keep current Home Assistant artwork port");

@@ -1,6 +1,6 @@
-# Saved-Configuration Normalization Baseline
+# Saved-Configuration Normalization
 
-This inventory records the behaviour that must remain stable while routine card
+This page records the behaviour that must remain stable while routine card
 normalization moves into the versioned contract. It describes the current
 browser and compiled-firmware implementations; it is not a proposal for a new
 saved format.
@@ -61,7 +61,7 @@ same parity test as part of `firmware-parser`.
 | Webhook | Normalize HTTP method; only body-capable methods keep body; preserve encoded headers; clear precision and unknown options | Declarative + Hook | `cards/webhook.ts` | webhook helpers and webhook branch |
 | Unknown type | Preserve the nine ordinary fields so the card remains inspectable, but remove unknown options under the current no-forward-preservation policy | Declarative | final preservation guard | final preservation guard |
 
-## Baseline Decisions
+## Current Decisions
 
 - The browser's normalized structure is the intended result when an existing
   fixture exposed an `icon_on` representation difference. Firmware now uses

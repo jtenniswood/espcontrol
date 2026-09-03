@@ -2990,6 +2990,14 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Companion",
     "allowInSubpage": true,
     "domains": [],
+    "options": [
+      {
+        "name": "large_numbers",
+        "label": "Large Sensor Numbers",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
     "normalization": {
       "fields": {
         "entity": {
@@ -3007,24 +3015,35 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "value": "Auto"
         },
         "sensor": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "unit": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "type": {
           "policy": "default",
           "value": "companion"
         },
         "precision": {
-          "policy": "clear"
+          "policy": "allowed",
+          "values": [
+            "",
+            "0",
+            "1",
+            "2"
+          ],
+          "fallback": ""
         },
         "options": {
-          "policy": "clear"
+          "policy": "hook",
+          "hook": "normalize_date_time_options"
         }
       },
       "unknownOptions": "drop",
-      "canonicalOptionOrder": []
+      "canonicalOptionOrder": [
+        "large_numbers"
+      ],
+      "optionHook": "normalize_date_time_options"
     },
     "default": {
       "entity": "",
