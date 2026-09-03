@@ -674,6 +674,7 @@ export function registerCompanionCardTypes(
             });
             mediaField.appendChild(mediaSelect);
             panel?.appendChild(mediaField);
+            helpers.markCardPrimaryField(mediaField, "media");
 
             const shortcutFolderField = document.createElement("div");
             shortcutFolderField.className = "sp-field";
