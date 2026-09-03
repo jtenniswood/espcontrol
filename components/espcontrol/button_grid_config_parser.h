@@ -728,7 +728,7 @@ inline std::string normalize_subpage_kind(const std::string &value) {
     value == "lock" || value == "vacuum" ||
     value == "lawn_mower" ||
     value == "weather" || value == "sensor" ||
-    value == "image" ? value : "";
+    value == "image" || value == "companion_stat" ? value : "";
 }
 
 inline std::string subpage_card_options_normalized(const std::string &options,
@@ -915,6 +915,32 @@ inline bool companion_system_metric_config(const ParsedCfg &p) {
      p.entity == "stat.memory_free" || p.entity == "stat.storage" ||
      p.entity == "stat.storage_free" || p.entity == "stat.battery" ||
      p.entity == "stat.network_throughput");
+}
+
+inline bool subpage_companion_stat_entity_valid(const std::string &entity) {
+  return entity == "stat.cpu" || entity == "stat.memory" ||
+         entity == "stat.memory_free" || entity == "stat.storage" ||
+         entity == "stat.storage_free" || entity == "stat.battery" ||
+         entity == "stat.network_throughput";
+}
+
+inline bool subpage_companion_stat_config(const ParsedCfg &p) {
+  return p.type == "subpage" &&
+         cfg_option_value(p.options, "subpage_kind") == "companion_stat" &&
+         subpage_companion_stat_entity_valid(p.entity);
+}
+
+inline const char *subpage_companion_stat_default_label(const std::string &entity) {
+  if (entity == "stat.cpu") return "Processor";
+  if (entity == "stat.memory" || entity == "stat.memory_free") return "Memory";
+  if (entity == "stat.storage" || entity == "stat.storage_free") return "Storage";
+  if (entity == "stat.battery") return "Battery";
+  if (entity == "stat.network_throughput") return "Network Throughput";
+  return "Processor";
+}
+
+inline const char *subpage_companion_stat_default_unit(const std::string &entity) {
+  return entity == "stat.network_throughput" ? "KB/s" : "%";
 }
 
 inline std::string date_time_card_options_normalized(const std::string &options,
@@ -1315,6 +1341,16 @@ inline const char *saved_config_subpage_default_icon(const std::string &kind) {
 inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
   const std::string kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
   if (kind.empty()) return;
+  if (kind == "companion_stat") {
+    if (!subpage_companion_stat_entity_valid(p.entity)) p.entity = "stat.cpu";
+    if (p.label.empty()) p.label = subpage_companion_stat_default_label(p.entity);
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Gauge";
+    p.icon_on = "Auto";
+    p.sensor = "indicator";
+    if (p.unit.empty()) p.unit = subpage_companion_stat_default_unit(p.entity);
+    p.precision.clear();
+    return;
+  }
   if (p.label.empty()) p.label = saved_config_subpage_default_label(kind);
   if (p.icon.empty() || p.icon == "Auto") p.icon = saved_config_subpage_default_icon(kind);
   p.icon_on = "Auto";

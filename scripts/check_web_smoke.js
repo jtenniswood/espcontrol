@@ -1332,6 +1332,18 @@ assert(subpagePresencePreview.iconHtml.includes("mdi-account"), "presence subpag
 assert(subpagePresencePreview.labelHtml.includes("Presence"), "presence subpage preset preview uses the Presence label");
 assert(subpagePresencePreview.labelHtml.includes("mdi-chevron-right"), "presence subpage preset preview shows the chevron badge");
 
+const subpageCompanionStatPreview = hooks.buttonTypePreviewFor("subpage", {
+  entity: "stat.memory_free",
+  label: "Mac RAM Free",
+  icon: "Gauge",
+  sensor: "indicator",
+  type: "subpage",
+  options: "subpage_kind=companion_stat",
+});
+assert(subpageCompanionStatPreview.iconHtml.includes("%"), "Companion Stat subpage preview shows the metric unit");
+assert(subpageCompanionStatPreview.labelHtml.includes("Mac RAM Free"), "Companion Stat subpage preview uses the custom title");
+assert(subpageCompanionStatPreview.labelHtml.includes("mdi-chevron-right"), "Companion Stat subpage preview shows the chevron badge");
+
 [
   ["alarm", "alarm_control_panel.home", "mdi-shield-home", "Alarm"],
   ["vacuum", "vacuum.downstairs", "mdi-robot-vacuum", "Vacuum"],

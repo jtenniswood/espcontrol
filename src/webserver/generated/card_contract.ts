@@ -3524,7 +3524,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "lawn_mower",
           "weather",
           "sensor",
-          "image"
+          "image",
+          "companion_stat"
         ],
         "defaultValue": "",
         "omitDefault": true

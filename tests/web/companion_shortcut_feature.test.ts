@@ -21,6 +21,10 @@ import {
   resetCompanionMetricPresentation,
 } from "../../src/webserver/cards/companion";
 import {
+  normalizeSubpageKind,
+  subpageKindOptions,
+} from "../../src/webserver/application/config_subpage_options";
+import {
   COMPANION_INPUT_VOLUME_ID,
   COMPANION_OUTPUT_VOLUME_ID,
   companionSliderIcon,
@@ -40,6 +44,10 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  if (normalizeSubpageKind("companion_stat") !== "companion_stat" ||
+      !subpageKindOptions().some((option: any) => option[0] === "companion_stat" && option[1] === "Companion Stat")) {
+    throw new Error("Subpage settings must expose the Companion Stat subtype");
+  }
   if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "stats") {
     throw new Error("Processor statistics must be grouped under the Stats Companion subtype");
   }

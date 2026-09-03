@@ -45,7 +45,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Incoming Value Unit: default, seconds, minutes, hours, days; Lit When Active; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
 | Local Sensor | local_sensor | sensor, text_sensor | Yes | Sensor (sensor) | None | Hidden |
 | Slider | slider | light, fan, number, input_number | Yes | Own picker item | None | Visible |
-| Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, gate, lock, vacuum, lawn_mower, weather, sensor, image; Large State Numbers | Visible |
+| Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, gate, lock, vacuum, lawn_mower, weather, sensor, image, companion_stat; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
 | Camera Card | image | camera, image | Yes | Own picker item | Show Label; Show Icon; Expanded Image: fill, fit | Visible |

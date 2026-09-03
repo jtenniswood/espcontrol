@@ -15,13 +15,15 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 ## Setting Up a Subpage
 
 1. Select a card on the home screen and change its type to **Subpage**.
-2. Choose a subpage **Type**. **Generic** is a normal folder. The other presets make the home-screen Subpage tile look and behave like the thing it represents, such as **Lights**, **Switch**, **Alarm**, **Cover**, **Garage Door**, **Lock**, **Vacuum**, **Lawn Mower**, **Weather**, **Sensor**, or **Camera / Image**, before opening the detailed subpage.
+2. Choose a subpage **Type**. **Generic** is a normal folder. The other presets make the home-screen Subpage tile look and behave like the thing it represents, such as **Lights**, **Switch**, **Alarm**, **Cover**, **Garage Door**, **Lock**, **Vacuum**, **Lawn Mower**, **Weather**, **Sensor**, or **Camera / Image**, before opening the detailed subpage. **Companion Stat** shows a live Processor, Memory, Storage, Battery, or Network Throughput statistic supplied by the EspControl Companion app.
 3. Set a **Label** and **Icon** if you want them.
 4. Click **Edit Subpage** in the card settings, or right-click the card and choose **Edit Subpage**.
 5. The preview switches to the subpage. Add and arrange cards here the same way you would on the home screen.
 6. Click the **Back** card to return to the home screen.
 
 You can also right-click an empty space on the home screen and choose **Create Subpage**.
+
+For **Companion Stat**, choose the statistic in the card settings and optionally choose **Used** or **Free** for Memory and Storage. Edit the **Label** to give the subpage tile its own title. The tile remains a normal subpage, so tapping it still opens the cards configured inside it; the statistic is only the value shown on the home-screen tile. Companion must be connected and sharing system statistics for a live value to appear.
 
 Subpages can contain Switch, Lights, Action, Local Action, Option Select, Webhook, Trigger, Sensor, Local Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, Clock, World Clock, Weather, Camera, Media, Climate, Internal Switches, and Screen Lock cards. Subpages cannot contain another Subpage card.
 

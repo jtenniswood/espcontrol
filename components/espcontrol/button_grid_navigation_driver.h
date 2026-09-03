@@ -18,6 +18,12 @@ inline bool navigation_driver_parent_sensor_state_enabled(
          !config.sensor.empty() && config.sensor != "indicator";
 }
 
+inline bool navigation_driver_parent_companion_stat_state_enabled(
+    const ParsedCfg &config, const Context &context) {
+  return navigation_driver_matches(context) &&
+         subpage_companion_stat_config(config);
+}
+
 inline bool navigation_driver_parent_text_state_enabled(
     const ParsedCfg &config, const Context &context) {
   return navigation_driver_parent_sensor_state_enabled(config, context) &&
@@ -59,7 +65,17 @@ inline bool navigation_driver_setup_visual(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const GridConfig &grid, const DisplayProfile &display) {
   if (!navigation_driver_matches(context)) return false;
-  if (navigation_driver_parent_sensor_state_enabled(config, context)) {
+  if (navigation_driver_parent_companion_stat_state_enabled(config, context)) {
+    setup_subpage_parent_state_card(
+      slot, config, display_sensor_font(display),
+      grid.subpage_chevrons_enabled, grid.subpage_chevron_x,
+      grid.subpage_chevron_y, grid.subpage_chevron_text_width_percent);
+    const std::string unit = trim_display_unit(
+      config.unit.empty() ? subpage_companion_stat_default_unit(config.entity) : config.unit);
+    companion_track_metric_card(
+      slot.btn, slot.sensor_lbl, slot.unit_lbl, config.entity, unit,
+      parse_precision(config.precision));
+  } else if (navigation_driver_parent_sensor_state_enabled(config, context)) {
     setup_subpage_parent_state_card(
       slot, config, display_sensor_font(display),
       grid.subpage_chevrons_enabled, grid.subpage_chevron_x,
@@ -104,6 +120,15 @@ inline bool navigation_driver_bind_main(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const NavigationDriverParentState &state) {
   if (!navigation_driver_matches(context)) return false;
+
+  if (navigation_driver_parent_companion_stat_state_enabled(config, context)) {
+    const std::string unit = trim_display_unit(
+      config.unit.empty() ? subpage_companion_stat_default_unit(config.entity) : config.unit);
+    companion_track_metric_card(
+      slot.btn, slot.sensor_lbl, slot.unit_lbl, config.entity, unit,
+      parse_precision(config.precision));
+    return true;
+  }
 
   if (navigation_driver_parent_sensor_state_enabled(config, context)) {
     if (navigation_driver_parent_text_state_enabled(config, context)) {

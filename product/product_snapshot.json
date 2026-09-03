@@ -5416,7 +5416,8 @@
               "lawn_mower",
               "weather",
               "sensor",
-              "image"
+              "image",
+              "companion_stat"
             ],
             "defaultValue": "",
             "omitDefault": true

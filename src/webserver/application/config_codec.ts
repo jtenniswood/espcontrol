@@ -42,6 +42,7 @@ import { normalizeSavedConfigClimate } from "../generated/saved_config_climate";
 import { normalizeSavedConfigLightControl } from "../generated/saved_config_light_control";
 import { normalizeSavedConfigWebhook } from "../generated/saved_config_webhook";
 import { normalizeSavedConfigSubpage } from "../generated/saved_config_subpage";
+import { COMPANION_SYSTEM_METRICS } from "../cards/companion";
 import { normalizeSavedConfigSwitch } from "../generated/saved_config_switch";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
@@ -429,6 +430,26 @@ export function createConfigCodecFeature(
         return headers ? setConfigOptionValue("", "webhook_headers", headers) : "";
     }
     function normalizeSavedConfigSubpageFields(this: any, b?: any) {
+        if (subpageKind(b) === "companion_stat") {
+            var metric: any = COMPANION_SYSTEM_METRICS.find(function (candidate) {
+                return candidate.id === b.entity || candidate.freeId === b.entity;
+            }) || COMPANION_SYSTEM_METRICS[0];
+            if (!metric)
+                return;
+            if (!metric.id && !metric.freeId)
+                b.entity = "";
+            else if (b.entity !== metric.id && b.entity !== metric.freeId)
+                b.entity = metric.id;
+            if (!b.label)
+                b.label = metric.label;
+            if (!b.icon || b.icon === "Auto")
+                b.icon = "Gauge";
+            b.icon_on = "Auto";
+            b.sensor = "indicator";
+            b.unit = metric.unit;
+            b.precision = "";
+            return;
+        }
         applySubpagePresetConfig(b);
     }
     function normalizeSavedConfigSubpageOptions(this: any, options?: any, b?: any) {
