@@ -161,6 +161,7 @@ start=הפעלה
 still=נייח
 subpage=תת-עמוד
 stop=עצירה
+stopped=הופסק
 sunny=שמשי
 sunny_alert=התראת שמש
 sunset=שקיעה

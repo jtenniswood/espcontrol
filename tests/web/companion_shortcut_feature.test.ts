@@ -10,6 +10,7 @@ import {
   companionMetricDisplayMode,
   companionMetricPreviewValue,
   companionMediaIcon,
+  COMPANION_MEDIA_PLAY_PAUSE_ACTION,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
   companionSubtypeIcon,
@@ -116,6 +117,7 @@ export function runCompanionShortcutFeatureTests(): void {
     { id: "com.apple.Safari", label: "Safari" },
     { id: "com.apple.finder", label: "Finder" },
     { id: folderAction, label: "Projects" },
+    { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Media Play/Pause" },
   ];
   if (companionApplicationActions(catalogue).map((action) => action.id).join() !== "com.apple.Safari") {
     throw new Error("Finder and approved folders must not appear in the application list");
@@ -248,5 +250,10 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionCardMode(pendingStatsCard) !== "stats" || pendingStatsCard.unit !== "" ||
       pendingStatsCard.precision !== "" || pendingStatsCard.icon !== "Gauge") {
     throw new Error("Unselected statistics must not retain a value or unit");
+  }
+  const mediaCard = { entity: COMPANION_MEDIA_PLAY_PAUSE_ACTION, sensor: "", icon: "Auto" };
+  normalizeCompanionCard(mediaCard);
+  if (mediaCard.entity !== "media.play_pause" || mediaCard.icon !== "Play Pause") {
+    throw new Error("Play / Pause cards must round-trip with their fixed default icon");
   }
 }

@@ -161,6 +161,7 @@ start=Start
 still=Stabilny
 subpage=Podstrona
 stop=Zatrzymaj
+stopped=Zatrzymane
 sunny=Słonecznie
 sunny_alert=Ostrzeżenie słoneczne
 sunset=Zachód słońca

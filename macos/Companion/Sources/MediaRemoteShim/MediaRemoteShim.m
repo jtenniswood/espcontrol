@@ -15,6 +15,9 @@ static ECSendCommandFn ECSendCommand;
 static NSMutableArray<id> *ECObservers;
 
 static BOOL ECLoadMediaRemote(void) {
+  // Keep loading the framework independent from the optional Now Playing
+  // entry points. Media commands can remain usable when Apple changes or
+  // removes one of those read-only symbols.
   static dispatch_once_t once;
   dispatch_once(&once, ^{
     ECMediaRemoteHandle = dlopen(
@@ -30,20 +33,22 @@ static BOOL ECLoadMediaRemote(void) {
     ECSendCommand = (ECSendCommandFn) dlsym(
         ECMediaRemoteHandle, "MRMediaRemoteSendCommand");
   });
-  return ECRegisterNotifications != NULL && ECGetNowPlayingInfo != NULL &&
-         ECGetNowPlayingPID != NULL;
+  return ECMediaRemoteHandle != NULL;
 }
 
 @implementation ECMediaRemoteBridge
 
-+ (BOOL)isAvailable { return ECLoadMediaRemote(); }
++ (BOOL)isAvailable {
+  return ECLoadMediaRemote() && ECRegisterNotifications != NULL &&
+         ECGetNowPlayingInfo != NULL && ECGetNowPlayingPID != NULL;
+}
 
 + (BOOL)isCommandAvailable {
   return ECLoadMediaRemote() && ECSendCommand != NULL;
 }
 
 + (void)fetchNowPlaying:(ECMediaRemoteSnapshotHandler)handler {
-  if (!ECLoadMediaRemote()) {
+  if (![self isAvailable]) {
     dispatch_async(dispatch_get_main_queue(), ^{ handler(nil, nil); });
     return;
   }
@@ -57,7 +62,7 @@ static BOOL ECLoadMediaRemote(void) {
 }
 
 + (BOOL)startObservingChanges:(ECMediaRemoteChangeHandler)handler {
-  if (!ECLoadMediaRemote()) return NO;
+  if (![self isAvailable]) return NO;
   [self stopObservingChanges];
   ECRegisterNotifications(dispatch_get_main_queue());
   ECObservers = [NSMutableArray array];

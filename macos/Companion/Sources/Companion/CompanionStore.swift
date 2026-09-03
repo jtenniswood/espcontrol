@@ -36,7 +36,12 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    private let nowPlayingSharingEnabled = false
+    @Published var nowPlayingSharingEnabled: Bool {
+        didSet {
+            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
+            updateNowPlayingProvider()
+        }
+    }
     @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
@@ -78,6 +83,7 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
+        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
         systemMetricsSharingEnabled = stableDefaults.object(forKey: "systemMetricsSharingEnabled") as? Bool
             ?? legacyDefaults?.object(forKey: "systemMetricsSharingEnabled") as? Bool
             ?? UserDefaults.standard.object(forKey: "systemMetricsSharingEnabled") as? Bool
@@ -334,6 +340,10 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateNowPlayingProvider() {
+        if !isConnected || !nowPlayingSharingEnabled {
+            // Do not carry a confirmed session across disconnects or disabled sharing.
+            latestNowPlayingSnapshot = nil
+        }
         if isConnected && nowPlayingSharingEnabled {
             nowPlayingProvider.start()
         } else {
@@ -395,6 +405,11 @@ final class CompanionStore: NSObject, ObservableObject {
             return openFolder(actionIdentifier: actionIdentifier)
         }
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
+            if actionIdentifier == SystemMediaController.playPauseID {
+                guard nowPlayingSharingEnabled,
+                      let snapshot = latestNowPlayingSnapshot,
+                      snapshot.state != .unavailable else { return false }
+            }
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {

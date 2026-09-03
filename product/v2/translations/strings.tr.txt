@@ -161,6 +161,7 @@ start=Başlat
 still=Durgun
 subpage=Alt sayfa
 stop=Durdur
+stopped=Durduruldu
 sunny=Güneşli
 sunny_alert=Güneş uyarısı
 sunset=Gün batımı

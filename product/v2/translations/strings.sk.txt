@@ -161,6 +161,7 @@ start=Spustiť
 still=Stojí
 subpage=Podstránka
 stop=Zastaviť
+stopped=Zastavené
 sunny=Slnečno
 sunny_alert=Slnečné varovanie
 sunset=Západ slnka

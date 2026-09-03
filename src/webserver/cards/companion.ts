@@ -26,8 +26,9 @@ export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
     folder: "Folder Outline",
     stats: "Gauge",
 } as const;
+export const COMPANION_MEDIA_PLAY_PAUSE_ACTION = "media.play_pause";
 export const COMPANION_MEDIA_ACTIONS = [
-    { id: "media.play_pause", label: "Play / Pause", icon: "Play Pause" },
+    { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Play / Pause", icon: "Play Pause" },
     { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
     { id: "media.next", label: "Next Track", icon: "Skip Next" },
 ] as const;
@@ -258,7 +259,8 @@ export function companionEntityForMode(mode: string): string {
 
 export function companionApplicationActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
     return actions.filter((action) =>
-        action.id !== COMPANION_FINDER_ID && !action.id.startsWith(COMPANION_FOLDER_PREFIX));
+        action.id !== COMPANION_FINDER_ID && !action.id.startsWith(COMPANION_FOLDER_PREFIX) &&
+        !COMPANION_MEDIA_ACTIONS.some((mediaAction) => mediaAction.id === action.id));
 }
 
 export function companionFolderActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
@@ -323,7 +325,7 @@ export function normalizeCompanionCard(card: any): void {
     card.icon_on = "Auto";
     const mode = companionCardMode(card);
     if (!card.icon || card.icon === "Auto" ||
-        (card.icon === "Monitor" && mode !== "app") ||
+        (card.icon === "Monitor" && mode !== "app" && mode !== "media") ||
         (card.icon === "Folder" && mode === "folder")) {
         card.icon = companionSubtypeDefaultIcon(mode, card.entity);
     }

@@ -65,7 +65,6 @@ final class SystemNowPlayingProvider {
     }
 
     var isAvailable: Bool { source.isAvailable }
-
     func start() {
         stop()
         guard isAvailable else {
