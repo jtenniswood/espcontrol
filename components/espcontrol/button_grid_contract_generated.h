@@ -778,6 +778,7 @@ inline bool card_contract_large_numbers_supported(const std::string &type, const
   if (type == "sensor") return precision != "icon" && precision != "text";
   if (type == "weather") return precision == "today" || precision == "tomorrow";
   return type == "" || type == "action" || type == "calendar" || type == "clock" ||
+         type == "companion" ||
          type == "climate" || type == "media" || type == "subpage" ||
          type == "timezone";
 }

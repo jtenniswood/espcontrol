@@ -142,6 +142,21 @@ func testRestartRepublishesAnUnchangedSnapshot() {
     XCTAssertEqual(snapshots.map(\.generation), [1, 1])
 }
 
+func testPlaybackStateChangesOnlyAfterAConfirmedSnapshot() {
+    let source = FakeMediaRemoteSource()
+    source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 1]
+    let provider = SystemNowPlayingProvider(source: source)
+    var states: [CompanionPlaybackState] = []
+    provider.onSnapshot = { states.append($0.state) }
+    provider.refresh()
+
+    XCTAssertEqual(states, [.playing])
+
+    source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 0]
+    provider.refresh()
+    XCTAssertEqual(states, [.playing, .paused])
+}
+
 func testPanelWebServerURLDropsCompanionPort() {
     XCTAssertEqual(
         CompanionStore.panelWebServerURL(from: "192.168.6.100:9443")?.absoluteString,

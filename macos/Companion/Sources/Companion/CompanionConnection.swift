@@ -216,7 +216,11 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     private func scheduleReconnect() {
         guard !hasTerminalConnectionError else { return }
-        guard shouldReconnect, store.hasSavedPairing else {
+        // Pairing failures deliberately close their unauthenticated socket.
+        // Keep the specific server error visible instead of replacing it with
+        // a generic disconnect message during that expected teardown.
+        guard shouldReconnect else { return }
+        guard store.hasSavedPairing else {
             store.updateStatus("Panel disconnected")
             return
         }
@@ -252,9 +256,15 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            // Version 1 explicitly predates system metrics. A short legacy
+            // authentication response has no capability declaration, so
+            // retain the original connected-panel behaviour for it.
+            let supportsMetrics = parts.count < 2 || (UInt32(parts[1]) ?? 0) >= 2
+            store.setSystemMetricsSupported(supportsMetrics)
             if let task { startHeartbeat(for: task) }
             publishCatalogue()
             store.republishCurrentNowPlaying()
+            store.republishCurrentSystemMetrics()
         case "CATALOGUE":
             publishCatalogue()
         case "INVOKE":
@@ -340,6 +350,24 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
                   "mimeType": "image/jpeg"])
     }
 
+    func publishSystemMetrics(_ snapshot: CompanionSystemMetricsSnapshot) {
+        var message: [String: Any] = [
+            "type": "system_metrics", "version": 2, "generation": snapshot.generation,
+            "cpuUsagePercent": snapshot.cpuUsagePercent,
+            "memoryUsagePercent": snapshot.memoryUsagePercent,
+            "storageUsagePercent": snapshot.storageUsagePercent,
+        ]
+        if let battery = snapshot.batteryPercent { message["batteryPercent"] = battery }
+        if let throughput = snapshot.networkThroughputKBps {
+            message["networkThroughputKBps"] = throughput
+        }
+        sendJSON(message)
+    }
+
+    func publishSystemMetricsUnavailable() {
+        sendJSON(["type": "system_metrics", "version": 2, "generation": 1, "available": false])
+    }
+
     private func sendNextArtworkChunk() {
         guard let artworkData else { return }
         if artworkOffset >= artworkData.count {
@@ -395,6 +423,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             catalogue += separator + entry
         }
         send(catalogue)
+        publishFocusedApplication()
+    }
+
+    func publishFocusedApplication() {
+        let identifier = store.focusedLaunchableApplicationIdentifier()
+        guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
+        send("FOCUS|\(identifier)")
     }
 
     func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {

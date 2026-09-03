@@ -36,11 +36,24 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    private let nowPlayingSharingEnabled = false
+    @Published var nowPlayingSharingEnabled: Bool {
+        didSet {
+            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
+            updateNowPlayingProvider()
+        }
+    }
     @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
+    @Published var systemMetricsSharingEnabled: Bool {
+        didSet {
+            defaults.set(systemMetricsSharingEnabled, forKey: "systemMetricsSharingEnabled")
+            updateSystemMetricsProvider()
+        }
+    }
+    @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
+    @Published private(set) var systemMetricsSupported = false
 
     private enum Keys {
         static let host = "panelHost"
@@ -52,7 +65,9 @@ final class CompanionStore: NSObject, ObservableObject {
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
     private let mediaController = SystemMediaController()
+    private let systemMetricsProvider = SystemMetricsProvider()
     private var latestNowPlayingSnapshot: CompanionNowPlayingSnapshot?
+    private var latestSystemMetricsSnapshot: CompanionSystemMetricsSnapshot?
     private var mediaControlTimer: Timer?
     private var lastMediaControlValues: [String: Int] = [:]
 
@@ -68,7 +83,18 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
+        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
+        systemMetricsSharingEnabled = stableDefaults.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? legacyDefaults?.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? UserDefaults.standard.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? true
         super.init()
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(frontmostApplicationDidChange(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
         nowPlayingProvider.onSnapshot = { [weak self] snapshot in
@@ -78,6 +104,13 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingArtwork = snapshot.artworkJPEG.flatMap(NSImage.init(data:))
             latestNowPlayingSnapshot = snapshot
             if isConnected { connection.publishNowPlaying(snapshot) }
+        }
+        systemMetricsProvider.onSnapshot = { [weak self] snapshot in
+            guard let self else { return }
+            guard isConnected && systemMetricsSharingEnabled && systemMetricsSupported else { return }
+            latestSystemMetricsSnapshot = snapshot
+            systemMetricsStatus = "Sharing processor, memory, storage, network and battery statistics"
+            if isConnected { connection.publishSystemMetrics(snapshot) }
         }
         if supportsLaunchAtLogin { refreshLaunchAtLoginStatus() }
         refreshApplications()
@@ -189,6 +222,15 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func launchableApps() -> [LaunchableApp] { availableApps }
     func folderActions() -> [ApprovedFolder] { approvedFolders }
+    func focusedLaunchableApplicationIdentifier() -> String {
+        guard let identifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+              availableApps.contains(where: { $0.bundleIdentifier == identifier }) else { return "" }
+        return identifier
+    }
+
+    @objc private func frontmostApplicationDidChange(_: Notification) {
+        if isConnected { connection.publishFocusedApplication() }
+    }
 
     func chooseFolder() {
         let panel = NSOpenPanel()
@@ -265,7 +307,9 @@ final class CompanionStore: NSObject, ObservableObject {
         print("[EspControl Companion] \(message)")
         statusDescription = message
         isConnected = connected
+        if !connected { systemMetricsSupported = false }
         updateNowPlayingProvider()
+        updateSystemMetricsProvider()
         if connected {
             startMediaControlPublishing()
         } else {
@@ -275,7 +319,31 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
 
+    private func updateSystemMetricsProvider() {
+        if isConnected && systemMetricsSharingEnabled && systemMetricsSupported {
+            systemMetricsStatus = "Collecting Mac system statistics…"
+            systemMetricsProvider.start()
+        } else {
+            if isConnected && systemMetricsSupported && !systemMetricsSharingEnabled {
+                connection.publishSystemMetricsUnavailable()
+                latestSystemMetricsSnapshot = nil
+            }
+            systemMetricsProvider.stop()
+            systemMetricsStatus = systemMetricsSharingEnabled
+                ? "Waiting for a panel connection" : "Mac system statistics sharing is disabled"
+        }
+    }
+
+    func setSystemMetricsSupported(_ supported: Bool) {
+        systemMetricsSupported = supported
+        updateSystemMetricsProvider()
+    }
+
     private func updateNowPlayingProvider() {
+        if !isConnected || !nowPlayingSharingEnabled {
+            // Do not carry a confirmed session across disconnects or disabled sharing.
+            latestNowPlayingSnapshot = nil
+        }
         if isConnected && nowPlayingSharingEnabled {
             nowPlayingProvider.start()
         } else {
@@ -299,6 +367,17 @@ final class CompanionStore: NSObject, ObservableObject {
     func republishCurrentNowPlaying() {
         guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
+    }
+    func republishCurrentSystemMetrics() {
+        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported,
+              let snapshot = latestSystemMetricsSnapshot else { return }
+        connection.publishSystemMetrics(snapshot)
+    }
+
+    func publishSystemMetricsUnavailable() {
+        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported else { return }
+        latestSystemMetricsSnapshot = nil
+        connection.publishSystemMetricsUnavailable()
     }
     func launch(bundleIdentifier: String) async -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }
@@ -350,6 +429,11 @@ final class CompanionStore: NSObject, ObservableObject {
             return openFolder(actionIdentifier: actionIdentifier)
         }
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
+            if actionIdentifier == SystemMediaController.playPauseID {
+                guard nowPlayingSharingEnabled,
+                      let snapshot = latestNowPlayingSnapshot,
+                      snapshot.state != .unavailable else { return false }
+            }
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {

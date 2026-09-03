@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import re
 import sys
@@ -21,6 +22,9 @@ CARD_BEGIN = "<!-- BEGIN GENERATED CARD TYPE MAP -->"
 CARD_END = "<!-- END GENERATED CARD TYPE MAP -->"
 CHECK_BEGIN = "<!-- BEGIN GENERATED CHECK MATRIX -->"
 CHECK_END = "<!-- END GENERATED CHECK MATRIX -->"
+BUILD_FLAGS_BEGIN = "<!-- BEGIN GENERATED DEVICE BUILD FLAGS -->"
+BUILD_FLAGS_END = "<!-- END GENERATED DEVICE BUILD FLAGS -->"
+HISTORICAL_MARKER = "<!-- DEV-DOC-STATUS: historical -->"
 
 
 @dataclass(frozen=True)
@@ -73,6 +77,12 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`python3 scripts/generate_device_manifest.py --check` and `npm run check:product`",
     ),
     SourceTruthRow(
+        "dev-docs/build-flag-notes.json and device or included shared package YAML `build_flags`",
+        ("generated section inside `dev-docs/devices-and-builds.md`",),
+        "python3 scripts/check_dev_docs.py --update",
+        "`npm run check:dev-docs`",
+    ),
+    SourceTruthRow(
         "devices/manifest.json",
         ("docs/public/device-profiles.json", "docs/generated/screens/*.md"),
         "python3 scripts/build.py devices",
@@ -114,9 +124,15 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "src/webserver/",
-        ("docs/public/webserver/www.js",),
+        (
+            "docs/public/webserver/www.js",
+            "docs/public/webserver/web-assets.json",
+            "docs/public/webserver/embedded/www.js",
+            "docs/public/webserver/bundles/*/www.js",
+            "docs/public/webserver/*/www.js",
+        ),
         "python3 scripts/build.py www",
-        "`npm run check:web-smoke` and `npm run check:product`",
+        "`npm run check:web-smoke`, `npm run check:web-asset-manifest`, and `npm run check:product`",
     ),
     SourceTruthRow(
         "product/v2/product_compatibility.json",
@@ -212,9 +228,9 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when compact config, backup, or migration behavior changes",
     ),
     CheckMatrixRow(
-        "`devices/manifest.json`, `devices/<slug>/`, `builds/*.yaml`",
+        "`product/v2/device_catalog.json`, `devices/<slug>/`, `builds/*.yaml`",
         "Supported hardware, layout slots, firmware package shape, release build metadata",
-        "`npm run check:device-profiles` and `npm run check:device-matrix`",
+        "`python3 scripts/check_tasks.py run-task device-manifest-output`, `npm run check:device-profiles`, and `npm run check:device-matrix`",
         "`npm run check:product`; compile affected firmware before publishing new or changed device support",
     ),
     CheckMatrixRow(
@@ -270,6 +286,103 @@ def read_json(path: str) -> object:
     return json.loads((ROOT / path).read_text())
 
 
+def normalize_build_flag(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    value = value.replace(r'\"', '"').replace(r"\'", "'")
+    return value[2:] if value.startswith("-D") else value
+
+
+def included_yaml_paths(path: Path) -> list[Path]:
+    """Return local YAML files included directly by path."""
+    include_re = re.compile(
+        r"!include\b\s*(?:\{\s*file:\s*)?(?P<path>\"[^\"]+\"|'[^']+'|[^\s,}#]+)"
+    )
+    included: list[Path] = []
+    for match in include_re.finditer(path.read_text()):
+        include_value = match.group("path").strip('"\'')
+        include_pattern = re.sub(r"\$\{[^}]+\}", "*", include_value)
+        candidates = [Path(value).resolve() for value in glob.glob(str(path.parent / include_pattern))]
+        for include_path in candidates:
+            try:
+                include_path.relative_to(ROOT)
+            except ValueError as error:
+                raise ValueError(
+                    f"{rel(path)} includes YAML outside the repository: {include_value}"
+                ) from error
+            if include_path.suffix in {".yaml", ".yml"} and include_path.is_file():
+                included.append(include_path)
+    return included
+
+
+def device_yaml_graph(device_root: Path) -> set[Path]:
+    """Return device YAML plus local shared YAML reachable through includes."""
+    pending = list(device_root.glob("**/*.yaml"))
+    visited: set[Path] = set()
+    while pending:
+        path = pending.pop().resolve()
+        if path in visited:
+            continue
+        visited.add(path)
+        pending.extend(included_yaml_paths(path))
+    return visited
+
+
+def yaml_build_flags(path: Path) -> set[str]:
+    """Return build flags authored in YAML list form in one file."""
+    flags: set[str] = set()
+    key_re = re.compile(r"^(\s*)(?:build_flags|build_src_flags):\s*$")
+    unsupported_key_re = re.compile(r"^\s*(?:build_flags|build_src_flags):\s*\S")
+    item_re = re.compile(r"^\s*-\s*(.+?)\s*$")
+    lines = path.read_text().splitlines()
+    index = 0
+    while index < len(lines):
+        if unsupported_key_re.match(lines[index]):
+            raise ValueError(
+                f"{rel(path)} uses inline build flags; use a YAML list so documentation can validate each flag"
+            )
+        key_match = key_re.match(lines[index])
+        if not key_match:
+            index += 1
+            continue
+        base_indent = len(key_match.group(1))
+        index += 1
+        while index < len(lines):
+            line = lines[index]
+            stripped = line.strip()
+            indent = len(line) - len(line.lstrip())
+            if stripped and not stripped.startswith("#") and indent <= base_indent:
+                break
+            item_match = item_re.match(line)
+            if item_match:
+                raw = item_match.group(1).split(" #", 1)[0].strip()
+                flag = normalize_build_flag(raw)
+                if flag:
+                    flags.add(flag)
+            index += 1
+    return flags
+
+
+def device_build_flags() -> dict[str, set[str]]:
+    """Return flag-to-device mappings from device and included shared YAML."""
+    mappings: dict[str, set[str]] = {}
+    for device_root in sorted((ROOT / "devices").iterdir()):
+        if not device_root.is_dir():
+            continue
+        for path in device_yaml_graph(device_root):
+            for flag in yaml_build_flags(path):
+                mappings.setdefault(flag, set()).add(device_root.name)
+    return mappings
+
+
+def build_flag_notes() -> dict[str, dict[str, str]]:
+    notes = read_json("dev-docs/build-flag-notes.json")
+    if not isinstance(notes, dict):
+        raise ValueError("dev-docs/build-flag-notes.json must contain an object")
+    return notes  # type: ignore[return-value]
+
+
 def replace_between(text: str, begin: str, end: str, replacement: str) -> str:
     block = f"{begin}\n{replacement.rstrip()}\n{end}"
     if begin in text and end in text:
@@ -317,6 +430,35 @@ def source_truth_table() -> str:
         outputs = "<br>".join(code_if_path(output) for output in row.outputs)
         rows.append((source, outputs, f"`{row.generator}`" if row.generator != "none" else "none", validate_check_guidance(row.checks)))
     return markdown_table(("Authored source", "Generated outputs", "Generator", "Required check"), rows)
+
+
+def generated_build_flag_table() -> str:
+    mappings = device_build_flags()
+    notes = build_flag_notes()
+    missing = sorted(set(mappings) - set(notes))
+    extra = sorted(set(notes) - set(mappings))
+    if missing:
+        raise ValueError(
+            "Missing purpose/removal notes in dev-docs/build-flag-notes.json for: "
+            + ", ".join(missing)
+        )
+    if extra:
+        raise ValueError(
+            "Build flag notes no longer used by device YAML: " + ", ".join(extra)
+        )
+
+    rows: list[tuple[str, ...]] = []
+    for flag in sorted(mappings):
+        note = notes[flag]
+        purpose = note.get("purpose") if isinstance(note, dict) else None
+        remove_when = note.get("remove_when") if isinstance(note, dict) else None
+        if not isinstance(purpose, str) or not purpose.strip():
+            raise ValueError(f"Build flag {flag} needs a non-empty purpose")
+        if not isinstance(remove_when, str) or not remove_when.strip():
+            raise ValueError(f"Build flag {flag} needs non-empty removal criteria")
+        devices = "<br>".join(f"`{device}`" for device in sorted(mappings[flag]))
+        rows.append((f"`{flag}`", devices, purpose, remove_when))
+    return markdown_table(("Flag", "Devices from YAML", "Purpose", "Remove when"), rows)
 
 
 def contract_cards() -> dict[str, dict]:
@@ -516,6 +658,11 @@ def update_generated_files() -> None:
         "dev-docs/source-of-truth.md": (SOURCE_BEGIN, SOURCE_END, source_truth_table()),
         "dev-docs/card-type-map.md": (CARD_BEGIN, CARD_END, generated_card_map()),
         "dev-docs/check-matrix.md": (CHECK_BEGIN, CHECK_END, generated_check_matrix()),
+        "dev-docs/devices-and-builds.md": (
+            BUILD_FLAGS_BEGIN,
+            BUILD_FLAGS_END,
+            generated_build_flag_table(),
+        ),
     }
     for path, (begin, end, content) in updates.items():
         full = ROOT / path
@@ -537,6 +684,9 @@ def expected_generated_text(path: str) -> str:
     elif path == "dev-docs/check-matrix.md":
         content = generated_check_matrix()
         begin, end = CHECK_BEGIN, CHECK_END
+    elif path == "dev-docs/devices-and-builds.md":
+        content = generated_build_flag_table()
+        begin, end = BUILD_FLAGS_BEGIN, BUILD_FLAGS_END
     else:
         raise ValueError(path)
     current = (ROOT / path).read_text() if (ROOT / path).exists() else ""
@@ -544,7 +694,12 @@ def expected_generated_text(path: str) -> str:
 
 
 def check_generated_files(errors: list[str]) -> None:
-    for path in ("dev-docs/source-of-truth.md", "dev-docs/card-type-map.md", "dev-docs/check-matrix.md"):
+    for path in (
+        "dev-docs/source-of-truth.md",
+        "dev-docs/card-type-map.md",
+        "dev-docs/check-matrix.md",
+        "dev-docs/devices-and-builds.md",
+    ):
         full = ROOT / path
         if not full.exists():
             errors.append(f"{path} is missing; run python3 scripts/check_dev_docs.py --update")
@@ -555,7 +710,17 @@ def check_generated_files(errors: list[str]) -> None:
 
 
 def source_truth_path_targets(value: str) -> list[str]:
-    prefixes = ("common/", "components/", "compatibility/", "devices/", "docs/", "scripts/", "src/")
+    prefixes = (
+        "common/",
+        "components/",
+        "compatibility/",
+        "dev-docs/",
+        "devices/",
+        "docs/",
+        "product/",
+        "scripts/",
+        "src/",
+    )
     targets: list[str] = []
     quoted = re.findall(r"`([^`]+)`", value)
     if value.startswith(("generated ", "no generated ", "compile ")):
@@ -631,6 +796,154 @@ def check_markdown_links(errors: list[str]) -> None:
                 errors.append(f"{rel(path)} links to missing file {target}")
 
 
+def dev_doc_links(path: Path) -> set[Path]:
+    link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+    dev_root = (ROOT / "dev-docs").resolve()
+    links: set[Path] = set()
+    for target in link_re.findall(path.read_text()):
+        target = target.split("#", 1)[0]
+        if not target or re.match(r"^[a-z]+:", target) or target.startswith(("#", "/")):
+            continue
+        linked = (path.parent / target).resolve()
+        try:
+            linked.relative_to(dev_root)
+        except ValueError:
+            continue
+        if linked.suffix == ".md" and linked.exists():
+            links.add(linked)
+    return links
+
+
+def check_indexed_dev_docs(errors: list[str]) -> None:
+    dev_root = ROOT / "dev-docs"
+    start = (dev_root / "README.md").resolve()
+    reachable: set[Path] = set()
+    pending = [start]
+    while pending:
+        path = pending.pop()
+        if path in reachable:
+            continue
+        reachable.add(path)
+        pending.extend(sorted(dev_doc_links(path) - reachable))
+
+    all_pages = {path.resolve() for path in dev_root.glob("**/*.md")}
+    orphaned = sorted(rel(path) for path in all_pages - reachable)
+    if orphaned:
+        errors.append("Unindexed developer documentation pages: " + ", ".join(orphaned))
+
+
+def generated_output_paths() -> set[str]:
+    paths: set[str] = set()
+    for row in SOURCE_TRUTH_ROWS:
+        for output in row.outputs:
+            if output.startswith(("generated ", "no generated ")):
+                continue
+            for target in re.findall(r"`([^`]+)`", output):
+                if "*" in target:
+                    paths.update(rel(path) for path in ROOT.glob(target) if path.is_file())
+                elif (ROOT / target).exists():
+                    paths.add(target)
+            if "`" not in output and "*" not in output and (ROOT / output).exists():
+                paths.add(output)
+    return paths
+
+
+def check_generated_edit_instructions(errors: list[str]) -> None:
+    edit_pattern = (
+        r"\b(?:edit|hand-edit|modify|update|change|write(?:\s+directly)?\s+to|"
+        r"add\s+[^.\n]{0,60}\s+to|remove\s+[^.\n]{0,60}\s+from)\b"
+    )
+    negative_re = re.compile(r"\b(?:do not|don't|never|avoid)\s+(?:hand-)?edit\b", re.IGNORECASE)
+    list_intro_re = re.compile(
+        r"^\s*(?:edit|hand-edit|modify|update|change)\s+"
+        r"(?:these|the following|the)?\s*(?:generated\s+)?files?:\s*$",
+        re.IGNORECASE,
+    )
+    generated_paths = generated_output_paths()
+    for path in markdown_files():
+        lines = path.read_text().splitlines()
+        for line_number, line in enumerate(lines, start=1):
+            if negative_re.search(line):
+                continue
+            for target in generated_paths:
+                instruction_re = re.compile(
+                    edit_pattern + rf"[^.\n]{{0,120}}`{re.escape(target)}`",
+                    re.IGNORECASE,
+                )
+                if instruction_re.search(line):
+                    errors.append(
+                        f"{rel(path)}:{line_number} tells maintainers to edit generated file {target}"
+                    )
+            if not list_intro_re.match(line):
+                continue
+            for offset, listed_line in enumerate(lines[line_number:], start=1):
+                if not listed_line.strip():
+                    break
+                if not re.match(r"^\s*[-*]\s+", listed_line):
+                    continue
+                for target in generated_paths:
+                    if f"`{target}`" in listed_line:
+                        errors.append(
+                            f"{rel(path)}:{line_number + offset} lists generated file {target} under an edit instruction"
+                        )
+
+
+def check_device_build_flag_documentation(errors: list[str]) -> None:
+    mappings = device_build_flags()
+    notes = build_flag_notes()
+    missing = sorted(set(mappings) - set(notes))
+    extra = sorted(set(notes) - set(mappings))
+    if missing:
+        errors.append("Device build flags missing documentation: " + ", ".join(missing))
+    if extra:
+        errors.append("Documented device build flags no longer used: " + ", ".join(extra))
+    for flag in sorted(set(mappings) & set(notes)):
+        note = notes[flag]
+        if not isinstance(note, dict) or not str(note.get("purpose", "")).strip():
+            errors.append(f"Device build flag {flag} is missing a purpose")
+        if not isinstance(note, dict) or not str(note.get("remove_when", "")).strip():
+            errors.append(f"Device build flag {flag} is missing removal criteria")
+
+
+def check_historical_records(errors: list[str]) -> None:
+    dev_root = ROOT / "dev-docs"
+    history_root = dev_root / "history"
+    for path in sorted(dev_root.glob("**/*.md")):
+        is_record = history_root in path.parents and path.name != "README.md"
+        text = path.read_text()
+        has_marker = HISTORICAL_MARKER in text
+        describes_history = bool(
+            re.search(r"(?im)^>\s*Historical record:|^Test window:\s*\d{4}", text)
+        )
+        if is_record and not has_marker:
+            errors.append(f"Historical record is missing status marker: {rel(path)}")
+        if has_marker and not is_record:
+            errors.append(f"Historical record must live under dev-docs/history/: {rel(path)}")
+        if describes_history and not is_record:
+            errors.append(f"Historical guidance must live under dev-docs/history/: {rel(path)}")
+        if path.name.endswith("-baseline.md") and not is_record:
+            errors.append(f"Baseline record must live under dev-docs/history/: {rel(path)}")
+
+    forbidden_sources = [dev_root / "task-router.md", *sorted((dev_root / "playbooks").glob("*.md"))]
+    for source in forbidden_sources:
+        for target in dev_doc_links(source):
+            if history_root.resolve() in target.parents:
+                errors.append(f"Current workflow {rel(source)} links to historical guidance {rel(target)}")
+
+    heading = ""
+    index = dev_root / "README.md"
+    for line_number, line in enumerate(index.read_text().splitlines(), start=1):
+        heading_match = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading_match:
+            heading = heading_match.group(1)
+        for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", line):
+            linked = (index.parent / target.split("#", 1)[0]).resolve()
+            if history_root.resolve() in linked.parents and heading != "Historical Records":
+                errors.append(
+                    f"dev-docs/README.md:{line_number} presents a historical page under {heading or 'no section'}"
+                )
+
+
 def check_referenced_commands(errors: list[str]) -> None:
     scripts = package_scripts()
     npm_re = re.compile(r"\bnpm run ([A-Za-z0-9:_-]+)")
@@ -692,9 +1005,13 @@ def run_checks() -> list[str]:
     errors: list[str] = []
     check_package_script(errors)
     check_public_docs(errors)
+    check_device_build_flag_documentation(errors)
     check_generated_files(errors)
     check_source_truth_paths(errors)
     check_markdown_links(errors)
+    check_indexed_dev_docs(errors)
+    check_generated_edit_instructions(errors)
+    check_historical_records(errors)
     check_referenced_commands(errors)
     check_referenced_paths(errors)
     check_local_artifacts(errors)

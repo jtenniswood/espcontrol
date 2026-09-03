@@ -272,6 +272,7 @@ const ICON_GROUPS = {
   'Silverware': 'Appliances',
 
   'Cast': 'Media & Entertainment',
+  'Folder Outline': 'Media & Entertainment',
   'Folder Music Outline': 'Media & Entertainment',
   'Folder Play': 'Media & Entertainment',
   'Gamepad': 'Media & Entertainment',
@@ -293,6 +294,7 @@ const ICON_GROUPS = {
   'PlayStation': 'Media & Entertainment',
   'Projector': 'Media & Entertainment',
   'Projector Off': 'Media & Entertainment',
+  'Web': 'Media & Entertainment',
   'Remote Back': 'Media & Entertainment',
   'Remote Down': 'Media & Entertainment',
   'Remote Home': 'Media & Entertainment',

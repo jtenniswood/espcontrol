@@ -8,8 +8,7 @@
 namespace espcontrol::cards {
 
 inline bool navigation_driver_matches(const Context &context) {
-  return !context.legacy_dispatch &&
-         context.runtime.driver == card_runtime::CardDriverId::SUBPAGE;
+  return context.runtime.driver == card_runtime::CardDriverId::SUBPAGE;
 }
 
 inline bool navigation_driver_owns_subpage(

@@ -152,18 +152,40 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
 
 inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
+  if (companion_metric_key_valid(p.entity)) {
+    const std::string label = p.label.empty()
+      ? espcontrol_i18n_key(companion_metric_label_key(p.entity)) : p.label;
+    lv_label_set_display_text(s.text_lbl, label.c_str());
+    lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_label_set_display_text(s.sensor_lbl, "--");
+    const std::string unit = trim_display_unit(
+      p.unit.empty() ? companion_metric_default_unit(p.entity) : p.unit);
+    lv_label_set_display_text(s.unit_lbl, "");
+    companion_track_metric_card(s.btn, s.sensor_lbl, s.unit_lbl, p.entity, unit,
+                                parse_precision(p.precision));
+    return;
+  }
   const std::string shortcut_label = companion_shortcut_label(p.entity);
   const bool url_card = !companion_encoded_url(p.sensor).empty();
-  std::string label = p.label.empty()
-    ? (!shortcut_label.empty() ? shortcut_label : (url_card ? "Open URL" : (p.entity.empty() ? "Mac App" : p.entity)))
-    : p.label;
-  lv_label_set_text(s.text_lbl, label.c_str());
-  const char *icon = (p.icon.empty() || p.icon == "Auto") ? find_icon("Monitor") : find_icon(p.icon.c_str());
-  lv_label_set_text(s.icon_lbl, icon);
-  companion_track_card(s.btn, p.entity, p.sensor);
+  const bool media_play_pause = p.entity == "media.play_pause";
   const bool available = url_card
     ? companion_url_available(p.entity, p.sensor)
     : companion_action_available(p.entity);
+  const auto companion_snapshot = companion_runtime_snapshot();
+  std::string label = media_play_pause
+    ? espcontrol_i18n(std::string(companion_play_pause_status(
+        companion_snapshot.now_playing.playback_state, available)))
+    : p.label.empty()
+    ? (!shortcut_label.empty() ? shortcut_label : (url_card ? "Open URL" : (p.entity.empty() ? "Mac App" : p.entity)))
+    : p.label;
+  lv_label_set_display_text(s.text_lbl, label.c_str());
+  const char *icon = (p.icon.empty() || p.icon == "Auto" ||
+                      (media_play_pause && p.icon == "Monitor"))
+    ? find_icon(media_play_pause ? "Play Pause" : "Monitor") : find_icon(p.icon.c_str());
+  lv_label_set_display_text(s.icon_lbl, icon);
+  companion_track_card(s.btn, p.entity, p.sensor, s.text_lbl);
   if (available) {
     lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
     apply_push_button_transition(s.btn);
@@ -171,6 +193,7 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_state(s.btn, LV_STATE_DISABLED);
     clear_push_button_transition(s.btn);
   }
+  companion_apply_card_focus(s.btn, p.entity);
 }
 
 inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {

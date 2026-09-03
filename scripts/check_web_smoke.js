@@ -638,13 +638,10 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), fals
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", true), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", false), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", true), false);
 assert(
   hooks.buttonTypePickerKeysFor(false, "fan_speed").includes("fan_speed"),
   "fan cards are available"
 );
-assert(!hooks.buttonTypeRuntimeSpec("todo"), "todo card type is not registered");
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "\u00b0C");
