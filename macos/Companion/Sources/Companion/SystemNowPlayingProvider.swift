@@ -30,7 +30,7 @@ protocol MediaRemoteProviding {
     var isAvailable: Bool { get }
     func startObserving(_ handler: @escaping () -> Void) -> Bool
     func stopObserving()
-    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void)
+    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?, NSNumber?) -> Void)
 }
 
 struct MediaRemoteSystemSource: MediaRemoteProviding {
@@ -39,7 +39,7 @@ struct MediaRemoteSystemSource: MediaRemoteProviding {
         ECMediaRemoteBridge.startObservingChanges(handler)
     }
     func stopObserving() { ECMediaRemoteBridge.stopObservingChanges() }
-    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void) {
+    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?, NSNumber?) -> Void) {
         ECMediaRemoteBridge.fetchNowPlaying(completion)
     }
 }
@@ -100,7 +100,7 @@ final class SystemNowPlayingProvider {
     func refresh() {
         guard active else { return }
         let token = lifecycleToken
-        source.fetch { [weak self] raw, pid in
+        source.fetch { [weak self] raw, pid, isPlaying in
             guard let self, self.active, self.lifecycleToken == token else { return }
             guard let raw, !raw.isEmpty else {
                 self.onStatus?("No active macOS Now Playing session")
@@ -116,7 +116,7 @@ final class SystemNowPlayingProvider {
             let position = Self.number(values, keys: ["elapsedtime", "elapsed"])
             let rawRate = Self.number(values, keys: ["playbackrate", "rate"])
             let rate = rawRate.isFinite ? min(16, max(-16, rawRate)) : 0
-            let state: CompanionPlaybackState = rate > 0 ? .playing : (title.isEmpty ? .stopped : .paused)
+            let state = Self.playbackState(values: values, rate: rate, isPlaying: isPlaying)
             let application: NSRunningApplication?
             if let processIdentifier = pid {
                 application = NSRunningApplication(processIdentifier: processIdentifier.int32Value)
@@ -193,6 +193,14 @@ final class SystemNowPlayingProvider {
             if let value = values[key] as? NSNumber { return value.doubleValue }
         }
         return 0
+    }
+
+    static func playbackState(values: [String: Any], rate: Double,
+                              isPlaying: NSNumber?) -> CompanionPlaybackState {
+        if let isPlaying {
+            return isPlaying.boolValue ? .playing : (string(values, keys: ["title"]).isEmpty ? .stopped : .paused)
+        }
+        return rate > 0 ? .playing : (string(values, keys: ["title"]).isEmpty ? .stopped : .paused)
     }
 
     private static func data(_ values: [String: Any], keys: [String]) -> Data? {

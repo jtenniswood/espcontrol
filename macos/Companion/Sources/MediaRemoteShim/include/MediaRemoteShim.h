@@ -3,7 +3,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^ECMediaRemoteSnapshotHandler)(NSDictionary<NSString *, id> * _Nullable info,
-                                              NSNumber * _Nullable processIdentifier);
+                                              NSNumber * _Nullable processIdentifier,
+                                              NSNumber * _Nullable isPlaying);
 typedef void (^ECMediaRemoteChangeHandler)(void);
 
 @interface ECMediaRemoteBridge : NSObject

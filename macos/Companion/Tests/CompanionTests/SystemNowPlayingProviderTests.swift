@@ -6,6 +6,7 @@ private final class FakeMediaRemoteSource: MediaRemoteProviding {
     var isAvailable = true
     var payload: [AnyHashable: Any]?
     var pid: NSNumber?
+    var isPlaying: NSNumber?
     var observer: (() -> Void)?
     private(set) var fetchCount = 0
     private(set) var stopped = false
@@ -15,9 +16,9 @@ private final class FakeMediaRemoteSource: MediaRemoteProviding {
         return isAvailable
     }
     func stopObserving() { stopped = true }
-    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void) {
+    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?, NSNumber?) -> Void) {
         fetchCount += 1
-        completion(payload, pid)
+        completion(payload, pid, isPlaying)
     }
 }
 
@@ -155,6 +156,32 @@ func testPlaybackStateChangesOnlyAfterAConfirmedSnapshot() {
     source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 0]
     provider.refresh()
     XCTAssertEqual(states, [.playing, .paused])
+}
+
+func testExplicitMediaRemotePlaybackStateWinsOverStaleRate() {
+    let source = FakeMediaRemoteSource()
+    source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 0]
+    source.isPlaying = true
+    let provider = SystemNowPlayingProvider(source: source)
+    var state: CompanionPlaybackState?
+    provider.onSnapshot = { state = $0.state }
+    provider.refresh()
+    XCTAssertEqual(state, .playing)
+
+    source.isPlaying = false
+    provider.refresh()
+    XCTAssertEqual(state, .paused)
+}
+
+func testExplicitStoppedStateDoesNotRequireAPlaybackRate() {
+    let source = FakeMediaRemoteSource()
+    source.payload = ["UniqueIdentifier": "track"]
+    source.isPlaying = false
+    let provider = SystemNowPlayingProvider(source: source)
+    var state: CompanionPlaybackState?
+    provider.onSnapshot = { state = $0.state }
+    provider.refresh()
+    XCTAssertEqual(state, .stopped)
 }
 
 func testPanelWebServerURLDropsCompanionPort() {

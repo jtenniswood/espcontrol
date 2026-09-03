@@ -5,12 +5,14 @@
 typedef void (*ECRegisterNotificationsFn)(dispatch_queue_t);
 typedef void (*ECGetNowPlayingInfoFn)(dispatch_queue_t, void (^)(CFDictionaryRef _Nullable));
 typedef void (*ECGetNowPlayingPIDFn)(dispatch_queue_t, void (^)(int));
+typedef void (*ECGetNowPlayingIsPlayingFn)(dispatch_queue_t, void (^)(BOOL));
 typedef BOOL (*ECSendCommandFn)(uint32_t, CFDictionaryRef _Nullable);
 
 static void *ECMediaRemoteHandle;
 static ECRegisterNotificationsFn ECRegisterNotifications;
 static ECGetNowPlayingInfoFn ECGetNowPlayingInfo;
 static ECGetNowPlayingPIDFn ECGetNowPlayingPID;
+static ECGetNowPlayingIsPlayingFn ECGetNowPlayingIsPlaying;
 static ECSendCommandFn ECSendCommand;
 static NSMutableArray<id> *ECObservers;
 
@@ -30,6 +32,8 @@ static BOOL ECLoadMediaRemote(void) {
         ECMediaRemoteHandle, "MRMediaRemoteGetNowPlayingInfo");
     ECGetNowPlayingPID = (ECGetNowPlayingPIDFn) dlsym(
         ECMediaRemoteHandle, "MRMediaRemoteGetNowPlayingApplicationPID");
+    ECGetNowPlayingIsPlaying = (ECGetNowPlayingIsPlayingFn) dlsym(
+        ECMediaRemoteHandle, "MRMediaRemoteGetNowPlayingApplicationIsPlaying");
     ECSendCommand = (ECSendCommandFn) dlsym(
         ECMediaRemoteHandle, "MRMediaRemoteSendCommand");
   });
@@ -49,14 +53,20 @@ static BOOL ECLoadMediaRemote(void) {
 
 + (void)fetchNowPlaying:(ECMediaRemoteSnapshotHandler)handler {
   if (![self isAvailable]) {
-    dispatch_async(dispatch_get_main_queue(), ^{ handler(nil, nil); });
+    dispatch_async(dispatch_get_main_queue(), ^{ handler(nil, nil, nil); });
     return;
   }
   ECGetNowPlayingPID(dispatch_get_main_queue(), ^(int processIdentifier) {
     ECGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef value) {
       NSDictionary *info = value == NULL ? nil : [(__bridge NSDictionary *) value copy];
       NSNumber *pid = processIdentifier > 0 ? @(processIdentifier) : nil;
-      handler(info, pid);
+      if (ECGetNowPlayingIsPlaying != NULL) {
+        ECGetNowPlayingIsPlaying(dispatch_get_main_queue(), ^(BOOL isPlaying) {
+          handler(info, pid, @(isPlaying));
+        });
+      } else {
+        handler(info, pid, nil);
+      }
     });
   });
 }
@@ -66,12 +76,16 @@ static BOOL ECLoadMediaRemote(void) {
   [self stopObservingChanges];
   ECRegisterNotifications(dispatch_get_main_queue());
   ECObservers = [NSMutableArray array];
-  NSArray<NSString *> *names = @[
+  NSArray<NSString *> *symbols = @[
     @"kMRMediaRemoteNowPlayingInfoDidChangeNotification",
     @"kMRMediaRemoteNowPlayingApplicationDidChangeNotification",
     @"kMRMediaRemoteNowPlayingApplicationPlaybackStateDidChangeNotification",
   ];
-  for (NSString *name in names) {
+  for (NSString *symbol in symbols) {
+    CFStringRef *notificationPointer = (CFStringRef *)dlsym(
+        ECMediaRemoteHandle, symbol.UTF8String);
+    if (notificationPointer == NULL || *notificationPointer == NULL) continue;
+    NSString *name = (__bridge NSString *)*notificationPointer;
     id observer = [[NSNotificationCenter defaultCenter]
         addObserverForName:name object:nil queue:[NSOperationQueue mainQueue]
         usingBlock:^(__unused NSNotification *notification) { handler(); }];
