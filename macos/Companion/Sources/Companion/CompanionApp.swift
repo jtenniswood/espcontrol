@@ -190,19 +190,25 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         activateCompanionApplication()
         if settingsWindow == nil {
             let content = CompanionSettings(store: store)
-                .frame(width: 560, height: 500)
+                .frame(width: 980, height: 620)
             let controller = NSHostingController(rootView: content)
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 560, height: 500),
+                contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
             )
             window.title = "EspControl Companion Settings"
-            window.contentMinSize = NSSize(width: 520, height: 420)
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.isMovableByWindowBackground = true
+            window.contentMinSize = NSSize(width: 760, height: 500)
             window.contentViewController = controller
             window.delegate = self
             window.isReleasedWhenClosed = false
+            window.standardWindowButton(.closeButton)?.isHidden = true
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
             window.center()
             settingsWindow = window
         }
@@ -280,78 +286,68 @@ private struct CompanionPairingDetails {
     }
 }
 
+private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
+    case about
+    case connection
+    case folders
+    case nowPlaying
+    case general
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .about: return "About EspControl"
+        case .connection: return "Device"
+        case .folders: return "Folders"
+        case .nowPlaying: return "Now Playing"
+        case .general: return "General"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .about: return "info.circle"
+        case .connection: return "network"
+        case .folders: return "folder"
+        case .nowPlaying: return "music.note"
+        case .general: return "gearshape"
+        }
+    }
+}
+
 private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
-    @State private var isConnectionSettingsExpanded = false
+    @State private var selectedPage: CompanionSettingsPage = .about
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        TabView {
-            ScrollView {
-                VStack(spacing: 12) {
-                    connectionStatusPanel
-                    if hasPanelAddress {
-                        deviceWebserverPanel
-                    }
+        ZStack(alignment: .topTrailing) {
+            HStack(spacing: 0) {
+                settingsSidebar
+                Rectangle()
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(width: 1)
+                detailView
+            }
+            .background(Color(nsColor: .windowBackgroundColor))
 
-                    GroupBox {
-                        DisclosureGroup(
-                            isExpanded: $isConnectionSettingsExpanded,
-                            content: {
-                                deviceConnectionSettings
-                                    .padding(.top, 8)
-                            },
-                            label: {
-                                Label("Connection settings", systemImage: "network")
-                            }
-                        )
-                        .padding(8)
-                    }
-                }
-                .padding()
+            Button {
+                closeSettingsWindow()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
-            .tabItem {
-                Label("Status", systemImage: "dot.radiowaves.left.and.right")
-            }
-
-            ScrollView {
-                GroupBox("Folders available to cards") {
-                    folderSettings.padding(8)
-                }
-                .padding()
-            }
-            .tabItem {
-                Label("Folders", systemImage: "folder")
-            }
-
-            ScrollView {
-                GroupBox("Mac Now Playing") {
-                    nowPlayingSettings.padding(8)
-                }
-                .padding()
-            }
-            .tabItem {
-                Label("Now Playing", systemImage: "music.note")
-            }
-
-            ScrollView {
-                VStack(spacing: 12) {
-                    GroupBox("Mac system statistics") {
-                        systemMetricsSettings.padding(8)
-                    }
-                    if store.supportsLaunchAtLogin {
-                        GroupBox("Startup") {
-                            startupSettings.padding(8)
-                        }
-                    }
-                }
-                .padding()
-            }
-            .tabItem {
-                Label("General", systemImage: "gearshape")
-            }
+            .buttonStyle(.plain)
+            .help("Close Settings")
+            .padding(.top, 12)
+            .padding(.trailing, 14)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onAppear {
             focusSettingsWindow()
         }
@@ -361,42 +357,190 @@ private struct CompanionSettings: View {
         }
     }
 
-    private var deviceConnectionSettings: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Button("Paste pairing details") {
-                guard let clipboard = NSPasteboard.general.string(forType: .string),
-                      let details = CompanionPairingDetails.parse(clipboard) else {
-                    store.updateStatus("Copy pairing details from the panel web settings first")
-                    return
+    private var settingsSidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Settings")
+                .font(.system(size: 28, weight: .semibold))
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+                .padding(.bottom, 26)
+
+            VStack(spacing: 4) {
+                ForEach(CompanionSettingsPage.allCases) { page in
+                    Button {
+                        selectedPage = page
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: page.icon)
+                                .font(.system(size: 17, weight: .medium))
+                                .frame(width: 22)
+                            Text(page.title)
+                                .font(.system(size: 15, weight: .medium))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .frame(height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(selectedPage == page ? Color.primary.opacity(0.10) : .clear)
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
-                store.panelHost = details.panelHost
-                pairingCode = details.pairingCode
-                focusedField = nil
-                store.pair(code: details.pairingCode)
             }
-            .controlSize(.large)
+            .padding(.horizontal, 12)
 
-            SettingsTextField(
-                label: "Panel address",
-                placeholder: "e.g. 192.168.6.100",
-                text: $store.panelHost,
-                field: .panelHost,
-                focusedField: $focusedField
-            )
+            Spacer()
+        }
+        .frame(minWidth: 236, maxWidth: 236, maxHeight: .infinity, alignment: .top)
+        .background(Color(nsColor: .underPageBackgroundColor))
+    }
 
-            HStack(alignment: .bottom, spacing: 12) {
-                SettingsTextField(
-                    label: "Pairing code",
-                    placeholder: "Eight-letter code",
-                    text: $pairingCode,
-                    field: .pairingCode,
-                    focusedField: $focusedField
-                )
+    @ViewBuilder
+    private var detailView: some View {
+        switch selectedPage {
+        case .about:
+            settingsPage(title: "About EspControl", subtitle: "Connection status and quick access to your display") {
+                connectionStatusPanel
+                if hasPanelAddress {
+                    deviceWebserverPanel
+                }
+            }
+        case .connection:
+            settingsPage(title: "Device", subtitle: "Pair EspControl Companion with a display") {
+                settingsSection("Connection") {
+                    deviceConnectionSettings
+                }
+            }
+        case .folders:
+            settingsPage(title: "Folders", subtitle: "Choose the folders that can be opened from your display") {
+                settingsSection("Available folders") {
+                    folderSettings
+                }
+            }
+        case .nowPlaying:
+            settingsPage(title: "Now Playing", subtitle: "Share the media currently playing on your Mac") {
+                settingsSection("Now Playing") {
+                    nowPlayingSettings
+                }
+            }
+        case .general:
+            settingsPage(title: "General", subtitle: "Manage optional macOS integration") {
+                settingsSection("Mac system statistics") {
+                    systemMetricsSettings
+                }
+                if store.supportsLaunchAtLogin {
+                    settingsSection("Startup") {
+                        startupSettings
+                    }
+                }
+            }
+        }
+    }
 
-                Button("Pair") {
-                    store.pair(code: pairingCode)
+    @ViewBuilder
+    private func settingsPage<Content: View>(
+        title: String,
+        subtitle: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(title)
+                        .font(.system(size: 25, weight: .semibold))
+                    Text(subtitle)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 22)
+
+                Divider()
+                    .padding(.bottom, 24)
+
+                VStack(alignment: .leading, spacing: 22) {
+                    content()
+                }
+            }
+            .padding(.horizontal, 42)
+            .padding(.top, 32)
+            .padding(.bottom, 32)
+            .frame(maxWidth: 900, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    @ViewBuilder
+    private func settingsSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(.secondary)
+            content()
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func closeSettingsWindow() {
+        NSApp.windows.first(where: {
+            $0.title.localizedCaseInsensitiveContains("Settings")
+        })?.close()
+    }
+
+    private var deviceConnectionSettings: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            SettingsActionRow(
+                title: "Pairing details",
+                description: "Paste the details copied from the display web editor."
+            ) {
+                Button("Paste pairing details") {
+                    guard let clipboard = NSPasteboard.general.string(forType: .string),
+                          let details = CompanionPairingDetails.parse(clipboard) else {
+                        store.updateStatus("Copy pairing details from the panel web settings first")
+                        return
+                    }
+                    store.panelHost = details.panelHost
+                    pairingCode = details.pairingCode
+                    focusedField = nil
+                    store.pair(code: details.pairingCode)
                 }
                 .controlSize(.large)
+            }
+
+            Divider()
+
+            SettingsActionRow(
+                title: "Panel address",
+                description: "The local network address of your EspControl display."
+            ) {
+                TextField("e.g. 192.168.6.100", text: $store.panelHost)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .focused($focusedField, equals: .panelHost)
+                    .frame(width: 240)
+            }
+
+            SettingsActionRow(
+                title: "Pairing code",
+                description: "The eight-letter code shown while pairing is active."
+            ) {
+                HStack(spacing: 8) {
+                    TextField("Eight-letter code", text: $pairingCode)
+                        .textFieldStyle(.roundedBorder)
+                        .controlSize(.large)
+                        .focused($focusedField, equals: .pairingCode)
+                        .frame(width: 160)
+                    Button("Pair") {
+                        store.pair(code: pairingCode)
+                    }
+                    .controlSize(.large)
+                }
             }
 
             Text("In the panel web editor, open Connectors → Mac Companion, start pairing, then copy and paste the pairing details here.")
@@ -409,6 +553,7 @@ private struct CompanionSettings: View {
                     pairingCode = ""
                     focusedField = .panelHost
                 }
+                .buttonStyle(.borderless)
             }
         }
     }
@@ -466,30 +611,6 @@ private struct CompanionSettings: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var nowPlayingSettings: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle("Share Mac Now Playing with the display", isOn: $store.nowPlayingSharingEnabled)
-            Text("Shares the active session shown by macOS Control Centre. The state-aware Play / Pause card depends on this setting. This uses a private macOS system interface and may need an EspControl update after a future macOS release.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 12) {
-                if let artwork = store.nowPlayingArtwork {
-                    Image(nsImage: artwork).resizable().scaledToFit().frame(width: 72, height: 72)
-                        .background(Color.black).clipShape(RoundedRectangle(cornerRadius: 8))
-                } else {
-                    Image(systemName: "music.note").frame(width: 72, height: 72)
-                        .background(Color.secondary.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    if !store.nowPlayingTitle.isEmpty { Text(store.nowPlayingTitle).font(.headline) }
-                    if !store.nowPlayingApplication.isEmpty { Text(store.nowPlayingApplication).foregroundStyle(.secondary) }
-                    Text(store.nowPlayingStatus).font(.caption).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var systemMetricsSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Share Mac system statistics with the display", isOn: $store.systemMetricsSharingEnabled)
@@ -503,56 +624,34 @@ private struct CompanionSettings: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     private var connectionStatusPanel: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("EspControl Companion")
-                    .font(.headline)
-                Text(store.isConnected ? "Connected" : "Disconnected")
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            if canConnect || store.isConnected {
-                Toggle("Connect EspControl Companion", isOn: connectionBinding)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
+        SettingsCard {
+            SettingsActionRow(
+                title: "EspControl Companion",
+                description: store.isConnected ? "Connected to your display" : "Not connected to a display"
+            ) {
+                if canConnect || store.isConnected {
+                    Toggle("Connect EspControl Companion", isOn: connectionBinding)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                } else {
+                    Text("Pair a device")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-        )
     }
 
     private var deviceWebserverPanel: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Device Webserver")
-                    .font(.headline)
-                Text("Open the display settings in your browser")
-                    .foregroundStyle(.secondary)
+        SettingsCard {
+            SettingsActionRow(
+                title: "Device Webserver",
+                description: "Open the display settings in your browser."
+            ) {
+                Button("Open Device Webserver") { store.openPanelWebServer() }
+                    .controlSize(.large)
             }
-
-            Spacer()
-
-            Button("Open Device Webserver") { store.openPanelWebServer() }
-                .controlSize(.large)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-        )
     }
 
     private var connectionBinding: Binding<Bool> {
@@ -578,22 +677,44 @@ private struct CompanionSettings: View {
 
 }
 
-private struct SettingsTextField: View {
-    let label: String
-    let placeholder: String
-    @Binding var text: String
-    let field: CompanionSettingsField
-    @FocusState.Binding var focusedField: CompanionSettingsField?
+private struct SettingsCard<Content: View>: View {
+    @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.large)
-                .focused($focusedField, equals: field)
+        content
+            .padding(.horizontal, 18)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.55))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+    }
+}
+
+private struct SettingsActionRow<Control: View>: View {
+    let title: String
+    let description: String
+    @ViewBuilder let control: Control
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 24) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+                Text(description)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            control
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
