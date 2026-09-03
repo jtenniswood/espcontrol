@@ -22,6 +22,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     private var artworkOffset = 0
     private var lastArtworkGeneration: UInt32 = 0
     private var lastArtworkSHA256: String?
+    private var lastFocusedActionIdentifier: String?
     private static let artworkChunkBytes = 12 * 1024
     private static let maximumTextFrameBytes = 16 * 1024
 
@@ -404,6 +405,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
 
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
+        lastFocusedActionIdentifier = nil
         if SystemMediaController.mediaActionsAvailable {
             send("CAPABILITIES|media_actions")
         }
@@ -423,12 +425,14 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             catalogue += separator + entry
         }
         send(catalogue)
-        publishFocusedApplication()
+        publishFocusedAction()
     }
 
-    func publishFocusedApplication() {
-        let identifier = store.focusedLaunchableApplicationIdentifier()
+    func publishFocusedAction() {
+        let identifier = store.focusedCompanionActionIdentifier()
         guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
+        guard identifier != lastFocusedActionIdentifier else { return }
+        lastFocusedActionIdentifier = identifier
         send("FOCUS|\(identifier)")
     }
 

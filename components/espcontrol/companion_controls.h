@@ -172,7 +172,7 @@ struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
-  std::string focused_application_id;
+  std::string focused_action_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -182,7 +182,7 @@ struct CompanionRuntimeState {
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
-  std::string focused_application_id;
+  std::string focused_action_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -197,7 +197,7 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.values, state.focused_application_id, state.media_actions_supported,
+  return {state.actions, state.values, state.focused_action_id, state.media_actions_supported,
           state.connected, state.now_playing, state.system_metrics};
 }
 
@@ -385,7 +385,7 @@ inline void companion_set_focused_application(std::string application_id) {
   auto &state = companion_runtime_state();
   {
     std::lock_guard<std::mutex> lock(state.mutex);
-    state.focused_application_id = std::move(application_id);
+    state.focused_action_id = std::move(action_id);
   }
   CompanionActionResultHandler success;
   {
@@ -403,11 +403,11 @@ inline void companion_set_focused_application(std::string application_id) {
   companion_request_card_refresh();
 }
 
-inline bool companion_application_focused(const std::string &action_id) {
-  if (action_id.empty() || action_id.rfind("folder.", 0) == 0 ||
+inline bool companion_action_focused(const std::string &action_id) {
+  if (action_id.empty() ||
       action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
   const auto snapshot = companion_runtime_snapshot();
-  return snapshot.connected && snapshot.focused_application_id == action_id;
+  return snapshot.connected && snapshot.focused_action_id == action_id;
 }
 
 inline bool companion_action_active(const std::string &action_id) {
@@ -431,7 +431,7 @@ inline void companion_set_connected(bool connected) {
     state.connected = connected;
     if (!connected) {
       state.values.clear();
-      state.focused_application_id.clear();
+      state.focused_action_id.clear();
       state.media_actions_supported = false;
       state.now_playing = {};
       state.system_metrics = {};
