@@ -46,6 +46,14 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
+    @Published var systemMetricsSharingEnabled: Bool {
+        didSet {
+            defaults.set(systemMetricsSharingEnabled, forKey: "systemMetricsSharingEnabled")
+            updateSystemMetricsProvider()
+        }
+    }
+    @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
+    @Published private(set) var systemMetricsSupported = false
 
     private enum Keys {
         static let host = "panelHost"
@@ -57,7 +65,9 @@ final class CompanionStore: NSObject, ObservableObject {
     private lazy var connection = CompanionConnection(store: self)
     private let nowPlayingProvider = SystemNowPlayingProvider()
     private let mediaController = SystemMediaController()
+    private let systemMetricsProvider = SystemMetricsProvider()
     private var latestNowPlayingSnapshot: CompanionNowPlayingSnapshot?
+    private var latestSystemMetricsSnapshot: CompanionSystemMetricsSnapshot?
     private var mediaControlTimer: Timer?
     private var lastMediaControlValues: [String: Int] = [:]
 
@@ -74,6 +84,10 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
         nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
+        systemMetricsSharingEnabled = stableDefaults.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? legacyDefaults?.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? UserDefaults.standard.object(forKey: "systemMetricsSharingEnabled") as? Bool
+            ?? true
         super.init()
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -90,6 +104,13 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingArtwork = snapshot.artworkJPEG.flatMap(NSImage.init(data:))
             latestNowPlayingSnapshot = snapshot
             if isConnected { connection.publishNowPlaying(snapshot) }
+        }
+        systemMetricsProvider.onSnapshot = { [weak self] snapshot in
+            guard let self else { return }
+            guard isConnected && systemMetricsSharingEnabled && systemMetricsSupported else { return }
+            latestSystemMetricsSnapshot = snapshot
+            systemMetricsStatus = "Sharing processor, memory, storage, network and battery statistics"
+            if isConnected { connection.publishSystemMetrics(snapshot) }
         }
         if supportsLaunchAtLogin { refreshLaunchAtLoginStatus() }
         refreshApplications()
@@ -286,7 +307,9 @@ final class CompanionStore: NSObject, ObservableObject {
         print("[EspControl Companion] \(message)")
         statusDescription = message
         isConnected = connected
+        if !connected { systemMetricsSupported = false }
         updateNowPlayingProvider()
+        updateSystemMetricsProvider()
         if connected {
             startMediaControlPublishing()
         } else {
@@ -294,6 +317,26 @@ final class CompanionStore: NSObject, ObservableObject {
             mediaControlTimer = nil
             lastMediaControlValues = [:]
         }
+    }
+
+    private func updateSystemMetricsProvider() {
+        if isConnected && systemMetricsSharingEnabled && systemMetricsSupported {
+            systemMetricsStatus = "Collecting Mac system statistics…"
+            systemMetricsProvider.start()
+        } else {
+            if isConnected && systemMetricsSupported && !systemMetricsSharingEnabled {
+                connection.publishSystemMetricsUnavailable()
+                latestSystemMetricsSnapshot = nil
+            }
+            systemMetricsProvider.stop()
+            systemMetricsStatus = systemMetricsSharingEnabled
+                ? "Waiting for a panel connection" : "Mac system statistics sharing is disabled"
+        }
+    }
+
+    func setSystemMetricsSupported(_ supported: Bool) {
+        systemMetricsSupported = supported
+        updateSystemMetricsProvider()
     }
 
     private func updateNowPlayingProvider() {
@@ -324,6 +367,17 @@ final class CompanionStore: NSObject, ObservableObject {
     func republishCurrentNowPlaying() {
         guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
+    }
+    func republishCurrentSystemMetrics() {
+        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported,
+              let snapshot = latestSystemMetricsSnapshot else { return }
+        connection.publishSystemMetrics(snapshot)
+    }
+
+    func publishSystemMetricsUnavailable() {
+        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported else { return }
+        latestSystemMetricsSnapshot = nil
+        connection.publishSystemMetricsUnavailable()
     }
     func launch(bundleIdentifier: String) -> Bool {
         guard let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return false }

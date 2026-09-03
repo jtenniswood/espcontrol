@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <functional>
 #include <mutex>
@@ -45,6 +46,7 @@ struct CompanionPairingSnapshot {
   bool connected{false};
   uint32_t expires_in_seconds{0};
   uint16_t port{8443};
+  uint32_t system_metrics_generation{0};
   std::string pairing_code;
   std::string mdns_name;
 };
@@ -82,6 +84,15 @@ struct CompanionNowPlayingSnapshot {
   bool artwork_follows{false};
 };
 
+struct CompanionSystemMetricsSnapshot {
+  uint32_t generation{0};
+  float cpu_usage_percent{NAN};
+  float memory_usage_percent{NAN};
+  float storage_usage_percent{NAN};
+  float battery_percent{NAN};
+  float network_throughput_kbps{NAN};
+};
+
 using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
 // Ownership of data transfers to the handler only when it returns true.
 using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t *data, size_t size)>;
@@ -105,6 +116,7 @@ struct CompanionRuntimeState {
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
+  CompanionSystemMetricsSnapshot system_metrics;
 };
 
 struct CompanionRuntimeSnapshot {
@@ -114,6 +126,7 @@ struct CompanionRuntimeSnapshot {
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
+  CompanionSystemMetricsSnapshot system_metrics;
 };
 
 inline CompanionRuntimeState &companion_runtime_state() {
@@ -125,7 +138,7 @@ inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
   return {state.actions, state.values, state.focused_application_id, state.media_actions_supported,
-          state.connected, state.now_playing};
+          state.connected, state.now_playing, state.system_metrics};
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
@@ -151,6 +164,50 @@ inline void companion_set_now_playing(CompanionNowPlayingSnapshot snapshot) {
     state.now_playing = snapshot;
   }
   if (companion_now_playing_handler()) companion_now_playing_handler()(snapshot);
+  companion_request_card_refresh();
+}
+
+inline bool companion_metric_key_valid(const std::string &key) {
+  return key == "stat.cpu" || key == "stat.memory" ||
+         key == "stat.memory_free" || key == "stat.storage" ||
+         key == "stat.storage_free" || key == "stat.battery" ||
+         key == "stat.network_throughput";
+}
+
+inline const char *companion_metric_label_key(const std::string &key) {
+  if (key == "stat.cpu") return "processor";
+  if (key == "stat.memory" || key == "stat.memory_free") return "memory";
+  if (key == "stat.storage" || key == "stat.storage_free") return "storage";
+  if (key == "stat.battery") return "battery";
+  if (key == "stat.network_throughput") return "network_throughput";
+  return "";
+}
+
+inline const char *companion_metric_default_unit(const std::string &key) {
+  if (key == "stat.network_throughput") return "KB/s";
+  return companion_metric_key_valid(key) ? "%" : "";
+}
+
+inline bool companion_metric_value(const CompanionRuntimeSnapshot &snapshot,
+                                   const std::string &key, float &value) {
+  if (!snapshot.connected) return false;
+  if (key == "stat.cpu") value = snapshot.system_metrics.cpu_usage_percent;
+  else if (key == "stat.memory") value = snapshot.system_metrics.memory_usage_percent;
+  else if (key == "stat.memory_free") value = 100.0f - snapshot.system_metrics.memory_usage_percent;
+  else if (key == "stat.storage") value = snapshot.system_metrics.storage_usage_percent;
+  else if (key == "stat.storage_free") value = 100.0f - snapshot.system_metrics.storage_usage_percent;
+  else if (key == "stat.battery") value = snapshot.system_metrics.battery_percent;
+  else if (key == "stat.network_throughput") value = snapshot.system_metrics.network_throughput_kbps;
+  else return false;
+  return std::isfinite(value);
+}
+
+inline void companion_set_system_metrics(CompanionSystemMetricsSnapshot snapshot) {
+  auto &state = companion_runtime_state();
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.system_metrics = snapshot;
+  }
   companion_request_card_refresh();
 }
 
@@ -300,6 +357,7 @@ inline void companion_set_connected(bool connected) {
       state.focused_application_id.clear();
       state.media_actions_supported = false;
       state.now_playing = {};
+      state.system_metrics = {};
     }
   }
   companion_request_card_refresh();
@@ -437,6 +495,11 @@ struct CompanionCardRef {
   lv_obj_t *text_label = nullptr;
   std::string action_id;
   std::string url_config;
+  lv_obj_t *value_label = nullptr;
+  lv_obj_t *unit_label = nullptr;
+  std::string metric_key;
+  std::string metric_unit;
+  int precision{0};
 };
 
 struct CompanionSliderRef {
@@ -513,24 +576,74 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
     return ref.button == button;
   });
   if (existing != refs.end()) {
+    if (companion_metric_key_valid(action_id) && !existing->metric_key.empty()) return;
     existing->action_id = action_id;
     existing->url_config = url_config;
     // The periodic config tracker does not have the label pointer. Preserve
     // the pointer registered while the card was rendered so state updates can
     // continue replacing the Play/Pause label.
     if (text_label) existing->text_label = text_label;
+    existing->metric_key.clear();
+    existing->metric_unit.clear();
+    existing->value_label = nullptr;
+    existing->unit_label = nullptr;
     return;
   }
-  refs.push_back({button, text_label, action_id, url_config});
+  refs.push_back({button, text_label, action_id, url_config, nullptr, nullptr, "", "", 0});
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
+}
+
+inline void companion_track_metric_card(lv_obj_t *button, lv_obj_t *value_label,
+                                        lv_obj_t *unit_label, const std::string &metric_key,
+                                        const std::string &unit, int precision) {
+  if (!button || !companion_metric_key_valid(metric_key)) return;
+  auto &refs = companion_card_refs();
+  auto existing = std::find_if(refs.begin(), refs.end(), [button](const CompanionCardRef &ref) {
+    return ref.button == button;
+  });
+  CompanionCardRef value{button, "", "", value_label, unit_label, metric_key, unit,
+                         std::max(0, std::min(2, precision))};
+  if (existing != refs.end()) {
+    *existing = std::move(value);
+  } else {
+    refs.push_back(std::move(value));
+    lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
+  }
+  companion_request_card_refresh();
 }
 
 inline void companion_refresh_cards_if_requested() {
   if (!companion_card_refresh_requested().exchange(false)) return;
   auto &refs = companion_card_refs();
+  const auto snapshot = companion_runtime_snapshot();
   for (auto it = refs.begin(); it != refs.end();) {
     if (!it->button || !lv_obj_is_valid(it->button)) {
       it = refs.erase(it);
+      continue;
+    }
+    if (!it->metric_key.empty()) {
+      float value = NAN;
+      const bool available = companion_metric_value(snapshot, it->metric_key, value);
+      if (it->value_label) {
+        char buffer[32];
+        if (!available) snprintf(buffer, sizeof(buffer), "--");
+        else if (it->precision == 2) snprintf(buffer, sizeof(buffer), "%.2f", value);
+        else if (it->precision == 1) snprintf(buffer, sizeof(buffer), "%.1f", value);
+        else snprintf(buffer, sizeof(buffer), "%.0f", value);
+        lv_label_set_display_text(it->value_label, buffer);
+      }
+      if (it->unit_label) {
+        lv_label_set_display_text(it->unit_label, available ? it->metric_unit.c_str() : "");
+      }
+      // Match the unavailable state used by other cards when their backing
+      // connection is offline. A missing optional metric (for example,
+      // battery on a desktop Mac) remains enabled while Companion is online.
+      if (snapshot.connected) {
+        lv_obj_clear_state(it->button, LV_STATE_DISABLED);
+      } else {
+        lv_obj_add_state(it->button, LV_STATE_DISABLED);
+      }
+      ++it;
       continue;
     }
     const bool available = it->url_config.empty()
@@ -553,7 +666,6 @@ inline void companion_refresh_cards_if_requested() {
     ++it;
   }
   auto &sliders = companion_slider_refs();
-  const auto snapshot = companion_runtime_snapshot();
   for (auto it = sliders.begin(); it != sliders.end();) {
     if (!it->slider || !lv_obj_is_valid(it->slider)) {
       it = sliders.erase(it);
@@ -578,6 +690,8 @@ inline void companion_refresh_cards_if_requested() {
 }
 #else
 inline void companion_track_card(void *, const std::string &, const std::string & = "", void * = nullptr) {}
+inline void companion_track_metric_card(void *, void *, void *, const std::string &,
+                                        const std::string &, int) {}
 inline void companion_apply_card_focus(void *, const std::string &) {}
 inline void companion_track_slider(void *, const std::string &, void *, bool,
                                    const char *, const char *) {}
@@ -680,6 +794,7 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"connected\":" + (snapshot.connected ? "true" : "false") +
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
     ",\"port\":" + std::to_string(snapshot.port) +
+    ",\"system_metrics_generation\":" + std::to_string(snapshot.system_metrics_generation) +
     ",\"pairing_code\":\"" + companion_json_escape(snapshot.pairing_code) +
     "\",\"mdns_name\":\"" + companion_json_escape(snapshot.mdns_name) + "\"}";
 }

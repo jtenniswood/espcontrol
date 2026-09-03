@@ -12,7 +12,6 @@ inline bool basic_action_driver_matches(const Context &context,
                                         const ParsedCfg &config) {
   using Driver = card_runtime::CardDriverId;
   using Type = card_runtime::CardTypeId;
-  if (context.legacy_dispatch) return false;
   switch (context.runtime.driver) {
     case Driver::TOGGLE:
     case Driver::ACTION:
@@ -65,13 +64,29 @@ inline bool basic_action_driver_setup_visual(
 }
 
 inline bool basic_action_driver_attach_interaction(
-    BtnSlot &, const ParsedCfg &config, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context) {
+  if (context.runtime.driver == card_runtime::CardDriverId::COMPANION &&
+      companion_metric_key_valid(config.entity)) {
+    lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
+  }
   return basic_action_driver_matches(context, config);
 }
 
 inline bool basic_action_driver_refresh_layout(
-    BtnSlot &, const ParsedCfg &config, const Context &context,
-    const DisplayProfile &, int, int) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    const DisplayProfile &display, int row_span, int col_span) {
+  if (context.runtime.driver == card_runtime::CardDriverId::COMPANION &&
+      companion_metric_key_valid(config.entity)) {
+    if (large_number_square_card_layout(row_span, col_span) &&
+        card_large_numbers_active_for_layout(config, row_span, col_span) &&
+        display_large_sensor_font(display)) {
+      apply_large_sensor_number_style(
+        slot, display_large_sensor_font(display),
+        display_large_sensor_unit_offset_percent(display));
+    } else if (slot.sensor_lbl && display_sensor_font(display)) {
+      lv_obj_set_style_text_font(slot.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
+    }
+  }
   return basic_action_driver_matches(context, config);
 }
 
@@ -291,6 +306,7 @@ inline bool basic_action_driver_bind_subpage(
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
     case Driver::COMPANION: {
+      if (companion_metric_key_valid(config.entity)) break;
       ParsedCfg *click = grid_delete_with_owner(slot.btn, new ParsedCfg(config));
       lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
         ParsedCfg *card = static_cast<ParsedCfg *>(lv_event_get_user_data(event));
@@ -490,6 +506,7 @@ inline bool basic_action_driver_handle_main_click(
       break;
     }
     case Driver::COMPANION: {
+      if (companion_metric_key_valid(config.entity)) break;
       char request_id[24];
       snprintf(request_id, sizeof(request_id), "%08lx-%d",
                static_cast<unsigned long>(companion_next_request_number()), slot_number);

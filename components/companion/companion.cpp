@@ -116,6 +116,7 @@ void CompanionService::setup() {
       runtime.connected,
       this->pairing_expires_in_seconds(),
       this->port_,
+      runtime.system_metrics.generation,
       this->pairing_active() ? this->pairing_code() : "",
       App.get_name() + ".local",
     };
@@ -369,7 +370,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
       this->pairing_expires_at_ = 0;
       this->next_attempt_at_ = 0;
     }
-    this->send_(socket_fd, "AUTHENTICATED|1");
+  this->send_(socket_fd, "AUTHENTICATED|2");
     this->publish_catalogue_();
     return;
   }
@@ -516,6 +517,36 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       this->now_playing_artwork_follows_ = snapshot.artwork_follows;
       this->defer([snapshot = std::move(snapshot)]() mutable {
         companion_set_now_playing(std::move(snapshot));
+      });
+      return true;
+    }
+
+    if (type == "system_metrics") {
+      if (!(root["available"] | true)) {
+        this->defer([] { companion_set_system_metrics({}); });
+        return true;
+      }
+      CompanionSystemMetricsSnapshot snapshot;
+      snapshot.generation = generation;
+      snapshot.cpu_usage_percent = root["cpuUsagePercent"] | NAN;
+      snapshot.memory_usage_percent = root["memoryUsagePercent"] | NAN;
+      snapshot.storage_usage_percent = root["storageUsagePercent"] | NAN;
+      snapshot.battery_percent = root["batteryPercent"] | NAN;
+      snapshot.network_throughput_kbps = root["networkThroughputKBps"] | NAN;
+      const std::array<float, 3> required{{
+          snapshot.cpu_usage_percent,
+          snapshot.memory_usage_percent,
+          snapshot.storage_usage_percent,
+      }};
+      if (std::any_of(required.begin(), required.end(), [](float value) {
+            return !std::isfinite(value) || value < 0.0f || value > 100.0f;
+          })) return false;
+      if (std::isfinite(snapshot.battery_percent) &&
+          (snapshot.battery_percent < 0.0f || snapshot.battery_percent > 100.0f)) return false;
+      if (std::isfinite(snapshot.network_throughput_kbps) &&
+          (snapshot.network_throughput_kbps < 0.0f || snapshot.network_throughput_kbps > 1.0e9f)) return false;
+      this->defer([snapshot]() mutable {
+        companion_set_system_metrics(std::move(snapshot));
       });
       return true;
     }

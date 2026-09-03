@@ -163,8 +163,13 @@ interval:
           for (size_t index = 0; index < 9; ++index) {
             const ParsedCfg config = parse_cfg(companion_configs[index]);
             if (config.type == "companion") {
-              companion_track_card(
-                companion_buttons[index], config.entity, config.sensor);
+              if (!companion_metric_key_valid(config.entity)) {
+                // Metric cards retain the value/unit labels registered by
+                // setup_companion_card(). Re-registering them as actions here
+                // discards that binding and makes them appear unavailable.
+                companion_track_card(
+                  companion_buttons[index], config.entity, config.sensor);
+              }
             } else {
               companion_forget_card(companion_buttons[index]);
             }

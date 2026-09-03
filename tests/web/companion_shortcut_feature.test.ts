@@ -5,6 +5,10 @@ import {
   companionCardMode,
   companionFolderActions,
   companionEntityForMode,
+  companionCardIsMetric,
+  companionLabelPlaceholder,
+  companionMetricDisplayMode,
+  companionMetricPreviewValue,
   companionMediaIcon,
   COMPANION_MEDIA_PLAY_PAUSE_ACTION,
   companionShortcutActionId,
@@ -15,6 +19,7 @@ import {
   formatCompanionShortcutActionId,
   normalizeCompanionCard,
   resetCompanionMediaPresentation,
+  resetCompanionMetricPresentation,
 } from "../../src/webserver/cards/companion";
 import {
   COMPANION_INPUT_VOLUME_ID,
@@ -36,6 +41,46 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "processor") {
+    throw new Error("Processor statistics must retain their Companion subtype");
+  }
+  if (!companionCardIsMetric({ entity: "stat.memory" }) ||
+      !companionCardIsMetric({ entity: "stat.memory_free" }) ||
+      companionCardIsMetric({ entity: "sensor.memory_use" })) {
+    throw new Error("Companion statistics must remain separate from Home Assistant sensors");
+  }
+  if (companionMetricDisplayMode({ entity: "stat.memory" }) !== "used" ||
+      companionMetricDisplayMode({ entity: "stat.memory_free" }) !== "free" ||
+      companionMetricDisplayMode({ entity: "stat.storage_free" }) !== "free") {
+    throw new Error("Memory and storage statistics must retain their Used or Free display choice");
+  }
+  if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
+      companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
+    throw new Error("Companion cards must use one mode-appropriate label field");
+  }
+  if (companionMetricPreviewValue("0", 0.4) !== "42" ||
+      companionMetricPreviewValue("1", 0.4) !== "42.0" ||
+      companionMetricPreviewValue("2", 0.4) !== "42.00" ||
+      companionMetricPreviewValue("0", 0.1) === companionMetricPreviewValue("0", 0.9)) {
+    throw new Error("Companion statistic previews must randomize while matching the selected precision");
+  }
+  const generatedMetricCard: any = { entity: "stat.cpu", label: "", icon: "Auto" };
+  normalizeCompanionCard(generatedMetricCard);
+  if (generatedMetricCard.label !== "" || generatedMetricCard.precision !== "0") {
+    throw new Error("Companion statistics must leave generated labels empty and use whole-number precision");
+  }
+  const customMetricCard = {
+    entity: "stat.memory", label: "Mac RAM", icon: "Auto", precision: "1",
+  };
+  normalizeCompanionCard(customMetricCard);
+  if (customMetricCard.label !== "Mac RAM" || customMetricCard.precision !== "1") {
+    throw new Error("Companion statistics must preserve custom labels and precision");
+  }
+  const networkCard: any = { entity: "stat.network_throughput", label: "", icon: "Auto" };
+  normalizeCompanionCard(networkCard);
+  if (networkCard.label !== "" || networkCard.unit !== "KB/s") {
+    throw new Error("Network throughput must use its rate label and unit");
+  }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");
   }
@@ -46,6 +91,11 @@ export function runCompanionShortcutFeatureTests(): void {
   if (emptyFolderEntity !== "folder." ||
       companionCardMode({ entity: emptyFolderEntity, sensor: "" }) !== "folder") {
     throw new Error("Open folder must retain its subtype while waiting for a folder selection");
+  }
+  if (companionEntityForMode("processor") !== "stat.cpu" ||
+      companionEntityForMode("memory_usage") !== "stat.memory" ||
+      companionEntityForMode("network_throughput") !== "stat.network_throughput") {
+    throw new Error("System statistic subtypes must select their Companion metric entities");
   }
   if (companionSubtypeDefaultIcon("url") !== "Web" ||
       companionSubtypeDefaultIcon("folder") !== "Folder Outline" ||
@@ -128,6 +178,20 @@ export function runCompanionShortcutFeatureTests(): void {
   resetCompanionMediaPresentation(customMediaCard, "shortcut");
   if (customMediaCard.label !== "Skip" || customMediaCard.icon !== "Music") {
     throw new Error("Leaving Media Control must preserve custom presentation fields");
+  }
+  const metricCard = {
+    entity: "stat.cpu", label: "Processor", icon: "Monitor", sensor: "ignored",
+    unit: "", precision: "", options: "large_numbers,active_color", icon_on: "Auto",
+  };
+  normalizeCompanionCard(metricCard);
+  if (metricCard.sensor !== "" || metricCard.unit !== "%" || metricCard.precision !== "0" ||
+      metricCard.options !== "large_numbers") {
+    throw new Error("Companion statistics must normalize their own sensor-style fields");
+  }
+  resetCompanionMetricPresentation(metricCard, "app");
+  if (metricCard.label !== "" || String(metricCard.unit) !== "" || String(metricCard.precision) !== "" ||
+      String(metricCard.options) !== "") {
+    throw new Error("Leaving a generated statistic card must clear its generated presentation");
   }
 
   const selectAll = companionShortcutActionId(shortcutEvent({ metaKey: true }));

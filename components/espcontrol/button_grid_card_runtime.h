@@ -20,7 +20,6 @@ struct Context {
   Surface surface = Surface::MAIN_GRID;
   bool known = false;
   bool allow_in_subpage = false;
-  bool legacy_dispatch = false;
 };
 
 inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type) {
@@ -87,17 +86,6 @@ class CardRuntimeRegistryService {
     context.surface = surface;
     context.known = context.runtime.type != CardTypeId::UNKNOWN;
     context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
-    // Todo was removed from the configurator but old saved cards remain
-    // supported through one explicit compatibility driver.
-    if (!context.known && type == "todo") {
-      context.family = Family::TODO;
-      context.known = true;
-      context.allow_in_subpage = true;
-      context.runtime.capabilities = static_cast<uint16_t>(
-          CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL |
-          CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE);
-      context.legacy_dispatch = true;
-    }
     return context;
   }
 
@@ -185,9 +173,6 @@ inline bool card_runtime_main_click_opens_modal(
     const espcontrol::cards::Context &context) {
   using Driver = espcontrol::card_runtime::CardDriverId;
   using Type = espcontrol::card_runtime::CardTypeId;
-  if (context.legacy_dispatch) {
-    return context.family == espcontrol::cards::Family::TODO;
-  }
   switch (context.runtime.driver) {
     case Driver::ALARM:
     case Driver::CLIMATE:
