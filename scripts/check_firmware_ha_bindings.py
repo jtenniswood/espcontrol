@@ -25,6 +25,7 @@ BACKLIGHT_SCHEDULE_PATH = ROOT / "common" / "addon" / "backlight_schedule.yaml"
 DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
+CONNECTOR_STATE_PATH = ROOT / "components" / "espcontrol" / "connector_state.h"
 S3_DEVICE_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
 S3_PACKAGES_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "packages.yaml"
 DEVICE_DEVICE_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/device.yaml")))
@@ -3432,17 +3433,32 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
             errors.append(f"{rel}: keep API connection recovery centralised in core_infra.yaml")
         restore_body = yaml_script_body(text, "ha_restore_after_api")
         if restore_body is None:
-            errors.append(f"{rel}: define the Home Assistant initial-setup continuation script")
+            errors.append(f"{rel}: define the connector setup continuation script")
         elif (
-            "ha_api_connected()" not in restore_body
-            or "lv_scr_act() == id(ha_setup_page)->obj" not in restore_body
+            "connector_onboarding_complete()" not in restore_body
             or restore_body.count("script.execute: navigate_after_api") != 1
         ):
-            errors.append(f"{rel}: only navigate away when the initial Home Assistant setup page is active")
+            errors.append(f"{rel}: continue setup only after at least one connector is configured")
         body = yaml_script_body(text, "ha_reconnect_flow")
         if body is not None or "Connecting to\\nHome Assistant" in text:
             errors.append(f"{rel}: keep the current display visible when Home Assistant disconnects")
     return errors
+
+
+def firmware_connector_endpoint_auth_errors(path: Path, root: Path) -> list[str]:
+    if not path.exists():
+        return [f"{path.relative_to(root)}: define connector status endpoints"]
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "#ifdef USE_WEBSERVER_AUTH",
+        "request->authenticate(service.web_auth_username(),",
+        "request->requestAuthentication();",
+    )
+    if all(token in text for token in required):
+        return []
+    return [
+        f"{path.relative_to(root)}: authenticate connector endpoints when web authentication is enabled"
+    ]
 
 
 def firmware_wifi_setup_display_text_errors(
@@ -3648,6 +3664,7 @@ def run_scan() -> int:
     )
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(firmware_connector_endpoint_auth_errors(CONNECTOR_STATE_PATH, ROOT))
     errors.extend(
         firmware_wifi_setup_display_text_errors(
             SCREEN_LOADING_PATH,
@@ -7418,13 +7435,9 @@ def run_self_test() -> int:
         "    then:\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return ha_api_connected();'\n"
+        "            lambda: 'return id(espcontrol_app).connector_onboarding_complete();'\n"
         "          then:\n"
-        "            - if:\n"
-        "                condition:\n"
-        "                  lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'\n"
-        "                then:\n"
-        "                  - script.execute: navigate_after_api\n",
+        "            - script.execute: navigate_after_api\n",
         (),
     )
     expect_connectivity_api_errors(

@@ -25,7 +25,7 @@ function status(overrides: Partial<ConnectorsStatus> = {}): ConnectorsStatus {
 
 export function runConnectorsFeatureTests(): void {
   if (connectorOnboardingComplete(status())) {
-    throw new Error("An unconfigured display must remain incomplete");
+    throw new Error("An unconfigured display must remain in onboarding");
   }
   if (!connectorOnboardingComplete(status({
     home_assistant: {
@@ -35,7 +35,7 @@ export function runConnectorsFeatureTests(): void {
       actions_confirmed: true,
     },
   }))) {
-    throw new Error("A configured Home Assistant connector must be complete while offline");
+    throw new Error("A configured Home Assistant connector must complete onboarding while offline");
   }
   if (!connectorOnboardingComplete(status({
     mac_companion: {
@@ -45,7 +45,7 @@ export function runConnectorsFeatureTests(): void {
       connected: false,
     },
   }))) {
-    throw new Error("A trusted Mac pairing must complete setup while offline");
+    throw new Error("A trusted Mac pairing must complete onboarding while offline");
   }
   const permissionStatus = homeAssistantConnectorStatusText({
     available: true,

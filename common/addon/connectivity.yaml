@@ -6,9 +6,7 @@
 #
 # Screen flow (initial setup):
 #   loading → wifi_setup   (if no WiFi)
-#           → ha_setup     (if WiFi OK but HA not connected)
-#           → ha_actions   (allow device to perform HA actions)
-#           → button_setup (if no buttons configured)
+#           → button_setup (open the webserver and configure a connector/cards)
 #           → main_page
 # On reboot (buttons already configured):
 #   loading → main_page    (skips setup screens)
@@ -50,21 +48,7 @@ wifi:
         ESP_LOGI("connectivity", "WiFi connected (%lu ms)", millis());
         lv_label_set_text(id(loading_status_label), espcontrol_i18n("Connected"));
     - delay: 200ms
-    - if:
-        condition:
-          lambda: 'return ha_api_state_connected();'
-        then:
-          - script.execute: navigate_after_api
-        else:
-          - if:
-              condition:
-                lambda: 'return id(button_order).state.empty();'
-              then:
-                - script.execute: clock_bar_hide
-                - lvgl.page.show: ha_setup_page
-                - script.execute: setup_screen_dim
-              else:
-                - script.execute: navigate_after_api
+    - script.execute: navigate_after_api
   on_disconnect:
     - script.execute: network_status_refresh
     - if:
@@ -84,21 +68,9 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return ha_api_connected();'
+            lambda: 'return id(espcontrol_app).connector_onboarding_complete();'
           then:
-            - if:
-                condition:
-                  lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'
-                then:
-                  - if:
-                      condition:
-                        lambda: 'return id(button_order).state.empty();'
-                      then:
-                        - script.execute: setup_screen_dim_cancel
-                        - script.execute: clock_bar_hide
-                        - lvgl.page.show: ha_actions_page
-                      else:
-                        - script.execute: navigate_after_api
+            - script.execute: navigate_after_api
 
   - id: wifi_show_reconnecting
     mode: restart

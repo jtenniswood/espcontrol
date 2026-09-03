@@ -44,7 +44,7 @@ export function connectorOnboardingComplete(status: ConnectorsStatus): boolean {
 
 export function createConnectorsPageFeature(
     dom: Pick<ApplicationDomServices, "document" | "window" | "fetch">,
-    shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner">,
+    shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner" | "setOnboardingComplete">,
     fields: Pick<ControlsFieldsFeature, "makeCollapsibleCard">,
     companionSection: SettingsCompanionSectionFeature,
     companionSupported: boolean,
@@ -90,6 +90,9 @@ export function createConnectorsPageFeature(
 
     function applyStatus(value: ConnectorsStatus): void {
         value.onboarding_complete = connectorOnboardingComplete(value);
+        const previous = current;
+        const wasComplete = previous?.onboarding_complete === true;
+        const announceCompletion = !!previous && !wasComplete && value.onboarding_complete;
         current = value;
         if (homeAssistantStatus) {
             homeAssistantStatus.textContent = homeAssistantConnectorStatusText(value.home_assistant);
@@ -103,8 +106,17 @@ export function createConnectorsPageFeature(
                 ? "Actions confirmed"
                 : "I've enabled actions";
         }
-        if (heading) heading.textContent = "Connectors";
-        if (intro) intro.textContent = "Manage the services that provide data and actions for this display.";
+        if (heading) {
+            heading.textContent = value.onboarding_complete ? "Connectors" : "Connect EspControl";
+        }
+        if (intro) {
+            intro.textContent = value.onboarding_complete
+                ? "Manage the services that provide data and actions for this display."
+                : companionSupported
+                    ? "Choose Home Assistant or Mac Companion to finish setting up your display. You can add the other connector later."
+                    : "Connect Home Assistant to finish setting up your display.";
+        }
+        shell.setOnboardingComplete(value.onboarding_complete, announceCompletion);
     }
 
     async function refreshStatus(): Promise<void> {
@@ -195,10 +207,12 @@ export function createConnectorsPageFeature(
         config.className = "sp-config sp-connectors-config fade-in";
         heading = document.createElement("h1");
         heading.className = "sp-connectors-heading";
-        heading.textContent = "Connectors";
+        heading.textContent = "Connect EspControl";
         intro = document.createElement("p");
         intro.className = "sp-connectors-intro";
-        intro.textContent = "Manage the services that provide data and actions for this display.";
+        intro.textContent = companionSupported
+            ? "Choose Home Assistant or Mac Companion to finish setting up your display."
+            : "Connect Home Assistant to finish setting up your display.";
         config.appendChild(heading);
         config.appendChild(intro);
         config.appendChild(buildHomeAssistantCard());

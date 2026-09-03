@@ -29,6 +29,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-tab-docs::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--border)}" +
         ".sp-tab-docs .mdi{font-size:16px;line-height:1;opacity:.7}" +
         ".sp-page{display:none}.sp-page.active{display:block}" +
+        ".sp-onboarding .sp-nav{display:none}" +
         ".sp-connectors-config{max-width:760px;margin:0 auto;padding-top:32px}" +
         ".sp-connectors-heading{margin:0 0 8px;font-size:1.65rem;letter-spacing:-.025em}" +
         ".sp-connectors-intro{margin:0 0 24px;color:var(--text2);line-height:1.5}" +

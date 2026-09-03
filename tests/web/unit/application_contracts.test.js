@@ -41,7 +41,7 @@ describe("browserless application contracts", () => {
     runCompanionShortcutFeatureTests();
   });
 
-  test("tracks connector completion and offline status", () => {
+  test("models connector onboarding and card sources", () => {
     runConnectorsFeatureTests();
   });
 

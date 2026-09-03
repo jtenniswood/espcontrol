@@ -889,6 +889,11 @@ function composeApplicationContext(): ApplicationContext {
     clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
     interactions, preview, buttonSettings, connectorsPage,
   );
+  app = createAppFeature(
+    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
+    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
+    interactions, preview, buttonSettings, connectorsPage,
+  );
   requestApi.connectReconnect(appEvents.connect);
   return createApplicationContext({
     layout,

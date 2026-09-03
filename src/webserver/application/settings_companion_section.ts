@@ -82,8 +82,21 @@ export function createSettingsCompanionSectionFeature(
         const body = document.createElement("div");
         const note = document.createElement("p");
         note.className = "sp-setting-note sp-companion-note";
-        note.textContent = "Start pairing, then copy the details into EspControl Companion on your Mac. The setup code expires after 15 minutes or as soon as the Mac connects; the trusted pairing remains saved across reboots.";
+        note.textContent = "Pair this display with EspControl Companion on a trusted local network. The setup code expires after 15 minutes or as soon as the Mac connects; the trusted pairing remains saved across reboots.";
         body.appendChild(note);
+
+        const steps = document.createElement("ol");
+        steps.className = "sp-connector-steps";
+        [
+            "Open EspControl Companion on your Mac and select the Device tab.",
+            "Select Start pairing below, then copy the pairing details.",
+            "In the Mac app, select Paste pairing details and then Pair.",
+        ].forEach(function (text) {
+            const item = document.createElement("li");
+            item.textContent = text;
+            steps.appendChild(item);
+        });
+        body.appendChild(steps);
 
         const status = document.createElement("div");
         status.className = "sp-companion-status";
