@@ -9,6 +9,8 @@ inline std::string espcontrol_i18n(const std::string &value) { return value; }
 #include "companion_timezone.h"
 #include "button_grid_config_parser.h"
 
+using namespace esphome::companion;
+
 int main() {
   assert(!companion_connected());
   assert(!companion_card_refresh_requested().load());
@@ -74,6 +76,9 @@ int main() {
   assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
+  assert(companion_window_action_valid("window.left"));
+  assert(companion_action_available("window.left"));
+  assert(!companion_action_available("window.not-real"));
   assert(companion_metric_key_valid("stat.cpu"));
   assert(!companion_metric_key_valid("sensor.cpu"));
   assert(std::string(companion_metric_label_key("stat.memory")) == "memory");
@@ -209,6 +214,7 @@ int main() {
   assert(companion_take_timezone_changed());
   assert(!companion_timezone_changed());
   companion_set_connected(false);
+  companion_set_timezone_id("");
   assert(companion_timezone_id().empty());
   assert(companion_timezone_changed());
   assert(companion_take_timezone_changed());
