@@ -448,9 +448,13 @@ export function createButtonSettingsFeature(
                 return Promise.resolve(false);
             }
             var savedButton: any = saved.button;
+            var originalSubpageOwner: any = originalButtons[slot - 1];
             var replacedFolderOwner: any = !c.isSub &&
-                cardOwnsSubpage(originalButtons[slot - 1]) &&
-                originalButtons[slot - 1].type !== savedButton.type;
+                cardOwnsSubpage(originalSubpageOwner) &&
+                (!cardOwnsSubpage(savedButton) ||
+                    originalSubpageOwner.type !== savedButton.type ||
+                    (originalSubpageOwner.type === "companion" &&
+                        originalSubpageOwner.entity !== savedButton.entity));
             var sizeChanged: any = applyCardSizeConstraint(savedButton);
             var orderChanged: any = !saved.saveSubpage && (saved.saveGrid || sizeChanged);
             var persistence: any;

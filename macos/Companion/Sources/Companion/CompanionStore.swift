@@ -103,6 +103,12 @@ final class CompanionStore: NSObject, ObservableObject {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(systemTimeZoneDidChange(_:)),
+            name: NSNotification.Name.NSSystemTimeZoneDidChange,
+            object: nil
+        )
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
         nowPlayingProvider.onSnapshot = { [weak self] snapshot in
@@ -277,6 +283,10 @@ final class CompanionStore: NSObject, ObservableObject {
         if isConnected { connection.publishFocusedAction() }
     }
 
+    @objc private func systemTimeZoneDidChange(_: Notification) {
+        if isConnected { connection.publishTimezone() }
+    }
+
     func chooseFolder() {
         let panel = NSOpenPanel()
         panel.title = "Choose a folder for EspControl cards"
@@ -449,6 +459,7 @@ final class CompanionStore: NSObject, ObservableObject {
         let isApplicationLaunch = !actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix)
             && !SystemMediaController.supports(actionIdentifier: actionIdentifier)
             && !actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix)
+            && !actionIdentifier.hasPrefix(CompanionKeyboardShortcut.windowActionPrefix)
         let performed = await perform(actionIdentifier: actionIdentifier)
         guard performed else { return "not_allowed" }
         return isApplicationLaunch ? "activated" : "performed"
@@ -476,7 +487,8 @@ final class CompanionStore: NSObject, ObservableObject {
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
-        guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
+        guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) ||
+              actionIdentifier.hasPrefix(CompanionKeyboardShortcut.windowActionPrefix) else {
             return await launch(bundleIdentifier: actionIdentifier)
         }
         guard let shortcut = CompanionKeyboardShortcut(actionIdentifier: actionIdentifier) else {

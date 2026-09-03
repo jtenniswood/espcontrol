@@ -27,7 +27,7 @@ export function runPreviewFeatureTests(): void {
   equal(defaultCardTypeForPicker("climate"), "climate_control", "picker aliases retain their defaults");
   equal(defaultCardTypeForPicker("companion_stats"), "companion", "Companion subtype pickers use the Companion runtime card");
   equal(cardTypeVisibleForConnector("slider", "home_assistant"), true, "Home Assistant-only cards remain in the Home Assistant picker");
-  equal(cardTypeVisibleForConnector("slider", "mac_companion"), false, "Home Assistant-only cards are hidden from Companion");
+  equal(cardTypeVisibleForConnector("slider", "mac_companion"), true, "Companion volume sliders remain available");
   equal(cardTypeVisibleForConnector("action", "mac_companion"), false, "actions are hidden from Companion");
   equal(cardTypeVisibleForConnector("internal", "mac_companion"), false, "internal switches are hidden from Companion");
   equal(cardTypeVisibleForConnector("push", "mac_companion"), false, "triggers are hidden from Companion");
@@ -61,6 +61,7 @@ export function runPreviewFeatureTests(): void {
       companion_folder: { label: "Open folder", allowInSubpage: true },
       companion_media: { label: "Media control", allowInSubpage: true },
       companion_stats: { label: "Stats", allowInSubpage: true },
+      companion_window: { label: "Window control", allowInSubpage: true },
       internal: { label: "Internal Switches", allowInSubpage: true },
       push: { label: "Trigger", allowInSubpage: true },
       screen_lock: { label: "Screen Lock", allowInSubpage: true },
@@ -69,7 +70,7 @@ export function runPreviewFeatureTests(): void {
     }, [], false, false, null, "mac_companion");
   deepEqual(
     companionOptions.map((option) => option.key),
-    ["calendar", "companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "companion_stats", "webhook"],
+    ["calendar", "companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "slider", "companion_stats", "webhook", "companion_window"],
     "Companion picker shows subtypes and shared cards while excluding device-only cards",
   );
   equal(

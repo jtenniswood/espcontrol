@@ -257,6 +257,7 @@ const COMPANION_CARD_METADATA = {
             ["folder", "Open folder"],
             ["media", "Media control"],
             ["stats", "Stats"],
+            ["window", "Window control"],
         ],
         value: companionCardMode,
     },
@@ -320,6 +321,7 @@ export function companionEntityForMode(mode: string): string {
     if (mode === "folder") return COMPANION_FOLDER_PREFIX;
     if (mode === "media") return COMPANION_MEDIA_ACTIONS[0].id;
     if (mode === "stats") return COMPANION_SYSTEM_METRICS[0]?.id || "";
+    if (mode === "window") return COMPANION_WINDOW_ACTIONS[0]?.id || "";
     return COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === mode)?.id || "";
 }
 
@@ -511,6 +513,10 @@ export function registerCompanionCardTypes(
                 statsSelect.addEventListener("change", function () {
                     const selected = COMPANION_SYSTEM_METRICS.find((candidate) => candidate.mode === this.value);
                     if (!selected) return;
+                    if (!card.unit || card.unit === metric?.unit || card.unit === "KB/s") {
+                        card.unit = selected.unit;
+                        helpers.saveField("unit", card.unit);
+                    }
                     card.entity = selected.id;
                     helpers.saveField("entity", card.entity);
                     renderButtonSettings();
@@ -705,7 +711,7 @@ export function registerCompanionCardTypes(
             const folderToggle = helpers.toggleRow(
                 "Add app subpage",
                 helpers.idPrefix + "companion-app-shortcuts",
-                companionAppShortcutFolderEnabled(card),
+                !helpers.isSub && companionAppShortcutFolderEnabled(card),
             );
             shortcutFolderField.appendChild(folderToggle.row);
             const shortcutFolderNote = document.createElement("div");
@@ -748,9 +754,9 @@ export function registerCompanionCardTypes(
                 windowField.style.display = mode === "window" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
-                shortcutFolderField.style.display = mode === "app" &&
+                shortcutFolderField.style.display = !helpers.isSub && mode === "app" &&
                     !!companionShortcutFolderAppLabel(card.entity) ? "" : "none";
-                autoSwitchField.style.display = mode === "app" &&
+                autoSwitchField.style.display = !helpers.isSub && mode === "app" &&
                     companionAppShortcutFolderEnabled(card) ? "" : "none";
             }
             syncMode(initialMode);
@@ -964,7 +970,7 @@ export function registerCompanionCardTypes(
             return preview;
         },
         contextMenuItems: function (slot?: any, card?: any, helpers?: any) {
-            if (!companionAppShortcutFolderEnabled(card)) return;
+            if (helpers?.isSub || !companionAppShortcutFolderEnabled(card)) return;
             helpers.addCtxItem("cog", "Edit " + companionShortcutFolderAppLabel(card.entity) + " Subpage", function () {
                 codec.enterSubpage(slot);
             });
@@ -986,6 +992,7 @@ export function registerCompanionCardTypes(
         ["companion_folder", "Open folder", "folder"],
         ["companion_media", "Media control", "media"],
         ["companion_stats", "Stats", "stats"],
+        ["companion_window", "Window control", "window"],
     ];
     companionPickerDefinitions.forEach(function (definition) {
         const key = definition[0];

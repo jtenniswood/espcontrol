@@ -406,7 +406,7 @@ inline void companion_set_focused_action(std::string action_id) {
   {
     std::lock_guard<std::mutex> lock(state.mutex);
     should_return_from_subpage = state.connected && !state.focused_action_id.empty() &&
-      action_id.empty();
+      action_id != state.focused_action_id;
     if (action_id.empty() || !state.connected) {
       state.pending_auto_subpage_action_id.clear();
     } else if (state.focused_action_id != action_id) {

@@ -42,6 +42,7 @@ static std::vector<std::string> split(const std::string &value, char separator) 
   std::stringstream stream(value);
   std::string part;
   while (std::getline(stream, part, separator)) parts.push_back(part);
+  if (!value.empty() && value.back() == separator) parts.emplace_back();
   return parts;
 }
 
@@ -49,6 +50,13 @@ static bool safe_field(const std::string &value, size_t limit) {
   if (value.empty() || value.size() > limit) return false;
   return std::all_of(value.begin(), value.end(), [](unsigned char byte) {
     return byte >= 0x20 && byte <= 0x7e && byte != '|' && byte != ',';
+  });
+}
+
+static bool safe_utf8_field(const std::string &value, size_t limit) {
+  if (value.empty() || value.size() > limit) return false;
+  return std::all_of(value.begin(), value.end(), [](unsigned char byte) {
+    return byte >= 0x20 && byte != '|' && byte != ',';
   });
 }
 
@@ -217,7 +225,9 @@ bool CompanionService::ensure_identity_() {
 bool CompanionService::start_server_() {
   httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
   config.httpd.max_open_sockets = 2;
-  config.httpd.lru_purge_enable = true;
+  // Never evict an authenticated Companion session just to admit an
+  // unauthenticated socket. Excess connections are rejected instead.
+  config.httpd.lru_purge_enable = false;
   // The main web UI owns ESP-IDF's default HTTPD control port. Each HTTPD
   // instance needs a distinct internal control socket even when its public
   // listener uses a different port.
@@ -232,7 +242,7 @@ bool CompanionService::start_server_() {
   if (httpd_ssl_start(&this->server_, &config) != ESP_OK) return false;
   const httpd_uri_t websocket = {
       .uri = "/companion/v1", .method = HTTP_GET, .handler = &CompanionService::websocket_handler_, .user_ctx = this,
-      .is_websocket = true, .handle_ws_control_frames = true};
+      .is_websocket = true, .handle_ws_control_frames = false};
   return httpd_register_uri_handler(this->server_, &websocket) == ESP_OK;
 }
 
@@ -443,7 +453,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     for (const auto &entry : catalogue) {
       if (actions.size() >= MAX_CATALOGUE_ACTIONS) break;
       const auto item = split(entry, ':');
-      if (item.size() == 2 && safe_field(item[0], 96) && safe_field(item[1], 96)) actions.push_back({item[0], item[1]});
+      if (item.size() == 2 && safe_field(item[0], 96) && safe_utf8_field(item[1], 96)) actions.push_back({item[0], item[1]});
     }
     companion_set_actions(std::move(actions));
     this->send_(socket_fd, "RESULT|catalogue|ok");
@@ -736,6 +746,7 @@ void CompanionService::update_authentication_deadline_() {
 void CompanionService::set_connected_(bool connected) {
   if (!connected) this->authenticated_socket_ = -1;
   if (connected) {
+    this->now_playing_generation_ = 0;
     this->disconnect_grace_expires_at_.store(0);
   } else {
     this->reset_artwork_transfer_("connection closed");

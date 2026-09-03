@@ -26,6 +26,7 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtScreensaver,
+        postCoverArtSource,
         postCoverArtMediaPlayerEntity,
         postCoverArtSecondaryMediaPlayerEntity,
         postCoverArtConditions,
@@ -44,6 +45,31 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
             postCoverArtScreensaver(state.coverArtScreensaverOn);
         });
         els.setCoverArtToggle = coverArtToggle.input;
+        if (_companionSupported) {
+            var coverArtSourceField: any = document.createElement("div");
+            coverArtSourceField.className = "sp-field";
+            coverArtSourceField.appendChild(fieldLabel("Source", "sp-set-ss-cover-art-source"));
+            var coverArtSourceSelect: any = document.createElement("select");
+            coverArtSourceSelect.className = "sp-select";
+            coverArtSourceSelect.id = "sp-set-ss-cover-art-source";
+            ["Home Assistant", "Mac Companion"].sort(function (a, b) {
+                return a.localeCompare(b);
+            }).forEach(function (source: string) {
+                var option: any = document.createElement("option");
+                option.value = source;
+                option.textContent = source;
+                coverArtSourceSelect.appendChild(option);
+            });
+            coverArtSourceSelect.value = state.coverArtSource === "Mac Companion" ? "Mac Companion" : "Home Assistant";
+            coverArtSourceSelect.addEventListener("change", function (this: HTMLSelectElement) {
+                state.coverArtSource = this.value;
+                coverArtHomeAssistantOptions?.classList.toggle("sp-visible", this.value === "Home Assistant");
+                postCoverArtSource(this.value);
+            });
+            coverArtSourceField.appendChild(coverArtSourceSelect);
+            coverArtBody.appendChild(coverArtSourceField);
+            els.setCoverArtSource = coverArtSourceSelect;
+        }
         var coverArtOptions: any = condField();
         var coverArtOnlyOptions: any = condField();
         var coverArtHomeAssistantOptions: any = condField();
@@ -197,7 +223,7 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         els.setCoverArtConditions = coverArtConditionsInp;
         els.setCoverArtFilterOptions = coverArtFilterOptions;
         coverArtHomeAssistantOptions.appendChild(inlineDisclosure("Advanced Options", coverArtAdvancedBody, !!state.coverArtAttributeConditions));
-        coverArtHomeAssistantOptions.classList.add("sp-visible");
+        coverArtHomeAssistantOptions.classList.toggle("sp-visible", state.coverArtSource !== "Mac Companion");
         coverArtOnlyOptions.appendChild(coverArtHomeAssistantOptions);
         els.setCoverArtHomeAssistantOptions = coverArtHomeAssistantOptions;
         els.setCoverArtOnlyOptions = coverArtOnlyOptions;

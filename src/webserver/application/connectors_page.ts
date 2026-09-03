@@ -61,6 +61,8 @@ export function createConnectorsPageFeature(
     let heading: HTMLElement | null = null;
     let homeAssistantStatus: HTMLElement | null = null;
     let homeAssistantInstructions: HTMLElement | null = null;
+    let homeAssistantSteps: HTMLElement | null = null;
+    let homeAssistantActionInfo: HTMLElement | null = null;
     let homeAssistantBadge: HTMLElement | null = null;
     let current: ConnectorsStatus | null = null;
     const statusListeners: Array<() => void> = [];
@@ -108,8 +110,13 @@ export function createConnectorsPageFeature(
             homeAssistantStatus.classList.toggle(
                 "sp-connector-status-connected", value.home_assistant.connected);
         }
-        setHidden(homeAssistantInstructions, value.home_assistant.connected);
-        setHidden(homeAssistantBadge, !value.home_assistant.configured);
+        // Once connected, hide the setup steps. Keep the action-permission
+        // warning visible until that permission has actually been confirmed.
+        setHidden(homeAssistantSteps, value.home_assistant.connected);
+        setHidden(homeAssistantActionInfo, value.home_assistant.actions_confirmed);
+        setHidden(homeAssistantInstructions, value.home_assistant.connected &&
+            value.home_assistant.actions_confirmed);
+        setHidden(homeAssistantBadge, !value.home_assistant.connected);
         if (heading) {
             heading.textContent = value.onboarding_complete ? "Connectors" : "Connect EspControl";
         }
@@ -147,6 +154,7 @@ export function createConnectorsPageFeature(
         body.appendChild(homeAssistantStatus);
 
         const steps = document.createElement("ol");
+        homeAssistantSteps = steps;
         steps.className = "sp-connector-steps";
         [
             "In Home Assistant, open Settings → Devices & services.",
@@ -159,6 +167,7 @@ export function createConnectorsPageFeature(
         homeAssistantInstructions.appendChild(steps);
 
         const actionInfo = document.createElement("div");
+        homeAssistantActionInfo = actionInfo;
         actionInfo.className = "sp-connector-info";
         actionInfo.setAttribute("role", "note");
         actionInfo.textContent = "3. Enable ‘Allow the device to perform Home Assistant actions’ in the device configuration. Without this, the screen cannot perform actions in Home Assistant.";

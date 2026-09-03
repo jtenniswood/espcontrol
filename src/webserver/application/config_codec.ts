@@ -658,13 +658,16 @@ export function createConfigCodecFeature(
             options = normalizeSubpageOptions(options, sensor, precision);
         }
         else if (type === "companion") {
-            options = normalizeCompanionAppShortcutOptions({
-                ...(b || {}),
-                type,
-                entity: b && b.entity,
-                sensor,
-                options,
-            });
+            const isCompanionMetric = COMPANION_SYSTEM_METRICS.some((metric) =>
+                metric.id === (b && b.entity) || metric.freeId === (b && b.entity));
+            options = isCompanionMetric ? copyLargeNumbersOption("", options) :
+                normalizeCompanionAppShortcutOptions({
+                    ...(b || {}),
+                    type,
+                    entity: b && b.entity,
+                    sensor,
+                    options,
+                });
         }
         else if (type === "webhook") {
             var webhookButton: any = EspControlModel.cloneCardConfig(b || {});

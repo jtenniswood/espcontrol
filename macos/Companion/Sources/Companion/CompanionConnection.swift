@@ -412,12 +412,14 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         }
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
-        let entries = store.launchableApps().compactMap { app -> String? in
-            guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
-            return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
-        } + store.folderActions().compactMap { folder -> String? in
+        // Approved folders are sent first so they remain available even when
+        // the installed application catalogue reaches the frame limit.
+        let entries = store.folderActions().compactMap { folder -> String? in
             guard Self.validCatalogueIdentifier(folder.actionIdentifier) else { return nil }
             return "\(folder.actionIdentifier):\(Self.catalogueLabel(folder.name, fallback: "Folder"))"
+        } + store.launchableApps().compactMap { app -> String? in
+            guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
+            return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
         }
         var catalogue = "CATALOG|"
         for entry in entries {
@@ -429,7 +431,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         publishFocusedAction()
     }
 
-    private func publishTimezone() {
+    func publishTimezone() {
         let identifier = TimeZone.current.identifier
         guard !identifier.isEmpty, identifier.utf8.count <= 96,
               !identifier.contains("|"), !identifier.contains(",") else { return }
@@ -477,11 +479,15 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
     }
 
     private static func catalogueLabel(_ value: String, fallback: String) -> String {
-        let bytes = value.utf8.filter {
-            $0 >= 0x20 && $0 <= 0x7e && $0 != 0x7c && $0 != 0x3a && $0 != 0x2c
+        var sanitized = ""
+        for scalar in value.unicodeScalars {
+            guard scalar.value >= 0x20 && scalar.value <= 0x10ffff,
+                  scalar.value != 0x7c && scalar.value != 0x3a && scalar.value != 0x2c else { continue }
+            let candidate = sanitized + String(scalar)
+            guard candidate.utf8.count <= 96 else { break }
+            sanitized = candidate
         }
-        let sanitized = String(decoding: bytes.prefix(96), as: UTF8.self)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        sanitized = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
         return sanitized.isEmpty ? fallback : sanitized
     }
 }

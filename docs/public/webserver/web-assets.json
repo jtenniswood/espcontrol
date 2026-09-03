@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "bundles": [
     {
-      "id": "5ab85e4b9bf61840e90f96a54197e42ab721c663662e5615dcb034e6e042d726",
-      "sha256": "5ab85e4b9bf61840e90f96a54197e42ab721c663662e5615dcb034e6e042d726",
-      "path": "bundles/5ab85e4b9bf61840e90f96a54197e42ab721c663662e5615dcb034e6e042d726/www.js",
+      "id": "6f5baa90516bd4f2f41ab432d71c4a335f1649a72ba1e6edd98f2a80a36b2a6e",
+      "sha256": "6f5baa90516bd4f2f41ab432d71c4a335f1649a72ba1e6edd98f2a80a36b2a6e",
+      "path": "bundles/6f5baa90516bd4f2f41ab432d71c4a335f1649a72ba1e6edd98f2a80a36b2a6e/www.js",
       "deviceProfiles": [
         "guition-esp32-p4-jc1060p470",
         "guition-esp32-p4-jc1060p470-v2",

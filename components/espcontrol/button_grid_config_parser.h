@@ -898,7 +898,7 @@ inline const char *subpage_companion_stat_default_label(const std::string &entit
 }
 
 inline const char *subpage_companion_stat_default_unit(const std::string &entity) {
-  return entity == "stat.network_throughput" ? "KB/s" : "%";
+  return entity == "stat.network_throughput" ? "MB/s" : "%";
 }
 
 inline std::string date_time_card_options_normalized(const std::string &options,

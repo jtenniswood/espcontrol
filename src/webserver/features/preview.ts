@@ -67,6 +67,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   companion_shortcut: { icon: "apple-keyboard-command", description: "Run a keyboard shortcut on the Mac." },
   companion_stats: { icon: "gauge", description: "Show a Mac system statistic." },
   companion_url: { icon: "web", description: "Open a URL on the Mac." },
+  companion_window: { icon: "window-open", description: "Control the active Mac window." },
   cover: { icon: "window-shutter", description: "Control blinds, curtains, or covers." },
   door_window: { icon: "door-open", description: "Show open or closed sensor state." },
   presence: { icon: "account", description: "Show person or presence status." },
@@ -101,6 +102,7 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   companion_shortcut: "companion",
   companion_stats: "companion",
   companion_url: "companion",
+  companion_window: "companion",
 };
 
 const MAC_COMPANION_HIDDEN_CARD_TYPES = new Set([
@@ -116,7 +118,7 @@ export type CardPickerConnector = "home_assistant" | "mac_companion";
 
 export function cardTypeConnector(key: string): CardPickerOption["connector"] {
   if (key === "companion" || key.startsWith("companion_")) return "mac_companion";
-  if (key === "slider") return "home_assistant";
+  if (key === "slider") return "mixed";
   if (key === "action" || key === "sensor" || key === "calendar" || key === "subpage") {
     return "home_assistant_or_local";
   }
