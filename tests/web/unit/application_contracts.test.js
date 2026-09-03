@@ -598,6 +598,8 @@ describe("browserless application contracts", () => {
     assert.match(fields, /url: false/);
     assert.match(fields, /media: false/);
     assert.match(fields, /folder: false/);
+    assert.match(card, /sortCompanionLabels\(COMPANION_MEDIA_ACTIONS\)/);
+    assert.match(card, /first\.group\.localeCompare\(second\.group/);
   });
 
   test("registers the internal relay card with profile-owned options", () => {

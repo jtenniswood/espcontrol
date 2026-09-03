@@ -230,13 +230,13 @@ export function runCompanionShortcutFeatureTests(): void {
     throw new Error("Open folder cards must use Folder Name as their empty label placeholder");
   }
   if (JSON.stringify(COMPANION_STATS_OPTIONS) !== JSON.stringify([
-    ["processor", "Processor"],
-    ["memory_usage", "Memory"],
-    ["storage", "Storage"],
     ["battery", "Battery"],
+    ["memory_usage", "Memory"],
     ["network_throughput", "Network"],
+    ["processor", "Processor"],
+    ["storage", "Storage"],
   ])) {
-    throw new Error("Companion statistic choices must use concise labels");
+    throw new Error("Companion statistic choices must use concise alphabetical labels");
   }
   if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {
@@ -306,15 +306,17 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   const catalogue = [
     { id: "com.apple.Safari", label: "Safari" },
+    { id: "com.google.Chrome", label: "Google Chrome" },
     { id: "com.apple.finder", label: "Finder" },
     { id: folderAction, label: "Projects" },
+    { id: "folder.00000000-0000-0000-0000-000000000002", label: "Archive" },
     { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Media Play/Pause" },
   ];
-  if (companionApplicationActions(catalogue).map((action) => action.id).join() !== "com.apple.Safari") {
-    throw new Error("Finder and approved folders must not appear in the application list");
+  if (companionApplicationActions(catalogue).map((action) => action.id).join() !== "com.google.Chrome,com.apple.Safari") {
+    throw new Error("Finder and approved folders must not appear in the alphabetized application list");
   }
-  if (companionFolderActions(catalogue).map((action) => action.id).join() !== folderAction) {
-    throw new Error("Approved folders must appear only in the folder list");
+  if (companionFolderActions(catalogue).map((action) => action.label).join() !== "Archive,Projects") {
+    throw new Error("Approved folders must appear alphabetically in the folder list");
   }
   if (companionSliderMode({ entity: COMPANION_OUTPUT_VOLUME_ID }) !== "mac_output") {
     throw new Error("Output volume must be available as a Slider control");

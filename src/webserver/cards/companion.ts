@@ -91,11 +91,11 @@ export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
     { mode: "network_throughput", id: "stat.network_throughput", label: "Network", unit: "MB/s" },
 ];
 export const COMPANION_STATS_OPTIONS = [
-    ["processor", "Processor"],
-    ["memory_usage", "Memory"],
-    ["storage", "Storage"],
     ["battery", "Battery"],
+    ["memory_usage", "Memory"],
     ["network_throughput", "Network"],
+    ["processor", "Processor"],
+    ["storage", "Storage"],
 ] as const;
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
@@ -122,6 +122,11 @@ function companionShortcutKey(code: string): string {
     if (/^Digit[0-9]$/.test(code)) return code.slice(5);
     if (/^F(?:[1-9]|1[0-9]|20)$/.test(code)) return code.toLowerCase();
     return COMPANION_SHORTCUT_KEYS[code] || "";
+}
+
+function sortCompanionLabels<T extends { readonly label: string }>(options: readonly T[]): T[] {
+    return [...options].sort((first, second) =>
+        first.label.localeCompare(second.label, undefined, { sensitivity: "base" }));
 }
 
 export function companionShortcutActionId(event: Pick<KeyboardEvent,
@@ -319,13 +324,13 @@ export function companionEntityForMode(mode: string): string {
 }
 
 export function companionApplicationActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
-    return actions.filter((action) =>
+    return sortCompanionLabels(actions.filter((action) =>
         action.id !== COMPANION_FINDER_ID && !action.id.startsWith(COMPANION_FOLDER_PREFIX) &&
-        !COMPANION_MEDIA_ACTIONS.some((mediaAction) => mediaAction.id === action.id));
+        !COMPANION_MEDIA_ACTIONS.some((mediaAction) => mediaAction.id === action.id)));
 }
 
 export function companionFolderActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
-    return actions.filter((action) => action.id.startsWith(COMPANION_FOLDER_PREFIX));
+    return sortCompanionLabels(actions.filter((action) => action.id.startsWith(COMPANION_FOLDER_PREFIX)));
 }
 
 export function resetCompanionMediaPresentation(card: any, nextMode: string): void {
@@ -512,7 +517,9 @@ export function registerCompanionCardTypes(
                     const displaySelect = document.createElement("select");
                     displaySelect.className = "sp-select";
                     displaySelect.id = helpers.idPrefix + "metric-display";
-                    [{ value: "used", label: "Used" }, { value: "free", label: "Free" }].forEach((item) => {
+                    sortCompanionLabels([
+                        { value: "used", label: "Used" }, { value: "free", label: "Free" },
+                    ]).forEach((item) => {
                         const option = document.createElement("option");
                         option.value = item.value;
                         option.textContent = item.label;
@@ -614,7 +621,9 @@ export function registerCompanionCardTypes(
             windowSelect.className = "sp-select";
             windowSelect.id = helpers.idPrefix + "companion-window-action";
             const groups = new Map<string, HTMLOptGroupElement>();
-            COMPANION_WINDOW_ACTIONS.forEach(function (action) {
+            [...COMPANION_WINDOW_ACTIONS].sort((first, second) =>
+                first.group.localeCompare(second.group, undefined, { sensitivity: "base" }) ||
+                first.label.localeCompare(second.label, undefined, { sensitivity: "base" })).forEach(function (action) {
                 let group = groups.get(action.group);
                 if (!group) {
                     group = document.createElement("optgroup");
@@ -667,7 +676,7 @@ export function registerCompanionCardTypes(
             const mediaSelect = document.createElement("select");
             mediaSelect.className = "sp-select";
             mediaSelect.id = helpers.idPrefix + "companion-media-action";
-            COMPANION_MEDIA_ACTIONS.forEach(function (action) {
+            sortCompanionLabels(COMPANION_MEDIA_ACTIONS).forEach(function (action) {
                 const option = document.createElement("option");
                 option.value = action.id;
                 option.textContent = action.label;
