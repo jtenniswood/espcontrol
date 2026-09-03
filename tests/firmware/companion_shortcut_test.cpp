@@ -147,6 +147,13 @@ int main() {
   companion_expect_action_result("launch-4", [&navigated]() { navigated = true; });
   companion_deliver_action_result("launch-4", "activated");
   assert(navigated);
+  navigated = false;
+  companion_expect_action_result("launch-focus", "com.apple.Safari",
+                                 [&navigated]() { navigated = true; });
+  companion_set_focused_application("com.apple.Safari");
+  assert(navigated);
+  companion_deliver_action_result("launch-focus", "activated");
+  assert(navigated);
   companion_set_connected(false);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.cpu", metric_value));
   assert(!companion_application_focused("com.apple.Safari"));
