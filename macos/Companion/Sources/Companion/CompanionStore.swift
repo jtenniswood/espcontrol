@@ -17,7 +17,75 @@ struct ApprovedFolder: Codable, Identifiable, Hashable {
 
     let id: UUID
     let name: String
-    let path: String
+    let bookmarkData: Data?
+    private let legacyPath: String?
+
+    init(id: UUID, name: String, path: String) {
+        self.id = id
+        self.name = name
+        self.bookmarkData = nil
+        self.legacyPath = path
+    }
+
+    init(id: UUID, name: String, bookmarkData: Data) {
+        self.id = id
+        self.name = name
+        self.bookmarkData = bookmarkData
+        self.legacyPath = nil
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, bookmarkData, path
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        bookmarkData = try values.decodeIfPresent(Data.self, forKey: .bookmarkData)
+        legacyPath = try values.decodeIfPresent(String.self, forKey: .path)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(name, forKey: .name)
+        try values.encodeIfPresent(bookmarkData, forKey: .bookmarkData)
+    }
+
+    var path: String {
+        securityScopedURL()?.url.path ?? legacyPath ?? "Access needs approval"
+    }
+
+    var needsReapproval: Bool { bookmarkData == nil }
+
+    struct SecurityScopedURL {
+        let url: URL
+        let refreshedBookmarkData: Data?
+    }
+
+    func securityScopedURL() -> SecurityScopedURL? {
+        guard let bookmarkData else { return nil }
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: bookmarkData,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else { return nil }
+        let refreshedBookmarkData = isStale
+            ? try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+            : nil
+        return SecurityScopedURL(url: url, refreshedBookmarkData: refreshedBookmarkData)
+    }
+
+    func withSecurityScopedAccess<T>(_ body: (URL) -> T) -> T? {
+        guard let access = securityScopedURL(), access.url.startAccessingSecurityScopedResource() else {
+            return nil
+        }
+        defer { access.url.stopAccessingSecurityScopedResource() }
+        return body(access.url)
+    }
 
     var actionIdentifier: String { Self.actionPrefix + id.uuidString.lowercased() }
 
@@ -29,6 +97,9 @@ struct ApprovedFolder: Codable, Identifiable, Hashable {
 
 @MainActor
 final class CompanionStore: NSObject, ObservableObject {
+    static let privacyPolicyURL = URL(string: "https://jtenniswood.github.io/espcontrol/reference/privacy")!
+    static let supportURL = URL(string: "https://github.com/jtenniswood/espcontrol/issues")!
+
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
     @Published private(set) var availableApps: [LaunchableApp] = []
     @Published private(set) var approvedFolders: [ApprovedFolder]
@@ -237,12 +308,20 @@ final class CompanionStore: NSObject, ObservableObject {
         guard panel.runModal() == .OK, let selected = panel.url else { return }
 
         let url = selected.standardizedFileURL
+        guard let bookmarkData = try? url.bookmarkData(
+            options: [.withSecurityScope],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        ) else {
+            updateStatus("macOS could not save access to that folder", connected: isConnected)
+            return
+        }
         guard !approvedFolders.contains(where: { $0.path == url.path }) else {
             updateStatus("That folder is already available", connected: isConnected)
             return
         }
         let displayName = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-        approvedFolders.append(ApprovedFolder(id: UUID(), name: displayName, path: url.path))
+        approvedFolders.append(ApprovedFolder(id: UUID(), name: displayName, bookmarkData: bookmarkData))
         approvedFolders.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         persistApprovedFolders()
         if isConnected { connection.publishCatalogue() }
@@ -258,6 +337,12 @@ final class CompanionStore: NSObject, ObservableObject {
         if let data = try? JSONEncoder().encode(approvedFolders) {
             defaults.set(data, forKey: Keys.approvedFolders)
         }
+    }
+
+    private func refreshBookmark(for folder: ApprovedFolder, with data: Data) {
+        guard let index = approvedFolders.firstIndex(where: { $0.id == folder.id }) else { return }
+        approvedFolders[index] = ApprovedFolder(id: folder.id, name: folder.name, bookmarkData: data)
+        persistApprovedFolders()
     }
     func connect() { connection.connect(mode: .authenticate) }
     func disconnect() { connection.disconnect() }
@@ -381,13 +466,22 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Blocked an unavailable folder", connected: isConnected)
             return false
         }
+        guard let access = folder.securityScopedURL(),
+              access.url.startAccessingSecurityScopedResource() else {
+            updateStatus("Re-add this folder to restore its macOS permission", connected: isConnected)
+            return false
+        }
+        defer { access.url.stopAccessingSecurityScopedResource() }
+        if let refreshedBookmarkData = access.refreshedBookmarkData {
+            refreshBookmark(for: folder, with: refreshedBookmarkData)
+        }
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory),
+        guard FileManager.default.fileExists(atPath: access.url.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
             updateStatus("The selected folder is no longer available", connected: isConnected)
             return false
         }
-        return NSWorkspace.shared.open(URL(fileURLWithPath: folder.path, isDirectory: true))
+        return NSWorkspace.shared.open(access.url)
     }
 
     func perform(actionIdentifier: String) -> Bool {
