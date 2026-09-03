@@ -33,9 +33,12 @@ import {
   companionShortcutFolderCardAllowed,
   companionShortcutFolderEditorAvailable,
   CODEX_BUNDLE_ID,
+  SLACK_BUNDLE_ID,
   createSafariShortcutSubpage,
   createCodexShortcutSubpage,
   codexShortcutPresetCards,
+  createSlackShortcutSubpage,
+  slackShortcutPresetCards,
   normalizeCompanionAppShortcutOptions,
   safariShortcutPresetCards,
   setCompanionAppShortcutFolderEnabled,
@@ -124,6 +127,28 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!codexPreset.every(companionShortcutFolderCardAllowed)) {
     throw new Error("Codex presets must contain only Companion keyboard shortcuts");
   }
+  const slackFolderCard = {
+    type: "companion", entity: SLACK_BUNDLE_ID, options: "",
+  };
+  setCompanionAppShortcutFolderEnabled(slackFolderCard, true);
+  if (!companionAppShortcutFolderEnabled(slackFolderCard) ||
+      normalizeCompanionAppShortcutOptions(slackFolderCard) !== "app_shortcuts") {
+    throw new Error("Slack launch cards must support shortcut folders");
+  }
+  const slackPreset = slackShortcutPresetCards();
+  const expectedSlackShortcuts = [
+    "shortcut.command+n",
+    "shortcut.command+g",
+    "shortcut.command+shift+k",
+    "shortcut.command+j",
+    "shortcut.command+shift+a",
+  ];
+  if (slackPreset.map((card) => card.entity).join("|") !== expectedSlackShortcuts.join("|")) {
+    throw new Error("Slack shortcut defaults changed");
+  }
+  if (!slackPreset.every(companionShortcutFolderCardAllowed)) {
+    throw new Error("Slack presets must contain only Companion keyboard shortcuts");
+  }
   if (companionShortcutActionIdValid("shortcut.") ||
       companionShortcutActionIdValid("shortcut.shift+a") ||
       companionShortcutActionIdValid("shortcut.command+command+a") ||
@@ -138,6 +163,11 @@ export function runCompanionShortcutFeatureTests(): void {
   if (codexSubpage.backLabel !== "Back" || codexSubpage.order.join("|") !== "B|1|2|3|4|5" ||
       codexSubpage.buttons.map((card: any) => card.entity).join("|") !== expectedCodexShortcuts.join("|")) {
     throw new Error("Codex shortcut folder layout changed");
+  }
+  const slackSubpage = createSlackShortcutSubpage();
+  if (slackSubpage.backLabel !== "Back" || slackSubpage.order.join("|") !== "B|1|2|3|4|5" ||
+      slackSubpage.buttons.map((card: any) => card.entity).join("|") !== expectedSlackShortcuts.join("|")) {
+    throw new Error("Slack shortcut folder layout changed");
   }
   if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "processor") {
     throw new Error("Processor statistics must retain their Companion subtype");

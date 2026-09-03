@@ -37,6 +37,9 @@ int main() {
   ParsedCfg codex_launch = safari_launch;
   codex_launch.entity = "com.openai.codex";
   assert(companion_app_shortcuts_enabled(codex_launch));
+  ParsedCfg slack_launch = safari_launch;
+  slack_launch.entity = "com.tinyspeck.slackmacgap";
+  assert(companion_app_shortcuts_enabled(slack_launch));
   safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
   assert(!companion_app_shortcuts_enabled(safari_launch));
 

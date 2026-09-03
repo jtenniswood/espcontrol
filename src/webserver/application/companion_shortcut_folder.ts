@@ -4,10 +4,12 @@ import { cardTransferOwnsSubpage } from "../model/card_transfer";
 export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
 export const CODEX_BUNDLE_ID = "com.openai.codex";
+export const SLACK_BUNDLE_ID = "com.tinyspeck.slackmacgap";
 export const COMPANION_SHORTCUT_PREFIX = "shortcut.";
 const COMPANION_SHORTCUT_FOLDER_APPS: Readonly<Record<string, string>> = {
     [SAFARI_BUNDLE_ID]: "Safari",
     [CODEX_BUNDLE_ID]: "Codex",
+    [SLACK_BUNDLE_ID]: "Slack",
 };
 const COMPANION_SHORTCUT_MODIFIERS = new Set(["command", "control", "option", "shift"]);
 const COMPANION_SHORTCUT_KEYS = new Set([
@@ -126,9 +128,20 @@ export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
     ];
 }
 
+export function slackShortcutPresetCards(): CompanionShortcutPresetCard[] {
+    return [
+        shortcutCard("shortcut.command+n", "Compose Message", "Message Video"),
+        shortcutCard("shortcut.command+g", "Search", "Spotlight"),
+        shortcutCard("shortcut.command+shift+k", "Browse DMs", "Account"),
+        shortcutCard("shortcut.command+j", "Jump to Unread", "Bell"),
+        shortcutCard("shortcut.command+shift+a", "All Unreads", "View Headline"),
+    ];
+}
+
 export function companionShortcutPresetCards(bundleIdentifier: string): CompanionShortcutPresetCard[] {
     if (bundleIdentifier === SAFARI_BUNDLE_ID) return safariShortcutPresetCards();
     if (bundleIdentifier === CODEX_BUNDLE_ID) return codexShortcutPresetCards();
+    if (bundleIdentifier === SLACK_BUNDLE_ID) return slackShortcutPresetCards();
     return [];
 }
 
@@ -148,4 +161,8 @@ export function createSafariShortcutSubpage(): any {
 
 export function createCodexShortcutSubpage(): any {
     return createCompanionShortcutSubpage(CODEX_BUNDLE_ID);
+}
+
+export function createSlackShortcutSubpage(): any {
+    return createCompanionShortcutSubpage(SLACK_BUNDLE_ID);
 }
