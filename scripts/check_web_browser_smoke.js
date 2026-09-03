@@ -2387,7 +2387,7 @@ async function chooseCardType(page, label) {
   const option = page.getByRole("button", { name: `${label} card type` });
   await option.waitFor({ state: "visible" });
   await option.click();
-  await page.waitForSelector(".sp-card-type-readonly");
+  await page.waitForSelector(".sp-settings-modal");
   assert.strictEqual(
     await page.locator("#sp-inp-type").count(),
     0,
@@ -2486,14 +2486,14 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
     );
     assert.strictEqual(
       result.primaryKinds.filter((kind) => kind === "card").length,
-      1,
-      `${label}: ${context} should keep exactly one Card field outside groups`,
+      0,
+      `${label}: ${context} should not expose a Card field`,
     );
     assert(
       result.primaryKinds.every((kind) =>
-        ["card", "type", "entity"].includes(kind),
+        ["type", "entity"].includes(kind),
       ),
-      `${label}: ${context} should only expose Card, Type, and Entity primary fields`,
+      `${label}: ${context} should only expose Type and Entity primary fields`,
     );
     for (const kind of ["type", "entity"]) {
       assert(
@@ -2511,8 +2511,8 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
   await assertGrouped("Switch");
   assert.strictEqual(
     await page.locator(".sp-settings-modal .sp-card-type-readonly").count(),
-    1,
-    `${label}: selected cards show read-only type context`,
+    0,
+    `${label}: selected cards should not show a read-only card type field`,
   );
 
   await page.locator(".sp-settings-close").click();
@@ -2824,7 +2824,7 @@ async function assertMediaCoverArtSettingsPanels(page, label) {
     0,
     `${label}: existing Cover Art should not show a card type dropdown`,
   );
-  assert.strictEqual(await page.locator("#sp-card-type-readonly").textContent(), "Media", `${label}: existing Cover Art card should show Media as read-only type context`);
+  assert.strictEqual(await page.locator("#sp-card-type-readonly").count(), 0, `${label}: existing Cover Art card should not show a read-only card type field`);
   assert.strictEqual(await page.locator("#sp-inp-media-mode").inputValue(), "cover_art", `${label}: existing Cover Art card should retain its subtype`);
   assert.strictEqual(await page.locator("#sp-inp-entity").inputValue(), "media_player.living", `${label}: existing Cover Art card should retain its entity`);
   assert.deepStrictEqual(
