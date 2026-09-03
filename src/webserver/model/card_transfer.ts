@@ -31,9 +31,10 @@ export interface CardTransferEnvelope {
 }
 
 export function cardTransferOwnsSubpage(card: Pick<CardConfig, "type" | "entity" | "sensor" | "options">): boolean {
+  // Companion app subpages start with shortcut cards, but may contain any
+  // card type that a normal subpage accepts.
   return card.type === "subpage" || (
     card.type === "companion" &&
-    card.entity === "com.apple.Safari" &&
     !card.sensor &&
     configOptionEnabled(card.options, "app_shortcuts")
   );

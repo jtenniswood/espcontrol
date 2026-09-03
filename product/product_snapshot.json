@@ -4885,7 +4885,7 @@
         "options": [
           {
             "name": "app_shortcuts",
-            "label": "App Shortcut Folder",
+            "label": "App Subpage",
             "kind": "flag",
             "omitDefault": true
           },

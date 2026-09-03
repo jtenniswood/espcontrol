@@ -15,11 +15,7 @@ import type { EntityStateFeature } from "./entity_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
 import type { GridFeature } from "./grid";
-import {
-    cardOwnsSubpage,
-    companionShortcutFolderCardAllowed,
-    companionShortcutFolderParent,
-} from "./companion_shortcut_folder";
+import { cardOwnsSubpage } from "./companion_shortcut_folder";
 export interface PreviewClipboardDependencies {
     readonly configPersistence: ConfigPersistenceFeature;
     readonly document: Document;
@@ -298,18 +294,12 @@ export function createPreviewClipboardFeature(
                     throw cardTransferError("Subpage cards can only be pasted onto the home screen.");
                 }
                 if (!cardOwnsSubpage(button)) {
-                    throw cardTransferError("This card type cannot own a shortcut folder.");
+                    throw cardTransferError("This card type cannot own a subpage.");
                 }
                 var parsed: any = EspControlModel.parseStructuredSubpageConfig(transfer.subpage);
                 parsed.buttons = parsed.buttons.map(function (subpageButton: any) {
                     return validateCardTransferButton(subpageButton, true, warnings);
                 });
-                if (button.type === "companion" &&
-                    parsed.buttons.some(function (subpageButton: any) {
-                        return !companionShortcutFolderCardAllowed(subpageButton);
-                    })) {
-                    throw cardTransferError("Companion shortcut folders can contain only Companion keyboard shortcuts.");
-                }
                 var prepared: any = prepareTransferredSubpage(parsed);
                 entry.subpageConfig = serializeSubpageConfig(prepared.subpage);
                 if (prepared.resized)
@@ -429,16 +419,12 @@ export function createPreviewClipboardFeature(
     }
     function planSubpageClipboardPaste(entries: any, pos: any) {
         var homeSlot: any = state.editingSubpage;
-        var shortcutOnly: any = !!companionShortcutFolderParent(state.buttons, homeSlot);
         var subpage: any = cloneSubpageForClipboard(getSubpage(homeSlot));
         var slots: any = [];
         var resized: any = 0;
         for (var i: any = 0; i < entries.length; i++) {
             var entry: any = entries[i];
             var normalizedEntry: any = clipboardButtonConfig(entry);
-            if (shortcutOnly && !companionShortcutFolderCardAllowed(normalizedEntry)) {
-                return { error: "Companion shortcut folders can contain only Companion keyboard shortcuts." };
-            }
             var typeDef: any = dependencies.cards.definitions[entry.type || ""];
             if (entry.subpageConfig || entry.type === "subpage") {
                 return { error: "Subpage cards can only be pasted onto the home screen." };

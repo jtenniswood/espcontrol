@@ -446,13 +446,9 @@ export function registerCompanionCardTypes(
         },
         renderSettingsBeforeLabel: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
-            const shortcutOnly = !!helpers.shortcutOnly;
             helpers.renderCardModeSelector(panel, card, helpers, {
                 mode: {
                     ...COMPANION_CARD_METADATA.mode,
-                    options: shortcutOnly
-                        ? [["shortcut", "Keyboard shortcut"]]
-                        : COMPANION_CARD_METADATA.mode.options,
                     onChange: function (this: HTMLSelectElement) {
                         const previousLabel = card.label;
                         const previousIcon = card.icon;
@@ -514,7 +510,6 @@ export function registerCompanionCardTypes(
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
             card.entity = currentEntity;
             const initialMode = companionCardMode(card);
-            const shortcutOnly = !!helpers.shortcutOnly;
 
             helpers.renderCardTextField(panel, card, helpers, {
                 label: "Label", idSuffix: "label", field: "label",
@@ -714,7 +709,7 @@ export function registerCompanionCardTypes(
             const shortcutFolderField = document.createElement("div");
             shortcutFolderField.className = "sp-field";
             const folderToggle = helpers.toggleRow(
-                "Add shortcut folder",
+                "Add app subpage",
                 helpers.idPrefix + "companion-app-shortcuts",
                 companionAppShortcutFolderEnabled(card),
             );
@@ -723,7 +718,7 @@ export function registerCompanionCardTypes(
             shortcutFolderNote.className = "sp-field-info-text";
             const shortcutFolderApp = companionShortcutFolderAppLabel(card.entity);
             shortcutFolderNote.textContent = "Launch " + shortcutFolderApp +
-                ", then open an editable folder of " + shortcutFolderApp + " keyboard shortcuts.";
+                ", then open an editable subpage. It starts with " + shortcutFolderApp + " keyboard shortcuts.";
             shortcutFolderField.appendChild(shortcutFolderNote);
             panel?.appendChild(shortcutFolderField);
             folderToggle.input.addEventListener("change", function () {
@@ -740,7 +735,7 @@ export function registerCompanionCardTypes(
                 windowField.style.display = mode === "window" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
-                shortcutFolderField.style.display = !shortcutOnly && mode === "app" &&
+                shortcutFolderField.style.display = mode === "app" &&
                     !!companionShortcutFolderAppLabel(card.entity) ? "" : "none";
             }
             syncMode(initialMode);
@@ -912,7 +907,7 @@ export function registerCompanionCardTypes(
             if (companionShortcutFolderEditorAvailable(card, savedParent)) {
                 const editButton = document.createElement("button");
                 editButton.className = "sp-action-btn sp-edit-subpage-btn";
-                editButton.textContent = "Edit " + companionShortcutFolderAppLabel(card.entity) + " Shortcuts";
+                editButton.textContent = "Edit " + companionShortcutFolderAppLabel(card.entity) + " Subpage";
                 editButton.addEventListener("click", function () {
                     selection.closeSettings();
                     codec.enterSubpage(slot);
@@ -958,7 +953,7 @@ export function registerCompanionCardTypes(
         },
         contextMenuItems: function (slot?: any, card?: any, helpers?: any) {
             if (!companionAppShortcutFolderEnabled(card)) return;
-            helpers.addCtxItem("cog", "Edit " + companionShortcutFolderAppLabel(card.entity) + " Shortcuts", function () {
+            helpers.addCtxItem("cog", "Edit " + companionShortcutFolderAppLabel(card.entity) + " Subpage", function () {
                 codec.enterSubpage(slot);
             });
         },

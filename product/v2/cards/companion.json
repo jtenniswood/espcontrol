@@ -3,7 +3,7 @@
   "allowInSubpage": true,
   "domains": [],
   "options": [
-    { "name": "app_shortcuts", "label": "App Shortcut Folder", "kind": "flag", "omitDefault": true },
+    { "name": "app_shortcuts", "label": "App Subpage", "kind": "flag", "omitDefault": true },
     { "name": "large_numbers", "label": "Large Sensor Numbers", "kind": "flag", "omitDefault": true }
   ],
   "normalization": {

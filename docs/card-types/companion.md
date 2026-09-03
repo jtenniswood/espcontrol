@@ -30,17 +30,17 @@ Use the normal browser layout editor and select an empty home-screen or subpage 
 
 Use a [Slider card](/card-types/sliders) when you want to control the Mac's output or input volume.
 
-### Add Safari shortcuts
+### Add app subpages
 
-For a **Launch app** card that uses Safari, turn on **Add shortcut folder**. The card will bring Safari to the front and, after the Companion confirms Safari is active, open a folder on the panel containing Back, Forward, Reload, New Tab, and Close Tab. These controls use Safari's standard keyboard shortcuts. If Safari cannot become active, the panel stays on the home screen so a shortcut cannot reach another application.
+For a supported **Launch app** card, turn on **Add app subpage**. The card will bring the app to the front and, after the Companion confirms it is active, open an app subpage on the panel containing default keyboard shortcuts. These controls use the app's standard shortcuts. If the app cannot become active, the panel stays on the home screen so a shortcut cannot reach another application.
 
-The folder is created with those five controls once. You can then edit their labels, icons, shortcuts, and order, or delete and add keyboard-shortcut cards. Turning the folder option off does not discard those edits; turning it back on restores the same folder. Safari must remain approved in the Companion app.
+The subpage is created with those five controls once. You can then add any card type supported inside a normal subpage, as well as edit the default shortcut labels, icons, shortcuts, and order. Turning the option off does not discard those edits; turning it back on restores the same subpage. The app must remain approved in the Companion app.
 
-The first time you use one of these controls, macOS may ask for Accessibility permission. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**. If Safari is no longer approved or the Companion is offline, the Safari card is disabled and the folder is not opened.
+The first time you use one of these controls, macOS may ask for Accessibility permission. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**. If the app is no longer approved or the Companion is offline, the app card is disabled and the app subpage is not opened.
 
 The first time a shortcut or window control is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts and window controls are sent to whichever Mac application is active at that time.
 
-Action cards are disabled when the Mac is offline, when an app or URL card references an unavailable application, when a folder has been removed from the Mac app, or when a URL is incomplete. System-statistic cards show `--` while their reading is unavailable. Media cards are disabled only when the Companion cannot provide the required system command. A missing Now Playing session leaves Play / Pause enabled and displayed as **Stopped**. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards.
+Action cards are disabled when the Mac is offline, when an app or URL card references an unavailable application, when a folder has been removed from the Mac app, or when a URL is incomplete. System-statistic cards show `--` while their reading is unavailable. Media cards are disabled only when the Companion cannot provide the required system command. A missing Now Playing session leaves Play / Pause enabled and displayed as **Stopped**. App subpages accept the same card types as normal subpages. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards.
 
 ## Limits in this proof of concept
 

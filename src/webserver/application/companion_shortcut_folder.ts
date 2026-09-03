@@ -69,16 +69,6 @@ export function companionShortcutFolderEditorAvailable(draftCard: any, savedCard
     return companionAppShortcutFolderEnabled(draftCard) && companionAppShortcutFolderEnabled(savedCard);
 }
 
-export function companionShortcutFolderParent(buttons: readonly any[], homeSlot: number | null): any | null {
-    if (!homeSlot || homeSlot < 1) return null;
-    const parent = buttons[homeSlot - 1];
-    return companionAppShortcutFolderEnabled(parent) ? parent : null;
-}
-
-export function companionShortcutFolderCardAllowed(card: any): boolean {
-    return !!card && card.type === "companion" && companionShortcutActionIdValid(card.entity);
-}
-
 export function companionShortcutActionIdValid(actionId: unknown): boolean {
     if (typeof actionId !== "string" || !actionId.startsWith(COMPANION_SHORTCUT_PREFIX)) return false;
     const parts = actionId.slice(COMPANION_SHORTCUT_PREFIX.length).split("+");

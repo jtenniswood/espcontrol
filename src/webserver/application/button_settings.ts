@@ -22,11 +22,7 @@ import type { PreviewRenderFeature } from "./preview_render";
 import type { CardPickerConnector } from "../features/preview";
 import type { PreviewInteractionsFeature } from "./preview_interactions";
 import type { ControlsFieldsFeature } from "./controls_fields";
-import {
-    cardOwnsSubpage,
-    companionShortcutFolderParent,
-    COMPANION_SHORTCUT_PREFIX,
-} from "./companion_shortcut_folder";
+import { cardOwnsSubpage } from "./companion_shortcut_folder";
 
 export function entityMatchesDomains(entityId?: any, domains?: any): boolean {
     var value: any = String(entityId || "").trim();
@@ -585,12 +581,6 @@ export function createButtonSettingsFeature(
             var td: any = cardRegistry.definitions[newType];
             if (td && td.onSelect && !keepMediaEntity)
                 td.onSelect(b);
-            if (c.isSub && companionShortcutFolderParent(state.buttons, state.editingSubpage)) {
-                b.type = "companion";
-                b.entity = COMPANION_SHORTCUT_PREFIX;
-                b.sensor = "";
-                b.options = "";
-            }
             if (pickerType === "media_control") {
                 b.sensor = "cover_art";
                 b.label = "Cover Art";
@@ -782,9 +772,6 @@ export function createButtonSettingsFeature(
                 ? null
                 : buttonTypeRegistryValue(rawTypeDef, "pickerKey", "") || (b.type || "");
             var typeOpts: any = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
-            var shortcutOnly: any = !!(c.isSub && companionShortcutFolderParent(state.buttons, state.editingSubpage));
-            if (shortcutOnly)
-                typeOpts = typeOpts.filter(function (option: any) { return option.key === "companion"; });
             if (isNewDraftWithoutType) {
                 if (settingsModal)
                     settingsModal.classList.add("sp-card-type-picker-open");
@@ -841,7 +828,6 @@ export function createButtonSettingsFeature(
             cardSize: c.sizes[slot] || 1,
             idPrefix: idPrefix,
             isSub: c.isSub,
-            shortcutOnly: shortcutOnly,
         };
         if (typeDef && typeDef.renderSettingsBeforeLabel &&
             (!c.isSub || buttonTypeRegistryValue(typeDef, "allowInSubpage", false))) {

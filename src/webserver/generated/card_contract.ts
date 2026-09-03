@@ -2993,7 +2993,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "options": [
       {
         "name": "app_shortcuts",
-        "label": "App Shortcut Folder",
+        "label": "App Subpage",
         "kind": "flag",
         "omitDefault": true
       },
