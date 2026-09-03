@@ -84,6 +84,12 @@ int main() {
   assert(volume_invoked);
   assert(companion_url_available("com.apple.Safari", url_config));
   assert(!companion_url_available("com.google.Chrome", url_config));
+  // Companion reports the focused app, not the page it currently shows, so a
+  // URL card must never inherit the app-launch card's checked state.
+  companion_set_focused_application("com.apple.Safari");
+  assert(companion_application_focused("com.apple.Safari"));
+  assert(!companion_card_focus_allowed(url_config));
+  assert(companion_card_focus_allowed(""));
   assert(companion_action_available(folder_action));
   bool invoked = false;
   register_companion_url_sender([&invoked](const std::string &app, const std::string &url,
