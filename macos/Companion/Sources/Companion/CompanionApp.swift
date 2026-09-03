@@ -21,7 +21,7 @@ struct CompanionApp: App {
 }
 
 @MainActor
-final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
@@ -55,10 +55,10 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "EspControl Companion"
         }
-        updateStatusItemImage()
+        updateStatusItemImage(connected: store.isConnected)
         connectionObservation = store.$isConnected
             .removeDuplicates()
-            .sink { [weak self] _ in self?.updateStatusItemImage() }
+            .sink { [weak self] connected in self?.updateStatusItemImage(connected: connected) }
         if store.hasSavedPairing && !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             store.connect()
         }
@@ -77,9 +77,22 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
         store.refreshLaunchAtLoginStatus()
     }
 
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === settingsWindow else { return }
+        DispatchQueue.main.async {
+            guard self.settingsWindow?.isVisible != true else { return }
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        guard let event = NSApp.currentEvent else { return }
-        NSMenu.popUpContextMenu(contextMenu(), with: event, for: sender)
+        guard let statusItem else { return }
+        // Temporarily attach the menu to the status item so AppKit positions it
+        // directly below the menu-bar icon instead of at the pointer location.
+        statusItem.menu = contextMenu()
+        sender.performClick(nil)
+        statusItem.menu = nil
     }
 
     private func contextMenu() -> NSMenu {
@@ -89,6 +102,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
 
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
+        settingsItem.image = nil
         menu.addItem(settingsItem)
         menu.addItem(.separator())
 
@@ -138,10 +152,11 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    private func updateStatusItemImage() {
+    private func updateStatusItemImage(connected: Bool) {
         guard let button = statusItem?.button else { return }
-        let description = store.isConnected ? "EspControl Companion connected" : "EspControl Companion disconnected"
-        let image = NSImage(systemSymbolName: store.connectionSymbol, accessibilityDescription: description)
+        let description = connected ? "EspControl Companion connected" : "EspControl Companion disconnected"
+        let symbol = connected ? "laptopcomputer" : "laptopcomputer.slash"
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
         image?.isTemplate = true
         button.image = image
     }
@@ -186,6 +201,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
             window.title = "EspControl Companion Settings"
             window.contentMinSize = NSSize(width: 520, height: 420)
             window.contentViewController = controller
+            window.delegate = self
             window.isReleasedWhenClosed = false
             window.center()
             settingsWindow = window
@@ -235,7 +251,7 @@ private func focusSettingsWindow(
 }
 
 private enum CompanionSettingsField: Hashable {
-    case panelHost, panelName, pairingCode
+    case panelHost, pairingCode
 }
 
 private struct CompanionPairingDetails {
@@ -272,9 +288,11 @@ private struct CompanionSettings: View {
     var body: some View {
         TabView {
             ScrollView {
-                GroupBox("Device connection") {
+                VStack(spacing: 12) {
                     connectionStatusPanel
-                        .padding(8)
+                    if hasPanelAddress {
+                        deviceWebserverPanel
+                    }
                 }
                 .padding()
             }
@@ -294,36 +312,30 @@ private struct CompanionSettings: View {
             }
 
             ScrollView {
-                GroupBox("Approved applications") {
-                    supportedAppsSettings.padding(8)
+                GroupBox("Folders available to cards") {
+                    folderSettings.padding(8)
                 }
                 .padding()
             }
             .tabItem {
-                Label("Apps", systemImage: "square.grid.2x2")
+                Label("Folders", systemImage: "folder")
             }
 
             ScrollView {
-                GroupBox("Mac Now Playing") {
-                    nowPlayingSettings.padding(8)
+                VStack(spacing: 12) {
+                    GroupBox("Mac system statistics") {
+                        systemMetricsSettings.padding(8)
+                    }
+                    if store.supportsLaunchAtLogin {
+                        GroupBox("Startup") {
+                            startupSettings.padding(8)
+                        }
+                    }
                 }
                 .padding()
             }
             .tabItem {
-                Label("Now Playing", systemImage: "music.note")
-            }
-
-            if store.supportsLaunchAtLogin {
-                ScrollView {
-                    GroupBox("Startup") {
-                        startupSettings
-                            .padding(8)
-                    }
-                    .padding()
-                }
-                .tabItem {
-                    Label("General", systemImage: "gearshape")
-                }
+                Label("General", systemImage: "gearshape")
             }
         }
         .onAppear {
@@ -355,14 +367,6 @@ private struct CompanionSettings: View {
                 placeholder: "e.g. 192.168.6.100",
                 text: $store.panelHost,
                 field: .panelHost,
-                focusedField: $focusedField
-            )
-
-            SettingsTextField(
-                label: "Panel name",
-                placeholder: "e.g. Kitchen display",
-                text: $store.panelName,
-                field: .panelName,
                 focusedField: $focusedField
             )
 
@@ -405,100 +409,124 @@ private struct CompanionSettings: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var supportedAppsSettings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Only applications enabled here are published to the display or accepted for remote launch and Open URL cards.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if store.availableApps.isEmpty {
-                Text("No applications found yet.").foregroundStyle(.secondary)
-            } else {
-                HStack(spacing: 10) {
-                    Button("Enable All") { store.allowAllApplications() }
-                        .disabled(store.allAvailableAppsAllowed)
-                    Button("Disable All") { store.disallowAllApplications() }
-                        .disabled(!store.hasAllowedApps)
-                    Spacer()
-                    Text("\(store.allowedAvailableAppCount) enabled")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Divider()
-                ForEach(store.availableApps) { app in
-                    Toggle(app.name, isOn: store.allowedBinding(for: app))
-                }
-            }
-            Button("Rescan Applications") { store.refreshApplications() }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var nowPlayingSettings: some View {
+    private var folderSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Share Mac Now Playing with the display", isOn: $store.nowPlayingSharingEnabled)
-            Text("Shares the active session shown by macOS Control Centre. This uses a private macOS system interface and may need an EspControl update after a future macOS release.")
+            Text("Choose folders here, then select one for each Open folder card in the device webserver. Folder paths stay on this Mac; the display receives only an anonymous identifier and friendly name.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 12) {
-                if let artwork = store.nowPlayingArtwork {
-                    Image(nsImage: artwork).resizable().scaledToFit().frame(width: 72, height: 72)
-                        .background(Color.black).clipShape(RoundedRectangle(cornerRadius: 8))
-                } else {
-                    Image(systemName: "music.note").frame(width: 72, height: 72)
-                        .background(Color.secondary.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    if !store.nowPlayingTitle.isEmpty { Text(store.nowPlayingTitle).font(.headline) }
-                    if !store.nowPlayingApplication.isEmpty { Text(store.nowPlayingApplication).foregroundStyle(.secondary) }
-                    Text(store.nowPlayingStatus).font(.caption).foregroundStyle(.secondary)
+
+            if store.approvedFolders.isEmpty {
+                Text("No folders have been added.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(store.approvedFolders) { folder in
+                    HStack(spacing: 12) {
+                        Image(systemName: "folder.fill")
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(folder.name).font(.headline)
+                            Text(folder.path)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            store.removeFolder(folder)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Remove folder")
+                    }
+                    Divider()
                 }
             }
+
+            Button("Add Folder…") { store.chooseFolder() }
+                .controlSize(.large)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var systemMetricsSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("Share Mac system statistics with the display", isOn: $store.systemMetricsSharingEnabled)
+            Text("Shares overall processor, memory and storage usage, plus battery level when available. No application, file or browsing details are collected.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(store.systemMetricsStatus)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
     private var connectionStatusPanel: some View {
         HStack(spacing: 12) {
-            Image(systemName: store.isConnected ? "checkmark.circle.fill" : "circle.dashed")
-                .font(.title2)
-                .foregroundStyle(store.isConnected ? Color.green : Color.secondary)
-
             VStack(alignment: .leading, spacing: 3) {
-                Text(store.isConnected ? "Connected to \(connectionDisplayName)" : "Mac Companion is not connected")
+                Text("EspControl Companion")
                     .font(.headline)
-                Text(store.statusDescription)
-                    .font(.caption)
+                Text(store.isConnected ? "Connected" : "Disconnected")
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 8) {
-                if canConnect {
-                    Button(store.isConnected ? "Disconnect" : "Connect") {
-                        if store.isConnected {
-                            store.disconnect()
-                        } else {
-                            store.connect()
-                        }
-                    }
-                    .controlSize(.large)
-                }
-
-                if hasPanelAddress {
-                    Button("Open Device Webserver") { store.openPanelWebServer() }
-                        .controlSize(.large)
-                }
+            if canConnect || store.isConnected {
+                Toggle("Connect EspControl Companion", isOn: connectionBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
             }
         }
-        .padding(12)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color(nsColor: .controlBackgroundColor))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(store.isConnected ? Color.green.opacity(0.55) : Color.secondary.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var deviceWebserverPanel: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Device Webserver")
+                    .font(.headline)
+                Text("Open the display settings in your browser")
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button("Open Device Webserver") { store.openPanelWebServer() }
+                .controlSize(.large)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var connectionBinding: Binding<Bool> {
+        Binding(
+            get: { store.isConnected },
+            set: { connected in
+                if connected {
+                    store.connect()
+                } else {
+                    store.disconnect()
+                }
+            }
         )
     }
 
@@ -508,11 +536,6 @@ private struct CompanionSettings: View {
 
     private var canConnect: Bool {
         hasPanelAddress && store.hasSavedPairing
-    }
-
-    private var connectionDisplayName: String {
-        let name = store.panelName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? store.panelHost : name
     }
 
 }

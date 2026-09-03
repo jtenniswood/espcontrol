@@ -148,6 +148,34 @@ interval:
   - interval: 500ms
     then:
       - lambda: |-
+          lv_obj_t *companion_buttons[] = {
+            id(button_1), id(button_2), id(button_3),
+            id(button_4), id(button_5), id(button_6),
+            id(button_7), id(button_8), id(button_9),
+          };
+          const std::string companion_configs[] = {
+            id(button_1_config).state, id(button_2_config).state,
+            id(button_3_config).state, id(button_4_config).state,
+            id(button_5_config).state, id(button_6_config).state,
+            id(button_7_config).state, id(button_8_config).state,
+            id(button_9_config).state,
+          };
+          for (size_t index = 0; index < 9; ++index) {
+            const ParsedCfg config = parse_cfg(companion_configs[index]);
+            if (config.type == "companion") {
+              if (!companion_metric_key_valid(config.entity)) {
+                // Metric cards retain the value/unit labels registered by
+                // setup_companion_card(). Re-registering them as actions here
+                // discards that binding and makes them appear unavailable.
+                companion_track_card(
+                  companion_buttons[index], config.entity, config.sensor);
+              }
+            } else {
+              companion_forget_card(companion_buttons[index]);
+            }
+          }
+          companion_request_card_refresh();
+          companion_refresh_cards_if_requested();
           static bool previous_companion_connection = false;
           const bool connected = companion_connected();
           if (connected != previous_companion_connection) {

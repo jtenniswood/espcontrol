@@ -374,6 +374,23 @@ int main() {
   assert(icon_sensor.options == "");
   assert(!card_large_numbers_enabled(icon_sensor));
 
+  auto companion_metric = parse_cfg("stat.cpu;Processor;Monitor;Auto;ignored;;companion;bad;large_numbers,active_color");
+  assert(companion_system_metric_config(companion_metric));
+  assert(companion_metric.sensor == "");
+  assert(companion_metric.unit == "%");
+  assert(companion_metric.precision == "0");
+  assert(companion_metric.options == "large_numbers");
+  assert(card_large_numbers_enabled(companion_metric));
+  auto companion_network = parse_cfg("stat.network_throughput;Network Throughput;Gauge;Auto;;;companion;;");
+  assert(companion_system_metric_config(companion_network));
+  assert(companion_network.unit == "KB/s");
+  assert(companion_network.precision == "0");
+  auto companion_action = parse_cfg("com.apple.Safari;Safari;Monitor;Auto;;;companion;2;large_numbers");
+  assert(!companion_system_metric_config(companion_action));
+  assert(companion_action.unit == "");
+  assert(companion_action.precision == "");
+  assert(companion_action.options == "");
+
   auto clock = parse_cfg(";;;;;;clock;;large_numbers");
   assert(clock.type == "clock");
   assert(clock.options == "large_numbers");
