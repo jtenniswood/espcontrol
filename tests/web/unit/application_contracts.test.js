@@ -590,6 +590,9 @@ describe("browserless application contracts", () => {
     assert.match(card, /urlField[\s\S]*markCardPrimaryField\(urlField, "url"\)/);
     assert.match(card, /mediaField[\s\S]*markCardPrimaryField\(mediaField, "media"\)/);
     assert.match(card, /folderField[\s\S]*markCardPrimaryField\(folderField, "folder"\)/);
+    assert.match(card, /folderPlaceholder\.disabled = true/);
+    assert.match(card, /folderPlaceholder\.hidden = true/);
+    assert.doesNotMatch(card, /Unavailable folder/);
     assert.match(fields, /statistic: false/);
     assert.match(fields, /shortcut: false/);
     assert.match(fields, /url: false/);

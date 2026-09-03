@@ -226,6 +226,9 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionLabelPlaceholder({ entity: "stat.network_throughput" }) !== "e.g. Network") {
     throw new Error("Network throughput must use Network as its default label");
   }
+  if (companionLabelPlaceholder({ entity: "folder." }) !== "e.g. Folder Name") {
+    throw new Error("Open folder cards must use Folder Name as their empty label placeholder");
+  }
   if (JSON.stringify(COMPANION_STATS_OPTIONS) !== JSON.stringify([
     ["processor", "Processor"],
     ["memory_usage", "Memory"],

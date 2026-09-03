@@ -285,6 +285,7 @@ export function companionMetricDisplayMode(card: any): "used" | "free" {
 
 export function companionLabelPlaceholder(card: any): string {
     const metric = companionMetricForEntity(card?.entity);
+    if (!metric && companionCardMode(card) === "folder") return "e.g. Folder Name";
     return metric ? `e.g. ${metric.label}` : "e.g. Safari or Select all";
 }
 
@@ -821,6 +822,9 @@ export function registerCompanionCardTypes(
                 folderPlaceholder.value = "";
                 folderPlaceholder.textContent = folderActions.length
                     ? "Choose a folder…" : "Add a folder in the Companion app";
+                folderPlaceholder.disabled = true;
+                folderPlaceholder.hidden = true;
+                folderPlaceholder.selected = !folderActions.some(function (action) { return action.id === card.entity; });
                 folderSelect.appendChild(folderPlaceholder);
                 folderActions.forEach(function (action) {
                     const option = document.createElement("option");
@@ -829,14 +833,6 @@ export function registerCompanionCardTypes(
                     option.selected = action.id === card.entity;
                     folderSelect.appendChild(option);
                 });
-                if (initialMode === "folder" && card.entity &&
-                    !folderActions.some(function (action) { return action.id === card.entity; })) {
-                    const unavailable = document.createElement("option");
-                    unavailable.value = card.entity;
-                    unavailable.textContent = "Unavailable folder";
-                    unavailable.selected = true;
-                    folderSelect.appendChild(unavailable);
-                }
                 folderSelect.disabled = folderActions.length === 0;
             }).catch(function () {
                 select.replaceChildren();
@@ -847,9 +843,10 @@ export function registerCompanionCardTypes(
                 select.appendChild(unavailable);
                 folderSelect.replaceChildren();
                 const folderUnavailable = document.createElement("option");
-                folderUnavailable.value = card.entity.startsWith(COMPANION_FOLDER_PREFIX) ? card.entity : "";
-                folderUnavailable.textContent = card.entity.startsWith(COMPANION_FOLDER_PREFIX)
-                    ? "Unavailable folder" : "Mac companion unavailable";
+                folderUnavailable.value = "";
+                folderUnavailable.textContent = "Mac companion unavailable";
+                folderUnavailable.disabled = true;
+                folderUnavailable.hidden = true;
                 folderUnavailable.selected = true;
                 folderSelect.appendChild(folderUnavailable);
             });
