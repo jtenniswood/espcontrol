@@ -234,6 +234,24 @@ inline int navigation_active_subpage_slot() {
   return 0;
 }
 
+inline std::string navigation_active_companion_subpage_label() {
+  const int slot = navigation_active_subpage_slot();
+  NavigationSubpageEntry *entry = navigation_find_slot(slot);
+  NavigationHomeTargetEntry *parent = navigation_find_slot_target(slot);
+  if (entry == nullptr || entry->kind != "app_shortcuts" || parent == nullptr) return "";
+  const ParsedCfg parent_config = parse_cfg(parent->config);
+  if (!companion_app_shortcuts_enabled(parent_config)) return "";
+  if (!navigation_trim(parent->label).empty()) return navigation_trim(parent->label);
+  if (parent_config.entity == "com.apple.Safari") return "Safari";
+  if (parent_config.entity == "com.openai.codex") return "Codex";
+  if (parent_config.entity == "com.tinyspeck.slackmacgap") return "Slack";
+  return "";
+}
+
+inline void navigation_refresh_companion_subpage_label() {
+  set_clock_bar_companion_subpage_label(navigation_active_companion_subpage_label());
+}
+
 inline bool navigation_return_from_companion_shortcuts_if_needed(
     lv_obj_t *main_page_obj) {
   if (!companion_subpage_return_requested().load()) return false;
