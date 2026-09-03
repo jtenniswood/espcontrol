@@ -64,7 +64,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   companion_app: { icon: "application-outline", description: "Launch an app on the Mac." },
   companion_folder: { icon: "folder", description: "Open an approved folder on the Mac." },
   companion_media: { icon: "music", description: "Control media playback on the Mac." },
-  companion_shortcut: { icon: "keyboard-backspace", description: "Run a keyboard shortcut on the Mac." },
+  companion_shortcut: { icon: "apple-keyboard-command", description: "Run a keyboard shortcut on the Mac." },
   companion_stats: { icon: "gauge", description: "Show a Mac system statistic." },
   companion_url: { icon: "web", description: "Open a URL on the Mac." },
   cover: { icon: "window-shutter", description: "Control blinds, curtains, or covers." },

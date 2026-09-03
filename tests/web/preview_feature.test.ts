@@ -51,8 +51,7 @@ export function runPreviewFeatureTests(): void {
     ["action", "sensor", "wifi_qr"],
     "subpage picker filters unsupported and aliased entries",
   );
-  deepEqual(
-    cardTypePickerOptions({
+  const companionOptions = cardTypePickerOptions({
       ...definitions,
       calendar: { label: "Date & Time", allowInSubpage: true },
       companion: { label: "Companion", allowInSubpage: true },
@@ -67,9 +66,16 @@ export function runPreviewFeatureTests(): void {
       screen_lock: { label: "Screen Lock", allowInSubpage: true },
       webhook: { label: "Webhook", allowInSubpage: true },
       slider: { label: "Slider", allowInSubpage: true },
-    }, [], false, false, null, "mac_companion").map((option) => option.key),
+    }, [], false, false, null, "mac_companion");
+  deepEqual(
+    companionOptions.map((option) => option.key),
     ["calendar", "companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "companion_stats", "webhook"],
     "Companion picker shows subtypes and shared cards while excluding device-only cards",
+  );
+  equal(
+    companionOptions.find((option) => option.key === "companion_shortcut")?.icon,
+    "apple-keyboard-command",
+    "Companion keyboard shortcut cards use the Apple Command icon",
   );
   const infoOnlyOptions = cardTypePickerOptions(definitions, [], true, false, "action");
   equal(infoOnlyOptions[0]?.key, "action", "selected hidden type remains visible for editing");
