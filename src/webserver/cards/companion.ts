@@ -26,11 +26,39 @@ export interface CompanionAction {
     readonly label: string;
 }
 
+interface CompanionWindowAction {
+    readonly id: string;
+    readonly label: string;
+    readonly group: string;
+}
+
 const COMPANION_URL_PREFIX = "url.";
 const COMPANION_STATS_PLACEHOLDER = "stats";
 export const COMPANION_FOLDER_PREFIX = "folder.";
 const COMPANION_FINDER_ID = "com.apple.finder";
+const COMPANION_WINDOW_PREFIX = "window.";
 const COMPANION_STATS_MODES = "stats,processor,memory_usage,storage,battery,network_throughput".split(",");
+export const COMPANION_WINDOW_ACTIONS: readonly CompanionWindowAction[] = [
+    { id: "window.close", label: "Close", group: "Window" },
+    { id: "window.minimize", label: "Minimise", group: "Window" },
+    { id: "window.hide", label: "Hide App", group: "Window" },
+    { id: "window.fullscreen", label: "Full Screen", group: "Window" },
+    { id: "window.fill", label: "Fill Desktop", group: "Move & Resize" },
+    { id: "window.center", label: "Centre", group: "Move & Resize" },
+    { id: "window.left", label: "Left", group: "Move & Resize" },
+    { id: "window.right", label: "Right", group: "Move & Resize" },
+    { id: "window.top", label: "Top", group: "Move & Resize" },
+    { id: "window.bottom", label: "Bottom", group: "Move & Resize" },
+    { id: "window.restore", label: "Return to Previous Size", group: "Move & Resize" },
+    { id: "window.arrange.left-right", label: "Left & Right", group: "Arrange Windows" },
+    { id: "window.arrange.right-left", label: "Right & Left", group: "Arrange Windows" },
+    { id: "window.arrange.top-bottom", label: "Top & Bottom", group: "Arrange Windows" },
+    { id: "window.arrange.bottom-top", label: "Bottom & Top", group: "Arrange Windows" },
+    { id: "window.arrange.left-quarters", label: "Left & Quarters", group: "Arrange Windows" },
+    { id: "window.arrange.right-quarters", label: "Right & Quarters", group: "Arrange Windows" },
+    { id: "window.arrange.top-quarters", label: "Top & Quarters", group: "Arrange Windows" },
+    { id: "window.arrange.bottom-quarters", label: "Bottom & Quarters", group: "Arrange Windows" },
+];
 export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
     app: "Monitor",
     shortcut: "Shortcut Command",
@@ -153,6 +181,10 @@ export function companionAppLabel(
     return !trimmedLabel || trimmedLabel === previousAppLabel ? selectedAppLabel : currentLabel;
 }
 
+export function companionWindowActionLabel(actionId: string): string {
+    return COMPANION_WINDOW_ACTIONS.find((action) => action.id === actionId)?.label || "";
+}
+
 export function companionMediaIcon(
     currentIcon: string,
     previousGeneratedIcon: string,
@@ -261,6 +293,7 @@ export function companionCardMode(card: any): string {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
+    if (entity === COMPANION_WINDOW_PREFIX || entity.startsWith(COMPANION_WINDOW_PREFIX)) return "window";
     if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
     if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
     if (entity === COMPANION_STATS_PLACEHOLDER) return "stats";

@@ -16,6 +16,7 @@ import {
   companionSubtypeIcon,
   companionUrlConfig,
   companionUrlValue,
+  COMPANION_WINDOW_ACTIONS,
   companionWindowActionLabel,
   formatCompanionShortcutActionId,
   normalizeCompanionCard,
