@@ -598,6 +598,7 @@ export function registerCompanionCardTypes(
             shortcutNote.textContent = "Use Command, Control, or Option with a key. The shortcut is replayed on the active Mac app.";
             shortcutField.appendChild(shortcutNote);
             panel?.appendChild(shortcutField);
+            helpers.markCardPrimaryField(shortcutField, "shortcut");
             helpers.requireField(shortcutInput, "Capture a valid keyboard shortcut before saving.", function () {
                 return initialMode === "shortcut";
             }, function () {

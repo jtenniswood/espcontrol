@@ -582,11 +582,13 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(entry, /registerCompatibility\(registerCompanionCardTypes/);
   });
 
-  test("keeps the Companion statistic selector outside Card Settings", () => {
+  test("keeps Companion primary selectors outside Card Settings", () => {
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/companion.ts"), "utf8");
     const fields = fs.readFileSync(path.join(ROOT, "src/webserver/application/controls_fields.ts"), "utf8");
     assert.match(card, /statsField[\s\S]*markCardPrimaryField\(statsField, "statistic"\)/);
+    assert.match(card, /shortcutField[\s\S]*markCardPrimaryField\(shortcutField, "shortcut"\)/);
     assert.match(fields, /statistic: false/);
+    assert.match(fields, /shortcut: false/);
   });
 
   test("registers the internal relay card with profile-owned options", () => {
