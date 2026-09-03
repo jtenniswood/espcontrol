@@ -72,8 +72,8 @@ export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
 export const COMPANION_MEDIA_PLAY_PAUSE_ACTION = "media.play_pause";
 export const COMPANION_MEDIA_ACTIONS = [
     { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Play / Pause", icon: "Play Pause" },
-    { id: "media.previous", label: "Previous Track", icon: "Skip Previous" },
-    { id: "media.next", label: "Next Track", icon: "Skip Next" },
+    { id: "media.previous", label: "Previous", icon: "Skip Previous" },
+    { id: "media.next", label: "Next", icon: "Skip Next" },
 ] as const;
 interface CompanionSystemMetric {
     readonly mode: string;

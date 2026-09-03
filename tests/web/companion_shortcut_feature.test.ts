@@ -13,6 +13,7 @@ import {
   companionMetricPreviewValue,
   companionMediaIcon,
   COMPANION_MEDIA_PLAY_PAUSE_ACTION,
+  COMPANION_MEDIA_ACTIONS,
   companionShortcutActionId,
   companionSubtypeDefaultIcon,
   companionSubtypeIcon,
@@ -356,6 +357,10 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionMediaIcon("Music", "Play Pause", "Skip Next") !== "Music") {
     throw new Error("Changing media actions must preserve a custom icon");
+  }
+  if (COMPANION_MEDIA_ACTIONS.find((action) => action.id === "media.previous")?.label !== "Previous" ||
+      COMPANION_MEDIA_ACTIONS.find((action) => action.id === "media.next")?.label !== "Next") {
+    throw new Error("Companion media actions must use the short Previous and Next labels");
   }
   const generatedAppCard = { entity: "com.apple.Safari", label: "Safari", icon: "Monitor" };
   applyCompanionMediaPresentation(generatedAppCard, "Safari");
