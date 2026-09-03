@@ -103,7 +103,7 @@ struct CompanionRuntimeState {
   std::mutex mutex;
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
-  std::string focused_application_id;
+  std::string focused_action_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -113,7 +113,7 @@ struct CompanionRuntimeState {
 struct CompanionRuntimeSnapshot {
   std::vector<CompanionAction> actions;
   std::vector<CompanionValue> values;
-  std::string focused_application_id;
+  std::string focused_action_id;
   bool media_actions_supported{false};
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -128,7 +128,7 @@ inline CompanionRuntimeState &companion_runtime_state() {
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
   auto &state = companion_runtime_state();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.values, state.focused_application_id, state.media_actions_supported,
+  return {state.actions, state.values, state.focused_action_id, state.media_actions_supported,
           state.connected, state.now_playing, state.system_metrics};
 }
 
@@ -306,21 +306,21 @@ inline void companion_remove_value(const std::string &control_id) {
   companion_request_card_refresh();
 }
 
-inline void companion_set_focused_application(std::string application_id) {
-  if (application_id.size() > 96) application_id.clear();
+inline void companion_set_focused_action(std::string action_id) {
+  if (action_id.size() > 96) action_id.clear();
   auto &state = companion_runtime_state();
   {
     std::lock_guard<std::mutex> lock(state.mutex);
-    state.focused_application_id = std::move(application_id);
+    state.focused_action_id = std::move(action_id);
   }
   companion_request_card_refresh();
 }
 
-inline bool companion_application_focused(const std::string &action_id) {
-  if (action_id.empty() || action_id.rfind("folder.", 0) == 0 ||
+inline bool companion_action_focused(const std::string &action_id) {
+  if (action_id.empty() ||
       action_id.rfind("shortcut.", 0) == 0 || action_id.rfind("media.", 0) == 0) return false;
   const auto snapshot = companion_runtime_snapshot();
-  return snapshot.connected && snapshot.focused_application_id == action_id;
+  return snapshot.connected && snapshot.focused_action_id == action_id;
 }
 
 inline uint32_t companion_next_request_number() {
@@ -335,7 +335,7 @@ inline void companion_set_connected(bool connected) {
     state.connected = connected;
     if (!connected) {
       state.values.clear();
-      state.focused_application_id.clear();
+      state.focused_action_id.clear();
       state.media_actions_supported = false;
       state.system_metrics = {};
     }
@@ -490,7 +490,7 @@ struct CompanionSliderRef {
 
 inline void companion_apply_card_focus(lv_obj_t *button, const std::string &action_id) {
   if (!button) return;
-  if (companion_application_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
+  if (companion_action_focused(action_id)) lv_obj_add_state(button, LV_STATE_CHECKED);
   else lv_obj_clear_state(button, LV_STATE_CHECKED);
 }
 

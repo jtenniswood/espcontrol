@@ -25,6 +25,14 @@ struct ApprovedFolder: Codable, Identifiable, Hashable {
         guard actionIdentifier.hasPrefix(actionPrefix) else { return nil }
         return UUID(uuidString: String(actionIdentifier.dropFirst(actionPrefix.count)))
     }
+
+    static func actionIdentifier(forFocusedPath path: String, in folders: [ApprovedFolder]) -> String {
+        guard !path.isEmpty else { return "" }
+        let focusedPath = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        return folders.first { folder in
+            URL(fileURLWithPath: folder.path).standardizedFileURL.resolvingSymlinksInPath().path == focusedPath
+        }?.actionIdentifier ?? ""
+    }
 }
 
 @MainActor
@@ -222,8 +230,41 @@ final class CompanionStore: NSObject, ObservableObject {
         return identifier
     }
 
+    func focusedCompanionActionIdentifier() -> String {
+        guard let application = NSWorkspace.shared.frontmostApplication,
+              let bundleIdentifier = application.bundleIdentifier else { return "" }
+        if bundleIdentifier == "com.apple.finder" {
+            return focusedFinderFolderActionIdentifier()
+        }
+        return focusedLaunchableApplicationIdentifier()
+    }
+
+    private func focusedFinderFolderActionIdentifier() -> String {
+        guard let path = focusedFinderFolderPath() else { return "" }
+        return ApprovedFolder.actionIdentifier(forFocusedPath: path, in: approvedFolders)
+    }
+
+    private func focusedFinderFolderPath() -> String? {
+        let source = """
+        tell application "Finder"
+            if (count of windows) is 0 then return ""
+            try
+                set currentTarget to target of front window
+                return POSIX path of (currentTarget as alias)
+            on error
+                return ""
+            end try
+        end tell
+        """
+        var error: NSDictionary?
+        guard let descriptor = NSAppleScript(source: source)?.executeAndReturnError(&error),
+              let path = descriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !path.isEmpty else { return nil }
+        return path
+    }
+
     @objc private func frontmostApplicationDidChange(_: Notification) {
-        if isConnected { connection.publishFocusedApplication() }
+        if isConnected { connection.publishFocusedAction() }
     }
 
     func chooseFolder() {
@@ -420,10 +461,14 @@ final class CompanionStore: NSObject, ObservableObject {
     private func startMediaControlPublishing() {
         if mediaControlTimer == nil {
             mediaControlTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.publishMediaControlValues() }
+                Task { @MainActor in
+                    self?.publishMediaControlValues()
+                    self?.connection.publishFocusedAction()
+                }
             }
         }
         publishMediaControlValues(force: true)
+        connection.publishFocusedAction()
     }
 
     private func publishMediaControlValues(force: Bool = false) {

@@ -24,7 +24,7 @@ Use the normal browser layout editor and select an empty home-screen or subpage 
 - **Launch app** — select an installed Mac application. Finder is not shown as an application because folders use their own action.
 - **Keyboard shortcut** — click the shortcut field and press a combination such as Command-A. The browser records and displays the combination on the card.
 - **Open URL** — enter an `http://` or `https://` address and choose the approved installed application that should open it, such as Safari or Chrome.
-- **Open folder** — first add one or more folders from the Mac app's **Folders** tab, then choose the folder for this card. The display receives an anonymous identifier and friendly name; the filesystem path remains on the Mac.
+- **Open folder** — first add one or more folders from the Mac app's **Folders** tab, then choose the folder for this card. The display receives an anonymous identifier and friendly name; the filesystem path remains on the Mac. When that exact folder is shown in Finder's front window, the card lights up; opening a different folder or another app clears it.
 - **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application.
 - **Processor usage**, **Memory usage**, **Storage usage**, or **Battery level** — show a read-only live percentage from the paired Mac. These cards use the same number, unit, label, precision, and large-number presentation as numeric Sensor cards, but have their own Companion transport and runtime. Battery shows as unavailable on Macs without a battery.
 

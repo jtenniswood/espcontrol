@@ -51,10 +51,13 @@ int main() {
   assert(companion_metric_value(companion_runtime_snapshot(), "stat.network_throughput", metric_value));
   assert(metric_value == 512.5f);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.battery", metric_value));
-  companion_set_focused_application("com.apple.Safari");
-  assert(companion_application_focused("com.apple.Safari"));
-  assert(!companion_application_focused("com.google.Chrome"));
-  assert(!companion_application_focused(folder_action));
+  companion_set_focused_action("com.apple.Safari");
+  assert(companion_action_focused("com.apple.Safari"));
+  assert(!companion_action_focused("com.google.Chrome"));
+  assert(!companion_action_focused(folder_action));
+  companion_set_focused_action(folder_action);
+  assert(companion_action_focused(folder_action));
+  assert(!companion_action_focused("com.apple.Safari"));
   assert(companion_media_action_valid("media.play_pause"));
   assert(companion_media_action_valid("media.previous"));
   assert(companion_media_action_valid("media.next"));
@@ -95,7 +98,7 @@ int main() {
   assert(invoked);
   companion_set_connected(false);
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.cpu", metric_value));
-  assert(!companion_application_focused("com.apple.Safari"));
+  assert(!companion_action_focused("com.apple.Safari"));
   companion_set_connected(true);
   assert(!companion_action_available("media.play_pause"));
   assert(!companion_value("media.output_volume", output_volume));
