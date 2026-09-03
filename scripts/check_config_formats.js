@@ -182,6 +182,7 @@ assert.deepStrictEqual(Array.from(subpageKindOption.values), [
   "weather",
   "sensor",
   "image",
+  "companion_stat",
 ], "subpage type options include status presets for newer card styles");
 assert.strictEqual(
   hooks.subpageKind({ options: "subpage_kind=vacuum" }),

@@ -1358,7 +1358,6 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   normalize_saved_config_light_control(p, normalize_saved_config_light_control_options);
   normalize_saved_config_subpage(
       p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
-  if (p.type == "companion") p.options = companion_card_options_normalized(p);
   normalize_saved_config_action(p, normalize_saved_config_action_fields,
                                 action_card_options_normalized);
   if (p.type == "companion") {
@@ -1376,7 +1375,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     } else {
       p.unit.clear();
       p.precision.clear();
-      p.options.clear();
+      p.options = companion_card_options_normalized(p);
     }
   }
   if (migrate_saved_config_vacuum_legacy(p)) {
