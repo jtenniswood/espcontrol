@@ -214,8 +214,13 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   const networkCard: any = { entity: "stat.network_throughput", label: "", icon: "Auto" };
   normalizeCompanionCard(networkCard);
-  if (networkCard.label !== "" || networkCard.unit !== "KB/s") {
+  if (networkCard.label !== "" || networkCard.unit !== "MB/s") {
     throw new Error("Network throughput must use its rate label and unit");
+  }
+  const legacyNetworkCard: any = { entity: "stat.network_throughput", unit: "KB/s" };
+  normalizeCompanionCard(legacyNetworkCard);
+  if (legacyNetworkCard.unit !== "MB/s") {
+    throw new Error("Network throughput cards must migrate to MB/s");
   }
   if (companionCardMode({ entity: "media.play_pause", sensor: "" }) !== "media") {
     throw new Error("Companion media actions must retain their card subtype");

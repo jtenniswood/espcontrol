@@ -19,9 +19,11 @@ describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
   const { runCompanionPairingFeatureTests } = loadTypescriptTest("tests/web/companion_pairing_feature.test.ts");
   const { runCompanionShortcutFeatureTests } = loadTypescriptTest("tests/web/companion_shortcut_feature.test.ts");
+  const { runConnectorsFeatureTests } = loadTypescriptTest("tests/web/connectors_feature.test.ts");
   const { runApplicationContextTests } = loadTypescriptTest("tests/web/application_context.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
+  const { runPreviewFeatureTests } = loadTypescriptTest("tests/web/preview_feature.test.ts");
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
   const { createEntityStateFeature } = loadTypescriptTest("src/webserver/application/entity_state.ts");
   const { createConfigModalTabOptionsFeature } = loadTypescriptTest("src/webserver/application/config_modal_tab_options.ts");
@@ -39,8 +41,16 @@ describe("browserless application contracts", () => {
     runCompanionShortcutFeatureTests();
   });
 
+  test("tracks connector completion and offline status", () => {
+    runConnectorsFeatureTests();
+  });
+
   test("owns browser composition and compatibility layout state", () => {
     runApplicationContextTests();
+  });
+
+  test("filters the add-card picker by connector without persisting a source", () => {
+    runPreviewFeatureTests();
   });
 
   test("owns entity catalogue helpers as one explicit service", () => {

@@ -57,7 +57,7 @@ export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
     { mode: "memory_usage", id: "stat.memory", freeId: "stat.memory_free", label: "Memory", unit: "%" },
     { mode: "storage", id: "stat.storage", freeId: "stat.storage_free", label: "Storage", unit: "%" },
     { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
-    { mode: "network_throughput", id: "stat.network_throughput", label: "Network Throughput", unit: "KB/s" },
+    { mode: "network_throughput", id: "stat.network_throughput", label: "Network Throughput", unit: "MB/s" },
 ];
 const COMPANION_STATS_OPTIONS = [
     ["processor", "Processor usage"],
@@ -316,7 +316,8 @@ export function normalizeCompanionCard(card: any): void {
     if (metric) {
         card.type = "companion";
         card.sensor = "";
-        card.unit = card.unit || metric.unit;
+        // Existing cards may still contain the old generated KB/s unit.
+        card.unit = card.unit === "KB/s" ? metric.unit : (card.unit || metric.unit);
         card.precision = card.precision === "0" || card.precision === "1" || card.precision === "2"
             ? card.precision : "0";
         card.options = String(card.options || "").split(",").filter((option) =>

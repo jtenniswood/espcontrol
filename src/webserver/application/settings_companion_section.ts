@@ -14,7 +14,7 @@ export interface CompanionPairingState {
 }
 
 export interface SettingsCompanionSectionFeature {
-    buildCompanionSettingsCard(): HTMLElement;
+    buildCompanionSettingsCard(onStatus?: (state: CompanionPairingState) => void): HTMLElement;
 }
 
 export function companionPairingStatusText(state: CompanionPairingState): string {
@@ -78,7 +78,7 @@ export function createSettingsCompanionSectionFeature(
         if (!copied) throw new Error("Copy was blocked by the browser");
     }
 
-    function buildCompanionSettingsCard(): HTMLElement {
+    function buildCompanionSettingsCard(onStatus?: (state: CompanionPairingState) => void): HTMLElement {
         const body = document.createElement("div");
         const note = document.createElement("p");
         note.className = "sp-setting-note sp-companion-note";
@@ -114,6 +114,7 @@ export function createSettingsCompanionSectionFeature(
 
         function render(value: CompanionPairingState): void {
             current = value;
+            if (onStatus) onStatus(value);
             status.textContent = companionPairingStatusText(value);
             status.classList.toggle("sp-companion-status-connected", value.connected);
             if (value.active && value.pairing_code) {

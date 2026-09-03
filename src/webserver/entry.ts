@@ -58,6 +58,7 @@ import { createSettingsScheduleSectionFeature } from "./application/settings_sch
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
 import { createSettingsSystemSectionFeature } from "./application/settings_system_section";
 import { createSettingsCompanionSectionFeature } from "./application/settings_companion_section";
+import { createConnectorsPageFeature, type ConnectorsPageFeature } from "./application/connectors_page";
 import { createSettingsPageFeature, type SettingsPageFeature } from "./application/settings_page";
 import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./application/controls_fields";
 import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
@@ -304,6 +305,7 @@ function composeApplicationContext(): ApplicationContext {
   let fields: ControlsFieldsFeature;
   let settingsHelpers: SettingsPageHelpersFeature;
   let settingsPage: SettingsPageFeature;
+  let connectorsPage: ConnectorsPageFeature;
   let buttonSettings: ButtonSettingsFeature;
   let app: AppFeature;
   const shell = createControlsShellFeature(runtime, {
@@ -312,6 +314,7 @@ function composeApplicationContext(): ApplicationContext {
     schedule: dom.schedule,
     cancelSchedule: (handle) => { dom.window.clearTimeout(handle); },
     buildSettingsPage: (parent) => { settingsPage.buildSettingsPage(parent); },
+    buildConnectorsPage: (parent) => { connectorsPage.buildPage(parent); },
     closeSettings: () => { selection.closeSettings(); },
     postButtonPress: (name) => requestApi.postButtonPress(name),
     waitForReboot: () => { stateLoader.waitForReboot(); },
@@ -855,11 +858,6 @@ function composeApplicationContext(): ApplicationContext {
     requestApi,
     appEvents,
   );
-  app = createAppFeature(
-    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
-    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
-    interactions, preview, buttonSettings,
-  );
   const scheduleSection = createSettingsScheduleSectionFeature(
     configurationCodec, runtime, screenScheduleState, entityState, requestApi,
     schedulePostApi, fields, settingsHelpers,
@@ -876,12 +874,20 @@ function composeApplicationContext(): ApplicationContext {
   stateLoader, firmwarePostApi, artworkPostApi, publicFirmwareInstall, fields,
   settingsHelpers);
   const companionSection = createSettingsCompanionSectionFeature(dom, shell, fields);
+  connectorsPage = createConnectorsPageFeature(
+    dom, shell, fields, companionSection, !!layout.config.features?.companion,
+  );
   settingsPage = createSettingsPageFeature(
     configurationCodec, runtime, core, layout, environment, screenScheduleState,
     screensaverTimeout, screenRotation, appearance, clockBarState, entityState,
     shell, requestApi, statusPreview, artworkPostApi, schedulePostApi,
     clockBarPostApi, fields, settingsHelpers, scheduleSection, coverArtSection,
-    companionSection, systemSection, preview,
+    systemSection, preview,
+  );
+  app = createAppFeature(
+    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
+    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
+    interactions, preview, buttonSettings, connectorsPage,
   );
   requestApi.connectReconnect(appEvents.connect);
   return createApplicationContext({

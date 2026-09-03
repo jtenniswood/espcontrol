@@ -399,7 +399,7 @@ private struct CompanionSettings: View {
                 .controlSize(.large)
             }
 
-            Text("In the panel web editor, open Settings → Companion, start pairing, then copy and paste the pairing details here.")
+            Text("In the panel web editor, open Connectors → Mac Companion, start pairing, then copy and paste the pairing details here.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

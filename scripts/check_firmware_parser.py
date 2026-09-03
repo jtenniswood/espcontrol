@@ -383,8 +383,10 @@ int main() {
   assert(card_large_numbers_enabled(companion_metric));
   auto companion_network = parse_cfg("stat.network_throughput;Network Throughput;Gauge;Auto;;;companion;;");
   assert(companion_system_metric_config(companion_network));
-  assert(companion_network.unit == "KB/s");
+  assert(companion_network.unit == "MB/s");
   assert(companion_network.precision == "0");
+  auto legacy_companion_network = parse_cfg("stat.network_throughput;Network Throughput;Gauge;Auto;;KB/s;companion;;");
+  assert(legacy_companion_network.unit == "MB/s");
   auto companion_action = parse_cfg("com.apple.Safari;Safari;Monitor;Auto;;;companion;2;large_numbers");
   assert(!companion_system_metric_config(companion_action));
   assert(companion_action.unit == "");
