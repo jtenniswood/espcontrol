@@ -514,7 +514,7 @@ final class CompanionStore: NSObject, ObservableObject {
     private func startMediaControlPublishing() {
         if mediaControlTimer == nil {
             mediaControlTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.publishMediaControlValues() }
+                Task { @MainActor [weak self] in self?.publishMediaControlValues() }
             }
         }
         publishMediaControlValues(force: true)
