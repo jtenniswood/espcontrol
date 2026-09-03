@@ -3388,8 +3388,8 @@ function backupButtons(count) {
   return buttons;
 }
 
-function backupFixture(device, slots) {
-  return {
+function backupFixture(device, slots, nativeProfile = null) {
+  const backup = {
     version: 2,
     format: "espcontrol.backup",
     device,
@@ -3460,6 +3460,17 @@ function backupFixture(device, slots) {
       schedule_clock_brightness: 40,
     },
   };
+  if (nativeProfile) {
+    backup.native_config = createPanelConfigBackupPayload(
+      encodePanelConfig({
+        deviceProfile: nativeProfile,
+        buttons: { 1: "light.kitchen;Kitchen;Lightbulb;Lightbulb" },
+        subpages: {},
+        settings: { button_order: "1,2,3w,4", button_on_color: "AA5500" },
+      }),
+    );
+  }
+  return backup;
 }
 
 function writeJsonFixture(name, value) {
@@ -3838,6 +3849,61 @@ async function assertBackupImportSmoke(page, posts, testCase) {
     ),
     `cross-device import shows an adaptation warning: ${JSON.stringify(warnings)}`,
   );
+
+  if (testCase.slug === "guition-esp32-p4-jc8012p4a1") {
+    const expectedNativeWarning =
+      "This backup was taken from guition-esp32-p4-jc8012p4a1-v2; this device is guition-esp32-p4-jc8012p4a1. Layout will be restored, but the native configuration will be skipped.";
+    await startBannerCapture(page);
+    await page.evaluate(() => {
+      window.__bannerMessages = [];
+    });
+    await importBackup(
+      page,
+      backupFixture(
+        "guition-esp32-p4-jc8012p4a1-v2",
+        testCase.slots,
+        "guition-esp32-p4-jc8012p4a1-v2",
+      ),
+      "cross-profile-native-backup",
+    );
+    await page.waitForFunction(
+      (expected) =>
+        (window.__bannerMessages || []).some(
+          (entry) =>
+            entry.className.includes("sp-warning") && entry.text === expected,
+        ),
+      expectedNativeWarning,
+    );
+    await page.waitForFunction(() =>
+      (window.__bannerMessages || []).some(
+        (entry) =>
+          entry.className.includes("sp-success") &&
+          entry.text.includes("Configuration imported successfully"),
+      ),
+    );
+    const nativeWarnings = await page.evaluate(() => window.__bannerMessages || []);
+    const nativeWarningIndex = nativeWarnings.findIndex(
+      (entry) => entry.className.includes("sp-warning"),
+    );
+    const successIndex = nativeWarnings.findIndex(
+      (entry) =>
+        entry.className.includes("sp-success") &&
+        entry.text.includes("Configuration imported successfully"),
+    );
+    assert.strictEqual(
+      nativeWarnings[nativeWarningIndex]?.text,
+      expectedNativeWarning,
+      `cross-profile native import shows the specific warning: ${JSON.stringify(nativeWarnings)}`,
+    );
+    assert(
+      successIndex >= 0,
+      `cross-profile native import succeeds: ${JSON.stringify(nativeWarnings)}`,
+    );
+    assert(
+      nativeWarningIndex >= 0 && nativeWarningIndex < successIndex,
+      "cross-profile native warning appears before import completion",
+    );
+  }
 }
 
 async function entitySuggestionValues(
