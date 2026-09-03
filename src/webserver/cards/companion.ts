@@ -555,7 +555,7 @@ export function registerCompanionCardTypes(
             select.appendChild(loading);
             appField.appendChild(select);
             panel?.appendChild(appField);
-            if (initialMode === "app") {
+            if (initialMode === "app" || initialMode === "url") {
                 helpers.markCardPrimaryField(appField, "entity");
             }
 
@@ -651,7 +651,8 @@ export function registerCompanionCardTypes(
             urlNote.className = "sp-field-info-text";
             urlNote.textContent = "Only http:// and https:// addresses are supported.";
             urlField.appendChild(urlNote);
-            panel?.appendChild(urlField);
+            panel?.insertBefore(urlField, appField);
+            helpers.markCardPrimaryField(urlField, "url");
             helpers.requireField(urlInput, "Enter an http:// or https:// address before saving.", function () {
                 return initialMode === "url";
             }, function (value: string) {
