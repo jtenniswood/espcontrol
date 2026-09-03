@@ -283,6 +283,7 @@ private struct CompanionPairingDetails {
 private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
+    @State private var isConnectionSettingsExpanded = false
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
@@ -293,22 +294,25 @@ private struct CompanionSettings: View {
                     if hasPanelAddress {
                         deviceWebserverPanel
                     }
+
+                    GroupBox {
+                        DisclosureGroup(
+                            isExpanded: $isConnectionSettingsExpanded,
+                            content: {
+                                deviceConnectionSettings
+                                    .padding(.top, 8)
+                            },
+                            label: {
+                                Label("Connection settings", systemImage: "network")
+                            }
+                        )
+                        .padding(8)
+                    }
                 }
                 .padding()
             }
             .tabItem {
                 Label("Status", systemImage: "dot.radiowaves.left.and.right")
-            }
-
-            ScrollView {
-                GroupBox("Connection settings") {
-                    deviceConnectionSettings
-                        .padding(8)
-                }
-                .padding()
-            }
-            .tabItem {
-                Label("Connection", systemImage: "network")
             }
 
             ScrollView {
