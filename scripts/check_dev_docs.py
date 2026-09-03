@@ -318,7 +318,10 @@ def included_yaml_paths(path: Path) -> list[Path]:
 
 def device_yaml_graph(device_root: Path) -> set[Path]:
     """Return device YAML plus local shared YAML reachable through includes."""
-    pending = list(device_root.glob("**/*.yaml"))
+    pending = [
+        path for path in device_root.glob("**/*.yaml")
+        if not any(part.startswith(".") for part in path.relative_to(device_root).parts)
+    ]
     visited: set[Path] = set()
     while pending:
         path = pending.pop().resolve()
