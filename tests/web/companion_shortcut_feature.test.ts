@@ -6,6 +6,7 @@ import {
   companionFolderActions,
   companionEntityForMode,
   companionCardIsMetric,
+  COMPANION_STATS_OPTIONS,
   companionLabelPlaceholder,
   companionMetricDisplayMode,
   companionMetricPreviewValue,
@@ -200,6 +201,15 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (companionLabelPlaceholder({ entity: "stat.network_throughput" }) !== "e.g. Network") {
     throw new Error("Network throughput must use Network as its default label");
+  }
+  if (JSON.stringify(COMPANION_STATS_OPTIONS) !== JSON.stringify([
+    ["processor", "Processor"],
+    ["memory_usage", "Memory"],
+    ["storage", "Storage"],
+    ["battery", "Battery"],
+    ["network_throughput", "Network"],
+  ])) {
+    throw new Error("Companion statistic choices must use concise labels");
   }
   if (companionLabelPlaceholder({ entity: "stat.cpu" }) !== "e.g. Processor" ||
       companionLabelPlaceholder({ entity: "com.apple.Safari" }) !== "e.g. Safari or Select all") {

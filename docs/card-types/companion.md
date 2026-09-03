@@ -26,7 +26,7 @@ Use the normal browser layout editor and select an empty home-screen or subpage 
 - **Open URL** — enter an `http://` or `https://` address and choose the approved installed application that should open it, such as Safari or Chrome.
 - **Open folder** — first add one or more folders from the Mac app's **Folders** tab, then choose the folder for this card. The display receives an anonymous identifier and friendly name; the filesystem path remains on the Mac.
 - **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application. Play / Pause reads **Playing**, **Paused**, or **Stopped** from the Mac; when no track is active it remains enabled because the Mac can still accept a new Play / Pause command. While playback is confirmed as **Playing**, the card lights in the panel's configured active colour; it returns to its normal colour when paused or stopped.
-- **Processor usage**, **Memory usage**, **Storage usage**, or **Battery level** — show a read-only live percentage from the paired Mac. These cards use the same number, unit, label, precision, and large-number presentation as numeric Sensor cards, but have their own Companion transport and runtime. Battery shows as unavailable on Macs without a battery.
+- **Processor**, **Memory**, **Storage**, or **Battery** — show a read-only live percentage from the paired Mac. These cards use the same number, unit, label, precision, and large-number presentation as numeric Sensor cards, but have their own Companion transport and runtime. Battery shows as unavailable on Macs without a battery.
 
 Use a [Slider card](/card-types/sliders) when you want to control the Mac's output or input volume.
 

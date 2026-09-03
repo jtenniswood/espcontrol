@@ -1,7 +1,11 @@
 import { state } from "../state/app_instance";
 import { setConfigOptionValue } from "../model/config_primitives";
 import { escHtml, iconSlug } from "../application/ui_primitives";
-import { COMPANION_SYSTEM_METRICS, companionMetricPreviewValue } from "./companion";
+import {
+    COMPANION_STATS_OPTIONS,
+    COMPANION_SYSTEM_METRICS,
+    companionMetricPreviewValue,
+} from "./companion";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ConfigCodecFeature } from "../application/config_codec";
 import type { CoreFeature } from "../application/core";
@@ -200,13 +204,7 @@ export function registerSubpageCardTypes(
                 var statSelect: any = document.createElement("select");
                 statSelect.className = "sp-select";
                 statSelect.id = helpers.idPrefix + "companion-stat";
-                var statOptions: any = [
-                    ["processor", "Processor usage"],
-                    ["memory_usage", "Memory usage"],
-                    ["storage", "Storage usage"],
-                    ["battery", "Battery level"],
-                    ["network_throughput", "Network throughput"],
-                ];
+                var statOptions: any = COMPANION_STATS_OPTIONS;
                 statOptions.forEach(function (item: any) {
                     var option: any = document.createElement("option");
                     option.value = item[0];

@@ -87,12 +87,12 @@ export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
     { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
     { mode: "network_throughput", id: "stat.network_throughput", label: "Network", unit: "MB/s" },
 ];
-const COMPANION_STATS_OPTIONS = [
-    ["processor", "Processor usage"],
-    ["memory_usage", "Memory usage"],
-    ["storage", "Storage usage"],
-    ["battery", "Battery level"],
-    ["network_throughput", "Network throughput"],
+export const COMPANION_STATS_OPTIONS = [
+    ["processor", "Processor"],
+    ["memory_usage", "Memory"],
+    ["storage", "Storage"],
+    ["battery", "Battery"],
+    ["network_throughput", "Network"],
 ] as const;
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
