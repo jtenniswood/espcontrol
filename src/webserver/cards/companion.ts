@@ -468,67 +468,6 @@ export function registerCompanionCardTypes(
             const defaults: any = cardContractDefaultConfig("companion");
             Object.keys(defaults).forEach(function (key) { card[key] = defaults[key]; });
         },
-        renderSettingsBeforeLabel: function (panel?: HTMLElement, card?: any, _slot?: any, helpers?: any) {
-            normalizeCompanionCard(card);
-            helpers.renderCardModeSelector(panel, card, helpers, {
-                mode: {
-                    ...COMPANION_CARD_METADATA.mode,
-                    onChange: function (this: HTMLSelectElement) {
-                        const previousLabel = card.label;
-                        const previousIcon = card.icon;
-                        const previousMode = companionCardMode(card);
-                        const previousEntity = card.entity;
-                        let previousGeneratedLabel = "";
-                        if (previousMode === "app" || previousMode === "url") {
-                            const appSelect = document.getElementById(
-                                helpers.idPrefix + "companion-action") as HTMLSelectElement | null;
-                            const selectedOption = appSelect?.selectedOptions[0];
-                            if (selectedOption && selectedOption.value === card.entity) {
-                                previousGeneratedLabel = selectedOption.textContent || "";
-                            }
-                        } else if (previousMode === "folder") {
-                            const folderSelect = document.getElementById(
-                                helpers.idPrefix + "companion-folder") as HTMLSelectElement | null;
-                            const selectedOption = folderSelect?.selectedOptions[0];
-                            if (selectedOption && selectedOption.value === card.entity) {
-                                previousGeneratedLabel = selectedOption.textContent || "";
-                            }
-                            if (card.label === previousGeneratedLabel) card.label = "";
-                        }
-                        if (previousGeneratedLabel && card.label === previousGeneratedLabel) {
-                            card.label = "";
-                        }
-                        resetCompanionMediaPresentation(card, this.value);
-                        resetCompanionMetricPresentation(card, this.value);
-                        const selectedMetric = this.value === "stats"
-                            ? COMPANION_SYSTEM_METRICS[0]
-                            : COMPANION_SYSTEM_METRICS.find((metric) => metric.mode === this.value);
-                        card.entity = companionEntityForMode(this.value);
-                        card.sensor = this.value === "url" ? COMPANION_URL_PREFIX : "";
-                        card.options = "";
-                        if (this.value === "media") {
-                            applyCompanionMediaPresentation(card, previousGeneratedLabel);
-                        } else if (selectedMetric) {
-                            if (!companionMetricForEntity(previousEntity)) {
-                                card.unit = selectedMetric.unit;
-                                card.precision = "0";
-                                card.options = "";
-                            }
-                        }
-                        card.icon = companionSubtypeIcon(
-                            card.icon, previousMode, this.value, previousEntity, card.entity);
-                        if (card.label !== previousLabel) helpers.saveField("label", card.label);
-                        if (card.icon !== previousIcon) helpers.saveField("icon", card.icon);
-                        helpers.saveField("entity", card.entity);
-                        helpers.saveField("sensor", card.sensor);
-                        helpers.saveField("unit", card.unit);
-                        helpers.saveField("precision", card.precision);
-                        helpers.saveField("options", card.options);
-                        renderButtonSettings();
-                    },
-                },
-            });
-        },
         renderSettings: function (panel?: HTMLElement, card?: any, slot?: any, helpers?: any) {
             normalizeCompanionCard(card);
             const currentEntity = typeof card.entity === "string" ? card.entity : "";
