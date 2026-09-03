@@ -236,6 +236,7 @@ export function createControlsFieldsFeature(
             shortcut: false,
             url: false,
             media: false,
+            folder: false,
         };
         var movable: any = [];
         var firstDisclosure: any = null;

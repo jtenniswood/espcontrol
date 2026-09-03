@@ -589,10 +589,12 @@ describe("browserless application contracts", () => {
     assert.match(card, /shortcutField[\s\S]*markCardPrimaryField\(shortcutField, "shortcut"\)/);
     assert.match(card, /urlField[\s\S]*markCardPrimaryField\(urlField, "url"\)/);
     assert.match(card, /mediaField[\s\S]*markCardPrimaryField\(mediaField, "media"\)/);
+    assert.match(card, /folderField[\s\S]*markCardPrimaryField\(folderField, "folder"\)/);
     assert.match(fields, /statistic: false/);
     assert.match(fields, /shortcut: false/);
     assert.match(fields, /url: false/);
     assert.match(fields, /media: false/);
+    assert.match(fields, /folder: false/);
   });
 
   test("registers the internal relay card with profile-owned options", () => {

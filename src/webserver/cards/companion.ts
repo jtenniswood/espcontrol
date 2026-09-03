@@ -576,6 +576,7 @@ export function registerCompanionCardTypes(
             folderNote.textContent = "Add folders from the Folders tab in the EspControl Companion app.";
             folderField.appendChild(folderNote);
             panel?.appendChild(folderField);
+            helpers.markCardPrimaryField(folderField, "folder");
             helpers.requireField(folderSelect, "Choose a folder before saving.", function () {
                 return initialMode === "folder";
             }, function (value: string) {
