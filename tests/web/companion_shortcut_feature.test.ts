@@ -103,6 +103,7 @@ export function runCompanionShortcutFeatureTests(): void {
   const safariSubpage = createSafariShortcutSubpage();
   if (safariSubpage.backLabel !== "Back" || safariSubpage.order.join("|") !== "B|1|2|3|4|5") {
     throw new Error("Safari shortcut folder layout changed");
+  }
   if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "processor") {
     throw new Error("Processor statistics must retain their Companion subtype");
   }
