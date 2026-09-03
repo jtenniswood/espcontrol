@@ -470,6 +470,10 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
   } else if (parts[0] == "FOCUS" && parts.size() == 2 &&
              (parts[1].empty() || safe_field(parts[1], 96))) {
     companion_set_focused_action(parts[1]);
+  } else if (parts[0] == "TIMEZONE" && parts.size() == 2 &&
+             safe_field(parts[1], 96)) {
+    const std::string timezone = parts[1];
+    this->defer([timezone]() { companion_set_timezone_id(timezone); });
   } else if (parts[0] == "HEARTBEAT") {
     this->send_(socket_fd, "HEARTBEAT|ok");
   }
@@ -738,7 +742,10 @@ void CompanionService::set_connected_(bool connected) {
     this->disconnect_grace_expires_at_.store(millis() + NOW_PLAYING_RECONNECT_GRACE_MS);
   }
   companion_set_connected(connected);
-  if (!connected) companion_set_actions({});
+  if (!connected) {
+    companion_set_actions({});
+    companion_set_timezone_id("");
+  }
 }
 
 void CompanionService::publish_catalogue_() { this->send_(this->authenticated_socket_, "CATALOGUE|requested"); }

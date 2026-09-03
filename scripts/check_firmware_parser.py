@@ -18,6 +18,7 @@ PARSER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config_parser.
 MEDIA_CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_media_config.h"
 DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
+COMPANION_TIMEZONE_HEADER = ROOT / "components" / "espcontrol" / "companion_timezone.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 CARD_REGISTRY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_registry.h"
@@ -517,6 +518,13 @@ int main() {
   assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") < 10.4f);
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 10);
 
+  esphome::companion::register_companion_timezone_home_assistant_connected_provider([]() { return false; });
+  esphome::companion::companion_set_timezone_id("Europe/London");
+  assert(effective_timezone_option("Auto (Home Assistant)") == "Europe/London");
+  esphome::companion::register_companion_timezone_home_assistant_connected_provider([]() { return true; });
+  assert(effective_timezone_option("Auto (Home Assistant)") == "UTC (GMT+0)");
+  esphome::companion::companion_set_timezone_id("");
+
   auto migrated = parse_cfg("media_player.living:Living:Speaker:Auto:controls::media");
   assert(migrated.type.empty());
   auto media = parse_cfg("media_player.living;Living;Speaker;Auto;controls;;media");
@@ -946,6 +954,7 @@ def main() -> int:
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
+        shutil.copy2(COMPANION_TIMEZONE_HEADER, tmp_path / "companion_timezone.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")

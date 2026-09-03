@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include "companion_timezone.h"
+
 #ifdef USE_WEBSERVER
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_http_context.h"

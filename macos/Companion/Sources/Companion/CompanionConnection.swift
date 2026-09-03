@@ -263,6 +263,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
             let supportsMetrics = parts.count < 2 || (UInt32(parts[1]) ?? 0) >= 2
             store.setSystemMetricsSupported(supportsMetrics)
             if let task { startHeartbeat(for: task) }
+            publishTimezone()
             publishCatalogue()
             store.republishCurrentNowPlaying()
             store.republishCurrentSystemMetrics()
@@ -426,6 +427,13 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate, @
         }
         send(catalogue)
         publishFocusedAction()
+    }
+
+    private func publishTimezone() {
+        let identifier = TimeZone.current.identifier
+        guard !identifier.isEmpty, identifier.utf8.count <= 96,
+              !identifier.contains("|"), !identifier.contains(",") else { return }
+        send("TIMEZONE|\(identifier)")
     }
 
     func publishFocusedAction() {

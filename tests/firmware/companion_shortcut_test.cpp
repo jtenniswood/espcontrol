@@ -6,6 +6,7 @@ inline void lv_label_set_text(lv_obj_t *, const char *) {}
 inline std::string espcontrol_i18n(const std::string &value) { return value; }
 
 #include "companion_controls.h"
+#include "companion_timezone.h"
 #include "button_grid_config_parser.h"
 
 int main() {
@@ -202,7 +203,16 @@ int main() {
   assert(navigated);
   companion_deliver_action_result("launch-focus", "activated");
   assert(navigated);
+  companion_set_timezone_id("Europe/London");
+  assert(companion_timezone_id() == "Europe/London");
+  assert(companion_timezone_changed());
+  assert(companion_take_timezone_changed());
+  assert(!companion_timezone_changed());
   companion_set_connected(false);
+  assert(companion_timezone_id().empty());
+  assert(companion_timezone_changed());
+  assert(companion_take_timezone_changed());
+  assert(!companion_timezone_changed());
   assert(!companion_metric_value(companion_runtime_snapshot(), "stat.cpu", metric_value));
   assert(!companion_application_focused("com.apple.Safari"));
   assert(!companion_action_active("media.play_pause"));
