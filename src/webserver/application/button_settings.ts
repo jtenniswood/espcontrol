@@ -581,6 +581,9 @@ export function createButtonSettingsFeature(
             var td: any = cardRegistry.definitions[newType];
             if (td && td.onSelect && !keepMediaEntity)
                 td.onSelect(b);
+            var pickerDefinition: any = cardRegistry.definitions[pickerType];
+            if (pickerDefinition && pickerDefinition !== td && pickerDefinition.onSelect && !keepMediaEntity)
+                pickerDefinition.onSelect(b);
             if (pickerType === "media_control") {
                 b.sensor = "cover_art";
                 b.label = "Cover Art";

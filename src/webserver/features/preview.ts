@@ -61,6 +61,12 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   alarm: { icon: "shield-home", description: "Control or trigger alarm panel actions." },
   calendar: { icon: "calendar-clock", description: "Show date, time, or world clock values." },
   climate: { icon: "thermostat", description: "Show climate status and temperature controls." },
+  companion_app: { icon: "application-outline", description: "Launch an app on the Mac." },
+  companion_folder: { icon: "folder", description: "Open an approved folder on the Mac." },
+  companion_media: { icon: "music", description: "Control media playback on the Mac." },
+  companion_shortcut: { icon: "keyboard-backspace", description: "Run a keyboard shortcut on the Mac." },
+  companion_stats: { icon: "gauge", description: "Show a Mac system statistic." },
+  companion_url: { icon: "web", description: "Open a URL on the Mac." },
   cover: { icon: "window-shutter", description: "Control blinds, curtains, or covers." },
   door_window: { icon: "door-open", description: "Show open or closed sensor state." },
   presence: { icon: "account", description: "Show person or presence status." },
@@ -89,7 +95,17 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   climate: "climate_control",
   light_brightness: "light_control",
   media_control: "media",
+  companion_app: "companion",
+  companion_folder: "companion",
+  companion_media: "companion",
+  companion_shortcut: "companion",
+  companion_stats: "companion",
+  companion_url: "companion",
 };
+
+const MAC_COMPANION_HIDDEN_CARD_TYPES = new Set([
+  "action", "companion", "internal", "push", "screen_lock", "sensor", "wifi_qr", "wifi_qr_card",
+]);
 
 const LOCAL_CARD_TYPES = new Set([
   "clock", "internal", "local_sensor", "push", "screen_lock", "timezone",
@@ -99,7 +115,7 @@ const LOCAL_CARD_TYPES = new Set([
 export type CardPickerConnector = "home_assistant" | "mac_companion";
 
 export function cardTypeConnector(key: string): CardPickerOption["connector"] {
-  if (key === "companion") return "mac_companion";
+  if (key === "companion" || key.startsWith("companion_")) return "mac_companion";
   if (key === "slider") return "home_assistant";
   if (key === "action" || key === "sensor" || key === "calendar" || key === "subpage") {
     return "home_assistant_or_local";
@@ -110,6 +126,7 @@ export function cardTypeConnector(key: string): CardPickerOption["connector"] {
 }
 
 export function cardTypeVisibleForConnector(key: string, connector: CardPickerConnector): boolean {
+  if (connector === "mac_companion" && MAC_COMPANION_HIDDEN_CARD_TYPES.has(key)) return false;
   const source = cardTypeConnector(key);
   return connector === "mac_companion" ? source !== "home_assistant" : source !== "mac_companion";
 }

@@ -25,9 +25,16 @@ export function runPreviewFeatureTests(): void {
   equal(infoOnlyCardVisible("sensor", true), true, "sensors remain visible in info-only mode");
   equal(infoOnlyCardVisible("action", true), false, "actions are hidden in info-only mode");
   equal(defaultCardTypeForPicker("climate"), "climate_control", "picker aliases retain their defaults");
+  equal(defaultCardTypeForPicker("companion_stats"), "companion", "Companion subtype pickers use the Companion runtime card");
   equal(cardTypeVisibleForConnector("slider", "home_assistant"), true, "Home Assistant-only cards remain in the Home Assistant picker");
   equal(cardTypeVisibleForConnector("slider", "mac_companion"), false, "Home Assistant-only cards are hidden from Companion");
-  equal(cardTypeVisibleForConnector("action", "mac_companion"), true, "mixed action cards appear for Companion");
+  equal(cardTypeVisibleForConnector("action", "mac_companion"), false, "actions are hidden from Companion");
+  equal(cardTypeVisibleForConnector("internal", "mac_companion"), false, "internal switches are hidden from Companion");
+  equal(cardTypeVisibleForConnector("push", "mac_companion"), false, "triggers are hidden from Companion");
+  equal(cardTypeVisibleForConnector("sensor", "mac_companion"), false, "sensors are hidden from Companion");
+  equal(cardTypeVisibleForConnector("wifi_qr", "mac_companion"), false, "Wifi Sharing is hidden from Companion");
+  equal(cardTypeVisibleForConnector("screen_lock", "mac_companion"), false, "Screen Lock is hidden from Companion");
+  equal(cardTypeVisibleForConnector("companion_stats", "mac_companion"), true, "Companion subtypes appear in the Companion picker");
   equal(cardTypeVisibleForConnector("webhook", "home_assistant"), true, "shared webhook cards appear for Home Assistant");
   equal(cardTypeVisibleForConnector("webhook", "mac_companion"), true, "shared webhook cards appear for Companion");
 
@@ -45,9 +52,24 @@ export function runPreviewFeatureTests(): void {
     "subpage picker filters unsupported and aliased entries",
   );
   deepEqual(
-    cardTypePickerOptions({ ...definitions, slider: { label: "Slider", allowInSubpage: true } }, [], false, false, null, "mac_companion").map((option) => option.key),
-    ["action", "sensor", "wifi_qr"],
-    "Companion picker keeps shared cards and excludes HA-only cards",
+    cardTypePickerOptions({
+      ...definitions,
+      calendar: { label: "Date & Time", allowInSubpage: true },
+      companion: { label: "Companion", allowInSubpage: true },
+      companion_app: { label: "Launch app", allowInSubpage: true },
+      companion_shortcut: { label: "Keyboard shortcut", allowInSubpage: true },
+      companion_url: { label: "Open URL", allowInSubpage: true },
+      companion_folder: { label: "Open folder", allowInSubpage: true },
+      companion_media: { label: "Media control", allowInSubpage: true },
+      companion_stats: { label: "Stats", allowInSubpage: true },
+      internal: { label: "Internal Switches", allowInSubpage: true },
+      push: { label: "Trigger", allowInSubpage: true },
+      screen_lock: { label: "Screen Lock", allowInSubpage: true },
+      webhook: { label: "Webhook", allowInSubpage: true },
+      slider: { label: "Slider", allowInSubpage: true },
+    }, [], false, false, null, "mac_companion").map((option) => option.key),
+    ["calendar", "companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "companion_stats", "webhook"],
+    "Companion picker shows subtypes and shared cards while excluding device-only cards",
   );
   const infoOnlyOptions = cardTypePickerOptions(definitions, [], true, false, "action");
   equal(infoOnlyOptions[0]?.key, "action", "selected hidden type remains visible for editing");

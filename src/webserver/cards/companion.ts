@@ -429,7 +429,28 @@ export function registerCompanionCardTypes(
         return request;
     }
 
-    registry.register("companion", {
+    function applyCompanionPickerPreset(card: any, mode: string): void {
+        if (!card) return;
+        card.entity = companionEntityForMode(mode);
+        card.sensor = mode === "url" ? COMPANION_URL_PREFIX : "";
+        card.unit = "";
+        card.precision = "";
+        card.options = "";
+        card.icon_on = "Auto";
+        card.label = "";
+        if (mode === "media") {
+            applyCompanionMediaPresentation(card);
+            return;
+        }
+        const metric = mode === "stats" ? COMPANION_SYSTEM_METRICS[0] : undefined;
+        if (metric) {
+            card.unit = metric.unit;
+            card.precision = "0";
+        }
+        card.icon = companionSubtypeDefaultIcon(mode, card.entity);
+    }
+
+    const companionDefinition: any = {
         label: function () { return cardContractCardLabel("companion"); },
         allowInSubpage: function () { return cardContractAllowInSubpage("companion"); },
         pickerKey: function () { return cardContractPickerKey("companion"); },
@@ -964,5 +985,29 @@ export function registerCompanionCardTypes(
             state.subpages[slot] = subpage;
             codec.saveSubpageConfig(slot);
         },
+    };
+    registry.register("companion", companionDefinition);
+
+    const companionPickerDefinitions: readonly [string, string, string][] = [
+        ["companion_app", "Launch app", "app"],
+        ["companion_shortcut", "Keyboard shortcut", "shortcut"],
+        ["companion_url", "Open URL", "url"],
+        ["companion_folder", "Open folder", "folder"],
+        ["companion_media", "Media control", "media"],
+        ["companion_stats", "Stats", "stats"],
+    ];
+    companionPickerDefinitions.forEach(function (definition) {
+        const key = definition[0];
+        const label = definition[1];
+        const mode = definition[2];
+        registry.register(key, {
+            ...companionDefinition,
+            label,
+            pickerKey: null,
+            onSelect: function (card?: any) {
+                companionDefinition.onSelect(card);
+                applyCompanionPickerPreset(card, mode);
+            },
+        });
     });
 }
