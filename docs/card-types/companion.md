@@ -25,7 +25,7 @@ Use the normal browser layout editor and select an empty home-screen or subpage 
 - **Keyboard shortcut** — click the shortcut field and press a combination such as Command-A. The browser records and displays the combination on the card.
 - **Open URL** — enter an `http://` or `https://` address and choose the approved installed application that should open it, such as Safari or Chrome.
 - **Open folder** — first add one or more folders from the Mac app's **Folders** tab, then choose the folder for this card. The display receives an anonymous identifier and friendly name; the filesystem path remains on the Mac.
-- **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application. Play / Pause reads **Playing**, **Paused**, **Stopped**, or **Unavailable** from the Mac and does not guess the result after a tap. While playback is confirmed as **Playing**, the card lights in the panel's configured active colour; it returns to its normal colour when paused or stopped.
+- **Media control** — choose Play / Pause, Previous Track, or Next Track for the Mac's current Now Playing application. Play / Pause reads **Playing**, **Paused**, or **Stopped** from the Mac; when no track is active it remains enabled because the Mac can still accept a new Play / Pause command. While playback is confirmed as **Playing**, the card lights in the panel's configured active colour; it returns to its normal colour when paused or stopped.
 - **Processor usage**, **Memory usage**, **Storage usage**, or **Battery level** — show a read-only live percentage from the paired Mac. These cards use the same number, unit, label, precision, and large-number presentation as numeric Sensor cards, but have their own Companion transport and runtime. Battery shows as unavailable on Macs without a battery.
 
 Use a [Slider card](/card-types/sliders) when you want to control the Mac's output or input volume.
@@ -40,7 +40,7 @@ The first time you use one of these controls, macOS may ask for Accessibility pe
 
 The first time a shortcut or window control is used, macOS asks for Accessibility permission so the Companion app can replay keyboard input. Allow **EspControl Companion** in **System Settings → Privacy & Security → Accessibility**, then press the card again. Shortcuts and window controls are sent to whichever Mac application is active at that time.
 
-Action cards are disabled when the Mac is offline, when an app or URL card references an unavailable application, when a folder has been removed from the Mac app, or when a URL is incomplete. System-statistic cards show `--` while their reading is unavailable. Play / Pause is also disabled when **Now Playing** sharing is off, macOS has no usable session, or the required system command is unavailable. Paused and stopped sessions remain tappable. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards.
+Action cards are disabled when the Mac is offline, when an app or URL card references an unavailable application, when a folder has been removed from the Mac app, or when a URL is incomplete. System-statistic cards show `--` while their reading is unavailable. Media cards are disabled only when the Companion cannot provide the required system command. A missing Now Playing session leaves Play / Pause enabled and displayed as **Stopped**. Layouts, subpages, backup, and restore work through the same built-in editor as all other cards.
 
 ## Limits in this proof of concept
 

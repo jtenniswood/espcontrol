@@ -14,7 +14,8 @@ int main() {
   assert(std::string(companion_play_pause_status(CompanionPlaybackState::PLAYING)) == "Playing");
   assert(std::string(companion_play_pause_status(CompanionPlaybackState::PAUSED)) == "Paused");
   assert(std::string(companion_play_pause_status(CompanionPlaybackState::STOPPED)) == "Stopped");
-  assert(std::string(companion_play_pause_status(CompanionPlaybackState::UNAVAILABLE)) == "Unavailable");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::UNAVAILABLE, false)) == "Unavailable");
+  assert(std::string(companion_play_pause_status(CompanionPlaybackState::UNAVAILABLE)) == "Stopped");
   assert(companion_shortcut_action_valid("shortcut.command+a"));
   assert(companion_shortcut_label("shortcut.command+a") == "\U000F0633" "A");
   assert(companion_shortcut_action_valid("shortcut.control+shift+tab"));
@@ -89,7 +90,7 @@ int main() {
   assert(!companion_media_action_valid("media.delete_everything"));
   assert(!companion_action_available("media.play_pause"));
   companion_set_media_actions_supported(true);
-  assert(!companion_action_available("media.play_pause"));
+  assert(companion_action_available("media.play_pause"));
   CompanionNowPlayingSnapshot paused_snapshot;
   paused_snapshot.playback_state = CompanionPlaybackState::PAUSED;
   companion_set_now_playing(paused_snapshot);

@@ -123,9 +123,13 @@ enum class CompanionPlaybackState : uint8_t {
 
 inline const char *companion_play_pause_status(CompanionPlaybackState state,
                                                 bool available = true) {
-  if (!available || state == CompanionPlaybackState::UNAVAILABLE) return "Unavailable";
+  if (!available) return "Unavailable";
   if (state == CompanionPlaybackState::PLAYING) return "Playing";
   if (state == CompanionPlaybackState::PAUSED) return "Paused";
+  // A command-capable Companion can still receive Play/Pause when there is
+  // no active Now Playing session. Keep the card enabled and show the same
+  // idle state used by a stopped player instead of treating the command as
+  // unavailable.
   return "Stopped";
 }
 
@@ -601,8 +605,6 @@ inline bool companion_action_available(const std::string &action_id) {
   if (action_id.empty()) return false;
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
-  if (action_id == "media.play_pause" &&
-      snapshot.now_playing.playback_state == CompanionPlaybackState::UNAVAILABLE) return false;
   if (companion_shortcut_action_valid(action_id)) return true;
   if (companion_media_action_valid(action_id)) return snapshot.media_actions_supported;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {

@@ -470,11 +470,6 @@ final class CompanionStore: NSObject, ObservableObject {
             return openFolder(actionIdentifier: actionIdentifier)
         }
         if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
-            if actionIdentifier == SystemMediaController.playPauseID {
-                guard nowPlayingSharingEnabled,
-                      let snapshot = latestNowPlayingSnapshot,
-                      snapshot.state != .unavailable else { return false }
-            }
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) else {
