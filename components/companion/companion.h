@@ -84,7 +84,7 @@ class CompanionService final : public Component {
   CompanionIdentityPreference identity_{};
   httpd_handle_t server_{nullptr};
   uint16_t port_{8443};
-  int authenticated_socket_{-1};
+  std::atomic<int> authenticated_socket_{-1};
   uint32_t last_sequence_{0};
   uint32_t pairing_expires_at_{0};
   uint32_t next_attempt_at_{0};

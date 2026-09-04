@@ -503,7 +503,7 @@ inline void companion_set_connected(bool connected) {
   }
   if (!connected) {
     companion_cancel_action_result();
-    companion_subpage_return_requested().store(false);
+    companion_subpage_return_requested().store(true);
   }
   companion_request_card_refresh();
   auto &connection_changed = companion_connection_changed_handler();

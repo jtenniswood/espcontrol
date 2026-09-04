@@ -215,6 +215,7 @@ int main() {
   assert(companion_take_timezone_changed());
   assert(!companion_timezone_changed());
   companion_set_connected(false);
+  assert(companion_consume_subpage_return_request());
   companion_set_timezone_id("");
   assert(companion_timezone_id().empty());
   assert(companion_timezone_changed());
