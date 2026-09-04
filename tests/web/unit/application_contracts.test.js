@@ -88,7 +88,9 @@ describe("browserless application contracts", () => {
     assert.match(store, /approvedApplicationIdentifiers\.contains\(\$0\.bundleIdentifier\)/);
     assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
     assert.match(app, /case applications/);
-    assert.match(app, /Only selected applications are shared with the display/);
+    assert.match(app, /TextField\("Search applications"/);
+    assert.match(app, /Button\("Select All"\)/);
+    assert.match(app, /Button\("Deselect All"\)/);
   });
 
   test("owns browser composition and compatibility layout state", () => {
