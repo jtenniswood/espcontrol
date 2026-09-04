@@ -632,6 +632,7 @@ export function registerCompanionCardTypes(
             windowNote.textContent = "Controls the active Mac window. Tiling actions require macOS 15 or later.";
             windowField.appendChild(windowNote);
             panel?.appendChild(windowField);
+            helpers.markCardPrimaryField(windowField, "window");
 
             const urlField = document.createElement("div");
             urlField.className = "sp-field";

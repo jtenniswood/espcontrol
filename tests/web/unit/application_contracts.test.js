@@ -643,6 +643,7 @@ describe("browserless application contracts", () => {
     assert.match(card, /urlField[\s\S]*markCardPrimaryField\(urlField, "url"\)/);
     assert.match(card, /mediaField[\s\S]*markCardPrimaryField\(mediaField, "media"\)/);
     assert.match(card, /folderField[\s\S]*markCardPrimaryField\(folderField, "folder"\)/);
+    assert.match(card, /windowField[\s\S]*markCardPrimaryField\(windowField, "window"\)/);
     assert.match(card, /folderPlaceholder\.disabled = true/);
     assert.match(card, /folderPlaceholder\.hidden = true/);
     assert.doesNotMatch(card, /Unavailable folder/);
@@ -651,6 +652,7 @@ describe("browserless application contracts", () => {
     assert.match(fields, /url: false/);
     assert.match(fields, /media: false/);
     assert.match(fields, /folder: false/);
+    assert.match(fields, /window: false/);
     assert.match(card, /sortCompanionLabels\(COMPANION_MEDIA_ACTIONS\)/);
     assert.match(card, /first\.group\.localeCompare\(second\.group/);
   });
