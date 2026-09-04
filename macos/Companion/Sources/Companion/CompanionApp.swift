@@ -559,9 +559,26 @@ private struct CompanionSettings: View {
 
     private var applicationSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("Search applications", text: $applicationSearch)
-                .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 360)
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+
+                TextField("Search applications", text: $applicationSearch)
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                    }
+            }
+            .frame(maxWidth: 360)
 
             HStack(spacing: 16) {
                 Button("Select All") {

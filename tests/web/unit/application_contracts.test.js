@@ -89,6 +89,8 @@ describe("browserless application contracts", () => {
     assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
     assert.match(app, /case applications/);
     assert.match(app, /TextField\("Search applications"/);
+    assert.match(app, /Image\(systemName: "magnifyingglass"\)/);
+    assert.match(app, /RoundedRectangle\(cornerRadius: 14, style: \.continuous\)/);
     assert.match(app, /Button\("Select All"\)/);
     assert.match(app, /Button\("Deselect All"\)/);
   });
