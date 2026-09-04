@@ -212,6 +212,31 @@ int main() {
   assert(navigated);
   companion_deliver_action_result("launch-focus", "activated");
   assert(navigated);
+  int completion_order = 0;
+  int first_completion = 0;
+  int second_completion = 0;
+  assert(companion_expect_action_result("parallel-1", [&]() {
+    first_completion = ++completion_order;
+  }, 100));
+  assert(companion_expect_action_result("parallel-2", [&]() {
+    second_completion = ++completion_order;
+  }, 200));
+  companion_deliver_action_result("parallel-2", "activated");
+  companion_deliver_action_result("parallel-1", "activated");
+  assert(second_completion == 1);
+  assert(first_completion == 2);
+  assert(companion_expect_action_result("expires", [&]() {
+    completion_order++;
+  }, 300));
+  assert(companion_expire_action_results(299) == 0);
+  assert(companion_expire_action_results(300) == 1);
+  companion_deliver_action_result("expires", "activated");
+  assert(completion_order == 2);
+  for (size_t index = 0; index < CompanionPendingActions::MAX_PENDING; index++) {
+    assert(companion_expect_action_result("bounded-" + std::to_string(index), []() {}));
+  }
+  assert(!companion_expect_action_result("bounded-overflow", []() {}));
+  companion_cancel_action_result();
   companion_set_timezone_id("Europe/London");
   assert(companion_timezone_id() == "Europe/London");
   assert(companion_timezone_changed());

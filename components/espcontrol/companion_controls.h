@@ -4,6 +4,7 @@
 // the companion service owns pairing, transport and the Mac app catalogue.
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cctype>
 #include <cmath>
@@ -35,61 +36,95 @@ using CompanionValueSender = std::function<bool(const std::string &, int, const 
 using CompanionActionResultHandler = std::function<void()>;
 using CompanionConnectionChangedHandler = std::function<void(bool)>;
 
-struct CompanionPendingActionResult {
-  std::mutex mutex;
+struct CompanionPendingAction {
   std::string request_id;
   std::string expected_application_id;
+  uint32_t expires_at{0};
   CompanionActionResultHandler success;
 };
 
-inline CompanionPendingActionResult &companion_pending_action_result() {
-  static CompanionPendingActionResult pending;
+struct CompanionPendingActions {
+  static constexpr size_t MAX_PENDING = 8;
+  std::mutex mutex;
+  std::array<CompanionPendingAction, MAX_PENDING> entries{};
+};
+
+inline CompanionPendingActions &companion_pending_actions() {
+  static CompanionPendingActions pending;
   return pending;
 }
 
-inline void companion_expect_action_result(const std::string &request_id,
-                                           CompanionActionResultHandler success) {
-  auto &pending = companion_pending_action_result();
-  std::lock_guard<std::mutex> lock(pending.mutex);
-  pending.request_id = request_id;
+inline void companion_clear_pending_action(CompanionPendingAction &pending) {
+  pending.request_id.clear();
   pending.expected_application_id.clear();
-  pending.success = std::move(success);
+  pending.expires_at = 0;
+  pending.success = nullptr;
 }
 
-inline void companion_expect_action_result(
+inline bool companion_expect_action_result(
     const std::string &request_id, const std::string &expected_application_id,
-    CompanionActionResultHandler success) {
-  auto &pending = companion_pending_action_result();
+    CompanionActionResultHandler success, uint32_t expires_at = 0) {
+  if (request_id.empty() || !success) return false;
+  auto &pending = companion_pending_actions();
   std::lock_guard<std::mutex> lock(pending.mutex);
-  pending.request_id = request_id;
-  pending.expected_application_id = expected_application_id;
-  pending.success = std::move(success);
+  auto entry = std::find_if(pending.entries.begin(), pending.entries.end(),
+    [&request_id](const CompanionPendingAction &candidate) {
+      return candidate.request_id.empty() || candidate.request_id == request_id;
+    });
+  if (entry == pending.entries.end()) return false;
+  entry->request_id = request_id;
+  entry->expected_application_id = expected_application_id;
+  entry->expires_at = expires_at;
+  entry->success = std::move(success);
+  return true;
+}
+
+inline bool companion_expect_action_result(const std::string &request_id,
+                                           CompanionActionResultHandler success,
+                                           uint32_t expires_at = 0) {
+  return companion_expect_action_result(request_id, "", std::move(success), expires_at);
 }
 
 inline void companion_cancel_action_result(const std::string &request_id = "") {
-  auto &pending = companion_pending_action_result();
+  auto &pending = companion_pending_actions();
   std::lock_guard<std::mutex> lock(pending.mutex);
-  if (!request_id.empty() && pending.request_id != request_id) return;
-  pending.request_id.clear();
-  pending.expected_application_id.clear();
-  pending.success = nullptr;
+  for (auto &entry : pending.entries) {
+    if (request_id.empty() || entry.request_id == request_id)
+      companion_clear_pending_action(entry);
+  }
+}
+
+inline size_t companion_expire_action_results(uint32_t now) {
+  size_t expired = 0;
+  auto &pending = companion_pending_actions();
+  std::lock_guard<std::mutex> lock(pending.mutex);
+  for (auto &entry : pending.entries) {
+    if (!entry.request_id.empty() && entry.expires_at != 0 &&
+        static_cast<int32_t>(now - entry.expires_at) >= 0) {
+      companion_clear_pending_action(entry);
+      expired++;
+    }
+  }
+  return expired;
 }
 
 inline void companion_deliver_action_result(const std::string &request_id,
                                             const std::string &status) {
   CompanionActionResultHandler success;
   {
-    auto &pending = companion_pending_action_result();
+    auto &pending = companion_pending_actions();
     std::lock_guard<std::mutex> lock(pending.mutex);
-    if (pending.request_id != request_id) return;
+    auto entry = std::find_if(pending.entries.begin(), pending.entries.end(),
+      [&request_id](const CompanionPendingAction &candidate) {
+        return candidate.request_id == request_id;
+      });
+    if (entry == pending.entries.end()) return;
     // Only a current Companion build sends "activated" after it has verified
     // that a launched application is frontmost. Older builds report
     // "performed" as soon as launch scheduling succeeds, which is not safe
     // enough to expose keyboard shortcuts.
-    if (status == "activated") success = std::move(pending.success);
-    pending.request_id.clear();
-    pending.expected_application_id.clear();
-    pending.success = nullptr;
+    if (status == "activated") success = std::move(entry->success);
+    companion_clear_pending_action(*entry);
   }
   if (success) success();
 }
@@ -305,19 +340,21 @@ inline void companion_set_focused_application(std::string application_id) {
   if (application_id.size() > 96) application_id.clear();
   const std::string focused_application_id = application_id;
   companion_set_focused_action(std::move(application_id));
-  CompanionActionResultHandler success;
+  std::vector<CompanionActionResultHandler> successes;
   {
-    auto &pending = companion_pending_action_result();
+    auto &pending = companion_pending_actions();
     std::lock_guard<std::mutex> lock(pending.mutex);
-    if (!pending.expected_application_id.empty() &&
-        pending.expected_application_id == focused_application_id) {
-      success = std::move(pending.success);
-      pending.request_id.clear();
-      pending.expected_application_id.clear();
-      pending.success = nullptr;
+    for (auto &entry : pending.entries) {
+      if (!entry.expected_application_id.empty() &&
+          entry.expected_application_id == focused_application_id) {
+        successes.push_back(std::move(entry.success));
+        companion_clear_pending_action(entry);
+      }
     }
   }
-  if (success) success();
+  for (auto &success : successes) {
+    if (success) success();
+  }
   companion_request_card_refresh();
 }
 

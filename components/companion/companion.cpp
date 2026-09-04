@@ -125,6 +125,7 @@ void CompanionService::setup() {
 }
 
 void CompanionService::loop() {
+  companion_expire_action_results(millis());
   {
     std::lock_guard<std::mutex> lock(this->pairing_mutex_);
     if (!this->pairing_code_.empty() && static_cast<int32_t>(millis() - this->pairing_expires_at_) >= 0) {
@@ -709,13 +710,18 @@ void CompanionService::expire_now_playing_() {
   });
 }
 
-void CompanionService::send_(int socket_fd, const std::string &message) {
-  if (!this->server_ || socket_fd < 0) return;
+bool CompanionService::send_(int socket_fd, const std::string &message) {
+  if (!this->server_ || socket_fd < 0) return false;
   httpd_ws_frame_t frame{};
   frame.type = HTTPD_WS_TYPE_TEXT;
   frame.payload = reinterpret_cast<uint8_t *>(const_cast<char *>(message.data()));
   frame.len = message.size();
-  httpd_ws_send_frame_async(this->server_, socket_fd, &frame);
+  const esp_err_t result = httpd_ws_send_frame_async(this->server_, socket_fd, &frame);
+  if (result != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to queue Companion message: %s", esp_err_to_name(result));
+    return false;
+  }
+  return true;
 }
 
 void CompanionService::track_unauthenticated_socket_(int socket_fd) {
@@ -803,10 +809,9 @@ void CompanionService::publish_catalogue_() {
 bool CompanionService::invoke_(const std::string &action_id, const std::string &request_id) {
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(action_id, 96) || !safe_field(request_id, 64)) return false;
-  this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
-              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"action\",\"requestId\":\"" +
-              request_id + "\",\"actionId\":\"" + action_id + "\"}");
-  return true;
+  return this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
+                     std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"action\",\"requestId\":\"" +
+                     request_id + "\",\"actionId\":\"" + action_id + "\"}");
 }
 
 bool CompanionService::invoke_url_(const std::string &app_id, const std::string &encoded_url,
@@ -814,10 +819,9 @@ bool CompanionService::invoke_url_(const std::string &app_id, const std::string 
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(app_id, 96) ||
       !safe_field(encoded_url, 128) || !safe_field(request_id, 64)) return false;
-  this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
-              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"url\",\"requestId\":\"" +
-              request_id + "\",\"appId\":\"" + app_id + "\",\"encodedUrl\":\"" + encoded_url + "\"}");
-  return true;
+  return this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
+                     std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"url\",\"requestId\":\"" +
+                     request_id + "\",\"appId\":\"" + app_id + "\",\"encodedUrl\":\"" + encoded_url + "\"}");
 }
 
 bool CompanionService::invoke_value_(const std::string &control_id, int value,
@@ -826,10 +830,9 @@ bool CompanionService::invoke_value_(const std::string &control_id, int value,
   if (socket_fd < 0 ||
       !companion_volume_control_valid(control_id) ||
       value < 0 || value > 100 || !safe_field(request_id, 64)) return false;
-  this->send_(socket_fd, "{\"type\":\"value.set\",\"protocol\":" +
-              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"requestId\":\"" + request_id +
-              "\",\"controlId\":\"" + control_id + "\",\"value\":" + std::to_string(value) + "}");
-  return true;
+  return this->send_(socket_fd, "{\"type\":\"value.set\",\"protocol\":" +
+                     std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"requestId\":\"" + request_id +
+                     "\",\"controlId\":\"" + control_id + "\",\"value\":" + std::to_string(value) + "}");
 }
 
 void CompanionService::begin_pairing() {

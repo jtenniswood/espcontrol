@@ -68,7 +68,7 @@ class CompanionService final : public Component {
   void reset_artwork_transfer_(const char *reason = nullptr, bool notify = false);
   void send_artwork_ack_(uint32_t generation, size_t next_offset);
   void expire_now_playing_();
-  void send_(int socket_fd, const std::string &message);
+  bool send_(int socket_fd, const std::string &message);
   void track_unauthenticated_socket_(int socket_fd);
   void forget_unauthenticated_socket_(int socket_fd);
   void expire_unauthenticated_socket_(int socket_fd);
