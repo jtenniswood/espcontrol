@@ -8,7 +8,6 @@ struct LaunchableApp: Identifiable, Hashable {
     let bundleIdentifier: String
     let name: String
     let url: URL
-    let icon: NSImage
 
     var id: String { bundleIdentifier }
 
@@ -305,8 +304,7 @@ final class CompanionStore: NSObject, ObservableObject {
             found.append(LaunchableApp(
                 bundleIdentifier: id,
                 name: name,
-                url: url,
-                icon: NSWorkspace.shared.icon(forFile: url.path)
+                url: url
             ))
         }
 

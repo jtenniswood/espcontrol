@@ -150,10 +150,12 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
                 backing: .buffered,
                 defer: false
             )
-            window.title = "EspControl Companion Settings"
-            window.titleVisibility = .hidden
+            window.title = "EspControl Companion"
+            window.titleVisibility = .visible
             window.titlebarAppearsTransparent = true
-            window.isMovableByWindowBackground = true
+            window.titlebarSeparatorStyle = .none
+            window.toolbarStyle = .unified
+            window.isMovableByWindowBackground = false
             window.contentMinSize = NSSize(width: 760, height: 500)
             window.contentViewController = controller
             window.delegate = self
@@ -248,14 +250,17 @@ private struct CompanionSettings: View {
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        HStack(spacing: 0) {
-            settingsSidebar
-            Rectangle()
-                .fill(Color.primary.opacity(0.08))
-                .frame(width: 1)
+        NavigationSplitView {
+            List(CompanionSettingsPage.allCases, selection: $selectedPage) { page in
+                Label(page.title, systemImage: page.icon)
+                    .tag(page)
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 260)
+        } detail: {
             detailView
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .navigationSplitViewStyle(.balanced)
         .onAppear {
             focusSettingsWindow()
         }
@@ -265,238 +270,153 @@ private struct CompanionSettings: View {
         }
     }
 
-    private var settingsSidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(spacing: 4) {
-                ForEach(CompanionSettingsPage.allCases) { page in
-                    Button {
-                        selectedPage = page
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: page.icon)
-                                .font(.system(size: 17, weight: .medium))
-                                .frame(width: 22)
-                            Text(page.title)
-                                .font(.system(size: 15, weight: .medium))
-                            Spacer(minLength: 0)
-                        }
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 14)
-                        .frame(height: 44)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(selectedPage == page ? Color.primary.opacity(0.10) : .clear)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 16)
-
-            Spacer()
-        }
-        .frame(minWidth: 236, maxWidth: 236, maxHeight: .infinity, alignment: .top)
-        .background(Color(nsColor: .underPageBackgroundColor))
-    }
-
     @ViewBuilder
     private var detailView: some View {
         switch selectedPage {
         case .about:
-            settingsPage(title: "About EspControl", subtitle: "Connection status and quick access to your display") {
-                connectionStatusPanel
-                if hasPanelAddress {
-                    deviceWebserverPanel
-                }
-            }
+            aboutPage
         case .connection:
-            settingsPage(title: "Device", subtitle: "Pair EspControl Companion with a display") {
-                settingsSection("Connection") {
-                    deviceConnectionSettings
-                }
-            }
+            connectionPage
         case .applications:
-            settingsPage(title: "Applications", subtitle: "Choose the Mac apps your display may launch or control") {
-                applicationSettings
-            }
+            applicationsPage
         case .folders:
-            settingsPage(title: "Folders", subtitle: "Choose the folders that can be opened from your display") {
-                folderSettings
-            }
+            foldersPage
         case .general:
-            settingsPage(title: "General", subtitle: "Manage optional macOS integration") {
-                if store.supportsLaunchAtLogin {
-                    settingsSection("Startup") {
-                        startupSettings
+            generalPage
+        }
+    }
+
+    private var aboutPage: some View {
+        Form {
+            Section("Status") {
+                NativeSettingsRow(
+                    title: "EspControl Companion",
+                    description: store.isConnected ? "Connected to your display" : "Not connected to a display"
+                ) {
+                    if canConnect || store.isConnected {
+                        Toggle("Connect EspControl Companion", isOn: connectionBinding)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                    } else {
+                        Text("Pair a device")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if hasPanelAddress {
+                    NativeSettingsRow(
+                        title: "Device Webserver",
+                        description: "Open the display settings in your browser."
+                    ) {
+                        Button("Open Webserver") { store.openPanelWebServer() }
                     }
                 }
             }
-        }
-    }
 
-    @ViewBuilder
-    private func settingsPage<Content: View>(
-        title: String,
-        subtitle: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(title)
-                        .font(.system(size: 25, weight: .semibold))
-                    Text(subtitle)
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.bottom, 22)
-
-                Divider()
-                    .padding(.bottom, 24)
-
-                VStack(alignment: .leading, spacing: 22) {
-                    content()
-                }
+            Section("Help") {
+                Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
+                Link("EspControl Support", destination: CompanionStore.supportURL)
             }
-            .padding(.horizontal, 42)
-            .padding(.top, 32)
-            .padding(.bottom, 32)
-            .frame(maxWidth: 900, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .formStyle(.grouped)
+        .navigationTitle("About EspControl")
     }
 
-    @ViewBuilder
-    private func settingsSection<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(title)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(.secondary)
-            content()
-                .padding(.top, 2)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var deviceConnectionSettings: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            SettingsActionRow(
-                title: "Panel address",
-                description: "The local network address of your EspControl display."
-            ) {
-                TextField("e.g. 192.168.6.100", text: $store.panelHost)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.large)
-                    .focused($focusedField, equals: .panelHost)
-                    .frame(width: 240)
-            }
-
-            SettingsActionRow(
-                title: "Pairing code",
-                description: "The eight-letter code shown while pairing is active."
-            ) {
-                HStack(spacing: 8) {
-                    TextField("Eight-letter code", text: $pairingCode)
+    private var connectionPage: some View {
+        Form {
+            Section("Connection") {
+                NativeSettingsRow(
+                    title: "Panel address",
+                    description: "The local network address of your EspControl display."
+                ) {
+                    TextField("192.168.6.100", text: $store.panelHost)
                         .textFieldStyle(.roundedBorder)
-                        .controlSize(.large)
-                        .focused($focusedField, equals: .pairingCode)
-                        .frame(width: 160)
-                    Button("Pair") {
-                        store.pair(code: pairingCode)
-                    }
-                    .controlSize(.large)
+                        .focused($focusedField, equals: .panelHost)
+                        .frame(width: 220)
                 }
-            }
 
-            Text("Press and hold the Wi-Fi icon on the display, then enter its local address and the code shown on the touchscreen.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                NativeSettingsRow(
+                    title: "Pairing code",
+                    description: "The eight-letter code shown while pairing is active."
+                ) {
+                    HStack {
+                        TextField("Eight-letter code", text: $pairingCode)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .pairingCode)
+                            .frame(width: 150)
+                        Button("Pair") { store.pair(code: pairingCode) }
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+
+                Text("Press and hold the Wi-Fi icon on the display, then enter its local address and the code shown on the touchscreen.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
 
             if store.hasSavedPairing {
-                Button("Forget this panel", role: .destructive) {
-                    store.forgetPanel()
-                    pairingCode = ""
-                    focusedField = .panelHost
+                Section {
+                    Button("Forget This Panel", role: .destructive) {
+                        store.forgetPanel()
+                        pairingCode = ""
+                        focusedField = .panelHost
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .controlSize(.large)
             }
         }
+        .formStyle(.grouped)
+        .navigationTitle("Device")
     }
 
-    private var applicationSettings: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
+    private var applicationsPage: some View {
+        List {
+            if store.availableApps.isEmpty {
+                Text("No applications were found.")
                     .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-
-                TextField("Search applications", text: $applicationSearch)
-                    .textFieldStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+            } else if filteredApplications.isEmpty {
+                Text("No applications match your search.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(filteredApplications) { application in
+                    Toggle(isOn: Binding(
+                        get: { store.applicationIsApproved(application) },
+                        set: { store.setApplication(application, approved: $0) }
+                    )) {
+                        Text(application.name)
                     }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
             }
-            .frame(maxWidth: 360)
-
-            HStack(spacing: 16) {
+        }
+        .listStyle(.inset)
+        .searchable(text: $applicationSearch, placement: .toolbar, prompt: "Search Applications")
+        .navigationTitle("Applications")
+        .safeAreaInset(edge: .bottom) {
+            HStack {
                 Button("Select All") {
                     store.setApplications(filteredApplications, approved: true)
                 }
                 .disabled(filteredApplications.isEmpty || allFilteredApplicationsApproved)
+
                 Button("Deselect All") {
                     store.setApplications(filteredApplications, approved: false)
                 }
                 .disabled(!hasApprovedFilteredApplications)
-            }
-            .controlSize(.large)
-            .padding(.bottom, 2)
 
-            if store.availableApps.isEmpty {
-                Text("No applications were found.")
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
-            } else if filteredApplications.isEmpty {
-                Text("No applications match your search.")
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
-            } else {
-                ForEach(filteredApplications) { application in
-                    HStack {
-                        Text(application.name)
-                            .font(.system(size: 15, weight: .medium))
+                Spacer()
 
-                        Spacer(minLength: 16)
-
-                        Toggle("", isOn: Binding(
-                            get: { store.applicationIsApproved(application) },
-                            set: { store.setApplication(application, approved: $0) }
-                        ))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                    }
-                    .padding(.vertical, 8)
-                    Divider()
+                Button {
+                    store.refreshApplications()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
                 }
             }
-
-            Button("Refresh Applications") { store.refreshApplications() }
-                .controlSize(.large)
+            .buttonStyle(.bordered)
+            .padding()
+            .background(.bar)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var filteredApplications: [LaunchableApp] {
@@ -515,30 +435,16 @@ private struct CompanionSettings: View {
         filteredApplications.contains(where: store.applicationIsApproved)
     }
 
-    private var startupSettings: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
-            Text(store.launchAtLoginMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var folderSettings: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var foldersPage: some View {
+        List {
             if store.approvedFolders.isEmpty {
                 Text("No folders have been added.")
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
             } else {
                 ForEach(store.approvedFolders) { folder in
-                    HStack(spacing: 12) {
-                        Image(systemName: "folder.fill")
-                            .foregroundStyle(.secondary)
+                    HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(folder.name).font(.headline)
+                            Text(folder.name)
                             Text(folder.needsReapproval ? "Select this folder again to restore access" : folder.path)
                                 .font(.caption)
                                 .foregroundStyle(folder.needsReapproval ? .orange : .secondary)
@@ -549,58 +455,44 @@ private struct CompanionSettings: View {
                         Button(role: .destructive) {
                             store.removeFolder(folder)
                         } label: {
-                            Image(systemName: "minus.circle")
+                            Image(systemName: "minus")
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                         .help("Remove folder")
                     }
-                    Divider()
                 }
             }
-
-            Button("Add Folder…") { store.chooseFolder() }
-                .controlSize(.large)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .listStyle(.inset)
+        .navigationTitle("Folders")
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button("Add Folder…") { store.chooseFolder() }
+                    .buttonStyle(.borderedProminent)
+                Spacer()
+            }
+            .padding()
+            .background(.bar)
+        }
     }
 
-    private var aboutSettings: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
-            Link("EspControl support", destination: CompanionStore.supportURL)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var connectionStatusPanel: some View {
-        SettingsCard {
-            SettingsActionRow(
-                title: "EspControl Companion",
-                description: store.isConnected ? "Connected to your display" : "Not connected to a display"
-            ) {
-                if canConnect || store.isConnected {
-                    Toggle("Connect EspControl Companion", isOn: connectionBinding)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                } else {
-                    Text("Pair a device")
+    private var generalPage: some View {
+        Form {
+            if store.supportsLaunchAtLogin {
+                Section("Startup") {
+                    Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
+                    Text(store.launchAtLoginMessage)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
+            } else {
+                Text("Login item management is not available on this version of macOS.")
+                    .foregroundStyle(.secondary)
             }
         }
-    }
-
-    private var deviceWebserverPanel: some View {
-        SettingsCard {
-            SettingsActionRow(
-                title: "Device Webserver",
-                description: "Open the display settings in your browser."
-            ) {
-                Button("Open Device Webserver") { store.openPanelWebServer() }
-                    .controlSize(.large)
-            }
-        }
+        .formStyle(.grouped)
+        .navigationTitle("General")
     }
 
     private var connectionBinding: Binding<Bool> {
@@ -626,44 +518,21 @@ private struct CompanionSettings: View {
 
 }
 
-private struct SettingsCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        content
-            .padding(.horizontal, 18)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.55))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            )
-    }
-}
-
-private struct SettingsActionRow<Control: View>: View {
+private struct NativeSettingsRow<Control: View>: View {
     let title: String
     let description: String
     @ViewBuilder let control: Control
 
     var body: some View {
-        HStack(alignment: .center, spacing: 24) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 15, weight: .medium))
-                Text(description)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 12)
-
+        LabeledContent {
             control
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
