@@ -3,6 +3,7 @@ import XCTest
 @testable import Companion
 
 final class CompanionKeyboardShortcutTests: XCTestCase {
+    @MainActor
     func testAccessibilityPromptIsRequestedOnlyOnceWhileUntrusted() {
         var promptCount = 0
         let authorizer = CompanionAccessibilityAuthorizer(
@@ -15,6 +16,7 @@ final class CompanionKeyboardShortcutTests: XCTestCase {
         XCTAssertEqual(promptCount, 1)
     }
 
+    @MainActor
     func testAccessibilityTrustDoesNotPrompt() {
         var promptCount = 0
         let authorizer = CompanionAccessibilityAuthorizer(
