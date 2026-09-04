@@ -2,3 +2,7 @@
 docs/public/webserver/*/www.js linguist-generated=true -diff
 common/assets/icon_glyphs.yaml linguist-generated=true
 components/espcontrol/icons.h linguist-generated=true
+components/espcontrol/companion_capabilities_generated.h linguist-generated=true
+src/webserver/generated/companion_capabilities.ts linguist-generated=true
+macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift linguist-generated=true
+product/generated/companion_manifest.json linguist-generated=true

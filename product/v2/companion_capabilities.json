@@ -33,6 +33,7 @@
   },
   "security": {
     "pairingAuthorization": "physical_presence",
+    "browserExposesPairingCode": false,
     "pairingWindowSeconds": 900,
     "credentialStorage": "keychain",
     "certificatePolicy": "trust_on_first_pair_then_pin",

@@ -119,10 +119,7 @@ void CompanionService::setup() {
       App.get_name() + ".local",
     };
   };
-  register_companion_pairing_callbacks(pairing_snapshot, [this, pairing_snapshot]() {
-    this->begin_pairing();
-    return pairing_snapshot();
-  });
+  register_companion_pairing_provider(pairing_snapshot);
   register_companion_actions_endpoint();
   if (!this->start_server_()) this->mark_failed();
 }

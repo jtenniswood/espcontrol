@@ -23,6 +23,8 @@ Edit these files when changing product behavior or supported hardware:
   firmware YAML and the web setup page.
 - `product/v2/icons.json` - icon names, Material Design Icon codepoints, and
   domain defaults.
+- `product/v2/companion_capabilities.json` - the Companion protocol, security
+  policy, card modes, Mac actions, media controls, and system metrics.
 - `product/v2/product_compatibility.json` - saved config, backup,
   layout, and migration fixtures that protect upgrades.
 
@@ -92,6 +94,10 @@ Do not hand-edit generated sections or files. Rebuild them with
 - generated blocks inside `devices/*/packages.yaml`
 - generated blocks inside `devices/*/device/sensors.yaml`
 - `product/product_snapshot.json`
+- `src/webserver/generated/companion_capabilities.ts`
+- `components/espcontrol/companion_capabilities_generated.h`
+- `macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift`
+- `product/generated/companion_manifest.json`
 
 ## Checks
 
@@ -99,3 +105,5 @@ Run `npm run check:product` after changing authored product sources. Run
 `npm run check:product-model-v2` when changing the ownership adapter, and
 `npm run check:product-snapshot` when the combined product snapshot changes.
 Run `npm run check:fast` before committing broader changes.
+Run `npm run check:companion-contract` after any Companion protocol, pairing,
+capability, or generated-contract change.

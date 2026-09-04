@@ -107,7 +107,6 @@ struct CompanionPairingSnapshot {
 };
 
 using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
-using CompanionPairingStarter = std::function<CompanionPairingSnapshot()>;
 
 using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
 // Ownership of data transfers to the handler only when it returns true.
@@ -221,11 +220,6 @@ inline CompanionValueSender &companion_value_sender() {
 inline CompanionPairingProvider &companion_pairing_provider() {
   static CompanionPairingProvider provider;
   return provider;
-}
-
-inline CompanionPairingStarter &companion_pairing_starter() {
-  static CompanionPairingStarter starter;
-  return starter;
 }
 
 inline void companion_set_actions(std::vector<CompanionAction> actions) {
@@ -367,10 +361,8 @@ inline void register_companion_value_sender(CompanionValueSender sender) {
   companion_value_sender() = std::move(sender);
 }
 
-inline void register_companion_pairing_callbacks(CompanionPairingProvider provider,
-                                                  CompanionPairingStarter starter) {
+inline void register_companion_pairing_provider(CompanionPairingProvider provider) {
   companion_pairing_provider() = std::move(provider);
-  companion_pairing_starter() = std::move(starter);
 }
 
 inline std::vector<std::string> companion_shortcut_parts(const std::string &action_id) {
