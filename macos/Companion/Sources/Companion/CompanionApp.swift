@@ -387,9 +387,6 @@ private struct CompanionSettings: View {
             }
         case .general:
             settingsPage(title: "General", subtitle: "Manage optional macOS integration") {
-                settingsSection("Mac system statistics") {
-                    systemMetricsSettings
-                }
                 if store.supportsLaunchAtLogin {
                     settingsSection("Startup") {
                         startupSettings
@@ -625,18 +622,6 @@ private struct CompanionSettings: View {
                     Text(store.nowPlayingStatus).font(.caption).foregroundStyle(.secondary)
                 }
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var systemMetricsSettings: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Shares overall processor, memory and storage usage, plus battery level when available, automatically. No additional macOS permission is required, and no application, file or browsing details are collected.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(store.systemMetricsStatus)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
