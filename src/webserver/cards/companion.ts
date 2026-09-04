@@ -937,7 +937,8 @@ export function registerCompanionCardTypes(
             let urlLabel = "";
             try { urlLabel = new URL(companionUrlValue(card.sensor || "")).hostname; } catch { /* incomplete URL */ }
             const preview = cardBadgePreview(card, helpers, {
-                label: card.label || shortcutLabel || urlLabel || card.entity || (mode === "folder" ? "Folder" : "Mac App"),
+                label: card.label || shortcutLabel || windowLabel || urlLabel || card.entity ||
+                    (mode === "folder" ? "Folder" : "Mac App"),
                 iconFallback: companionSubtypeDefaultIcon(mode, card.entity),
                 badge: COMPANION_CARD_METADATA.preview.badge,
             });

@@ -281,6 +281,9 @@ final class CompanionConnection: NSObject {
 
     private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
         guard task === failedTask else { return }
+        if !hasTerminalConnectionError, case .pair = mode {
+            store.updateStatus("Pairing failed — try again")
+        }
         sessionAuthenticated = false
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
