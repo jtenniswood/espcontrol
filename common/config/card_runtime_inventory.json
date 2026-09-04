@@ -356,7 +356,7 @@
       "canonicalType": "subpage",
       "surfaces": ["web_registry"],
       "webRegistration": "companion_subpage",
-      "config": { "label": "Mac Controls", "type": "subpage", "options": "subpage_connector=mac_companion" },
+      "config": { "label": "Mac Controls", "icon": "Auto", "icon_on": "Auto", "type": "subpage", "options": "subpage_connector=mac_companion" },
       "lifecycle": { "subscriptions": ["none"], "actions": ["navigation"], "modalOwner": "none" }
     },
     "media_cover_art": {

@@ -1351,7 +1351,7 @@
   },
   {
     "name": "companion_subpage: picker_alias",
-    "input": "~,Mac%20Controls,,,,,subpage,,subpage_connector%3Dmac_companion",
+    "input": "~,Mac%20Controls,Auto,Auto,,,subpage,,subpage_connector%3Dmac_companion",
     "expected": {
       "entity": "",
       "label": "Mac Controls",
