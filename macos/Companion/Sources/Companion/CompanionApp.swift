@@ -21,15 +21,12 @@ struct CompanionApp: App {
 }
 
 @MainActor
-final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate {
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
-    private static let connectionToolbarItemIdentifier = NSToolbarItem.Identifier("io.espcontrol.companion.connection")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
     private var settingsWindow: NSWindow?
     private var connectionObservation: AnyCancellable?
-    private weak var toolbarConnectionSwitch: NSSwitch?
-    private weak var toolbarStatusLabel: NSTextField?
     private var instanceLockFileDescriptor: Int32 = -1
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -59,7 +56,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         updateStatusItemImage(connected: store.isConnected)
         connectionObservation = store.$isConnected
             .removeDuplicates()
-            .sink { [weak self] connected in self?.updateConnectionPresentation(connected: connected) }
+            .sink { [weak self] connected in self?.updateStatusItemImage(connected: connected) }
         if store.hasSavedPairing && !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             store.connect()
         }
@@ -118,23 +115,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         button.image = image
     }
 
-    private func updateConnectionPresentation(connected: Bool) {
-        updateStatusItemImage(connected: connected)
-        toolbarConnectionSwitch?.state = connected ? .on : .off
-        toolbarConnectionSwitch?.toolTip = connected ? "Disconnect from the display" : "Connect to the display"
-        toolbarConnectionSwitch?.isEnabled = connected
-            || !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        toolbarStatusLabel?.stringValue = connected ? "Connected" : "Disconnected"
-    }
-
-    @objc private func connectionSwitchChanged(_ sender: NSSwitch) {
-        if sender.state == .on {
-            store.connect()
-        } else {
-            store.disconnect()
-        }
-    }
-
     @objc private func openSettings() { openCompanionWindow() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func existingInstanceWasOpened(_ notification: Notification) { openCompanionWindow() }
@@ -174,15 +154,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.isMovableByWindowBackground = true
-            let toolbar = NSToolbar(identifier: "io.espcontrol.companion.settings-toolbar")
-            toolbar.delegate = self
-            toolbar.displayMode = .iconOnly
-            toolbar.sizeMode = .regular
-            toolbar.allowsUserCustomization = false
-            toolbar.autosavesConfiguration = false
-            toolbar.showsBaselineSeparator = true
-            window.toolbar = toolbar
-            window.toolbarStyle = .unified
             window.contentMinSize = NSSize(width: 760, height: 500)
             window.contentViewController = controller
             window.delegate = self
@@ -196,54 +167,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         activateCompanionApplication()
     }
 
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.connectionToolbarItemIdentifier, .flexibleSpace]
-    }
-
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.connectionToolbarItemIdentifier, .flexibleSpace]
-    }
-
-    func toolbar(
-        _ toolbar: NSToolbar,
-        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
-        willBeInsertedIntoToolbar flag: Bool
-    ) -> NSToolbarItem? {
-        guard itemIdentifier == Self.connectionToolbarItemIdentifier else { return nil }
-
-        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        item.label = "Panel connection"
-        item.visibilityPriority = .high
-
-        let connectionSwitch = NSSwitch()
-        connectionSwitch.controlSize = .large
-        connectionSwitch.target = self
-        connectionSwitch.action = #selector(connectionSwitchChanged(_:))
-
-        let title = NSTextField(labelWithString: "EspControl Companion")
-        title.font = .systemFont(ofSize: 15, weight: .semibold)
-
-        let status = NSTextField(labelWithString: "Disconnected")
-        status.font = .systemFont(ofSize: 13)
-        status.textColor = .secondaryLabelColor
-
-        let labels = NSStackView(views: [title, status])
-        labels.orientation = .vertical
-        labels.alignment = .leading
-        labels.spacing = 0
-
-        let content = NSStackView(views: [connectionSwitch, labels])
-        content.orientation = .horizontal
-        content.alignment = .centerY
-        content.spacing = 12
-        content.edgeInsets = NSEdgeInsets(top: 4, left: 4, bottom: 4, right: 8)
-
-        item.view = content
-        toolbarConnectionSwitch = connectionSwitch
-        toolbarStatusLabel = status
-        updateConnectionPresentation(connected: store.isConnected)
-        return item
-    }
 }
 
 private func activateCompanionApplication() {
