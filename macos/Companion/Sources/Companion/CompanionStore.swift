@@ -333,14 +333,6 @@ final class CompanionStore: NSObject, ObservableObject {
         approvedApplicationIdentifiers.contains(application.bundleIdentifier)
     }
 
-    var allApplicationsApproved: Bool {
-        !availableApps.isEmpty && availableApps.allSatisfy(applicationIsApproved)
-    }
-
-    var hasApprovedApplications: Bool {
-        !approvedApplicationIdentifiers.isEmpty
-    }
-
     func setApplication(_ application: LaunchableApp, approved: Bool) {
         if approved {
             approvedApplicationIdentifiers.insert(application.bundleIdentifier)
@@ -351,10 +343,13 @@ final class CompanionStore: NSObject, ObservableObject {
         if isConnected { connection.publishCatalogue() }
     }
 
-    func setAllApplications(approved: Bool) {
-        approvedApplicationIdentifiers = approved
-            ? Set(availableApps.map(\.bundleIdentifier))
-            : []
+    func setApplications(_ applications: [LaunchableApp], approved: Bool) {
+        let identifiers = Set(applications.map(\.bundleIdentifier))
+        if approved {
+            approvedApplicationIdentifiers.formUnion(identifiers)
+        } else {
+            approvedApplicationIdentifiers.subtract(identifiers)
+        }
         defaults.set(approvedApplicationIdentifiers.sorted(), forKey: Keys.approvedApplications)
         if isConnected { connection.publishCatalogue() }
     }

@@ -296,6 +296,7 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
 private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
+    @State private var applicationSearch = ""
     @State private var selectedPage: CompanionSettingsPage = .about
     @FocusState private var focusedField: CompanionSettingsField?
 
@@ -519,11 +520,19 @@ private struct CompanionSettings: View {
 
     private var applicationSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
+            TextField("Search applications", text: $applicationSearch)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 360)
+
             HStack(spacing: 16) {
-                Button("Select All") { store.setAllApplications(approved: true) }
-                    .disabled(store.availableApps.isEmpty || store.allApplicationsApproved)
-                Button("Deselect All") { store.setAllApplications(approved: false) }
-                    .disabled(!store.hasApprovedApplications)
+                Button("Select All") {
+                    store.setApplications(filteredApplications, approved: true)
+                }
+                .disabled(filteredApplications.isEmpty || allFilteredApplicationsApproved)
+                Button("Deselect All") {
+                    store.setApplications(filteredApplications, approved: false)
+                }
+                .disabled(!hasApprovedFilteredApplications)
             }
             .buttonStyle(.borderless)
             .padding(.bottom, 2)
@@ -532,8 +541,12 @@ private struct CompanionSettings: View {
                 Text("No applications were found.")
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
+            } else if filteredApplications.isEmpty {
+                Text("No applications match your search.")
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
             } else {
-                ForEach(store.availableApps) { application in
+                ForEach(filteredApplications) { application in
                     Toggle(isOn: Binding(
                         get: { store.applicationIsApproved(application) },
                         set: { store.setApplication(application, approved: $0) }
@@ -548,6 +561,22 @@ private struct CompanionSettings: View {
                 .controlSize(.large)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var filteredApplications: [LaunchableApp] {
+        let query = applicationSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return store.availableApps }
+        return store.availableApps.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private var allFilteredApplicationsApproved: Bool {
+        !filteredApplications.isEmpty && filteredApplications.allSatisfy(store.applicationIsApproved)
+    }
+
+    private var hasApprovedFilteredApplications: Bool {
+        filteredApplications.contains(where: store.applicationIsApproved)
     }
 
     private var startupSettings: some View {
