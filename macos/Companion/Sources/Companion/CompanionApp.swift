@@ -494,10 +494,6 @@ private struct CompanionSettings: View {
 
     private var applicationSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Only selected applications are shared with the display.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
             TextField("Search applications", text: $applicationSearch)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 360)
