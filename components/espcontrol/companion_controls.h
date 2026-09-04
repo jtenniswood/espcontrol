@@ -970,14 +970,14 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
     ",\"port\":" + std::to_string(snapshot.port) +
     ",\"system_metrics_generation\":" + std::to_string(snapshot.system_metrics_generation) +
-    ",\"pairing_code\":\"" + companion_json_escape(snapshot.pairing_code) +
+    ",\"pairing_code\":\"\"" +
     "\",\"mdns_name\":\"" + companion_json_escape(snapshot.mdns_name) + "\"}";
 }
 
 class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler {
  public:
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
-    if (request->method() != HTTP_GET && request->method() != HTTP_POST) return false;
+    if (request->method() != HTTP_GET) return false;
     char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
     return request->url_to(url_buf) == "/companion/pairing";
   }
@@ -985,9 +985,7 @@ class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
     if (!companion_authorize_web_request(request)) return;
     CompanionPairingSnapshot snapshot;
-    if (request->method() == HTTP_POST) {
-      if (companion_pairing_starter()) snapshot = companion_pairing_starter()();
-    } else if (companion_pairing_provider()) {
+    if (companion_pairing_provider()) {
       snapshot = companion_pairing_provider()();
     }
     const std::string json = companion_pairing_json(snapshot);

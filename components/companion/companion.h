@@ -11,6 +11,7 @@
 #include <array>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace esphome::companion {
@@ -59,8 +60,8 @@ class CompanionService final : public Component {
   esp_err_t handle_websocket_(httpd_req_t *request);
   bool start_server_();
   bool ensure_identity_();
-  AuthenticationResult authenticate_(const std::vector<std::string> &parts,
-                                     uint32_t &last_sequence);
+  AuthenticationResult authenticate_(uint32_t sequence, const std::string &nonce,
+                                     const std::string &signature, uint32_t &last_sequence);
   void handle_message_(int socket_fd, const std::string &message);
   void handle_json_(int socket_fd, const std::string &message);
   void handle_binary_(int socket_fd, const uint8_t *data, size_t size);
@@ -100,6 +101,9 @@ class CompanionService final : public Component {
   std::array<uint8_t, 32> artwork_sha256_{};
   uint32_t now_playing_generation_{0};
   bool now_playing_artwork_follows_{false};
+  std::vector<std::pair<std::string, std::string>> catalogue_actions_;
+  uint32_t catalogue_generation_{0};
+  uint16_t catalogue_next_page_{0};
   std::atomic<uint32_t> disconnect_grace_expires_at_{0};
   std::atomic<bool> disconnect_expiry_queued_{false};
   struct UnauthenticatedSession {

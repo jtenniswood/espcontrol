@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -26,25 +25,16 @@ namespace esphome::companion {
 
 static const char *const TAG = "companion";
 static CompanionService *global_companion_service = nullptr;
-static constexpr uint32_t PAIRING_WINDOW_MS = 15 * 60 * 1000;
+static constexpr uint32_t PAIRING_WINDOW_MS = COMPANION_PAIRING_WINDOW_SECONDS * 1000;
 static constexpr uint32_t RETRY_DELAY_MS = 30 * 1000;
-static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = 16 * 1024;
+static constexpr size_t MAX_WEBSOCKET_FRAME_BYTES = COMPANION_MAXIMUM_TEXT_FRAME_BYTES;
 static constexpr size_t MAX_CATALOGUE_ACTIONS = 256;
 static constexpr size_t MAX_NOW_PLAYING_FIELD_BYTES = protocol::MAX_TEXT_FIELD_BYTES;
-static constexpr size_t MAX_ARTWORK_BYTES = protocol::MAX_ARTWORK_BYTES;
-static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = protocol::MAX_ARTWORK_CHUNK_BYTES;
+static constexpr size_t MAX_ARTWORK_BYTES = COMPANION_MAXIMUM_ARTWORK_BYTES;
+static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = COMPANION_ARTWORK_CHUNK_BYTES;
 static constexpr uint32_t NOW_PLAYING_RECONNECT_GRACE_MS = 5000;
 static constexpr uint32_t AUTHENTICATION_TIMEOUT_MS = 15 * 1000;
 static constexpr char PAIRING_ALPHABET[] = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-
-static std::vector<std::string> split(const std::string &value, char separator) {
-  std::vector<std::string> parts;
-  std::stringstream stream(value);
-  std::string part;
-  while (std::getline(stream, part, separator)) parts.push_back(part);
-  if (!value.empty() && value.back() == separator) parts.emplace_back();
-  return parts;
-}
 
 static bool safe_field(const std::string &value, size_t limit) {
   if (value.empty() || value.size() > limit) return false;
@@ -241,7 +231,7 @@ bool CompanionService::start_server_() {
   config.prvtkey_len = this->identity_.private_key_len;
   if (httpd_ssl_start(&this->server_, &config) != ESP_OK) return false;
   const httpd_uri_t websocket = {
-      .uri = "/companion/v1", .method = HTTP_GET, .handler = &CompanionService::websocket_handler_, .user_ctx = this,
+      .uri = COMPANION_PROTOCOL_PATH, .method = HTTP_GET, .handler = &CompanionService::websocket_handler_, .user_ctx = this,
       .is_websocket = true, .handle_ws_control_frames = false};
   return httpd_register_uri_handler(this->server_, &websocket) == ESP_OK;
 }
@@ -290,7 +280,8 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
   const int socket_fd = httpd_req_to_sockfd(request);
   if (request->method == HTTP_GET) {
     this->track_unauthenticated_socket_(socket_fd);
-    this->send_(socket_fd, "HELLO|1");
+    this->send_(socket_fd, "{\"type\":\"hello\",\"protocol\":" +
+        std::to_string(COMPANION_PROTOCOL_VERSION) + "}");
     return ESP_OK;
   }
   httpd_ws_frame_t frame{};
@@ -308,7 +299,8 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
   }
   if (frame.type == HTTPD_WS_TYPE_BINARY) {
     if (socket_fd != this->session_.authenticated_socket()) {
-      this->send_(socket_fd, "ERROR|authenticate_first");
+      this->send_(socket_fd, "{\"type\":\"error\",\"protocol\":" +
+          std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"code\":\"authenticate_first\"}");
       this->expire_unauthenticated_socket_(socket_fd);
       return ESP_OK;
     }
@@ -321,21 +313,19 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
 }
 
 CompanionService::AuthenticationResult CompanionService::authenticate_(
-    const std::vector<std::string> &parts, uint32_t &last_sequence) {
-  // AUTH|sequence|nonce|hmac-sha256(AUTH|sequence|nonce). Sequence is strictly
+    uint32_t sequence, const std::string &nonce, const std::string &signature,
+    uint32_t &last_sequence) {
+  // Sign a stable protocol-v3 authentication payload. The sequence is strictly
   // increasing, so a captured authenticated frame cannot be replayed.
   std::lock_guard<std::mutex> lock(this->pairing_mutex_);
   last_sequence = this->last_sequence_;
-  if (!this->identity_.paired || parts.size() != 4 || parts[0] != "AUTH")
+  if (!this->identity_.paired || sequence == 0 || !safe_field(nonce, 96) || signature.size() != 64)
     return AuthenticationResult::FAILED;
-  if (!safe_field(parts[1], 10) || !safe_field(parts[2], 96) || parts[3].size() != 64)
-    return AuthenticationResult::FAILED;
-  const uint32_t sequence = strtoul(parts[1].c_str(), nullptr, 10);
-  std::string signed_message = parts[0] + "|" + parts[1] + "|" + parts[2];
+  const std::string signed_message = "auth.request|" + std::to_string(sequence) + "|" + nonce;
   uint8_t digest[32]{};
   mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), this->identity_.credential, sizeof(this->identity_.credential),
                   reinterpret_cast<const unsigned char *>(signed_message.data()), signed_message.size(), digest);
-  if (!constant_time_equal(hex(digest, sizeof(digest)), parts[3]))
+  if (!constant_time_equal(hex(digest, sizeof(digest)), signature))
     return AuthenticationResult::FAILED;
   if (sequence <= this->last_sequence_) return AuthenticationResult::STALE_SEQUENCE;
   this->last_sequence_ = sequence;
@@ -344,157 +334,190 @@ CompanionService::AuthenticationResult CompanionService::authenticate_(
 }
 
 void CompanionService::handle_message_(int socket_fd, const std::string &message) {
-  if (!message.empty() && message.front() == '{') {
-    if (socket_fd != this->session_.authenticated_socket()) {
-      this->send_(socket_fd, "ERROR|authenticate_first");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    this->handle_json_(socket_fd, message);
-    return;
-  }
-  const auto parts = split(message, '|');
-  if (parts.empty()) return;
-  if (parts[0] == "AUTH") {
-    uint32_t last_sequence = 0;
-    const auto authentication = this->authenticate_(parts, last_sequence);
-    if (authentication == AuthenticationResult::STALE_SEQUENCE) {
-      this->send_(socket_fd, "ERROR|authentication_sequence|" + std::to_string(last_sequence));
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    if (authentication != AuthenticationResult::AUTHENTICATED) {
-      this->send_(socket_fd, "ERROR|authentication_failed");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    const int previous_socket = this->session_.authenticate(socket_fd);
-    if (previous_socket != -1 && previous_socket != socket_fd)
-      httpd_sess_trigger_close(this->server_, previous_socket);
-    companion_set_media_actions_supported(false);
-    this->forget_unauthenticated_socket_(socket_fd);
-    this->set_connected_(true);
-    {
-      std::lock_guard<std::mutex> lock(this->pairing_mutex_);
-      this->pairing_code_.clear();
-      this->pairing_expires_at_ = 0;
-      this->next_attempt_at_ = 0;
-    }
-  this->send_(socket_fd, "AUTHENTICATED|2");
-    this->publish_catalogue_();
-    return;
-  }
-  if (parts[0] == "PAIR") {
-    // Pairing is permitted only during the setup window opened from the panel
-    // webserver. The trusted credential itself does not expire.
-    // Mac receives a fresh credential only inside this TLS connection, then
-    // stores it in Keychain and pins this certificate's fingerprint.
-    if (parts.size() != 2) {
-      this->send_(socket_fd, "ERROR|pairing_failed");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    const uint32_t now = millis();
-    std::unique_lock<std::mutex> pairing_lock(this->pairing_mutex_);
-    if (!this->pairing_active_locked_(now)) {
-      this->send_(socket_fd, "ERROR|pairing_failed");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    if (this->next_attempt_at_ != 0 && static_cast<int32_t>(now - this->next_attempt_at_) < 0) {
-      this->send_(socket_fd, "ERROR|pairing_throttled");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    if (!constant_time_equal(parts[1], this->pairing_code_)) {
-      this->failed_attempts_++;
-      this->next_attempt_at_ = now + RETRY_DELAY_MS;
-      this->send_(socket_fd, "ERROR|pairing_failed");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    const int previous_socket = this->session_.authenticated_socket();
-    this->set_connected_(false);
-    if (previous_socket >= 0 && previous_socket != socket_fd)
-      httpd_sess_trigger_close(this->server_, previous_socket);
-    const auto previous_identity = this->identity_;
-    for (auto &byte : this->identity_.credential) byte = static_cast<uint8_t>(esp_random());
-    this->identity_.paired = 1;
-    this->last_sequence_ = 0;
-    if (!this->preferences_.save(&this->identity_)) {
-      this->identity_ = previous_identity;
-      ESP_LOGE(TAG, "Could not persist the paired Mac credential");
-      this->send_(socket_fd, "ERROR|pairing_storage_failed");
-      this->expire_unauthenticated_socket_(socket_fd);
-      return;
-    }
-    this->pairing_code_.clear();
-    this->pairing_expires_at_ = 0;
-    this->next_attempt_at_ = 0;
-    this->failed_attempts_ = 0;
-    pairing_lock.unlock();
-    this->send_(socket_fd, "PAIRED|" + hex(this->identity_.credential, sizeof(this->identity_.credential)));
-    return;
-  }
-  if (socket_fd != this->session_.authenticated_socket()) {
-    this->send_(socket_fd, "ERROR|authenticate_first");
+  if (message.empty() || message.front() != '{') {
+    this->send_(socket_fd, "{\"type\":\"error\",\"protocol\":3,\"code\":\"json_required\"}");
     this->expire_unauthenticated_socket_(socket_fd);
     return;
   }
-  if (parts[0] == "CAPABILITIES" && (parts.size() == 1 || parts.size() == 2)) {
-    const auto capabilities = parts.size() == 2
-      ? split(parts[1], ',') : std::vector<std::string>{};
-    companion_set_media_actions_supported(
-      std::find(capabilities.begin(), capabilities.end(), "media_actions") != capabilities.end());
-    this->send_(socket_fd, "RESULT|capabilities|ok");
-  } else if (parts[0] == "CATALOG" && (parts.size() == 1 || parts.size() == 2)) {
-    const auto catalogue = parts.size() == 2 ? split(parts[1], ',') : std::vector<std::string>{};
-    std::vector<CompanionAction> actions;
-    for (const auto &entry : catalogue) {
-      if (actions.size() >= MAX_CATALOGUE_ACTIONS) break;
-      const auto item = split(entry, ':');
-      if (item.size() == 2 && safe_field(item[0], 96) && safe_utf8_field(item[1], 96)) actions.push_back({item[0], item[1]});
-    }
-    companion_set_actions(std::move(actions));
-    this->send_(socket_fd, "RESULT|catalogue|ok");
-  } else if (parts[0] == "RESULT") {
-    ESP_LOGD(TAG, "Mac result: %s", message.c_str());
-    if (parts.size() == 3 && safe_field(parts[1], 64) && safe_field(parts[2], 32)) {
-      const std::string request_id = parts[1];
-      const std::string status = parts[2];
-      this->defer([request_id, status]() {
-        companion_deliver_action_result(request_id, status);
-      });
-    }
-  } else if (parts[0] == "STATE" && parts.size() == 3 &&
-             companion_volume_control_valid(parts[1])) {
-    if (parts[2] == "unavailable") {
-      companion_remove_value(parts[1]);
-      return;
-    }
-    char *end = nullptr;
-    const long value = std::strtol(parts[2].c_str(), &end, 10);
-    if (end && *end == '\0' && value >= 0 && value <= 100) {
-      companion_set_value(parts[1], static_cast<int>(value));
-    }
-  } else if (parts[0] == "FOCUS" && parts.size() == 2 &&
-             (parts[1].empty() || safe_field(parts[1], 96))) {
-    companion_set_focused_action(parts[1]);
-  } else if (parts[0] == "TIMEZONE" && parts.size() == 2 &&
-             safe_field(parts[1], 96)) {
-    const std::string timezone = parts[1];
-    this->defer([timezone]() { companion_set_timezone_id(timezone); });
-  } else if (parts[0] == "HEARTBEAT") {
-    this->send_(socket_fd, "HEARTBEAT|ok");
-  }
+  this->handle_json_(socket_fd, message);
 }
 
 void CompanionService::handle_json_(int socket_fd, const std::string &message) {
   bool parsed = json::parse_json(message, [this, socket_fd](JsonObject root) -> bool {
     const std::string type = root["type"] | "";
-    const uint32_t version = root["version"] | 0;
+    const uint32_t version = root["protocol"] | 0;
+    if (version != COMPANION_PROTOCOL_VERSION) return false;
+    auto send_error = [this, socket_fd](const char *code, uint32_t last_sequence = 0) {
+      std::string response = "{\"type\":\"error\",\"protocol\":" +
+          std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"code\":\"" + code + "\"";
+      if (last_sequence != 0) response += ",\"lastSequence\":" + std::to_string(last_sequence);
+      this->send_(socket_fd, response + "}");
+    };
+
+    if (type == "auth.request") {
+      const uint32_t sequence = root["sequence"] | 0;
+      const std::string nonce = root["nonce"] | "";
+      const std::string signature = root["signature"] | "";
+      uint32_t last_sequence = 0;
+      const auto authentication = this->authenticate_(sequence, nonce, signature, last_sequence);
+      if (authentication == AuthenticationResult::STALE_SEQUENCE) {
+        send_error("authentication_sequence", last_sequence);
+        this->expire_unauthenticated_socket_(socket_fd);
+        return true;
+      }
+      if (authentication != AuthenticationResult::AUTHENTICATED) {
+        send_error("authentication_failed");
+        this->expire_unauthenticated_socket_(socket_fd);
+        return true;
+      }
+      const int previous_socket = this->session_.authenticate(socket_fd);
+      if (previous_socket != -1 && previous_socket != socket_fd)
+        httpd_sess_trigger_close(this->server_, previous_socket);
+      companion_set_media_actions_supported(false);
+      this->forget_unauthenticated_socket_(socket_fd);
+      this->set_connected_(true);
+      {
+        std::lock_guard<std::mutex> lock(this->pairing_mutex_);
+        this->pairing_code_.clear();
+        this->pairing_expires_at_ = 0;
+        this->next_attempt_at_ = 0;
+      }
+      this->send_(socket_fd, "{\"type\":\"auth.accepted\",\"protocol\":" +
+          std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"capabilityVersion\":" +
+          std::to_string(COMPANION_CAPABILITY_VERSION) + "}");
+      this->publish_catalogue_();
+      return true;
+    }
+
+    if (type == "pair.request") {
+      const std::string code = root["code"] | "";
+      const uint32_t now = millis();
+      std::unique_lock<std::mutex> pairing_lock(this->pairing_mutex_);
+      if (!safe_field(code, 16) || !this->pairing_active_locked_(now)) {
+        send_error("pairing_failed");
+        this->expire_unauthenticated_socket_(socket_fd);
+        return true;
+      }
+      if (this->next_attempt_at_ != 0 && static_cast<int32_t>(now - this->next_attempt_at_) < 0) {
+        send_error("pairing_throttled");
+        this->expire_unauthenticated_socket_(socket_fd);
+        return true;
+      }
+      if (!constant_time_equal(code, this->pairing_code_)) {
+        this->failed_attempts_++;
+        this->next_attempt_at_ = now + RETRY_DELAY_MS;
+        send_error("pairing_failed");
+        this->expire_unauthenticated_socket_(socket_fd);
+        return true;
+      }
+      const int previous_socket = this->session_.authenticated_socket();
+      this->set_connected_(false);
+      if (previous_socket >= 0 && previous_socket != socket_fd)
+        httpd_sess_trigger_close(this->server_, previous_socket);
+      const auto previous_identity = this->identity_;
+      for (auto &byte : this->identity_.credential) byte = static_cast<uint8_t>(esp_random());
+      this->identity_.paired = 1;
+      this->last_sequence_ = 0;
+      if (!this->preferences_.save(&this->identity_)) {
+        this->identity_ = previous_identity;
+        send_error("pairing_storage_failed");
+        this->expire_unauthenticated_socket_(socket_fd);
+        return true;
+      }
+      this->pairing_code_.clear();
+      this->pairing_expires_at_ = 0;
+      this->next_attempt_at_ = 0;
+      this->failed_attempts_ = 0;
+      const std::string credential = hex(this->identity_.credential, sizeof(this->identity_.credential));
+      pairing_lock.unlock();
+      this->send_(socket_fd, "{\"type\":\"pair.accepted\",\"protocol\":" +
+          std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"credential\":\"" + credential + "\"}");
+      return true;
+    }
+
+    if (socket_fd != this->session_.authenticated_socket()) {
+      send_error("authenticate_first");
+      this->expire_unauthenticated_socket_(socket_fd);
+      return true;
+    }
+
+    if (type == "capabilities") {
+      bool media_actions = false;
+      const JsonArray values = root["values"].as<JsonArray>();
+      for (JsonVariant value : values) {
+        if (std::string(value.as<const char *>()) == "media_actions") media_actions = true;
+      }
+      companion_set_media_actions_supported(media_actions);
+      return true;
+    }
+
+    if (type == "catalogue.page") {
+      const uint32_t catalogue_generation = root["generation"] | 0;
+      const uint16_t page = root["page"] | 0;
+      const bool complete = root["complete"] | false;
+      if (catalogue_generation == 0 ||
+          (page == 0 ? false : catalogue_generation != this->catalogue_generation_) ||
+          page != (page == 0 ? 0 : this->catalogue_next_page_)) return false;
+      if (page == 0) {
+        this->catalogue_actions_.clear();
+        this->catalogue_generation_ = catalogue_generation;
+        this->catalogue_next_page_ = 0;
+      }
+      const JsonArray items = root["items"].as<JsonArray>();
+      for (JsonObject item : items) {
+        if (this->catalogue_actions_.size() >= MAX_CATALOGUE_ACTIONS) break;
+        const std::string id = item["id"] | "";
+        const std::string label = item["label"] | "";
+        if (safe_field(id, 96) && safe_utf8_field(label, 96))
+          this->catalogue_actions_.emplace_back(id, label);
+      }
+      this->catalogue_next_page_ = page + 1;
+      if (complete) {
+        std::vector<CompanionAction> actions;
+        actions.reserve(this->catalogue_actions_.size());
+        for (const auto &item : this->catalogue_actions_) actions.push_back({item.first, item.second});
+        companion_set_actions(std::move(actions));
+      }
+      return true;
+    }
+
+    if (type == "action.result") {
+      const std::string request_id = root["requestId"] | "";
+      const std::string status = root["status"] | "";
+      if (!safe_field(request_id, 64) || !safe_field(status, 32)) return false;
+      this->defer([request_id, status]() { companion_deliver_action_result(request_id, status); });
+      return true;
+    }
+
+    if (type == "value.state") {
+      const std::string control_id = root["controlId"] | "";
+      if (!companion_volume_control_valid(control_id)) return false;
+      if (!(root["available"] | true)) {
+        companion_remove_value(control_id);
+        return true;
+      }
+      const int value = root["value"] | -1;
+      if (value < 0 || value > 100) return false;
+      companion_set_value(control_id, value);
+      return true;
+    }
+
+    if (type == "focus.changed") {
+      const std::string action_id = root["actionId"] | "";
+      if (!action_id.empty() && !safe_field(action_id, 96)) return false;
+      companion_set_focused_action(action_id);
+      return true;
+    }
+
+    if (type == "timezone.changed") {
+      const std::string timezone = root["identifier"] | "";
+      if (!safe_field(timezone, 96)) return false;
+      this->defer([timezone]() { companion_set_timezone_id(timezone); });
+      return true;
+    }
+
     const uint32_t generation = root["generation"] | 0;
-    if (version != 2 || generation == 0) return false;
+    if (generation == 0) return false;
 
     if (type == "now_playing") {
       if (generation < this->now_playing_generation_) return true;
@@ -627,7 +650,8 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
   });
   if (!parsed) {
     ESP_LOGW(TAG, "Rejected invalid Companion JSON message");
-    this->send_(socket_fd, "ERROR|invalid_json_message");
+    this->send_(socket_fd, "{\"type\":\"error\",\"protocol\":" +
+        std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"code\":\"invalid_message\"}");
   }
 }
 
@@ -657,7 +681,8 @@ void CompanionService::handle_binary_(int socket_fd, const uint8_t *data, size_t
 
 void CompanionService::send_artwork_ack_(uint32_t generation, size_t next_offset) {
   const int socket_fd = this->session_.authenticated_socket();
-  this->send_(socket_fd, "{\"type\":\"artwork.ack\",\"version\":2,\"generation\":" +
+  this->send_(socket_fd, "{\"type\":\"artwork.ack\",\"protocol\":" +
+      std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"generation\":" +
       std::to_string(generation) + ",\"nextOffset\":" + std::to_string(next_offset) + "}");
 }
 
@@ -671,7 +696,8 @@ void CompanionService::reset_artwork_transfer_(const char *reason, bool notify) 
   if (reason) ESP_LOGD(TAG, "Artwork transfer reset: %s", reason);
   const int socket_fd = this->session_.authenticated_socket();
   if (notify && generation != 0 && socket_fd >= 0) {
-    this->send_(socket_fd, "{\"type\":\"artwork.abort\",\"version\":2,\"generation\":" +
+    this->send_(socket_fd, "{\"type\":\"artwork.abort\",\"protocol\":" +
+        std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"generation\":" +
         std::to_string(generation) + "}");
   }
 }
@@ -772,13 +798,17 @@ void CompanionService::set_connected_(bool connected, int closing_socket) {
 }
 
 void CompanionService::publish_catalogue_() {
-  this->send_(this->session_.authenticated_socket(), "CATALOGUE|requested");
+  this->send_(this->session_.authenticated_socket(),
+              "{\"type\":\"catalogue.request\",\"protocol\":" +
+              std::to_string(COMPANION_PROTOCOL_VERSION) + "}");
 }
 
 bool CompanionService::invoke_(const std::string &action_id, const std::string &request_id) {
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(action_id, 96) || !safe_field(request_id, 64)) return false;
-  this->send_(socket_fd, "INVOKE|" + request_id + "|" + action_id);
+  this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
+              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"action\",\"requestId\":\"" +
+              request_id + "\",\"actionId\":\"" + action_id + "\"}");
   return true;
 }
 
@@ -787,8 +817,9 @@ bool CompanionService::invoke_url_(const std::string &app_id, const std::string 
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(app_id, 96) ||
       !safe_field(encoded_url, 128) || !safe_field(request_id, 64)) return false;
-  this->send_(socket_fd,
-              "OPEN_URL|" + request_id + "|" + app_id + "|" + encoded_url);
+  this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
+              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"url\",\"requestId\":\"" +
+              request_id + "\",\"appId\":\"" + app_id + "\",\"encodedUrl\":\"" + encoded_url + "\"}");
   return true;
 }
 
@@ -798,8 +829,9 @@ bool CompanionService::invoke_value_(const std::string &control_id, int value,
   if (socket_fd < 0 ||
       !companion_volume_control_valid(control_id) ||
       value < 0 || value > 100 || !safe_field(request_id, 64)) return false;
-  this->send_(socket_fd,
-              "SET_VALUE|" + request_id + "|" + control_id + "|" + std::to_string(value));
+  this->send_(socket_fd, "{\"type\":\"value.set\",\"protocol\":" +
+              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"requestId\":\"" + request_id +
+              "\",\"controlId\":\"" + control_id + "\",\"value\":" + std::to_string(value) + "}");
   return true;
 }
 
@@ -845,7 +877,8 @@ void CompanionService::request_now_playing_artwork() {
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || this->now_playing_generation_ == 0) return;
   this->send_(socket_fd,
-              "{\"type\":\"artwork.request\",\"version\":2,\"generation\":" +
+              "{\"type\":\"artwork.request\",\"protocol\":" +
+              std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"generation\":" +
               std::to_string(this->now_playing_generation_) + "}");
 }
 

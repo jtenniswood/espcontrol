@@ -28,6 +28,9 @@ The app does not collect analytics, advertising identifiers, browsing history,
 file contents, application contents, or network-content data. It does not
 send this information to EspControl or an analytics provider.
 
+Starting a new pairing requires physical access to the touchscreen. The pairing
+code is shown only on the display and is not returned by its browser API.
+
 ## Permissions
 
 Folder access is granted only when you choose a folder in the app. Accessibility

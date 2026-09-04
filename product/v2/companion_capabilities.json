@@ -13,6 +13,7 @@
       { "id": "auth.request", "direction": "mac_to_panel", "authorization": "paired" },
       { "id": "auth.accepted", "direction": "panel_to_mac", "authorization": "paired" },
       { "id": "capabilities", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "catalogue.request", "direction": "panel_to_mac", "authorization": "session" },
       { "id": "catalogue.page", "direction": "mac_to_panel", "authorization": "session" },
       { "id": "action.invoke", "direction": "panel_to_mac", "authorization": "session" },
       { "id": "action.result", "direction": "bidirectional", "authorization": "session" },

@@ -3,10 +3,12 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "../espcontrol/companion_capabilities_generated.h"
+
 namespace esphome::companion::protocol {
 
-static constexpr size_t MAX_ARTWORK_BYTES = 256 * 1024;
-static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = 12 * 1024;
+static constexpr size_t MAX_ARTWORK_BYTES = COMPANION_MAXIMUM_ARTWORK_BYTES;
+static constexpr size_t MAX_ARTWORK_CHUNK_BYTES = COMPANION_ARTWORK_CHUNK_BYTES;
 static constexpr size_t MAX_TEXT_FIELD_BYTES = 256;
 
 inline bool text_field_valid(size_t utf8_bytes) {

@@ -23,6 +23,7 @@ inline constexpr CompanionProtocolMessagePolicy COMPANION_PROTOCOL_MESSAGES[] = 
   {"auth.request", "mac_to_panel", "paired"},
   {"auth.accepted", "panel_to_mac", "paired"},
   {"capabilities", "mac_to_panel", "session"},
+  {"catalogue.request", "panel_to_mac", "session"},
   {"catalogue.page", "mac_to_panel", "session"},
   {"action.invoke", "panel_to_mac", "session"},
   {"action.result", "bidirectional", "session"},

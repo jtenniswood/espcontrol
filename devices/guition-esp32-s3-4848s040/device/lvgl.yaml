@@ -61,9 +61,19 @@ lvgl:
           on_press:
             then:
               - script.execute: network_status_open_info
+          on_long_press:
+            then:
+              - lambda: |-
+                  esphome::companion::begin_companion_pairing();
+                  network_status_open_text_modal(
+                    "Mac Companion pairing",
+                    esphome::companion::companion_pairing_code(),
+                    "Enter this code in the Mac app",
+                    id(${media_title_font})->get_lv_font(),
+                    id(${icon_font})->get_lv_font());
 
-      # Mac Companion connection status. This is intentionally an indicator,
-      # not another control: pairing and configuration live in the web UI.
+      # Mac Companion connection status. Pairing is physically authorized by
+      # holding the network icon; this remains a status-only indicator.
       - obj:
           id: companion_status_icon
           align: top_right

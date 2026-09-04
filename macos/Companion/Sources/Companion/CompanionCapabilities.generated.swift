@@ -24,6 +24,7 @@ enum CompanionCapabilities {
         "auth.request",
         "auth.accepted",
         "capabilities",
+        "catalogue.request",
         "catalogue.page",
         "action.invoke",
         "action.result",

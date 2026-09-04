@@ -86,6 +86,11 @@ export const COMPANION_PROTOCOL_MESSAGES: readonly CompanionProtocolMessage[] = 
     authorization: "session"
   },
   {
+    id: "catalogue.request",
+    direction: "panel_to_mac",
+    authorization: "session"
+  },
+  {
     id: "catalogue.page",
     direction: "mac_to_panel",
     authorization: "session"

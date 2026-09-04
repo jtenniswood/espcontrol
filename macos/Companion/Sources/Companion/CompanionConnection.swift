@@ -23,8 +23,9 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     private var lastArtworkGeneration: UInt32 = 0
     private var lastArtworkSHA256: String?
     private var lastFocusedActionIdentifier: String?
-    private static let artworkChunkBytes = 12 * 1024
-    private static let maximumTextFrameBytes = 16 * 1024
+    private var catalogueGeneration: UInt32 = 0
+    private static let artworkChunkBytes = CompanionCapabilities.artworkChunkBytes
+    private static let maximumTextFrameBytes = CompanionCapabilities.maximumTextFrameBytes
 
     init(store: CompanionStore) { self.store = store }
 
@@ -82,7 +83,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
         guard task === webSocketTask else { return }
         switch mode {
-        case .pair(let code): send("PAIR|\(code)")
+        case .pair(let code): sendJSON(["type": "pair.request", "code": code])
         case .authenticate:
             authenticate(on: webSocketTask)
         }
@@ -105,11 +106,14 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
             }
             let sequence = self.nextAuthenticationSequence()
             let nonce = UUID().uuidString
-            let signed = "AUTH|\(sequence)|\(nonce)"
+            let signed = "auth.request|\(sequence)|\(nonce)"
             let key = SymmetricKey(data: credential)
             let signature = HMAC<SHA256>.authenticationCode(for: Data(signed.utf8), using: key)
             self.startConnectionTimeout(for: webSocketTask)
-            self.send("\(signed)|\(signature.map { String(format: "%02x", $0) }.joined())")
+            self.sendJSON([
+                "type": "auth.request", "sequence": sequence, "nonce": nonce,
+                "signature": signature.map { String(format: "%02x", $0) }.joined(),
+            ])
         }
     }
 
@@ -121,7 +125,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         components.scheme = "wss"
         components.host = host
         components.port = parsed.port ?? 8443
-        components.path = "/companion/v1"
+        components.path = CompanionCapabilities.protocolPath
         return components.url
     }
 
@@ -246,83 +250,97 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     }
 
     private func handle(_ message: String) {
-        if message.first == "{", handleJSON(message) { return }
-        let parts = message.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard let type = parts.first else { return }
-        print("[EspControl Companion] Received \(type)")
-        switch type {
-        case "PAIRED":
-            guard parts.count == 2, let credential = Data(hex: parts[1]) else { store.updateStatus("Pairing failed"); return }
-            guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return }
-            guard KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost) else {
-                store.updateStatus("Pairing failed: the credential could not be saved in Keychain")
-                return
-            }
-            store.setPreference(fingerprint, forKey: certificateFingerprintKey)
-            store.removePreference(forKey: authenticationSequenceKey)
-            pendingCertificateFingerprint = nil
-            store.updateStatus("Paired — reconnecting")
-            connect(mode: .authenticate)
-        case "AUTHENTICATED":
-            connectionTimeoutTask?.cancel()
-            connectionTimeoutTask = nil
-            store.updateStatus("Connected to \(store.panelHost)", connected: true)
-            // Version 1 explicitly predates system metrics. A short legacy
-            // authentication response has no capability declaration, so
-            // retain the original connected-panel behaviour for it.
-            let supportsMetrics = parts.count < 2 || (UInt32(parts[1]) ?? 0) >= 2
-            store.setSystemMetricsSupported(supportsMetrics)
-            if let task { startHeartbeat(for: task) }
-            publishTimezone()
-            publishCatalogue()
-            store.republishCurrentNowPlaying()
-            store.republishCurrentSystemMetrics()
-        case "CATALOGUE":
-            publishCatalogue()
-        case "INVOKE":
-            guard parts.count == 3 else { return }
-            let requestIdentifier = parts[1]
-            let actionIdentifier = parts[2]
-            Task { [weak self] in
-                guard let self else { return }
-                let status = await self.store.performResultStatus(actionIdentifier: actionIdentifier)
-                self.send("RESULT|\(requestIdentifier)|\(status)")
-            }
-        case "OPEN_URL":
-            guard parts.count == 4 else { return }
-            let opened = store.openURL(encodedURL: parts[3], bundleIdentifier: parts[2])
-            send("RESULT|\(parts[1])|\(opened ? "opened" : "not_allowed")")
-        case "SET_VALUE":
-            guard parts.count == 4, let value = Int(parts[3]), (0...100).contains(value) else { return }
-            let changed = store.setMediaControlValue(value, controlIdentifier: parts[2])
-            send("RESULT|\(parts[1])|\(changed ? "performed" : "not_allowed")")
-        case "ERROR":
-            if parts.count == 3, parts[1] == "authentication_sequence",
-               let panelSequence = UInt32(parts[2]), panelSequence < UInt32.max {
-                store.setPreference(Int(panelSequence), forKey: authenticationSequenceKey)
-                store.updateStatus("Authentication counter repaired — reconnecting")
-                connect(mode: .authenticate)
-            } else {
-                store.updateStatus(parts.dropFirst().joined(separator: " "))
-            }
-        default: break
+        guard handleJSON(message) else {
+            store.updateStatus("Panel sent an unsupported protocol message")
+            task?.cancel(with: .unsupportedData, reason: nil)
+            return
         }
     }
 
     private func handleJSON(_ message: String) -> Bool {
         guard let data = message.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let type = object["type"] as? String else { return false }
-        if type == "artwork.ack",
-           let generation = (object["generation"] as? NSNumber)?.uint32Value,
-           let nextOffset = (object["nextOffset"] as? NSNumber)?.intValue,
-           generation == artworkGeneration, nextOffset == artworkOffset {
-            sendNextArtworkChunk()
-        } else if type == "artwork.abort" {
+              let type = object["type"] as? String,
+              (object["protocol"] as? NSNumber)?.intValue == CompanionCapabilities.protocolVersion,
+              CompanionCapabilities.protocolMessages.contains(type) else { return false }
+        print("[EspControl Companion] Received \(type)")
+        switch type {
+        case "hello":
+            break
+        case "pair.accepted":
+            guard let encodedCredential = object["credential"] as? String,
+                  let credential = Data(hex: encodedCredential) else { store.updateStatus("Pairing failed"); return true }
+            guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return true }
+            guard KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost) else {
+                store.updateStatus("Pairing failed: the credential could not be saved in Keychain")
+                return true
+            }
+            store.setPreference(fingerprint, forKey: certificateFingerprintKey)
+            store.removePreference(forKey: authenticationSequenceKey)
+            pendingCertificateFingerprint = nil
+            store.updateStatus("Paired — reconnecting")
+            connect(mode: .authenticate)
+        case "auth.accepted":
+            connectionTimeoutTask?.cancel()
+            connectionTimeoutTask = nil
+            store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            let capabilityVersion = (object["capabilityVersion"] as? NSNumber)?.intValue ?? 0
+            store.setSystemMetricsSupported(capabilityVersion >= 2)
+            if let task { startHeartbeat(for: task) }
+            publishTimezone()
+            publishCatalogue()
+            store.republishCurrentNowPlaying()
+            store.republishCurrentSystemMetrics()
+        case "catalogue.request":
+            publishCatalogue()
+        case "action.invoke":
+            guard let requestIdentifier = object["requestId"] as? String,
+                  let kind = object["kind"] as? String else { return false }
+            if kind == "action", let actionIdentifier = object["actionId"] as? String {
+                Task { [weak self] in
+                    guard let self else { return }
+                    let status = await self.store.performResultStatus(actionIdentifier: actionIdentifier)
+                    self.sendJSON(["type": "action.result", "requestId": requestIdentifier, "status": status])
+                }
+            } else if kind == "url", let appIdentifier = object["appId"] as? String,
+                      let encodedURL = object["encodedUrl"] as? String {
+                let opened = store.openURL(encodedURL: encodedURL, bundleIdentifier: appIdentifier)
+                sendJSON(["type": "action.result", "requestId": requestIdentifier,
+                          "status": opened ? "opened" : "not_allowed"])
+            } else { return false }
+        case "value.set":
+            guard let requestIdentifier = object["requestId"] as? String,
+                  let controlIdentifier = object["controlId"] as? String,
+                  let value = (object["value"] as? NSNumber)?.intValue,
+                  (0...100).contains(value) else { return false }
+            let changed = store.setMediaControlValue(value, controlIdentifier: controlIdentifier)
+            sendJSON(["type": "action.result", "requestId": requestIdentifier,
+                      "status": changed ? "performed" : "not_allowed"])
+        case "error":
+            let code = object["code"] as? String ?? "unknown_error"
+            if code == "authentication_sequence",
+               let panelSequence = (object["lastSequence"] as? NSNumber)?.uint32Value,
+               panelSequence < UInt32.max {
+                store.setPreference(Int(panelSequence), forKey: authenticationSequenceKey)
+                store.updateStatus("Authentication counter repaired — reconnecting")
+                connect(mode: .authenticate)
+            } else {
+                store.updateStatus(code.replacingOccurrences(of: "_", with: " "))
+            }
+        case "artwork.ack":
+            if let generation = (object["generation"] as? NSNumber)?.uint32Value,
+               let nextOffset = (object["nextOffset"] as? NSNumber)?.intValue,
+               generation == artworkGeneration, nextOffset == artworkOffset {
+                sendNextArtworkChunk()
+            }
+        case "artwork.abort":
             resetArtworkTransferState()
-        } else if type == "artwork.request",
-                  let generation = (object["generation"] as? NSNumber)?.uint32Value {
-            store.republishNowPlayingArtwork(generation: generation)
+        case "artwork.request":
+            if let generation = (object["generation"] as? NSNumber)?.uint32Value {
+                store.republishNowPlayingArtwork(generation: generation)
+            }
+        default:
+            return false
         }
         return true
     }
@@ -332,12 +350,12 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         let shouldSendArtwork = snapshot.artworkJPEG != nil && (forceArtwork ||
             snapshot.generation != lastArtworkGeneration || artworkHash != lastArtworkSHA256)
         if artworkData != nil && (shouldSendArtwork || snapshot.generation != artworkGeneration) {
-            sendJSON(["type": "artwork.abort", "version": 2, "generation": artworkGeneration])
+            sendJSON(["type": "artwork.abort", "generation": artworkGeneration])
             artworkData = nil
             artworkOffset = 0
         }
         var message: [String: Any] = [
-            "type": "now_playing", "version": 2, "generation": snapshot.generation,
+            "type": "now_playing", "generation": snapshot.generation,
             "applicationIdentifier": snapshot.applicationIdentifier,
             "applicationName": snapshot.applicationName, "state": snapshot.state.rawValue,
             "contentIdentifier": snapshot.contentIdentifier, "title": snapshot.title,
@@ -354,14 +372,14 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         artworkData = artwork
         lastArtworkGeneration = snapshot.generation
         lastArtworkSHA256 = artworkHash
-        sendJSON(["type": "artwork.begin", "version": 2, "generation": snapshot.generation,
+        sendJSON(["type": "artwork.begin", "generation": snapshot.generation,
                   "byteLength": artwork.count, "sha256": artworkHash ?? "",
                   "mimeType": "image/jpeg"])
     }
 
     func publishSystemMetrics(_ snapshot: CompanionSystemMetricsSnapshot) {
         var message: [String: Any] = [
-            "type": "system_metrics", "version": 2, "generation": snapshot.generation,
+            "type": "system_metrics", "generation": snapshot.generation,
             "cpuUsagePercent": snapshot.cpuUsagePercent,
             "memoryUsagePercent": snapshot.memoryUsagePercent,
             "storageUsagePercent": snapshot.storageUsagePercent,
@@ -374,13 +392,13 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     }
 
     func publishSystemMetricsUnavailable() {
-        sendJSON(["type": "system_metrics", "version": 2, "generation": 1, "available": false])
+        sendJSON(["type": "system_metrics", "generation": 1, "available": false])
     }
 
     private func sendNextArtworkChunk() {
         guard let artworkData else { return }
         if artworkOffset >= artworkData.count {
-            sendJSON(["type": "artwork.end", "version": 2, "generation": artworkGeneration])
+            sendJSON(["type": "artwork.end", "generation": artworkGeneration])
             self.artworkData = nil
             artworkOffset = 0
             return
@@ -403,8 +421,10 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     }
 
     private func sendJSON(_ object: [String: Any]) {
-        guard JSONSerialization.isValidJSONObject(object),
-              let data = try? JSONSerialization.data(withJSONObject: object), data.count <= Self.maximumTextFrameBytes,
+        var envelope = object
+        envelope["protocol"] = CompanionCapabilities.protocolVersion
+        guard JSONSerialization.isValidJSONObject(envelope),
+              let data = try? JSONSerialization.data(withJSONObject: envelope), data.count <= Self.maximumTextFrameBytes,
               let value = String(data: data, encoding: .utf8) else { return }
         send(value)
     }
@@ -412,35 +432,35 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
         lastFocusedActionIdentifier = nil
-        if SystemMediaController.mediaActionsAvailable {
-            send("CAPABILITIES|media_actions")
-        }
+        let capabilities = SystemMediaController.mediaActionsAvailable ? ["media_actions"] : []
+        sendJSON(["type": "capabilities", "values": capabilities])
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
         // Approved folders are sent first so they remain available even when
         // the installed application catalogue reaches the frame limit.
-        let entries = store.folderActions().compactMap { folder -> String? in
+        let entries: [[String: String]] = store.folderActions().compactMap { folder -> [String: String]? in
             guard Self.validCatalogueIdentifier(folder.actionIdentifier) else { return nil }
-            return "\(folder.actionIdentifier):\(Self.catalogueLabel(folder.name, fallback: "Folder"))"
-        } + store.launchableApps().compactMap { app -> String? in
+            return ["id": folder.actionIdentifier, "label": Self.catalogueLabel(folder.name, fallback: "Folder")]
+        } + store.launchableApps().compactMap { app -> [String: String]? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
-            return "\(app.bundleIdentifier):\(Self.catalogueLabel(app.name, fallback: app.bundleIdentifier))"
+            return ["id": app.bundleIdentifier, "label": Self.catalogueLabel(app.name, fallback: app.bundleIdentifier)]
         }
-        var catalogue = "CATALOG|"
-        for entry in entries {
-            let separator = catalogue.count == "CATALOG|".count ? "" : ","
-            guard catalogue.utf8.count + separator.utf8.count + entry.utf8.count <= Self.maximumTextFrameBytes else { break }
-            catalogue += separator + entry
+        catalogueGeneration &+= 1
+        if catalogueGeneration == 0 { catalogueGeneration = 1 }
+        let pages = stride(from: 0, to: max(entries.count, 1), by: 48).map {
+            Array(entries[$0..<min($0 + 48, entries.count)])
         }
-        send(catalogue)
+        for (page, items) in pages.enumerated() {
+            sendJSON(["type": "catalogue.page", "generation": catalogueGeneration,
+                      "page": page, "complete": page == pages.count - 1, "items": items])
+        }
         publishFocusedAction()
     }
 
     func publishTimezone() {
         let identifier = TimeZone.current.identifier
-        guard !identifier.isEmpty, identifier.utf8.count <= 96,
-              !identifier.contains("|"), !identifier.contains(",") else { return }
-        send("TIMEZONE|\(identifier)")
+        guard !identifier.isEmpty, identifier.utf8.count <= 96 else { return }
+        sendJSON(["type": "timezone.changed", "identifier": identifier])
     }
 
     func publishFocusedAction() {
@@ -448,16 +468,16 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
         guard identifier != lastFocusedActionIdentifier else { return }
         lastFocusedActionIdentifier = identifier
-        send("FOCUS|\(identifier)")
+        sendJSON(["type": "focus.changed", "actionId": identifier])
     }
 
     func publishMediaControlValues(_ values: [String: Int], unavailable: Set<String>) {
         for identifier in unavailable.sorted() where Self.validMediaControlIdentifier(identifier) {
-            send("STATE|\(identifier)|unavailable")
+            sendJSON(["type": "value.state", "controlId": identifier, "available": false])
         }
         for (identifier, value) in values.sorted(by: { $0.key < $1.key }) {
             guard Self.validMediaControlIdentifier(identifier), (0...100).contains(value) else { continue }
-            send("STATE|\(identifier)|\(value)")
+            sendJSON(["type": "value.state", "controlId": identifier, "available": true, "value": value])
         }
     }
 
