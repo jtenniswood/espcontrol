@@ -5411,6 +5411,17 @@
         "domains": [],
         "options": [
           {
+            "name": "subpage_connector",
+            "label": "Subpage Connector",
+            "kind": "choice",
+            "values": [
+              "",
+              "mac_companion"
+            ],
+            "defaultValue": "",
+            "omitDefault": true
+          },
+          {
             "name": "subpage_kind",
             "label": "Subpage Type",
             "kind": "choice",
@@ -5483,6 +5494,7 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "subpage_connector",
             "subpage_kind",
             "large_numbers"
           ],
