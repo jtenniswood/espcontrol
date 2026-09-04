@@ -4,6 +4,7 @@ import XCTest
 
 final class CompanionKeyboardShortcutTests: XCTestCase {
 
+    @MainActor
     func testWindowActionsAreFilteredByMacOSVersion() {
         let macOS13 = OperatingSystemVersion(majorVersion: 13, minorVersion: 0, patchVersion: 0)
         let macOS15 = OperatingSystemVersion(majorVersion: 15, minorVersion: 0, patchVersion: 0)
