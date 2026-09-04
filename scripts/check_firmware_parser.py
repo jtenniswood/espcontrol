@@ -19,6 +19,7 @@ MEDIA_CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_media_co
 DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 COMPANION_TIMEZONE_HEADER = ROOT / "components" / "espcontrol" / "companion_timezone.h"
+COMPANION_CAPABILITIES_HEADER = ROOT / "components" / "espcontrol" / "companion_capabilities_generated.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 CARD_REGISTRY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_registry.h"
@@ -955,6 +956,7 @@ def main() -> int:
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
         shutil.copy2(COMPANION_TIMEZONE_HEADER, tmp_path / "companion_timezone.h")
+        shutil.copy2(COMPANION_CAPABILITIES_HEADER, tmp_path / "companion_capabilities_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
