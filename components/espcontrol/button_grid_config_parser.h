@@ -62,7 +62,7 @@ constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_na
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
-constexpr const char *SUBPAGE_CONNECTOR_OPTION = CARD_CONTRACT_OPTION_NAME_SUBPAGE_CONNECTOR;
+constexpr const char *SUBPAGE_CONNECTOR_OPTION = card_runtime_option_name_subpage_connector();
 // Extract the Nth semicolon-delimited field from a config string
 inline std::string cfg_field(const std::string &cfg, int idx) {
   size_t start = 0;
