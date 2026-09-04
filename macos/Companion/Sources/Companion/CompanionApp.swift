@@ -474,13 +474,7 @@ private struct CompanionSettings: View {
                     .padding(.vertical, 8)
             } else {
                 ForEach(filteredApplications) { application in
-                    HStack(spacing: 14) {
-                        Image(nsImage: application.icon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 32, height: 32)
-                            .accessibilityHidden(true)
-
+                    HStack {
                         Text(application.name)
                             .font(.system(size: 15, weight: .medium))
 
@@ -492,7 +486,7 @@ private struct CompanionSettings: View {
                         ))
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .controlSize(.large)
+                        .controlSize(.small)
                     }
                     .padding(.vertical, 8)
                     Divider()
