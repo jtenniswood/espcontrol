@@ -611,6 +611,30 @@ private struct CompanionSettings: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var nowPlayingSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("Share Mac Now Playing with the display", isOn: $store.nowPlayingSharingEnabled)
+            Text("Shares the active session shown by macOS Control Centre. The state-aware Play / Pause card depends on this setting. This uses a private macOS system interface and may need an EspControl update after a future macOS release.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                if let artwork = store.nowPlayingArtwork {
+                    Image(nsImage: artwork).resizable().scaledToFit().frame(width: 72, height: 72)
+                        .background(Color.black).clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Image(systemName: "music.note").frame(width: 72, height: 72)
+                        .background(Color.secondary.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    if !store.nowPlayingTitle.isEmpty { Text(store.nowPlayingTitle).font(.headline) }
+                    if !store.nowPlayingApplication.isEmpty { Text(store.nowPlayingApplication).foregroundStyle(.secondary) }
+                    Text(store.nowPlayingStatus).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var systemMetricsSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Share Mac system statistics with the display", isOn: $store.systemMetricsSharingEnabled)
