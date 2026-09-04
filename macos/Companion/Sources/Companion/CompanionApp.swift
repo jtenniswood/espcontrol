@@ -190,7 +190,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         activateCompanionApplication()
         if settingsWindow == nil {
             let content = CompanionSettings(store: store)
-                .frame(width: 980, height: 620)
+                .frame(minWidth: 760, minHeight: 500)
             let controller = NSHostingController(rootView: content)
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
