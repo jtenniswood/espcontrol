@@ -508,7 +508,7 @@ private struct CompanionSettings: View {
                 }
                 .disabled(!hasApprovedFilteredApplications)
             }
-            .buttonStyle(.borderless)
+            .controlSize(.large)
             .padding(.bottom, 2)
 
             if store.availableApps.isEmpty {
