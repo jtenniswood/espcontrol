@@ -3853,6 +3853,7 @@ async function assertBackupImportSmoke(page, posts, testCase) {
   if (testCase.slug === "guition-esp32-p4-jc8012p4a1") {
     const expectedNativeWarning =
       "This backup was taken from guition-esp32-p4-jc8012p4a1-v2; this device is guition-esp32-p4-jc8012p4a1. Layout will be restored, but the native configuration will be skipped.";
+    const expectedSlotWarning = "Backup has 19 slots, current config has 20 - adapting";
     await startBannerCapture(page);
     await page.evaluate(() => {
       window.__bannerMessages = [];
@@ -3861,7 +3862,7 @@ async function assertBackupImportSmoke(page, posts, testCase) {
       page,
       backupFixture(
         "guition-esp32-p4-jc8012p4a1-v2",
-        testCase.slots,
+        testCase.slots - 1,
         "guition-esp32-p4-jc8012p4a1-v2",
       ),
       "cross-profile-native-backup",
@@ -3870,7 +3871,9 @@ async function assertBackupImportSmoke(page, posts, testCase) {
       (expected) =>
         (window.__bannerMessages || []).some(
           (entry) =>
-            entry.className.includes("sp-warning") && entry.text === expected,
+            entry.className.includes("sp-warning") &&
+            entry.text.includes(expected) &&
+            entry.text.includes("Backup has 19 slots, current config has 20 - adapting"),
         ),
       expectedNativeWarning,
     );
@@ -3883,7 +3886,10 @@ async function assertBackupImportSmoke(page, posts, testCase) {
     );
     const nativeWarnings = await page.evaluate(() => window.__bannerMessages || []);
     const nativeWarningIndex = nativeWarnings.findIndex(
-      (entry) => entry.className.includes("sp-warning"),
+      (entry) =>
+        entry.className.includes("sp-warning") &&
+        entry.text.includes(expectedNativeWarning) &&
+        entry.text.includes(expectedSlotWarning),
     );
     const successIndex = nativeWarnings.findIndex(
       (entry) =>
@@ -3891,9 +3897,13 @@ async function assertBackupImportSmoke(page, posts, testCase) {
         entry.text.includes("Configuration imported successfully"),
     );
     assert.strictEqual(
-      nativeWarnings[nativeWarningIndex]?.text,
-      expectedNativeWarning,
+      nativeWarnings[nativeWarningIndex]?.text.includes(expectedNativeWarning),
+      true,
       `cross-profile native import shows the specific warning: ${JSON.stringify(nativeWarnings)}`,
+    );
+    assert(
+      nativeWarnings[nativeWarningIndex]?.text.includes(expectedSlotWarning),
+      `cross-profile native import retains the slot adaptation warning: ${JSON.stringify(nativeWarnings)}`,
     );
     assert(
       successIndex >= 0,
