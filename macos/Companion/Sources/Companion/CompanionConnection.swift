@@ -253,7 +253,11 @@ final class CompanionConnection: NSObject {
         connectionTimeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, let self, self.task === task, !self.store.isConnected else { return }
-            self.store.updateStatus("Panel did not respond — reconnecting…")
+            if case .pair = self.mode {
+                self.store.updateStatus("Pairing failed — try again")
+            } else {
+                self.store.updateStatus("Panel did not respond — reconnecting…")
+            }
             self.handleConnectionFailure(for: task)
         }
     }
@@ -411,7 +415,8 @@ final class CompanionConnection: NSObject {
                 store.updateStatus("Authentication counter repaired — reconnecting")
                 connect(mode: .authenticate)
             } else {
-                store.updateStatus(code.replacingOccurrences(of: "_", with: " "))
+                store.updateStatus(code.replacingOccurrences(of: "_", with: " "),
+                                   connected: sessionAuthenticated)
             }
         case "artwork.ack":
             guard sessionAuthenticated else { return false }
@@ -531,7 +536,10 @@ final class CompanionConnection: NSObject {
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
         lastFocusedActionIdentifier = nil
-        let capabilities = store.mediaActionsAvailable ? ["media_actions"] : []
+        let supportedWindowActions = Self.supportedWindowActionIDs(
+            for: ProcessInfo.processInfo.operatingSystemVersion
+        )
+        let capabilities = (store.mediaActionsAvailable ? ["media_actions"] : []) + supportedWindowActions
         sendJSON(["type": "capabilities", "values": capabilities])
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
@@ -554,6 +562,12 @@ final class CompanionConnection: NSObject {
                       "page": page, "complete": page == pages.count - 1, "items": items])
         }
         publishFocusedAction()
+    }
+
+    static func supportedWindowActionIDs(for version: OperatingSystemVersion) -> [String] {
+        CompanionCapabilities.windowActions.compactMap { identifier, capability in
+            capability.minimumMacOS <= version.majorVersion ? identifier : nil
+        }.sorted()
     }
 
     func publishTimezone() {

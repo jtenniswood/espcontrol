@@ -273,6 +273,10 @@ inline void companion_set_media_actions_supported(bool supported) {
   companion_runtime_service().set_media_actions_supported(supported);
 }
 
+inline void companion_set_window_actions(std::vector<std::string> actions) {
+  companion_runtime_service().set_window_actions(std::move(actions));
+}
+
 inline bool companion_volume_control_valid(const std::string &control_id) {
   return control_id == "media.output_volume" || control_id == "media.input_volume";
 }
@@ -495,7 +499,10 @@ inline bool companion_action_available(const std::string &action_id) {
   const auto snapshot = companion_runtime_snapshot();
   if (!snapshot.connected) return false;
   if (companion_shortcut_action_valid(action_id)) return true;
-  if (companion_window_action_valid(action_id)) return true;
+  if (companion_window_action_valid(action_id)) {
+    return std::find(snapshot.window_actions.begin(), snapshot.window_actions.end(), action_id) !=
+           snapshot.window_actions.end();
+  }
   if (companion_media_action_valid(action_id)) return snapshot.media_actions_supported;
   return std::any_of(snapshot.actions.begin(), snapshot.actions.end(), [&action_id](const CompanionAction &action) {
     return action.id == action_id;

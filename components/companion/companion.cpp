@@ -454,11 +454,18 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
 
     if (type == "capabilities") {
       bool media_actions = false;
+      std::vector<std::string> window_actions;
       const JsonArray values = root["values"].as<JsonArray>();
       for (JsonVariant value : values) {
-        if (std::string(value.as<const char *>()) == "media_actions") media_actions = true;
+        const std::string capability = value.as<const char *>();
+        if (capability == "media_actions") {
+          media_actions = true;
+        } else if (companion_window_action_valid(capability)) {
+          window_actions.push_back(capability);
+        }
       }
       companion_set_media_actions_supported(media_actions);
+      companion_set_window_actions(std::move(window_actions));
       return true;
     }
 

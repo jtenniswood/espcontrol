@@ -3,6 +3,19 @@ import XCTest
 @testable import Companion
 
 final class CompanionKeyboardShortcutTests: XCTestCase {
+
+    func testWindowActionsAreFilteredByMacOSVersion() {
+        let macOS13 = OperatingSystemVersion(majorVersion: 13, minorVersion: 0, patchVersion: 0)
+        let macOS15 = OperatingSystemVersion(majorVersion: 15, minorVersion: 0, patchVersion: 0)
+
+        XCTAssertEqual(
+            CompanionConnection.supportedWindowActionIDs(for: macOS13),
+            ["window.close", "window.fullscreen", "window.hide", "window.minimize"]
+        )
+        XCTAssertTrue(
+            CompanionConnection.supportedWindowActionIDs(for: macOS15).contains("window.left")
+        )
+    }
     @MainActor
     func testAccessibilityPromptIsRequestedOnlyOnceWhileUntrusted() {
         var promptCount = 0

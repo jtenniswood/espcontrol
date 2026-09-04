@@ -67,6 +67,7 @@ struct CompanionRuntimeSnapshot {
   std::vector<CompanionValue> values;
   std::string focused_action_id;
   bool media_actions_supported{false};
+  std::vector<std::string> window_actions;
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
   CompanionSystemMetricsSnapshot system_metrics;
@@ -76,8 +77,8 @@ class CompanionRuntimeService {
  public:
   CompanionRuntimeSnapshot snapshot() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return {actions_, values_, focused_action_id_, media_actions_supported_, connected_,
-            now_playing_, system_metrics_};
+    return {actions_, values_, focused_action_id_, media_actions_supported_, window_actions_,
+            connected_, now_playing_, system_metrics_};
   }
 
   void set_actions(std::vector<CompanionAction> actions) {
@@ -89,6 +90,12 @@ class CompanionRuntimeService {
   void set_media_actions_supported(bool supported) {
     std::lock_guard<std::mutex> lock(mutex_);
     media_actions_supported_ = supported;
+    request_refresh_();
+  }
+
+  void set_window_actions(std::vector<std::string> actions) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    window_actions_ = std::move(actions);
     request_refresh_();
   }
 
@@ -156,6 +163,7 @@ class CompanionRuntimeService {
       focused_action_id_.clear();
       pending_auto_subpage_action_id_.clear();
       media_actions_supported_ = false;
+      window_actions_.clear();
       now_playing_ = {};
       system_metrics_ = {};
     }
@@ -175,6 +183,7 @@ class CompanionRuntimeService {
   std::string focused_action_id_;
   std::string pending_auto_subpage_action_id_;
   bool media_actions_supported_{false};
+  std::vector<std::string> window_actions_;
   bool connected_{false};
   CompanionNowPlayingSnapshot now_playing_;
   CompanionSystemMetricsSnapshot system_metrics_;
