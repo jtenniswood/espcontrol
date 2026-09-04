@@ -392,9 +392,7 @@ private struct CompanionSettings: View {
             }
         case .applications:
             settingsPage(title: "Applications", subtitle: "Choose the Mac apps your display may launch or control") {
-                settingsSection("Approved applications") {
-                    applicationSettings
-                }
+                applicationSettings
             }
         case .folders:
             settingsPage(title: "Folders", subtitle: "Choose the folders that can be opened from your display") {
@@ -523,9 +521,14 @@ private struct CompanionSettings: View {
 
     private var applicationSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Only selected applications are shared with the display. An approved app may be launched, receive its configured keyboard or window controls, or open an approved web address.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 16) {
+                Button("Select All") { store.setAllApplications(approved: true) }
+                    .disabled(store.availableApps.isEmpty || store.allApplicationsApproved)
+                Button("Deselect All") { store.setAllApplications(approved: false) }
+                    .disabled(!store.hasApprovedApplications)
+            }
+            .buttonStyle(.borderless)
+            .padding(.bottom, 2)
 
             if store.availableApps.isEmpty {
                 Text("No applications were found.")
@@ -537,12 +540,7 @@ private struct CompanionSettings: View {
                         get: { store.applicationIsApproved(application) },
                         set: { store.setApplication(application, approved: $0) }
                     )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(application.name)
-                            Text(application.bundleIdentifier)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text(application.name)
                     }
                     Divider()
                 }
