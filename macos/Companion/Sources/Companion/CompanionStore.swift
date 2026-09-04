@@ -142,15 +142,30 @@ final class CompanionStore: NSObject, ObservableObject {
     private static let legacyPreferencesSuite = "EspControl Companion"
     private let defaults: UserDefaults
     private lazy var connection = CompanionConnection(store: self)
-    private let nowPlayingProvider = SystemNowPlayingProvider()
-    private let mediaController = SystemMediaController()
-    private let systemMetricsProvider = SystemMetricsProvider()
+    private let nowPlayingProvider: any NowPlayingProviding
+    private let mediaController: any MediaControlling
+    private let systemMetricsProvider: any SystemMetricsProviding
     private var latestNowPlayingSnapshot: CompanionNowPlayingSnapshot?
     private var latestSystemMetricsSnapshot: CompanionSystemMetricsSnapshot?
     private var mediaControlTimer: Timer?
     private var lastMediaControlValues: [String: Int] = [:]
 
-    override init() {
+    override convenience init() {
+        self.init(
+            nowPlayingProvider: SystemNowPlayingProvider(),
+            mediaController: SystemMediaController(),
+            systemMetricsProvider: SystemMetricsProvider()
+        )
+    }
+
+    init(
+        nowPlayingProvider: any NowPlayingProviding,
+        mediaController: any MediaControlling,
+        systemMetricsProvider: any SystemMetricsProviding
+    ) {
+        self.nowPlayingProvider = nowPlayingProvider
+        self.mediaController = mediaController
+        self.systemMetricsProvider = systemMetricsProvider
         let stableDefaults = UserDefaults(suiteName: Self.preferencesSuite) ?? .standard
         let legacyDefaults = UserDefaults(suiteName: Self.legacyPreferencesSuite)
         defaults = stableDefaults
@@ -542,7 +557,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func performResultStatus(actionIdentifier: String) async -> String {
         let isApplicationLaunch = !actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix)
-            && !SystemMediaController.supports(actionIdentifier: actionIdentifier)
+            && !mediaController.supports(actionIdentifier: actionIdentifier)
             && !actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix)
             && !actionIdentifier.hasPrefix(CompanionKeyboardShortcut.windowActionPrefix)
         let performed = await perform(actionIdentifier: actionIdentifier)
@@ -578,7 +593,7 @@ final class CompanionStore: NSObject, ObservableObject {
         if actionIdentifier.hasPrefix(ApprovedFolder.actionPrefix) {
             return openFolder(actionIdentifier: actionIdentifier)
         }
-        if SystemMediaController.supports(actionIdentifier: actionIdentifier) {
+        if mediaController.supports(actionIdentifier: actionIdentifier) {
             return mediaController.perform(actionIdentifier: actionIdentifier)
         }
         guard actionIdentifier.hasPrefix(CompanionKeyboardShortcut.actionPrefix) ||
@@ -623,7 +638,7 @@ final class CompanionStore: NSObject, ObservableObject {
         guard isConnected else { return }
         let values = mediaController.values()
         guard force || values != lastMediaControlValues else { return }
-        let unavailable = SystemMediaController.unavailableVolumeIDs(
+        let unavailable = mediaController.unavailableVolumeIDs(
             values: values,
             previousValues: lastMediaControlValues,
             force: force
@@ -631,6 +646,8 @@ final class CompanionStore: NSObject, ObservableObject {
         lastMediaControlValues = values
         connection.publishMediaControlValues(values, unavailable: unavailable)
     }
+
+    var mediaActionsAvailable: Bool { mediaController.actionsAvailable }
 
     func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {
         guard encodedURL.utf8.count <= 128,

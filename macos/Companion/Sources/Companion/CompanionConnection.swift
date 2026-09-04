@@ -432,7 +432,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
         lastFocusedActionIdentifier = nil
-        let capabilities = SystemMediaController.mediaActionsAvailable ? ["media_actions"] : []
+        let capabilities = store.mediaActionsAvailable ? ["media_actions"] : []
         sendJSON(["type": "capabilities", "values": capabilities])
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
