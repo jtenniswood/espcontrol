@@ -332,7 +332,6 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
     case connection
     case applications
     case folders
-    case nowPlaying
     case general
 
     var id: String { rawValue }
@@ -343,7 +342,6 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         case .connection: return "Device"
         case .applications: return "Applications"
         case .folders: return "Folders"
-        case .nowPlaying: return "Now Playing"
         case .general: return "General"
         }
     }
@@ -354,7 +352,6 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         case .connection: return "network"
         case .applications: return "app.badge.checkmark"
         case .folders: return "folder"
-        case .nowPlaying: return "music.note"
         case .general: return "gearshape"
         }
     }
@@ -443,12 +440,6 @@ private struct CompanionSettings: View {
         case .folders:
             settingsPage(title: "Folders", subtitle: "Choose the folders that can be opened from your display") {
                 folderSettings
-            }
-        case .nowPlaying:
-            settingsPage(title: "Now Playing", subtitle: "Share the media currently playing on your Mac") {
-                settingsSection("Now Playing") {
-                    nowPlayingSettings
-                }
             }
         case .general:
             settingsPage(title: "General", subtitle: "Manage optional macOS integration") {
@@ -692,29 +683,6 @@ private struct CompanionSettings: View {
 
             Button("Add Folder…") { store.chooseFolder() }
                 .controlSize(.large)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var nowPlayingSettings: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Shares the active session shown by macOS Control Centre automatically. This uses a private macOS system interface and may need an EspControl update after a future macOS release. No additional macOS permission is required.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 12) {
-                if let artwork = store.nowPlayingArtwork {
-                    Image(nsImage: artwork).resizable().scaledToFit().frame(width: 72, height: 72)
-                        .background(Color.black).clipShape(RoundedRectangle(cornerRadius: 8))
-                } else {
-                    Image(systemName: "music.note").frame(width: 72, height: 72)
-                        .background(Color.secondary.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    if !store.nowPlayingTitle.isEmpty { Text(store.nowPlayingTitle).font(.headline) }
-                    if !store.nowPlayingApplication.isEmpty { Text(store.nowPlayingApplication).foregroundStyle(.secondary) }
-                    Text(store.nowPlayingStatus).font(.caption).foregroundStyle(.secondary)
-                }
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
