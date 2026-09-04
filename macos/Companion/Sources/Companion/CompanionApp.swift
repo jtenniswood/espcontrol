@@ -263,12 +263,6 @@ private struct CompanionSettings: View {
 
     private var settingsSidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Settings")
-                .font(.system(size: 28, weight: .semibold))
-                .padding(.horizontal, 24)
-                .padding(.top, 28)
-                .padding(.bottom, 26)
-
             VStack(spacing: 4) {
                 ForEach(CompanionSettingsPage.allCases) { page in
                     Button {
