@@ -308,6 +308,13 @@ export function companionFolderActions(actions: readonly CompanionAction[]): rea
     return sortCompanionLabels(actions.filter((action) => action.id.startsWith(COMPANION_FOLDER_PREFIX)));
 }
 
+export function companionFolderActionIdCanSave(
+    actions: readonly CompanionAction[], actionId: string, savedActionId: string,
+): boolean {
+    return actionId.startsWith(COMPANION_FOLDER_PREFIX) &&
+        (actionId === savedActionId || companionFolderActions(actions).some((action) => action.id === actionId));
+}
+
 export function resetCompanionMediaPresentation(card: any, nextMode: string): void {
     if (!card || nextMode === "media") return;
     const previous = COMPANION_MEDIA_ACTIONS.find((action) => action.id === card.entity);
@@ -456,6 +463,7 @@ export function registerCompanionCardTypes(
             const initialMode = companionCardMode(card);
             let companionActions: readonly CompanionAction[] = [];
             let availableCompanionApps: readonly CompanionAction[] = [];
+            let availableCompanionFolders: readonly CompanionAction[] = [];
 
             helpers.renderCardTextField(panel, card, helpers, {
                 label: "Label", idSuffix: "label", field: "label",
@@ -574,7 +582,7 @@ export function registerCompanionCardTypes(
             helpers.requireField(folderSelect, "Choose a folder before saving.", function () {
                 return initialMode === "folder";
             }, function (value: string) {
-                return value.startsWith(COMPANION_FOLDER_PREFIX);
+                return companionFolderActionIdCanSave(availableCompanionFolders, value, currentEntity);
             });
 
             const shortcutField = document.createElement("div");
@@ -790,6 +798,7 @@ export function registerCompanionCardTypes(
                 const applicationActions = companionApplicationActions(actions);
                 availableCompanionApps = applicationActions;
                 const folderActions = companionFolderActions(actions);
+                availableCompanionFolders = folderActions;
                 select.replaceChildren();
                 const placeholder = document.createElement("option");
                 placeholder.value = "";
@@ -828,9 +837,18 @@ export function registerCompanionCardTypes(
                     option.selected = action.id === card.entity;
                     folderSelect.appendChild(option);
                 });
+                if (initialMode === "folder" && card.entity &&
+                    !folderActions.some(function (action) { return action.id === card.entity; })) {
+                    const unavailable = document.createElement("option");
+                    unavailable.value = card.entity;
+                    unavailable.textContent = "Unavailable (" + card.entity + ")";
+                    unavailable.selected = true;
+                    folderSelect.appendChild(unavailable);
+                }
                 folderSelect.disabled = folderActions.length === 0;
             }).catch(function () {
                 availableCompanionApps = [];
+                availableCompanionFolders = [];
                 select.replaceChildren();
                 const unavailable = document.createElement("option");
                 unavailable.value = card.entity || "";
@@ -839,10 +857,9 @@ export function registerCompanionCardTypes(
                 select.appendChild(unavailable);
                 folderSelect.replaceChildren();
                 const folderUnavailable = document.createElement("option");
-                folderUnavailable.value = "";
-                folderUnavailable.textContent = "Mac companion unavailable";
-                folderUnavailable.disabled = true;
-                folderUnavailable.hidden = true;
+                folderUnavailable.value = initialMode === "folder" ? card.entity || "" : "";
+                folderUnavailable.textContent = card.entity && initialMode === "folder"
+                    ? "Unavailable (companion offline)" : "Mac companion unavailable";
                 folderUnavailable.selected = true;
                 folderSelect.appendChild(folderUnavailable);
             });

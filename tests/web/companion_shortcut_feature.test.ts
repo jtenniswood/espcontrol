@@ -5,6 +5,7 @@ import {
   companionApplicationActionIdCanSave,
   companionApplicationActionIdValid,
   companionCardMode,
+  companionFolderActionIdCanSave,
   companionFolderActions,
   companionEntityForMode,
   companionCardIsMetric,
@@ -427,6 +428,11 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!companionApplicationActionIdCanSave([], offlineSavedApp, offlineSavedApp)
       || companionApplicationActionIdCanSave([], "com.apple.TextEdit", offlineSavedApp)) {
     throw new Error("Offline app editing must preserve only the card's existing app identifier");
+  }
+  const offlineSavedFolder = "folder.approved-documents";
+  if (!companionFolderActionIdCanSave([], offlineSavedFolder, offlineSavedFolder)
+      || companionFolderActionIdCanSave([], "folder.unapproved", offlineSavedFolder)) {
+    throw new Error("Offline folder editing must preserve only the card's existing folder identifier");
   }
   if (companionAppLabel("Centre", "Centre", "Left") !== "Left"
       || companionAppLabel("Work layout", "Centre", "Left") !== "Work layout") {
