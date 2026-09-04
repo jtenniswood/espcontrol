@@ -643,6 +643,10 @@ inline std::string companion_default_action_label(const std::string &action_id,
   return action_id.empty() ? "Mac App" : action_id;
 }
 
+inline bool companion_metric_card_should_disable(bool connected, bool preserve_navigation) {
+  return !connected && !preserve_navigation;
+}
+
 inline bool companion_url_available(const std::string &app_id, const std::string &url_config) {
   return !companion_encoded_url(url_config).empty() && companion_action_available(app_id);
 }
@@ -662,6 +666,7 @@ struct CompanionCardRef {
   std::string metric_key;
   std::string metric_unit;
   int precision{0};
+  bool preserve_navigation{false};
 };
 
 struct CompanionSliderRef {
@@ -758,20 +763,21 @@ inline void companion_track_card(lv_obj_t *button, const std::string &action_id,
     existing->unit_label = nullptr;
     return;
   }
-  refs.push_back({button, text_label, action_id, url_config, nullptr, nullptr, "", "", 0});
+  refs.push_back({button, text_label, action_id, url_config, nullptr, nullptr, "", "", 0, false});
   lv_obj_add_event_cb(button, companion_card_deleted, LV_EVENT_DELETE, nullptr);
 }
 
 inline void companion_track_metric_card(lv_obj_t *button, lv_obj_t *value_label,
                                         lv_obj_t *unit_label, const std::string &metric_key,
-                                        const std::string &unit, int precision) {
+                                        const std::string &unit, int precision,
+                                        bool preserve_navigation = false) {
   if (!button || !companion_metric_key_valid(metric_key)) return;
   auto &refs = companion_card_refs();
   auto existing = std::find_if(refs.begin(), refs.end(), [button](const CompanionCardRef &ref) {
     return ref.button == button;
   });
   CompanionCardRef value{button, nullptr, "", "", value_label, unit_label, metric_key, unit,
-                         std::max(0, std::min(2, precision))};
+                         std::max(0, std::min(2, precision)), preserve_navigation};
   if (existing != refs.end()) {
     *existing = std::move(value);
   } else {
@@ -807,10 +813,10 @@ inline void companion_refresh_cards_if_requested() {
       // Match the unavailable state used by other cards when their backing
       // connection is offline. A missing optional metric (for example,
       // battery on a desktop Mac) remains enabled while Companion is online.
-      if (snapshot.connected) {
-        lv_obj_clear_state(it->button, LV_STATE_DISABLED);
-      } else {
+      if (companion_metric_card_should_disable(snapshot.connected, it->preserve_navigation)) {
         lv_obj_add_state(it->button, LV_STATE_DISABLED);
+      } else {
+        lv_obj_clear_state(it->button, LV_STATE_DISABLED);
       }
       ++it;
       continue;

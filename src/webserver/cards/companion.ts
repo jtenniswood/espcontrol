@@ -298,6 +298,12 @@ export function companionApplicationActionIdValid(
     return companionApplicationActions(actions).some((action) => action.id === actionId);
 }
 
+export function companionApplicationActionIdCanSave(
+    actions: readonly CompanionAction[], actionId: string, savedActionId: string,
+): boolean {
+    return !!actionId && (actionId === savedActionId || companionApplicationActionIdValid(actions, actionId));
+}
+
 export function companionFolderActions(actions: readonly CompanionAction[]): readonly CompanionAction[] {
     return sortCompanionLabels(actions.filter((action) => action.id.startsWith(COMPANION_FOLDER_PREFIX)));
 }
@@ -544,7 +550,7 @@ export function registerCompanionCardTypes(
             helpers.requireField(select, "Choose a Mac app before saving.", function () {
                 return initialMode === "app" || initialMode === "url";
             }, function (value: string) {
-                return companionApplicationActionIdValid(availableCompanionApps, value);
+                return companionApplicationActionIdCanSave(availableCompanionApps, value, currentEntity);
             });
 
             const folderField = document.createElement("div");

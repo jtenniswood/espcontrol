@@ -78,7 +78,7 @@ inline bool navigation_driver_setup_visual(
       config.unit.empty() ? subpage_companion_stat_default_unit(config.entity) : config.unit);
     companion_track_metric_card(
       slot.btn, slot.sensor_lbl, slot.unit_lbl, config.entity, unit,
-      parse_precision(config.precision));
+      parse_precision(config.precision), true);
   } else if (navigation_driver_parent_sensor_state_enabled(config, context)) {
     setup_subpage_parent_state_card(
       slot, config, display_sensor_font(display),

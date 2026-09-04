@@ -2,6 +2,7 @@ import {
   applyCompanionMediaPresentation,
   companionAppLabel,
   companionApplicationActions,
+  companionApplicationActionIdCanSave,
   companionApplicationActionIdValid,
   companionCardMode,
   companionFolderActions,
@@ -421,6 +422,11 @@ export function runCompanionShortcutFeatureTests(): void {
   if (companionWindowActionLabel("window.center") !== "Centre"
       || companionWindowActionLabel("window.unknown") !== "") {
     throw new Error("Window actions must use allow-listed display labels");
+  }
+  const offlineSavedApp = "com.apple.Safari";
+  if (!companionApplicationActionIdCanSave([], offlineSavedApp, offlineSavedApp)
+      || companionApplicationActionIdCanSave([], "com.apple.TextEdit", offlineSavedApp)) {
+    throw new Error("Offline app editing must preserve only the card's existing app identifier");
   }
   if (companionAppLabel("Centre", "Centre", "Left") !== "Left"
       || companionAppLabel("Work layout", "Centre", "Left") !== "Work layout") {

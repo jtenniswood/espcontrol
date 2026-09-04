@@ -75,6 +75,9 @@ int main() {
   assert(companion_default_action_label("com.apple.Safari") == "com.apple.Safari");
   assert(companion_default_action_label("com.apple.Safari", url_config) == "Open URL");
   assert(companion_default_action_label("") == "Mac App");
+  assert(companion_metric_card_should_disable(false, false));
+  assert(!companion_metric_card_should_disable(false, true));
+  assert(!companion_metric_card_should_disable(true, false));
 
   const std::string folder_action = "folder.00000000-0000-0000-0000-000000000001";
   companion_set_actions({{"com.apple.Safari", "Safari"}, {folder_action, "Projects"}});
