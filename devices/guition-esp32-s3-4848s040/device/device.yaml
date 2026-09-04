@@ -193,7 +193,8 @@ esphome:
                 id(cover_art_last_playback_state) = playing ? "playing" :
                   snapshot.playback_state == CompanionPlaybackState::PAUSED ? "paused" :
                   snapshot.playback_state == CompanionPlaybackState::STOPPED ? "stopped" : "unavailable";
-                if (previous_generation != 0 && previous_generation != snapshot.generation) {
+                if (!snapshot.artwork_follows ||
+                    (previous_generation != 0 && previous_generation != snapshot.generation)) {
                   id(cover_art_runtime).image_available = false;
                   id(cover_art_runtime).loaded_url.clear();
                   lv_obj_add_flag(id(cover_art_image_widget), LV_OBJ_FLAG_HIDDEN);

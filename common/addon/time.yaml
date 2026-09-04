@@ -507,9 +507,15 @@ interval:
     then:
       - if:
           condition:
-            lambda: 'return esphome::companion::companion_timezone_changed();'
+            lambda: |-
+              static bool previous_ha_connected = ha_api_state_connected();
+              const bool ha_connected = ha_api_state_connected();
+              const bool ha_connection_changed = ha_connected != previous_ha_connected;
+              previous_ha_connected = ha_connected;
+              return esphome::companion::companion_timezone_changed() ||
+                     ha_connection_changed;
           then:
             - lambda: 'esphome::companion::companion_take_timezone_changed();'
-            # Reuse the full source refresh so Auto temperature units and their
-            # labels change with a newly supplied Companion timezone too.
+            # Reuse the full source refresh when either Auto timezone source
+            # changes so temperature units and sun scheduling follow it.
             - script.execute: timezone_after_homeassistant_time_sync

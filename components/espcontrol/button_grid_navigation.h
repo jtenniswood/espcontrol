@@ -254,6 +254,8 @@ inline void navigation_refresh_companion_subpage_label() {
 
 inline bool navigation_return_from_companion_shortcuts_if_needed(
     lv_obj_t *main_page_obj) {
+  // Automatic Companion navigation must not dismiss active alarm controls.
+  if (alarm_display_takeover_active()) return false;
   if (!companion_subpage_return_requested().load()) return false;
   const int slot = navigation_active_subpage_slot();
   NavigationSubpageEntry *entry = navigation_find_slot(slot);

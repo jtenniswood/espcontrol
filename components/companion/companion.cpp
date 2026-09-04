@@ -553,6 +553,8 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       snapshot.artwork_follows = root["hasArtwork"] | false;
       if (generation != this->now_playing_generation_)
         this->reset_artwork_transfer_("new now-playing generation");
+      else if (!snapshot.artwork_follows)
+        this->reset_artwork_transfer_("artwork removed from current snapshot", true);
       this->now_playing_generation_ = generation;
       this->now_playing_artwork_follows_ = snapshot.artwork_follows;
       this->defer([snapshot = std::move(snapshot)]() mutable {

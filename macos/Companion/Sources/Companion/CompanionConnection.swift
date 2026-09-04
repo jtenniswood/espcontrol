@@ -44,6 +44,7 @@ final class CompanionConnection: NSObject {
     private var pendingCertificateFingerprint: String?
     private var shouldReconnect = false
     private var hasTerminalConnectionError = false
+    private var sessionAuthenticated = false
     private var artworkData: Data?
     private var artworkGeneration: UInt32 = 0
     private var artworkOffset = 0
@@ -120,6 +121,7 @@ final class CompanionConnection: NSObject {
     }
 
     private func tearDownConnection() {
+        sessionAuthenticated = false
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
@@ -147,11 +149,11 @@ final class CompanionConnection: NSObject {
     private func authenticate(on webSocketTask: URLSessionWebSocketTask) {
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
-        let host = store.panelHost
+        let account = store.pairingAccount
         store.updateStatus("Authenticating…")
         Task { [weak self, weak webSocketTask] in
             let credential = await Task.detached(priority: .userInitiated) {
-                KeychainStore.load(service: KeychainStore.service, account: host)
+                KeychainStore.load(service: KeychainStore.service, account: account)
             }.value
             guard let self, let webSocketTask, self.task === webSocketTask else { return }
             guard let credential else {
@@ -261,6 +263,7 @@ final class CompanionConnection: NSObject {
 
     private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
         guard task === failedTask else { return }
+        sessionAuthenticated = false
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
@@ -331,16 +334,19 @@ final class CompanionConnection: NSObject {
             guard let encodedCredential = object["credential"] as? String,
                   let credential = Data(hex: encodedCredential) else { store.updateStatus("Pairing failed"); return true }
             guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return true }
-            guard KeychainStore.save(credential, service: KeychainStore.service, account: store.panelHost) else {
+            let pairingAccount = store.panelHost
+            guard KeychainStore.save(credential, service: KeychainStore.service, account: pairingAccount) else {
                 store.updateStatus("Pairing failed: the credential could not be saved in Keychain")
                 return true
             }
+            store.rememberPairingAccount(pairingAccount)
             store.setPreference(fingerprint, forKey: certificateFingerprintKey)
             store.removePreference(forKey: authenticationSequenceKey)
             pendingCertificateFingerprint = nil
             store.updateStatus("Paired — reconnecting")
             connect(mode: .authenticate)
         case "auth.accepted":
+            sessionAuthenticated = true
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             reconnectAttempt = 0
@@ -353,8 +359,10 @@ final class CompanionConnection: NSObject {
             store.republishCurrentNowPlaying()
             store.republishCurrentSystemMetrics()
         case "catalogue.request":
+            guard sessionAuthenticated else { return false }
             publishCatalogue()
         case "action.invoke":
+            guard sessionAuthenticated else { return false }
             guard let requestIdentifier = object["requestId"] as? String,
                   let kind = object["kind"] as? String else { return false }
             if kind == "action", let actionIdentifier = object["actionId"] as? String {
@@ -370,6 +378,7 @@ final class CompanionConnection: NSObject {
                           "status": opened ? "opened" : "not_allowed"])
             } else { return false }
         case "value.set":
+            guard sessionAuthenticated else { return false }
             guard let requestIdentifier = object["requestId"] as? String,
                   let controlIdentifier = object["controlId"] as? String,
                   let value = (object["value"] as? NSNumber)?.intValue,
@@ -389,14 +398,17 @@ final class CompanionConnection: NSObject {
                 store.updateStatus(code.replacingOccurrences(of: "_", with: " "))
             }
         case "artwork.ack":
+            guard sessionAuthenticated else { return false }
             if let generation = (object["generation"] as? NSNumber)?.uint32Value,
                let nextOffset = (object["nextOffset"] as? NSNumber)?.intValue,
                generation == artworkGeneration, nextOffset == artworkOffset {
                 sendNextArtworkChunk()
             }
         case "artwork.abort":
+            guard sessionAuthenticated else { return false }
             resetArtworkTransferState()
         case "artwork.request":
+            guard sessionAuthenticated else { return false }
             if let generation = (object["generation"] as? NSNumber)?.uint32Value {
                 store.republishNowPlayingArtwork(generation: generation)
             }
@@ -582,8 +594,8 @@ final class CompanionConnection: NSObject {
         return abs(lhs - rhs)
     }
 
-    private var certificateFingerprintKey: String { "companion.certificateFingerprint.\(store.panelHost)" }
-    private var authenticationSequenceKey: String { "companion.authenticationSequence.\(store.panelHost)" }
+    private var certificateFingerprintKey: String { "companion.certificateFingerprint.\(store.pairingAccount)" }
+    private var authenticationSequenceKey: String { "companion.authenticationSequence.\(store.pairingAccount)" }
 
     private func nextAuthenticationSequence() -> UInt32 {
         let previous = UInt32(clamping: store.integerPreference(forKey: authenticationSequenceKey))

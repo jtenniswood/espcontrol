@@ -119,6 +119,7 @@ final class CompanionStore: NSObject, ObservableObject {
     static let supportURL = URL(string: "https://github.com/jtenniswood/espcontrol/issues")!
 
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
+    private(set) var pairingAccount: String
     @Published private(set) var availableApps: [LaunchableApp] = []
     @Published private(set) var approvedApplicationIdentifiers: Set<String>
     @Published private(set) var approvedFolders: [ApprovedFolder]
@@ -135,6 +136,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     private enum Keys {
         static let host = "panelHost"
+        static let pairingAccount = "pairingAccount"
         static let approvedApplications = "approvedApplications"
         static let approvedFolders = "approvedFolders"
     }
@@ -175,11 +177,16 @@ final class CompanionStore: NSObject, ObservableObject {
         approvedFolders = stableDefaults.data(forKey: Keys.approvedFolders)
             .flatMap { try? JSONDecoder().decode([ApprovedFolder].self, from: $0) }
             ?? []
-        panelHost = stableDefaults.string(forKey: Keys.host)
+        let savedPairingAccounts = KeychainStore.accounts(service: KeychainStore.service)
+        let configuredPanelHost = stableDefaults.string(forKey: Keys.host)
             ?? legacyDefaults?.string(forKey: Keys.host)
             ?? UserDefaults.standard.string(forKey: Keys.host)
-            ?? KeychainStore.accounts(service: KeychainStore.service).first
+            ?? savedPairingAccounts.first
             ?? ""
+        panelHost = configuredPanelHost
+        pairingAccount = stableDefaults.string(forKey: Keys.pairingAccount)
+            ?? (savedPairingAccounts.contains(configuredPanelHost) ? configuredPanelHost : nil)
+            ?? (savedPairingAccounts.count == 1 ? savedPairingAccounts[0] : "")
         super.init()
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -194,6 +201,7 @@ final class CompanionStore: NSObject, ObservableObject {
             object: nil
         )
         migrateConnectionPreferences(from: [legacyDefaults, UserDefaults.standard].compactMap { $0 })
+        if !pairingAccount.isEmpty { defaults.set(pairingAccount, forKey: Keys.pairingAccount) }
         nowPlayingProvider.onStatus = { [weak self] value in self?.nowPlayingStatus = value }
         nowPlayingProvider.onSnapshot = { [weak self] snapshot in
             guard let self else { return }
@@ -215,11 +223,11 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func migrateConnectionPreferences(from legacyStores: [UserDefaults]) {
-        guard !panelHost.isEmpty else { return }
+        guard !pairingAccount.isEmpty else { return }
         defaults.set(panelHost, forKey: Keys.host)
         let keys = [
-            "companion.certificateFingerprint.\(panelHost)",
-            "companion.authenticationSequence.\(panelHost)",
+            "companion.certificateFingerprint.\(pairingAccount)",
+            "companion.authenticationSequence.\(pairingAccount)",
         ]
         for key in keys where defaults.object(forKey: key) == nil {
             if let value = legacyStores.lazy.compactMap({ $0.object(forKey: key) }).first {
@@ -234,7 +242,12 @@ final class CompanionStore: NSObject, ObservableObject {
     func removePreference(forKey key: String) { defaults.removeObject(forKey: key) }
 
     var hasSavedPairing: Bool {
-        !panelHost.isEmpty && KeychainStore.accounts(service: KeychainStore.service).contains(panelHost)
+        !pairingAccount.isEmpty && KeychainStore.accounts(service: KeychainStore.service).contains(pairingAccount)
+    }
+
+    func rememberPairingAccount(_ account: String) {
+        pairingAccount = account
+        defaults.set(account, forKey: Keys.pairingAccount)
     }
     var supportsLaunchAtLogin: Bool {
         Bundle.main.bundleURL.pathExtension.lowercased() == "app"
@@ -422,6 +435,13 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("macOS could not save access to that folder", connected: isConnected)
             return
         }
+        if let legacyFolder = approvedFolders.first(where: {
+            $0.needsReapproval && URL(fileURLWithPath: $0.path).standardizedFileURL.path == url.path
+        }) {
+            refreshBookmark(for: legacyFolder, with: bookmarkData)
+            if isConnected { connection.publishCatalogue() }
+            return
+        }
         guard !approvedFolders.contains(where: { $0.path == url.path }) else {
             updateStatus("That folder is already available", connected: isConnected)
             return
@@ -479,10 +499,12 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func forgetPanel() {
-        let forgottenHost = panelHost
-        KeychainStore.remove(service: KeychainStore.service, account: forgottenHost)
-        defaults.removeObject(forKey: "companion.certificateFingerprint.\(forgottenHost)")
-        defaults.removeObject(forKey: "companion.authenticationSequence.\(forgottenHost)")
+        let forgottenAccount = pairingAccount
+        KeychainStore.remove(service: KeychainStore.service, account: forgottenAccount)
+        defaults.removeObject(forKey: "companion.certificateFingerprint.\(forgottenAccount)")
+        defaults.removeObject(forKey: "companion.authenticationSequence.\(forgottenAccount)")
+        defaults.removeObject(forKey: Keys.pairingAccount)
+        pairingAccount = ""
         connection.disconnect()
         panelHost = ""
         statusDescription = "Panel forgotten"

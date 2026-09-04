@@ -89,11 +89,14 @@ script:
               id(main_page)->obj,
               id(espcontrol_app).display().target_mode(),
               id(espcontrol_app).display().target_schedule_inactive());
+          const bool pairing_onboarding =
+              lv_scr_act() == id(button_setup_page)->obj && id(button_order).state.empty();
           bool reserve_clock_bar_space = visibility.reserve_space;
-          bool visible = visibility.visible;
-          bool show_time = visible && id(clock_bar_time_enabled).state;
-          bool show_network = visible && id(network_status_enabled).state;
-          bool show_night_mode = visible && id(clock_bar_night_mode_enabled).state &&
+          bool visible = visibility.visible || pairing_onboarding;
+          bool show_time = visibility.visible && id(clock_bar_time_enabled).state;
+          bool show_network = pairing_onboarding ||
+                              (visibility.visible && id(network_status_enabled).state);
+          bool show_night_mode = visibility.visible && id(clock_bar_night_mode_enabled).state &&
                                  id(clock_bar_night_mode_active);
           int clock_bar_screen_width = clock_bar_current_screen_width(${screen_width});
           int clock_bar_screen_height = clock_bar_current_screen_height(${screen_height});
@@ -145,7 +148,8 @@ script:
               id(temperatures),
               id(display_time),
               id(network_status_button),
-              visible && (id(indoor_temp_enable).state || id(outdoor_temp_enable).state),
+              visibility.visible &&
+                  (id(indoor_temp_enable).state || id(outdoor_temp_enable).state),
               show_time,
               show_network,
               clock_bar_screen_width >= 700 ? 8 : 6,
