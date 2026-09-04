@@ -569,6 +569,14 @@ script:
           const bool transition_required =
               controller.transition_required(transition) ||
               controller.presentation_incomplete();
+          if (transition.target_mode == espcontrol::DisplayMode::CAMERA &&
+              !transition_required &&
+              id(camera_screensaver_transition_generation) != transition.generation) {
+            // A lower-priority request can advance the controller generation while
+            // Camera remains the winner. Keep camera downloads current just like
+            // the cover-art path above.
+            id(camera_screensaver_transition_generation) = transition.generation;
+          }
           if (transition.target_mode == espcontrol::DisplayMode::COVER_ART &&
               !transition_required &&
               id(cover_art_transition_generation) != transition.generation) {
