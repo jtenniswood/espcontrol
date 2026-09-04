@@ -63,6 +63,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         if store.hasSavedPairing && !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             store.connect()
         }
+        if !launchedAsLoginItem() {
+            DispatchQueue.main.async { [weak self] in self?.openCompanionWindow() }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -147,6 +150,12 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         }
         instanceLockFileDescriptor = descriptor
         return true
+    }
+
+    private func launchedAsLoginItem() -> Bool {
+        NSAppleEventManager.shared().currentAppleEvent?
+            .paramDescriptor(forKeyword: keyAELaunchedAsLogInItem)?
+            .booleanValue == true
     }
 
     func openCompanionWindow() {
