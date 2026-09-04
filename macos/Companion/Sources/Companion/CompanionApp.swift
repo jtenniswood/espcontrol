@@ -513,7 +513,7 @@ private struct CompanionSettings: View {
                     pairingCode = ""
                     focusedField = .panelHost
                 }
-                .buttonStyle(.borderless)
+                .controlSize(.large)
             }
         }
     }
