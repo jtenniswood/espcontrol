@@ -206,9 +206,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
             window.contentViewController = controller
             window.delegate = self
             window.isReleasedWhenClosed = false
-            window.standardWindowButton(.closeButton)?.isHidden = true
-            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-            window.standardWindowButton(.zoomButton)?.isHidden = true
             window.center()
             settingsWindow = window
         }
@@ -301,31 +298,14 @@ private struct CompanionSettings: View {
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            HStack(spacing: 0) {
-                settingsSidebar
-                Rectangle()
-                    .fill(Color.primary.opacity(0.08))
-                    .frame(width: 1)
-                detailView
-            }
-            .background(Color(nsColor: .windowBackgroundColor))
-
-            Button {
-                closeSettingsWindow()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 32, height: 32)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("Close Settings")
-            .padding(.top, 12)
-            .padding(.trailing, 14)
+        HStack(spacing: 0) {
+            settingsSidebar
+            Rectangle()
+                .fill(Color.primary.opacity(0.08))
+                .frame(width: 1)
+            detailView
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             focusSettingsWindow()
         }
@@ -465,12 +445,6 @@ private struct CompanionSettings: View {
                 .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func closeSettingsWindow() {
-        NSApp.windows.first(where: {
-            $0.title.localizedCaseInsensitiveContains("Settings")
-        })?.close()
     }
 
     private var deviceConnectionSettings: some View {
