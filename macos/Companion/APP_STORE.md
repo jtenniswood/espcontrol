@@ -15,7 +15,11 @@ ALLOW_ADHOC=1 macos/Companion/Packaging/build_app_store.sh
 
 This produces a locally signed app at
 `macos/Companion/.build/app-store/EspControl Companion.app`. Ad-hoc signing is
-only for local inspection and cannot be uploaded to App Store Connect.
+only for local inspection and cannot be uploaded to App Store Connect. macOS
+privacy approvals are tied to the signed build, so Accessibility may need to be
+removed and re-enabled after replacing an ad-hoc app. Use the same stable
+`CODE_SIGN_IDENTITY` for installed test builds when the approval must survive
+updates.
 
 ## App Store build
 

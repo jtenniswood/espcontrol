@@ -3,6 +3,29 @@ import XCTest
 @testable import Companion
 
 final class CompanionKeyboardShortcutTests: XCTestCase {
+    func testAccessibilityPromptIsRequestedOnlyOnceWhileUntrusted() {
+        var promptCount = 0
+        let authorizer = CompanionAccessibilityAuthorizer(
+            isProcessTrusted: { false },
+            requestPrompt: { promptCount += 1 }
+        )
+
+        XCTAssertFalse(authorizer.isTrusted())
+        XCTAssertFalse(authorizer.isTrusted())
+        XCTAssertEqual(promptCount, 1)
+    }
+
+    func testAccessibilityTrustDoesNotPrompt() {
+        var promptCount = 0
+        let authorizer = CompanionAccessibilityAuthorizer(
+            isProcessTrusted: { true },
+            requestPrompt: { promptCount += 1 }
+        )
+
+        XCTAssertTrue(authorizer.isTrusted())
+        XCTAssertEqual(promptCount, 0)
+    }
+
     func testMapsEveryWindowActionToItsDocumentedShortcut() throws {
         let fnControl: CGEventFlags = [.maskSecondaryFn, .maskControl]
         let fnControlShift: CGEventFlags = [.maskSecondaryFn, .maskControl, .maskShift]

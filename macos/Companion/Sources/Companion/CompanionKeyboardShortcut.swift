@@ -2,6 +2,34 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
+final class CompanionAccessibilityAuthorizer {
+    static let shared = CompanionAccessibilityAuthorizer(
+        isProcessTrusted: AXIsProcessTrusted,
+        requestPrompt: {
+            let prompt = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(prompt)
+        }
+    )
+
+    private let isProcessTrusted: () -> Bool
+    private let requestPrompt: () -> Void
+    private var didRequestPrompt = false
+
+    init(isProcessTrusted: @escaping () -> Bool, requestPrompt: @escaping () -> Void) {
+        self.isProcessTrusted = isProcessTrusted
+        self.requestPrompt = requestPrompt
+    }
+
+    func isTrusted() -> Bool {
+        guard !isProcessTrusted() else { return true }
+        if !didRequestPrompt {
+            didRequestPrompt = true
+            requestPrompt()
+        }
+        return false
+    }
+}
+
 struct CompanionKeyboardShortcut {
     static let actionPrefix = "shortcut."
     static let windowActionPrefix = "window."
@@ -48,11 +76,7 @@ struct CompanionKeyboardShortcut {
 
     func replay() -> Bool {
         guard isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else { return false }
-        guard AXIsProcessTrusted() else {
-            let prompt = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-            AXIsProcessTrustedWithOptions(prompt)
-            return false
-        }
+        guard CompanionAccessibilityAuthorizer.shared.isTrusted() else { return false }
         guard let source = CGEventSource(stateID: .hidSystemState),
               let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else {
