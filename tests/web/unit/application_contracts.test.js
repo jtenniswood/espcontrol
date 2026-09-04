@@ -92,8 +92,9 @@ describe("browserless application contracts", () => {
     assert.match(app, /TextField\("Search applications"/);
     assert.match(app, /Image\(systemName: "magnifyingglass"\)/);
     assert.match(app, /RoundedRectangle\(cornerRadius: 14, style: \.continuous\)/);
-    assert.match(app, /Image\(nsImage: application\.icon\)/);
+    assert.doesNotMatch(app, /Image\(nsImage: application\.icon\)/);
     assert.match(app, /\.toggleStyle\(\.switch\)/);
+    assert.match(app, /\.controlSize\(\.small\)/);
     assert.match(app, /Button\("Select All"\)/);
     assert.match(app, /Button\("Deselect All"\)/);
   });
