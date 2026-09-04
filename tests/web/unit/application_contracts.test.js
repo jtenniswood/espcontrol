@@ -1470,6 +1470,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.match(styles, /export function createWebStyles\(dragAnimation: boolean\)/);
     assert.match(styles, /import \{ WEB_UI_COLORS \} from "\.\.\/state\/ui_tokens"/);
+    assert.match(styles, /#sp-set-clock-bar:checked\+\.sp-toggle-track\{background:#0a84ff;border-color:#0a84ff\}/);
     assert.match(app, /style\.textContent = webStyles/);
     assert.match(entry, /createWebStyles\(layout\.config\.dragAnimation\)/);
     assert.doesNotMatch(styles, /\bCFG\b/);
