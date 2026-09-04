@@ -100,9 +100,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
 
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(connectionStatusItem())
-        menu.addItem(.separator())
-
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         settingsItem.image = nil
@@ -113,46 +110,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         quitItem.target = self
         menu.addItem(quitItem)
         return menu
-    }
-
-    private func connectionStatusItem() -> NSMenuItem {
-        let item = NSMenuItem()
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 58))
-
-        let title = NSTextField(labelWithString: "EspControl Companion")
-        title.font = .systemFont(ofSize: 14, weight: .semibold)
-
-        let status = NSTextField(labelWithString: store.isConnected ? "Connected" : "Disconnected")
-        status.font = .systemFont(ofSize: 13)
-        status.textColor = .secondaryLabelColor
-
-        let labels = NSStackView(views: [title, status])
-        labels.orientation = .vertical
-        labels.alignment = .leading
-        labels.spacing = 1
-
-        let connectionSwitch = NSSwitch()
-        connectionSwitch.state = store.isConnected ? .on : .off
-        connectionSwitch.target = self
-        connectionSwitch.action = #selector(connectionSwitchChanged(_:))
-        connectionSwitch.toolTip = store.isConnected ? "Disconnect from the display" : "Connect to the display"
-        connectionSwitch.isEnabled = store.isConnected
-            || !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-
-        container.addSubview(labels)
-        container.addSubview(connectionSwitch)
-        labels.translatesAutoresizingMaskIntoConstraints = false
-        connectionSwitch.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            labels.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
-            labels.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            labels.trailingAnchor.constraint(lessThanOrEqualTo: connectionSwitch.leadingAnchor, constant: -12),
-            connectionSwitch.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
-            connectionSwitch.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-        ])
-
-        item.view = container
-        return item
     }
 
     private func updateStatusItemImage(connected: Bool) {
