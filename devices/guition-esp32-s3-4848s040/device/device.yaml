@@ -206,10 +206,16 @@ esphome:
                 if (!id(cover_art_companion_source_active) ||
                     generation != runtime.now_playing.generation) return false;
                 id(cover_art_download_generation) = 0;
-                const bool owned = id(cover_art_downloaded_image)->load_owned_buffer(data, size);
+                bool decoded = false;
+                const bool owned = id(cover_art_downloaded_image)->load_owned_buffer(data, size, &decoded);
                 if (!owned) return false;
-                id(cover_art_runtime).image_available = id(cover_art_downloaded_image)->has_image();
-                id(cover_art_runtime).loaded_url = "companion:" + std::to_string(generation);
+                id(cover_art_runtime).image_available = decoded;
+                if (decoded) {
+                  id(cover_art_runtime).loaded_url = "companion:" + std::to_string(generation);
+                } else {
+                  id(cover_art_runtime).loaded_url.clear();
+                  lv_obj_add_flag(id(cover_art_image_widget), LV_OBJ_FLAG_HIDDEN);
+                }
                 if (id(cover_art_runtime).image_available && id(cover_art_media_playing) &&
                     id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART)) {
                   #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)

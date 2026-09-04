@@ -714,7 +714,8 @@ void ArtworkImage::cancel_update() {
   }
 }
 
-bool ArtworkImage::load_owned_buffer(uint8_t *data, size_t size) {
+bool ArtworkImage::load_owned_buffer(uint8_t *data, size_t size, bool *decode_succeeded) {
+  if (decode_succeeded) *decode_succeeded = false;
   if (!data || size < 12 || size > this->max_download_buffer_size_) return false;
 
   this->update_pending_ = false;
@@ -753,7 +754,8 @@ bool ArtworkImage::load_owned_buffer(uint8_t *data, size_t size) {
     this->fail_download_();
     return true;
   }
-  this->finish_download_();
+  const bool decoded = this->finish_download_();
+  if (decode_succeeded) *decode_succeeded = decoded;
   return true;
 }
 
@@ -1910,16 +1912,16 @@ void ArtworkImage::log_timing_(const char *result, size_t bytes_read) const {
            this->fixed_width_, this->fixed_height_);
 }
 
-void ArtworkImage::finish_download_() {
+bool ArtworkImage::finish_download_() {
   if (this->has_newer_pending_update_()) {
     ESP_LOGI(TAG, "Discarding completed artwork because a newer URL is queued");
     this->end_connection_();
     this->complete_service_request_();
-    return;
+    return false;
   }
   if (!this->promote_decode_buffer_()) {
     this->fail_download_();
-    return;
+    return false;
   }
   const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read()
                                               : this->completed_transfer_bytes_;
@@ -1946,6 +1948,7 @@ void ArtworkImage::finish_download_() {
   App.feed_wdt();
   this->log_state_("download-callback-finished");
   this->complete_service_request_();
+  return true;
 }
 
 void ArtworkImage::fail_download_() {

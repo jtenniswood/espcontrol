@@ -66,6 +66,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     }
 
     private func tearDownConnection() {
+        resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
         heartbeatTask?.cancel()
@@ -202,6 +203,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
 
     private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
         guard task === failedTask else { return }
+        resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
         heartbeatTask?.cancel()
@@ -213,6 +215,14 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         session?.invalidateAndCancel()
         session = nil
         scheduleReconnect()
+    }
+
+    private func resetArtworkTransferState() {
+        artworkData = nil
+        artworkGeneration = 0
+        artworkOffset = 0
+        lastArtworkGeneration = 0
+        lastArtworkSHA256 = nil
     }
 
     private func scheduleReconnect() {
@@ -309,10 +319,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
            generation == artworkGeneration, nextOffset == artworkOffset {
             sendNextArtworkChunk()
         } else if type == "artwork.abort" {
-            artworkData = nil
-            artworkOffset = 0
-            lastArtworkGeneration = 0
-            lastArtworkSHA256 = nil
+            resetArtworkTransferState()
         } else if type == "artwork.request",
                   let generation = (object["generation"] as? NSNumber)?.uint32Value {
             store.republishNowPlayingArtwork(generation: generation)
@@ -389,9 +396,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         task?.send(.data(frame)) { [weak self] error in
             if error != nil {
                 Task { @MainActor in
-                    self?.artworkData = nil
-                    self?.lastArtworkGeneration = 0
-                    self?.lastArtworkSHA256 = nil
+                    self?.resetArtworkTransferState()
                 }
             }
         }

@@ -86,8 +86,9 @@ class ArtworkImage : public PollingComponent,
   std::string request_update_url(const std::string &url, int max_source_dim = 0);
   /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
   void cancel_update();
-  /** Decode a complete encoded image already owned by PSRAM. Takes ownership on true. */
-  bool load_owned_buffer(uint8_t *data, size_t size);
+  /** Decode a complete encoded image already owned by PSRAM. Takes ownership on true.
+   *  When supplied, decode_succeeded distinguishes ownership from a successful decode. */
+  bool load_owned_buffer(uint8_t *data, size_t size, bool *decode_succeeded = nullptr);
   const std::string &get_url() const { return this->url_; }
   int get_last_http_status() const { return this->last_http_status_; }
   bool last_error_was_ha_media_proxy_not_found() const {
@@ -226,7 +227,7 @@ class ArtworkImage : public PollingComponent,
   void cancel_s3_transfer_();
   void note_response_bytes_();
   void log_timing_(const char *result, size_t bytes_read) const;
-  void finish_download_();
+  bool finish_download_();
   void fail_download_();
 
   /**
