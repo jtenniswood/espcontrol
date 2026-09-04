@@ -8,11 +8,16 @@ OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/.build/app-store}"
 APP_NAME="EspControl Companion.app"
 APP_DIR="${OUTPUT_DIR}/${APP_NAME}"
 EXECUTABLE_NAME="EspControl Companion"
-VERSION="${MARKETING_VERSION:-0.1.0}"
+VERSION="${MARKETING_VERSION:-1.0.0}"
 BUILD_NUMBER="${CURRENT_PROJECT_VERSION:-1}"
 BUNDLE_IDENTIFIER="${PRODUCT_BUNDLE_IDENTIFIER:-io.espcontrol.companion}"
 ALLOW_ADHOC="${ALLOW_ADHOC:-0}"
 CREATE_PKG="${CREATE_PKG:-0}"
+
+if [[ "${VERSION}" == 0.* ]]; then
+    echo "Mac App Store builds must use a release version of 1.0.0 or later." >&2
+    exit 2
+fi
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "This script must run on macOS because it uses SwiftPM, codesign, and productbuild." >&2
@@ -34,7 +39,7 @@ if [[ "${ALLOW_ADHOC}" != "1" && -z "${PROVISIONING_PROFILE:-}" ]]; then
     exit 2
 fi
 
-rm -rf "${OUTPUT_DIR}"
+rm -rf "${APP_DIR}" "${OUTPUT_DIR}/AppIcon.iconset" "${OUTPUT_DIR}/generate_macos_icon"
 mkdir -p "${APP_DIR}/Contents/MacOS" "${APP_DIR}/Contents/Resources"
 
 echo "Building the App Store-safe Swift product…"
@@ -42,7 +47,8 @@ ESPCONTROL_APP_STORE=1 swift build \
     --package-path "${PROJECT_DIR}" \
     --configuration release \
     --product "${EXECUTABLE_NAME}" \
-    -Xswiftc -DAPP_STORE
+    -Xswiftc -DAPP_STORE \
+    -Xswiftc -warnings-as-errors
 
 BUILD_BIN_PATH="$(ESPCONTROL_APP_STORE=1 swift build \
     --package-path "${PROJECT_DIR}" \
@@ -72,6 +78,11 @@ plutil -replace CFBundleShortVersionString -string "${VERSION}" "${APP_DIR}/Cont
 plutil -replace CFBundleVersion -string "${BUILD_NUMBER}" "${APP_DIR}/Contents/Info.plist"
 plutil -lint "${APP_DIR}/Contents/Info.plist"
 plutil -lint "${APP_DIR}/Contents/Resources/PrivacyInfo.xcprivacy"
+if [[ "$(plutil -extract LSApplicationCategoryType raw "${APP_DIR}/Contents/Info.plist")" != \
+      "public.app-category.utilities" ]]; then
+    echo "The App Store bundle must declare its Utilities category." >&2
+    exit 1
+fi
 
 SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 codesign --force --options runtime \
@@ -93,6 +104,7 @@ echo "Built and verified: ${APP_DIR}"
 
 if [[ "${CREATE_PKG}" == "1" ]]; then
     PKG_PATH="${OUTPUT_DIR}/EspControl-Companion-${VERSION}.pkg"
+    rm -f "${PKG_PATH}"
     productbuild \
         --component "${APP_DIR}" /Applications \
         --sign "${INSTALLER_IDENTITY}" \

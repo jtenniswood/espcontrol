@@ -17,11 +17,11 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>EspControl Companion</string>
+	<string>EspControl</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>1.0.0</string>
 	<key>CFBundleSupportedPlatforms</key>
 	<array>
 		<string>MacOSX</string>
@@ -32,12 +32,14 @@
 	<false/>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSAccessibilityUsageDescription</key>
-	<string>EspControl Companion uses Accessibility only after you allow it, to replay keyboard shortcuts sent from your paired display.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>EspControl Companion uses Apple Events to identify the folder shown in the frontmost Finder window.</string>
+	<key>NSAppBundlesUsageDescription</key>
+	<string>EspControl Companion reads installed app names so you can choose which apps your paired display may launch or control.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 jtenniswood</string>
 	<key>NSLocalNetworkUsageDescription</key>

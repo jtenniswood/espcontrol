@@ -133,12 +133,25 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var nowPlayingArtwork: NSImage?
     @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
     @Published private(set) var systemMetricsSupported = false
+    @Published var shareSystemMetricsEnabled: Bool {
+        didSet {
+            defaults.set(shareSystemMetricsEnabled, forKey: Keys.shareSystemMetrics)
+            if !shareSystemMetricsEnabled {
+                latestSystemMetricsSnapshot = nil
+                if isConnected && systemMetricsSupported {
+                    connection.publishSystemMetricsUnavailable()
+                }
+            }
+            updateSystemMetricsProvider()
+        }
+    }
 
     private enum Keys {
         static let host = "panelHost"
         static let pairingAccount = "pairingAccount"
         static let approvedApplications = "approvedApplications"
         static let approvedFolders = "approvedFolders"
+        static let shareSystemMetrics = "shareSystemMetrics"
     }
     private static let preferencesSuite = "io.espcontrol.companion"
     private static let legacyPreferencesSuite = "EspControl Companion"
@@ -177,6 +190,7 @@ final class CompanionStore: NSObject, ObservableObject {
         approvedFolders = stableDefaults.data(forKey: Keys.approvedFolders)
             .flatMap { try? JSONDecoder().decode([ApprovedFolder].self, from: $0) }
             ?? []
+        shareSystemMetricsEnabled = stableDefaults.bool(forKey: Keys.shareSystemMetrics)
         let savedPairingAccounts = KeychainStore.accounts(service: KeychainStore.service)
         let configuredPanelHost = stableDefaults.string(forKey: Keys.host)
             ?? legacyDefaults?.string(forKey: Keys.host)
@@ -213,7 +227,7 @@ final class CompanionStore: NSObject, ObservableObject {
         }
         systemMetricsProvider.onSnapshot = { [weak self] snapshot in
             guard let self else { return }
-            guard isConnected && systemMetricsSupported else { return }
+            guard isConnected && systemMetricsSupported && shareSystemMetricsEnabled else { return }
             latestSystemMetricsSnapshot = snapshot
             systemMetricsStatus = "Sharing processor, memory, storage, network and battery statistics"
             if isConnected { connection.publishSystemMetrics(snapshot) }
@@ -385,6 +399,7 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func focusedFinderFolderActionIdentifier() -> String {
+        guard !approvedFolders.isEmpty else { return "" }
         guard let path = focusedFinderFolderPath() else { return "" }
         return ApprovedFolder.actionIdentifier(forFocusedPath: path, in: approvedFolders)
     }
@@ -527,17 +542,22 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateSystemMetricsProvider() {
-        if isConnected && systemMetricsSupported {
+        if isConnected && systemMetricsSupported && shareSystemMetricsEnabled {
             systemMetricsStatus = "Collecting Mac system statistics…"
             systemMetricsProvider.start()
         } else {
             systemMetricsProvider.stop()
-            systemMetricsStatus = "Waiting for a panel connection"
+            systemMetricsStatus = shareSystemMetricsEnabled
+                ? "Waiting for a panel connection"
+                : "System statistics sharing is off"
         }
     }
 
     func setSystemMetricsSupported(_ supported: Bool) {
         systemMetricsSupported = supported
+        if supported && isConnected && !shareSystemMetricsEnabled {
+            connection.publishSystemMetricsUnavailable()
+        }
         updateSystemMetricsProvider()
     }
 
@@ -566,7 +586,7 @@ final class CompanionStore: NSObject, ObservableObject {
         connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
     func republishCurrentSystemMetrics() {
-        guard isConnected, systemMetricsSupported,
+        guard isConnected, systemMetricsSupported, shareSystemMetricsEnabled,
               let snapshot = latestSystemMetricsSnapshot else { return }
         connection.publishSystemMetrics(snapshot, force: true)
     }

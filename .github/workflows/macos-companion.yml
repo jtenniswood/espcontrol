@@ -16,12 +16,12 @@ permissions:
 jobs:
   build:
     name: Build and verify App Store bundle
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7.0.1
 
       - name: Run Companion tests
-        run: swift test --package-path macos/Companion
+        run: swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
 
       - name: Build App Store-safe bundle
         run: ALLOW_ADHOC=1 macos/Companion/Packaging/build_app_store.sh
@@ -34,7 +34,10 @@ jobs:
           test -f "${APP}/Contents/Resources/PrivacyInfo.xcprivacy"
           plutil -lint "${APP}/Contents/Info.plist"
           plutil -lint "${APP}/Contents/Resources/PrivacyInfo.xcprivacy"
-          codesign --display --entitlements :- "${APP}"
+          VERSION="$(plutil -extract CFBundleShortVersionString raw "${APP}/Contents/Info.plist")"
+          test "${VERSION%%.*}" -ge 1
+          test "$(plutil -extract LSApplicationCategoryType raw "${APP}/Contents/Info.plist")" = "public.app-category.utilities"
+          codesign --display --entitlements - "${APP}"
           ! strings "${APP}/Contents/MacOS/EspControl Companion" | grep -E -q 'MediaRemote\.framework|MRMediaRemote'
 
       - uses: actions/upload-artifact@v7

@@ -18,7 +18,7 @@ your Mac and are not sent to the display.
 
 ## Information sent to your display
 
-When enabled, the app sends the paired display optional processor, memory,
+Only after you enable **Share Mac system statistics**, the app sends the paired display processor, memory,
 storage, network-throughput, and battery percentages. It can also send the
 names and opaque identifiers of installed applications and user-approved
 folders so the display can present Companion cards. These messages stay on
@@ -33,9 +33,11 @@ code is shown only on the display and is not returned by its browser API.
 
 ## Permissions
 
-Folder access is granted only when you choose a folder in the app. Accessibility
-access is optional and is used only to replay a keyboard shortcut requested by
-a Companion card. You can remove either permission in macOS System Settings.
+Folder access is granted only when you choose a folder in the app. Finder
+automation is requested only when an approved folder needs to be matched to the
+frontmost Finder window. Accessibility access is optional and is used only to
+replay a keyboard shortcut requested by a Companion card. You can remove these
+permissions in macOS System Settings.
 
 ## Deletion and support
 

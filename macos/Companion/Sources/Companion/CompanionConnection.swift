@@ -2,11 +2,22 @@ import CryptoKit
 @preconcurrency import Foundation
 import Security
 
-private final class CompanionSessionDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDelegate {
+private final class AuthenticationChallengeCompletion: @unchecked Sendable {
+    private let handler: (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+
+    init(_ handler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        self.handler = handler
+    }
+
+    func callAsFunction(_ disposition: URLSession.AuthChallengeDisposition, _ credential: URLCredential?) {
+        handler(disposition, credential)
+    }
+}
+
+private final class CompanionSessionDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDelegate, @unchecked Sendable {
     var onOpen: ((URLSessionWebSocketTask) -> Void)?
     var onClose: ((URLSessionWebSocketTask) -> Void)?
-    var onChallenge: ((URLAuthenticationChallenge,
-                       @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) -> Void)?
+    var onChallenge: ((URLAuthenticationChallenge, AuthenticationChallengeCompletion) -> Void)?
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask,
                     didOpenWithProtocol _: String?) {
@@ -24,7 +35,7 @@ private final class CompanionSessionDelegate: NSObject, URLSessionDelegate, URLS
             completionHandler(.performDefaultHandling, nil)
             return
         }
-        onChallenge(challenge, completionHandler)
+        onChallenge(challenge, AuthenticationChallengeCompletion(completionHandler))
     }
 }
 
@@ -188,7 +199,7 @@ final class CompanionConnection: NSObject {
 
     private func handleAuthenticationChallenge(
         _ challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+        completionHandler: AuthenticationChallengeCompletion
     ) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let trust = challenge.protectionSpace.serverTrust,

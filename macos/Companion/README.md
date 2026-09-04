@@ -1,6 +1,6 @@
 # EspControl Companion for macOS
 
-This is a deliberately small macOS 13+ menu-bar app for the Companion card proof of concept. The App Store packaging and submission checklist is in [APP_STORE.md](APP_STORE.md).
+EspControl Companion is a native macOS 13+ menu-bar app for securely connecting a Mac to an EspControl display. The App Store packaging and submission checklist is in [APP_STORE.md](APP_STORE.md).
 
 For the quickest local test, double-click **Run EspControl Companion.command**. macOS may ask you to confirm that you want to open a downloaded script. Keep its Terminal window open while testing; press Control-C there to stop the app.
 

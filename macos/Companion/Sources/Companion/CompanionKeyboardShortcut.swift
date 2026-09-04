@@ -2,11 +2,12 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
+@MainActor
 final class CompanionAccessibilityAuthorizer {
     static let shared = CompanionAccessibilityAuthorizer(
         isProcessTrusted: AXIsProcessTrusted,
         requestPrompt: {
-            let prompt = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            let prompt = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(prompt)
         }
     )
@@ -74,6 +75,7 @@ struct CompanionKeyboardShortcut {
         !requiresMacOS15 || version.majorVersion >= 15
     }
 
+    @MainActor
     func replay() -> Bool {
         guard isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else { return false }
         guard CompanionAccessibilityAuthorizer.shared.isTrusted() else { return false }

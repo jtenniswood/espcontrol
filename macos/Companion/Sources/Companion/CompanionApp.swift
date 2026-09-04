@@ -171,6 +171,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
 
 }
 
+@MainActor
 private func activateCompanionApplication() {
     NSApp.setActivationPolicy(.regular)
     NSApp.unhide(nil)
@@ -179,33 +180,6 @@ private func activateCompanionApplication() {
         .activateIgnoringOtherApps,
     ])
     NSApp.activate(ignoringOtherApps: true)
-}
-
-private func focusSettingsWindow(
-    attemptsRemaining: Int = 8,
-    completion: (() -> Void)? = nil
-) {
-    activateCompanionApplication()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        guard let window = NSApp.windows.first(where: {
-            $0.title.localizedCaseInsensitiveContains("Settings")
-        }) else {
-            if attemptsRemaining > 1 {
-                focusSettingsWindow(
-                    attemptsRemaining: attemptsRemaining - 1,
-                    completion: completion
-                )
-            }
-            return
-        }
-
-        window.level = .normal
-        window.orderFrontRegardless()
-        window.makeMain()
-        window.makeKeyAndOrderFront(nil)
-        activateCompanionApplication()
-        completion?()
-    }
 }
 
 private enum CompanionSettingsField: Hashable {
@@ -246,12 +220,12 @@ private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
     @State private var applicationSearch = ""
-    @State private var selectedPage: CompanionSettingsPage = .about
+    @AppStorage("settings.selectedPage") private var selectedPageID = CompanionSettingsPage.about.rawValue
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
         NavigationSplitView {
-            List(CompanionSettingsPage.allCases, selection: $selectedPage) { page in
+            List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
                 Label(page.title, systemImage: page.icon)
                     .tag(page)
             }
@@ -261,9 +235,6 @@ private struct CompanionSettings: View {
             detailView
         }
         .navigationSplitViewStyle(.balanced)
-        .onAppear {
-            focusSettingsWindow()
-        }
         .task { store.refreshApplications() }
         .onChange(of: store.isConnected) { connected in
             if connected { pairingCode = "" }
@@ -284,6 +255,17 @@ private struct CompanionSettings: View {
         case .general:
             generalPage
         }
+    }
+
+    private var selectedPage: CompanionSettingsPage {
+        CompanionSettingsPage(rawValue: selectedPageID) ?? .about
+    }
+
+    private var selectedPageBinding: Binding<CompanionSettingsPage> {
+        Binding(
+            get: { selectedPage },
+            set: { selectedPageID = $0.rawValue }
+        )
     }
 
     private var aboutPage: some View {
@@ -488,6 +470,13 @@ private struct CompanionSettings: View {
                 }
             } else {
                 Text("Login item management is not available on this version of macOS.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Privacy") {
+                Toggle("Share Mac system statistics", isOn: $store.shareSystemMetricsEnabled)
+                Text("When enabled, processor, memory, storage, network and battery percentages are sent only to your paired display on the local network.")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
             }
         }
