@@ -36,6 +36,8 @@
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>EspControl Companion uses Accessibility only after you allow it, to replay keyboard shortcuts sent from your paired display.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>EspControl Companion uses Apple Events to identify the folder shown in the frontmost Finder window.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 jtenniswood</string>
 	<key>NSLocalNetworkUsageDescription</key>

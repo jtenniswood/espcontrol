@@ -384,12 +384,11 @@ export interface BackupPanelSettingsState {
 
 function normalizeScreensaverMode(value: unknown): string {
   const mode = String(value || "disabled");
-  return mode === "sensor" || mode === "timer" || mode === "disabled" ? mode : "disabled";
+  return mode === "sensor" || mode === "timer" || mode === "companion" || mode === "disabled" ? mode : "disabled";
 }
 
 export function normalizeCoverArtSource(value: unknown): string {
-  void value;
-  return "Home Assistant";
+  return String(value || "") === "Mac Companion" ? "Mac Companion" : "Home Assistant";
 }
 
 function normalizeScreenRotationValue(value: unknown, options: readonly string[]): string {

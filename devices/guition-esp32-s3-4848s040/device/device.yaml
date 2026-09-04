@@ -614,7 +614,13 @@ select:
       then:
         - lambda: |-
             id(cover_art_companion_source_active) = id(cover_art_source).current_option() == "Mac Companion";
-            id(cover_art_playback_stopped).execute();
+            if (id(cover_art_companion_source_active)) {
+              auto &handler = companion_now_playing_handler();
+              if (handler) handler(companion_runtime_snapshot().now_playing);
+              esphome::companion::request_companion_now_playing_artwork();
+            } else {
+              id(cover_art_playback_stopped).execute();
+            }
             id(cover_art_resubscribe).execute();
 
   - platform: template

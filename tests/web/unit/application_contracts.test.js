@@ -54,6 +54,8 @@ describe("browserless application contracts", () => {
     assert.match(connectors, /setHidden\(homeAssistantActionInfo, value\.home_assistant\.actions_confirmed\)/);
     assert.match(connectors, /sp-connector-info/);
     assert.match(connectors, /cannot perform actions in Home Assistant/);
+    assert.match(connectors, /connectors\/home-assistant\/complete/);
+    assert.match(connectors, /I enabled Home Assistant actions/);
     assert.doesNotMatch(connectors, /Actions confirmed/);
     assert.match(companion, /setHidden\(instructions, value\.connected\)/);
     assert.match(companion, /setHidden\(badge, !value\.paired\)/);

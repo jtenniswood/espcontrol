@@ -679,7 +679,9 @@ void CompanionService::expire_now_playing_() {
   auto snapshot = companion_runtime_snapshot().now_playing;
   snapshot.playback_state = CompanionPlaybackState::UNAVAILABLE;
   snapshot.artwork_follows = false;
-  companion_set_now_playing(std::move(snapshot));
+  this->defer([snapshot = std::move(snapshot)]() mutable {
+    companion_set_now_playing(std::move(snapshot));
+  });
 }
 
 void CompanionService::send_(int socket_fd, const std::string &message) {
@@ -752,11 +754,13 @@ void CompanionService::set_connected_(bool connected) {
     this->reset_artwork_transfer_("connection closed");
     this->disconnect_grace_expires_at_.store(millis() + NOW_PLAYING_RECONNECT_GRACE_MS);
   }
-  companion_set_connected(connected);
-  if (!connected) {
-    companion_set_actions({});
-    companion_set_timezone_id("");
-  }
+  this->defer([connected]() {
+    companion_set_connected(connected);
+    if (!connected) {
+      companion_set_actions({});
+      companion_set_timezone_id("");
+    }
+  });
 }
 
 void CompanionService::publish_catalogue_() { this->send_(this->authenticated_socket_, "CATALOGUE|requested"); }

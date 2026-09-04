@@ -7,6 +7,7 @@ import {
   parseEntityEventData,
   resetStateForConnection,
 } from "../../src/webserver/state/event_state";
+import { normalizeBackupPanelSettings } from "../../src/webserver/model";
 import {
   isC6FirmwareInstallButtonEvent,
   isFirmwareUpdateEvent,
@@ -52,6 +53,30 @@ export function runStateContractTests(): void {
   equal(first.alarmDelayTtsOn, true, "alarm delay TTS defaults on");
   equal(first.alarmDelayFinalCountdown, 10, "alarm delay final countdown defaults to ten seconds");
   equal(first.coverArtSource, "Home Assistant", "cover art defaults to the Home Assistant source");
+  const restoredCompanionSettings = normalizeBackupPanelSettings({
+    screensaver_mode: "companion",
+    cover_art_source: "Mac Companion",
+  }, {
+    timezone: "UTC",
+    language: "en",
+    clockFormat: "12",
+    clockFormatOptions: ["12"],
+    ntpDefaults: ["", "", ""],
+    ntpServer1: "",
+    ntpServer2: "",
+    ntpServer3: "",
+    coverArtHomeAssistantProtocol: "auto",
+    coverArtHomeAssistantPort: 8123,
+    coverArtHomeAssistantEndpointMode: "auto",
+    autoUpdate: false,
+    updateFrequency: "daily",
+    updateFrequencyOptions: ["daily"],
+    screenRotationOptions: ["0"],
+  });
+  equal(restoredCompanionSettings.screensaverMode, "companion",
+    "backup restore preserves Companion screensaver mode");
+  equal(restoredCompanionSettings.coverArtSource, "Mac Companion",
+    "backup restore preserves the Mac cover-art source");
   first.grid[0] = 9;
   first.buttons[0]!.label = "Changed";
   equal(second.grid[0], 0, "state factories do not share grid arrays");

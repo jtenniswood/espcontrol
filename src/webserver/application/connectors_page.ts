@@ -63,6 +63,7 @@ export function createConnectorsPageFeature(
     let homeAssistantInstructions: HTMLElement | null = null;
     let homeAssistantSteps: HTMLElement | null = null;
     let homeAssistantActionInfo: HTMLElement | null = null;
+    let homeAssistantConfirmButton: HTMLButtonElement | null = null;
     let homeAssistantBadge: HTMLElement | null = null;
     let current: ConnectorsStatus | null = null;
     const statusListeners: Array<() => void> = [];
@@ -114,6 +115,10 @@ export function createConnectorsPageFeature(
         // warning visible until that permission has actually been confirmed.
         setHidden(homeAssistantSteps, value.home_assistant.connected);
         setHidden(homeAssistantActionInfo, value.home_assistant.actions_confirmed);
+        if (homeAssistantConfirmButton) {
+            homeAssistantConfirmButton.disabled = !value.home_assistant.connected ||
+                value.home_assistant.actions_confirmed;
+        }
         setHidden(homeAssistantInstructions, value.home_assistant.connected &&
             value.home_assistant.actions_confirmed);
         setHidden(homeAssistantBadge, !value.home_assistant.connected);
@@ -170,7 +175,30 @@ export function createConnectorsPageFeature(
         homeAssistantActionInfo = actionInfo;
         actionInfo.className = "sp-connector-info";
         actionInfo.setAttribute("role", "note");
-        actionInfo.textContent = "3. Enable ‘Allow the device to perform Home Assistant actions’ in the device configuration. Without this, the screen cannot perform actions in Home Assistant.";
+        actionInfo.appendChild(document.createTextNode(
+            "3. Enable ‘Allow the device to perform Home Assistant actions’ in the device configuration. Without this, the screen cannot perform actions in Home Assistant.",
+        ));
+        homeAssistantConfirmButton = document.createElement("button");
+        homeAssistantConfirmButton.type = "button";
+        homeAssistantConfirmButton.className = "sp-button";
+        homeAssistantConfirmButton.textContent = "I enabled Home Assistant actions";
+        homeAssistantConfirmButton.disabled = true;
+        homeAssistantConfirmButton.addEventListener("click", async function () {
+            if (!current?.home_assistant.connected || !homeAssistantConfirmButton) return;
+            homeAssistantConfirmButton.disabled = true;
+            try {
+                const response = await fetch("/connectors/home-assistant/complete", {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                });
+                if (!response.ok) throw new Error("Home Assistant action permission was not accepted");
+                applyStatus(await response.json() as ConnectorsStatus);
+            } catch {
+                if (homeAssistantConfirmButton) homeAssistantConfirmButton.disabled = false;
+            }
+        });
+        actionInfo.appendChild(document.createElement("br"));
+        actionInfo.appendChild(homeAssistantConfirmButton);
         homeAssistantInstructions.appendChild(actionInfo);
         body.insertBefore(homeAssistantInstructions, homeAssistantStatus);
 
