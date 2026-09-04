@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "companion_capabilities_generated.h"
 #include "companion_timezone.h"
 
 #ifdef USE_WEBSERVER
@@ -246,24 +247,17 @@ inline void companion_set_now_playing(CompanionNowPlayingSnapshot snapshot) {
 }
 
 inline bool companion_metric_key_valid(const std::string &key) {
-  return key == "stat.cpu" || key == "stat.memory" ||
-         key == "stat.memory_free" || key == "stat.storage" ||
-         key == "stat.storage_free" || key == "stat.battery" ||
-         key == "stat.network_throughput";
+  return companion_metric_capability(key) != nullptr;
 }
 
 inline const char *companion_metric_label_key(const std::string &key) {
-  if (key == "stat.cpu") return "processor";
-  if (key == "stat.memory" || key == "stat.memory_free") return "memory";
-  if (key == "stat.storage" || key == "stat.storage_free") return "storage";
-  if (key == "stat.battery") return "battery";
-  if (key == "stat.network_throughput") return "network_throughput";
-  return "";
+  const auto *capability = companion_metric_capability(key);
+  return capability ? capability->label_key : "";
 }
 
 inline const char *companion_metric_default_unit(const std::string &key) {
-  if (key == "stat.network_throughput") return "MB/s";
-  return companion_metric_key_valid(key) ? "%" : "";
+  const auto *capability = companion_metric_capability(key);
+  return capability ? capability->unit : "";
 }
 
 inline bool companion_metric_value(const CompanionRuntimeSnapshot &snapshot,
@@ -339,8 +333,7 @@ inline void companion_set_actions(std::vector<CompanionAction> actions) {
 }
 
 inline bool companion_media_action_valid(const std::string &action_id) {
-  return action_id == "media.play_pause" || action_id == "media.previous" ||
-         action_id == "media.next";
+  return companion_generated_media_action_valid(action_id);
 }
 
 inline void companion_set_media_actions_supported(bool supported) {
@@ -607,49 +600,13 @@ inline std::string companion_shortcut_label(const std::string &action_id) {
   return label + key;
 }
 
-struct CompanionWindowActionDefinition {
-  const char *id;
-  const char *label;
-};
-
-inline const std::vector<CompanionWindowActionDefinition> &companion_window_actions() {
-  static const std::vector<CompanionWindowActionDefinition> actions{
-    {"window.close", "Close"},
-    {"window.minimize", "Minimise"},
-    {"window.hide", "Hide App"},
-    {"window.fullscreen", "Full Screen"},
-    {"window.fill", "Fill Desktop"},
-    {"window.center", "Centre"},
-    {"window.left", "Left"},
-    {"window.right", "Right"},
-    {"window.top", "Top"},
-    {"window.bottom", "Bottom"},
-    {"window.restore", "Return to Previous Size"},
-    {"window.arrange.left-right", "Left & Right"},
-    {"window.arrange.right-left", "Right & Left"},
-    {"window.arrange.top-bottom", "Top & Bottom"},
-    {"window.arrange.bottom-top", "Bottom & Top"},
-    {"window.arrange.left-quarters", "Left & Quarters"},
-    {"window.arrange.right-quarters", "Right & Quarters"},
-    {"window.arrange.top-quarters", "Top & Quarters"},
-    {"window.arrange.bottom-quarters", "Bottom & Quarters"},
-  };
-  return actions;
-}
-
 inline bool companion_window_action_valid(const std::string &action_id) {
-  const auto &actions = companion_window_actions();
-  return std::any_of(actions.begin(), actions.end(), [&action_id](const auto &action) {
-    return action_id == action.id;
-  });
+  return companion_window_capability(action_id) != nullptr;
 }
 
 inline std::string companion_window_action_label(const std::string &action_id) {
-  const auto &actions = companion_window_actions();
-  const auto action = std::find_if(actions.begin(), actions.end(), [&action_id](const auto &candidate) {
-    return action_id == candidate.id;
-  });
-  return action == actions.end() ? "" : action->label;
+  const auto *capability = companion_window_capability(action_id);
+  return capability ? capability->label : "";
 }
 
 inline bool companion_action_available(const std::string &action_id) {

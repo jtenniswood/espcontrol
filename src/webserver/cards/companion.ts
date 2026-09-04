@@ -6,6 +6,19 @@ import {
     cardContractPickerKey,
     CARD_RUNTIME_SPECS,
 } from "../generated/card_contract";
+import {
+    COMPANION_MEDIA_ACTIONS,
+    COMPANION_MEDIA_PLAY_PAUSE_ACTION,
+    COMPANION_SYSTEM_METRICS,
+    COMPANION_WINDOW_ACTIONS,
+} from "../generated/companion_capabilities";
+import type { CompanionSystemMetric } from "../generated/companion_capabilities";
+export {
+    COMPANION_MEDIA_ACTIONS,
+    COMPANION_MEDIA_PLAY_PAUSE_ACTION,
+    COMPANION_SYSTEM_METRICS,
+    COMPANION_WINDOW_ACTIONS,
+} from "../generated/companion_capabilities";
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 import type { ConfigCodecFeature } from "../application/config_codec";
@@ -29,39 +42,12 @@ export interface CompanionAction {
     readonly label: string;
 }
 
-interface CompanionWindowAction {
-    readonly id: string;
-    readonly label: string;
-    readonly group: string;
-}
-
 const COMPANION_URL_PREFIX = "url.";
 const COMPANION_STATS_PLACEHOLDER = "stats";
 export const COMPANION_FOLDER_PREFIX = "folder.";
 const COMPANION_FINDER_ID = "com.apple.finder";
 const COMPANION_WINDOW_PREFIX = "window.";
-const COMPANION_STATS_MODES = "stats,processor,memory_usage,storage,battery,network_throughput".split(",");
-export const COMPANION_WINDOW_ACTIONS: readonly CompanionWindowAction[] = [
-    { id: "window.close", label: "Close", group: "Window" },
-    { id: "window.minimize", label: "Minimise", group: "Window" },
-    { id: "window.hide", label: "Hide App", group: "Window" },
-    { id: "window.fullscreen", label: "Full Screen", group: "Window" },
-    { id: "window.fill", label: "Fill Desktop", group: "Move & Resize" },
-    { id: "window.center", label: "Centre", group: "Move & Resize" },
-    { id: "window.left", label: "Left", group: "Move & Resize" },
-    { id: "window.right", label: "Right", group: "Move & Resize" },
-    { id: "window.top", label: "Top", group: "Move & Resize" },
-    { id: "window.bottom", label: "Bottom", group: "Move & Resize" },
-    { id: "window.restore", label: "Return to Previous Size", group: "Move & Resize" },
-    { id: "window.arrange.left-right", label: "Left & Right", group: "Arrange Windows" },
-    { id: "window.arrange.right-left", label: "Right & Left", group: "Arrange Windows" },
-    { id: "window.arrange.top-bottom", label: "Top & Bottom", group: "Arrange Windows" },
-    { id: "window.arrange.bottom-top", label: "Bottom & Top", group: "Arrange Windows" },
-    { id: "window.arrange.left-quarters", label: "Left & Quarters", group: "Arrange Windows" },
-    { id: "window.arrange.right-quarters", label: "Right & Quarters", group: "Arrange Windows" },
-    { id: "window.arrange.top-quarters", label: "Top & Quarters", group: "Arrange Windows" },
-    { id: "window.arrange.bottom-quarters", label: "Bottom & Quarters", group: "Arrange Windows" },
-];
+const COMPANION_STATS_MODES = ["stats", ...COMPANION_SYSTEM_METRICS.map((metric) => metric.mode)];
 export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
     app: "Monitor",
     shortcut: "Shortcut Command",
@@ -69,34 +55,9 @@ export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
     folder: "Folder Outline",
     stats: "Gauge",
 } as const;
-export const COMPANION_MEDIA_PLAY_PAUSE_ACTION = "media.play_pause";
-export const COMPANION_MEDIA_ACTIONS = [
-    { id: COMPANION_MEDIA_PLAY_PAUSE_ACTION, label: "Play / Pause", icon: "Play Pause" },
-    { id: "media.previous", label: "Previous", icon: "Skip Previous" },
-    { id: "media.next", label: "Next", icon: "Skip Next" },
-] as const;
-interface CompanionSystemMetric {
-    readonly mode: string;
-    readonly id: string;
-    readonly label: string;
-    readonly unit: string;
-    readonly freeId?: string;
-}
-
-export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = [
-    { mode: "processor", id: "stat.cpu", label: "Processor", unit: "%" },
-    { mode: "memory_usage", id: "stat.memory", freeId: "stat.memory_free", label: "Memory", unit: "%" },
-    { mode: "storage", id: "stat.storage", freeId: "stat.storage_free", label: "Storage", unit: "%" },
-    { mode: "battery", id: "stat.battery", label: "Battery", unit: "%" },
-    { mode: "network_throughput", id: "stat.network_throughput", label: "Network", unit: "MB/s" },
-];
-export const COMPANION_STATS_OPTIONS = [
-    ["battery", "Battery"],
-    ["memory_usage", "Memory"],
-    ["network_throughput", "Network"],
-    ["processor", "Processor"],
-    ["storage", "Storage"],
-] as const;
+export const COMPANION_STATS_OPTIONS = COMPANION_SYSTEM_METRICS
+    .map((metric) => [metric.mode, metric.label] as const)
+    .sort((first, second) => first[1].localeCompare(second[1]));
 const COMPANION_SHORTCUT_MODIFIERS = ["command", "control", "option", "shift"] as const;
 const COMPANION_SHORTCUT_KEYS: Readonly<Record<string, string>> = {
     Space: "space", Enter: "enter", Tab: "tab", Escape: "escape",

@@ -116,7 +116,7 @@ TASKS = (
          cache="never"),
     task("generated", ("python3", "scripts/build.py", "--check"),
          ("python3", "scripts/build.py", "--self-test"), profiles=PRODUCT,
-         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/build_web_bundle.js", "scripts/web_source.js"),
+         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "src/webserver/**", "product/v2/**", "compatibility/**", "scripts/build.py", "scripts/build_web_bundle.js", "scripts/web_source.js"),
          generated_inputs=("components/espcontrol/*_generated.h", "docs/generated/**", "docs/public/**", "product/product_snapshot.json"),
          parallel_safe=True, cache="never"),
     task("device-manifest", ("python3", "scripts/check_device_manifest.py"),

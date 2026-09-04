@@ -12,6 +12,7 @@
 
 #include "button_grid_card_runtime.h"
 #include "button_grid_string.h"
+#include "companion_capabilities_generated.h"
 #include "button_grid_saved_config_action_generated.h"
 #include "button_grid_saved_config_access_generated.h"
 #include "button_grid_saved_config_security_generated.h"
@@ -864,18 +865,11 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
 }
 
 inline bool companion_system_metric_config(const ParsedCfg &p) {
-  return p.type == "companion" &&
-    (p.entity == "stat.cpu" || p.entity == "stat.memory" ||
-     p.entity == "stat.memory_free" || p.entity == "stat.storage" ||
-     p.entity == "stat.storage_free" || p.entity == "stat.battery" ||
-     p.entity == "stat.network_throughput");
+  return p.type == "companion" && companion_metric_capability(p.entity) != nullptr;
 }
 
 inline bool subpage_companion_stat_entity_valid(const std::string &entity) {
-  return entity == "stat.cpu" || entity == "stat.memory" ||
-         entity == "stat.memory_free" || entity == "stat.storage" ||
-         entity == "stat.storage_free" || entity == "stat.battery" ||
-         entity == "stat.network_throughput";
+  return companion_metric_capability(entity) != nullptr;
 }
 
 inline bool subpage_companion_stat_config(const ParsedCfg &p) {
@@ -889,16 +883,13 @@ inline bool companion_config_tracker_preserves_card_binding(const ParsedCfg &p) 
 }
 
 inline const char *subpage_companion_stat_default_label(const std::string &entity) {
-  if (entity == "stat.cpu") return "Processor";
-  if (entity == "stat.memory" || entity == "stat.memory_free") return "Memory";
-  if (entity == "stat.storage" || entity == "stat.storage_free") return "Storage";
-  if (entity == "stat.battery") return "Battery";
-  if (entity == "stat.network_throughput") return "Network";
-  return "Processor";
+  const auto *capability = companion_metric_capability(entity);
+  return capability ? capability->label : "Processor";
 }
 
 inline const char *subpage_companion_stat_default_unit(const std::string &entity) {
-  return entity == "stat.network_throughput" ? "MB/s" : "%";
+  const auto *capability = companion_metric_capability(entity);
+  return capability ? capability->unit : "%";
 }
 
 inline std::string date_time_card_options_normalized(const std::string &options,

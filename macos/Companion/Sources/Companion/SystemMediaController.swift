@@ -21,7 +21,7 @@ struct MediaRemoteCommandSource: MediaCommandProviding {
 
 @MainActor
 final class SystemMediaController {
-    static let playPauseID = "media.play_pause"
+    static let playPauseID = CompanionCapabilities.mediaPlayPauseID
     static let outputVolumeID = "media.output_volume"
     static let inputVolumeID = "media.input_volume"
     static let volumeControlIDs = Set([outputVolumeID, inputVolumeID])
@@ -55,9 +55,7 @@ final class SystemMediaController {
     }
 
     static func supports(actionIdentifier: String) -> Bool {
-        actionIdentifier == playPauseID ||
-            actionIdentifier == "media.previous" ||
-            actionIdentifier == "media.next"
+        CompanionCapabilities.mediaCommandByActionID[actionIdentifier] != nil
     }
 
     func perform(actionIdentifier: String) -> Bool {
@@ -65,10 +63,10 @@ final class SystemMediaController {
         return false
 #else
         let command: RemoteCommand
-        switch actionIdentifier {
-        case Self.playPauseID: command = .togglePlayPause
-        case "media.previous": command = .previousTrack
-        case "media.next": command = .nextTrack
+        switch CompanionCapabilities.mediaCommandByActionID[actionIdentifier] {
+        case "togglePlayPause": command = .togglePlayPause
+        case "previousTrack": command = .previousTrack
+        case "nextTrack": command = .nextTrack
         default: return false
         }
         return commandSource.isAvailable && commandSource.send(command: command.rawValue)

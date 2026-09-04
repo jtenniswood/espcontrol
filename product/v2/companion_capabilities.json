@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "windowActions": [
+    { "id": "window.close", "label": "Close", "group": "Window", "key": "w", "modifiers": ["command"], "minimumMacOS": 13 },
+    { "id": "window.minimize", "label": "Minimise", "group": "Window", "key": "m", "modifiers": ["command"], "minimumMacOS": 13 },
+    { "id": "window.hide", "label": "Hide App", "group": "Window", "key": "h", "modifiers": ["command"], "minimumMacOS": 13 },
+    { "id": "window.fullscreen", "label": "Full Screen", "group": "Window", "key": "f", "modifiers": ["control", "command"], "minimumMacOS": 13 },
+    { "id": "window.fill", "label": "Fill Desktop", "group": "Move & Resize", "key": "f", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.center", "label": "Centre", "group": "Move & Resize", "key": "c", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.left", "label": "Left", "group": "Move & Resize", "key": "left", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.right", "label": "Right", "group": "Move & Resize", "key": "right", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.top", "label": "Top", "group": "Move & Resize", "key": "up", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.bottom", "label": "Bottom", "group": "Move & Resize", "key": "down", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.restore", "label": "Return to Previous Size", "group": "Move & Resize", "key": "r", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.arrange.left-right", "label": "Left & Right", "group": "Arrange Windows", "key": "left", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.right-left", "label": "Right & Left", "group": "Arrange Windows", "key": "right", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.top-bottom", "label": "Top & Bottom", "group": "Arrange Windows", "key": "up", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.bottom-top", "label": "Bottom & Top", "group": "Arrange Windows", "key": "down", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.left-quarters", "label": "Left & Quarters", "group": "Arrange Windows", "key": "left", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.right-quarters", "label": "Right & Quarters", "group": "Arrange Windows", "key": "right", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.top-quarters", "label": "Top & Quarters", "group": "Arrange Windows", "key": "up", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.bottom-quarters", "label": "Bottom & Quarters", "group": "Arrange Windows", "key": "down", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 }
+  ],
+  "mediaActions": [
+    { "id": "media.play_pause", "label": "Play / Pause", "icon": "Play Pause", "command": "togglePlayPause" },
+    { "id": "media.previous", "label": "Previous", "icon": "Skip Previous", "command": "previousTrack" },
+    { "id": "media.next", "label": "Next", "icon": "Skip Next", "command": "nextTrack" }
+  ],
+  "systemMetrics": [
+    { "mode": "processor", "id": "stat.cpu", "label": "Processor", "labelKey": "processor", "unit": "%" },
+    { "mode": "memory_usage", "id": "stat.memory", "freeId": "stat.memory_free", "label": "Memory", "labelKey": "memory", "unit": "%" },
+    { "mode": "storage", "id": "stat.storage", "freeId": "stat.storage_free", "label": "Storage", "labelKey": "storage", "unit": "%" },
+    { "mode": "battery", "id": "stat.battery", "label": "Battery", "labelKey": "battery", "unit": "%" },
+    { "mode": "network_throughput", "id": "stat.network_throughput", "label": "Network", "labelKey": "network_throughput", "unit": "MB/s" }
+  ]
+}

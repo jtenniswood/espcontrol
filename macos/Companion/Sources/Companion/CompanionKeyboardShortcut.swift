@@ -11,10 +11,10 @@ struct CompanionKeyboardShortcut {
     let requiresMacOS15: Bool
 
     init?(actionIdentifier: String) {
-        if let action = Self.windowActions[actionIdentifier], let keyCode = Self.keyCodes[action.key] {
+        if let action = CompanionCapabilities.windowActions[actionIdentifier], let keyCode = Self.keyCodes[action.key] {
             self.keyCode = keyCode
             self.flags = action.flags
-            self.requiresMacOS15 = action.requiresMacOS15
+            self.requiresMacOS15 = action.minimumMacOS >= 15
             return
         }
         guard actionIdentifier.hasPrefix(Self.actionPrefix) else { return nil }
@@ -64,34 +64,6 @@ struct CompanionKeyboardShortcut {
         keyUp.post(tap: .cghidEventTap)
         return true
     }
-
-    private struct WindowAction {
-        let key: String
-        let flags: CGEventFlags
-        let requiresMacOS15: Bool
-    }
-
-    private static let windowActions: [String: WindowAction] = [
-        "window.close": .init(key: "w", flags: [.maskCommand], requiresMacOS15: false),
-        "window.minimize": .init(key: "m", flags: [.maskCommand], requiresMacOS15: false),
-        "window.hide": .init(key: "h", flags: [.maskCommand], requiresMacOS15: false),
-        "window.fullscreen": .init(key: "f", flags: [.maskControl, .maskCommand], requiresMacOS15: false),
-        "window.fill": .init(key: "f", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.center": .init(key: "c", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.left": .init(key: "left", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.right": .init(key: "right", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.top": .init(key: "up", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.bottom": .init(key: "down", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.restore": .init(key: "r", flags: [.maskSecondaryFn, .maskControl], requiresMacOS15: true),
-        "window.arrange.left-right": .init(key: "left", flags: [.maskSecondaryFn, .maskControl, .maskShift], requiresMacOS15: true),
-        "window.arrange.right-left": .init(key: "right", flags: [.maskSecondaryFn, .maskControl, .maskShift], requiresMacOS15: true),
-        "window.arrange.top-bottom": .init(key: "up", flags: [.maskSecondaryFn, .maskControl, .maskShift], requiresMacOS15: true),
-        "window.arrange.bottom-top": .init(key: "down", flags: [.maskSecondaryFn, .maskControl, .maskShift], requiresMacOS15: true),
-        "window.arrange.left-quarters": .init(key: "left", flags: [.maskSecondaryFn, .maskControl, .maskAlternate, .maskShift], requiresMacOS15: true),
-        "window.arrange.right-quarters": .init(key: "right", flags: [.maskSecondaryFn, .maskControl, .maskAlternate, .maskShift], requiresMacOS15: true),
-        "window.arrange.top-quarters": .init(key: "up", flags: [.maskSecondaryFn, .maskControl, .maskAlternate, .maskShift], requiresMacOS15: true),
-        "window.arrange.bottom-quarters": .init(key: "down", flags: [.maskSecondaryFn, .maskControl, .maskAlternate, .maskShift], requiresMacOS15: true),
-    ]
 
     private static let keyCodes: [String: CGKeyCode] = [
         "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7,

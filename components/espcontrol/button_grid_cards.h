@@ -168,7 +168,7 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     return;
   }
   const bool url_card = !companion_encoded_url(p.sensor).empty();
-  const bool media_play_pause = p.entity == "media.play_pause";
+  const bool media_play_pause = p.entity == COMPANION_MEDIA_PLAY_PAUSE_ACTION;
   const bool available = url_card
     ? companion_url_available(p.entity, p.sensor)
     : companion_action_available(p.entity);
