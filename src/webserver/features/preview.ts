@@ -109,17 +109,20 @@ const MAC_COMPANION_HIDDEN_CARD_TYPES = new Set([
   "action", "companion", "push", "sensor",
 ]);
 
+const HOME_ASSISTANT_ONLY_CARD_TYPES = new Set([
+  "calendar", "internal", "screen_lock", "slider", "wifi_qr", "wifi_qr_card",
+]);
+
 const LOCAL_CARD_TYPES = new Set([
-  "clock", "internal", "local_sensor", "push", "screen_lock", "timezone",
-  "wifi_qr", "wifi_qr_card",
+  "clock", "local_sensor", "push", "timezone",
 ]);
 
 export type CardPickerConnector = "home_assistant" | "mac_companion";
 
 export function cardTypeConnector(key: string): CardPickerOption["connector"] {
   if (key === "companion" || key.startsWith("companion_")) return "mac_companion";
-  if (key === "slider") return "mixed";
-  if (key === "action" || key === "sensor" || key === "calendar" || key === "subpage") {
+  if (HOME_ASSISTANT_ONLY_CARD_TYPES.has(key)) return "home_assistant";
+  if (key === "action" || key === "sensor" || key === "subpage") {
     return "home_assistant_or_local";
   }
   if (key === "webhook") return "network";
