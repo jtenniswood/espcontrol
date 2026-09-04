@@ -3,8 +3,164 @@
 
 export interface CompanionWindowAction { readonly id: string; readonly label: string; readonly group: string; }
 export interface CompanionSystemMetric { readonly mode: string; readonly id: string; readonly label: string; readonly unit: string; readonly freeId?: string; }
+export interface CompanionCardMode { readonly id: string; readonly label: string; readonly capability: string; readonly defaultIcon: string; }
+export interface CompanionProtocolMessage { readonly id: string; readonly direction: string; readonly authorization: string; }
 
-export const COMPANION_CAPABILITY_VERSION = 1 as const;
+export const COMPANION_CAPABILITY_VERSION = 2 as const;
+export const COMPANION_PROTOCOL_VERSION = 3 as const;
+export const COMPANION_PROTOCOL_PATH = "/companion/v3" as const;
+export const COMPANION_MAXIMUM_TEXT_FRAME_BYTES = 16384 as const;
+export const COMPANION_CARD_MODES: readonly CompanionCardMode[] = [
+  {
+    id: "app",
+    label: "Launch app",
+    capability: "applications",
+    defaultIcon: "Application"
+  },
+  {
+    id: "shortcut",
+    label: "Keyboard shortcut",
+    capability: "keyboard_shortcuts",
+    defaultIcon: "Keyboard"
+  },
+  {
+    id: "url",
+    label: "Open URL",
+    capability: "applications",
+    defaultIcon: "Web"
+  },
+  {
+    id: "folder",
+    label: "Open folder",
+    capability: "folders",
+    defaultIcon: "Folder Open"
+  },
+  {
+    id: "media",
+    label: "Media control",
+    capability: "media_actions",
+    defaultIcon: "Play Pause"
+  },
+  {
+    id: "stats",
+    label: "Stats",
+    capability: "system_metrics",
+    defaultIcon: "Chart Line"
+  },
+  {
+    id: "window",
+    label: "Window control",
+    capability: "window_actions",
+    defaultIcon: "Application"
+  }
+];
+export const COMPANION_PROTOCOL_MESSAGES: readonly CompanionProtocolMessage[] = [
+  {
+    id: "hello",
+    direction: "panel_to_mac",
+    authorization: "public"
+  },
+  {
+    id: "pair.request",
+    direction: "mac_to_panel",
+    authorization: "pairing_window"
+  },
+  {
+    id: "pair.accepted",
+    direction: "panel_to_mac",
+    authorization: "pairing_window"
+  },
+  {
+    id: "auth.request",
+    direction: "mac_to_panel",
+    authorization: "paired"
+  },
+  {
+    id: "auth.accepted",
+    direction: "panel_to_mac",
+    authorization: "paired"
+  },
+  {
+    id: "capabilities",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "catalogue.page",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "action.invoke",
+    direction: "panel_to_mac",
+    authorization: "session"
+  },
+  {
+    id: "action.result",
+    direction: "bidirectional",
+    authorization: "session"
+  },
+  {
+    id: "value.set",
+    direction: "panel_to_mac",
+    authorization: "session"
+  },
+  {
+    id: "value.state",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "focus.changed",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "timezone.changed",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "now_playing",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "system_metrics",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "artwork.begin",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "artwork.ack",
+    direction: "panel_to_mac",
+    authorization: "session"
+  },
+  {
+    id: "artwork.end",
+    direction: "mac_to_panel",
+    authorization: "session"
+  },
+  {
+    id: "artwork.abort",
+    direction: "bidirectional",
+    authorization: "session"
+  },
+  {
+    id: "artwork.request",
+    direction: "panel_to_mac",
+    authorization: "session"
+  },
+  {
+    id: "error",
+    direction: "bidirectional",
+    authorization: "public"
+  }
+];
 export const COMPANION_WINDOW_ACTIONS: readonly CompanionWindowAction[] = [
   {
     id: "window.close",

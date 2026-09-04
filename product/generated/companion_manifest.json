@@ -1,0 +1,9 @@
+{
+  "source": "product/v2/companion_capabilities.json",
+  "generator": "python3 scripts/build.py companion",
+  "outputs": [
+    "src/webserver/generated/companion_capabilities.ts",
+    "components/espcontrol/companion_capabilities_generated.h",
+    "macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift"
+  ]
+}

@@ -10,7 +10,45 @@ struct CompanionWindowActionCapability {
 }
 
 enum CompanionCapabilities {
-    static let version = 1
+    static let version = 2
+    static let protocolVersion = 3
+    static let protocolPath = "/companion/v3"
+    static let maximumTextFrameBytes = 16384
+    static let maximumArtworkBytes = 262144
+    static let artworkChunkBytes = 12288
+    static let pairingWindowSeconds = 900
+    static let protocolMessages: Set<String> = [
+        "hello",
+        "pair.request",
+        "pair.accepted",
+        "auth.request",
+        "auth.accepted",
+        "capabilities",
+        "catalogue.page",
+        "action.invoke",
+        "action.result",
+        "value.set",
+        "value.state",
+        "focus.changed",
+        "timezone.changed",
+        "now_playing",
+        "system_metrics",
+        "artwork.begin",
+        "artwork.ack",
+        "artwork.end",
+        "artwork.abort",
+        "artwork.request",
+        "error",
+    ]
+    static let cardModes: [String: String] = [
+        "app": "Launch app",
+        "shortcut": "Keyboard shortcut",
+        "url": "Open URL",
+        "folder": "Open folder",
+        "media": "Media control",
+        "stats": "Stats",
+        "window": "Window control",
+    ]
     static let windowActions: [String: CompanionWindowActionCapability] = [
         "window.close": .init(key: "w", flags: [.maskCommand], minimumMacOS: 13),
         "window.minimize": .init(key: "m", flags: [.maskCommand], minimumMacOS: 13),
