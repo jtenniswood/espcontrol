@@ -273,6 +273,8 @@ inline bool navigation_return_from_companion_shortcuts_if_needed(
 
 inline bool navigation_open_companion_subpage_if_requested(
     lv_obj_t *main_page_obj) {
+  // Automatic app navigation must never dismiss alarm disarm/countdown UI.
+  if (alarm_display_takeover_active()) return false;
   const std::string requested = companion_pending_auto_subpage_action();
   if (requested.empty()) return false;
   for (const auto &parent : navigation_home_targets()) {

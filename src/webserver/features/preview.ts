@@ -106,7 +106,7 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
 };
 
 const MAC_COMPANION_HIDDEN_CARD_TYPES = new Set([
-  "action", "companion", "internal", "push", "screen_lock", "sensor", "wifi_qr", "wifi_qr_card",
+  "action", "companion", "push", "sensor",
 ]);
 
 const LOCAL_CARD_TYPES = new Set([

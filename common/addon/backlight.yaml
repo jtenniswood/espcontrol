@@ -665,7 +665,8 @@ script:
                            id(cover_art_attribute_conditions_match) &&
                            !(id(cover_art_hide_external_input_enabled).state &&
                              id(cover_art_external_input_active)) &&
-                           !id(cover_art_media_player_entity).state.empty();
+                           (id(cover_art_companion_source_active) ||
+                            !id(cover_art_media_player_entity).state.empty());
                 then:
                   - script.execute: show_cover_art_view
                 else:

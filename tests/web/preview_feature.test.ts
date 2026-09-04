@@ -29,11 +29,12 @@ export function runPreviewFeatureTests(): void {
   equal(cardTypeVisibleForConnector("slider", "home_assistant"), true, "Home Assistant-only cards remain in the Home Assistant picker");
   equal(cardTypeVisibleForConnector("slider", "mac_companion"), true, "Companion volume sliders remain available");
   equal(cardTypeVisibleForConnector("action", "mac_companion"), false, "actions are hidden from Companion");
-  equal(cardTypeVisibleForConnector("internal", "mac_companion"), false, "internal switches are hidden from Companion");
+  equal(cardTypeVisibleForConnector("internal", "mac_companion"), true, "local relays remain available with Companion");
   equal(cardTypeVisibleForConnector("push", "mac_companion"), false, "triggers are hidden from Companion");
   equal(cardTypeVisibleForConnector("sensor", "mac_companion"), false, "sensors are hidden from Companion");
-  equal(cardTypeVisibleForConnector("wifi_qr", "mac_companion"), false, "Wifi Sharing is hidden from Companion");
-  equal(cardTypeVisibleForConnector("screen_lock", "mac_companion"), false, "Screen Lock is hidden from Companion");
+  equal(cardTypeVisibleForConnector("wifi_qr", "mac_companion"), true, "Wifi Sharing remains available with Companion");
+  equal(cardTypeVisibleForConnector("wifi_qr_card", "mac_companion"), true, "Wifi QR cards remain available with Companion");
+  equal(cardTypeVisibleForConnector("screen_lock", "mac_companion"), true, "Screen Lock remains available with Companion");
   equal(cardTypeVisibleForConnector("companion_stats", "mac_companion"), true, "Companion subtypes appear in the Companion picker");
   equal(cardTypeVisibleForConnector("webhook", "home_assistant"), true, "shared webhook cards appear for Home Assistant");
   equal(cardTypeVisibleForConnector("webhook", "mac_companion"), true, "shared webhook cards appear for Companion");
@@ -70,8 +71,8 @@ export function runPreviewFeatureTests(): void {
     }, [], false, false, null, "mac_companion");
   deepEqual(
     companionOptions.map((option) => option.key),
-    ["calendar", "companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "slider", "companion_stats", "webhook", "companion_window"],
-    "Companion picker shows subtypes and shared cards while excluding device-only cards",
+    ["calendar", "internal", "companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "screen_lock", "slider", "companion_stats", "webhook", "wifi_qr", "companion_window"],
+    "Companion picker shows subtypes, shared cards, and connector-independent local controls",
   );
   equal(
     companionOptions.find((option) => option.key === "companion_shortcut")?.icon,
