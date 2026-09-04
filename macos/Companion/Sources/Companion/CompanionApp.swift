@@ -603,12 +603,27 @@ private struct CompanionSettings: View {
                     .padding(.vertical, 8)
             } else {
                 ForEach(filteredApplications) { application in
-                    Toggle(isOn: Binding(
-                        get: { store.applicationIsApproved(application) },
-                        set: { store.setApplication(application, approved: $0) }
-                    )) {
+                    HStack(spacing: 14) {
+                        Image(nsImage: application.icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32, height: 32)
+                            .accessibilityHidden(true)
+
                         Text(application.name)
+                            .font(.system(size: 15, weight: .medium))
+
+                        Spacer(minLength: 16)
+
+                        Toggle("", isOn: Binding(
+                            get: { store.applicationIsApproved(application) },
+                            set: { store.setApplication(application, approved: $0) }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.large)
                     }
+                    .padding(.vertical, 8)
                     Divider()
                 }
             }

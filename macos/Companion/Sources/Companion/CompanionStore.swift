@@ -8,8 +8,19 @@ struct LaunchableApp: Identifiable, Hashable {
     let bundleIdentifier: String
     let name: String
     let url: URL
+    let icon: NSImage
 
     var id: String { bundleIdentifier }
+
+    static func == (lhs: LaunchableApp, rhs: LaunchableApp) -> Bool {
+        lhs.bundleIdentifier == rhs.bundleIdentifier && lhs.name == rhs.name && lhs.url == rhs.url
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(bundleIdentifier)
+        hasher.combine(name)
+        hasher.combine(url)
+    }
 }
 
 struct ApprovedFolder: Codable, Identifiable, Hashable {
@@ -291,7 +302,12 @@ final class CompanionStore: NSObject, ObservableObject {
             let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
                 ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
                 ?? url.deletingPathExtension().lastPathComponent
-            found.append(LaunchableApp(bundleIdentifier: id, name: name, url: url))
+            found.append(LaunchableApp(
+                bundleIdentifier: id,
+                name: name,
+                url: url,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            ))
         }
 
         func scanApplicationRoots(_ roots: [URL]) {

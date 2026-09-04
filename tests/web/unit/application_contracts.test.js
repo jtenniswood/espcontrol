@@ -87,10 +87,13 @@ describe("browserless application contracts", () => {
     const app = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionApp.swift"), "utf8");
     assert.match(store, /approvedApplicationIdentifiers\.contains\(\$0\.bundleIdentifier\)/);
     assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
+    assert.match(store, /NSWorkspace\.shared\.icon\(forFile: url\.path\)/);
     assert.match(app, /case applications/);
     assert.match(app, /TextField\("Search applications"/);
     assert.match(app, /Image\(systemName: "magnifyingglass"\)/);
     assert.match(app, /RoundedRectangle\(cornerRadius: 14, style: \.continuous\)/);
+    assert.match(app, /Image\(nsImage: application\.icon\)/);
+    assert.match(app, /\.toggleStyle\(\.switch\)/);
     assert.match(app, /Button\("Select All"\)/);
     assert.match(app, /Button\("Deselect All"\)/);
   });
