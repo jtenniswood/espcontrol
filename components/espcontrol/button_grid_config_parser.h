@@ -62,6 +62,7 @@ constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_na
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
+constexpr const char *SUBPAGE_CONNECTOR_OPTION = CARD_CONTRACT_OPTION_NAME_SUBPAGE_CONNECTOR;
 // Extract the Nth semicolon-delimited field from a config string
 inline std::string cfg_field(const std::string &cfg, int idx) {
   size_t start = 0;
@@ -736,8 +737,13 @@ inline std::string subpage_card_options_normalized(const std::string &options,
                                                    const std::string &sensor,
                                                    const std::string &precision) {
   std::string out;
+  std::string connector = cfg_option_value(options, SUBPAGE_CONNECTOR_OPTION);
+  if (connector == "mac_companion") out = std::string(SUBPAGE_CONNECTOR_OPTION) + "=" + connector;
   std::string kind = normalize_subpage_kind(cfg_option_value(options, "subpage_kind"));
-  if (!kind.empty()) out = "subpage_kind=" + kind;
+  if (!kind.empty()) {
+    if (!out.empty()) out += ",";
+    out += "subpage_kind=" + kind;
+  }
   if (!sensor.empty() && sensor != "indicator" && precision != "text" &&
       (cfg_option_token_present(options, "large_numbers") ||
        large_numbers_explicitly_disabled(options))) {

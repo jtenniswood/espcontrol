@@ -3519,6 +3519,17 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "domains": [],
     "options": [
       {
+        "name": "subpage_connector",
+        "label": "Subpage Connector",
+        "kind": "choice",
+        "values": [
+          "",
+          "mac_companion"
+        ],
+        "defaultValue": "",
+        "omitDefault": true
+      },
+      {
         "name": "subpage_kind",
         "label": "Subpage Type",
         "kind": "choice",
@@ -3591,6 +3602,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
+        "subpage_connector",
         "subpage_kind",
         "large_numbers"
       ],
@@ -4827,6 +4839,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "state_output_2": "state_output_2",
   "state_precision": "state_precision",
   "state_unit": "state_unit",
+  "subpage_connector": "subpage_connector",
   "subpage_kind": "subpage_kind",
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",

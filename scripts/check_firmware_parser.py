@@ -661,6 +661,8 @@ int main() {
   assert(subpage_companion_stat.sensor == "indicator");
   assert(subpage_companion_stat.unit == "%");
   assert(subpage_companion_stat.options == "subpage_kind=companion_stat");
+  auto companion_subpage = parse_cfg(";Mac Controls;Auto;Auto;;;subpage;;subpage_connector=mac_companion");
+  assert(companion_subpage.options == "subpage_connector=mac_companion");
   auto subpage_companion_stat_invalid = parse_cfg("sensor.cpu;CPU;Auto;Auto;indicator;%;subpage;;subpage_kind=companion_stat");
   assert(subpage_companion_stat_invalid.entity == "stat.cpu");
   assert(subpage_companion_stat_invalid.label == "CPU");

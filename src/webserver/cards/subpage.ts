@@ -11,11 +11,12 @@ import type { ConfigCodecFeature } from "../application/config_codec";
 import type { CoreFeature } from "../application/core";
 import type { ButtonSettingsSelectionFeature } from "../application/button_settings_selection";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
-import { SUBPAGE_KIND_OPTION } from "../application/config_option_core";
+import { SUBPAGE_CONNECTOR_OPTION, SUBPAGE_KIND_OPTION } from "../application/config_option_core";
 import {
     applySubpagePresetConfig,
     normalizeSubpageKind,
     normalizeSubpageOptions,
+    subpageConnector,
     subpageKind,
     subpageKindOptions,
     subpagePresetDefaults,
@@ -53,7 +54,7 @@ export function registerSubpageCardTypes(
         kind: {
             label: "Type",
             idSuffix: "subpage-kind",
-            options: function (this: any) { return subpageKindOptions(); },
+            options: function (this: any, b?: any) { return subpageKindOptions(subpageConnector(b)); },
         },
         labelField: {
             label: "Label",
@@ -141,7 +142,7 @@ export function registerSubpageCardTypes(
             badge: "chevron-right",
         },
     };
-    registry.register("subpage", {
+    var subpageDefinition: any = {
         label: "Subpage",
         allowInSubpage: false,
         hideLabel: true,
@@ -475,6 +476,14 @@ export function registerSubpageCardTypes(
         },
         contextMenuItems: function (this: any, slot?: any, b?: any, helpers?: any) {
             helpers.addCtxItem("cog", "Edit Subpage", function (this: any) { enterSubpage(slot); });
+        },
+    };
+    registry.register("subpage", subpageDefinition);
+    registry.register("companion_subpage", {
+        ...subpageDefinition,
+        label: "Subpage",
+        onSelect: function (this: any, b?: any) {
+            b.options = setConfigOptionValue(b.options, SUBPAGE_CONNECTOR_OPTION, "mac_companion");
         },
     });
     function subpageBadgeLabelHtml(this: any, helpers?: any, label?: any) {

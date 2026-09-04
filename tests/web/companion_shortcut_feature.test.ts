@@ -29,7 +29,10 @@ import {
   resetCompanionMetricPresentation,
 } from "../../src/webserver/cards/companion";
 import {
+  normalizeSubpageConnector,
   normalizeSubpageKind,
+  normalizeSubpageOptions,
+  subpageConnector,
   subpageKindOptions,
 } from "../../src/webserver/application/config_subpage_options";
 import {
@@ -88,9 +91,17 @@ export function runCompanionShortcutFeatureTests(): void {
       typedCard.config.type !== "companion") {
     throw new Error("Companion cards must have a typed in-memory model without changing saved config");
   }
-  if (normalizeSubpageKind("companion_stat") !== "companion_stat" ||
-      !subpageKindOptions().some((option: any) => option[0] === "companion_stat" && option[1] === "Companion Stat")) {
-    throw new Error("Subpage settings must expose the Companion Stat subtype");
+  if (normalizeSubpageKind("companion_stat") !== "companion_stat") {
+    throw new Error("Legacy Companion Stat subpages must remain readable");
+  }
+  if (subpageKindOptions("home_assistant").some((option: any) => option[0] === "companion_stat") ||
+      JSON.stringify(subpageKindOptions("mac_companion")) !== JSON.stringify([["", "Generic"]])) {
+    throw new Error("Home Assistant and Companion subpage type options must remain separate");
+  }
+  if (normalizeSubpageConnector("mac_companion") !== "mac_companion" ||
+      subpageConnector({ options: "subpage_connector=mac_companion" }) !== "mac_companion" ||
+      normalizeSubpageOptions("subpage_connector=mac_companion", "", "") !== "subpage_connector=mac_companion") {
+    throw new Error("Companion subpages must retain their connector marker");
   }
   if (companionCardMode({ entity: "stat.cpu", sensor: "" }) !== "stats") {
     throw new Error("Processor statistics must be grouped under the Stats Companion subtype");

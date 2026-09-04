@@ -66,6 +66,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   companion_media: { icon: "music", description: "Control media playback on the Mac." },
   companion_shortcut: { icon: "apple-keyboard-command", description: "Run a keyboard shortcut on the Mac." },
   companion_stats: { icon: "gauge", description: "Show a Mac system statistic." },
+  companion_subpage: { icon: "view-grid-plus", description: "Open a nested page of Mac Companion cards." },
   companion_url: { icon: "web", description: "Open a URL on the Mac." },
   companion_window: { icon: "window-open", description: "Control the active Mac window." },
   cover: { icon: "window-shutter", description: "Control blinds, curtains, or covers." },
@@ -86,7 +87,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
-  subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
+  subpage: { icon: "view-grid-plus", description: "Open a nested page of Home Assistant cards." },
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
   vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
@@ -101,6 +102,7 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   companion_media: "companion",
   companion_shortcut: "companion",
   companion_stats: "companion",
+  companion_subpage: "subpage",
   companion_url: "companion",
   companion_window: "companion",
 };
@@ -122,7 +124,7 @@ export type CardPickerConnector = "home_assistant" | "mac_companion";
 export function cardTypeConnector(key: string): CardPickerOption["connector"] {
   if (key === "companion" || key.startsWith("companion_")) return "mac_companion";
   if (HOME_ASSISTANT_ONLY_CARD_TYPES.has(key)) return "home_assistant";
-  if (key === "action" || key === "sensor" || key === "subpage") {
+  if (key === "action" || key === "sensor") {
     return "home_assistant_or_local";
   }
   if (key === "webhook") return "network";

@@ -27,6 +27,11 @@ export function runPreviewFeatureTests(): void {
   equal(infoOnlyCardVisible("action", true), false, "actions are hidden in info-only mode");
   equal(defaultCardTypeForPicker("climate"), "climate_control", "picker aliases retain their defaults");
   equal(defaultCardTypeForPicker("companion_stats"), "companion", "Companion subtype pickers use the Companion runtime card");
+  equal(defaultCardTypeForPicker("companion_subpage"), "subpage", "Companion subpages use the shared subpage runtime");
+  equal(cardTypeVisibleForConnector("subpage", "home_assistant"), true, "Home Assistant subpages remain in the Home Assistant picker");
+  equal(cardTypeVisibleForConnector("subpage", "mac_companion"), false, "Home Assistant subpages are hidden from Companion");
+  equal(cardTypeVisibleForConnector("companion_subpage", "home_assistant"), false, "Companion subpages are hidden from Home Assistant");
+  equal(cardTypeVisibleForConnector("companion_subpage", "mac_companion"), true, "Companion subpages remain in the Companion picker");
   for (const key of ["calendar", "internal", "screen_lock", "slider", "wifi_qr", "wifi_qr_card"]) {
     equal(cardTypeConnector(key), "home_assistant", `${key} is classified as Home Assistant-only`);
     equal(cardTypeVisibleForConnector(key, "home_assistant"), true, `${key} remains in the Home Assistant picker`);
@@ -62,6 +67,7 @@ export function runPreviewFeatureTests(): void {
       companion_folder: { label: "Open folder", allowInSubpage: true },
       companion_media: { label: "Media control", allowInSubpage: true },
       companion_stats: { label: "Stats", allowInSubpage: true },
+      companion_subpage: { label: "Subpage", allowInSubpage: false },
       companion_window: { label: "Window control", allowInSubpage: true },
       internal: { label: "Internal Switches", allowInSubpage: true },
       push: { label: "Trigger", allowInSubpage: true },
@@ -71,7 +77,7 @@ export function runPreviewFeatureTests(): void {
     }, [], false, false, null, "mac_companion");
   deepEqual(
     companionOptions.map((option) => option.key),
-    ["companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "companion_stats", "webhook", "companion_window"],
+    ["companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "companion_stats", "companion_subpage", "webhook", "companion_window"],
     "Companion picker excludes Home Assistant-only controls",
   );
   equal(
