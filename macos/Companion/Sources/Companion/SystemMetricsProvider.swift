@@ -3,7 +3,7 @@ import Foundation
 import IOKit.ps
 import SystemConfiguration
 
-struct CompanionSystemMetricsSnapshot: Equatable {
+struct CompanionSystemMetricsSnapshot: Equatable, Sendable {
     let generation: UInt32
     let cpuUsagePercent: Double
     let memoryUsagePercent: Double
@@ -17,21 +17,17 @@ final class SystemMetricsProvider {
     var onSnapshot: ((CompanionSystemMetricsSnapshot) -> Void)?
 
     private var timer: Timer?
+    private var samplingTask: Task<Void, Never>?
+    private var samplingSession: UInt64 = 0
     private var generation: UInt32 = 0
-    private var previousCPUTicks: (active: UInt64, total: UInt64)?
-    private var previousNetworkCounters: NetworkCounters?
+    private let sampler = SystemMetricsSampler()
     private(set) var lastSnapshot: CompanionSystemMetricsSnapshot?
-
-    private struct NetworkCounters {
-        let interfaceName: String
-        let receivedBytes: UInt32
-        let sentBytes: UInt32
-        let timestamp: TimeInterval
-    }
 
     func start() {
         guard timer == nil else { return }
         stop()
+        samplingSession &+= 1
+        refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.refresh() }
         }
@@ -40,26 +36,71 @@ final class SystemMetricsProvider {
     func stop() {
         timer?.invalidate()
         timer = nil
-        previousCPUTicks = nil
-        previousNetworkCounters = nil
+        samplingTask?.cancel()
+        samplingTask = nil
+        samplingSession &+= 1
     }
 
     func refresh() {
+        guard samplingTask == nil else { return }
+        let session = samplingSession
+        samplingTask = Task { [weak self, sampler] in
+            let sample = await sampler.sample(session: session)
+            guard !Task.isCancelled, let self, self.samplingSession == session else { return }
+            self.samplingTask = nil
+            guard let sample else { return }
+            self.generation &+= 1
+            if self.generation == 0 { self.generation = 1 }
+            let snapshot = CompanionSystemMetricsSnapshot(
+                generation: self.generation,
+                cpuUsagePercent: sample.cpuUsagePercent,
+                memoryUsagePercent: sample.memoryUsagePercent,
+                storageUsagePercent: sample.storageUsagePercent,
+                batteryPercent: sample.batteryPercent,
+                networkThroughputKBps: sample.networkThroughputKBps
+            )
+            self.lastSnapshot = snapshot
+            self.onSnapshot?(snapshot)
+        }
+    }
+}
+
+private struct SystemMetricsSample: Sendable {
+    let cpuUsagePercent: Double
+    let memoryUsagePercent: Double
+    let storageUsagePercent: Double
+    let batteryPercent: Double?
+    let networkThroughputKBps: Double?
+}
+
+private actor SystemMetricsSampler {
+    private var activeSession: UInt64?
+    private var previousCPUTicks: (active: UInt64, total: UInt64)?
+    private var previousNetworkCounters: NetworkCounters?
+
+    private struct NetworkCounters {
+        let interfaceName: String
+        let receivedBytes: UInt32
+        let sentBytes: UInt32
+        let timestamp: TimeInterval
+    }
+
+    func sample(session: UInt64) -> SystemMetricsSample? {
+        if activeSession != session {
+            activeSession = session
+            previousCPUTicks = nil
+            previousNetworkCounters = nil
+        }
         guard let cpu = sampleCPUUsagePercent(),
               let memory = Self.memoryUsagePercent(),
-              let storage = Self.storageUsagePercent() else { return }
-        generation &+= 1
-        if generation == 0 { generation = 1 }
-        let snapshot = CompanionSystemMetricsSnapshot(
-            generation: generation,
+              let storage = Self.storageUsagePercent() else { return nil }
+        return SystemMetricsSample(
             cpuUsagePercent: cpu,
             memoryUsagePercent: memory,
             storageUsagePercent: storage,
             batteryPercent: Self.batteryPercent(),
             networkThroughputKBps: sampleNetworkThroughputKBps()
         )
-        lastSnapshot = snapshot
-        onSnapshot?(snapshot)
     }
 
     private func sampleNetworkThroughputKBps() -> Double? {
