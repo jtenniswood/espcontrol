@@ -116,22 +116,10 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    @Published var nowPlayingSharingEnabled: Bool {
-        didSet {
-            defaults.set(nowPlayingSharingEnabled, forKey: "nowPlayingSharingEnabled")
-            updateNowPlayingProvider()
-        }
-    }
     @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
-    @Published var systemMetricsSharingEnabled: Bool {
-        didSet {
-            defaults.set(systemMetricsSharingEnabled, forKey: "systemMetricsSharingEnabled")
-            updateSystemMetricsProvider()
-        }
-    }
     @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
     @Published private(set) var systemMetricsSupported = false
 
@@ -182,11 +170,6 @@ final class CompanionStore: NSObject, ObservableObject {
             ?? UserDefaults.standard.string(forKey: Keys.host)
             ?? KeychainStore.accounts(service: KeychainStore.service).first
             ?? ""
-        nowPlayingSharingEnabled = stableDefaults.object(forKey: "nowPlayingSharingEnabled") as? Bool ?? true
-        systemMetricsSharingEnabled = stableDefaults.object(forKey: "systemMetricsSharingEnabled") as? Bool
-            ?? legacyDefaults?.object(forKey: "systemMetricsSharingEnabled") as? Bool
-            ?? UserDefaults.standard.object(forKey: "systemMetricsSharingEnabled") as? Bool
-            ?? true
         super.init()
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -212,7 +195,7 @@ final class CompanionStore: NSObject, ObservableObject {
         }
         systemMetricsProvider.onSnapshot = { [weak self] snapshot in
             guard let self else { return }
-            guard isConnected && systemMetricsSharingEnabled && systemMetricsSupported else { return }
+            guard isConnected && systemMetricsSupported else { return }
             latestSystemMetricsSnapshot = snapshot
             systemMetricsStatus = "Sharing processor, memory, storage, network and battery statistics"
             if isConnected { connection.publishSystemMetrics(snapshot) }
@@ -508,17 +491,12 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateSystemMetricsProvider() {
-        if isConnected && systemMetricsSharingEnabled && systemMetricsSupported {
+        if isConnected && systemMetricsSupported {
             systemMetricsStatus = "Collecting Mac system statistics…"
             systemMetricsProvider.start()
         } else {
-            if isConnected && systemMetricsSupported && !systemMetricsSharingEnabled {
-                connection.publishSystemMetricsUnavailable()
-                latestSystemMetricsSnapshot = nil
-            }
             systemMetricsProvider.stop()
-            systemMetricsStatus = systemMetricsSharingEnabled
-                ? "Waiting for a panel connection" : "Mac system statistics sharing is disabled"
+            systemMetricsStatus = "Waiting for a panel connection"
         }
     }
 
@@ -528,42 +506,37 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func updateNowPlayingProvider() {
-        if !isConnected || !nowPlayingSharingEnabled {
-            // Do not carry a confirmed session across disconnects or disabled sharing.
+        if !isConnected {
+            // Do not carry a confirmed session across disconnects.
             latestNowPlayingSnapshot = nil
         }
-        if isConnected && nowPlayingSharingEnabled {
+        if isConnected {
             nowPlayingProvider.start()
         } else {
-            if isConnected && !nowPlayingSharingEnabled {
-                nowPlayingProvider.stopAndPublishUnavailable()
-            } else {
-                nowPlayingProvider.stop()
-            }
-            nowPlayingStatus = nowPlayingSharingEnabled
-                ? "Waiting for a panel connection" : "Now Playing sharing is disabled"
+            nowPlayingProvider.stop()
+            nowPlayingStatus = "Waiting for a panel connection"
         }
     }
 
     func republishNowPlayingArtwork(generation: UInt32) {
-        guard isConnected, nowPlayingSharingEnabled,
+        guard isConnected,
               let snapshot = latestNowPlayingSnapshot,
               snapshot.generation == generation else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
 
     func republishCurrentNowPlaying() {
-        guard isConnected, nowPlayingSharingEnabled, let snapshot = latestNowPlayingSnapshot else { return }
+        guard isConnected, let snapshot = latestNowPlayingSnapshot else { return }
         connection.publishNowPlaying(snapshot, forceArtwork: true)
     }
     func republishCurrentSystemMetrics() {
-        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported,
+        guard isConnected, systemMetricsSupported,
               let snapshot = latestSystemMetricsSnapshot else { return }
         connection.publishSystemMetrics(snapshot, force: true)
     }
 
     func publishSystemMetricsUnavailable() {
-        guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported else { return }
+        guard isConnected, systemMetricsSupported else { return }
         latestSystemMetricsSnapshot = nil
         connection.publishSystemMetricsUnavailable()
     }

@@ -604,8 +604,7 @@ private struct CompanionSettings: View {
 
     private var nowPlayingSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Share Mac Now Playing with the display", isOn: $store.nowPlayingSharingEnabled)
-            Text("Shares the active session shown by macOS Control Centre. The state-aware Play / Pause card depends on this setting. This uses a private macOS system interface and may need an EspControl update after a future macOS release.")
+            Text("Shares the active session shown by macOS Control Centre automatically. This uses a private macOS system interface and may need an EspControl update after a future macOS release. No additional macOS permission is required.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 12) {
@@ -628,8 +627,7 @@ private struct CompanionSettings: View {
 
     private var systemMetricsSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Share Mac system statistics with the display", isOn: $store.systemMetricsSharingEnabled)
-            Text("Shares overall processor, memory and storage usage, plus battery level when available. No application, file or browsing details are collected.")
+            Text("Shares overall processor, memory and storage usage, plus battery level when available, automatically. No additional macOS permission is required, and no application, file or browsing details are collected.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(store.systemMetricsStatus)
