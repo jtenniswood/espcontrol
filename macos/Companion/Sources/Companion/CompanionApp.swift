@@ -53,11 +53,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem = item
         if let button = item.button {
-            button.target = self
-            button.action = #selector(statusItemClicked(_:))
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "EspControl Companion"
         }
+        item.menu = contextMenu()
         updateStatusItemImage(connected: store.isConnected)
         connectionObservation = store.$isConnected
             .removeDuplicates()
@@ -80,6 +78,11 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         store.refreshLaunchAtLoginStatus()
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openCompanionWindow()
+        return false
+    }
+
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
               window === settingsWindow else { return }
@@ -87,15 +90,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
             guard self.settingsWindow?.isVisible != true else { return }
             NSApp.setActivationPolicy(.accessory)
         }
-    }
-
-    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        guard let statusItem else { return }
-        // Temporarily attach the menu to the status item so AppKit positions it
-        // directly below the menu-bar icon instead of at the pointer location.
-        statusItem.menu = contextMenu()
-        sender.performClick(nil)
-        statusItem.menu = nil
     }
 
     private func contextMenu() -> NSMenu {
