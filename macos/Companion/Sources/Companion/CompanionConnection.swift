@@ -289,7 +289,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         case "ERROR":
             if parts.count == 3, parts[1] == "authentication_sequence",
                let panelSequence = UInt32(parts[2]), panelSequence < UInt32.max {
-                UserDefaults.standard.set(Int(panelSequence), forKey: authenticationSequenceKey)
+                store.setPreference(Int(panelSequence), forKey: authenticationSequenceKey)
                 store.updateStatus("Authentication counter repaired — reconnecting")
                 connect(mode: .authenticate)
             } else {

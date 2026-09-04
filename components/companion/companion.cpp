@@ -250,8 +250,7 @@ void CompanionService::session_close_(httpd_handle_t server, int socket_fd) {
   (void) server;
   if (global_companion_service) {
     global_companion_service->forget_unauthenticated_socket_(socket_fd);
-    if (socket_fd == global_companion_service->authenticated_socket_.load())
-      global_companion_service->set_connected_(false);
+    global_companion_service->set_connected_(false, socket_fd);
   }
   shutdown(socket_fd, SHUT_RD);
   close(socket_fd);
@@ -304,11 +303,11 @@ esp_err_t CompanionService::handle_websocket_(httpd_req_t *request) {
   frame.payload = payload.data();
   if (httpd_ws_recv_frame(request, &frame, frame.len) != ESP_OK) return ESP_FAIL;
   if (frame.type == HTTPD_WS_TYPE_CLOSE) {
-    if (socket_fd == this->authenticated_socket_.load()) this->set_connected_(false);
+    this->set_connected_(false, socket_fd);
     return ESP_OK;
   }
   if (frame.type == HTTPD_WS_TYPE_BINARY) {
-    if (socket_fd != this->authenticated_socket_.load()) {
+    if (socket_fd != this->session_.authenticated_socket()) {
       this->send_(socket_fd, "ERROR|authenticate_first");
       this->expire_unauthenticated_socket_(socket_fd);
       return ESP_OK;
@@ -346,7 +345,7 @@ CompanionService::AuthenticationResult CompanionService::authenticate_(
 
 void CompanionService::handle_message_(int socket_fd, const std::string &message) {
   if (!message.empty() && message.front() == '{') {
-    if (socket_fd != this->authenticated_socket_.load()) {
+    if (socket_fd != this->session_.authenticated_socket()) {
       this->send_(socket_fd, "ERROR|authenticate_first");
       this->expire_unauthenticated_socket_(socket_fd);
       return;
@@ -369,10 +368,9 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
       this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
-    const int previous_socket = this->authenticated_socket_.load();
+    const int previous_socket = this->session_.authenticate(socket_fd);
     if (previous_socket != -1 && previous_socket != socket_fd)
       httpd_sess_trigger_close(this->server_, previous_socket);
-    this->authenticated_socket_.store(socket_fd);
     companion_set_media_actions_supported(false);
     this->forget_unauthenticated_socket_(socket_fd);
     this->set_connected_(true);
@@ -415,7 +413,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
       this->expire_unauthenticated_socket_(socket_fd);
       return;
     }
-    const int previous_socket = this->authenticated_socket_.load();
+    const int previous_socket = this->session_.authenticated_socket();
     this->set_connected_(false);
     if (previous_socket >= 0 && previous_socket != socket_fd)
       httpd_sess_trigger_close(this->server_, previous_socket);
@@ -438,7 +436,7 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
     this->send_(socket_fd, "PAIRED|" + hex(this->identity_.credential, sizeof(this->identity_.credential)));
     return;
   }
-  if (socket_fd != this->authenticated_socket_.load()) {
+  if (socket_fd != this->session_.authenticated_socket()) {
     this->send_(socket_fd, "ERROR|authenticate_first");
     this->expire_unauthenticated_socket_(socket_fd);
     return;
@@ -658,7 +656,7 @@ void CompanionService::handle_binary_(int socket_fd, const uint8_t *data, size_t
 }
 
 void CompanionService::send_artwork_ack_(uint32_t generation, size_t next_offset) {
-  const int socket_fd = this->authenticated_socket_.load();
+  const int socket_fd = this->session_.authenticated_socket();
   this->send_(socket_fd, "{\"type\":\"artwork.ack\",\"version\":2,\"generation\":" +
       std::to_string(generation) + ",\"nextOffset\":" + std::to_string(next_offset) + "}");
 }
@@ -671,7 +669,7 @@ void CompanionService::reset_artwork_transfer_(const char *reason, bool notify) 
   this->artwork_offset_ = 0;
   this->artwork_generation_ = 0;
   if (reason) ESP_LOGD(TAG, "Artwork transfer reset: %s", reason);
-  const int socket_fd = this->authenticated_socket_.load();
+  const int socket_fd = this->session_.authenticated_socket();
   if (notify && generation != 0 && socket_fd >= 0) {
     this->send_(socket_fd, "{\"type\":\"artwork.abort\",\"version\":2,\"generation\":" +
         std::to_string(generation) + "}");
@@ -749,8 +747,14 @@ void CompanionService::update_authentication_deadline_() {
       (static_cast<int32_t>(now - earliest) >= 0 ? now : earliest));
 }
 
-void CompanionService::set_connected_(bool connected) {
-  if (!connected) this->authenticated_socket_.store(-1);
+void CompanionService::set_connected_(bool connected, int closing_socket) {
+  if (!connected) {
+    if (closing_socket >= 0) {
+      if (!this->session_.disconnect_socket(closing_socket)) return;
+    } else {
+      this->session_.disconnect();
+    }
+  }
   if (connected) {
     this->now_playing_generation_ = 0;
     this->disconnect_grace_expires_at_.store(0);
@@ -768,11 +772,11 @@ void CompanionService::set_connected_(bool connected) {
 }
 
 void CompanionService::publish_catalogue_() {
-  this->send_(this->authenticated_socket_.load(), "CATALOGUE|requested");
+  this->send_(this->session_.authenticated_socket(), "CATALOGUE|requested");
 }
 
 bool CompanionService::invoke_(const std::string &action_id, const std::string &request_id) {
-  const int socket_fd = this->authenticated_socket_.load();
+  const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(action_id, 96) || !safe_field(request_id, 64)) return false;
   this->send_(socket_fd, "INVOKE|" + request_id + "|" + action_id);
   return true;
@@ -780,7 +784,7 @@ bool CompanionService::invoke_(const std::string &action_id, const std::string &
 
 bool CompanionService::invoke_url_(const std::string &app_id, const std::string &encoded_url,
                                    const std::string &request_id) {
-  const int socket_fd = this->authenticated_socket_.load();
+  const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(app_id, 96) ||
       !safe_field(encoded_url, 128) || !safe_field(request_id, 64)) return false;
   this->send_(socket_fd,
@@ -790,7 +794,7 @@ bool CompanionService::invoke_url_(const std::string &app_id, const std::string 
 
 bool CompanionService::invoke_value_(const std::string &control_id, int value,
                                      const std::string &request_id) {
-  const int socket_fd = this->authenticated_socket_.load();
+  const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 ||
       !companion_volume_control_valid(control_id) ||
       value < 0 || value > 100 || !safe_field(request_id, 64)) return false;
@@ -838,7 +842,7 @@ bool CompanionService::paired() const {
 }
 
 void CompanionService::request_now_playing_artwork() {
-  const int socket_fd = this->authenticated_socket_.load();
+  const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || this->now_playing_generation_ == 0) return;
   this->send_(socket_fd,
               "{\"type\":\"artwork.request\",\"version\":2,\"generation\":" +
@@ -847,7 +851,7 @@ void CompanionService::request_now_playing_artwork() {
 
 void CompanionService::revoke_pairing() {
   std::lock_guard<std::mutex> lock(this->pairing_mutex_);
-  const int previous_socket = this->authenticated_socket_.load();
+  const int previous_socket = this->session_.authenticated_socket();
   this->identity_.paired = 0;
   std::fill(this->identity_.credential, this->identity_.credential + sizeof(this->identity_.credential), 0);
   this->preferences_.save(&this->identity_);

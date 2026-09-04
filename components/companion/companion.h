@@ -3,6 +3,7 @@
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/preferences.h"
+#include "session_state.h"
 
 #include <esp_https_server.h>
 
@@ -71,7 +72,7 @@ class CompanionService final : public Component {
   void forget_unauthenticated_socket_(int socket_fd);
   void expire_unauthenticated_socket_(int socket_fd);
   void update_authentication_deadline_();
-  void set_connected_(bool connected);
+  void set_connected_(bool connected, int closing_socket = -1);
   void publish_catalogue_();
   bool invoke_(const std::string &action_id, const std::string &request_id);
   bool invoke_url_(const std::string &app_id, const std::string &encoded_url,
@@ -84,7 +85,7 @@ class CompanionService final : public Component {
   CompanionIdentityPreference identity_{};
   httpd_handle_t server_{nullptr};
   uint16_t port_{8443};
-  std::atomic<int> authenticated_socket_{-1};
+  CompanionSessionState session_{};
   uint32_t last_sequence_{0};
   uint32_t pairing_expires_at_{0};
   uint32_t next_attempt_at_{0};
