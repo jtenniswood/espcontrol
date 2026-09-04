@@ -534,6 +534,7 @@ script:
                         - lvgl.display.set_rotation: 90
                       else:
                         - lvgl.display.set_rotation: 180
+      - script.execute: camera_screensaver_request_image
 
 select:
   - platform: template

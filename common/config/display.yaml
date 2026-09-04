@@ -547,6 +547,7 @@ select:
                 return id(espcontrol_app).display().target_mode_is(
                   espcontrol::DisplayMode::CAMERA);
             then:
+              - lambda: 'id(camera_screensaver_downloaded_image)->cancel_update();'
               - script.execute: camera_screensaver_request_image
 
   - platform: template

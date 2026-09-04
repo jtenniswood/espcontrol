@@ -355,6 +355,7 @@ script:
                       else:
                         - lvgl.display.set_rotation: 180
       - script.execute: cover_art_apply_responsive_layout
+      - script.execute: camera_screensaver_request_image
 
 select:
   - platform: template

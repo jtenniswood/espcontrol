@@ -171,6 +171,7 @@ script:
               return ${screensaver_camera_supported} &&
                      id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA);
           then:
+            - lambda: 'id(camera_screensaver_downloaded_image)->cancel_update();'
             - if:
                 condition:
                   lambda: 'return !id(camera_screensaver_image_available);'
@@ -181,12 +182,20 @@ script:
                 #if defined(CONFIG_IDF_TARGET_ESP32S3)
                 constexpr int camera_decode_width = 320;
                 constexpr int camera_decode_height = 320;
+                #else
+                int camera_decode_width = ${screen_width};
+                int camera_decode_height = ${screen_height};
+                if (auto *display = lv_disp_get_default()) {
+                  const int active_width = lv_disp_get_hor_res(display);
+                  const int active_height = lv_disp_get_ver_res(display);
+                  if (active_width > 0 && active_height > 0) {
+                    camera_decode_width = active_width;
+                    camera_decode_height = active_height;
+                  }
+                }
+                #endif
                 id(camera_screensaver_downloaded_image)->set_target_size(
                     camera_decode_width, camera_decode_height);
-                #else
-                constexpr int camera_decode_width = ${screen_width};
-                constexpr int camera_decode_height = ${screen_height};
-                #endif
                 id(camera_screensaver_downloaded_image)->set_resize_mode(
                     id(screensaver_camera_image_mode).current_option() == "Fill"
                         ? esphome::artwork_image::ImageResizeMode::COVER
@@ -325,6 +334,7 @@ script:
       - script.stop: camera_screensaver_request_image
       - script.stop: camera_screensaver_retry
       - globals.set: { id: camera_screensaver_transition_generation, value: '0' }
+      - lambda: 'id(camera_screensaver_downloaded_image)->cancel_update();'
       - lambda: |-
           #if defined(CONFIG_IDF_TARGET_ESP32S3)
           #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
@@ -333,7 +343,6 @@ script:
           #else
           lv_img_set_src(id(camera_screensaver_image), nullptr);
           #endif
-          id(camera_screensaver_downloaded_image)->cancel_update();
           id(camera_screensaver_downloaded_image)->release();
           id(camera_screensaver_image_available) = false;
           lv_obj_add_flag(id(camera_screensaver_image), LV_OBJ_FLAG_HIDDEN);
