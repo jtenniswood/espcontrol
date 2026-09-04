@@ -956,11 +956,11 @@ export function registerCompanionCardTypes(
             });
         },
         afterSave: function (card?: any, slot?: any, context?: any) {
-            if (context?.isSub || !companionAppShortcutFolderEnabled(card) || state.subpages[slot]) return;
+            if (context?.isSub || !companionAppShortcutFolderEnabled(card) || state.subpages[slot]) return "saved";
             const subpage = createCompanionShortcutSubpage(card.entity);
             codec.buildSubpageGrid(subpage);
             state.subpages[slot] = subpage;
-            codec.saveSubpageConfig(slot);
+            return codec.saveSubpageConfig(slot);
         },
     };
     registry.register("companion", companionDefinition);

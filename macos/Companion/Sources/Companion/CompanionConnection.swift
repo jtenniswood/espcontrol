@@ -56,6 +56,7 @@ final class CompanionConnection: NSObject {
     private var shouldReconnect = false
     private var hasTerminalConnectionError = false
     private var sessionAuthenticated = false
+    private var authenticationRequestOutstanding = false
     private var artworkData: Data?
     private var artworkGeneration: UInt32 = 0
     private var artworkOffset = 0
@@ -133,6 +134,7 @@ final class CompanionConnection: NSObject {
 
     private func tearDownConnection() {
         sessionAuthenticated = false
+        authenticationRequestOutstanding = false
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
@@ -178,6 +180,7 @@ final class CompanionConnection: NSObject {
             let key = SymmetricKey(data: credential)
             let signature = HMAC<SHA256>.authenticationCode(for: Data(signed.utf8), using: key)
             self.startConnectionTimeout(for: webSocketTask)
+            self.authenticationRequestOutstanding = true
             self.sendJSON([
                 "type": "auth.request", "sequence": sequence, "nonce": nonce,
                 "signature": signature.map { String(format: "%02x", $0) }.joined(),
@@ -357,6 +360,8 @@ final class CompanionConnection: NSObject {
             store.updateStatus("Paired — reconnecting")
             connect(mode: .authenticate)
         case "auth.accepted":
+            guard case .authenticate = mode, authenticationRequestOutstanding else { return false }
+            authenticationRequestOutstanding = false
             sessionAuthenticated = true
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
@@ -431,7 +436,8 @@ final class CompanionConnection: NSObject {
 
     func publishNowPlaying(_ snapshot: CompanionNowPlayingSnapshot, forceArtwork: Bool = false) {
         let artworkHash = snapshot.artworkSHA256
-        let shouldSendArtwork = snapshot.artworkJPEG != nil && (forceArtwork ||
+        let hasArtwork = snapshot.artworkJPEG != nil
+        let shouldSendArtwork = hasArtwork && (forceArtwork ||
             snapshot.generation != lastArtworkGeneration || artworkHash != lastArtworkSHA256)
         if artworkData != nil && (shouldSendArtwork || snapshot.generation != artworkGeneration) {
             sendJSON(["type": "artwork.abort", "generation": artworkGeneration])
@@ -445,7 +451,7 @@ final class CompanionConnection: NSObject {
             "contentIdentifier": snapshot.contentIdentifier, "title": snapshot.title,
             "artist": snapshot.artist, "album": snapshot.album,
             "durationMs": snapshot.durationMilliseconds, "positionMs": snapshot.positionMilliseconds,
-            "playbackRate": snapshot.playbackRate, "hasArtwork": shouldSendArtwork,
+            "playbackRate": snapshot.playbackRate, "hasArtwork": hasArtwork,
         ]
         if shouldSendArtwork, let artworkHash { message["artworkSHA256"] = artworkHash }
         sendJSON(message)

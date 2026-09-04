@@ -420,6 +420,7 @@ export function createButtonSettingsFeature(
             var originalButtons: any = c.buttons.map(cloneButtonConfig);
             var originalSizes: any = Object.assign({}, c.sizes || {});
             var subpageHomeSlot: any = state.editingSubpage;
+            var originalMainSubpage: any = !c.isSub ? state.subpages[slot] : undefined;
             var originalSubpageOrder: any = c.isSub
                 ? (getSubpage(subpageHomeSlot).order || []).slice() : null;
             var originalSubpagePending: any = c.isSub
@@ -435,6 +436,10 @@ export function createButtonSettingsFeature(
                         delete state.subpageSavePending[subpageHomeSlot];
                     else
                         state.subpageSavePending[subpageHomeSlot] = originalSubpagePending;
+                } else if (originalMainSubpage === undefined) {
+                    delete state.subpages[slot];
+                } else {
+                    state.subpages[slot] = originalMainSubpage;
                 }
                 renderPreview();
             }
@@ -451,10 +456,9 @@ export function createButtonSettingsFeature(
             var originalSubpageOwner: any = originalButtons[slot - 1];
             var replacedFolderOwner: any = !c.isSub &&
                 cardOwnsSubpage(originalSubpageOwner) &&
-                (!cardOwnsSubpage(savedButton) ||
+                (savedButton.type !== "companion" || savedButton.sensor ||
                     originalSubpageOwner.type !== savedButton.type ||
-                    (originalSubpageOwner.type === "companion" &&
-                        originalSubpageOwner.entity !== savedButton.entity));
+                    originalSubpageOwner.entity !== savedButton.entity);
             var sizeChanged: any = applyCardSizeConstraint(savedButton);
             var orderChanged: any = !saved.saveSubpage && (saved.saveGrid || sizeChanged);
             var persistence: any;
@@ -478,14 +482,24 @@ export function createButtonSettingsFeature(
                     delete state.subpages[slot];
                     cleanup = configPersistence.saveSubpageEntity(slot);
                 }
-                return Promise.resolve(cleanup).then(function () {
-                    state.settingsDraft = null;
-                    var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
-                    if (savedTypeDef && savedTypeDef.afterSave) {
-                        savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
+                return Promise.resolve(cleanup).then(function (cleanupResult: any) {
+                    if (!saveResultSucceeded(cleanupResult)) {
+                        restoreDraftState();
+                        return false;
                     }
-                    renderPreview();
-                    return true;
+                    var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
+                    var afterSave: any = savedTypeDef && savedTypeDef.afterSave
+                        ? savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub })
+                        : "saved";
+                    return Promise.resolve(afterSave).then(function (afterSaveResult: any) {
+                        if (!saveResultSucceeded(afterSaveResult)) {
+                            restoreDraftState();
+                            return false;
+                        }
+                        state.settingsDraft = null;
+                        renderPreview();
+                        return true;
+                    });
                 });
             }).catch(function () {
                 restoreDraftState();
