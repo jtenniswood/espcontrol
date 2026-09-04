@@ -2834,6 +2834,37 @@
       }
     },
     {
+      "name": "companion_subpage: picker_alias",
+      "sourceKind": "runtime_only",
+      "sourceType": "companion_subpage",
+      "mode": "picker_alias",
+      "canonicalType": "subpage",
+      "web": {
+        "registration": "companion_subpage",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "a617d3b70d305a2d"
+        }
+      },
+      "firmware": {
+        "family": null
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "navigation"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "media_cover_art: obsolete_implementation_residue",
       "sourceKind": "runtime_only",
       "sourceType": "media_cover_art",

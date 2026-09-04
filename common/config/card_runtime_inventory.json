@@ -351,6 +351,14 @@
       "config": { "entity": "sensor.example", "type": "text_sensor" },
       "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" }
     },
+    "companion_subpage": {
+      "classification": "picker_alias",
+      "canonicalType": "subpage",
+      "surfaces": ["web_registry"],
+      "webRegistration": "companion_subpage",
+      "config": { "label": "Mac Controls", "type": "subpage", "options": "subpage_connector=mac_companion" },
+      "lifecycle": { "subscriptions": ["none"], "actions": ["navigation"], "modalOwner": "none" }
+    },
     "media_cover_art": {
       "classification": "obsolete_implementation_residue",
       "canonicalType": "media",
