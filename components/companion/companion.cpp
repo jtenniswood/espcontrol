@@ -94,6 +94,10 @@ void CompanionService::setup() {
     this->mark_failed();
     return;
   }
+  this->sequence_preferences_ =
+      global_preferences->make_preference<uint32_t>(fnv1a_hash("companion_auth_sequence"));
+  if (!this->identity_.paired || !this->sequence_preferences_.load(&this->last_sequence_))
+    this->last_sequence_ = 0;
   register_companion_action_sender([this](const std::string &action, const std::string &request) {
     return this->invoke_(action, request);
   });
@@ -326,6 +330,10 @@ CompanionService::AuthenticationResult CompanionService::authenticate_(
   if (!constant_time_equal(hex(digest, sizeof(digest)), signature))
     return AuthenticationResult::FAILED;
   if (sequence <= this->last_sequence_) return AuthenticationResult::STALE_SEQUENCE;
+  if (!this->sequence_preferences_.save(&sequence)) {
+    ESP_LOGE(TAG, "Could not persist the Companion authentication sequence");
+    return AuthenticationResult::FAILED;
+  }
   this->last_sequence_ = sequence;
   last_sequence = sequence;
   return AuthenticationResult::AUTHENTICATED;
@@ -413,11 +421,16 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       if (previous_socket >= 0 && previous_socket != socket_fd)
         httpd_sess_trigger_close(this->server_, previous_socket);
       const auto previous_identity = this->identity_;
+      const uint32_t previous_sequence = this->last_sequence_;
       for (auto &byte : this->identity_.credential) byte = static_cast<uint8_t>(esp_random());
       this->identity_.paired = 1;
       this->last_sequence_ = 0;
-      if (!this->preferences_.save(&this->identity_)) {
+      if (!this->preferences_.save(&this->identity_) ||
+          !this->sequence_preferences_.save(&this->last_sequence_)) {
         this->identity_ = previous_identity;
+        this->last_sequence_ = previous_sequence;
+        this->preferences_.save(&this->identity_);
+        this->sequence_preferences_.save(&this->last_sequence_);
         send_error("pairing_storage_failed");
         this->expire_unauthenticated_socket_(socket_fd);
         return true;
@@ -888,8 +901,10 @@ void CompanionService::revoke_pairing() {
   std::lock_guard<std::mutex> lock(this->pairing_mutex_);
   const int previous_socket = this->session_.authenticated_socket();
   this->identity_.paired = 0;
+  this->last_sequence_ = 0;
   std::fill(this->identity_.credential, this->identity_.credential + sizeof(this->identity_.credential), 0);
   this->preferences_.save(&this->identity_);
+  this->sequence_preferences_.save(&this->last_sequence_);
   this->set_connected_(false);
   if (previous_socket >= 0) httpd_sess_trigger_close(this->server_, previous_socket);
 }

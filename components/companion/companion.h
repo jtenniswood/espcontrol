@@ -83,6 +83,7 @@ class CompanionService final : public Component {
   bool pairing_active_locked_(uint32_t now) const;
 
   ESPPreferenceObject preferences_;
+  ESPPreferenceObject sequence_preferences_;
   CompanionIdentityPreference identity_{};
   httpd_handle_t server_{nullptr};
   uint16_t port_{8443};
