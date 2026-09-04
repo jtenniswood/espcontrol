@@ -3,7 +3,8 @@ import CryptoKit
 import Security
 
 @MainActor
-final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSocketDelegate {
+final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate,
+                                 @preconcurrency URLSessionWebSocketDelegate {
     enum Mode { case authenticate, pair(code: String) }
 
     private unowned let store: CompanionStore
@@ -12,6 +13,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     private var mode: Mode = .authenticate
     private var receiveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
     private var connectionTimeoutTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var pendingCertificateFingerprint: String?
@@ -24,15 +26,22 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
     private var lastArtworkSHA256: String?
     private var lastFocusedActionIdentifier: String?
     private var catalogueGeneration: UInt32 = 0
+    private var lastPublishedSystemMetrics: CompanionSystemMetricsSnapshot?
+    private var lastSystemMetricsPublication = Date.distantPast
     private static let artworkChunkBytes = CompanionCapabilities.artworkChunkBytes
     private static let maximumTextFrameBytes = CompanionCapabilities.maximumTextFrameBytes
 
     init(store: CompanionStore) { self.store = store }
 
     func connect(mode: Mode) {
+        startConnection(mode: mode, resetBackoff: true)
+    }
+
+    private func startConnection(mode: Mode, resetBackoff: Bool) {
         reconnectTask?.cancel()
         reconnectTask = nil
         tearDownConnection()
+        if resetBackoff { reconnectAttempt = 0 }
         hasTerminalConnectionError = false
         shouldReconnect = {
             if case .authenticate = mode { return true }
@@ -78,6 +87,8 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         task = nil
         session?.invalidateAndCancel()
         session = nil
+        lastPublishedSystemMetrics = nil
+        lastSystemMetricsPublication = .distantPast
     }
 
     func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
@@ -242,10 +253,16 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         guard reconnectTask == nil else { return }
         store.updateStatus("Panel unavailable — reconnecting…")
         reconnectTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled, let self, self.shouldReconnect else { return }
+            guard let self else { return }
+            let delay = ReconnectBackoff.delaySeconds(
+                attempt: self.reconnectAttempt,
+                randomUnit: Double.random(in: 0...1)
+            )
+            self.reconnectAttempt += 1
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled, self.shouldReconnect else { return }
             self.reconnectTask = nil
-            self.connect(mode: .authenticate)
+            self.startConnection(mode: .authenticate, resetBackoff: false)
         }
     }
 
@@ -283,6 +300,7 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         case "auth.accepted":
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
+            reconnectAttempt = 0
             store.updateStatus("Connected to \(store.panelHost)", connected: true)
             let capabilityVersion = (object["capabilityVersion"] as? NSNumber)?.intValue ?? 0
             store.setSystemMetricsSupported(capabilityVersion >= 2)
@@ -377,7 +395,16 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
                   "mimeType": "image/jpeg"])
     }
 
-    func publishSystemMetrics(_ snapshot: CompanionSystemMetricsSnapshot) {
+    func publishSystemMetrics(_ snapshot: CompanionSystemMetricsSnapshot, force: Bool = false) {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastSystemMetricsPublication)
+        guard force || Self.shouldPublishSystemMetrics(
+            previous: lastPublishedSystemMetrics,
+            current: snapshot,
+            elapsedSeconds: elapsed
+        ) else { return }
+        lastPublishedSystemMetrics = snapshot
+        lastSystemMetricsPublication = now
         var message: [String: Any] = [
             "type": "system_metrics", "generation": snapshot.generation,
             "cpuUsagePercent": snapshot.cpuUsagePercent,
@@ -481,7 +508,36 @@ final class CompanionConnection: NSObject, URLSessionDelegate, URLSessionWebSock
         }
     }
 
-    private func send(_ value: String) { task?.send(.string(value)) { _ in } }
+    private func send(_ value: String) {
+        guard let activeTask = task else { return }
+        activeTask.send(.string(value)) { [weak self, weak activeTask] error in
+            guard error != nil else { return }
+            Task { @MainActor [weak self, weak activeTask] in
+                guard let self, let activeTask, self.task === activeTask else { return }
+                self.handleConnectionFailure(for: activeTask)
+            }
+        }
+    }
+
+    nonisolated static func shouldPublishSystemMetrics(
+        previous: CompanionSystemMetricsSnapshot?,
+        current: CompanionSystemMetricsSnapshot,
+        elapsedSeconds: TimeInterval
+    ) -> Bool {
+        guard let previous else { return true }
+        if elapsedSeconds >= 30 { return true }
+        if abs(current.cpuUsagePercent - previous.cpuUsagePercent) >= 1 { return true }
+        if abs(current.memoryUsagePercent - previous.memoryUsagePercent) >= 0.5 { return true }
+        if abs(current.storageUsagePercent - previous.storageUsagePercent) >= 0.1 { return true }
+        if optionalDifference(current.batteryPercent, previous.batteryPercent) >= 1 { return true }
+        if optionalDifference(current.networkThroughputKBps, previous.networkThroughputKBps) >= 32 { return true }
+        return false
+    }
+
+    nonisolated private static func optionalDifference(_ lhs: Double?, _ rhs: Double?) -> Double {
+        guard let lhs, let rhs else { return lhs == nil && rhs == nil ? 0 : .infinity }
+        return abs(lhs - rhs)
+    }
 
     private var certificateFingerprintKey: String { "companion.certificateFingerprint.\(store.panelHost)" }
     private var authenticationSequenceKey: String { "companion.authenticationSequence.\(store.panelHost)" }

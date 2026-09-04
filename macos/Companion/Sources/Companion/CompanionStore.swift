@@ -548,7 +548,7 @@ final class CompanionStore: NSObject, ObservableObject {
     func republishCurrentSystemMetrics() {
         guard isConnected, systemMetricsSharingEnabled, systemMetricsSupported,
               let snapshot = latestSystemMetricsSnapshot else { return }
-        connection.publishSystemMetrics(snapshot)
+        connection.publishSystemMetrics(snapshot, force: true)
     }
 
     func publishSystemMetricsUnavailable() {
