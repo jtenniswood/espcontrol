@@ -53,8 +53,8 @@ struct AppStoreMediaRemoteSource: MediaRemoteProviding {
     var isAvailable: Bool { false }
     func startObserving(_ handler: @escaping () -> Void) -> Bool { false }
     func stopObserving() {}
-    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?) -> Void) {
-        completion(nil, nil)
+    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?, NSNumber?) -> Void) {
+        completion(nil, nil, nil)
     }
 }
 #endif
