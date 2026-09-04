@@ -2,9 +2,34 @@ import CryptoKit
 @preconcurrency import Foundation
 import Security
 
+private final class CompanionSessionDelegate: NSObject, URLSessionDelegate, URLSessionWebSocketDelegate {
+    var onOpen: ((URLSessionWebSocketTask) -> Void)?
+    var onClose: ((URLSessionWebSocketTask) -> Void)?
+    var onChallenge: ((URLAuthenticationChallenge,
+                       @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) -> Void)?
+
+    func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask,
+                    didOpenWithProtocol _: String?) {
+        onOpen?(webSocketTask)
+    }
+
+    func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask,
+                    didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
+        onClose?(webSocketTask)
+    }
+
+    func urlSession(_: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard let onChallenge else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        onChallenge(challenge, completionHandler)
+    }
+}
+
 @MainActor
-final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate,
-                                 @preconcurrency URLSessionWebSocketDelegate {
+final class CompanionConnection: NSObject {
     enum Mode { case authenticate, pair(code: String) }
 
     private unowned let store: CompanionStore
@@ -30,6 +55,25 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate,
     private var lastSystemMetricsPublication = Date.distantPast
     private static let artworkChunkBytes = CompanionCapabilities.artworkChunkBytes
     private static let maximumTextFrameBytes = CompanionCapabilities.maximumTextFrameBytes
+    private lazy var sessionDelegate: CompanionSessionDelegate = {
+        let delegate = CompanionSessionDelegate()
+        delegate.onOpen = { [weak self] task in
+            Task { @MainActor [weak self] in self?.connectionDidOpen(task) }
+        }
+        delegate.onClose = { [weak self] task in
+            Task { @MainActor [weak self] in self?.handleConnectionFailure(for: task) }
+        }
+        delegate.onChallenge = { [weak self] challenge, completion in
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    completion(.cancelAuthenticationChallenge, nil)
+                    return
+                }
+                self.handleAuthenticationChallenge(challenge, completionHandler: completion)
+            }
+        }
+        return delegate
+    }()
 
     init(store: CompanionStore) { self.store = store }
 
@@ -55,7 +99,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate,
         self.mode = mode
         let configuration = URLSessionConfiguration.ephemeral
         configuration.waitsForConnectivity = true
-        session = URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
+        session = URLSession(configuration: configuration, delegate: sessionDelegate, delegateQueue: nil)
         guard let task = session?.webSocketTask(with: url) else {
             store.updateStatus("Could not create the panel connection")
             return
@@ -91,7 +135,7 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate,
         lastSystemMetricsPublication = .distantPast
     }
 
-    func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
+    private func connectionDidOpen(_ webSocketTask: URLSessionWebSocketTask) {
         guard task === webSocketTask else { return }
         switch mode {
         case .pair(let code): sendJSON(["type": "pair.request", "code": code])
@@ -140,11 +184,10 @@ final class CompanionConnection: NSObject, @preconcurrency URLSessionDelegate,
         return components.url
     }
 
-    func urlSession(_: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
-        handleConnectionFailure(for: webSocketTask)
-    }
-
-    func urlSession(_: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+    private func handleAuthenticationChallenge(
+        _ challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let trust = challenge.protectionSpace.serverTrust,
               let certificates = SecTrustCopyCertificateChain(trust) as? [SecCertificate],
