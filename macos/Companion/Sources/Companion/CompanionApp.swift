@@ -396,9 +396,7 @@ private struct CompanionSettings: View {
             }
         case .folders:
             settingsPage(title: "Folders", subtitle: "Choose the folders that can be opened from your display") {
-                settingsSection("Available folders") {
-                    folderSettings
-                }
+                folderSettings
             }
         case .nowPlaying:
             settingsPage(title: "Now Playing", subtitle: "Share the media currently playing on your Mac") {
@@ -564,10 +562,6 @@ private struct CompanionSettings: View {
 
     private var folderSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Choose folders here, then select one for each Open folder card in the device webserver. Folder paths stay on this Mac; the display receives only an anonymous identifier and friendly name.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
             if store.approvedFolders.isEmpty {
                 Text("No folders have been added.")
                     .foregroundStyle(.secondary)
