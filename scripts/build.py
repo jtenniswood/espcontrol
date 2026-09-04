@@ -777,7 +777,7 @@ def gen_companion_capabilities_ts(data):
         f"export const COMPANION_PROTOCOL_VERSION = {protocol['version']} as const;\n"
         f"export const COMPANION_PROTOCOL_PATH = {json.dumps(protocol['path'])} as const;\n"
         f"export const COMPANION_MAXIMUM_TEXT_FRAME_BYTES = {protocol['maximumTextFrameBytes']} as const;\n"
-        f"export const COMPANION_CARD_MODES: readonly CompanionCardMode[] = {companion_ts_literal(data['cardModes'])};\n"
+        f"export const COMPANION_CARD_MODES = {companion_ts_literal(data['cardModes'])} as const satisfies readonly CompanionCardMode[];\n"
         f"export const COMPANION_PROTOCOL_MESSAGES: readonly CompanionProtocolMessage[] = {companion_ts_literal(protocol['messages'])};\n"
         f"export const COMPANION_WINDOW_ACTIONS: readonly CompanionWindowAction[] = {companion_ts_literal([{key: item[key] for key in ('id', 'label', 'group')} for item in data['windowActions']])};\n"
         f"export const COMPANION_MEDIA_ACTIONS = {companion_ts_literal([{key: item[key] for key in ('id', 'label', 'icon')} for item in data['mediaActions']])} as const;\n"

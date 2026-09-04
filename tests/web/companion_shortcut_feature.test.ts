@@ -56,6 +56,13 @@ import {
   setCompanionAppShortcutAutoSwitchEnabled,
 } from "../../src/webserver/application/companion_shortcut_folder";
 import { cardTransferOwnsSubpage } from "../../src/webserver/model/card_transfer";
+import {
+  companionCardDefaultIcon,
+  companionCardModeOptions,
+  companionCardModeValid,
+  companionCardModel,
+} from "../../src/webserver/model/companion_card";
+import { emptyCardConfig } from "../../src/webserver/model/card";
 
 function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
   "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"> {
@@ -70,6 +77,17 @@ function shortcutEvent(overrides: Partial<KeyboardEvent>): Pick<KeyboardEvent,
 }
 
 export function runCompanionShortcutFeatureTests(): void {
+  const companionModes = companionCardModeOptions();
+  if (companionModes.length !== 7 || new Set(companionModes.map(([mode]) => mode)).size !== 7 ||
+      !companionCardModeValid("window") || companionCardModeValid("home_assistant") ||
+      companionCardDefaultIcon("shortcut") !== "Shortcut Command") {
+    throw new Error("Companion card modes must come from the generated product contract");
+  }
+  const typedCard = companionCardModel(emptyCardConfig("companion"), "app");
+  if (typedCard.mode !== "app" || typedCard.capability !== "applications" ||
+      typedCard.config.type !== "companion") {
+    throw new Error("Companion cards must have a typed in-memory model without changing saved config");
+  }
   if (normalizeSubpageKind("companion_stat") !== "companion_stat" ||
       !subpageKindOptions().some((option: any) => option[0] === "companion_stat" && option[1] === "Companion Stat")) {
     throw new Error("Subpage settings must expose the Companion Stat subtype");

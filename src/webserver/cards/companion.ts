@@ -7,12 +7,18 @@ import {
     CARD_RUNTIME_SPECS,
 } from "../generated/card_contract";
 import {
+    COMPANION_CARD_MODES,
     COMPANION_MEDIA_ACTIONS,
     COMPANION_MEDIA_PLAY_PAUSE_ACTION,
     COMPANION_SYSTEM_METRICS,
     COMPANION_WINDOW_ACTIONS,
 } from "../generated/companion_capabilities";
 import type { CompanionSystemMetric } from "../generated/companion_capabilities";
+import {
+    companionCardDefaultIcon,
+    companionCardModeOptions,
+    type CompanionCardModeId,
+} from "../model/companion_card";
 export {
     COMPANION_MEDIA_ACTIONS,
     COMPANION_MEDIA_PLAY_PAUSE_ACTION,
@@ -49,12 +55,8 @@ const COMPANION_FINDER_ID = "com.apple.finder";
 const COMPANION_WINDOW_PREFIX = "window.";
 const COMPANION_STATS_MODES = ["stats", ...COMPANION_SYSTEM_METRICS.map((metric) => metric.mode)];
 export const COMPANION_SUBTYPE_DEFAULT_ICONS = {
-    app: "Monitor",
-    shortcut: "Shortcut Command",
-    url: "Web",
-    folder: "Folder Outline",
-    stats: "Gauge",
-} as const;
+    ...Object.fromEntries(COMPANION_CARD_MODES.map((mode) => [mode.id, mode.defaultIcon])),
+} as Readonly<Record<CompanionCardModeId, string>>;
 export const COMPANION_STATS_OPTIONS = COMPANION_SYSTEM_METRICS
     .map((metric) => [metric.mode, metric.label] as const)
     .sort((first, second) => first[1].localeCompare(second[1]));
@@ -169,10 +171,11 @@ export function companionSubtypeDefaultIcon(mode: string, entity = ""): string {
             || COMPANION_MEDIA_ACTIONS[0].icon;
     }
     if (COMPANION_STATS_MODES.includes(mode)) {
-        return COMPANION_SUBTYPE_DEFAULT_ICONS.stats;
+        return companionCardDefaultIcon("stats");
     }
-    return COMPANION_SUBTYPE_DEFAULT_ICONS[mode as keyof typeof COMPANION_SUBTYPE_DEFAULT_ICONS]
-        || COMPANION_SUBTYPE_DEFAULT_ICONS.app;
+    return COMPANION_CARD_MODES.some((candidate) => candidate.id === mode)
+        ? companionCardDefaultIcon(mode as CompanionCardModeId)
+        : companionCardDefaultIcon("app");
 }
 
 export function companionSubtypeIcon(
@@ -211,15 +214,7 @@ const COMPANION_CARD_METADATA = {
     mode: {
         label: "Type",
         idSuffix: "companion-mode",
-        options: [
-            ["app", "Launch app"],
-            ["shortcut", "Keyboard shortcut"],
-            ["url", "Open URL"],
-            ["folder", "Open folder"],
-            ["media", "Media control"],
-            ["stats", "Stats"],
-            ["window", "Window control"],
-        ],
+        options: companionCardModeOptions(),
         value: companionCardMode,
     },
     icon: {
@@ -263,7 +258,7 @@ export function companionMetricPreviewValue(precision: unknown, sample = Math.ra
     return (10 + normalizedSample * 80).toFixed(digits);
 }
 
-export function companionCardMode(card: any): string {
+export function companionCardMode(card: any): CompanionCardModeId {
     const entity = typeof card?.entity === "string" ? card.entity : "";
     const sensor = typeof card?.sensor === "string" ? card.sensor : "";
     if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";

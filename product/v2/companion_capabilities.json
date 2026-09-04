@@ -39,13 +39,13 @@
     "transport": "tls_websocket"
   },
   "cardModes": [
-    { "id": "app", "label": "Launch app", "capability": "applications", "defaultIcon": "Application" },
-    { "id": "shortcut", "label": "Keyboard shortcut", "capability": "keyboard_shortcuts", "defaultIcon": "Keyboard" },
+    { "id": "app", "label": "Launch app", "capability": "applications", "defaultIcon": "Monitor" },
+    { "id": "shortcut", "label": "Keyboard shortcut", "capability": "keyboard_shortcuts", "defaultIcon": "Shortcut Command" },
     { "id": "url", "label": "Open URL", "capability": "applications", "defaultIcon": "Web" },
-    { "id": "folder", "label": "Open folder", "capability": "folders", "defaultIcon": "Folder Open" },
+    { "id": "folder", "label": "Open folder", "capability": "folders", "defaultIcon": "Folder Outline" },
     { "id": "media", "label": "Media control", "capability": "media_actions", "defaultIcon": "Play Pause" },
-    { "id": "stats", "label": "Stats", "capability": "system_metrics", "defaultIcon": "Chart Line" },
-    { "id": "window", "label": "Window control", "capability": "window_actions", "defaultIcon": "Application" }
+    { "id": "stats", "label": "Stats", "capability": "system_metrics", "defaultIcon": "Gauge" },
+    { "id": "window", "label": "Window control", "capability": "window_actions", "defaultIcon": "Monitor" }
   ],
   "windowActions": [
     { "id": "window.close", "label": "Close", "group": "Window", "key": "w", "modifiers": ["command"], "minimumMacOS": 13 },

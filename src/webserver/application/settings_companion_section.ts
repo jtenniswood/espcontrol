@@ -36,17 +36,6 @@ export function companionPairingStatusText(state: CompanionPairingState): string
     return state.paired ? "Mac paired, but not connected" : "No Mac paired";
 }
 
-export function formatCompanionPairingDetails(host: string, state: CompanionPairingState): string {
-    const mdnsName = String(state.mdns_name || "").trim().replace(/\.$/, "");
-    const panelHost = mdnsName || host;
-    const panel = state.port && state.port !== 8443 ? panelHost + ":" + state.port : panelHost;
-    return [
-        "EspControl Companion pairing",
-        "Panel: " + panel,
-        "Pairing code: " + state.pairing_code,
-    ].join("\n");
-}
-
 export function createSettingsCompanionSectionFeature(
     dom: Pick<ApplicationDomServices, "document" | "window" | "fetch">,
     _shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner">,

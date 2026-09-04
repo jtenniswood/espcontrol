@@ -33,7 +33,7 @@ describe("browserless application contracts", () => {
     runClipboardFeatureTests();
   });
 
-  test("formats Companion pairing details for the Mac app", () => {
+  test("formats physical Companion pairing status", () => {
     runCompanionPairingFeatureTests();
   });
 
@@ -59,7 +59,8 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(connectors, /Actions confirmed/);
     assert.match(companion, /setHidden\(instructions, value\.connected\)/);
     assert.match(companion, /setHidden\(badge, !value\.paired\)/);
-    assert.match(companion, /copyButton\.hidden = true/);
+    assert.match(companion, /Press and hold the Wi-Fi icon on the display/);
+    assert.doesNotMatch(companion, /Pairing code:|copyButton/);
     assert.match(styles, /\.sp-connectors-config\{max-width:960px/);
     assert.doesNotMatch(connectors, /sp-connectors-intro|Manage the services that provide data and actions/);
     assert.match(styles, /\.sp-hidden\{display:none!important\}/);

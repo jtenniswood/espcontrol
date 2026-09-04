@@ -10,18 +10,18 @@ export const COMPANION_CAPABILITY_VERSION = 2 as const;
 export const COMPANION_PROTOCOL_VERSION = 3 as const;
 export const COMPANION_PROTOCOL_PATH = "/companion/v3" as const;
 export const COMPANION_MAXIMUM_TEXT_FRAME_BYTES = 16384 as const;
-export const COMPANION_CARD_MODES: readonly CompanionCardMode[] = [
+export const COMPANION_CARD_MODES = [
   {
     id: "app",
     label: "Launch app",
     capability: "applications",
-    defaultIcon: "Application"
+    defaultIcon: "Monitor"
   },
   {
     id: "shortcut",
     label: "Keyboard shortcut",
     capability: "keyboard_shortcuts",
-    defaultIcon: "Keyboard"
+    defaultIcon: "Shortcut Command"
   },
   {
     id: "url",
@@ -33,7 +33,7 @@ export const COMPANION_CARD_MODES: readonly CompanionCardMode[] = [
     id: "folder",
     label: "Open folder",
     capability: "folders",
-    defaultIcon: "Folder Open"
+    defaultIcon: "Folder Outline"
   },
   {
     id: "media",
@@ -45,15 +45,15 @@ export const COMPANION_CARD_MODES: readonly CompanionCardMode[] = [
     id: "stats",
     label: "Stats",
     capability: "system_metrics",
-    defaultIcon: "Chart Line"
+    defaultIcon: "Gauge"
   },
   {
     id: "window",
     label: "Window control",
     capability: "window_actions",
-    defaultIcon: "Application"
+    defaultIcon: "Monitor"
   }
-];
+] as const satisfies readonly CompanionCardMode[];
 export const COMPANION_PROTOCOL_MESSAGES: readonly CompanionProtocolMessage[] = [
   {
     id: "hello",
