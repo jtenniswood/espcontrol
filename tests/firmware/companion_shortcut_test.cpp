@@ -70,6 +70,11 @@ int main() {
   assert(companion_encoded_url("url.javascript%3Aalert(1)").empty());
   assert(companion_encoded_url("url.https%3A%2F%2Fexample.com|INVOKE").empty());
   assert(companion_encoded_url("url." + std::string(129, 'a')).empty());
+  assert(companion_default_action_label("window.arrange.left-right") == "Left & Right");
+  assert(companion_default_action_label("shortcut.command+a") == "\U000F0633" "A");
+  assert(companion_default_action_label("com.apple.Safari") == "com.apple.Safari");
+  assert(companion_default_action_label("com.apple.Safari", url_config) == "Open URL");
+  assert(companion_default_action_label("") == "Mac App");
 
   const std::string folder_action = "folder.00000000-0000-0000-0000-000000000001";
   companion_set_actions({{"com.apple.Safari", "Safari"}, {folder_action, "Projects"}});

@@ -167,8 +167,6 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
                                 parse_precision(p.precision));
     return;
   }
-  const std::string shortcut_label = companion_shortcut_label(p.entity);
-  const std::string window_label = companion_window_action_label(p.entity);
   const bool url_card = !companion_encoded_url(p.sensor).empty();
   const bool media_play_pause = p.entity == "media.play_pause";
   const bool available = url_card
@@ -179,7 +177,7 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     ? espcontrol_i18n(std::string(companion_play_pause_status(
         companion_snapshot.now_playing.playback_state, available)))
     : p.label.empty()
-    ? (!shortcut_label.empty() ? shortcut_label : (url_card ? "Open URL" : (p.entity.empty() ? "Mac App" : p.entity)))
+    ? companion_default_action_label(p.entity, p.sensor)
     : p.label;
   lv_label_set_display_text(s.text_lbl, label.c_str());
   const char *icon = (p.icon.empty() || p.icon == "Auto" ||

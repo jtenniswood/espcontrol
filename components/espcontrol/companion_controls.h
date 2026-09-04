@@ -676,6 +676,16 @@ inline std::string companion_encoded_url(const std::string &url_config) {
   return encoded;
 }
 
+inline std::string companion_default_action_label(const std::string &action_id,
+                                                  const std::string &url_config = "") {
+  const std::string shortcut_label = companion_shortcut_label(action_id);
+  if (!shortcut_label.empty()) return shortcut_label;
+  const std::string window_label = companion_window_action_label(action_id);
+  if (!window_label.empty()) return window_label;
+  if (!companion_encoded_url(url_config).empty()) return "Open URL";
+  return action_id.empty() ? "Mac App" : action_id;
+}
+
 inline bool companion_url_available(const std::string &app_id, const std::string &url_config) {
   return !companion_encoded_url(url_config).empty() && companion_action_available(app_id);
 }
