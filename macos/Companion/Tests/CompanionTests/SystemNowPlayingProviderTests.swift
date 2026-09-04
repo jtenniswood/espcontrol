@@ -87,7 +87,7 @@ func testUnavailableSourcePublishesDiagnosticSnapshot() {
     XCTAssertTrue(status.contains("unavailable"))
 }
 
-func testDisablingSharingPublishesUnavailableAfterActiveTrack() {
+func testStoppingProviderPublishesUnavailableAfterActiveTrack() {
     let source = FakeMediaRemoteSource()
     source.payload = ["Title": "Track", "UniqueIdentifier": "track", "PlaybackRate": 1]
     let provider = SystemNowPlayingProvider(source: source)
