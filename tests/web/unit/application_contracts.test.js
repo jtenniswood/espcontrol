@@ -69,6 +69,7 @@ describe("browserless application contracts", () => {
   test("gates Home Assistant and Companion screensaver modes by connector setup", () => {
     const settings = fs.readFileSync(path.join(ROOT, "src/webserver/application/settings_page.ts"), "utf8");
     const screensaver = fs.readFileSync(path.join(ROOT, "src/webserver/application/screensaver_state.ts"), "utf8");
+    const eventHandlers = fs.readFileSync(path.join(ROOT, "src/webserver/application/app_state_event_handlers.ts"), "utf8");
     const connectors = fs.readFileSync(path.join(ROOT, "src/webserver/application/connectors_page.ts"), "utf8");
     assert.match(settings, /\["sensor", "Home Assistant"\]/);
     assert.match(settings, /\["companion", "Companion App"\]/);
@@ -76,8 +77,18 @@ describe("browserless application contracts", () => {
     assert.match(settings, /companionBtn\.hidden = !companionAvailable/);
     assert.match(settings, /onStatusChange\(syncScreensaverModeOptions\)/);
     assert.match(screensaver, /state\.screensaverMode === "companion"/);
+    assert.match(eventHandlers, /val === "companion"/);
     assert.match(connectors, /homeAssistantConfigured\(\)/);
     assert.match(connectors, /companionConfigured\(\)/);
+  });
+
+  test("publishes and executes only approved Mac applications", () => {
+    const store = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionStore.swift"), "utf8");
+    const app = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionApp.swift"), "utf8");
+    assert.match(store, /approvedApplicationIdentifiers\.contains\(\$0\.bundleIdentifier\)/);
+    assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
+    assert.match(app, /case applications/);
+    assert.match(app, /Only selected applications are shared with the display/);
   });
 
   test("owns browser composition and compatibility layout state", () => {

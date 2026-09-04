@@ -110,6 +110,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
     @Published private(set) var availableApps: [LaunchableApp] = []
+    @Published private(set) var approvedApplicationIdentifiers: Set<String>
     @Published private(set) var approvedFolders: [ApprovedFolder]
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
@@ -136,6 +137,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     private enum Keys {
         static let host = "panelHost"
+        static let approvedApplications = "approvedApplications"
         static let approvedFolders = "approvedFolders"
     }
     private static let preferencesSuite = "io.espcontrol.companion"
@@ -169,6 +171,9 @@ final class CompanionStore: NSObject, ObservableObject {
         let stableDefaults = UserDefaults(suiteName: Self.preferencesSuite) ?? .standard
         let legacyDefaults = UserDefaults(suiteName: Self.legacyPreferencesSuite)
         defaults = stableDefaults
+        approvedApplicationIdentifiers = Set(
+            stableDefaults.stringArray(forKey: Keys.approvedApplications) ?? []
+        )
         approvedFolders = stableDefaults.data(forKey: Keys.approvedFolders)
             .flatMap { try? JSONDecoder().decode([ApprovedFolder].self, from: $0) }
             ?? []
@@ -320,12 +325,30 @@ final class CompanionStore: NSObject, ObservableObject {
         if isConnected { connection.publishCatalogue() }
     }
 
-    func launchableApps() -> [LaunchableApp] { availableApps }
+    func launchableApps() -> [LaunchableApp] {
+        availableApps.filter { approvedApplicationIdentifiers.contains($0.bundleIdentifier) }
+    }
+
+    func applicationIsApproved(_ application: LaunchableApp) -> Bool {
+        approvedApplicationIdentifiers.contains(application.bundleIdentifier)
+    }
+
+    func setApplication(_ application: LaunchableApp, approved: Bool) {
+        if approved {
+            approvedApplicationIdentifiers.insert(application.bundleIdentifier)
+        } else {
+            approvedApplicationIdentifiers.remove(application.bundleIdentifier)
+        }
+        defaults.set(approvedApplicationIdentifiers.sorted(), forKey: Keys.approvedApplications)
+        if isConnected { connection.publishCatalogue() }
+    }
+
     func folderActions() -> [ApprovedFolder] { approvedFolders }
     func focusedLaunchableApplicationIdentifier() -> String {
         guard let application = NSWorkspace.shared.frontmostApplication,
               CompanionWindowDetector.hasVisibleWindow(for: application),
               let identifier = application.bundleIdentifier,
+              approvedApplicationIdentifiers.contains(identifier),
               availableApps.contains(where: { $0.bundleIdentifier == identifier }) else { return "" }
         return identifier
     }
@@ -335,10 +358,9 @@ final class CompanionStore: NSObject, ObservableObject {
               let bundleIdentifier = application.bundleIdentifier,
               CompanionWindowDetector.hasVisibleWindow(for: application) else { return "" }
         if bundleIdentifier == "com.apple.finder" {
-            let folderAction = focusedFinderFolderActionIdentifier()
-            return folderAction.isEmpty ? bundleIdentifier : folderAction
+            return focusedFinderFolderActionIdentifier()
         }
-        return bundleIdentifier
+        return approvedApplicationIdentifiers.contains(bundleIdentifier) ? bundleIdentifier : ""
     }
 
     private func focusedFinderFolderActionIdentifier() -> String {

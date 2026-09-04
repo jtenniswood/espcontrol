@@ -260,35 +260,10 @@ private enum CompanionSettingsField: Hashable {
     case panelHost, pairingCode
 }
 
-private struct CompanionPairingDetails {
-    let panelHost: String
-    let pairingCode: String
-
-    static func parse(_ text: String) -> CompanionPairingDetails? {
-        var values: [String: String] = [:]
-        for line in text.components(separatedBy: .newlines) {
-            let parts = line.split(separator: ":", maxSplits: 1).map {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            if parts.count == 2 { values[parts[0].lowercased()] = parts[1] }
-        }
-        guard var panel = values["panel"],
-              let pairingCode = values["pairing code"] else { return nil }
-        if let url = URL(string: panel.contains("://") ? panel : "http://\(panel)"),
-           let host = url.host {
-            panel = url.port.map { "\(host):\($0)" } ?? host
-        }
-        guard !panel.isEmpty, !pairingCode.isEmpty else { return nil }
-        return CompanionPairingDetails(
-            panelHost: panel,
-            pairingCode: pairingCode.uppercased()
-        )
-    }
-}
-
 private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
     case about
     case connection
+    case applications
     case folders
     case nowPlaying
     case general
@@ -299,6 +274,7 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .about: return "About EspControl"
         case .connection: return "Device"
+        case .applications: return "Applications"
         case .folders: return "Folders"
         case .nowPlaying: return "Now Playing"
         case .general: return "General"
@@ -309,6 +285,7 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .about: return "info.circle"
         case .connection: return "network"
+        case .applications: return "app.badge.checkmark"
         case .folders: return "folder"
         case .nowPlaying: return "music.note"
         case .general: return "gearshape"
@@ -413,6 +390,12 @@ private struct CompanionSettings: View {
                     deviceConnectionSettings
                 }
             }
+        case .applications:
+            settingsPage(title: "Applications", subtitle: "Choose the Mac apps your display may launch or control") {
+                settingsSection("Approved applications") {
+                    applicationSettings
+                }
+            }
         case .folders:
             settingsPage(title: "Folders", subtitle: "Choose the folders that can be opened from your display") {
                 settingsSection("Available folders") {
@@ -496,26 +479,6 @@ private struct CompanionSettings: View {
     private var deviceConnectionSettings: some View {
         VStack(alignment: .leading, spacing: 18) {
             SettingsActionRow(
-                title: "Pairing details",
-                description: "Paste the details copied from the display web editor."
-            ) {
-                Button("Paste pairing details") {
-                    guard let clipboard = NSPasteboard.general.string(forType: .string),
-                          let details = CompanionPairingDetails.parse(clipboard) else {
-                        store.updateStatus("Copy pairing details from the panel web settings first")
-                        return
-                    }
-                    store.panelHost = details.panelHost
-                    pairingCode = details.pairingCode
-                    focusedField = nil
-                    store.pair(code: details.pairingCode)
-                }
-                .controlSize(.large)
-            }
-
-            Divider()
-
-            SettingsActionRow(
                 title: "Panel address",
                 description: "The local network address of your EspControl display."
             ) {
@@ -543,7 +506,7 @@ private struct CompanionSettings: View {
                 }
             }
 
-            Text("In the panel web editor, open Connectors → Mac Companion, start pairing, then copy and paste the pairing details here.")
+            Text("Press and hold the Wi-Fi icon on the display, then enter its local address and the code shown on the touchscreen.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -556,6 +519,39 @@ private struct CompanionSettings: View {
                 .buttonStyle(.borderless)
             }
         }
+    }
+
+    private var applicationSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Only selected applications are shared with the display. An approved app may be launched, receive its configured keyboard or window controls, or open an approved web address.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if store.availableApps.isEmpty {
+                Text("No applications were found.")
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(store.availableApps) { application in
+                    Toggle(isOn: Binding(
+                        get: { store.applicationIsApproved(application) },
+                        set: { store.setApplication(application, approved: $0) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(application.name)
+                            Text(application.bundleIdentifier)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Divider()
+                }
+            }
+
+            Button("Refresh Applications") { store.refreshApplications() }
+                .controlSize(.large)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var startupSettings: some View {

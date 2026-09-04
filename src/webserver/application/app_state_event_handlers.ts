@@ -360,7 +360,8 @@ export function createAppStateEventHandlersFeature(
             },
             "text-screensaver_mode": function (this: any, val?: any) {
                 state._screensaverModeReceived = true;
-                state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
+                state.screensaverMode = val === "sensor" || val === "timer" || val === "companion" ||
+                    val === "disabled" ? val : "disabled";
                 if (els.setSsMode)
                     els.setSsMode(getActiveScreensaverMode());
             },

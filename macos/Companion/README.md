@@ -22,6 +22,10 @@ This generic feed uses the private macOS `MediaRemote` framework, loaded dynamic
 
 To pair, press and hold the Wi-Fi icon on the physical panel until it displays a code. In the Mac app's **Device** tab, enter the panel address and that code, then click **Pair**. Pair on a trusted local network. The app stores the paired credential in the macOS Keychain and pins the panel certificate. Forgetting the panel clears both values.
 
+After pairing, use the **Applications** tab to approve only the installed apps
+that the display may discover, launch, or control. The approved list is stored
+locally on the Mac and can be changed at any time.
+
 The **System Stats** tab shares overall processor and memory usage, startup-disk storage, combined network throughput on the primary interface, and battery level when the Mac has a battery. Memory and storage cards can show either used or free capacity. Sharing is enabled by default and can be disabled independently. It does not collect application, file, browsing, or network-content details. Choose the corresponding type on a Companion card to show a reading.
 
 The versioned protocol is intentionally narrow: a Mac publishes installed bundle identifiers, opaque identifiers for user-approved folders, supported media controls, an optional Now Playing snapshot, and optional system statistics using typed JSON messages. Artwork bytes use bounded binary chunks. The panel can request one of those applications or folders, a validated keyboard shortcut, media control, or a web URL opened by one of those applications. Folder paths stay in the Mac app and are never sent to the display. It does not execute shell commands, accept app or folder paths from the panel, allow non-web URL schemes, or accept inbound network connections.
