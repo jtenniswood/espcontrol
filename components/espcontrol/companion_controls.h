@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "companion_capabilities_generated.h"
+#include "companion_runtime.h"
 #include "companion_timezone.h"
 
 #ifdef USE_WEBSERVER
@@ -27,16 +28,6 @@
 #include "display_text.h"
 #include "i18n_generated.h"
 #endif
-
-struct CompanionAction {
-  std::string id;
-  std::string label;
-};
-
-struct CompanionValue {
-  std::string id;
-  int value{0};
-};
 
 using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
 using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
@@ -118,96 +109,24 @@ struct CompanionPairingSnapshot {
 using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
 using CompanionPairingStarter = std::function<CompanionPairingSnapshot()>;
 
-enum class CompanionPlaybackState : uint8_t {
-  UNAVAILABLE = 0,
-  STOPPED,
-  PAUSED,
-  PLAYING,
-};
-
-inline const char *companion_play_pause_status(CompanionPlaybackState state,
-                                                bool available = true) {
-  if (!available) return "Unavailable";
-  if (state == CompanionPlaybackState::PLAYING) return "Playing";
-  if (state == CompanionPlaybackState::PAUSED) return "Paused";
-  // A command-capable Companion can still receive Play/Pause when there is
-  // no active Now Playing session. Keep the card enabled and show the same
-  // idle state used by a stopped player instead of treating the command as
-  // unavailable.
-  return "Stopped";
-}
-
-struct CompanionNowPlayingSnapshot {
-  uint32_t generation{0};
-  CompanionPlaybackState playback_state{CompanionPlaybackState::UNAVAILABLE};
-  std::string source_application_id;
-  std::string source_application_name;
-  std::string content_id;
-  std::string title;
-  std::string artist;
-  std::string album;
-  float duration{0.0f};
-  float position{0.0f};
-  float playback_rate{0.0f};
-  bool artwork_follows{false};
-};
-
-struct CompanionSystemMetricsSnapshot {
-  uint32_t generation{0};
-  float cpu_usage_percent{NAN};
-  float memory_usage_percent{NAN};
-  float storage_usage_percent{NAN};
-  float battery_percent{NAN};
-  float network_throughput_kbps{NAN};
-};
-
 using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
 // Ownership of data transfers to the handler only when it returns true.
 using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t *data, size_t size)>;
 
 inline void companion_request_card_refresh();
 
+// Compatibility accessor for card rendering and the existing firmware tests.
+// The flag itself is owned by CompanionRuntimeService.
 inline std::atomic<bool> &companion_card_refresh_requested() {
-  static std::atomic<bool> requested{false};
-  return requested;
+  return companion_runtime_service().refresh_flag();
 }
 
 inline void companion_request_card_refresh() {
-  companion_card_refresh_requested().store(true);
-}
-
-struct CompanionRuntimeState {
-  std::mutex mutex;
-  std::vector<CompanionAction> actions;
-  std::vector<CompanionValue> values;
-  std::string focused_action_id;
-  std::string pending_auto_subpage_action_id;
-  bool media_actions_supported{false};
-  bool connected{false};
-  CompanionNowPlayingSnapshot now_playing;
-  CompanionSystemMetricsSnapshot system_metrics;
-};
-
-struct CompanionRuntimeSnapshot {
-  std::vector<CompanionAction> actions;
-  std::vector<CompanionValue> values;
-  std::string focused_action_id;
-  bool media_actions_supported{false};
-  bool connected{false};
-  CompanionNowPlayingSnapshot now_playing;
-  CompanionSystemMetricsSnapshot system_metrics;
-};
-
-inline CompanionRuntimeState &companion_runtime_state() {
-  static CompanionRuntimeState state;
-  return state;
+  companion_runtime_service().request_refresh();
 }
 
 inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
-  auto &state = companion_runtime_state();
-  std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.actions, state.values, state.focused_action_id, state.media_actions_supported,
-          state.connected, state.now_playing, state.system_metrics};
+  return companion_runtime_service().snapshot();
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
@@ -237,13 +156,8 @@ inline void register_companion_now_playing_handlers(CompanionNowPlayingHandler n
 }
 
 inline void companion_set_now_playing(CompanionNowPlayingSnapshot snapshot) {
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.now_playing = snapshot;
-  }
+  companion_runtime_service().set_now_playing(snapshot);
   if (companion_now_playing_handler()) companion_now_playing_handler()(snapshot);
-  companion_request_card_refresh();
 }
 
 inline bool companion_metric_key_valid(const std::string &key) {
@@ -278,12 +192,7 @@ inline bool companion_metric_value(const CompanionRuntimeSnapshot &snapshot,
 }
 
 inline void companion_set_system_metrics(CompanionSystemMetricsSnapshot snapshot) {
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.system_metrics = snapshot;
-  }
-  companion_request_card_refresh();
+  companion_runtime_service().set_system_metrics(std::move(snapshot));
 }
 
 inline bool companion_deliver_artwork(uint32_t generation, uint8_t *data, size_t size) {
@@ -324,12 +233,7 @@ inline void companion_set_actions(std::vector<CompanionAction> actions) {
     [](const CompanionAction &action) {
       return action.id.empty() || action.id.size() > 96 || action.label.size() > 96;
     }), actions.end());
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.actions = std::move(actions);
-  }
-  companion_request_card_refresh();
+  companion_runtime_service().set_actions(std::move(actions));
 }
 
 inline bool companion_media_action_valid(const std::string &action_id) {
@@ -337,12 +241,7 @@ inline bool companion_media_action_valid(const std::string &action_id) {
 }
 
 inline void companion_set_media_actions_supported(bool supported) {
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.media_actions_supported = supported;
-  }
-  companion_request_card_refresh();
+  companion_runtime_service().set_media_actions_supported(supported);
 }
 
 inline bool companion_volume_control_valid(const std::string &control_id) {
@@ -367,48 +266,21 @@ inline bool companion_value(const std::string &control_id, int &value) {
 inline void companion_set_value(const std::string &control_id, int value) {
   if (!companion_volume_control_valid(control_id)) return;
   value = std::max(0, std::min(100, value));
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    auto item = std::find_if(state.values.begin(), state.values.end(),
-      [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; });
-    if (item == state.values.end()) state.values.push_back({control_id, value});
-    else item->value = value;
-  }
-  companion_request_card_refresh();
+  companion_runtime_service().set_value(control_id, value);
 }
 
 inline void companion_remove_value(const std::string &control_id) {
   if (!companion_volume_control_valid(control_id)) return;
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.values.erase(std::remove_if(state.values.begin(), state.values.end(),
-      [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; }),
-      state.values.end());
-  }
-  companion_request_card_refresh();
+  companion_runtime_service().remove_value(control_id);
 }
 
 inline std::atomic<bool> &companion_subpage_return_requested();
 
 inline void companion_set_focused_action(std::string action_id) {
   if (action_id.size() > 96) action_id.clear();
-  bool should_return_from_subpage = false;
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    should_return_from_subpage = state.connected && !state.focused_action_id.empty() &&
-      action_id != state.focused_action_id;
-    if (action_id.empty() || !state.connected) {
-      state.pending_auto_subpage_action_id.clear();
-    } else if (state.focused_action_id != action_id) {
-      state.pending_auto_subpage_action_id = action_id;
-    }
-    state.focused_action_id = std::move(action_id);
-  }
+  const bool should_return_from_subpage =
+    companion_runtime_service().set_focused_action(std::move(action_id));
   if (should_return_from_subpage) companion_subpage_return_requested().store(true);
-  companion_request_card_refresh();
 }
 
 inline std::atomic<bool> &companion_subpage_return_requested() {
@@ -421,18 +293,11 @@ inline bool companion_consume_subpage_return_request() {
 }
 
 inline std::string companion_pending_auto_subpage_action() {
-  auto &state = companion_runtime_state();
-  std::lock_guard<std::mutex> lock(state.mutex);
-  return state.pending_auto_subpage_action_id;
+  return companion_runtime_service().pending_auto_subpage_action();
 }
 
 inline bool companion_consume_auto_subpage_action(const std::string &action_id) {
-  if (action_id.empty()) return false;
-  auto &state = companion_runtime_state();
-  std::lock_guard<std::mutex> lock(state.mutex);
-  if (state.pending_auto_subpage_action_id != action_id) return false;
-  state.pending_auto_subpage_action_id.clear();
-  return true;
+  return companion_runtime_service().consume_auto_subpage_action(action_id);
 }
 
 inline bool companion_action_focused(const std::string &action_id) {
@@ -481,24 +346,11 @@ inline uint32_t companion_next_request_number() {
 }
 
 inline void companion_set_connected(bool connected) {
-  auto &state = companion_runtime_state();
-  {
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.connected = connected;
-    if (!connected) {
-      state.values.clear();
-      state.focused_action_id.clear();
-      state.pending_auto_subpage_action_id.clear();
-      state.media_actions_supported = false;
-      state.now_playing = {};
-      state.system_metrics = {};
-    }
-  }
+  companion_runtime_service().set_connected(connected);
   if (!connected) {
     companion_cancel_action_result();
     companion_subpage_return_requested().store(true);
   }
-  companion_request_card_refresh();
   auto &connection_changed = companion_connection_changed_handler();
   if (connection_changed) connection_changed(connected);
 }
