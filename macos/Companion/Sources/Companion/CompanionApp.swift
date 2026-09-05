@@ -97,15 +97,18 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         menu.addItem(connectionStatusItem())
         menu.addItem(.separator())
 
-        let panelWebpageItem = menuLinkItem(
-            "Configure",
+        let panelWebpageItem = NSMenuItem(
+            title: "Configure",
             action: #selector(openDisplaySettings),
-            isEnabled: !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            keyEquivalent: ""
         )
+        panelWebpageItem.target = self
+        panelWebpageItem.image = nil
+        panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         menu.addItem(panelWebpageItem)
 
-        menu.addItem(menuLinkItem("Settings", action: #selector(openSettings)))
-        menu.addItem(menuLinkItem("Quit", action: #selector(quit)))
+        addMenuItem("Settings", action: #selector(openSettings), key: ",", to: menu)
+        addMenuItem("Quit", action: #selector(quit), key: "q", to: menu)
     }
 
     private func connectionStatusItem() -> NSMenuItem {
@@ -149,30 +152,11 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         return item
     }
 
-    private func menuLinkItem(_ title: String, action: Selector, isEnabled: Bool = true) -> NSMenuItem {
-        let item = NSMenuItem()
-        item.isEnabled = isEnabled
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 44))
-        let button = NSButton(title: title, target: self, action: action)
-        button.font = .menuFont(ofSize: 0)
-        button.alignment = .left
-        button.isBordered = false
-        button.focusRingType = .none
-        button.imagePosition = .noImage
-        button.isEnabled = isEnabled
-
-        container.addSubview(button)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
-            button.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
-            button.topAnchor.constraint(equalTo: container.topAnchor),
-            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-
-        item.view = container
-        return item
+    private func addMenuItem(_ title: String, action: Selector, key: String = "", to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        item.target = self
+        item.image = nil
+        menu.addItem(item)
     }
 
     @objc private func connectionSwitchChanged(_ sender: NSSwitch) {
@@ -626,20 +610,32 @@ private struct CompanionSettings: View {
                 Text("Share processor, memory, storage, network, and battery statistics only with your paired display on the local network.")
                     .font(.callout).foregroundStyle(.secondary)
             }
-#if !APP_STORE
             Section("Keyboard & Window Controls") {
+#if APP_STORE
+                Label("Keyboard shortcuts unavailable in this edition", systemImage: "info.circle")
+                Text("The App Store edition cannot send keyboard shortcuts or control windows. Use the direct-download edition, then allow EspControl Companion in System Settings → Privacy & Security → Accessibility.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+#else
                 Label(accessibilityGranted ? "Accessibility access enabled" : "Accessibility access needed",
                       systemImage: accessibilityGranted ? "checkmark.circle" : "lock")
-                Text("Allow Accessibility access to use keyboard shortcuts and window controls from your display. Other features work without it.")
-                    .font(.callout).foregroundStyle(.secondary)
-                Button("Open System Settings…") {
+                if accessibilityGranted {
+                    Text("Keyboard shortcuts and window controls are enabled for your display.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Keyboard shortcuts are disabled. Click Enable Support…, then turn on EspControl Companion in System Settings → Privacy & Security → Accessibility.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Button("Enable Support…") {
                     _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
                         NSWorkspace.shared.open(url)
                     }
                 }
-            }
 #endif
+            }
             Section("Help") {
                 Link("EspControl Support", destination: CompanionStore.supportURL)
                 Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
