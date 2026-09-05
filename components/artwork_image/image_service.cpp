@@ -12,38 +12,33 @@ ImageService &ImageService::instance() {
 
 void ImageService::request(ArtworkImage *owner, uint32_t generation, ImageRequestPriority priority) {
   if (owner == nullptr || this->active_ == owner) return;
+  owner->enable_loop();
   this->queue_.enqueue(owner, generation, priority);
-  this->dispatch_next_();
 }
 
 void ImageService::complete(ArtworkImage *owner) {
   if (this->active_ == owner) this->active_ = nullptr;
-  this->dispatch_next_();
 }
 
 void ImageService::complete_and_request(ArtworkImage *owner, uint32_t generation,
                                         ImageRequestPriority priority) {
   if (owner == nullptr || this->active_ != owner) return;
+  owner->enable_loop();
   this->queue_.enqueue(owner, generation, priority);
   this->active_ = nullptr;
-  this->dispatch_next_();
 }
 
 void ImageService::cancel(ArtworkImage *owner) {
   this->queue_.remove(owner);
   if (this->active_ == owner) this->active_ = nullptr;
-  this->dispatch_next_();
 }
 
-void ImageService::dispatch_next_() {
-  if (this->dispatching_ || this->active_ != nullptr) return;
-  this->dispatching_ = true;
-  ImageRequestQueue<ArtworkImage>::Request request;
-  while (this->active_ == nullptr && this->queue_.pop_next(request)) {
-    this->active_ = request.owner;
-    if (!request.owner->start_service_update_(request.generation)) this->active_ = nullptr;
-  }
-  this->dispatching_ = false;
+void ImageService::process_pending() {
+  dispatch_next_image_request(
+      this->queue_, this->active_, this->dispatching_,
+      [](const ImageRequestQueue<ArtworkImage>::Request &request) {
+        return request.owner->start_service_update_(request.generation);
+      });
 }
 
 }  // namespace artwork_image
