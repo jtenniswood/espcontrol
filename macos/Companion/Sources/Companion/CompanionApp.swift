@@ -485,6 +485,7 @@ private struct CompanionSettings: View {
             .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
 
             Divider()
+                .ignoresSafeArea(.container, edges: .top)
 
             detailView
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
