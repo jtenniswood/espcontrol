@@ -663,10 +663,6 @@ private struct CompanionSettings: View {
                             set: { store.setApplication(application, approved: $0) }
                         )) {
                             HStack(spacing: 10) {
-                                Image(nsImage: NSWorkspace.shared.icon(forFile: application.url.path))
-                                    .resizable()
-                                    .frame(width: 24, height: 24)
-                                    .accessibilityHidden(true)
                                 Text(application.name)
                             }
                         }
