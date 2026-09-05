@@ -225,7 +225,7 @@ final class CompanionConnection: NSObject {
         if let saved, saved != fingerprint {
             shouldReconnect = false
             hasTerminalConnectionError = true
-            store.updateConnectionStatus("Blocked: display certificate changed", state: .failed, recovery: "The display’s identity has changed. If you reset or replaced it, forget this display and pair again using the code on its touchscreen.")
+            store.updateConnectionStatus("Blocked: display certificate changed", state: .failed, recovery: "The display’s identity has changed. If you reset or replaced it, forget this display and pair again using the code from its webpage.")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else if saved != nil {
             if case .pair = mode { pendingCertificateFingerprint = fingerprint }
@@ -236,7 +236,7 @@ final class CompanionConnection: NSObject {
             pendingCertificateFingerprint = fingerprint
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
-            store.updateConnectionStatus("Press and hold the Wi-Fi icon on the display to start pairing", state: .failed)
+            store.updateConnectionStatus("Open the device webpage to start pairing", state: .failed)
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }

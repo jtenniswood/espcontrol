@@ -541,7 +541,7 @@ final class CompanionStore: NSObject, ObservableObject {
     func updateConnectionStatus(_ message: String, state: CompanionConnectionState, recovery: String? = nil) {
         connectionRecoveryMessage = recovery ?? (hasSavedPairing
             ? "Check that your display is on and connected to the same network, then try Connect again."
-            : "Press and hold the Wi-Fi icon on your display, check its address, and enter the current eight-letter code to try again.")
+            : "Open the device webpage at its local address, start pairing, and enter the current eight-letter code to try again.")
         connectionState = state
         updateStatus(message)
         let connected = state == .connected

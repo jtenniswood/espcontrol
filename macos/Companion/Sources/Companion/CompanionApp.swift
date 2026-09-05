@@ -296,7 +296,7 @@ private struct CompanionSettings: View {
             } else {
                 Section {
                     Text("Connect your Mac to an EspControl display to launch applications, open folders, and use Mac controls from its touchscreen.")
-                    Label("Press and hold the Wi-Fi icon on your display to show its pairing code.", systemImage: "hand.tap")
+                    Label("Open the device webpage to start pairing and get its pairing code.", systemImage: "safari")
                         .foregroundStyle(.secondary)
                 }
                 Section("Pair Display") {
@@ -319,7 +319,7 @@ private struct CompanionSettings: View {
                             .focused($focusedField, equals: .pairingCode)
                             .onSubmit { pairDisplay() }
                     }
-                    Text("Use the address and eight-letter code shown on the display. You can include or omit the hyphen. Both devices must be on the same local network.")
+                    Text("Open the device webpage at its local address, start pairing, and enter the eight-letter code it shows. You can include or omit the hyphen. Both devices must be on the same local network.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     HStack {
