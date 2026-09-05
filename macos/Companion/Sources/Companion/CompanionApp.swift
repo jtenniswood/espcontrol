@@ -21,7 +21,7 @@ struct CompanionApp: App {
                 }
             }
             CommandGroup(replacing: .appSettings) {
-                Button("Settings…") { appDelegate.openCompanionWindow() }
+                Button("Settings") { appDelegate.openCompanionWindow() }
                     .keyboardShortcut(",", modifiers: .command)
             }
         }
@@ -98,18 +98,17 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         menu.addItem(.separator())
 
         let panelWebpageItem = NSMenuItem(
-            title: "Customize Display",
+            title: "Configure",
             action: #selector(openDisplaySettings),
             keyEquivalent: ""
         )
         panelWebpageItem.target = self
+        panelWebpageItem.image = nil
         panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         menu.addItem(panelWebpageItem)
 
-        menu.addItem(.separator())
-        addMenuItem("Settings…", action: #selector(openSettings), key: ",", to: menu)
-        menu.addItem(.separator())
-        addMenuItem("Quit EspControl Companion", action: #selector(quit), key: "q", to: menu)
+        addMenuItem("Settings", action: #selector(openSettings), key: ",", to: menu)
+        addMenuItem("Quit", action: #selector(quit), key: "q", to: menu)
     }
 
     private func connectionStatusItem() -> NSMenuItem {
