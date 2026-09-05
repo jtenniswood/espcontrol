@@ -748,6 +748,8 @@ private struct CompanionSettings: View {
                         }
                         .padding(.vertical, 2)
                     }
+                    Button("Add Folder…") { store.chooseFolder() }
+                        .buttonStyle(.bordered)
                 }
                 if let message = store.folderMessage {
                     Text(message).font(.callout).foregroundStyle(.secondary)
@@ -756,16 +758,6 @@ private struct CompanionSettings: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Folders")
-        .toolbar {
-            if !store.approvedFolders.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { store.chooseFolder() } label: {
-                        Label("Add Folder…", systemImage: "folder.badge.plus")
-                    }
-                    .help("Add a folder to your display")
-                }
-            }
-        }
     }
 
     private func emptyState(_ title: String, symbol: String, detail: String) -> some View {
