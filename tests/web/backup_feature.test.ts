@@ -183,6 +183,23 @@ export function runBackupFeatureTests(migrationFixture?: MigrationFixture): void
     native_config: { document_version: 2, device_profile: "future-panel", payload: "future" },
   });
   equal(newerNativeDocument.native_config, undefined, "newer native payloads do not block readable backup import");
+  equal(
+    newerNativeDocument.native_config_skipped_device_profile,
+    "future-panel",
+    "newer native payloads retain their device profile for mismatch warnings",
+  );
+  const newerNativeMismatchPlan = feature.planBackupImport({
+    version: 2,
+    format: "espcontrol.backup",
+    device: "future-panel",
+    buttons: [{}],
+    native_config: { document_version: 2, device_profile: "future-panel", payload: "future" },
+  }, { device: "panel-b", slots: 1 });
+  equal(
+    newerNativeMismatchPlan.warnings[0],
+    "This backup was taken from future-panel; this device is panel-b. Layout will be restored, but the native configuration will be skipped.",
+    "newer native payloads explain the skipped native configuration",
+  );
 
   const plan = feature.planBackupImport(backup, { device: "panel-b", slots: 3 });
   equal(plan.warnings.length, 2, "cross-device and slot-count warnings are retained");

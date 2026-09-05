@@ -160,7 +160,8 @@ export function createBackupFeature(dependencies: BackupFeatureDependencies): Ba
     const importedCount = config.buttons.length;
     const warnings: string[] = [];
 
-    const nativeDeviceProfile = config.native_config?.device_profile;
+    const nativeDeviceProfile = config.native_config?.device_profile ||
+      config.native_config_skipped_device_profile;
     if (nativeDeviceProfile && nativeDeviceProfile !== targetDeviceId) {
       warnings.push(
         `This backup was taken from ${nativeDeviceProfile}; this device is ${targetDeviceId}. ` +
