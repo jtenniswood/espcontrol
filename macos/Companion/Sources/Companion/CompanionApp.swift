@@ -650,20 +650,9 @@ private struct CompanionSettings: View {
             }
             Section {
                 HStack(spacing: 12) {
-                    Menu {
-                        Button(isSearching ? "Enable All Results" : "Enable All Applications") {
-                            store.setApplications(filteredApplications, approved: true)
-                        }
-                        .disabled(filteredApplications.isEmpty || filteredApplications.allSatisfy(store.applicationIsApproved))
-                        Button(isSearching ? "Disable All Results" : "Disable All Applications") {
-                            store.setApplications(filteredApplications, approved: false)
-                        }
-                        .disabled(!filteredApplications.contains(where: store.applicationIsApproved))
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .accessibilityLabel("Application Actions")
-                    .help("Enable or disable the applications shown")
+                    Toggle("Select All", isOn: selectAllBinding)
+                        .toggleStyle(.checkbox)
+                        .disabled(filteredApplications.isEmpty)
                     Button { store.refreshApplications() } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -724,6 +713,15 @@ private struct CompanionSettings: View {
     }
 
     private var isSearching: Bool { !applicationSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var selectAllBinding: Binding<Bool> {
+        Binding(
+            get: {
+                !filteredApplications.isEmpty && filteredApplications.allSatisfy(store.applicationIsApproved)
+            },
+            set: { store.setApplications(filteredApplications, approved: $0) }
+        )
+    }
+
     private var filteredApplications: [LaunchableApp] {
         let query = applicationSearch.trimmingCharacters(in: .whitespacesAndNewlines)
         return query.isEmpty ? store.availableApps : store.availableApps.filter { $0.name.localizedCaseInsensitiveContains(query) }
