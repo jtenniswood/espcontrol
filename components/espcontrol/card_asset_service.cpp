@@ -7,35 +7,12 @@
 #include "esphome/core/hal.h"
 
 #ifdef ESP_PLATFORM
-#include "esphome/core/helpers.h"
-#include "esphome/core/preferences.h"
 #include <esp_random.h>
 #endif
 
 namespace espcontrol {
 namespace {
 CardAssetService *active_card_asset_service = nullptr;
-constexpr size_t MAX_STAGED_RESTORE_ASSETS =
-    esphome::card_image_store::CARD_IMAGE_INDEX_MAX_RECORDS;
-static_assert(MAX_STAGED_RESTORE_ASSETS <= 0x7F,
-              "Restore session count and commit flag must fit in its persistent record");
-
-#ifdef ESP_PLATFORM
-constexpr uint32_t PENDING_DELETE_MAGIC = 0x43414444;
-constexpr uint8_t PENDING_DELETE_VERSION = 1;
-constexpr uint32_t PENDING_DELETE_PREFERENCE_KEY = 0x5D19A62C;
-constexpr uint32_t RESTORE_SESSION_MAGIC = 0x43415253;
-constexpr uint8_t RESTORE_SESSION_VERSION = 1;
-constexpr uint32_t RESTORE_SESSION_PREFERENCE_KEY = 0x5D19A62D;
-constexpr uint8_t RESTORE_SESSION_COMMITTED_FLAG = 0x80;
-
-struct PendingDeleteRecord {
-  uint32_t magic{PENDING_DELETE_MAGIC};
-  uint8_t version{PENDING_DELETE_VERSION};
-  char id[41]{};
-  uint32_t checksum{0};
-};
-
 uint32_t pending_checksum(const char *id) {
   uint32_t value = 2166136261UL;
   value = (value ^ PENDING_DELETE_MAGIC) * 16777619UL;
@@ -46,15 +23,6 @@ uint32_t pending_checksum(const char *id) {
   }
   return value;
 }
-
-struct RestoreSessionRecord {
-  uint32_t magic{RESTORE_SESSION_MAGIC};
-  uint8_t version{RESTORE_SESSION_VERSION};
-  uint8_t count{0};
-  char session[17]{};
-  char ids[MAX_STAGED_RESTORE_ASSETS][41]{};
-  uint32_t checksum{0};
-};
 
 uint32_t restore_checksum(const RestoreSessionRecord &record) {
   uint32_t value = 2166136261UL;
@@ -74,7 +42,14 @@ uint32_t restore_checksum(const RestoreSessionRecord &record) {
   }
   return value;
 }
-#endif
+
+uint32_t completed_checksum(const CompletedRestoresRecord &record) {
+  uint32_t value = record.magic;
+  for (const auto &session : record.sessions) {
+    for (unsigned char ch : session) value = (value ^ ch) * 16777619UL;
+  }
+  return value;
+}
 }
 
 bool CardAssetService::start() {
@@ -82,10 +57,12 @@ bool CardAssetService::start() {
   if (running_ || (active_card_asset_service != nullptr && active_card_asset_service != this)) {
     return false;
   }
+  if (persistence_ == nullptr || !persistence_->ready()) return false;
   active_card_asset_service = this;
   running_ = true;
   load_pending_delete();
   load_restore_session();
+  load_completed_restores();
   return true;
 }
 
@@ -113,7 +90,7 @@ void CardAssetService::loop() {
 #endif
   if (!pending_delete_id_.empty()) resume_pending_delete();
   if (restore_recovery_needed_ && !delete_running_) {
-    if (restore_committed_) clear_restore_session();
+    if (restore_committed_) finish_committed_restore();
     else recover_abandoned_restore_session();
   }
 }
@@ -123,7 +100,7 @@ void CardAssetService::set_reference_adapter(CardAssetReferenceAdapter *adapter)
   reference_adapter_ = adapter;
   if (running_ && !pending_delete_id_.empty()) resume_pending_delete();
   if (running_ && restore_recovery_needed_ && !restore_session_.empty()) {
-    if (restore_committed_) clear_restore_session();
+    if (restore_committed_) finish_committed_restore();
     else recover_abandoned_restore_session();
   }
 }
@@ -138,13 +115,9 @@ void CardAssetService::set_reference_persistence_callback(
 
 bool CardAssetService::load_pending_delete() {
   pending_delete_id_.clear();
-#ifdef ESP_PLATFORM
-  if (esphome::global_preferences == nullptr) return false;
-  pending_delete_preference_ =
-      esphome::global_preferences->make_preference<PendingDeleteRecord>(
-          PENDING_DELETE_PREFERENCE_KEY, true);
+  if (persistence_ == nullptr || !persistence_->ready()) return false;
   PendingDeleteRecord record{};
-  if (!pending_delete_preference_.load(&record)) return true;
+  if (!persistence_->load(record)) return true;
   record.id[sizeof(record.id) - 1] = '\0';
   if (record.magic != PENDING_DELETE_MAGIC || record.version != PENDING_DELETE_VERSION ||
       record.checksum != pending_checksum(record.id) ||
@@ -152,31 +125,26 @@ bool CardAssetService::load_pending_delete() {
     return true;
   }
   pending_delete_id_ = record.id;
-#endif
   return true;
 }
 
 bool CardAssetService::save_pending_delete(const std::string &id) {
   if (!esphome::card_image_store::CardImageStore::id_valid(id)) return false;
-#ifdef ESP_PLATFORM
-  if (esphome::global_preferences == nullptr) return false;
+  if (persistence_ == nullptr || !persistence_->ready()) return false;
   PendingDeleteRecord record{};
   std::strncpy(record.id, id.c_str(), sizeof(record.id) - 1);
   record.checksum = pending_checksum(record.id);
-  if (!pending_delete_preference_.save(&record) || !esphome::global_preferences->sync()) return false;
-#endif
+  if (!persistence_->save(record) || !persistence_->sync()) return false;
   pending_delete_id_ = id;
   return true;
 }
 
 bool CardAssetService::clear_pending_delete() {
-#ifdef ESP_PLATFORM
-  if (esphome::global_preferences == nullptr) return false;
+  if (persistence_ == nullptr || !persistence_->ready()) return false;
   PendingDeleteRecord record{};
   record.magic = 0;
   record.version = 0;
-  if (!pending_delete_preference_.save(&record) || !esphome::global_preferences->sync()) return false;
-#endif
+  if (!persistence_->save(record) || !persistence_->sync()) return false;
   pending_delete_id_.clear();
   return true;
 }
@@ -251,13 +219,9 @@ bool CardAssetService::load_restore_session() {
   restore_recovery_needed_ = false;
   restore_committed_ = false;
   restore_session_last_activity_ms_ = 0;
-#ifdef ESP_PLATFORM
-  if (esphome::global_preferences == nullptr) return false;
-  restore_session_preference_ =
-      esphome::global_preferences->make_preference<RestoreSessionRecord>(
-          RESTORE_SESSION_PREFERENCE_KEY, true);
+  if (persistence_ == nullptr || !persistence_->ready()) return false;
   auto record = std::make_unique<RestoreSessionRecord>();
-  if (!restore_session_preference_.load(record.get())) return true;
+  if (!persistence_->load(*record)) return true;
   record->session[sizeof(record->session) - 1] = '\0';
   for (auto &id : record->ids) id[sizeof(id) - 1] = '\0';
   const size_t count = record->count & static_cast<uint8_t>(~RESTORE_SESSION_COMMITTED_FLAG);
@@ -266,20 +230,18 @@ bool CardAssetService::load_restore_session() {
       record->checksum != restore_checksum(*record) || record->session[0] == '\0') {
     return true;
   }
-  restore_session_ = record->session;
-  restore_committed_ = (record->count & RESTORE_SESSION_COMMITTED_FLAG) != 0;
   for (size_t index = 0; index < count; ++index) {
     if (!esphome::card_image_store::CardImageStore::id_valid(record->ids[index])) return true;
-    staged_restore_ids_.emplace_back(record->ids[index]);
   }
+  restore_session_ = record->session;
+  restore_committed_ = (record->count & RESTORE_SESSION_COMMITTED_FLAG) != 0;
+  for (size_t index = 0; index < count; ++index) staged_restore_ids_.emplace_back(record->ids[index]);
   restore_recovery_needed_ = true;
-#endif
   return true;
 }
 
 bool CardAssetService::save_restore_session() {
-#ifdef ESP_PLATFORM
-  if (esphome::global_preferences == nullptr || restore_session_.empty() ||
+  if (persistence_ == nullptr || !persistence_->ready() || restore_session_.empty() ||
       staged_restore_ids_.size() > MAX_STAGED_RESTORE_ASSETS) {
     return false;
   }
@@ -292,21 +254,18 @@ bool CardAssetService::save_restore_session() {
                  sizeof(record->ids[index]) - 1);
   }
   record->checksum = restore_checksum(*record);
-  if (!restore_session_preference_.save(record.get()) ||
-      !esphome::global_preferences->sync()) return false;
-#endif
+  if (!persistence_->save(*record) ||
+      !persistence_->sync()) return false;
   return true;
 }
 
 bool CardAssetService::clear_restore_session() {
-#ifdef ESP_PLATFORM
-  if (esphome::global_preferences == nullptr) return false;
+  if (persistence_ == nullptr || !persistence_->ready()) return false;
   auto record = std::make_unique<RestoreSessionRecord>();
   record->magic = 0;
   record->version = 0;
-  if (!restore_session_preference_.save(record.get()) ||
-      !esphome::global_preferences->sync()) return false;
-#endif
+  if (!persistence_->save(*record) ||
+      !persistence_->sync()) return false;
   restore_session_.clear();
   staged_restore_ids_.clear();
   restore_recovery_needed_ = false;
@@ -341,7 +300,7 @@ std::string CardAssetService::begin_restore_session() {
 
 bool CardAssetService::stage_restored_asset(const std::string &session, const std::string &id) {
   StateLock lock(this);
-  if (session.empty() || session != restore_session_ ||
+  if (session.empty() || session != restore_session_ || restore_committed_ || restore_recovery_needed_ ||
       !esphome::card_image_store::CardImageStore::id_valid(id) ||
       staged_restore_ids_.size() >= MAX_STAGED_RESTORE_ASSETS) {
     return false;
@@ -365,21 +324,60 @@ void CardAssetService::unstage_restored_asset(const std::string &session, const 
   if (session != restore_session_) return;
   const auto item = std::find(staged_restore_ids_.begin(), staged_restore_ids_.end(), id);
   if (item == staged_restore_ids_.end()) return;
+  const auto previous = staged_restore_ids_;
   staged_restore_ids_.erase(item);
   if (save_restore_session()) restore_session_last_activity_ms_ = esphome::millis();
+  else staged_restore_ids_ = previous;
+}
+
+void CardAssetService::load_completed_restores() {
+  completed_restore_sessions_.clear();
+  CompletedRestoresRecord record{};
+  if (!persistence_->load(record) || record.magic != COMPLETED_RESTORES_MAGIC ||
+      record.checksum != completed_checksum(record)) return;
+  for (const auto &session : record.sessions) {
+    if (session[16] != '\0') return;
+  }
+  for (const auto &session : record.sessions) {
+    if (session[0] != '\0') completed_restore_sessions_.emplace_back(session);
+  }
+}
+
+bool CardAssetService::finish_committed_restore() {
+  if (std::find(completed_restore_sessions_.begin(), completed_restore_sessions_.end(),
+                restore_session_) == completed_restore_sessions_.end()) {
+    auto completed = completed_restore_sessions_;
+    completed.insert(completed.begin(), restore_session_);
+    if (completed.size() > COMPLETED_RESTORE_CAPACITY) completed.resize(COMPLETED_RESTORE_CAPACITY);
+    CompletedRestoresRecord record{};
+    for (size_t i = 0; i < completed.size(); ++i)
+      std::strncpy(record.sessions[i], completed[i].c_str(), sizeof(record.sessions[i]) - 1);
+    record.checksum = completed_checksum(record);
+    if (!persistence_->save(record) || !persistence_->sync()) return false;
+    completed_restore_sessions_ = completed;
+  }
+  return clear_restore_session();
 }
 
 CardAssetRestoreResult CardAssetService::commit_restore_session(const std::string &session) {
   StateLock lock(this);
-  if (session.empty() || session != restore_session_) return CardAssetRestoreResult::INVALID_SESSION;
-  restore_committed_ = true;
-  if (!save_restore_session()) {
-    restore_committed_ = false;
-    return CardAssetRestoreResult::PERSISTENCE_FAILED;
+  if (!session.empty() && std::find(completed_restore_sessions_.begin(),
+      completed_restore_sessions_.end(), session) != completed_restore_sessions_.end()) {
+    return CardAssetRestoreResult::SUCCESS;
   }
-  if (clear_restore_session()) return CardAssetRestoreResult::SUCCESS;
+  if (session.empty() || session != restore_session_) return CardAssetRestoreResult::INVALID_SESSION;
+  if (!restore_committed_) {
+    restore_committed_ = true;
+    if (!save_restore_session()) {
+      restore_committed_ = false;
+      return CardAssetRestoreResult::PERSISTENCE_FAILED;
+    }
+  }
+  // Persist a bounded receipt before clearing the deployed session journal.
+  // If either operation fails, boot/loop recovery finishes this same commit.
   restore_recovery_needed_ = true;
-  return CardAssetRestoreResult::PERSISTENCE_FAILED;
+  return finish_committed_restore() ? CardAssetRestoreResult::SUCCESS
+                                    : CardAssetRestoreResult::PERSISTENCE_FAILED;
 }
 
 CardAssetRestoreResult CardAssetService::rollback_restore_session(const std::string &session) {
@@ -406,7 +404,13 @@ void CardAssetService::recover_abandoned_restore_session() {
     // A referenced staged image means configuration persistence completed but
     // the commit response was lost. Preserve it rather than breaking the
     // durable configuration during timeout or reboot recovery.
-    if (reference_adapter_->references_asset(id)) continue;
+    const auto reference = recovery_reference_callback_ != nullptr
+        ? recovery_reference_callback_(recovery_reference_context_, id)
+        : CardAssetReferenceState::USE_LEGACY;
+    if (reference == CardAssetReferenceState::UNAVAILABLE) return;
+    if (reference == CardAssetReferenceState::REFERENCED ||
+        (reference == CardAssetReferenceState::USE_LEGACY &&
+         reference_adapter_->references_asset(id))) continue;
     esphome::card_image_store::CardImageInfo image;
     if (!store_.find(id, image)) continue;
     if (store_.erase(id) != ESP_OK) return;

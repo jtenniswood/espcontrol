@@ -61,12 +61,16 @@ export interface BackupArchiveEntry {
 
 export type BackupArchiveEntries = Readonly<Record<string, Uint8Array>>;
 
+export interface BackupAssetRestore<TImportPlan> {
+  stage(): Promise<void>;
+  remapImportedReferences(plan: TImportPlan): void;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+
 export interface BackupAssetProvider<TImportPlan = BackupImportPlan> {
   createArchiveEntries(): Promise<BackupArchiveEntry[]>;
-  restoreArchiveEntries(entries?: BackupArchiveEntries | null): Promise<Record<string, string>>;
-  remapImportedReferences(plan: TImportPlan, references: Readonly<Record<string, string>>): void;
-  commitRestore?(): Promise<void>;
-  rollbackRestore?(): Promise<void>;
+  createRestore(entries?: BackupArchiveEntries | null): BackupAssetRestore<TImportPlan>;
 }
 
 export interface BackupFeatureDependencies {

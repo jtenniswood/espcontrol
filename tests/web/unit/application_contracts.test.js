@@ -818,7 +818,6 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(entry, /backupUiFeature\.globals/);
     assert.match(hooks, /application: AppBackupFeature/);
     assert.match(entry, /installAppTestHooksBackup\(context\.layout, context\.backup\.contract, context\.backup\.application, register\)/);
-    assert.match(backup, /var configurationPersisted = false;[\s\S]*configurationPersisted = true;[\s\S]*if \(configurationPersisted && cardImageBackupAssetProvider\.commitRestore\)[\s\S]*cardImageBackupAssetProvider\.commitRestore\(\)/);
     assert.doesNotMatch(globals, /\bvar (?:addNativeConfigToBackup|backupExportFileDate|backupExportFileName|normalizeImportedPanelSettings|gridColsForImportedSettings|backupExportScreenSizeSlug|downloadBackupConfig|exportConfig|importConfig):/);
   });
 

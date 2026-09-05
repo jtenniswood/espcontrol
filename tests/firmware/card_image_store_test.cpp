@@ -1,5 +1,7 @@
 #include "card_image_store.h"
 #include "card_asset_service.h"
+#include "panel_config_asset_references.h"
+#include <map>
 
 #include <algorithm>
 #include <cstdint>
@@ -30,6 +32,47 @@ struct StoredIndexHeader {
   uint32_t crc32;
 };
 
+class FakeAssetPersistence : public espcontrol::CardAssetPersistence {
+ public:
+  std::map<uint32_t, std::vector<uint8_t>> durable, pending;
+  std::optional<size_t> fail_save_after, fail_sync_after;
+  bool available{true};
+  bool ready() const override { return available; }
+  void reset() { durable.clear(); pending.clear(); fail_save_after.reset(); fail_sync_after.reset(); available = true; }
+  void reboot() { pending.clear(); fail_save_after.reset(); fail_sync_after.reset(); }
+  static bool fails(std::optional<size_t> &after) {
+    if (!after) return false;
+    if (*after == 0) { after.reset(); return true; }
+    --*after;
+    return false;
+  }
+  template<typename T> bool read(uint32_t key, T &record) {
+    const auto item = durable.find(key);
+    if (item == durable.end() || item->second.size() != sizeof(T)) return false;
+    std::memcpy(&record, item->second.data(), sizeof(T));
+    return true;
+  }
+  template<typename T> bool write(uint32_t key, const T &record) {
+    if (fails(fail_save_after)) return false;
+    const auto *bytes = reinterpret_cast<const uint8_t *>(&record);
+    pending[key] = std::vector<uint8_t>(bytes, bytes + sizeof(T));
+    return true;
+  }
+  bool load(espcontrol::PendingDeleteRecord &r) override { return read(espcontrol::PENDING_DELETE_PREFERENCE_KEY, r); }
+  bool load(espcontrol::RestoreSessionRecord &r) override { return read(espcontrol::RESTORE_SESSION_PREFERENCE_KEY, r); }
+  bool load(espcontrol::CompletedRestoresRecord &r) override { return read(espcontrol::COMPLETED_RESTORES_PREFERENCE_KEY, r); }
+  bool save(const espcontrol::PendingDeleteRecord &r) override { return write(espcontrol::PENDING_DELETE_PREFERENCE_KEY, r); }
+  bool save(const espcontrol::RestoreSessionRecord &r) override { return write(espcontrol::RESTORE_SESSION_PREFERENCE_KEY, r); }
+  bool save(const espcontrol::CompletedRestoresRecord &r) override { return write(espcontrol::COMPLETED_RESTORES_PREFERENCE_KEY, r); }
+  bool sync() override {
+    if (fails(fail_sync_after)) return false;
+    for (const auto &item : pending) durable[item.first] = item.second;
+    pending.clear();
+    return true;
+  }
+};
+FakeAssetPersistence persistence;
+
 struct FakeFlash {
   esp_partition_t partition{PARTITION_SIZE};
   std::vector<uint8_t> bytes = std::vector<uint8_t>(PARTITION_SIZE, 0xFF);
@@ -37,6 +80,7 @@ struct FakeFlash {
   std::optional<size_t> fail_erase_at;
 
   void reset() {
+    persistence.reset();
     std::fill(bytes.begin(), bytes.end(), 0xFF);
     fail_write_at.reset();
     fail_erase_at.reset();
@@ -86,8 +130,8 @@ void expect(bool condition, const std::string &message) {
 std::vector<uint8_t> jpeg_bytes(size_t size = 1024);
 
 void test_card_asset_service_has_one_application_owner() {
-  espcontrol::CardAssetService first;
-  espcontrol::CardAssetService second;
+  espcontrol::CardAssetService first{&persistence};
+  espcontrol::CardAssetService second{&persistence};
   expect(espcontrol::card_asset_service() == nullptr, "asset service should start unregistered");
   expect(first.start(), "application owner should register its asset service");
   expect(espcontrol::card_asset_service() == &first,
@@ -101,7 +145,7 @@ void test_card_asset_service_has_one_application_owner() {
 
 void test_card_asset_service_deletes_only_after_references_persist() {
   flash.reset();
-  espcontrol::CardAssetService service;
+  espcontrol::CardAssetService service{&persistence};
   expect(service.start(), "asset service should start for deletion transaction");
   const auto bytes = jpeg_bytes();
   CardImageUpload transaction;
@@ -149,7 +193,7 @@ void test_card_asset_service_deletes_only_after_references_persist() {
 
 void test_card_asset_service_reserves_idle_image_before_clearing_references() {
   flash.reset();
-  espcontrol::CardAssetService service;
+  espcontrol::CardAssetService service{&persistence};
   expect(service.start(), "asset service should start for reader-safe deletion");
   const auto bytes = jpeg_bytes();
   CardImageUpload upload;
@@ -185,7 +229,7 @@ void test_card_asset_service_reserves_idle_image_before_clearing_references() {
 
 void test_card_asset_service_stages_restore_until_commit_or_rollback() {
   flash.reset();
-  espcontrol::CardAssetService service;
+  espcontrol::CardAssetService service{&persistence};
   expect(service.start(), "asset service should start for restore staging");
   TestReferenceAdapter adapter;
   adapter.referenced = false;
@@ -230,7 +274,7 @@ void test_card_asset_service_stages_restore_until_commit_or_rollback() {
 
 void test_card_asset_service_stages_every_indexed_image() {
   flash.reset();
-  espcontrol::CardAssetService service;
+  espcontrol::CardAssetService service{&persistence};
   expect(service.start(), "asset service should start for a large restore");
   const std::string session = service.begin_restore_session();
   expect(!session.empty(), "large restore should create a durable session token");
@@ -253,7 +297,7 @@ void test_card_asset_service_stages_every_indexed_image() {
 
 void test_card_asset_service_retries_restore_recovery_without_pending_delete() {
   flash.reset();
-  espcontrol::CardAssetService service;
+  espcontrol::CardAssetService service{&persistence};
   expect(service.start(), "asset service should start for restore recovery");
   TestReferenceAdapter adapter;
   adapter.is_ready = false;
@@ -288,7 +332,7 @@ void test_card_asset_service_retries_restore_recovery_without_pending_delete() {
 
 void test_card_asset_service_rolls_back_abandoned_restore() {
   flash.reset();
-  espcontrol::CardAssetService service;
+  espcontrol::CardAssetService service{&persistence};
   expect(service.start(), "asset service should start for restore timeout recovery");
   TestReferenceAdapter adapter;
   adapter.referenced = false;
@@ -336,6 +380,183 @@ void test_card_asset_service_rolls_back_abandoned_restore() {
   expect(service.find(referenced_image.id, found),
          "timeout recovery must retain an image referenced by durable configuration");
   expect(service.stop(), "asset service should stop after timeout recovery");
+}
+
+CardImageInfo stage_fixture(espcontrol::CardAssetService &service, const std::string &session) {
+  const auto bytes = jpeg_bytes();
+  CardImageUpload upload;
+  expect(service.begin_upload(bytes.size(), upload) == ESP_OK, "reserve staged fixture");
+  expect(service.stage_restored_asset(session, upload.id), "journal before image publication");
+  expect(service.write_upload(upload, bytes.data(), bytes.size()) == ESP_OK, "write staged fixture");
+  CardImageInfo image;
+  expect(service.commit_upload(upload, image) == ESP_OK, "publish staged fixture");
+  return image;
+}
+
+struct NativeReferences {
+  bool ready{false};
+  std::vector<uint8_t> document;
+  static espcontrol::CardAssetReferenceState check(void *context, const std::string &id) {
+    auto &self = *static_cast<NativeReferences *>(context);
+    bool referenced = false;
+    if (!self.ready || !espcontrol::panel_config_references_asset(
+        self.document.data(), self.document.size(), id, referenced)) {
+      return espcontrol::CardAssetReferenceState::UNAVAILABLE;
+    }
+    return referenced ? espcontrol::CardAssetReferenceState::REFERENCED
+                      : espcontrol::CardAssetReferenceState::UNREFERENCED;
+  }
+  void set(const std::string &main_id, const std::string &subpage_id) {
+    using namespace espcontrol::configuration;
+    document.resize(2048);
+    PanelConfigWriter writer(document.data(), document.size());
+    expect(writer.begin() == PanelConfigStatus::OK, "begin native reference fixture");
+    const std::string profile = "test-panel";
+    expect(writer.append_device_profile(reinterpret_cast<const uint8_t *>(profile.data()), profile.size()) == PanelConfigStatus::OK,
+           "native fixture profile");
+    const std::string button = "light.a;A;;;;;light;;bg_image=" + main_id;
+    const std::string subpage = "1|light.b;B;;;;;light;;bg_image=" + subpage_id;
+    expect(writer.append_button(1, reinterpret_cast<const uint8_t *>(button.data()), button.size()) == PanelConfigStatus::OK,
+           "native main reference");
+    expect(writer.append_subpage(1, reinterpret_cast<const uint8_t *>(subpage.data()), subpage.size()) == PanelConfigStatus::OK,
+           "native subpage reference");
+    size_t size = 0;
+    expect(writer.finish(&size) == PanelConfigStatus::OK, "finish native fixture");
+    document.resize(size);
+  }
+};
+
+void test_persistent_recovery_uses_native_document_after_startup() {
+  flash.reset();
+  std::string session;
+  CardImageInfo main_image, subpage_image, orphan;
+  {
+    espcontrol::CardAssetService service{&persistence};
+    expect(service.start(), "start persistent restore");
+    session = service.begin_restore_session();
+    main_image = stage_fixture(service, session);
+    subpage_image = stage_fixture(service, session);
+    orphan = stage_fixture(service, session);
+    service.stop();
+  }
+  persistence.reboot();
+  // New process/service, persisted flash and stale legacy values: this is the
+  // save-then-reboot window before the browser commits its image session.
+  NativeReferences native;
+  native.set(main_image.id, subpage_image.id);
+  espcontrol::CardAssetService rebooted{&persistence};
+  rebooted.set_recovery_reference_callback(NativeReferences::check, &native);
+  expect(rebooted.start(), "reload deployed restore journal");
+  TestReferenceAdapter legacy;
+  legacy.referenced = false;
+  rebooted.set_reference_adapter(&legacy);
+  CardImageInfo found;
+  expect(rebooted.find(orphan.id, found), "no recovery before native startup finishes");
+  native.ready = true;
+  // Unreadable authoritative data must also keep all assets recoverable.
+  native.document[0] = 0;
+  rebooted.loop();
+  expect(rebooted.find(orphan.id, found), "invalid native document cannot authorize erase");
+  native.set(main_image.id, subpage_image.id);
+  rebooted.loop();
+  expect(rebooted.find(main_image.id, found), "saved main-card image survives stale legacy mirror");
+  expect(rebooted.find(subpage_image.id, found), "saved subpage image survives stale legacy mirror");
+  expect(!rebooted.find(orphan.id, found), "only unreferenced staged image is reclaimed");
+  expect(!rebooted.begin_restore_session().empty(), "recovery clears session for next restore");
+  rebooted.stop();
+}
+
+void test_persistent_commit_interruption_boundaries() {
+  using espcontrol::CardAssetRestoreResult;
+  for (bool fail_sync : {false, true}) {
+    for (size_t boundary = 0; boundary < 3; ++boundary) {
+      flash.reset();
+      std::string session;
+      CardImageInfo image;
+      {
+        espcontrol::CardAssetService service{&persistence};
+        expect(service.start(), "start commit interruption fixture");
+        session = service.begin_restore_session();
+        image = stage_fixture(service, session);
+        // Commit marker, completion receipt, then active-journal clearing.
+        (fail_sync ? persistence.fail_sync_after : persistence.fail_save_after) = boundary;
+        expect(service.commit_restore_session(session) == CardAssetRestoreResult::PERSISTENCE_FAILED,
+               "every write/sync boundary reports persistence failure");
+        service.stop();
+      }
+      persistence.reboot();
+      espcontrol::CardAssetService rebooted{&persistence};
+      expect(rebooted.start(), "reload interrupted commit");
+      expect(rebooted.commit_restore_session(session) == CardAssetRestoreResult::SUCCESS,
+             "retry completes same session after reboot");
+      rebooted.loop();
+      CardImageInfo found;
+      expect(rebooted.find(image.id, found), "commit retry never deletes the committed image");
+      rebooted.stop();
+      persistence.reboot();
+      espcontrol::CardAssetService retried{&persistence};
+      expect(retried.start(), "load completed receipt");
+      expect(retried.commit_restore_session(session) == CardAssetRestoreResult::SUCCESS,
+             "lost success response can be retried across another reboot");
+      expect(retried.rollback_restore_session(session) == CardAssetRestoreResult::INVALID_SESSION,
+             "completed restore cannot be rolled back");
+      const auto next = retried.begin_restore_session();
+      expect(!next.empty(), "completed cleanup does not block next restore");
+      expect(retried.commit_restore_session(session) == CardAssetRestoreResult::SUCCESS,
+             "retry previous commit does not disturb the active session");
+      expect(retried.commit_restore_session(next) == CardAssetRestoreResult::SUCCESS,
+             "new session still commits");
+      retried.stop();
+    }
+  }
+}
+
+void test_persistent_recovery_finishes_committed_cleanup() {
+  flash.reset();
+  std::string session;
+  CardImageInfo image;
+  {
+    espcontrol::CardAssetService service{&persistence};
+    expect(service.start(), "start committed cleanup fixture");
+    session = service.begin_restore_session();
+    image = stage_fixture(service, session);
+    persistence.fail_save_after = 1;
+    expect(service.commit_restore_session(session) == espcontrol::CardAssetRestoreResult::PERSISTENCE_FAILED,
+           "receipt failure leaves committed journal");
+    service.stop();
+  }
+  persistence.reboot();
+  espcontrol::CardAssetService rebooted{&persistence};
+  expect(rebooted.start(), "reload committed journal");
+  rebooted.loop();
+  CardImageInfo found;
+  expect(rebooted.find(image.id, found), "committed cleanup never needs legacy references");
+  expect(rebooted.commit_restore_session(session) == espcontrol::CardAssetRestoreResult::SUCCESS,
+         "loop recovery saves retry receipt");
+  for (size_t i = 0; i < espcontrol::COMPLETED_RESTORE_CAPACITY; ++i) {
+    const auto next = rebooted.begin_restore_session();
+    expect(!next.empty(), "bounded history permits new session");
+    expect(rebooted.commit_restore_session(next) == espcontrol::CardAssetRestoreResult::SUCCESS,
+           "commit bounded history fixture");
+  }
+  expect(rebooted.commit_restore_session(session) == espcontrol::CardAssetRestoreResult::INVALID_SESSION,
+         "old receipts expire after bounded number of completions");
+  rebooted.stop();
+}
+
+void test_persistence_failures_before_publication() {
+  for (bool fail_sync : {false, true}) {
+    flash.reset();
+    espcontrol::CardAssetService service{&persistence};
+    expect(service.start(), "start persistence-failure fixture");
+    (fail_sync ? persistence.fail_sync_after : persistence.fail_save_after) = 0;
+    expect(service.begin_restore_session().empty(), "failed begin must not return a session");
+    const auto session = service.begin_restore_session();
+    expect(!session.empty(), "failed begin can be retried");
+    (fail_sync ? persistence.fail_sync_after : persistence.fail_save_after) = 0;
+    expect(!service.stage_restored_asset(session, "not-published"), "failed staging must not authorize publication");
+    service.stop();
+  }
 }
 
 std::vector<uint8_t> jpeg_bytes(size_t size) {
@@ -862,6 +1083,11 @@ uint32_t esp_rom_crc32_le(uint32_t seed, const uint8_t *data, uint32_t size) {
 }
 
 int main() {
+  test_persistent_recovery_uses_native_document_after_startup();
+  test_persistent_commit_interruption_boundaries();
+  test_persistent_recovery_finishes_committed_cleanup();
+  test_persistence_failures_before_publication();
+  persistence.reset();
   test_card_asset_service_has_one_application_owner();
   test_card_asset_service_deletes_only_after_references_persist();
   test_card_asset_service_reserves_idle_image_before_clearing_references();

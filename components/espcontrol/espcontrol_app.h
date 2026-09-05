@@ -67,6 +67,7 @@ class EspControlApp : public esphome::Component {
   void initialize_native_configuration();
   void apply_boot_configuration();
   static bool persist_card_asset_references(void *context);
+  static CardAssetReferenceState check_recovery_references(void *context, const std::string &id);
   bool native_configuration_requested() const;
   bool create_native_configuration_runtime();
 
@@ -88,6 +89,7 @@ class EspControlApp : public esphome::Component {
   CardAssetService card_assets_{};
   HomeAssistantEndpointResolver home_assistant_endpoint_{};
   bool native_configuration_initialized_{false};
+  bool native_configuration_applied_{false};
   bool panel_config_http_context_bound_{false};
   const char *web_auth_username_{nullptr};
   const char *web_auth_password_{nullptr};

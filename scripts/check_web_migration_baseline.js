@@ -93,7 +93,8 @@ const bytes = fs.readFileSync(path.join(freshOutput, "embedded", "www.js"));
 const source = bytes.toString("utf8");
 assert(/^\s*(?:["']use strict["'];)?\(\(\)=>\{/.test(source),
   "shared bundle must remain a normal browser IIFE");
-assert(!/\b(?:import|export)\s/.test(source), "shared bundle must not require module script loading");
+assert.doesNotThrow(() => new vm.Script(source),
+  "shared bundle must parse as a classic script; import/export words in UI text are allowed");
 for (const slug of fixture.deviceProfiles) {
   assert(source.includes(slug), `${slug}: shared bundle is missing its device profile`);
 }

@@ -121,7 +121,7 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     emptyRequests++;
     throw new Error("empty restore must not access the display");
   }).provider;
-  deepEqual(await emptyProvider.restoreArchiveEntries(manifestEntries([])), {}, "image-free restore is a no-op");
+  await emptyProvider.createRestore(manifestEntries([])).stage();
   equal(emptyRequests, 0, "image-free restore does not query storage");
 
   const existingRequests: string[] = [];
@@ -138,14 +138,11 @@ export async function runCardImagesFeatureTests(): Promise<void> {
       images: [{ id: "existing-1", name: "Current", size: 4 }],
     } });
   }).provider;
-  deepEqual(
-    await existingProvider.restoreArchiveEntries(manifestEntries([{ id: "existing-1", name: "Archived" }])),
-    { "existing-1": "existing-1" },
-    "restore reuses an image that is already present",
-  );
+  const existingRestore = existingProvider.createRestore(manifestEntries([{ id: "existing-1", name: "Archived" }]));
+  await existingRestore.stage();
   deepEqual(existingRequests, ["GET /api/card-images", "POST /api/card-images/existing-1/rename"],
     "existing images reuse their bytes and restore the archived display name");
-  await existingProvider.rollbackRestore?.();
+  await existingRestore.rollback();
   equal(existingRequests.at(-1), "POST /api/card-images/existing-1/rename",
     "failed configuration restore puts an existing image name back");
   deepEqual(existingRenameBodies, ["name=Archived", "name=Current"],
@@ -162,11 +159,7 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     }
     throw new Error(`unexpected request ${request.method} ${url}`);
   }).provider;
-  deepEqual(
-    await capacityProvider.restoreArchiveEntries(manifestEntries([{ id: "too-large", name: "restored-1" }])),
-    { "too-large": "restored-1" },
-    "restore lets firmware reclaim disposable cache space",
-  );
+  await capacityProvider.createRestore(manifestEntries([{ id: "too-large", name: "restored-1" }])).stage();
   deepEqual(capacityRequests, ["GET /api/card-images", "POST /api/card-images"],
     "low reported free space still reaches the cache-evicting upload endpoint");
 
@@ -189,13 +182,12 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     throw new Error(`unexpected request ${method} ${url}`);
   }).provider;
   let restoreFailure = "";
-  try {
-    await rollbackProvider.restoreArchiveEntries(manifestEntries([
-      { id: "old-1", name: "First" },
-      { id: "old-2", name: "Second" },
-    ]));
-  } catch (error) {
+  const partialRestore = rollbackProvider.createRestore(manifestEntries([
+    { id: "old-1", name: "First" }, { id: "old-2", name: "Second" },
+  ]));
+  try { await partialRestore.stage(); } catch (error) {
     restoreFailure = (error as Error).message;
+    await partialRestore.rollback();
   }
   equal(restoreFailure, "restore failed", "restore retains the display failure reason");
   equal(rollbackRequests.at(-1), "DELETE /api/card-images/created-1", "partial restore is rolled back");
@@ -223,14 +215,11 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     if (url === "/api/card-images/restore/0123456789abcdef/commit") return response();
     throw new Error(`unexpected request ${method} ${url}`);
   });
-  deepEqual(
-    await staged.provider.restoreArchiveEntries(manifestEntries([{ id: "old-stage", name: "Stage" }])),
-    { "old-stage": "created-stage" },
-    "transactional restore returns the staged ID mapping",
-  );
+  const stagedRestore = staged.provider.createRestore(manifestEntries([{ id: "old-stage", name: "Stage" }]));
+  await stagedRestore.stage();
   equal(stagedRequests.includes("POST /api/card-images/restore/0123456789abcdef/commit"), false,
     "staged assets are not committed before configuration posts complete");
-  await staged.provider.commitRestore?.();
+  await stagedRestore.commit();
   equal(stagedRequests.at(-1), "POST /api/card-images/restore/0123456789abcdef/commit",
     "successful configuration persistence commits the staged assets");
 
@@ -258,13 +247,12 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     throw new Error(`unexpected request ${method} ${url}`);
   }).provider;
   let stagedRestoreFailure = "";
-  try {
-    await stagedRollback.restoreArchiveEntries(manifestEntries([
-      { id: "stage-old-1", name: "One" },
-      { id: "stage-old-2", name: "Two" },
-    ]));
-  } catch (error) {
+  const stagedPartialRestore = stagedRollback.createRestore(manifestEntries([
+    { id: "stage-old-1", name: "One" }, { id: "stage-old-2", name: "Two" },
+  ]));
+  try { await stagedPartialRestore.stage(); } catch (error) {
     stagedRestoreFailure = (error as Error).message;
+    await stagedPartialRestore.rollback();
   }
   equal(stagedRestoreFailure, "staged upload failed", "staged restore keeps the upload failure reason");
   equal(stagedRollbackRequests.at(-1),
@@ -272,10 +260,10 @@ export async function runCardImagesFeatureTests(): Promise<void> {
     "failed staged restore uses the durable device rollback instead of separate deletes");
 
   const buttons: CardConfig[] = [
-    { entity: "", label: "", icon: "", icon_on: "", sensor: "", unit: "", type: "", precision: "", options: "bg_image=old-1" },
+    { entity: "", label: "", icon: "", icon_on: "", sensor: "", unit: "", type: "", precision: "", options: "bg_image=old-stage" },
   ];
-  existingProvider.remapImportedReferences({ buttons }, { "old-1": "new-1" });
-  equal(buttons[0]?.options, "bg_image=new-1", "restored IDs are remapped through the asset provider");
+  stagedRestore.remapImportedReferences({ buttons });
+  equal(buttons[0]?.options, "bg_image=created-stage", "restored IDs are remapped through the asset provider");
 
   async function deletionScenario(options: {
     readonly references: string[];

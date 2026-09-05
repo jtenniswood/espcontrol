@@ -1,3 +1,4 @@
+import { exportBackupArchive } from "../features/backup_archive_export";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import {
@@ -314,15 +315,17 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         } as any);
         data = addNativeConfigToBackup(data);
         var archiveName: any = backupExportFileName().replace(/\.json$/i, ".zip");
-        cardImageBackupAssetProvider.createArchiveEntries().then(function (imageEntries: any) {
-            backupFileController.downloadArchive(data, imageEntries, archiveName);
-            var imageCount: any = Math.max(0, imageEntries.length - 1);
-            controllers.shell.showBanner("Backup exported with " + imageCount + " image" +
-                (imageCount === 1 ? "" : "s") + ".", "success");
-        }).catch(function () {
-            backupFileController.downloadArchive(data, [], archiveName);
-            controllers.shell.showBanner(
-                "Backup exported without images because image storage is unavailable.", "warning");
+        void exportBackupArchive({
+            createImageEntries: () => cardImageBackupAssetProvider.createArchiveEntries(),
+            download: (entries) => backupFileController.downloadArchive(data, entries, archiveName),
+            showBanner: controllers.shell.showBanner,
+            async chooseAfterFailure(message) {
+                if (window.confirm(message + "\nRetry exporting the full backup?")) return "retry";
+                return window.confirm("Export a configuration-only backup without images instead?")
+                    ? "configuration-only" : "cancel";
+            },
+        }).catch((error: unknown) => {
+            controllers.shell.showBanner(error instanceof Error ? error.message : "Could not export backup.", "error");
         });
     }
     function importConfig(this: any) {
@@ -668,65 +671,21 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 switchTab("screen");
                 return nativeRestoreCompletion;
                 }
-                function restoreConfiguration(this: any, imageIdMap?: any) {
-                    var started: any = backupRestoreController.restore(data, {
-                        device: controllers.layout.deviceId,
-                        slots: controllers.layout.numSlots,
-                    }, function (plannedImport: any) {
-                        if (imageIdMap) {
-                            cardImageBackupAssetProvider.remapImportedReferences(
-                                plannedImport.backupPlan, imageIdMap);
-                            // Rebuild the native payload from the remapped canonical cards.
-                            // The archived native payload contains the old asset IDs.
-                            plannedImport.backupPlan.config.native_config = null;
-                        }
-                        var completion: any = applyBackupRestorePlan(plannedImport);
-                        if (!imageIdMap) return completion;
-                        var configurationPersisted = false;
-                        return Promise.resolve(completion).then(function () {
-                            return requestApi.postQueueIdle();
-                        }).then(function () {
-                            if (requestApi.postQueueHadError()) {
-                                throw new Error("Configuration restore failed. Check the connection and try again.");
-                            }
-                            configurationPersisted = true;
-                            return cardImageBackupAssetProvider.commitRestore
-                                ? cardImageBackupAssetProvider.commitRestore()
-                                : undefined;
-                        }).catch(function (error: any) {
-                            // Once the remapped configuration is durable, its assets are
-                            // referenced. A failed commit must leave the durable device
-                            // session intact for recovery instead of deleting those assets.
-                            if (configurationPersisted && cardImageBackupAssetProvider.commitRestore) {
-                                // Retry once while the provider still owns the durable
-                                // session. If this also fails, its token remains intact
-                                // for device-side recovery.
-                                return Promise.resolve(cardImageBackupAssetProvider.commitRestore()).then(
-                                    function () { return undefined; },
-                                    function () { throw error; });
-                            }
-                            if (configurationPersisted) throw error;
-                            var rollback: any = cardImageBackupAssetProvider.rollbackRestore
-                                ? cardImageBackupAssetProvider.rollbackRestore()
-                                : Promise.resolve();
-                            return Promise.resolve(rollback).then(function () { throw error; });
-                        });
-                    });
-                    if (!started && imageIdMap && cardImageBackupAssetProvider.rollbackRestore) {
-                        void cardImageBackupAssetProvider.rollbackRestore();
-                    }
-                }
-                if (!archiveEntries) {
-                    restoreConfiguration();
-                    return;
-                }
-                cardImageBackupAssetProvider.restoreArchiveEntries(archiveEntries).then(
-                    function (imageIdMap: any) { restoreConfiguration(imageIdMap); },
-                    function (error: any) {
-                        controllers.shell.showBanner(
-                            error && error.message ? error.message : "Could not restore archived images.",
-                            "error");
-                    });
+                const restore = archiveEntries
+                    ? cardImageBackupAssetProvider.createRestore(archiveEntries) : undefined;
+                void backupRestoreController.restore(data, {
+                    device: controllers.layout.deviceId,
+                    slots: controllers.layout.numSlots,
+                }, applyBackupRestorePlan, restore ? {
+                    stage: () => restore.stage(),
+                    remap(plannedImport) {
+                        restore.remapImportedReferences(plannedImport.backupPlan);
+                        // Native documents in the archive still use the old asset IDs.
+                        plannedImport.backupPlan.config.native_config = null;
+                    },
+                    commit: () => restore.commit(),
+                    rollback: () => restore.rollback(),
+                } : undefined);
         });
     }
     return {

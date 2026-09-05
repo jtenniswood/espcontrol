@@ -11,6 +11,8 @@ You can save your entire panel configuration as a file and restore it later. You
 - **Export** - saves your entire setup (cards, subpages, card background images, colours, brightness, screen schedule, display settings, Home Assistant artwork settings, and firmware update preferences) as a file you can keep as a backup.
 - **Import** - loads a previously saved file to restore your setup. If you're loading a backup from a different-sized panel, the cards are rearranged to fit automatically. New images are staged until the panel confirms that the restored card settings were saved; an interrupted import is cleaned up when the panel restarts.
 
+If an image cannot be read during export, you can retry, cancel, or explicitly export a configuration-only backup without images. Displays without image storage export their configuration normally.
+
 Backup files are versioned so newer EspControl releases can keep importing older backups safely. Older version 1 backups still import, and new exports use version 2 while keeping the same readable layout fields for compatibility.
 
 ## Compatibility Notes

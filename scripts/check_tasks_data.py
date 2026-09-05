@@ -83,6 +83,11 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "components/espcontrol/card_asset_service.*",
+             "components/espcontrol/card_asset_persistence.*",
+             "components/espcontrol/panel_config_asset_references.h",
+             "components/espcontrol/legacy_card_config.*",
+             "components/card_image_store/**",
              "components/espcontrol/configuration_service.*",
              "components/espcontrol/panel_config_service_validator.h",
              "components/espcontrol/panel_config_capabilities.h",

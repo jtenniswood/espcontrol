@@ -11,6 +11,7 @@
 #include "esphome/core/log.h"
 
 #include "panel_config_capabilities_endpoint.h"
+#include "panel_config_asset_references.h"
 #include "configuration_release_policy.h"
 #include "configuration_service.h"
 #include "configuration_store.h"
@@ -211,6 +212,29 @@ void EspControlApp::apply_boot_configuration() {
              static_cast<unsigned>(loaded.status));
     return;
   }
+  native_configuration_applied_ = true;
+}
+
+CardAssetReferenceState EspControlApp::check_recovery_references(
+    void *context, const std::string &id) {
+  auto *app = static_cast<EspControlApp *>(context);
+  if (app == nullptr) return CardAssetReferenceState::UNAVAILABLE;
+  if (!app->native_configuration_requested()) return CardAssetReferenceState::USE_LEGACY;
+  auto *runtime = app->native_configuration_runtime_.get();
+  auto *service = app->core_.configuration_service();
+  if (!app->native_configuration_initialized_ || !app->native_configuration_applied_ ||
+      runtime == nullptr || runtime->boot_buffer == nullptr || service == nullptr) {
+    return CardAssetReferenceState::UNAVAILABLE;
+  }
+  // Recovery runs on the application loop. Reuse its boot buffer, never the
+  // HTTP scratch buffer or the possibly stale legacy preference mirror.
+  const auto loaded = service->load(runtime->boot_buffer, PANEL_CONFIG_STORAGE_SLOT_CAPACITY);
+  bool referenced = false;
+  if (!loaded.ok() || !panel_config_references_asset(
+          runtime->boot_buffer, loaded.document_size, id, referenced)) {
+    return CardAssetReferenceState::UNAVAILABLE;
+  }
+  return referenced ? CardAssetReferenceState::REFERENCED : CardAssetReferenceState::UNREFERENCED;
 }
 
 bool EspControlApp::persist_card_asset_references(void *context) {
@@ -240,6 +264,7 @@ void EspControlApp::setup() {
   } else {
     ESP_LOGE(TAG, "Application core failed to start");
   }
+  card_assets_.set_recovery_reference_callback(&EspControlApp::check_recovery_references, this);
   card_assets_.set_reference_persistence_callback(
       &EspControlApp::persist_card_asset_references, this);
   if (!card_assets_.start()) {

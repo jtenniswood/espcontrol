@@ -5,6 +5,10 @@ import type {
   BackupAssetProvider,
 } from "./backup";
 
+export class CardImageStorageUnavailableError extends Error {
+  constructor() { super("This display does not have card image storage."); }
+}
+
 export interface CardImageItem {
   readonly id: string;
   readonly name: string;
@@ -28,6 +32,7 @@ export interface CardImageLibraryInfo {
 
 export interface CardImageHttpResponse {
   readonly ok: boolean;
+  readonly status?: number;
   json(): Promise<unknown>;
   text(): Promise<string>;
   arrayBuffer(): Promise<ArrayBuffer>;
@@ -215,6 +220,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
   const list = async (force = false): Promise<CardImageItem[]> => {
     if (!force && loaded) return images.slice();
     const response = await dependencies.fetch("/api/card-images");
+    if (response.status === 404) throw new CardImageStorageUnavailableError();
     if (!response.ok) throw new Error("Could not load images.");
     const payload = await response.json() as CardImageListPayload;
     const rawImages = Array.isArray(payload?.images) ? payload.images : [];
@@ -404,13 +410,13 @@ export function createCardImageBackupAssetProvider(
   cardImages: CardImagesFeature,
   dependencies: CardImageBackupDependencies,
 ): BackupAssetProvider<CardImageReferencePlan> {
-  let activeRestoreSession: string | null = null;
-  let pendingCreatedIds: string[] = [];
-  let pendingExistingRenames: Array<{ id: string; name: string }> = [];
   const createArchiveEntries = async (): Promise<BackupArchiveEntry[]> => {
     const manifest = { format: "espcontrol.card-images", version: 1, images: [] as CardImageManifestItem[] };
     const entries: BackupArchiveEntry[] = [];
-    for (const image of await cardImages.list(true)) {
+    const images = await cardImages.list(true);
+    if (cardImages.info().requiresUsbFlash) throw new CardImageStorageUnavailableError();
+    if (!cardImages.info().available) throw new Error("Could not access card image storage.");
+    for (const image of images) {
       const file = `images/${image.id}.jpg`;
       manifest.images.push({ id: image.id, name: image.name || image.id, file });
       try {
@@ -426,50 +432,52 @@ export function createCardImageBackupAssetProvider(
     return entries;
   };
 
-  const restoreArchiveEntries = async (
-    entries?: BackupArchiveEntries | null,
-  ): Promise<Record<string, string>> => {
-    if (!entries?.["images.json"]) return {};
-    let manifest: unknown;
-    try {
-      manifest = JSON.parse(new TextDecoder().decode(entries["images.json"]));
-    } catch {
-      throw new Error("ZIP backup has an invalid image manifest.");
-    }
-    if (!manifest || typeof manifest !== "object") {
-      throw new Error("ZIP backup has an unsupported image manifest.");
-    }
-    const rawManifest = manifest as Record<string, unknown>;
-    if (rawManifest.format !== "espcontrol.card-images" || rawManifest.version !== 1 ||
-        !Array.isArray(rawManifest.images)) {
-      throw new Error("ZIP backup has an unsupported image manifest.");
-    }
-
-    const archived: Array<{ item: CardImageManifestItem; bytes: Uint8Array }> = [];
-    const seen = new Set<string>();
-    for (const value of rawManifest.images) {
-      if (!value || typeof value !== "object") {
-        throw new Error("ZIP backup has an invalid or missing archived card image.");
-      }
-      const raw = value as Record<string, unknown>;
-      const id = dependencies.normalizeId(raw.id);
-      const file = String(raw.file || "");
-      const bytes = entries[file];
-      if (!id || seen.has(id) || file !== `images/${id}.jpg` || !bytes) {
-        throw new Error("ZIP backup has an invalid or missing archived card image.");
-      }
-      seen.add(id);
-      archived.push({
-        item: { id, name: String(raw.name || id).trim() || id, file },
-        bytes,
-      });
-    }
-    if (archived.length === 0) return {};
-
-    const references: Record<string, string> = {};
+  const createRestore: BackupAssetProvider<CardImageReferencePlan>["createRestore"] = (entries) => {
+    let activeRestoreSession: string | null = null;
     const createdIds: string[] = [];
     const renamedExisting: Array<{ id: string; name: string }> = [];
-    try {
+    let references: Record<string, string> = {};
+    const restoreArchiveEntries = async (
+      entries?: BackupArchiveEntries | null,
+    ): Promise<Record<string, string>> => {
+      if (!entries?.["images.json"]) return {};
+      let manifest: unknown;
+      try {
+        manifest = JSON.parse(new TextDecoder().decode(entries["images.json"]));
+      } catch {
+        throw new Error("ZIP backup has an invalid image manifest.");
+      }
+      if (!manifest || typeof manifest !== "object") {
+        throw new Error("ZIP backup has an unsupported image manifest.");
+      }
+      const rawManifest = manifest as Record<string, unknown>;
+      if (rawManifest.format !== "espcontrol.card-images" || rawManifest.version !== 1 ||
+          !Array.isArray(rawManifest.images)) {
+        throw new Error("ZIP backup has an unsupported image manifest.");
+      }
+
+      const archived: Array<{ item: CardImageManifestItem; bytes: Uint8Array }> = [];
+      const seen = new Set<string>();
+      for (const value of rawManifest.images) {
+        if (!value || typeof value !== "object") {
+          throw new Error("ZIP backup has an invalid or missing archived card image.");
+        }
+        const raw = value as Record<string, unknown>;
+        const id = dependencies.normalizeId(raw.id);
+        const file = String(raw.file || "");
+        const bytes = entries[file];
+        if (!id || seen.has(id) || file !== `images/${id}.jpg` || !bytes) {
+          throw new Error("ZIP backup has an invalid or missing archived card image.");
+        }
+        seen.add(id);
+        archived.push({
+          item: { id, name: String(raw.name || id).trim() || id, file },
+          bytes,
+        });
+      }
+      if (archived.length === 0) return {};
+
+      const references: Record<string, string> = {};
       const existing = await cardImages.list(true);
       const info = cardImages.info();
       if (!info.available) throw new Error("Card image storage is unavailable on this display.");
@@ -498,96 +506,65 @@ export function createCardImageBackupAssetProvider(
           await cardImages.rename(restored.id, image.item.name);
         }
       }
-      pendingCreatedIds = createdIds.slice();
-      pendingExistingRenames = renamedExisting.slice();
       cardImages.invalidate();
       return references;
-    } catch (error) {
-      if (activeRestoreSession) {
-        try {
+    };
+
+    const remapImportedReferences = (
+      plan: CardImageReferencePlan,
+      references: Readonly<Record<string, string>>,
+    ): void => {
+      const remap = (buttons: readonly CardConfig[] = []): void => {
+        for (const button of buttons) {
+          const oldId = dependencies.imageId(button);
+          const newId = oldId ? references[oldId] : undefined;
+          if (newId) dependencies.setImageId(button, newId);
+        }
+      };
+      remap(plan.buttons);
+      for (const subpage of Object.values(plan.subpages || {})) remap(subpage?.buttons);
+    };
+
+    const commitRestore = async (): Promise<void> => {
+      if (activeRestoreSession) await cardImages.commitRestore(activeRestoreSession);
+      activeRestoreSession = null;
+      createdIds.length = 0;
+      renamedExisting.length = 0;
+    };
+
+    const rollbackRestore = async (): Promise<void> => {
+      let rollbackError: unknown;
+      try {
+        if (activeRestoreSession) {
           await cardImages.rollbackRestore(activeRestoreSession);
-        } catch {
-          // The device retains the durable session and retries after reboot.
+        } else {
+          for (const id of createdIds) await cardImages.delete(id);
         }
-      } else {
-        for (const id of createdIds) {
-          try {
-            await cardImages.delete(id);
-          } catch {
-            // Best-effort rollback keeps the original restore failure visible.
-          }
-        }
+      } catch (error) {
+        rollbackError = error;
       }
       for (let index = renamedExisting.length - 1; index >= 0; index -= 1) {
+        const rename = renamedExisting[index];
+        if (!rename) continue;
         try {
-          const rename = renamedExisting[index];
-          if (rename) await cardImages.rename(rename.id, rename.name);
-        } catch {
-          // Best-effort rollback keeps the original restore failure visible.
+          await cardImages.rename(rename.id, rename.name);
+        } catch (error) {
+          if (!rollbackError) rollbackError = error;
         }
       }
       activeRestoreSession = null;
-      pendingCreatedIds = [];
-      pendingExistingRenames = [];
+      createdIds.length = 0;
+      renamedExisting.length = 0;
       cardImages.invalidate();
-      throw error;
-    }
-  };
-
-  const remapImportedReferences = (
-    plan: CardImageReferencePlan,
-    references: Readonly<Record<string, string>>,
-  ): void => {
-    const remap = (buttons: readonly CardConfig[] = []): void => {
-      for (const button of buttons) {
-        const oldId = dependencies.imageId(button);
-        const newId = oldId ? references[oldId] : undefined;
-        if (newId) dependencies.setImageId(button, newId);
-      }
+      if (rollbackError) throw rollbackError;
     };
-    remap(plan.buttons);
-    for (const subpage of Object.values(plan.subpages || {})) remap(subpage?.buttons);
-  };
 
-  const commitRestore = async (): Promise<void> => {
-    if (activeRestoreSession) await cardImages.commitRestore(activeRestoreSession);
-    activeRestoreSession = null;
-    pendingCreatedIds = [];
-    pendingExistingRenames = [];
+    return {
+      async stage() { references = await restoreArchiveEntries(entries); },
+      remapImportedReferences(plan) { remapImportedReferences(plan, references); },
+      commit: commitRestore,
+      rollback: rollbackRestore,
+    };
   };
-
-  const rollbackRestore = async (): Promise<void> => {
-    let rollbackError: unknown;
-    try {
-      if (activeRestoreSession) {
-        await cardImages.rollbackRestore(activeRestoreSession);
-      } else {
-        for (const id of pendingCreatedIds) await cardImages.delete(id);
-      }
-    } catch (error) {
-      rollbackError = error;
-    }
-    for (let index = pendingExistingRenames.length - 1; index >= 0; index -= 1) {
-      const rename = pendingExistingRenames[index];
-      if (!rename) continue;
-      try {
-        await cardImages.rename(rename.id, rename.name);
-      } catch (error) {
-        if (!rollbackError) rollbackError = error;
-      }
-    }
-    activeRestoreSession = null;
-    pendingCreatedIds = [];
-    pendingExistingRenames = [];
-    cardImages.invalidate();
-    if (rollbackError) throw rollbackError;
-  };
-
-  return {
-    createArchiveEntries,
-    restoreArchiveEntries,
-    remapImportedReferences,
-    commitRestore,
-    rollbackRestore,
-  };
+  return { createArchiveEntries, createRestore };
 }

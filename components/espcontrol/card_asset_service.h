@@ -6,9 +6,7 @@
 
 #include "../card_image_store/card_image_store.h"
 
-#ifdef ESP_PLATFORM
-#include "esphome/core/preferences.h"
-#endif
+#include "card_asset_persistence.h"
 
 #ifdef USE_ESP32
 #include "freertos/FreeRTOS.h"
@@ -24,6 +22,8 @@ class CardAssetReferenceAdapter {
   virtual bool clear_asset_references(const std::string &asset_id) = 0;
   virtual bool references_asset(const std::string &asset_id) const = 0;
 };
+
+enum class CardAssetReferenceState { UNAVAILABLE, REFERENCED, UNREFERENCED, USE_LEGACY };
 
 enum class CardAssetDeleteResult {
   SUCCESS,
@@ -48,7 +48,14 @@ class CardAssetService {
  public:
   using ReferencePersistenceCallback = bool (*)(void *context);
   static constexpr uint32_t RESTORE_SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+  explicit CardAssetService(CardAssetPersistence *persistence = card_asset_persistence())
+      : persistence_(persistence) {}
   ~CardAssetService() = default;
+  using ReferenceCheckCallback = CardAssetReferenceState (*)(void *, const std::string &);
+  void set_recovery_reference_callback(ReferenceCheckCallback callback, void *context) {
+    recovery_reference_callback_ = callback;
+    recovery_reference_context_ = context;
+  }
 
   bool start();
   bool stop();
@@ -164,6 +171,10 @@ class CardAssetService {
     void (*shutdown_callback)(Runtime &) = nullptr;
   };
 
+  CardAssetPersistence *persistence_{nullptr};
+  ReferenceCheckCallback recovery_reference_callback_{nullptr};
+  void *recovery_reference_context_{nullptr};
+  std::vector<std::string> completed_restore_sessions_{};
   esphome::card_image_store::CardImageStore store_{};
   std::unique_ptr<RuntimeHolderBase> card_background_runtime_{};
   CardAssetReferenceAdapter *reference_adapter_{nullptr};
@@ -189,11 +200,11 @@ class CardAssetService {
   bool save_restore_session();
   bool clear_restore_session();
   void recover_abandoned_restore_session();
+  void load_completed_restores();
+  bool finish_committed_restore();
 
 #ifdef ESP_PLATFORM
   uint32_t last_resume_attempt_{0};
-  esphome::ESPPreferenceObject pending_delete_preference_{};
-  esphome::ESPPreferenceObject restore_session_preference_{};
 #endif
 };
 

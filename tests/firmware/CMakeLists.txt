@@ -205,6 +205,8 @@ add_executable(card_image_store_test
   card_image_store_test.cpp
   ../../components/card_image_store/card_image_store.cpp
   ../../components/espcontrol/card_asset_service.cpp
+  ../../components/espcontrol/card_asset_persistence.cpp
+  ../../components/espcontrol/legacy_card_config.cpp
 )
 target_compile_features(card_image_store_test PRIVATE cxx_std_17)
 target_compile_options(card_image_store_test PRIVATE -Wall -Wextra -Werror)
