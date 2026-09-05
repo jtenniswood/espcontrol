@@ -218,10 +218,13 @@ target_compile_options(home_assistant_endpoint_policy_test PRIVATE -Wall -Wextra
 target_include_directories(home_assistant_endpoint_policy_test PRIVATE ../../components/espcontrol)
 add_test(NAME home_assistant_endpoint_policy_test COMMAND home_assistant_endpoint_policy_test)
 
-add_executable(image_service_test image_service_test.cpp)
+# Compile the unchanged service implementation beside the build output so its
+# quoted artwork_image.h include resolves to the hardware-free test double.
+configure_file(../../components/artwork_image/image_service.cpp image_service.cpp COPYONLY)
+add_executable(image_service_test image_service_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/image_service.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)
 target_compile_options(image_service_test PRIVATE -Wall -Wextra -Werror)
-target_include_directories(image_service_test PRIVATE ../../components/artwork_image)
+target_include_directories(image_service_test PRIVATE stubs/artwork_image ../../components/artwork_image)
 add_test(NAME image_service_test COMMAND image_service_test)
 
 add_executable(bmp_stream_test bmp_stream_test.cpp)
