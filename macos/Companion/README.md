@@ -1,6 +1,6 @@
 # EspControl Companion for macOS
 
-EspControl Companion is a native macOS 13+ menu-bar app for securely connecting a Mac to an EspControl display. The App Store packaging and submission checklist is in [APP_STORE.md](APP_STORE.md).
+EspControl Companion is a native macOS 13+ menu-bar app for securely connecting a Mac to an EspControl display. It is intended to be distributed as a standalone Developer ID app outside the Mac App Store. The standalone packaging instructions are below; the legacy App Store packaging notes are in [APP_STORE.md](APP_STORE.md).
 
 For the quickest local test, double-click **Run EspControl Companion.command**. macOS may ask you to confirm that you want to open a downloaded script. Keep its Terminal window open while testing; press Control-C there to stop the app.
 
@@ -10,6 +10,14 @@ You can run the same launcher from Terminal:
 cd macos/Companion
 ./Run\ EspControl\ Companion.command
 ```
+
+To build a standalone app bundle for local testing:
+
+```bash
+ALLOW_ADHOC=1 ./Packaging/build_standalone.sh
+```
+
+The output is `./.build/standalone/EspControl Companion.app`. For distribution, set `CODE_SIGN_IDENTITY` to a Developer ID Application certificate and notarize the resulting app. This bundle is not App Sandbox-restricted, so shortcut and window-control cards can use macOS Accessibility after the user grants permission.
 
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. Installed applications are available to launch or to open validated `http://` and `https://` links. Finder folders are separate: add folders with the native picker in the app's **Folders** page, then select one for each Open folder card in the panel web editor. The app can replay keyboard shortcuts created in the panel's web editor; macOS Accessibility permission is required the first time a shortcut is used.
 
