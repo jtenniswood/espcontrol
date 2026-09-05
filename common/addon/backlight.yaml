@@ -5,6 +5,7 @@
 #   1. Disabled: no automatic screensaver
 #   2. Idle timer: configurable timeout, sleeps after inactivity
 #   3. Presence sensor: optional HA binary_sensor, wakes display on detection
+#   4. Companion App: follows the paired Mac Companion connection and lock state
 # Screen schedule can also force the physical backlight off outside configured
 # hours. It shares the same display sleep/wake plumbing but tracks its own state.
 # When the screensaver activates, it can dim the current screen, show a drifting
@@ -103,6 +104,13 @@ esphome:
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
           };
           update_screensaver_action_cache();
+
+          register_companion_connection_changed_handler([](bool) {
+            id(screensaver_companion_reconcile).execute();
+          });
+          register_screen_lock_changed_handler([](bool) {
+            id(screensaver_companion_reconcile).execute();
+          });
 
           if (!id(screensaver_action_migrated)) {
             if (id(clock_screensaver_enabled).state) {
@@ -657,7 +665,8 @@ script:
                            id(cover_art_attribute_conditions_match) &&
                            !(id(cover_art_hide_external_input_enabled).state &&
                              id(cover_art_external_input_active)) &&
-                           !id(cover_art_media_player_entity).state.empty();
+                           (id(cover_art_companion_source_active) ||
+                            !id(cover_art_media_player_entity).state.empty());
                 then:
                   - script.execute: show_cover_art_view
                 else:
@@ -694,6 +703,26 @@ script:
           id: screensaver_sensor_sleep_pending
           value: 'true'
       - script.execute: screensaver_sleep_timer
+
+  # Companion App mode follows connection and lock state immediately. It uses
+  # the same configured saver action as the timer and Home Assistant modes.
+  - id: screensaver_companion_reconcile
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screensaver_mode).state == "companion";'
+          then:
+            - if:
+                condition:
+                  lambda: 'return companion_connected() && !screen_lock_enabled();'
+                then:
+                  - script.execute: screensaver_wake
+                else:
+                  - script.stop: screensaver_idle_check
+                  - script.execute: display_mode_clear_cover_art
+                  - script.wait: display_mode_clear_cover_art
+                  - script.execute: screensaver_sleep_timer
 
   # Screensaver presence remains independent from the Night Schedule sensor.
   - id: screensaver_presence_wake

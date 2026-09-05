@@ -64,7 +64,7 @@ export function createCardRegistry(): CardRegistry {
       key,
       label: key || "Toggle",
       ...definition,
-      runtimeSpec: CARD_RUNTIME_SPECS[key] || null,
+      runtimeSpec: definition.runtimeSpec || CARD_RUNTIME_SPECS[key] || null,
     };
     definitions[key] = registered;
     return registered;

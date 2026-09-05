@@ -1,8 +1,23 @@
+import type { CardConfig } from "../../src/webserver/contracts/types";
 import { createBackupExportController } from "../../src/webserver/features/backup_export_controller";
 import { decodePanelConfig, decodePanelConfigBackupPayload } from "../../src/webserver/model";
 
 function equal<T>(actual: T, expected: T, message: string): void {
   if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, received ${String(actual)}`);
+}
+
+function serializeCard(button: CardConfig): string {
+  return [
+    button.entity,
+    button.label,
+    button.icon,
+    button.icon_on,
+    button.sensor,
+    button.unit,
+    button.type,
+    button.precision,
+    button.options,
+  ].join(";");
 }
 
 export function runBackupExportControllerTests(): void {
@@ -36,6 +51,59 @@ export function runBackupExportControllerTests(): void {
   equal(nativeConfig.subpages[2], "subpage-config", "native backup retains subpages");
   equal(nativeConfig.settings.button_order, "1,2d", "native backup retains button order");
   equal(nativeConfig.settings.button_on_color, "0073FF", "native backup retains active colour");
+
+  const companionCards: CardConfig[] = [
+    {
+      entity: "com.apple.Safari",
+      label: "Safari",
+      icon: "Monitor",
+      icon_on: "Auto",
+      sensor: "",
+      unit: "",
+      type: "companion",
+      precision: "",
+      options: "app_shortcuts,app_shortcuts_auto_switch",
+    },
+    {
+      entity: "stat.storage_free",
+      label: "Storage",
+      icon: "Gauge",
+      icon_on: "Auto",
+      sensor: "",
+      unit: "%",
+      type: "companion",
+      precision: "2",
+      options: "large_numbers",
+    },
+    {
+      entity: "",
+      label: "Dashboard",
+      icon: "Web",
+      icon_on: "Auto",
+      sensor: "url.https%3A%2F%2Fexample.com%2Fdashboard",
+      unit: "",
+      type: "companion",
+      precision: "",
+      options: "",
+    },
+  ];
+  const companionBackup = createBackupExportController({
+    serializeButtonConfig: serializeCard,
+    serializeSubpageConfig: (subpage) => String(subpage || ""),
+  }).addNativeConfig({}, {
+    deviceProfile: "panel-a",
+    buttons: companionCards,
+    subpages: { "1": "1,2|folder.Projects:Projects:Folder Outline:Auto:::companion::" },
+  });
+  const companionNativeConfig = decodePanelConfig(
+    decodePanelConfigBackupPayload(companionBackup.native_config),
+  );
+  companionCards.forEach((card, index) => {
+    equal(companionNativeConfig.buttons[index + 1], serializeCard(card),
+      `native backup retains Companion card ${index + 1} fields`);
+  });
+  equal(companionNativeConfig.subpages[1], "1,2|folder.Projects:Projects:Folder Outline:Auto:::companion::",
+    "native backup retains Companion subpage cards");
 
   const wifiCard = "wifi_qr,,Connect,Wifi,Auto,,,,,ssid64=R3Vlc3QgV2lmaQ,pass64=dHJ1c3RlZC1uZXR3b3Jr";
   const wifiBackup = createBackupExportController({

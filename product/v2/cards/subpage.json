@@ -4,8 +4,13 @@
   "domains": [],
   "options": [
     {
+      "name": "subpage_connector", "label": "Subpage Connector", "kind": "choice",
+      "values": ["", "mac_companion"],
+      "defaultValue": "", "omitDefault": true
+    },
+    {
       "name": "subpage_kind", "label": "Subpage Type", "kind": "choice",
-      "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "gate", "lock", "vacuum", "lawn_mower", "weather", "sensor", "image"],
+      "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "gate", "lock", "vacuum", "lawn_mower", "weather", "sensor", "image", "companion_stat"],
       "defaultValue": "", "omitDefault": true
     },
     { "name": "large_numbers", "label": "Large State Numbers", "kind": "flag", "omitDefault": true }
@@ -23,7 +28,7 @@
       "options": { "policy": "hook", "hook": "normalize_subpage_options" }
     },
     "unknownOptions": "drop",
-    "canonicalOptionOrder": ["subpage_kind", "large_numbers"],
+    "canonicalOptionOrder": ["subpage_connector", "subpage_kind", "large_numbers"],
     "optionHook": "normalize_subpage_options"
   },
   "default": {

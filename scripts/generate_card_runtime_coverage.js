@@ -16,7 +16,7 @@ const REPORT_PATH = path.join(ROOT, "docs", "generated", "cards", "runtime-cover
 const RUNTIME_PATH = path.join(ROOT, "components", "espcontrol", "button_grid_card_runtime.h");
 const GENERATED_RUNTIME_PATH = path.join(ROOT, "components", "espcontrol", "button_grid_contract_generated.h");
 const CONFIG_FIELDS = ["entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"];
-const CLASSIFICATIONS = new Set(["canonical", "accepted_legacy_input", "obsolete_implementation_residue"]);
+const CLASSIFICATIONS = new Set(["canonical", "accepted_legacy_input", "picker_alias", "obsolete_implementation_residue"]);
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -209,7 +209,7 @@ function validateInventory(inventory, contract, webTypes, parserTypes, firmwareT
 
   for (const [type, spec] of Object.entries(runtimeOnly)) {
     if (!CLASSIFICATIONS.has(spec.classification) || spec.classification === "canonical") {
-      throw new Error(`${type}: runtime-only type must be legacy input or obsolete residue`);
+      throw new Error(`${type}: runtime-only type must be a picker alias, legacy input, or obsolete residue`);
     }
     validateLifecycle(spec.lifecycle, inventory.lifecycleVocabulary, `runtime-only ${type}`);
     if (!Array.isArray(spec.surfaces) || !spec.surfaces.length) throw new Error(`${type}: runtime-only surfaces are required`);
@@ -360,6 +360,7 @@ function reportMarkdown(inventory, contract, cases) {
   const reasons = {
     local: "Older local-action input; normalizes to Action with local dispatch.",
     text_sensor: "Older sensor input; normalizes to Sensor text mode.",
+    companion_subpage: "Mac Companion picker alias that saves as a generic Subpage with its connector option.",
     media_cover_art: "Hidden compatibility registration that normalizes older Cover Art aliases to Media.",
   };
   for (const [type, spec] of Object.entries(inventory.runtimeOnlyTypes)) {

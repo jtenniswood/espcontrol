@@ -161,11 +161,11 @@ inline lv_obj_t *network_status_add_center_label(lv_obj_t *parent,
   return label;
 }
 
-inline void network_status_open_modal(const std::string &device_name,
-                                      const std::string &ip_address,
-                                      const std::string &firmware_version,
-                                      const lv_font_t *text_font,
-                                      const lv_font_t *icon_font) {
+inline void network_status_open_text_modal(const std::string &title,
+                                           const std::string &line_one,
+                                           const std::string &line_two,
+                                           const lv_font_t *text_font,
+                                           const lv_font_t *icon_font) {
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::NETWORK_STATUS, nullptr, 100, icon_font,
     network_status_hide_modal);
@@ -191,20 +191,19 @@ inline void network_status_open_modal(const std::string &device_name,
 
   ui.device_name_lbl = network_status_add_center_label(
     ui.content,
-    device_name.empty() ? espcontrol_i18n("Not available") : device_name.c_str(),
+    title.empty() ? espcontrol_i18n("Not available") : title.c_str(),
     text_font,
     content_w,
     DARK_TEXT_PRIMARY);
   ui.ip_lbl = network_status_add_center_label(
     ui.content,
-    ip_address.empty() ? espcontrol_i18n("Not available") : ip_address.c_str(),
+    line_one.empty() ? espcontrol_i18n("Not available") : line_one.c_str(),
     text_font,
     content_w,
     DARK_TEXT_MUTED);
-  std::string firmware_label = network_status_firmware_label(firmware_version);
   ui.firmware_lbl = network_status_add_center_label(
     ui.content,
-    firmware_label.c_str(),
+    line_two.empty() ? espcontrol_i18n("Not available") : line_two.c_str(),
     text_font,
     content_w,
     DARK_TEXT_MUTED);
@@ -213,4 +212,14 @@ inline void network_status_open_modal(const std::string &device_name,
 
   lv_obj_move_foreground(ui.close_btn);
   lv_obj_move_foreground(ui.overlay);
+}
+
+inline void network_status_open_modal(const std::string &device_name,
+                                      const std::string &ip_address,
+                                      const std::string &firmware_version,
+                                      const lv_font_t *text_font,
+                                      const lv_font_t *icon_font) {
+  network_status_open_text_modal(device_name, ip_address,
+                                 network_status_firmware_label(firmware_version),
+                                 text_font, icon_font);
 }

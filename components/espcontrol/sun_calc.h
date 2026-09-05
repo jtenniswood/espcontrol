@@ -17,6 +17,7 @@
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
 #include "esphome/components/network/util.h"
+#include "companion_timezone.h"
 #if defined(USE_TIME_TIMEZONE)
 #include "esphome/components/time/posix_tz.h"
 #endif
@@ -290,6 +291,18 @@ inline bool posix_timezone_matches_global(const char *posix) {
 
 inline std::string effective_timezone_option(const std::string &tz_option) {
   if (!timezone_is_homeassistant_auto(tz_option)) return tz_option;
+
+  // Home Assistant remains authoritative when connected. If it is not
+  // available, use the paired Mac Companion timezone before falling back to
+  // UTC. The Mac sends an IANA identifier, so only use identifiers that the
+  // firmware can resolve to a DST-aware POSIX rule.
+  if (!esphome::companion::companion_timezone_home_assistant_connected()) {
+    const std::string companion_timezone = esphome::companion::companion_timezone_id();
+    float latitude = 0.0f;
+    float longitude = 0.0f;
+    if (lookup_tz_coords(companion_timezone, latitude, longitude))
+      return companion_timezone;
+  }
 
 #if defined(USE_TIME_TIMEZONE)
   for (int i = 0; i < TZ_COORDS_COUNT; i++) {

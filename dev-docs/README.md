@@ -32,6 +32,7 @@ usage documentation lives in the root `README.md` and under `docs/`.
 
 ## Subsystems
 
+- [Companion Architecture](companion-architecture.md)
 - [Card Contract](card-contract.md)
 - [Card Type Map](card-type-map.md)
 - [Saved-Configuration Normalization](saved-config-normalization.md)

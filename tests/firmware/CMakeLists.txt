@@ -8,6 +8,27 @@ target_compile_features(foundation_test PRIVATE cxx_std_17)
 target_compile_options(foundation_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME foundation_test COMMAND foundation_test)
 
+add_executable(companion_shortcut_test companion_shortcut_test.cpp)
+target_compile_features(companion_shortcut_test PRIVATE cxx_std_17)
+target_compile_options(companion_shortcut_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(companion_shortcut_test PRIVATE
+  stubs
+  ../../components/espcontrol
+)
+add_test(NAME companion_shortcut_test COMMAND companion_shortcut_test)
+
+add_executable(companion_now_playing_protocol_test companion_now_playing_protocol_test.cpp)
+target_compile_features(companion_now_playing_protocol_test PRIVATE cxx_std_17)
+target_compile_options(companion_now_playing_protocol_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(companion_now_playing_protocol_test PRIVATE ../../components/companion)
+add_test(NAME companion_now_playing_protocol_test COMMAND companion_now_playing_protocol_test)
+
+add_executable(companion_session_state_test companion_session_state_test.cpp)
+target_compile_features(companion_session_state_test PRIVATE cxx_std_17)
+target_compile_options(companion_session_state_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(companion_session_state_test PRIVATE ../../components/companion)
+add_test(NAME companion_session_state_test COMMAND companion_session_state_test)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)

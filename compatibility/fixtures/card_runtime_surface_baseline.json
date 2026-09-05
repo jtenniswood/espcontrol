@@ -2143,6 +2143,37 @@
       }
     },
     {
+      "name": "companion: approved_app",
+      "sourceKind": "contract",
+      "sourceType": "companion",
+      "mode": "approved_app",
+      "canonicalType": "companion",
+      "web": {
+        "registration": "companion",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "c9da18ede694afd8"
+        }
+      },
+      "firmware": {
+        "family": "COMPANION"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "screen_lock: toggle",
       "sourceKind": "contract",
       "sourceType": "screen_lock",
@@ -2798,6 +2829,37 @@
         ],
         "actions": [
           "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "companion_subpage: picker_alias",
+      "sourceKind": "runtime_only",
+      "sourceType": "companion_subpage",
+      "mode": "picker_alias",
+      "canonicalType": "subpage",
+      "web": {
+        "registration": "companion_subpage",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "a617d3b70d305a2d"
+        }
+      },
+      "firmware": {
+        "family": null
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "none"
+        ],
+        "actions": [
+          "navigation"
         ],
         "modalOwner": "none"
       }

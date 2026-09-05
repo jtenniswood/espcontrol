@@ -43,6 +43,7 @@
 #include "button_grid_layout.h"
 #include "button_grid_display.h"
 #include "button_grid_cards.h"
+#include "companion_controls.h"
 #include "button_grid_modal.h"
 #include "button_grid_subscriptions.h"
 #include "button_grid_vacuum.h"

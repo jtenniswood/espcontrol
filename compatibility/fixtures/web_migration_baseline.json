@@ -50,7 +50,7 @@
       "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
       "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
       "screensaverMode": "disabled", "presenceSensorEntity": "", "mediaPlayerSleepPrevention": true,
-      "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
+      "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtSource": "Home Assistant", "coverArtMediaPlayerEntity": "",
       "coverArtSecondaryMediaPlayerEntity": "",
       "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
       "coverArtHideExternalInput": true, "coverArtHomeAssistantEndpointMode": "Manual", "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
@@ -108,5 +108,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 2579240, "gzip": 1085059, "gzipTolerance": 9216 }
+  "bundleSize": { "minified": 2629447, "gzip": 1104226, "gzipTolerance": 9216 }
 }

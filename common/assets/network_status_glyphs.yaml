@@ -8,6 +8,7 @@
 - "\U000F0156"  # mdi-close (network status modal close button)
 - "\U000F0142"  # mdi-chevron-right (Subpage indicator)
 - "\U000F00DC"  # mdi-brightness-3 (Clock bar night mode indicator)
+- "\U000F0379"  # mdi-monitor (Connected Mac Companion indicator)
 - "\U000F036C"  # mdi-microphone
 - "\U000F036D"  # mdi-microphone-off
 - "\U000F04C4"  # mdi-speaker-off

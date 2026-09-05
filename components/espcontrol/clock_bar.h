@@ -330,6 +330,15 @@ inline std::vector<lv_obj_t *> &clock_bar_temperature_labels() {
   return labels;
 }
 
+inline std::string &clock_bar_companion_subpage_label() {
+  static std::string label;
+  return label;
+}
+
+inline void set_clock_bar_companion_subpage_label(const std::string &label) {
+  clock_bar_companion_subpage_label() = label;
+}
+
 inline void set_clock_bar_temperature_labels(lv_obj_t **labels, size_t count) {
   std::vector<lv_obj_t *> &out = clock_bar_temperature_labels();
   out.clear();
@@ -429,6 +438,21 @@ inline void refresh_clock_bar_temperature_label_values(
   const bool show_on_screen =
       clock_bar_visible && clock_bar_active_on_button_grid_page(main_page_obj);
   std::vector<lv_obj_t *> &labels = clock_bar_temperature_labels();
+
+  const std::string &companion_label = clock_bar_companion_subpage_label();
+  if (!companion_label.empty()) {
+    if (!show_on_screen || labels.empty()) {
+      for (lv_obj_t *label : labels) clock_bar_set_widget_hidden(label, true);
+      return;
+    }
+    if (!labels[0]) return;
+    lv_label_set_display_text(labels[0], companion_label.c_str());
+    clock_bar_set_widget_hidden(labels[0], false);
+    for (size_t i = 1; i < labels.size(); i++) {
+      clock_bar_set_widget_hidden(labels[i], true);
+    }
+    return;
+  }
 
   if (!clock_bar_temperature_has_items()) {
     if (!show_on_screen || (!indoor_enabled && !outdoor_enabled)) {

@@ -232,6 +232,12 @@ export function createControlsFieldsFeature(
             card: false,
             type: false,
             entity: false,
+            statistic: false,
+            shortcut: false,
+            url: false,
+            media: false,
+            folder: false,
+            window: false,
         };
         var movable: any = [];
         var firstDisclosure: any = null;

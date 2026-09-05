@@ -61,6 +61,41 @@ lvgl:
           on_press:
             then:
               - script.execute: network_status_open_info
+          on_long_press:
+            then:
+              - lambda: |-
+                  esphome::companion::begin_companion_pairing();
+                  network_status_open_text_modal(
+                    "Mac Companion pairing",
+                    esphome::companion::companion_pairing_code(),
+                    "Enter this code in the Mac app",
+                    id(${media_title_font})->get_lv_font(),
+                    id(${icon_font})->get_lv_font());
+
+      # Mac Companion connection status. Pairing is physically authorized by
+      # holding the network icon; this remains a status-only indicator.
+      - obj:
+          id: companion_status_icon
+          align: top_right
+          x: 0
+          y: 0
+          width: 48
+          height: 44
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: false
+          hidden: true
+          widgets:
+            - label:
+                id: companion_status_icon_label
+                text: "\U000F0379"
+                text_font: font_icon_status
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
 
       # Night mode indicator (schedule night period only). Starts hidden;
       # clock_bar_apply positions and reveals it beside the network icon, so the
@@ -118,3 +153,31 @@ lvgl:
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "7" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "8" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "9" } }
+
+interval:
+  - interval: 500ms
+    then:
+      - lambda: |-
+          // Grid construction owns Companion card registration. Runtime
+          // updates set the refresh flag, so consume only real changes instead
+          // of reparsing every card and repainting twice a second while idle.
+          companion_refresh_cards_if_requested();
+          navigation_return_from_companion_shortcuts_if_needed(id(main_page)->obj);
+          navigation_open_companion_subpage_if_requested(id(main_page)->obj);
+          navigation_refresh_companion_subpage_label();
+          refresh_clock_bar_temperature_label_values(
+              id(main_page)->obj,
+              clock_bar_should_show(
+                  id(clock_bar_enabled).state,
+                  id(main_page)->obj,
+                  id(espcontrol_app).display().current_mode(),
+                  id(espcontrol_app).display().target_schedule_inactive()),
+              id(indoor_temp_enable).state,
+              id(outdoor_temp_enable).state,
+              id(indoor_temp), id(outdoor_temp));
+          static bool previous_companion_connection = false;
+          const bool connected = companion_connected();
+          if (connected != previous_companion_connection) {
+            previous_companion_connection = connected;
+            id(clock_bar_apply).execute();
+          }

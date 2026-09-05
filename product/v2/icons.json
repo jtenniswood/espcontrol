@@ -124,6 +124,42 @@
       "codepoint": "F02ED",
       "mdi": "image-broken",
       "comment": "Image card unavailable state"
+    },
+    {
+      "name": "Shortcut Command",
+      "codepoint": "F0633",
+      "mdi": "apple-keyboard-command",
+      "comment": "Companion shortcut labels"
+    },
+    {
+      "name": "Shortcut Control",
+      "codepoint": "F0634",
+      "mdi": "apple-keyboard-control",
+      "comment": "Companion shortcut labels"
+    },
+    {
+      "name": "Shortcut Option",
+      "codepoint": "F0635",
+      "mdi": "apple-keyboard-option",
+      "comment": "Companion shortcut labels"
+    },
+    {
+      "name": "Shortcut Shift",
+      "codepoint": "F0636",
+      "mdi": "apple-keyboard-shift",
+      "comment": "Companion shortcut labels"
+    },
+    {
+      "name": "Shortcut Left",
+      "codepoint": "F004D",
+      "mdi": "arrow-left",
+      "comment": "Companion shortcut labels"
+    },
+    {
+      "name": "Shortcut Right",
+      "codepoint": "F0054",
+      "mdi": "arrow-right",
+      "comment": "Companion shortcut labels"
     }
   ],
   "icons": [
@@ -616,6 +652,11 @@
       "name": "Folder Music Outline",
       "codepoint": "F135A",
       "mdi": "folder-music-outline"
+    },
+    {
+      "name": "Folder Outline",
+      "codepoint": "F0256",
+      "mdi": "folder-outline"
     },
     {
       "name": "Folder Play",
@@ -1756,6 +1797,11 @@
       "name": "Weather Windy Variant",
       "codepoint": "F059E",
       "mdi": "weather-windy-variant"
+    },
+    {
+      "name": "Web",
+      "codepoint": "F059F",
+      "mdi": "web"
     },
     {
       "name": "Wifi",

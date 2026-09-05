@@ -1,9 +1,10 @@
 # =============================================================================
 # TIME - NTP/Home Assistant time sources and timezone selector
 # =============================================================================
-# SNTP drives the on-screen clock when network NTP is available. Home Assistant
-# time remains enabled as a fallback. The timezone selector provides approximate
-# lat/lon for on-device sunrise/sunset calculation (sun_calc.h).
+# SNTP drives the on-screen clock using public pool.ntp.org servers. Home
+# Assistant time remains enabled as a fallback. When the timezone is set to
+# Auto and Home Assistant is unavailable, a paired Mac Companion supplies the
+# timezone; UTC remains the final fallback.
 # =============================================================================
 
 globals:
@@ -16,17 +17,18 @@ esphome:
     priority: -100
     then:
       - lambda: |-
+          esphome::companion::register_companion_timezone_home_assistant_connected_provider(
+            []() { return ha_api_state_connected(); });
           id(clock_format_12h) = id(clock_format_select).current_option() == "12h";
           std::string timezone_option = id(timezone_select).current_option();
-          const char *posix = apply_configured_timezone(timezone_option);
+          std::string active_timezone = effective_timezone_option(timezone_option);
+          const char *posix = apply_timezone(active_timezone);
           set_espcontrol_language(id(language_select).current_option());
-          if (posix != nullptr) {
-            id(panel_time).set_timezone(posix);
-            id(homeassistant_time).set_timezone(posix);
-          }
+          id(panel_time).set_timezone(posix);
+          id(homeassistant_time).set_timezone(posix);
           set_display_temperature_unit(id(temperature_unit_select).current_option(),
-                                       timezone_option);
-          id(screen_active_timezone_sensor).publish_state(effective_timezone_option(timezone_option));
+                                       active_timezone);
+          id(screen_active_timezone_sensor).publish_state(active_timezone);
       - script.execute: network_setup_text_refresh
       - script.execute: ha_setup_text_refresh
       - script.execute: ha_actions_text_refresh
@@ -187,16 +189,16 @@ select:
       then:
         - lambda: |-
             std::string timezone_option(x.c_str(), x.size());
-            const char *posix = apply_configured_timezone(timezone_option);
-            if (posix != nullptr) {
-              id(panel_time).set_timezone(posix);
-              id(homeassistant_time).set_timezone(posix);
-            } else {
+            const std::string active_timezone = effective_timezone_option(timezone_option);
+            const char *posix = apply_timezone(active_timezone);
+            id(panel_time).set_timezone(posix);
+            id(homeassistant_time).set_timezone(posix);
+            if (timezone_is_homeassistant_auto(timezone_option)) {
               if (ha_api_state_connected()) id(homeassistant_time).update();
             }
             set_display_temperature_unit(id(temperature_unit_select).current_option(),
-                                         timezone_option);
-            id(screen_active_timezone_sensor).publish_state(effective_timezone_option(timezone_option));
+                                         active_timezone);
+            id(screen_active_timezone_sensor).publish_state(active_timezone);
             refresh_temperature_unit_labels();
             refresh_clock_bar_temperature_label_values(
               id(main_page)->obj,
@@ -455,6 +457,13 @@ script:
 
   - id: time_update
     then:
+      - lambda: |-
+          const std::string timezone_option = id(timezone_select).current_option();
+          const std::string active_timezone = effective_timezone_option(timezone_option);
+          const char *posix = apply_timezone(active_timezone);
+          id(panel_time).set_timezone(posix);
+          id(homeassistant_time).set_timezone(posix);
+          id(screen_active_timezone_sensor).publish_state(active_timezone);
       - lvgl.label.update:
           id: display_time
           text: !lambda |-
@@ -467,6 +476,8 @@ script:
                                              now.hour, now.minute, use_12h);
             return time_buf;
       - lambda: |-
+          const std::string timezone_option = id(timezone_select).current_option();
+          const std::string active_timezone = effective_timezone_option(timezone_option);
           auto now = panel_time_or_fallback(id(panel_time).now(),
                                             id(homeassistant_time).now());
           bool use_12h = id(clock_format_12h);
@@ -478,16 +489,33 @@ script:
             update_calendar_cards(true, now.day_of_month, now.month);
             update_calendar_cards_time(
                 true, now.day_of_month, now.month, now.hour, now.minute, use_12h);
-            update_timezone_cards(true, now.timestamp,
-                                  id(timezone_select).current_option(), use_12h);
+            update_timezone_cards(true, now.timestamp, active_timezone, use_12h);
           } else if (!calendar_date_valid()) {
             if (ha_api_state_connected()) id(homeassistant_time).update();
             id(screen_date_sensor).publish_state("");
             update_calendar_cards(false, 0, 0);
             update_calendar_cards_time(false, 0, 0, 0, 0, false);
-            update_timezone_cards(false, 0, id(timezone_select).current_option(), use_12h);
+            update_timezone_cards(false, 0, active_timezone, use_12h);
           } else {
             if (ha_api_state_connected()) id(homeassistant_time).update();
             update_calendar_cards_time(false, 0, 0, 0, 0, false);
-            update_timezone_cards(false, 0, id(timezone_select).current_option(), use_12h);
+            update_timezone_cards(false, 0, active_timezone, use_12h);
           }
+
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              static bool previous_ha_connected = ha_api_state_connected();
+              const bool ha_connected = ha_api_state_connected();
+              const bool ha_connection_changed = ha_connected != previous_ha_connected;
+              previous_ha_connected = ha_connected;
+              return esphome::companion::companion_timezone_changed() ||
+                     ha_connection_changed;
+          then:
+            - lambda: 'esphome::companion::companion_take_timezone_changed();'
+            # Reuse the full source refresh when either Auto timezone source
+            # changes so temperature units and sun scheduling follow it.
+            - script.execute: timezone_after_homeassistant_time_sync

@@ -254,6 +254,12 @@ export function createAppStateEventHandlersFeature(
                 state.coverArtScreensaverOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
             },
+            "select-cover_art_source": function (this: any, val?: any, d?: any) {
+                state.coverArtSource = (d.value || val) === "Mac Companion" ? "Mac Companion" : "Home Assistant";
+                if (els.setCoverArtSource) els.setCoverArtSource.value = state.coverArtSource;
+                if (els.setCoverArtHomeAssistantOptions)
+                    els.setCoverArtHomeAssistantOptions.classList.toggle("sp-visible", state.coverArtSource === "Home Assistant");
+            },
             "switch-screen_saver__hide_cover_art_on_external_input": function (this: any, val?: any, d?: any) {
                 state.coverArtHideExternalInputOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
@@ -354,7 +360,8 @@ export function createAppStateEventHandlersFeature(
             },
             "text-screensaver_mode": function (this: any, val?: any) {
                 state._screensaverModeReceived = true;
-                state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
+                state.screensaverMode = val === "sensor" || val === "timer" || val === "companion" ||
+                    val === "disabled" ? val : "disabled";
                 if (els.setSsMode)
                     els.setSsMode(getActiveScreensaverMode());
             },

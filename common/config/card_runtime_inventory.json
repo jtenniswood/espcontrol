@@ -255,6 +255,11 @@
       "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
       "modes": [{ "name": "event", "config": { "label": "Trigger" } }]
     },
+    "companion": {
+      "classification": "canonical", "canonicalType": "companion", "webRegistration": "companion", "firmwareFamily": "COMPANION",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [{ "name": "approved_app", "config": { "entity": "com.apple.Safari", "label": "Safari" } }]
+    },
     "screen_lock": {
       "classification": "canonical", "canonicalType": "screen_lock", "webRegistration": "screen_lock", "firmwareFamily": "SCREEN_LOCK",
       "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },
@@ -345,6 +350,14 @@
       "firmwareFamily": "SENSOR",
       "config": { "entity": "sensor.example", "type": "text_sensor" },
       "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" }
+    },
+    "companion_subpage": {
+      "classification": "picker_alias",
+      "canonicalType": "subpage",
+      "surfaces": ["web_registry"],
+      "webRegistration": "companion_subpage",
+      "config": { "label": "Mac Controls", "icon": "Auto", "icon_on": "Auto", "type": "subpage", "options": "subpage_connector=mac_companion" },
+      "lifecycle": { "subscriptions": ["none"], "actions": ["navigation"], "modalOwner": "none" }
     },
     "media_cover_art": {
       "classification": "obsolete_implementation_residue",

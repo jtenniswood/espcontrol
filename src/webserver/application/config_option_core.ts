@@ -53,6 +53,7 @@ import {
     var MEDIA_COVER_ART_OPTION: any = cardContractOptionName("media_cover_art");
     var MEDIA_COVER_ART_DETAILS_OPTION: any = cardContractOptionName("cover_art_details");
     var MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION: any = cardContractOptionName("cover_art_secondary_entity");
+    var SUBPAGE_CONNECTOR_OPTION: any = cardContractOptionName("subpage_connector");
     var SUBPAGE_KIND_OPTION: any = cardContractOptionName("subpage_kind");
     var IMAGE_LABEL_OPTION: any = cardContractOptionName("image_label");
     var IMAGE_ICON_OPTION: any = cardContractOptionName("image_icon");
@@ -147,6 +148,7 @@ export {
     MEDIA_COVER_ART_OPTION,
     MEDIA_COVER_ART_DETAILS_OPTION,
     MEDIA_COVER_ART_SECONDARY_ENTITY_OPTION,
+    SUBPAGE_CONNECTOR_OPTION,
     SUBPAGE_KIND_OPTION,
     IMAGE_LABEL_OPTION,
     IMAGE_ICON_OPTION,

@@ -9,6 +9,7 @@ Usage:
     python scripts/build.py devices       # sync public device capabilities only
     python scripts/build.py icons         # sync icons only
     python scripts/build.py i18n          # sync firmware translations only
+    python scripts/build.py companion     # sync shared Companion capabilities
     python scripts/build.py www           # build www.js only
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
     python scripts/build.py icons --check # check icons only
@@ -94,6 +95,11 @@ I18N_GENERATED_H = ROOT / "components" / "espcontrol" / "i18n_generated.h"
 CARD_CONTRACT_JSON = source_path("cardContract")
 CARD_CONTRACT_TS = ROOT / "src" / "webserver" / "generated" / "card_contract.ts"
 CARD_CONTRACT_H = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
+COMPANION_CAPABILITIES_JSON = ROOT / "product" / "v2" / "companion_capabilities.json"
+COMPANION_CAPABILITIES_TS = ROOT / "src" / "webserver" / "generated" / "companion_capabilities.ts"
+COMPANION_CAPABILITIES_H = ROOT / "components" / "espcontrol" / "companion_capabilities_generated.h"
+COMPANION_CAPABILITIES_SWIFT = ROOT / "macos" / "Companion" / "Sources" / "Companion" / "CompanionCapabilities.generated.swift"
+COMPANION_GENERATED_MANIFEST = ROOT / "product" / "generated" / "companion_manifest.json"
 SAVED_CONFIG_SHADOW_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_shadow.ts"
 SAVED_CONFIG_SHADOW_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_shadow_generated.h"
 SAVED_CONFIG_VACUUM_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_vacuum.ts"
@@ -316,6 +322,81 @@ def load_entity_names_data():
 
 def load_card_contract_data():
     return load_product_model_v2().card_contract_data()
+
+
+def load_companion_capabilities_data():
+    data = load_json(COMPANION_CAPABILITIES_JSON)
+    required_lists = ("windowActions", "mediaActions", "systemMetrics")
+    if not isinstance(data.get("version"), int) or data["version"] < 1:
+        raise BuildError("Companion capability version must be a positive integer")
+    for key in required_lists:
+        if not isinstance(data.get(key), list) or not data[key]:
+            raise BuildError(f"Companion capability registry requires a non-empty {key} list")
+
+    protocol = data.get("protocol")
+    if not isinstance(protocol, dict) or not isinstance(protocol.get("version"), int) or protocol["version"] < 1:
+        raise BuildError("Companion protocol requires a positive version")
+    if not isinstance(protocol.get("path"), str) or not protocol["path"].startswith("/companion/"):
+        raise BuildError("Companion protocol path must be under /companion/")
+    for key in ("maximumTextFrameBytes", "maximumArtworkBytes", "artworkChunkBytes"):
+        if not isinstance(protocol.get(key), int) or protocol[key] < 1:
+            raise BuildError(f"Companion protocol requires a positive {key}")
+    if protocol["artworkChunkBytes"] > protocol["maximumArtworkBytes"]:
+        raise BuildError("Companion artwork chunks cannot exceed the maximum artwork size")
+    messages = protocol.get("messages")
+    message_ids = [item.get("id") for item in messages] if isinstance(messages, list) else []
+    if not message_ids or any(not isinstance(item, str) or not item for item in message_ids) or len(message_ids) != len(set(message_ids)):
+        raise BuildError("Companion protocol message ids must be non-empty and unique")
+    allowed_directions = {"panel_to_mac", "mac_to_panel", "bidirectional"}
+    allowed_authorization = {"public", "pairing_window", "paired", "session"}
+    for message in messages:
+        if message.get("direction") not in allowed_directions or message.get("authorization") not in allowed_authorization:
+            raise BuildError(f"Invalid Companion message policy for {message.get('id')}")
+
+    security = data.get("security")
+    if not isinstance(security, dict) or security.get("pairingAuthorization") != "physical_presence":
+        raise BuildError("Companion pairing must require physical presence")
+    if not isinstance(security.get("pairingWindowSeconds"), int) or security["pairingWindowSeconds"] < 30:
+        raise BuildError("Companion pairing window must be at least 30 seconds")
+
+    card_modes = data.get("cardModes")
+    card_mode_ids = [item.get("id") for item in card_modes] if isinstance(card_modes, list) else []
+    if not card_mode_ids or any(not isinstance(item, str) or not item for item in card_mode_ids) or len(card_mode_ids) != len(set(card_mode_ids)):
+        raise BuildError("Companion card mode ids must be non-empty and unique")
+    for mode in card_modes:
+        if not all(isinstance(mode.get(key), str) and mode[key] for key in ("label", "capability", "defaultIcon")):
+            raise BuildError(f"Invalid Companion card mode: {mode.get('id')}")
+
+    identifiers = []
+    for action in data["windowActions"]:
+        if not all(isinstance(action.get(key), str) and action[key] for key in ("id", "label", "group", "key")):
+            raise BuildError("Each Companion window action requires id, label, group, and key")
+        if not action["id"].startswith("window."):
+            raise BuildError(f"Invalid Companion window action id: {action['id']}")
+        if not isinstance(action.get("minimumMacOS"), int):
+            raise BuildError(f"Companion window action {action['id']} requires minimumMacOS")
+        modifiers = action.get("modifiers")
+        allowed_modifiers = {"command", "control", "option", "shift", "function"}
+        if not isinstance(modifiers, list) or not modifiers or any(item not in allowed_modifiers for item in modifiers):
+            raise BuildError(f"Invalid Companion window action modifiers: {action['id']}")
+        identifiers.append(action["id"])
+    for action in data["mediaActions"]:
+        if not all(isinstance(action.get(key), str) and action[key] for key in ("id", "label", "icon", "command")):
+            raise BuildError("Each Companion media action requires id, label, icon, and command")
+        if not action["id"].startswith("media."):
+            raise BuildError(f"Invalid Companion media action id: {action['id']}")
+        identifiers.append(action["id"])
+    for metric in data["systemMetrics"]:
+        if not all(isinstance(metric.get(key), str) and metric[key] for key in ("mode", "id", "label", "labelKey", "unit")):
+            raise BuildError("Each Companion system metric requires mode, id, label, labelKey, and unit")
+        if not metric["id"].startswith("stat."):
+            raise BuildError(f"Invalid Companion system metric id: {metric['id']}")
+        identifiers.append(metric["id"])
+        if metric.get("freeId"):
+            identifiers.append(metric["freeId"])
+    if len(identifiers) != len(set(identifiers)):
+        raise BuildError("Companion capability identifiers must be unique")
+    return data
 
 
 def replace_between_markers(text, start_tag, end_tag, new_content):
@@ -667,6 +748,184 @@ def sync_i18n(check_only=False):
 
     if dirty:
         write_generated_text(I18N_GENERATED_H, generated)
+    return dirty
+
+
+# ===========================================================================
+# Shared Companion capability generation
+# ===========================================================================
+
+def companion_ts_literal(value):
+    return re.sub(
+        r'^(\s*)"([A-Za-z_$][A-Za-z0-9_$]*)":',
+        r'\1\2:',
+        json.dumps(value, indent=2),
+        flags=re.MULTILINE,
+    )
+
+
+def gen_companion_capabilities_ts(data):
+    protocol = data["protocol"]
+    return (
+        "// GENERATED COMPANION CAPABILITIES - do not edit by hand\n"
+        "// Generated by scripts/build.py from product/v2/companion_capabilities.json.\n\n"
+        "export interface CompanionWindowAction { readonly id: string; readonly label: string; readonly group: string; }\n"
+        "export interface CompanionSystemMetric { readonly mode: string; readonly id: string; readonly label: string; readonly unit: string; readonly freeId?: string; }\n"
+        "export interface CompanionCardMode { readonly id: string; readonly label: string; readonly capability: string; readonly defaultIcon: string; }\n"
+        "export interface CompanionProtocolMessage { readonly id: string; readonly direction: string; readonly authorization: string; }\n\n"
+        f"export const COMPANION_CAPABILITY_VERSION = {data['version']} as const;\n"
+        f"export const COMPANION_PROTOCOL_VERSION = {protocol['version']} as const;\n"
+        f"export const COMPANION_PROTOCOL_PATH = {json.dumps(protocol['path'])} as const;\n"
+        f"export const COMPANION_MAXIMUM_TEXT_FRAME_BYTES = {protocol['maximumTextFrameBytes']} as const;\n"
+        f"export const COMPANION_CARD_MODES = {companion_ts_literal(data['cardModes'])} as const satisfies readonly CompanionCardMode[];\n"
+        f"export const COMPANION_PROTOCOL_MESSAGES: readonly CompanionProtocolMessage[] = {companion_ts_literal(protocol['messages'])};\n"
+        f"export const COMPANION_WINDOW_ACTIONS: readonly CompanionWindowAction[] = {companion_ts_literal([{key: item[key] for key in ('id', 'label', 'group')} for item in data['windowActions']])};\n"
+        f"export const COMPANION_MEDIA_ACTIONS = {companion_ts_literal([{key: item[key] for key in ('id', 'label', 'icon')} for item in data['mediaActions']])} as const;\n"
+        f"export const COMPANION_SYSTEM_METRICS: readonly CompanionSystemMetric[] = {companion_ts_literal([{key: item[key] for key in ('mode', 'id', 'freeId', 'label', 'unit') if key in item} for item in data['systemMetrics']])};\n"
+        f"export const COMPANION_MEDIA_PLAY_PAUSE_ACTION = {json.dumps(data['mediaActions'][0]['id'])} as const;\n"
+    )
+
+
+def gen_companion_capabilities_h(data):
+    protocol = data["protocol"]
+    metric_entries = []
+    for metric in data["systemMetrics"]:
+        metric_entries.append((metric["id"], metric["label"], metric["labelKey"], metric["unit"]))
+        if metric.get("freeId"):
+            metric_entries.append((metric["freeId"], metric["label"], metric["labelKey"], metric["unit"]))
+    lines = [
+        "#pragma once\n\n",
+        "#include <cstddef>\n",
+        "#include <cstdint>\n",
+        "#include <string>\n\n",
+        "// GENERATED COMPANION CAPABILITIES - do not edit by hand\n",
+        "// Generated by scripts/build.py from product/v2/companion_capabilities.json.\n\n",
+        f"constexpr int COMPANION_CAPABILITY_VERSION = {data['version']};\n",
+        f"constexpr int COMPANION_PROTOCOL_VERSION = {protocol['version']};\n",
+        f"constexpr const char *COMPANION_PROTOCOL_PATH = {json.dumps(protocol['path'])};\n",
+        f"constexpr size_t COMPANION_MAXIMUM_TEXT_FRAME_BYTES = {protocol['maximumTextFrameBytes']};\n",
+        f"constexpr size_t COMPANION_MAXIMUM_ARTWORK_BYTES = {protocol['maximumArtworkBytes']};\n",
+        f"constexpr size_t COMPANION_ARTWORK_CHUNK_BYTES = {protocol['artworkChunkBytes']};\n",
+        f"constexpr uint32_t COMPANION_PAIRING_WINDOW_SECONDS = {data['security']['pairingWindowSeconds']};\n\n",
+        "struct CompanionProtocolMessagePolicy { const char *id; const char *direction; const char *authorization; };\n",
+        "inline constexpr CompanionProtocolMessagePolicy COMPANION_PROTOCOL_MESSAGES[] = {\n",
+    ]
+    lines.extend(f"  {{{json.dumps(item['id'])}, {json.dumps(item['direction'])}, {json.dumps(item['authorization'])}}},\n" for item in protocol["messages"])
+    lines.extend([
+        "};\n\n",
+        "struct CompanionCardModeCapability { const char *id; const char *label; const char *capability; const char *default_icon; };\n",
+        "inline constexpr CompanionCardModeCapability COMPANION_CARD_MODES[] = {\n",
+    ])
+    lines.extend(f"  {{{json.dumps(item['id'])}, {json.dumps(item['label'])}, {json.dumps(item['capability'])}, {json.dumps(item['defaultIcon'])}}},\n" for item in data["cardModes"])
+    lines.extend([
+        "};\n\n",
+        "struct CompanionWindowCapability { const char *id; const char *label; };\n",
+        "inline constexpr CompanionWindowCapability COMPANION_WINDOW_CAPABILITIES[] = {\n",
+    ])
+    lines.extend(f"  {{{json.dumps(item['id'])}, {json.dumps(item['label'])}}},\n" for item in data["windowActions"])
+    lines.extend([
+        "};\n\n",
+        "struct CompanionMetricCapability { const char *id; const char *label; const char *label_key; const char *unit; };\n",
+        "inline constexpr CompanionMetricCapability COMPANION_METRIC_CAPABILITIES[] = {\n",
+    ])
+    lines.extend(f"  {{{json.dumps(item[0])}, {json.dumps(item[1])}, {json.dumps(item[2])}, {json.dumps(item[3])}}},\n" for item in metric_entries)
+    lines.extend([
+        "};\n\n",
+        "inline constexpr const char *COMPANION_MEDIA_ACTION_IDS[] = {\n",
+    ])
+    lines.extend(f"  {json.dumps(item['id'])},\n" for item in data["mediaActions"])
+    lines.extend([
+        "};\n\n",
+        f"constexpr const char *COMPANION_MEDIA_PLAY_PAUSE_ACTION = {json.dumps(data['mediaActions'][0]['id'])};\n\n",
+        "inline const CompanionWindowCapability *companion_window_capability(const std::string &id) {\n",
+        "  for (const auto &item : COMPANION_WINDOW_CAPABILITIES) if (id == item.id) return &item;\n",
+        "  return nullptr;\n",
+        "}\n\n",
+        "inline const CompanionMetricCapability *companion_metric_capability(const std::string &id) {\n",
+        "  for (const auto &item : COMPANION_METRIC_CAPABILITIES) if (id == item.id) return &item;\n",
+        "  return nullptr;\n",
+        "}\n\n",
+        "inline bool companion_generated_media_action_valid(const std::string &id) {\n",
+        "  for (const auto *item : COMPANION_MEDIA_ACTION_IDS) if (id == item) return true;\n",
+        "  return false;\n",
+        "}\n",
+    ])
+    return "".join(lines)
+
+
+def gen_companion_capabilities_swift(data):
+    flag_names = {
+        "command": ".maskCommand", "control": ".maskControl", "option": ".maskAlternate",
+        "shift": ".maskShift", "function": ".maskSecondaryFn",
+    }
+    lines = [
+        "// GENERATED COMPANION CAPABILITIES - do not edit by hand\n",
+        "// Generated by scripts/build.py from product/v2/companion_capabilities.json.\n\n",
+        "import CoreGraphics\n\n",
+        "struct CompanionWindowActionCapability {\n",
+        "    let key: String\n",
+        "    let flags: CGEventFlags\n",
+        "    let minimumMacOS: Int\n",
+        "}\n\n",
+        "enum CompanionCapabilities {\n",
+        f"    static let version = {data['version']}\n",
+        f"    static let protocolVersion = {data['protocol']['version']}\n",
+        f"    static let protocolPath = {json.dumps(data['protocol']['path'])}\n",
+        f"    static let maximumTextFrameBytes = {data['protocol']['maximumTextFrameBytes']}\n",
+        f"    static let maximumArtworkBytes = {data['protocol']['maximumArtworkBytes']}\n",
+        f"    static let artworkChunkBytes = {data['protocol']['artworkChunkBytes']}\n",
+        f"    static let pairingWindowSeconds = {data['security']['pairingWindowSeconds']}\n",
+        "    static let protocolMessages: Set<String> = [\n",
+    ]
+    lines.extend(f"        {json.dumps(item['id'])},\n" for item in data["protocol"]["messages"])
+    lines.extend([
+        "    ]\n",
+        "    static let cardModes: [String: String] = [\n",
+    ])
+    lines.extend(f"        {json.dumps(item['id'])}: {json.dumps(item['label'])},\n" for item in data["cardModes"])
+    lines.extend([
+        "    ]\n",
+        "    static let windowActions: [String: CompanionWindowActionCapability] = [\n",
+    ])
+    for item in data["windowActions"]:
+        flags = ", ".join(flag_names[modifier] for modifier in item["modifiers"])
+        lines.append(f"        {json.dumps(item['id'])}: .init(key: {json.dumps(item['key'])}, flags: [{flags}], minimumMacOS: {item['minimumMacOS']}),\n")
+    lines.extend([
+        "    ]\n",
+        "    static let mediaCommandByActionID: [String: String] = [\n",
+    ])
+    lines.extend(f"        {json.dumps(item['id'])}: {json.dumps(item['command'])},\n" for item in data["mediaActions"])
+    lines.extend([
+        "    ]\n",
+        f"    static let mediaPlayPauseID = {json.dumps(data['mediaActions'][0]['id'])}\n",
+        "}\n",
+    ])
+    return "".join(lines)
+
+
+def sync_companion_capabilities(check_only=False):
+    data = load_companion_capabilities_data()
+    outputs = [
+        (COMPANION_CAPABILITIES_TS, gen_companion_capabilities_ts(data)),
+        (COMPANION_CAPABILITIES_H, gen_companion_capabilities_h(data)),
+        (COMPANION_CAPABILITIES_SWIFT, gen_companion_capabilities_swift(data)),
+    ]
+    manifest = {
+        "source": str(COMPANION_CAPABILITIES_JSON.relative_to(ROOT)),
+        "generator": "python3 scripts/build.py companion",
+        "outputs": [str(path.relative_to(ROOT)) for path, _content in outputs],
+    }
+    outputs.append((COMPANION_GENERATED_MANIFEST, json.dumps(manifest, indent=2) + "\n"))
+    dirty = [path.relative_to(ROOT) for path, content in outputs if not path.exists() or path.read_text() != content]
+    if check_only:
+        if dirty:
+            print("Companion capability outputs are out of sync. Run 'python scripts/build.py companion' to fix:")
+            for path in dirty:
+                print(f"  {path}")
+        return dirty
+    for path, content in outputs:
+        if not path.exists() or path.read_text() != content:
+            write_generated_text(path, content)
     return dirty
 
 
@@ -3348,6 +3607,7 @@ def gen_card_contract_h(data):
         "  if (type == \"sensor\") return precision != \"icon\" && precision != \"text\";\n",
         "  if (type == \"weather\") return precision == \"today\" || precision == \"tomorrow\";\n",
         "  return type == \"\" || type == \"action\" || type == \"calendar\" || type == \"clock\" ||\n",
+        "         type == \"companion\" ||\n",
         "         type == \"climate\" || type == \"media\" || type == \"subpage\" ||\n",
         "         type == \"timezone\";\n",
         "}\n",
@@ -4111,16 +4371,17 @@ def main():
                 entity_dirty = sync_entity_names(check_only=check_only)
                 i18n_dirty = sync_i18n(check_only=check_only)
                 contract_dirty = sync_card_contract(check_only=check_only)
+                companion_dirty = sync_companion_capabilities(check_only=check_only)
                 device_dirty = sync_device_capabilities(check_only=check_only)
                 icon_dirty = sync_icons(check_only=check_only)
                 www_dirty = build_www(check_only=check_only)
-                if check_only and (entity_dirty or i18n_dirty or contract_dirty or device_dirty or icon_dirty or www_dirty):
+                if check_only and (entity_dirty or i18n_dirty or contract_dirty or companion_dirty or device_dirty or icon_dirty or www_dirty):
                     exit_code = 1
                 elif not entity_dirty and not i18n_dirty and not contract_dirty and not device_dirty and not icon_dirty and not www_dirty:
                     print("All outputs are up to date.")
                 else:
                     total = (
-                        len(entity_dirty) + len(i18n_dirty) + len(contract_dirty) + len(device_dirty) +
+                        len(entity_dirty) + len(i18n_dirty) + len(contract_dirty) + len(companion_dirty) + len(device_dirty) +
                         len(icon_dirty) + len(www_dirty)
                     )
                     print(f"Updated {total} target(s).")
@@ -4156,6 +4417,14 @@ def main():
                     print("Card contract outputs are in sync.")
                 else:
                     print(f"Synced {len(dirty)} card contract output(s).")
+            elif cmd == "companion":
+                dirty = sync_companion_capabilities(check_only=check_only)
+                if check_only and dirty:
+                    exit_code = 1
+                elif not dirty:
+                    print("Companion capability outputs are in sync.")
+                else:
+                    print(f"Synced {len(dirty)} Companion capability output(s).")
             elif cmd == "devices":
                 dirty = sync_device_capabilities(check_only=check_only)
                 if check_only and dirty:

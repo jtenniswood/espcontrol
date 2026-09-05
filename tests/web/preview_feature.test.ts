@@ -1,5 +1,7 @@
 import {
+  cardTypeConnector,
   cardTypePickerOptions,
+  cardTypeVisibleForConnector,
   clampMenuPosition,
   closestGridCell,
   defaultCardTypeForPicker,
@@ -24,6 +26,23 @@ export function runPreviewFeatureTests(): void {
   equal(infoOnlyCardVisible("sensor", true), true, "sensors remain visible in info-only mode");
   equal(infoOnlyCardVisible("action", true), false, "actions are hidden in info-only mode");
   equal(defaultCardTypeForPicker("climate"), "climate_control", "picker aliases retain their defaults");
+  equal(defaultCardTypeForPicker("companion_stats"), "companion", "Companion subtype pickers use the Companion runtime card");
+  equal(defaultCardTypeForPicker("companion_subpage"), "subpage", "Companion subpages use the shared subpage runtime");
+  equal(cardTypeVisibleForConnector("subpage", "home_assistant"), true, "Home Assistant subpages remain in the Home Assistant picker");
+  equal(cardTypeVisibleForConnector("subpage", "mac_companion"), false, "Home Assistant subpages are hidden from Companion");
+  equal(cardTypeVisibleForConnector("companion_subpage", "home_assistant"), false, "Companion subpages are hidden from Home Assistant");
+  equal(cardTypeVisibleForConnector("companion_subpage", "mac_companion"), true, "Companion subpages remain in the Companion picker");
+  for (const key of ["calendar", "internal", "screen_lock", "slider", "wifi_qr", "wifi_qr_card"]) {
+    equal(cardTypeConnector(key), "home_assistant", `${key} is classified as Home Assistant-only`);
+    equal(cardTypeVisibleForConnector(key, "home_assistant"), true, `${key} remains in the Home Assistant picker`);
+    equal(cardTypeVisibleForConnector(key, "mac_companion"), false, `${key} is hidden from the Companion picker`);
+  }
+  equal(cardTypeVisibleForConnector("action", "mac_companion"), false, "actions are hidden from Companion");
+  equal(cardTypeVisibleForConnector("push", "mac_companion"), false, "triggers are hidden from Companion");
+  equal(cardTypeVisibleForConnector("sensor", "mac_companion"), false, "sensors are hidden from Companion");
+  equal(cardTypeVisibleForConnector("companion_stats", "mac_companion"), true, "Companion subtypes appear in the Companion picker");
+  equal(cardTypeVisibleForConnector("webhook", "home_assistant"), true, "shared webhook cards appear for Home Assistant");
+  equal(cardTypeVisibleForConnector("webhook", "mac_companion"), true, "shared webhook cards appear for Companion");
 
   const definitions = {
     action: { label: "Action", allowInSubpage: true },
@@ -37,6 +56,34 @@ export function runPreviewFeatureTests(): void {
     cardTypePickerOptions(definitions, [], false, true, null).map((option) => option.key),
     ["action", "sensor", "wifi_qr"],
     "subpage picker filters unsupported and aliased entries",
+  );
+  const companionOptions = cardTypePickerOptions({
+      ...definitions,
+      calendar: { label: "Date & Time", allowInSubpage: true },
+      companion: { label: "Companion", allowInSubpage: true },
+      companion_app: { label: "Launch app", allowInSubpage: true },
+      companion_shortcut: { label: "Keyboard shortcut", allowInSubpage: true },
+      companion_url: { label: "Open URL", allowInSubpage: true },
+      companion_folder: { label: "Open folder", allowInSubpage: true },
+      companion_media: { label: "Media control", allowInSubpage: true },
+      companion_stats: { label: "Stats", allowInSubpage: true },
+      companion_subpage: { label: "Subpage", allowInSubpage: false },
+      companion_window: { label: "Window control", allowInSubpage: true },
+      internal: { label: "Internal Switches", allowInSubpage: true },
+      push: { label: "Trigger", allowInSubpage: true },
+      screen_lock: { label: "Screen Lock", allowInSubpage: true },
+      webhook: { label: "Webhook", allowInSubpage: true },
+      slider: { label: "Slider", allowInSubpage: true },
+    }, [], false, false, null, "mac_companion");
+  deepEqual(
+    companionOptions.map((option) => option.key),
+    ["companion_shortcut", "companion_app", "companion_media", "companion_folder", "companion_url", "companion_stats", "companion_subpage", "webhook", "companion_window"],
+    "Companion picker excludes Home Assistant-only controls",
+  );
+  equal(
+    companionOptions.find((option) => option.key === "companion_shortcut")?.icon,
+    "apple-keyboard-command",
+    "Companion keyboard shortcut cards use the Apple Command icon",
   );
   const infoOnlyOptions = cardTypePickerOptions(definitions, [], true, false, "action");
   equal(infoOnlyOptions[0]?.key, "action", "selected hidden type remains visible for editing");

@@ -2986,6 +2986,91 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "options": ""
     }
   },
+  "companion": {
+    "label": "Companion",
+    "allowInSubpage": true,
+    "domains": [],
+    "options": [
+      {
+        "name": "app_shortcuts",
+        "label": "App Subpage",
+        "kind": "flag",
+        "omitDefault": true
+      },
+      {
+        "name": "app_shortcuts_auto_switch",
+        "label": "Auto switch to subpage",
+        "kind": "flag",
+        "omitDefault": true
+      },
+      {
+        "name": "large_numbers",
+        "label": "Large Sensor Numbers",
+        "kind": "flag",
+        "omitDefault": true
+      }
+    ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "default_if_empty",
+          "value": "Monitor"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "keep"
+        },
+        "unit": {
+          "policy": "keep"
+        },
+        "type": {
+          "policy": "default",
+          "value": "companion"
+        },
+        "precision": {
+          "policy": "allowed",
+          "values": [
+            "",
+            "0",
+            "1",
+            "2"
+          ],
+          "fallback": ""
+        },
+        "options": {
+          "policy": "hook",
+          "hook": "normalize_date_time_options"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "app_shortcuts",
+        "app_shortcuts_auto_switch",
+        "large_numbers"
+      ],
+      "optionHook": "normalize_date_time_options"
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Monitor",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "companion",
+      "precision": "",
+      "options": ""
+    }
+  },
   "screen_lock": {
     "label": "Screen Lock",
     "allowInSubpage": true,
@@ -3434,6 +3519,17 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "domains": [],
     "options": [
       {
+        "name": "subpage_connector",
+        "label": "Subpage Connector",
+        "kind": "choice",
+        "values": [
+          "",
+          "mac_companion"
+        ],
+        "defaultValue": "",
+        "omitDefault": true
+      },
+      {
         "name": "subpage_kind",
         "label": "Subpage Type",
         "kind": "choice",
@@ -3453,7 +3549,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "lawn_mower",
           "weather",
           "sensor",
-          "image"
+          "image",
+          "companion_stat"
         ],
         "defaultValue": "",
         "omitDefault": true
@@ -3505,6 +3602,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
+        "subpage_connector",
         "subpage_kind",
         "large_numbers"
       ],
@@ -4386,6 +4484,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subpage": true
     }
   },
+  "companion": {
+    "driver": "companion",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": false,
+      "actions": true,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
+  },
   "screen_lock": {
     "driver": "screen_lock",
     "capabilities": {
@@ -4598,6 +4708,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "climate": "H",
   "climate_control": "HC",
   "push": "P",
+  "companion": "CP",
   "screen_lock": "SL",
   "webhook": "WH",
   "internal": "I",
@@ -4638,6 +4749,7 @@ export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string
   "H": "climate",
   "HC": "climate_control",
   "P": "push",
+  "CP": "companion",
   "SL": "screen_lock",
   "WH": "webhook",
   "I": "internal",
@@ -4670,6 +4782,8 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "app_shortcuts": "app_shortcuts",
+  "app_shortcuts_auto_switch": "app_shortcuts_auto_switch",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
   "confirm_no": "confirm_no",
@@ -4725,6 +4839,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "state_output_2": "state_output_2",
   "state_precision": "state_precision",
   "state_unit": "state_unit",
+  "subpage_connector": "subpage_connector",
   "subpage_kind": "subpage_kind",
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",

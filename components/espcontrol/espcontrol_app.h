@@ -40,6 +40,7 @@ class EspControlApp : public esphome::Component {
   HomeAssistantEndpointResolver &home_assistant_endpoint() {
     return home_assistant_endpoint_;
   }
+  bool connector_onboarding_complete() const;
 
   void set_panel_config_device_profile(const char *device_profile);
   void set_panel_config_button_order(esphome::text::Text *button_order);

@@ -9,6 +9,7 @@
     "check:card-runtime-coverage": "python3 scripts/check_tasks.py run-task card-runtime-coverage",
     "check:ci": "python3 scripts/check_tasks.py run ci",
     "check:config": "python3 scripts/check_tasks.py run-task config",
+    "check:companion-contract": "python3 scripts/check_tasks.py run-task companion-contract",
     "check:cover-art-contract": "python3 scripts/check_tasks.py run-task cover-art-contract",
     "check:dev-docs": "python3 scripts/check_tasks.py run-task dev-docs",
     "check:device-matrix": "python3 scripts/check_tasks.py run-task device-matrix",
