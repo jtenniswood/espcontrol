@@ -12,6 +12,8 @@ struct CompanionApp: App {
             CompanionSettings(store: appDelegate.store)
                 .frame(minWidth: 760, minHeight: 500)
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About EspControl Companion") {
@@ -170,6 +172,21 @@ private func activateCompanionApplication() {
     NSApp.activate(ignoringOtherApps: true)
 }
 
+private extension View {
+    @ViewBuilder
+    func companionSettingsToolbar() -> some View {
+        if #available(macOS 15.0, *) {
+            self
+                .toolbar(removing: .sidebarToggle)
+                .toolbar(removing: .title)
+        } else if #available(macOS 14.0, *) {
+            self.toolbar(removing: .sidebarToggle)
+        } else {
+            self
+        }
+    }
+}
+
 private enum CompanionSettingsField: Hashable {
     case panelHost, pairingCode
 }
@@ -213,11 +230,15 @@ private struct CompanionSettings: View {
                 Label(page.title, systemImage: page.icon).tag(page)
             }
             .listStyle(.sidebar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Color.clear.frame(height: 28)
+            }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         } detail: {
             detailView
         }
         .navigationSplitViewStyle(.balanced)
+        .companionSettingsToolbar()
         .onAppear {
             if !store.hasSavedPairing { selectedPageID = CompanionSettingsPage.connection.rawValue }
             refreshAccessibilityStatus()
@@ -236,7 +257,7 @@ private struct CompanionSettings: View {
                 focusedField = .panelHost
             }
         } message: {
-            Text("Your Mac will disconnect and remove its saved pairing. You’ll need the code on the display to pair again. Your application and folder choices will be kept.")
+            Text("Your Mac will disconnect and remove its saved pairing. You’ll need the code from the device webpage to pair again. Your application and folder choices will be kept.")
         }
         .alert("Remove folder?", isPresented: Binding(
             get: { folderToRemove != nil },
