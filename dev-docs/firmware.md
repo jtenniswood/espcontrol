@@ -36,6 +36,14 @@ transitions to `card_background_controller.h`. Keep download serialization,
 retry timing, decoder readiness, and binding counts in that controller so the
 widget layer only positions, reveals, and removes LVGL objects.
 
+Card-image recovery waits for native startup restoration and checks the saved
+native document before reclaiming staged images. `card_asset_persistence.h`
+keeps the deployed delete/restore records behind a typed persistence port, so
+host tests exercise the same journal protocol with write, sync and reboot
+failures. A separate bounded journal retains the last four completed restore
+sessions, allowing lost commit responses to be retried across reboot without
+changing existing image or backup formats.
+
 ## Adding Firmware Support for a Card
 
 1. Create `components/espcontrol/button_grid_<type>.h`.
@@ -171,11 +179,3 @@ Remove or downgrade noisy logs before finalizing a change.
   its context and points `user_data` at the new context. If a card creates a
   timer or async callback, check that the button still points at the same context
   before writing to shared labels.
-
-Card-image recovery waits for native startup restoration and checks the saved
-native document before reclaiming staged images. `card_asset_persistence.h`
-keeps the deployed delete/restore records behind a typed persistence port, so
-host tests exercise the same journal protocol with write, sync and reboot
-failures. A separate bounded journal retains the last four completed restore
-sessions, allowing lost commit responses to be retried across reboot without
-changing existing image or backup formats.

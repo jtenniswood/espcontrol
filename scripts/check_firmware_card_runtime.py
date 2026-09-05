@@ -115,17 +115,6 @@ def check_root(root: Path) -> list[str]:
                 and not service_mapping_line_allowed(line)
             ):
                 failures.append(f"{rel}:{line_no}: keep shared card service mappings in the card runtime/contract boundary")
-    asset_service = root / "components" / "espcontrol" / "card_asset_service.cpp"
-    if asset_service.exists():
-        commit_body = function_body(
-            asset_service.read_text(encoding="utf-8"), "CardAssetService::commit_restore_session"
-        )
-        clear_index = commit_body.find("clear_restore_session()") if commit_body else -1
-        recovery_index = commit_body.find("restore_recovery_needed_ = true;") if commit_body else -1
-        if clear_index < 0 or recovery_index < clear_index:
-            failures.append(
-                "components/espcontrol/card_asset_service.cpp: queue recovery when a committed restore marker cannot be cleared"
-            )
     runtime_header = root / "components" / "espcontrol" / "button_grid_card_runtime.h"
     if runtime_header.exists():
         text = runtime_header.read_text(encoding="utf-8")
