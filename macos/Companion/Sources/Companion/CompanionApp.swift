@@ -673,6 +673,28 @@ private struct CompanionSettings: View {
                 }
             }
             Section {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    TextField("Search Applications", text: $applicationSearch)
+                        .textFieldStyle(.plain)
+                    if !applicationSearch.isEmpty {
+                        Button {
+                            applicationSearch = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear Search")
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.background, in: RoundedRectangle(cornerRadius: 10))
+            }
+            Section {
                 if store.availableApps.isEmpty {
                     emptyState("No Applications Found", symbol: "app.dashed",
                                detail: "Install applications in your Applications folder, then refresh this list.")
@@ -698,7 +720,6 @@ private struct CompanionSettings: View {
             }
         }
         .formStyle(.grouped)
-        .searchable(text: $applicationSearch, placement: .toolbar, prompt: "Search Applications")
         .navigationTitle("Applications")
     }
 
