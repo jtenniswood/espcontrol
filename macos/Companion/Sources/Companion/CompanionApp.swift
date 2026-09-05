@@ -403,8 +403,8 @@ private struct CompanionOnboarding: View {
         case 1:
             CompanionOnboardingPage(
                 icon: "chart.bar.xaxis",
-                title: "Enable Mac statistics",
-                summary: "Stats cards can show processor, memory, storage, network, and battery information from this Mac."
+                title: "Statistics card support",
+                summary: "Stats cards can show processor, memory, storage, network, and battery information from this Mac. Data is only shared to your local device."
             ) {
                 CompanionStatsToggle(isEnabled: $store.shareSystemMetricsEnabled)
                 Text("Statistics are shared only with your paired display on the local network. You can change this later in General settings.")
