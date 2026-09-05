@@ -72,6 +72,21 @@ template<typename Owner> class ImageRequestQueue {
   uint64_t next_sequence_{0};
 };
 
+// Keep dispatch separate from queue mutations so callers can defer starting work
+// until their normal loop task is running.
+template<typename Owner, typename Start>
+void dispatch_next_image_request(ImageRequestQueue<Owner> &queue, Owner *&active,
+                                 bool &dispatching, Start &&start) {
+  if (dispatching || active != nullptr) return;
+  dispatching = true;
+  typename ImageRequestQueue<Owner>::Request request;
+  while (active == nullptr && queue.pop_next(request)) {
+    active = request.owner;
+    if (!start(request)) active = nullptr;
+  }
+  dispatching = false;
+}
+
 class ImageService {
  public:
   static ImageService &instance();
@@ -80,13 +95,12 @@ class ImageService {
   void complete(ArtworkImage *owner);
   void complete_and_request(ArtworkImage *owner, uint32_t generation, ImageRequestPriority priority);
   void cancel(ArtworkImage *owner);
+  void process_pending();
 
   bool is_active(const ArtworkImage *owner) const { return this->active_ == owner; }
   size_t queued_requests() const { return this->queue_.size(); }
 
  private:
-  void dispatch_next_();
-
   ArtworkImage *active_{nullptr};
   ImageRequestQueue<ArtworkImage> queue_{};
   bool dispatching_{false};
