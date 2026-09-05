@@ -88,16 +88,18 @@ describe("browserless application contracts", () => {
     assert.match(store, /approvedApplicationIdentifiers\.contains\(\$0\.bundleIdentifier\)/);
     assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
     assert.doesNotMatch(store, /NSWorkspace\.shared\.icon\(forFile: url\.path\)/);
-    assert.match(app, /case applications/);
+    assert.match(app, /case connection, applications, folders, general/);
     assert.match(app, /NavigationSplitView/);
     assert.match(app, /\.listStyle\(\.sidebar\)/);
     assert.match(app, /\.formStyle\(\.grouped\)/);
     assert.match(app, /\.searchable\(text: \$applicationSearch, placement: \.toolbar/);
     assert.doesNotMatch(app, /Image\(nsImage: application\.icon\)/);
-    assert.match(app, /\.toggleStyle\(\.switch\)/);
+    assert.match(app, /\.toggleStyle\(\.checkbox\)/);
     assert.match(app, /\.controlSize\(\.small\)/);
-    assert.match(app, /Button\("Select All"\)/);
-    assert.match(app, /Button\("Deselect All"\)/);
+    assert.match(app, /"Enable All Results" : "Enable All Applications"/);
+    assert.match(app, /"Disable All Results" : "Disable All Applications"/);
+    assert.match(app, /setApplications\(filteredApplications, approved: true\)/);
+    assert.match(app, /setApplications\(filteredApplications, approved: false\)/);
   });
 
   test("owns browser composition and compatibility layout state", () => {
