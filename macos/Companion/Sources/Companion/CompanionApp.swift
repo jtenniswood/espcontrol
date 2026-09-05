@@ -295,6 +295,23 @@ private struct CompanionOnboardingPage<Content: View>: View {
     }
 }
 
+private struct CompanionStatsToggle: View {
+    @Binding var isEnabled: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Toggle("", isOn: $isEnabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(.green)
+                .accessibilityLabel("Share Mac system statistics")
+            Text(isEnabled ? "Stats enabled" : "Stats disabled")
+                .font(.headline)
+                .foregroundStyle(isEnabled ? .primary : .secondary)
+        }
+    }
+}
+
 private struct CompanionOnboarding: View {
     @ObservedObject var store: CompanionStore
     let onComplete: () -> Void
@@ -389,10 +406,7 @@ private struct CompanionOnboarding: View {
                 title: "Enable Mac statistics",
                 summary: "Stats cards can show processor, memory, storage, network, and battery information from this Mac."
             ) {
-                Toggle(isOn: $store.shareSystemMetricsEnabled) {
-                    Label("Share Mac system statistics", systemImage: "chart.bar.xaxis")
-                }
-                .toggleStyle(.switch)
+                CompanionStatsToggle(isEnabled: $store.shareSystemMetricsEnabled)
                 Text("Statistics are shared only with your paired display on the local network. You can change this later in General settings.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -792,7 +806,7 @@ private struct CompanionSettings: View {
                 }
             }
             Section("Privacy") {
-                Toggle("Share Mac system statistics", isOn: $store.shareSystemMetricsEnabled)
+                CompanionStatsToggle(isEnabled: $store.shareSystemMetricsEnabled)
                 Text("Share processor, memory, storage, network, and battery statistics only with your paired display on the local network.")
                     .font(.callout).foregroundStyle(.secondary)
             }
