@@ -42,6 +42,22 @@ final class CompanionKeyboardShortcutTests: XCTestCase {
         XCTAssertEqual(promptCount, 0)
     }
 
+    @MainActor
+    func testReadingPermissionStatusNeverPromptsAndReflectsChanges() {
+        var trusted = false
+        var promptCount = 0
+        let authorizer = CompanionAccessibilityAuthorizer(
+            isProcessTrusted: { trusted },
+            requestPrompt: { promptCount += 1 }
+        )
+        XCTAssertFalse(authorizer.hasAccess)
+        trusted = true
+        XCTAssertTrue(authorizer.hasAccess)
+        trusted = false
+        XCTAssertFalse(authorizer.hasAccess)
+        XCTAssertEqual(promptCount, 0)
+    }
+
     func testMapsEveryWindowActionToItsDocumentedShortcut() throws {
         let fnControl: CGEventFlags = [.maskSecondaryFn, .maskControl]
         let fnControlShift: CGEventFlags = [.maskSecondaryFn, .maskControl, .maskShift]

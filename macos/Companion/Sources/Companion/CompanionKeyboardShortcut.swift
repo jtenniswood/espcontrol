@@ -30,6 +30,9 @@ final class CompanionAccessibilityAuthorizer {
         self.requestPrompt = requestPrompt
     }
 
+    /// Read permission status without prompting merely because settings opened.
+    var hasAccess: Bool { isProcessTrusted() }
+
     func isTrusted() -> Bool {
         guard !isProcessTrusted() else { return true }
         if !didRequestPrompt {

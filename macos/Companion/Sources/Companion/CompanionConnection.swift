@@ -106,7 +106,7 @@ final class CompanionConnection: NSObject {
         }()
         guard !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             shouldReconnect = false
-            store.updateStatus("Enter the panel address first")
+            store.updateConnectionStatus("Enter the display address first", state: .failed)
             return
         }
         guard let url = connectionURL() else {
@@ -118,12 +118,12 @@ final class CompanionConnection: NSObject {
         configuration.waitsForConnectivity = true
         session = URLSession(configuration: configuration, delegate: sessionDelegate, delegateQueue: nil)
         guard let task = session?.webSocketTask(with: url) else {
-            store.updateStatus("Could not create the panel connection")
+            store.updateConnectionStatus("Could not create the display connection", state: .failed)
             return
         }
         self.task = task
         task.resume()
-        store.updateStatus("Connecting…")
+        store.updateConnectionStatus("Connecting…", state: resetBackoff ? .connecting : .reconnecting)
         receive(from: task)
         startConnectionTimeout(for: task)
     }
@@ -133,7 +133,7 @@ final class CompanionConnection: NSObject {
         reconnectTask?.cancel()
         reconnectTask = nil
         tearDownConnection()
-        store.updateStatus("Not connected")
+        store.updateConnectionStatus("Not connected", state: .disconnected)
     }
 
     private func tearDownConnection() {
@@ -167,14 +167,16 @@ final class CompanionConnection: NSObject {
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
         let account = store.pairingAccount
-        store.updateStatus("Authenticating…")
+        store.updateConnectionStatus("Authenticating…", state: reconnectAttempt > 0 ? .reconnecting : .connecting)
         Task { [weak self, weak webSocketTask] in
             let credential = await Task.detached(priority: .userInitiated) {
                 KeychainStore.load(service: KeychainStore.service, account: account)
             }.value
             guard let self, let webSocketTask, self.task === webSocketTask else { return }
             guard let credential else {
-                self.store.updateStatus("Unlock the Mac or allow Keychain access to reconnect")
+                self.hasTerminalConnectionError = true
+                self.shouldReconnect = false
+                self.store.updateConnectionStatus("Unlock the Mac or allow Keychain access to reconnect", state: .failed, recovery: "Unlock your Mac and allow Companion to access Keychain, then try again.")
                 self.handleConnectionFailure(for: webSocketTask)
                 return
             }
@@ -197,7 +199,7 @@ final class CompanionConnection: NSObject {
         guard let parsed = URL(string: raw.contains("://") ? raw : "wss://\(raw)"),
               let host = parsed.host,
               ConnectionEndpointPolicy.isLocalHost(host) else {
-            store.updateStatus("Panel address must be on the local network")
+            store.updateConnectionStatus("Display address must be on the local network", state: .failed)
             return nil
         }
         var components = URLComponents()
@@ -223,7 +225,7 @@ final class CompanionConnection: NSObject {
         if let saved, saved != fingerprint {
             shouldReconnect = false
             hasTerminalConnectionError = true
-            store.updateStatus("Blocked: panel certificate changed")
+            store.updateConnectionStatus("Blocked: display certificate changed", state: .failed, recovery: "The display’s identity has changed. If you reset or replaced it, forget this display and pair again using the code on its touchscreen.")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else if saved != nil {
             if case .pair = mode { pendingCertificateFingerprint = fingerprint }
@@ -234,7 +236,7 @@ final class CompanionConnection: NSObject {
             pendingCertificateFingerprint = fingerprint
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
-            store.updateStatus("Start pairing in the panel web settings")
+            store.updateConnectionStatus("Press and hold the Wi-Fi icon on the display to start pairing", state: .failed)
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
@@ -262,9 +264,9 @@ final class CompanionConnection: NSObject {
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, let self, self.task === task, !self.store.isConnected else { return }
             if case .pair = self.mode {
-                self.store.updateStatus("Pairing failed — try again")
+                self.store.updateConnectionStatus("Pairing failed — try again", state: .failed)
             } else {
-                self.store.updateStatus("Panel did not respond — reconnecting…")
+                self.store.updateConnectionStatus("Display did not respond — reconnecting…", state: .reconnecting)
             }
             self.handleConnectionFailure(for: task)
         }
@@ -290,7 +292,7 @@ final class CompanionConnection: NSObject {
     private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
         guard task === failedTask else { return }
         if !hasTerminalConnectionError, case .pair = mode {
-            store.updateStatus("Pairing failed — try again")
+            store.updateConnectionStatus("Pairing failed — try again", state: .failed)
         }
         sessionAuthenticated = false
         resetArtworkTransferState()
@@ -322,11 +324,11 @@ final class CompanionConnection: NSObject {
         // a generic disconnect message during that expected teardown.
         guard shouldReconnect else { return }
         guard store.hasSavedPairing else {
-            store.updateStatus("Panel disconnected")
+            store.updateConnectionStatus("Display disconnected", state: .disconnected)
             return
         }
         guard reconnectTask == nil else { return }
-        store.updateStatus("Panel unavailable — reconnecting…")
+        store.updateConnectionStatus("Display unavailable — reconnecting…", state: .reconnecting)
         reconnectTask = Task { [weak self] in
             guard let self else { return }
             let delay = ReconnectBackoff.delaySeconds(
@@ -343,8 +345,10 @@ final class CompanionConnection: NSObject {
 
     private func handle(_ message: String) {
         guard handleJSON(message) else {
-            store.updateStatus("Panel sent an unsupported protocol message")
-            task?.cancel(with: .unsupportedData, reason: nil)
+            hasTerminalConnectionError = true
+            shouldReconnect = false
+            tearDownConnection()
+            store.updateConnectionStatus("Display sent an unsupported protocol message", state: .failed, recovery: "Update Companion and your display to matching versions, then reconnect.")
             return
         }
     }
@@ -361,18 +365,18 @@ final class CompanionConnection: NSObject {
             break
         case "pair.accepted":
             guard let encodedCredential = object["credential"] as? String,
-                  let credential = Data(hex: encodedCredential) else { store.updateStatus("Pairing failed"); return true }
-            guard let fingerprint = pendingCertificateFingerprint else { store.updateStatus("Pairing failed"); return true }
+                  let credential = Data(hex: encodedCredential) else { store.updateConnectionStatus("Pairing failed", state: .failed); return true }
+            guard let fingerprint = pendingCertificateFingerprint else { store.updateConnectionStatus("Pairing failed", state: .failed); return true }
             let pairingAccount = store.panelHost
             guard KeychainStore.save(credential, service: KeychainStore.service, account: pairingAccount) else {
-                store.updateStatus("Pairing failed: the credential could not be saved in Keychain")
+                store.updateConnectionStatus("Pairing failed: the credential could not be saved in Keychain", state: .failed, recovery: "Unlock your Mac and allow Companion to access Keychain, then try again.")
                 return true
             }
             store.rememberPairingAccount(pairingAccount)
             store.setPreference(fingerprint, forKey: certificateFingerprintKey)
             store.removePreference(forKey: authenticationSequenceKey)
             pendingCertificateFingerprint = nil
-            store.updateStatus("Paired — reconnecting")
+            store.updateConnectionStatus("Paired — reconnecting", state: .connecting)
             connect(mode: .authenticate)
         case "auth.accepted":
             guard case .authenticate = mode, authenticationRequestOutstanding else { return false }
@@ -381,7 +385,7 @@ final class CompanionConnection: NSObject {
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             reconnectAttempt = 0
-            store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            store.updateConnectionStatus("Connected to \(store.panelHost)", state: .connected)
             let capabilityVersion = (object["capabilityVersion"] as? NSNumber)?.intValue ?? 0
             store.setSystemMetricsSupported(capabilityVersion >= 2)
             if let task { startHeartbeat(for: task) }
@@ -423,11 +427,18 @@ final class CompanionConnection: NSObject {
                let panelSequence = (object["lastSequence"] as? NSNumber)?.uint32Value,
                panelSequence < UInt32.max {
                 store.setPreference(Int(panelSequence), forKey: authenticationSequenceKey)
-                store.updateStatus("Authentication counter repaired — reconnecting")
+                store.updateConnectionStatus("Authentication counter repaired — reconnecting", state: .reconnecting)
                 connect(mode: .authenticate)
             } else {
-                store.updateStatus(code.replacingOccurrences(of: "_", with: " "),
-                                   connected: sessionAuthenticated)
+                let message = code.replacingOccurrences(of: "_", with: " ")
+                if sessionAuthenticated {
+                    store.updateStatus(message, connected: true)
+                } else {
+                    hasTerminalConnectionError = true
+                    shouldReconnect = false
+                    tearDownConnection()
+                    store.updateConnectionStatus(message, state: .failed)
+                }
             }
         case "artwork.ack":
             guard sessionAuthenticated else { return false }
