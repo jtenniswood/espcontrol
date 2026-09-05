@@ -547,8 +547,10 @@ final class CompanionStore: NSObject, ObservableObject {
         return components.url
     }
     func pair(code: String) {
-        guard !connectionState.isBusy, CompanionPairingInput.isValid(host: panelHost, code: code) else { return }
-        connection.connect(mode: .pair(code: CompanionPairingInput.normalizedCode(code)))
+        guard !connectionState.isBusy,
+              !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let normalizedCode = CompanionPairingInput.normalizedCode(code) else { return }
+        connection.connect(mode: .pair(code: normalizedCode))
     }
 
     func forgetPanel() {

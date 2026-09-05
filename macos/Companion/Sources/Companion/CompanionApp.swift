@@ -310,7 +310,7 @@ private struct CompanionSettings: View {
                             .onSubmit { focusedField = .pairingCode }
                     }
                     LabeledContent("Pairing code") {
-                        TextField("Eight-letter code", text: $pairingCode)
+                        TextField("ABCD-EFGH", text: $pairingCode)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.body, design: .monospaced))
                             .frame(maxWidth: 260)
@@ -319,7 +319,7 @@ private struct CompanionSettings: View {
                             .focused($focusedField, equals: .pairingCode)
                             .onSubmit { pairDisplay() }
                     }
-                    Text("Use the address and eight-letter code shown on the display. Both devices must be on the same local network.")
+                    Text("Use the address and eight-letter code shown on the display. You can include or omit the hyphen. Both devices must be on the same local network.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     HStack {

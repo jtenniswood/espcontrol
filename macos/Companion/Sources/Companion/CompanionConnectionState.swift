@@ -24,15 +24,18 @@ enum CompanionConnectionState: Equatable {
 }
 
 enum CompanionPairingInput {
-    static func normalizedCode(_ code: String) -> String {
-        code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    static func normalizedCode(_ code: String) -> String? {
+        var letters = Array(code.trimmingCharacters(in: .whitespacesAndNewlines).utf8)
+        // Firmware displays and verifies ABCD-EFGH. Accept typing without the
+        // separator, but always send the exact format the display generates.
+        if letters.count == 9, letters[4] == 45 { letters.remove(at: 4) }
+        guard letters.count == 8,
+              letters.allSatisfy({ (65...90).contains($0) || (97...122).contains($0) }) else { return nil }
+        let uppercase = String(decoding: letters, as: UTF8.self).uppercased()
+        return "\(uppercase.prefix(4))-\(uppercase.suffix(4))"
     }
 
     static func isValid(host: String, code: String) -> Bool {
-        // Accept only the eight ASCII letters used by the physical display.
-        let code = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && code.utf8.count == 8
-            && code.utf8.allSatisfy { (65...90).contains($0) || (97...122).contains($0) }
+        !host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && normalizedCode(code) != nil
     }
 }
