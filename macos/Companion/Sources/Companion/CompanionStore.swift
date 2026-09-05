@@ -116,7 +116,7 @@ struct ApprovedFolder: Codable, Identifiable, Hashable {
 @MainActor
 final class CompanionStore: NSObject, ObservableObject {
     static let privacyPolicyURL = URL(string: "https://jtenniswood.github.io/espcontrol/reference/privacy")!
-    static let supportURL = URL(string: "https://github.com/jtenniswood/espcontrol/issues")!
+    static let supportURL = URL(string: "https://jtenniswood.github.io/espcontrol/getting-started/troubleshooting")!
 
     @Published var panelHost: String { didSet { defaults.set(panelHost, forKey: Keys.host) } }
     private(set) var pairingAccount: String
