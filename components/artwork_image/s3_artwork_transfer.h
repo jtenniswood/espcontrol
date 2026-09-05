@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <string>
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -32,6 +33,9 @@ struct S3ArtworkTransferResult {
   uint32_t first_byte_ms{0};
   uint32_t transfer_complete_ms{0};
 
+  static void *operator new(size_t size, const std::nothrow_t &) noexcept;
+  static void operator delete(void *pointer) noexcept;
+  static void operator delete(void *pointer, const std::nothrow_t &) noexcept;
   ~S3ArtworkTransferResult();
   uint8_t *release_data();
 };
@@ -43,10 +47,12 @@ class S3ArtworkTransferService {
  public:
   static S3ArtworkTransferService &instance();
 
-  bool submit(ArtworkImage *owner, uint32_t generation, uint8_t priority,
+  bool submit(ArtworkImage *owner, uint32_t generation,
               const std::string &url,
-              const std::vector<http_request::Header> &headers,
-              bool allow_insecure_local_urls, int timeout_ms);
+              std::vector<http_request::Header> headers,
+              bool allow_insecure_local_urls, int timeout_ms,
+              size_t reserved_free_bytes,
+              size_t reserved_largest_block_bytes);
   void cancel(ArtworkImage *owner);
   S3ArtworkTransferResult *take(ArtworkImage *owner, uint32_t generation,
                                 bool *allocation_failed);
@@ -57,6 +63,7 @@ class S3ArtworkTransferService {
   S3ArtworkTransferService &operator=(const S3ArtworkTransferService &) = delete;
 
   struct Job;
+  static constexpr size_t QUEUE_CAPACITY = 2;
   struct Transfer;
   struct AllocationFailure {
     ArtworkImage *owner{nullptr};
@@ -78,13 +85,12 @@ class S3ArtworkTransferService {
   SemaphoreHandle_t mutex_{nullptr};
   TaskHandle_t task_{nullptr};
   bool ready_{false};
-  Job *pending_[16]{};
+  Job *pending_[QUEUE_CAPACITY]{};
   size_t pending_count_{0};
   Job *active_{nullptr};
-  S3ArtworkTransferResult *completed_[16]{};
+  S3ArtworkTransferResult *completed_[QUEUE_CAPACITY]{};
   size_t completed_count_{0};
-  AllocationFailure allocation_failures_[16]{};
-  uint64_t next_sequence_{0};
+  AllocationFailure allocation_failures_[QUEUE_CAPACITY]{};
 };
 
 }  // namespace artwork_image

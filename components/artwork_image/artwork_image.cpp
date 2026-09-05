@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <new>
+#include <utility>
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
@@ -797,7 +798,7 @@ void ArtworkImage::start_update_() {
 #endif
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
-  if (this->start_s3_transfer_(headers)) {
+  if (this->start_s3_transfer_(std::move(headers))) {
     ESP_LOGD(TAG, "Queued artwork on guarded ESP32-S3 transfer task");
     return;
   }
@@ -1185,15 +1186,21 @@ void ArtworkImage::loop() {
 }
 
 bool ArtworkImage::start_s3_transfer_(
-    const std::vector<http_request::Header> &headers) {
+    std::vector<http_request::Header> &&headers) {
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
   this->download_buffer_.reset();
   ++this->s3_transfer_generation_;
   const int timeout_ms = this->parent_ ? this->parent_->get_timeout() : 10000;
+  const size_t replacement_bytes =
+      this->fixed_width_ > 0 && this->fixed_height_ > 0
+          ? this->get_buffer_size_(this->fixed_width_, this->fixed_height_)
+          : 0;
+  const size_t reserved_free_bytes =
+      replacement_bytes + IMAGE_PIPELINE_S3_PSRAM_HEADROOM_BYTES;
   if (!S3ArtworkTransferService::instance().submit(
-          this, this->s3_transfer_generation_,
-          static_cast<uint8_t>(this->request_priority_), this->url_, headers,
-          this->allow_insecure_local_urls_, timeout_ms)) {
+          this, this->s3_transfer_generation_, this->url_, std::move(headers),
+          this->allow_insecure_local_urls_, timeout_ms, reserved_free_bytes,
+          replacement_bytes)) {
     return false;
   }
   this->s3_transfer_pending_ = true;
