@@ -151,7 +151,8 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
 
 inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
 
-inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
+inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p,
+                                 uint32_t sensor_color = TERTIARY_GREY) {
   if (companion_metric_key_valid(p.entity)) {
     const std::string label = p.label.empty()
       ? espcontrol_i18n_key(companion_metric_label_key(p.entity)) : p.label;
@@ -159,6 +160,10 @@ inline void setup_companion_card(BtnSlot &s, const ParsedCfg &p) {
     lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(
+      s.btn, lv_color_hex(sensor_color),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+        static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
     lv_label_set_display_text(s.sensor_lbl, "--");
     const std::string unit = trim_display_unit(
       p.unit.empty() ? companion_metric_default_unit(p.entity) : p.unit);

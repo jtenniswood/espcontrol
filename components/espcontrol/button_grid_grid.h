@@ -643,7 +643,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, context, display, row_span, col_span);
     return;
   }
-  if (espcontrol::cards::basic_action_driver_setup_visual(s, p, context)) {
+  if (espcontrol::cards::basic_action_driver_setup_visual(
+        s, p, context, palette.sensor_val)) {
     espcontrol::cards::basic_action_driver_attach_interaction(s, p, context);
     espcontrol::cards::basic_action_driver_refresh_layout(
       s, p, context, display, row_span, col_span);

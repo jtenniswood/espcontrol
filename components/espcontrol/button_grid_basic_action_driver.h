@@ -30,7 +30,8 @@ inline bool basic_action_driver_matches(const Context &context,
 }
 
 inline bool basic_action_driver_setup_visual(
-    BtnSlot &slot, const ParsedCfg &config, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    uint32_t sensor_color = TERTIARY_GREY) {
   using Driver = card_runtime::CardDriverId;
   if (!basic_action_driver_matches(context, config)) return false;
   switch (context.runtime.driver) {
@@ -38,7 +39,7 @@ inline bool basic_action_driver_setup_visual(
       setup_screen_lock_card(slot, config);
       break;
     case Driver::COMPANION:
-      setup_companion_card(slot, config);
+      setup_companion_card(slot, config, sensor_color);
       break;
     case Driver::ALARM_ACTION:
       setup_alarm_action_card(slot, config);
