@@ -67,7 +67,7 @@ struct ApprovedFolder: Codable, Identifiable, Hashable {
         securityScopedURL()?.url.path ?? legacyPath ?? "Access needs approval"
     }
 
-    var needsReapproval: Bool { bookmarkData == nil }
+    var needsReapproval: Bool { securityScopedURL() == nil }
 
     struct SecurityScopedURL {
         let url: URL
@@ -125,13 +125,17 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var approvedFolders: [ApprovedFolder]
     @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
+    @Published private(set) var connectionState: CompanionConnectionState = .disconnected
+    @Published private(set) var connectionRecoveryMessage = ""
+    @Published private(set) var folderMessage: String?
+    @Published private(set) var foldersNeedingAccess: Set<UUID> = []
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginMessage = ""
-    @Published private(set) var nowPlayingStatus = "Waiting for a panel connection"
+    @Published private(set) var nowPlayingStatus = "Waiting for a display connection"
     @Published private(set) var nowPlayingApplication = ""
     @Published private(set) var nowPlayingTitle = ""
     @Published private(set) var nowPlayingArtwork: NSImage?
-    @Published private(set) var systemMetricsStatus = "Waiting for a panel connection"
+    @Published private(set) var systemMetricsStatus = "Waiting for a display connection"
     @Published private(set) var systemMetricsSupported = false
     @Published var shareSystemMetricsEnabled: Bool {
         didSet {
@@ -321,6 +325,7 @@ final class CompanionStore: NSObject, ObservableObject {
             if isConnected { connection.publishCatalogue() }
         }
     }
+
     func launchableApps() -> [LaunchableApp] {
         availableApps.filter { approvedApplicationIdentifiers.contains($0.bundleIdentifier) }
     }
@@ -407,10 +412,21 @@ final class CompanionStore: NSObject, ObservableObject {
         if isConnected { connection.publishTimezone() }
     }
 
-    func chooseFolder() {
+    func folderNeedsAccess(_ folder: ApprovedFolder) -> Bool {
+        folder.needsReapproval || foldersNeedingAccess.contains(folder.id)
+    }
+
+    func chooseFolder(restoring folder: ApprovedFolder? = nil) {
+        folderMessage = nil
         let panel = NSOpenPanel()
-        panel.title = "Choose a folder for EspControl cards"
-        panel.prompt = "Add Folder"
+        panel.title = folder.map { "Restore access to \($0.name)" } ?? "Choose a folder for your display"
+        panel.prompt = folder == nil ? "Add Folder" : "Restore Access"
+        if let folder {
+            if folder.path.hasPrefix("/") {
+                panel.directoryURL = URL(fileURLWithPath: folder.path).deletingLastPathComponent()
+            }
+            panel.message = "Select this folder again to restore access. Existing display cards will keep using it."
+        }
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -418,12 +434,27 @@ final class CompanionStore: NSObject, ObservableObject {
         guard panel.runModal() == .OK, let selected = panel.url else { return }
 
         let url = selected.standardizedFileURL
+        if let folder, folder.path.hasPrefix("/"),
+           URL(fileURLWithPath: folder.path).standardizedFileURL.path != url.path {
+            folderMessage = "Select \(folder.name) at \(folder.path) to restore its access. Use Add Folder to share a different folder."
+            return
+        }
+        if let folder, approvedFolders.contains(where: { $0.id != folder.id && $0.path == url.path }) {
+            folderMessage = "That folder is already available. Select the folder you want to restore."
+            return
+        }
         guard let bookmarkData = try? url.bookmarkData(
             options: [.withSecurityScope],
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         ) else {
-            updateStatus("macOS could not save access to that folder")
+            folderMessage = "macOS could not save access to that folder. Please select it again."
+            return
+        }
+        if let folder {
+            refreshBookmark(for: folder, with: bookmarkData)
+            folderMessage = "Access restored for \(folder.name)."
+            if isConnected { connection.publishCatalogue() }
             return
         }
         if let legacyFolder = approvedFolders.first(where: {
@@ -434,7 +465,7 @@ final class CompanionStore: NSObject, ObservableObject {
             return
         }
         guard !approvedFolders.contains(where: { $0.path == url.path }) else {
-            updateStatus("That folder is already available")
+            folderMessage = "That folder is already available on your display."
             return
         }
         let displayName = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
@@ -445,6 +476,8 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func removeFolder(_ folder: ApprovedFolder) {
+        folderMessage = nil
+        foldersNeedingAccess.remove(folder.id)
         approvedFolders.removeAll { $0.id == folder.id }
         persistApprovedFolders()
         if isConnected { connection.publishCatalogue() }
@@ -458,6 +491,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     private func refreshBookmark(for folder: ApprovedFolder, with data: Data) {
         guard let index = approvedFolders.firstIndex(where: { $0.id == folder.id }) else { return }
+        foldersNeedingAccess.remove(folder.id)
         approvedFolders[index] = ApprovedFolder(id: folder.id, name: folder.name, bookmarkData: data)
         persistApprovedFolders()
     }
@@ -465,12 +499,12 @@ final class CompanionStore: NSObject, ObservableObject {
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
         guard !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            updateStatus("Enter the panel address first")
+            updateStatus("Enter the display address first")
             return
         }
         guard let url = Self.panelWebServerURL(from: panelHost),
               NSWorkspace.shared.open(url) else {
-            updateStatus("Could not open the panel webserver")
+            updateStatus("Could not open display settings")
             return
         }
     }
@@ -486,8 +520,10 @@ final class CompanionStore: NSObject, ObservableObject {
         return components.url
     }
     func pair(code: String) {
-        connection.connect(mode: .pair(
-            code: code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()))
+        guard !connectionState.isBusy,
+              !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let normalizedCode = CompanionPairingInput.normalizedCode(code) else { return }
+        connection.connect(mode: .pair(code: normalizedCode))
     }
 
     func forgetPanel() {
@@ -499,16 +535,16 @@ final class CompanionStore: NSObject, ObservableObject {
         pairingAccount = ""
         connection.disconnect()
         panelHost = ""
-        statusDescription = "Panel forgotten"
+        statusDescription = "Display forgotten"
     }
 
-    func updateStatus(_ message: String) {
-        print("[EspControl Companion] \(message)")
-        statusDescription = message
-    }
-
-    func setConnectionState(_ state: CompanionConnectionState) {
-        let connected = state.isAuthenticated
+    func updateConnectionStatus(_ message: String, state: CompanionConnectionState, recovery: String? = nil) {
+        connectionRecoveryMessage = recovery ?? (hasSavedPairing
+            ? "Check that your display is on and connected to the same network, then try Connect again."
+            : "Press and hold the Wi-Fi icon on your display, check its address, and enter the current eight-letter code to try again.")
+        connectionState = state
+        updateStatus(message)
+        let connected = state == .connected
         guard isConnected != connected else { return }
         isConnected = connected
         if !connected { systemMetricsSupported = false }
@@ -523,6 +559,11 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
 
+    func updateStatus(_ message: String) {
+        print("[EspControl Companion] \(message)")
+        statusDescription = message
+    }
+
     private func updateSystemMetricsProvider() {
         if isConnected && systemMetricsSupported && shareSystemMetricsEnabled {
             systemMetricsStatus = "Collecting Mac system statistics…"
@@ -530,7 +571,7 @@ final class CompanionStore: NSObject, ObservableObject {
         } else {
             systemMetricsProvider.stop()
             systemMetricsStatus = shareSystemMetricsEnabled
-                ? "Waiting for a panel connection"
+                ? "Waiting for a display connection"
                 : "System statistics sharing is off"
         }
     }
@@ -552,7 +593,7 @@ final class CompanionStore: NSObject, ObservableObject {
             nowPlayingProvider.start()
         } else {
             nowPlayingProvider.stop()
-            nowPlayingStatus = "Waiting for a panel connection"
+            nowPlayingStatus = "Waiting for a display connection"
         }
     }
 
@@ -617,7 +658,9 @@ final class CompanionStore: NSObject, ObservableObject {
         }
         guard let access = folder.securityScopedURL(),
               access.url.startAccessingSecurityScopedResource() else {
-            updateStatus("Re-add this folder to restore its macOS permission")
+            foldersNeedingAccess.insert(folder.id)
+            folderMessage = "Restore access to \(folder.name) to open it from your display."
+            updateStatus("Restore this folder’s access in Folders")
             return false
         }
         defer { access.url.stopAccessingSecurityScopedResource() }

@@ -47,14 +47,12 @@ ESPCONTROL_APP_STORE=1 swift build \
     --package-path "${PROJECT_DIR}" \
     --configuration release \
     --product "${EXECUTABLE_NAME}" \
-    -Xswiftc -DAPP_STORE \
     -Xswiftc -warnings-as-errors
 
 BUILD_BIN_PATH="$(ESPCONTROL_APP_STORE=1 swift build \
     --package-path "${PROJECT_DIR}" \
     --configuration release \
     --product "${EXECUTABLE_NAME}" \
-    -Xswiftc -DAPP_STORE \
     --show-bin-path)"
 cp "${BUILD_BIN_PATH}/${EXECUTABLE_NAME}" "${APP_DIR}/Contents/MacOS/${EXECUTABLE_NAME}"
 cp "${SCRIPT_DIR}/Info.plist" "${APP_DIR}/Contents/Info.plist"

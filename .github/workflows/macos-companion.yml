@@ -24,7 +24,7 @@ jobs:
         run: swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
 
       - name: Run App Store Companion tests
-        run: ESPCONTROL_APP_STORE=1 swift test --package-path macos/Companion -Xswiftc -DAPP_STORE -Xswiftc -warnings-as-errors
+        run: ESPCONTROL_APP_STORE=1 swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
 
       - name: Build App Store-safe bundle
         run: ALLOW_ADHOC=1 macos/Companion/Packaging/build_app_store.sh

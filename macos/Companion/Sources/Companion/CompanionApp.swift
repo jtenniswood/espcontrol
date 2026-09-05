@@ -13,6 +13,11 @@ struct CompanionApp: App {
                 .frame(minWidth: 760, minHeight: 500)
         }
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About EspControl Companion") {
+                    NSApp.orderFrontStandardAboutPanel(nil)
+                }
+            }
             CommandGroup(replacing: .appSettings) {
                 Button("Settings…") { appDelegate.openCompanionWindow() }
                     .keyboardShortcut(",", modifiers: .command)
@@ -22,7 +27,7 @@ struct CompanionApp: App {
 }
 
 @MainActor
-final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
@@ -52,7 +57,8 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
         if let button = item.button {
             button.toolTip = "EspControl Companion"
         }
-        item.menu = contextMenu()
+        item.menu = NSMenu()
+        item.menu?.delegate = self
         updateStatusItemImage(connected: store.isConnected)
         connectionObservation = store.$isConnected
             .removeDuplicates()
@@ -83,19 +89,36 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    private func contextMenu() -> NSMenu {
-        let menu = NSMenu()
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        settingsItem.image = nil
-        menu.addItem(settingsItem)
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let status = NSMenuItem(title: store.connectionState.title, action: nil, keyEquivalent: "")
+        menu.addItem(status)
+        if !store.panelHost.isEmpty {
+            menu.addItem(NSMenuItem(title: "Display · \(store.panelHost)", action: nil, keyEquivalent: ""))
+        }
         menu.addItem(.separator())
-
-        let quitItem = NSMenuItem(title: "Quit EspControl Companion", action: #selector(quit), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-        return menu
+        if store.hasSavedPairing {
+            addMenuItem(store.connectionState.isBusy ? "Cancel Connection" : (store.isConnected ? "Disconnect" : "Connect"),
+                        action: #selector(toggleConnection), to: menu)
+            addMenuItem("Open Display Settings…", action: #selector(openDisplaySettings), to: menu)
+        }
+        addMenuItem("Settings…", action: #selector(openSettings), key: ",", to: menu)
+        menu.addItem(.separator())
+        addMenuItem("Quit EspControl Companion", action: #selector(quit), key: "q", to: menu)
     }
+
+    private func addMenuItem(_ title: String, action: Selector, key: String = "", to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        item.target = self
+        menu.addItem(item)
+    }
+
+    @objc private func toggleConnection() {
+        if store.isConnected || store.connectionState.isBusy { store.disconnect() }
+        else { store.connect() }
+    }
+
+    @objc private func openDisplaySettings() { store.openPanelWebServer() }
 
     private func updateStatusItemImage(connected: Bool) {
         guard let button = statusItem?.button else { return }
@@ -152,29 +175,22 @@ private enum CompanionSettingsField: Hashable {
 }
 
 private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
-    case about
-    case connection
-    case applications
-    case folders
-    case general
+    // Retain the saved selection identifiers from earlier versions.
+    case connection, applications, folders, general
 
     var id: String { rawValue }
-
     var title: String {
         switch self {
-        case .about: return "About EspControl"
-        case .connection: return "Device"
+        case .connection: return "Display"
         case .applications: return "Applications"
         case .folders: return "Folders"
         case .general: return "General"
         }
     }
-
     var icon: String {
         switch self {
-        case .about: return "info.circle"
-        case .connection: return "network"
-        case .applications: return "app.badge.checkmark"
+        case .connection: return "display"
+        case .applications: return "square.grid.2x2"
         case .folders: return "folder"
         case .general: return "gearshape"
         }
@@ -185,316 +201,363 @@ private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
     @State private var applicationSearch = ""
-    @AppStorage("settings.selectedPage") private var selectedPageID = CompanionSettingsPage.about.rawValue
+    @State private var confirmingForget = false
+    @State private var folderToRemove: ApprovedFolder?
+    @State private var accessibilityGranted = false
+    @AppStorage("settings.selectedPage") private var selectedPageID = CompanionSettingsPage.connection.rawValue
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
         NavigationSplitView {
             List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
-                Label(page.title, systemImage: page.icon)
-                    .tag(page)
+                Label(page.title, systemImage: page.icon).tag(page)
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 260)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         } detail: {
             detailView
         }
         .navigationSplitViewStyle(.balanced)
-        .task { store.refreshApplications() }
+        .onAppear {
+            if !store.hasSavedPairing { selectedPageID = CompanionSettingsPage.connection.rawValue }
+            refreshAccessibilityStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshAccessibilityStatus()
+        }
         .onChange(of: store.isConnected) { connected in
             if connected { pairingCode = "" }
         }
+        .alert("Forget this display?", isPresented: $confirmingForget) {
+            Button("Cancel", role: .cancel) {}
+            Button("Forget Display", role: .destructive) {
+                store.forgetPanel()
+                pairingCode = ""
+                focusedField = .panelHost
+            }
+        } message: {
+            Text("Your Mac will disconnect and remove its saved pairing. You’ll need the code on the display to pair again. Your application and folder choices will be kept.")
+        }
+        .alert("Remove folder?", isPresented: Binding(
+            get: { folderToRemove != nil },
+            set: { if !$0 { folderToRemove = nil } }
+        )) {
+            Button("Cancel", role: .cancel) { folderToRemove = nil }
+            Button("Remove Folder", role: .destructive) {
+                if let folder = folderToRemove { store.removeFolder(folder) }
+                folderToRemove = nil
+            }
+        } message: {
+            Text("This folder will no longer be available to your display. The folder and its files will stay on your Mac.")
+        }
     }
 
-    @ViewBuilder
-    private var detailView: some View {
+    @ViewBuilder private var detailView: some View {
         switch selectedPage {
-        case .about:
-            aboutPage
-        case .connection:
-            connectionPage
-        case .applications:
-            applicationsPage
-        case .folders:
-            foldersPage
-        case .general:
-            generalPage
+        case .connection: connectionPage
+        case .applications: applicationsPage
+        case .folders: foldersPage
+        case .general: generalPage
         }
     }
 
     private var selectedPage: CompanionSettingsPage {
-        CompanionSettingsPage(rawValue: selectedPageID) ?? .about
+        CompanionSettingsPage(rawValue: selectedPageID) ?? .connection
     }
 
     private var selectedPageBinding: Binding<CompanionSettingsPage> {
-        Binding(
-            get: { selectedPage },
-            set: { selectedPageID = $0.rawValue }
-        )
-    }
-
-    private var aboutPage: some View {
-        Form {
-            Section("Status") {
-                NativeSettingsRow(
-                    title: "EspControl Companion",
-                    description: store.isConnected ? "Connected to your display" : "Not connected to a display"
-                ) {
-                    if canConnect || store.isConnected {
-                        Toggle("Connect EspControl Companion", isOn: connectionBinding)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                    } else {
-                        Text("Pair a device")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Text(store.statusDescription)
-                    .font(.callout)
-                    .foregroundStyle(store.isConnected ? .green : .secondary)
-                    .accessibilityLabel("Connection status: \(store.statusDescription)")
-
-                if hasPanelAddress {
-                    NativeSettingsRow(
-                        title: "Device Webserver",
-                        description: "Open the display settings in your browser."
-                    ) {
-                        Button("Open Webserver") { store.openPanelWebServer() }
-                    }
-                }
-            }
-
-            Section("Help") {
-                Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
-                Link("EspControl Support", destination: CompanionStore.supportURL)
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("About EspControl")
+        Binding(get: { selectedPage }, set: { selectedPageID = $0.rawValue })
     }
 
     private var connectionPage: some View {
         Form {
-            Section("Connection") {
-                NativeSettingsRow(
-                    title: "Panel address",
-                    description: "The local network address of your EspControl display."
-                ) {
-                    TextField("192.168.6.100", text: $store.panelHost)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($focusedField, equals: .panelHost)
-                        .frame(width: 220)
-                }
-
-                NativeSettingsRow(
-                    title: "Pairing code",
-                    description: "The eight-letter code shown while pairing is active."
-                ) {
-                    HStack {
-                        TextField("Eight-letter code", text: $pairingCode)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .pairingCode)
-                            .frame(width: 150)
-                        Button("Pair") { store.pair(code: pairingCode) }
-                            .buttonStyle(.borderedProminent)
-                    }
-                }
-
-                Text("Press and hold the Wi-Fi icon on the display, then enter its local address and the code shown on the touchscreen.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
-                Text("For privacy, Companion only connects to local-network addresses such as private IP addresses or .local host names.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
             if store.hasSavedPairing {
-                Section {
-                    Button("Forget This Panel", role: .destructive) {
-                        store.forgetPanel()
-                        pairingCode = ""
-                        focusedField = .panelHost
+                Section("Paired Display") {
+                    LabeledContent("Address", value: store.panelHost)
+                        .textSelection(.enabled)
+                    connectionStatus
+                    HStack {
+                        if store.connectionState.isBusy {
+                            Button("Cancel Connection") { store.disconnect() }
+                        } else if store.isConnected {
+                            Button("Disconnect") { store.disconnect() }
+                        } else {
+                            Button("Connect") { store.connect() }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        Spacer()
+                        Button("Open Display Settings…") { store.openPanelWebServer() }
+                            .help("Open the display’s configuration in your browser")
                     }
-                    .buttonStyle(.bordered)
+                }
+                Section {
+                    Button("Forget Display…", role: .destructive) { confirmingForget = true }
+                }
+            } else {
+                Section {
+                    Text("Connect your Mac to an EspControl display to launch applications, open folders, and use Mac controls from its touchscreen.")
+                    Label("Press and hold the Wi-Fi icon on your display to show its pairing code.", systemImage: "hand.tap")
+                        .foregroundStyle(.secondary)
+                }
+                Section("Pair Display") {
+                    LabeledContent("Display address") {
+                        TextField("IP address or name.local", text: $store.panelHost)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 260)
+                            .accessibilityLabel("Display address")
+                            .disabled(store.connectionState.isBusy)
+                            .focused($focusedField, equals: .panelHost)
+                            .onSubmit { focusedField = .pairingCode }
+                    }
+                    LabeledContent("Pairing code") {
+                        TextField("ABCD-EFGH", text: $pairingCode)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(maxWidth: 260)
+                            .accessibilityLabel("Pairing code")
+                            .disabled(store.connectionState.isBusy)
+                            .focused($focusedField, equals: .pairingCode)
+                            .onSubmit { pairDisplay() }
+                    }
+                    Text("Use the address and eight-letter code shown on the display. You can include or omit the hyphen. Both devices must be on the same local network.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        if store.connectionState.isBusy {
+                            Button("Cancel") { store.disconnect() }
+                        }
+                        Spacer()
+                        Button("Pair Display") { pairDisplay() }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!canPair)
+                    }
+                    connectionStatus
                 }
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Device")
+        .navigationTitle("Display")
+    }
+
+    private var connectionStatus: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                if store.connectionState.isBusy {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: store.connectionState.symbol)
+                        .foregroundStyle(store.connectionState == .failed ? Color.orange : Color.secondary)
+                }
+                Text(store.connectionState.title)
+            }
+            .accessibilityElement(children: .combine)
+            if store.connectionState == .failed || store.connectionState == .reconnecting {
+                Text(store.connectionState == .reconnecting
+                     ? "Check that your display is powered on and connected to the same network. Companion will try again automatically."
+                     : store.connectionRecoveryMessage)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            if !store.statusDescription.isEmpty {
+                DisclosureGroup("Connection Details") {
+                    Text(store.statusDescription)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+    }
+
+    private var canPair: Bool {
+        !store.connectionState.isBusy && CompanionPairingInput.isValid(host: store.panelHost, code: pairingCode)
+    }
+
+    private func pairDisplay() {
+        guard canPair else { return }
+        store.pair(code: pairingCode)
     }
 
     private var applicationsPage: some View {
-        List {
-            if store.availableApps.isEmpty {
-                Text("No applications were found.")
+        Form {
+            Section {
+                Text("Choose which applications are available on your display.")
+                Text("\(store.launchableApps().count) of \(store.availableApps.count) enabled")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-            } else if filteredApplications.isEmpty {
-                Text("No applications match your search.")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(filteredApplications) { application in
-                    Toggle(isOn: Binding(
-                        get: { store.applicationIsApproved(application) },
-                        set: { store.setApplication(application, approved: $0) }
-                    )) {
-                        Text(application.name)
+            }
+            Section {
+                if store.availableApps.isEmpty {
+                    emptyState("No Applications Found", symbol: "app.dashed",
+                               detail: "Install applications in your Applications folder, then refresh this list.")
+                    Button("Refresh Applications") { store.refreshApplications() }
+                } else if filteredApplications.isEmpty {
+                    emptyState("No Results", symbol: "magnifyingglass",
+                               detail: "Try another application name or clear your search.")
+                    Button("Clear Search") { applicationSearch = "" }
+                } else {
+                    ForEach(filteredApplications) { application in
+                        Toggle(isOn: Binding(
+                            get: { store.applicationIsApproved(application) },
+                            set: { store.setApplication(application, approved: $0) }
+                        )) {
+                            HStack(spacing: 10) {
+                                Image(nsImage: NSWorkspace.shared.icon(forFile: application.url.path))
+                                    .resizable()
+                                    .frame(width: 24, height: 24)
+                                    .accessibilityHidden(true)
+                                Text(application.name)
+                            }
+                        }
+                        .toggleStyle(.checkbox)
+                        .padding(.vertical, 2)
                     }
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
                 }
             }
         }
-        .listStyle(.inset)
+        .formStyle(.grouped)
         .searchable(text: $applicationSearch, placement: .toolbar, prompt: "Search Applications")
         .navigationTitle("Applications")
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                Button("Select All") {
-                    store.setApplications(filteredApplications, approved: true)
-                }
-                .disabled(filteredApplications.isEmpty || allFilteredApplicationsApproved)
-
-                Button("Deselect All") {
-                    store.setApplications(filteredApplications, approved: false)
-                }
-                .disabled(!hasApprovedFilteredApplications)
-
-                Spacer()
-
-                Button {
-                    store.refreshApplications()
+        .toolbar {
+            ToolbarItemGroup {
+                Menu {
+                    Button(isSearching ? "Enable All Results" : "Enable All Applications") {
+                        store.setApplications(filteredApplications, approved: true)
+                    }
+                    .disabled(filteredApplications.isEmpty || filteredApplications.allSatisfy(store.applicationIsApproved))
+                    Button(isSearching ? "Disable All Results" : "Disable All Applications") {
+                        store.setApplications(filteredApplications, approved: false)
+                    }
+                    .disabled(!filteredApplications.contains(where: store.applicationIsApproved))
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label("Application Actions", systemImage: "ellipsis.circle")
                 }
+                .help("Enable or disable the applications shown")
+                Button { store.refreshApplications() } label: {
+                    Label("Refresh Applications", systemImage: "arrow.clockwise")
+                }
+                .help("Refresh installed applications")
             }
-            .buttonStyle(.bordered)
-            .padding()
-            .background(.bar)
         }
     }
 
+    private var isSearching: Bool { !applicationSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private var filteredApplications: [LaunchableApp] {
         let query = applicationSearch.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return store.availableApps }
-        return store.availableApps.filter {
-            $0.name.localizedCaseInsensitiveContains(query)
-        }
-    }
-
-    private var allFilteredApplicationsApproved: Bool {
-        !filteredApplications.isEmpty && filteredApplications.allSatisfy(store.applicationIsApproved)
-    }
-
-    private var hasApprovedFilteredApplications: Bool {
-        filteredApplications.contains(where: store.applicationIsApproved)
+        return query.isEmpty ? store.availableApps : store.availableApps.filter { $0.name.localizedCaseInsensitiveContains(query) }
     }
 
     private var foldersPage: some View {
-        List {
-            if store.approvedFolders.isEmpty {
-                Text("No folders have been added.")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(store.approvedFolders) { folder in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(folder.name)
-                            Text(folder.needsReapproval ? "Select this folder again to restore access" : folder.path)
-                                .font(.caption)
-                                .foregroundStyle(folder.needsReapproval ? .orange : .secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+        Form {
+            Section {
+                Text("Add folders you want to open from your display. Their paths stay on this Mac.")
+            }
+            Section {
+                if store.approvedFolders.isEmpty {
+                    emptyState("Add Your First Folder", symbol: "folder.badge.plus",
+                               detail: "Keep a project, documents, or downloads one tap away on your display.")
+                    Button("Add Folder…") { store.chooseFolder() }
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    ForEach(store.approvedFolders) { folder in
+                        HStack(spacing: 10) {
+                            Image(systemName: "folder")
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(folder.name)
+                                Text(folder.path)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .help(folder.path)
+                                if store.folderNeedsAccess(folder) {
+                                    Label("Access needed", systemImage: "exclamationmark.triangle")
+                                        .font(.callout)
+                                    Button("Restore Access…") { store.chooseFolder(restoring: folder) }
+                                }
+                            }
+                            Spacer()
+                            Button(role: .destructive) { folderToRemove = folder } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Remove \(folder.name)")
+                            .help("Remove folder from your display")
                         }
-                        Spacer()
-                        Button(role: .destructive) {
-                            store.removeFolder(folder)
-                        } label: {
-                            Image(systemName: "minus")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .help("Remove folder")
+                        .padding(.vertical, 2)
                     }
+                }
+                if let message = store.folderMessage {
+                    Text(message).font(.callout).foregroundStyle(.secondary)
                 }
             }
         }
-        .listStyle(.inset)
+        .formStyle(.grouped)
         .navigationTitle("Folders")
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                Button("Add Folder…") { store.chooseFolder() }
-                    .buttonStyle(.borderedProminent)
-                Spacer()
+        .toolbar {
+            if !store.approvedFolders.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { store.chooseFolder() } label: {
+                        Label("Add Folder…", systemImage: "folder.badge.plus")
+                    }
+                    .help("Add a folder to your display")
+                }
             }
-            .padding()
-            .background(.bar)
         }
+    }
+
+    private func emptyState(_ title: String, symbol: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: symbol).font(.headline)
+            Text(detail).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 8)
     }
 
     private var generalPage: some View {
         Form {
-            if store.supportsLaunchAtLogin {
-                Section("Startup") {
+            Section("Startup") {
+                if store.supportsLaunchAtLogin {
                     Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
-                    Text(store.launchAtLoginMessage)
-                        .font(.callout)
+                    Text(store.launchAtLoginMessage).font(.callout).foregroundStyle(.secondary)
+                } else {
+                    Text("Install EspControl Companion in Applications to open it automatically at login.")
                         .foregroundStyle(.secondary)
                 }
-            } else {
-                Text("Login item management is not available on this version of macOS.")
-                    .foregroundStyle(.secondary)
             }
-
             Section("Privacy") {
                 Toggle("Share Mac system statistics", isOn: $store.shareSystemMetricsEnabled)
-                Text("When enabled, processor, memory, storage, network and battery percentages are sent only to your paired display on the local network.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                Text("Share processor, memory, storage, network, and battery statistics only with your paired display on the local network.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+#if !APP_STORE
+            Section("Keyboard & Window Controls") {
+                Label(accessibilityGranted ? "Accessibility access enabled" : "Accessibility access needed",
+                      systemImage: accessibilityGranted ? "checkmark.circle" : "lock")
+                Text("Allow Accessibility access to use keyboard shortcuts and window controls from your display. Other features work without it.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button("Open System Settings…") {
+                    _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+#endif
+            Section("Help") {
+                Link("EspControl Support", destination: CompanionStore.supportURL)
+                Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
             }
         }
         .formStyle(.grouped)
         .navigationTitle("General")
     }
 
-    private var connectionBinding: Binding<Bool> {
-        Binding(
-            get: { store.isConnected },
-            set: { connected in
-                if connected {
-                    store.connect()
-                } else {
-                    store.disconnect()
-                }
-            }
-        )
-    }
-
-    private var hasPanelAddress: Bool {
-        !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var canConnect: Bool {
-        hasPanelAddress && store.hasSavedPairing
-    }
-
-}
-
-private struct NativeSettingsRow<Control: View>: View {
-    let title: String
-    let description: String
-    @ViewBuilder let control: Control
-
-    var body: some View {
-        LabeledContent {
-            control
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
+    private func refreshAccessibilityStatus() {
+#if !APP_STORE
+        accessibilityGranted = CompanionAccessibilityAuthorizer.shared.hasAccess
+#endif
     }
 }
