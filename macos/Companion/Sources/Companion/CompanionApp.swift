@@ -88,7 +88,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         openCompanionWindow()
-        return false
+        return true
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -157,6 +157,23 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
     func openCompanionWindow() {
         activateCompanionApplication()
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        focusCompanionWindow()
+    }
+
+    private func focusCompanionWindow(attemptsRemaining: Int = 8) {
+        activateCompanionApplication()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self else { return }
+            guard let window = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeKey }) else {
+                if attemptsRemaining > 1 {
+                    self.focusCompanionWindow(attemptsRemaining: attemptsRemaining - 1)
+                }
+                return
+            }
+            window.orderFrontRegardless()
+            window.makeKeyAndOrderFront(nil)
+            activateCompanionApplication()
+        }
     }
 
 }
