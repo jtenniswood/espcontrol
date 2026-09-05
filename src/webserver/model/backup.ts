@@ -44,6 +44,7 @@ export interface NormalizedBackupEnvelope {
   settings: Record<string, unknown> | null;
   screen: Record<string, unknown> | null;
   native_config?: PanelConfigBackupPayload;
+  native_config_skipped_device_profile?: string;
 }
 
 export interface BackupSnapshotEnvelope {
@@ -93,6 +94,15 @@ function normalizeNativeBackup(value: unknown): PanelConfigBackupPayload | undef
     return undefined;
   }
   return createPanelConfigBackupPayload(decodePanelConfigBackupPayload(value));
+}
+
+function skippedNativeDeviceProfile(value: unknown): string | undefined {
+  if (!isRecord(value) || typeof value.document_version !== "number" ||
+      value.document_version <= PANEL_CONFIG_DOCUMENT_VERSION ||
+      typeof value.device_profile !== "string" || value.device_profile.length === 0) {
+    return undefined;
+  }
+  return value.device_profile;
 }
 
 export function validateBackupEnvelope(data: unknown): Record<string, unknown> {
@@ -170,6 +180,9 @@ export function normalizeBackupEnvelope(
   const nativeConfig = data.native_config
     ? normalizeNativeBackup(data.native_config)
     : undefined;
+  const skippedNativeProfile = nativeConfig
+    ? undefined
+    : skippedNativeDeviceProfile(data.native_config);
   return {
     version: BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
@@ -187,6 +200,9 @@ export function normalizeBackupEnvelope(
       : (isRecord(data.settings) && isRecord(data.settings.screen) ? data.settings.screen : null),
     ...(nativeConfig
       ? { native_config: nativeConfig }
+      : {}),
+    ...(skippedNativeProfile
+      ? { native_config_skipped_device_profile: skippedNativeProfile }
       : {}),
   };
 }

@@ -34,6 +34,10 @@ esp32:
       disable_vfs_support_dir: false
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
+      # ESPHome needs 18 sockets for this panel's API, web, diagnostics, and
+      # artwork services. Keep two spare so short-lived HTTP requests do not
+      # displace Home Assistant or remote connections.
+      CONFIG_LWIP_MAX_SOCKETS: "20"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
