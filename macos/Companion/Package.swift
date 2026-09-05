@@ -19,6 +19,7 @@ let package = Package(
             name: "Companion",
             dependencies: appStoreBuild ? [] : ["MediaRemoteShim"],
             path: "Sources/Companion",
+            swiftSettings: appStoreBuild ? [.define("APP_STORE")] : [],
             linkerSettings: [
                 .linkedFramework("IOKit"),
                 .linkedFramework("SystemConfiguration"),
@@ -27,7 +28,8 @@ let package = Package(
         .testTarget(
             name: "CompanionTests",
             dependencies: ["Companion"],
-            path: "Tests/CompanionTests"
+            path: "Tests/CompanionTests",
+            swiftSettings: appStoreBuild ? [.define("APP_STORE")] : []
         ),
     ]
 )

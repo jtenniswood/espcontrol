@@ -55,7 +55,10 @@ final class CompanionConnection: NSObject {
     private var pendingCertificateFingerprint: String?
     private var shouldReconnect = false
     private var hasTerminalConnectionError = false
-    private var sessionAuthenticated = false
+    private var state: CompanionConnectionState = .disconnected {
+        didSet { store.setConnectionState(state) }
+    }
+    private var sessionAuthenticated: Bool { state.isAuthenticated }
     private var authenticationRequestOutstanding = false
     private var artworkData: Data?
     private var artworkGeneration: UInt32 = 0
@@ -122,6 +125,7 @@ final class CompanionConnection: NSObject {
             return
         }
         self.task = task
+        state = .connecting
         task.resume()
         store.updateStatus("Connecting…")
         receive(from: task)
@@ -137,7 +141,7 @@ final class CompanionConnection: NSObject {
     }
 
     private func tearDownConnection() {
-        sessionAuthenticated = false
+        state = .disconnected
         authenticationRequestOutstanding = false
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
@@ -157,7 +161,9 @@ final class CompanionConnection: NSObject {
     private func connectionDidOpen(_ webSocketTask: URLSessionWebSocketTask) {
         guard task === webSocketTask else { return }
         switch mode {
-        case .pair(let code): sendJSON(["type": "pair.request", "code": code])
+        case .pair(let code):
+            state = .pairing
+            sendJSON(["type": "pair.request", "code": code])
         case .authenticate:
             authenticate(on: webSocketTask)
         }
@@ -167,6 +173,7 @@ final class CompanionConnection: NSObject {
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
         let account = store.pairingAccount
+        state = .authenticating
         store.updateStatus("Authenticating…")
         Task { [weak self, weak webSocketTask] in
             let credential = await Task.detached(priority: .userInitiated) {
@@ -292,7 +299,7 @@ final class CompanionConnection: NSObject {
         if !hasTerminalConnectionError, case .pair = mode {
             store.updateStatus("Pairing failed — try again")
         }
-        sessionAuthenticated = false
+        state = .disconnected
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
@@ -326,6 +333,7 @@ final class CompanionConnection: NSObject {
             return
         }
         guard reconnectTask == nil else { return }
+        state = .reconnecting
         store.updateStatus("Panel unavailable — reconnecting…")
         reconnectTask = Task { [weak self] in
             guard let self else { return }
@@ -377,11 +385,11 @@ final class CompanionConnection: NSObject {
         case "auth.accepted":
             guard case .authenticate = mode, authenticationRequestOutstanding else { return false }
             authenticationRequestOutstanding = false
-            sessionAuthenticated = true
+            state = .connected
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             reconnectAttempt = 0
-            store.updateStatus("Connected to \(store.panelHost)", connected: true)
+            store.updateStatus("Connected to \(store.panelHost)")
             let capabilityVersion = (object["capabilityVersion"] as? NSNumber)?.intValue ?? 0
             store.setSystemMetricsSupported(capabilityVersion >= 2)
             if let task { startHeartbeat(for: task) }
@@ -397,16 +405,23 @@ final class CompanionConnection: NSObject {
             guard let requestIdentifier = object["requestId"] as? String,
                   let kind = object["kind"] as? String else { return false }
             if kind == "action", let actionIdentifier = object["actionId"] as? String {
-                Task { [weak self] in
+                let requestingTask = task
+                Task { [weak self, weak requestingTask] in
                     guard let self else { return }
                     let status = await self.store.performResultStatus(actionIdentifier: actionIdentifier)
+                    guard let requestingTask, self.task === requestingTask, self.sessionAuthenticated else { return }
                     self.sendJSON(["type": "action.result", "requestId": requestIdentifier, "status": status])
                 }
             } else if kind == "url", let appIdentifier = object["appId"] as? String,
                       let encodedURL = object["encodedUrl"] as? String {
-                let opened = store.openURL(encodedURL: encodedURL, bundleIdentifier: appIdentifier)
-                sendJSON(["type": "action.result", "requestId": requestIdentifier,
-                          "status": opened ? "opened" : "not_allowed"])
+                let requestingTask = task
+                Task { [weak self, weak requestingTask] in
+                    guard let self else { return }
+                    let opened = await self.store.openURL(encodedURL: encodedURL, bundleIdentifier: appIdentifier)
+                    guard let requestingTask, self.task === requestingTask, self.sessionAuthenticated else { return }
+                    self.sendJSON(["type": "action.result", "requestId": requestIdentifier,
+                                   "status": opened ? "opened" : "not_allowed"])
+                }
             } else { return false }
         case "value.set":
             guard sessionAuthenticated else { return false }
@@ -426,8 +441,7 @@ final class CompanionConnection: NSObject {
                 store.updateStatus("Authentication counter repaired — reconnecting")
                 connect(mode: .authenticate)
             } else {
-                store.updateStatus(code.replacingOccurrences(of: "_", with: " "),
-                                   connected: sessionAuthenticated)
+                store.updateStatus(code.replacingOccurrences(of: "_", with: " "))
             }
         case "artwork.ack":
             guard sessionAuthenticated else { return false }

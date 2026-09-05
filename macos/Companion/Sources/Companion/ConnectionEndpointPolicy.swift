@@ -8,10 +8,11 @@ enum ConnectionEndpointPolicy {
     static func isLocalHost(_ value: String) -> Bool {
         let host = value.trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-            .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
         guard !host.isEmpty else { return false }
 
-        if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".home.arpa") {
+        let dnsHost = host.hasSuffix(".") ? String(host.dropLast()) : host
+        if dnsHost == "localhost" || dnsHost.hasSuffix(".local") || dnsHost.hasSuffix(".home.arpa") {
             return true
         }
 
@@ -26,7 +27,10 @@ enum ConnectionEndpointPolicy {
     private static func isLocalIPv4(_ host: String) -> Bool {
         let parts = host.split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 4,
-              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy { $0.isNumber } }) else { return false }
+              parts.allSatisfy({
+                  !$0.isEmpty && ($0.count == 1 || $0.first != "0")
+                      && $0.utf8.allSatisfy { (48...57).contains($0) }
+              }) else { return false }
         let octets = parts.compactMap { Int(String($0)) }
         guard octets.count == 4, octets.allSatisfy({ (0...255).contains($0) }) else { return false }
         switch octets {

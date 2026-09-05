@@ -4,7 +4,7 @@ import Foundation
 import ServiceManagement
 import SwiftUI
 
-struct LaunchableApp: Identifiable, Hashable {
+struct LaunchableApp: Identifiable, Hashable, Sendable {
     let bundleIdentifier: String
     let name: String
     let url: URL
@@ -308,47 +308,19 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
 
+    private let applicationCatalogue = ApplicationCatalogue()
+    private var applicationScan: Task<Void, Never>?
+
     func refreshApplications() {
-        let standardRoots = [
-            URL(fileURLWithPath: "/Applications"),
-            URL(fileURLWithPath: "/System/Applications"),
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true),
-        ]
-        let cryptexRoots = [
-            // Current macOS releases install Safari in the protected Cryptex
-            // application volume and expose only a compatibility link in /Applications.
-            URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications"),
-        ]
-        let keys: Set<URLResourceKey> = [.isDirectoryKey]
-        var found: [LaunchableApp] = []
-
-        func appendApplication(at url: URL) {
-            guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { return }
-            guard id != "com.apple.finder" else { return }
-            let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-                ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                ?? url.deletingPathExtension().lastPathComponent
-            found.append(LaunchableApp(
-                bundleIdentifier: id,
-                name: name,
-                url: url
-            ))
+        guard applicationScan == nil else { return }
+        applicationScan = Task { [weak self, applicationCatalogue] in
+            let applications = await applicationCatalogue.scan()
+            guard let self else { return }
+            availableApps = applications
+            applicationScan = nil
+            if isConnected { connection.publishCatalogue() }
         }
-
-        func scanApplicationRoots(_ roots: [URL]) {
-            for root in roots {
-                guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
-                for case let url as URL in enumerator where url.pathExtension == "app" {
-                    appendApplication(at: url)
-                }
-            }
-        }
-        scanApplicationRoots(standardRoots)
-        scanApplicationRoots(cryptexRoots)
-        availableApps = Dictionary(grouping: found, by: \.bundleIdentifier).compactMap { $0.value.first }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        if isConnected { connection.publishCatalogue() }
     }
-
     func launchableApps() -> [LaunchableApp] {
         availableApps.filter { approvedApplicationIdentifiers.contains($0.bundleIdentifier) }
     }
@@ -451,7 +423,7 @@ final class CompanionStore: NSObject, ObservableObject {
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         ) else {
-            updateStatus("macOS could not save access to that folder", connected: isConnected)
+            updateStatus("macOS could not save access to that folder")
             return
         }
         if let legacyFolder = approvedFolders.first(where: {
@@ -462,7 +434,7 @@ final class CompanionStore: NSObject, ObservableObject {
             return
         }
         guard !approvedFolders.contains(where: { $0.path == url.path }) else {
-            updateStatus("That folder is already available", connected: isConnected)
+            updateStatus("That folder is already available")
             return
         }
         let displayName = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
@@ -493,12 +465,12 @@ final class CompanionStore: NSObject, ObservableObject {
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
         guard !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            updateStatus("Enter the panel address first", connected: isConnected)
+            updateStatus("Enter the panel address first")
             return
         }
         guard let url = Self.panelWebServerURL(from: panelHost),
               NSWorkspace.shared.open(url) else {
-            updateStatus("Could not open the panel webserver", connected: isConnected)
+            updateStatus("Could not open the panel webserver")
             return
         }
     }
@@ -530,9 +502,14 @@ final class CompanionStore: NSObject, ObservableObject {
         statusDescription = "Panel forgotten"
     }
 
-    func updateStatus(_ message: String, connected: Bool = false) {
+    func updateStatus(_ message: String) {
         print("[EspControl Companion] \(message)")
         statusDescription = message
+    }
+
+    func setConnectionState(_ state: CompanionConnectionState) {
+        let connected = state.isAuthenticated
+        guard isConnected != connected else { return }
         isConnected = connected
         if !connected { systemMetricsSupported = false }
         updateNowPlayingProvider()
@@ -618,7 +595,7 @@ final class CompanionStore: NSObject, ObservableObject {
             }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        updateStatus("\(app.name) did not become active", connected: isConnected)
+        updateStatus("\(app.name) did not become active")
         return false
     }
 
@@ -635,12 +612,12 @@ final class CompanionStore: NSObject, ObservableObject {
     func openFolder(actionIdentifier: String) -> Bool {
         guard let identifier = ApprovedFolder.identifier(from: actionIdentifier),
               let folder = approvedFolders.first(where: { $0.id == identifier }) else {
-            updateStatus("Blocked an unavailable folder", connected: isConnected)
+            updateStatus("Blocked an unavailable folder")
             return false
         }
         guard let access = folder.securityScopedURL(),
               access.url.startAccessingSecurityScopedResource() else {
-            updateStatus("Re-add this folder to restore its macOS permission", connected: isConnected)
+            updateStatus("Re-add this folder to restore its macOS permission")
             return false
         }
         defer { access.url.stopAccessingSecurityScopedResource() }
@@ -650,7 +627,7 @@ final class CompanionStore: NSObject, ObservableObject {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: access.url.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
-            updateStatus("The selected folder is no longer available", connected: isConnected)
+            updateStatus("The selected folder is no longer available")
             return false
         }
         return NSWorkspace.shared.open(access.url)
@@ -668,20 +645,20 @@ final class CompanionStore: NSObject, ObservableObject {
             return await launch(bundleIdentifier: actionIdentifier)
         }
         guard let shortcut = CompanionKeyboardShortcut(actionIdentifier: actionIdentifier) else {
-            updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)
+            updateStatus("Blocked an invalid keyboard shortcut")
             return false
         }
 #if APP_STORE
         _ = shortcut
-        updateStatus("This action is unavailable in the App Store edition", connected: isConnected)
+        updateStatus("This action is unavailable in the App Store edition")
         return false
 #else
         guard shortcut.isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else {
-            updateStatus("Window tiling requires macOS 15 or later", connected: isConnected)
+            updateStatus("Window tiling requires macOS 15 or later")
             return false
         }
         guard shortcut.replay() else {
-            updateStatus("Allow EspControl Companion in Privacy & Security → Accessibility", connected: isConnected)
+            updateStatus("Allow EspControl Companion in Privacy & Security → Accessibility")
             return false
         }
         return true
@@ -722,7 +699,7 @@ final class CompanionStore: NSObject, ObservableObject {
 
     var mediaActionsAvailable: Bool { mediaController.actionsAvailable }
 
-    func openURL(encodedURL: String, bundleIdentifier: String) -> Bool {
+    func openURL(encodedURL: String, bundleIdentifier: String) async -> Bool {
         guard encodedURL.utf8.count <= 128,
               let value = encodedURL.removingPercentEncoding,
               let components = URLComponents(string: value),
@@ -733,10 +710,17 @@ final class CompanionStore: NSObject, ObservableObject {
               components.password == nil,
               let url = components.url,
               let app = launchableApps().first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
-            updateStatus("Blocked an invalid URL or unavailable app", connected: isConnected)
+            updateStatus("Blocked an invalid URL or unavailable app")
             return false
         }
-        NSWorkspace.shared.open([url], withApplicationAt: app.url, configuration: .init()) { _, _ in }
-        return true
+        let opened: Bool = await withCheckedContinuation { continuation in
+            NSWorkspace.shared.open([url], withApplicationAt: app.url, configuration: .init()) { application, error in
+                continuation.resume(returning: application != nil && error == nil)
+            }
+        }
+        if !opened {
+            updateStatus("macOS could not open this URL in \(app.name)")
+        }
+        return opened
     }
 }
