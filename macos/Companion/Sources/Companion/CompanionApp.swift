@@ -479,9 +479,6 @@ private struct CompanionSettings: View {
                 Label(page.title, systemImage: page.icon).tag(page)
             }
             .listStyle(.sidebar)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                Color.clear.frame(height: 28)
-            }
             .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
 
             Divider()
