@@ -35,6 +35,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
     private var statusItem: NSStatusItem?
     private var connectionObservation: AnyCancellable?
     private var instanceLockFileDescriptor: Int32 = -1
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard acquireInstanceLock() else {
@@ -203,24 +204,31 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
 
     func openCompanionWindow() {
         activateCompanionApplication()
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        focusCompanionWindow()
-    }
 
-    private func focusCompanionWindow(attemptsRemaining: Int = 8) {
-        activateCompanionApplication()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self else { return }
-            guard let window = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeKey }) else {
-                if attemptsRemaining > 1 {
-                    self.focusCompanionWindow(attemptsRemaining: attemptsRemaining - 1)
-                }
-                return
-            }
-            window.orderFrontRegardless()
-            window.makeKeyAndOrderFront(nil)
-            activateCompanionApplication()
+        if let settingsWindow {
+            settingsWindow.orderFrontRegardless()
+            settingsWindow.makeKeyAndOrderFront(nil)
+            return
         }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.identifier = NSUserInterfaceItemIdentifier("io.espcontrol.companion.settings")
+        window.title = "EspControl Companion"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.minSize = NSSize(width: 760, height: 500)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: CompanionSettings(store: store))
+        window.center()
+        settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
+        activateCompanionApplication()
     }
 
 }
