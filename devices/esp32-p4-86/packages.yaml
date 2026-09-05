@@ -11,6 +11,7 @@ substitutions:
   device_slug: "esp32-p4-86"
   firmware_manifest_slug: "esp32-p4-86"
   firmware_version: "dev"
+  screensaver_camera_supported: "true"
   screen_width: "720"
   screen_height: "720"
   content_width: "570"
@@ -172,6 +173,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
+  screen_camera:   !include ../../common/device/screen_camera_screensaver.yaml
   image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)

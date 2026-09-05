@@ -271,10 +271,19 @@ for required in (
     if required not in web_media:
         raise SystemExit(f"4.3-inch P4 cover art preview font contract missing: {required}")
 for required in (
-    "image_card_uses_background_pipeline(next->image, next->source_url)",
+    "ctx->image->request_update_url(ctx->url, max_source_dim)",
+    "ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim)",
+    "image_card_preempt_active_tile_for_modal();",
+    "candidate->image->request_is_active()",
 ):
     if required not in image_cards:
-        raise SystemExit(f"Image card background-pipeline contract missing: {required}")
+        raise SystemExit(f"Image card centralized scheduling contract missing: {required}")
+for forbidden in (
+    "image_card_active_download_context",
+    "download_queued",
+):
+    if forbidden in image_cards:
+        raise SystemExit(f"Image cards must not keep a second request scheduler: {forbidden}")
 media_clear_start = image_cards.find(
     "inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {"
 )

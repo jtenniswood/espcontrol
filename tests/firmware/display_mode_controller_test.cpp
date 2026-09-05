@@ -47,7 +47,7 @@ int main() {
   CHECK(!presence_can_wake_display(controller.resolve()));
 
   for (DisplayMode mode : {DisplayMode::DISPLAY_OFF, DisplayMode::DIMMED,
-                           DisplayMode::CLOCK}) {
+                           DisplayMode::CLOCK, DisplayMode::CAMERA}) {
     DisplayModeController presence_wake;
     CHECK(presence_wake.request(DisplayRequestSource::PRESENCE_SENSOR, mode));
     CHECK(presence_can_wake_display(presence_wake.resolve()));
@@ -113,6 +113,24 @@ int main() {
   CHECK(controller.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART));
   CHECK(decision_is(controller, DisplayMode::COVER_ART,
                     DisplayRequestSource::MEDIA_PLAYBACK));
+
+  // Camera is an automatic screensaver target: it wakes with presence, but
+  // cover art still has priority while enabled media is playing.
+  DisplayModeController camera;
+  CHECK(camera.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CAMERA));
+  CHECK(decision_is(camera, DisplayMode::CAMERA, DisplayRequestSource::IDLE_TIMER));
+  CHECK(presence_can_wake_display(camera.resolve()));
+  CHECK(camera.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART));
+  CHECK(decision_is(camera, DisplayMode::COVER_ART,
+                    DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(camera.clear(DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(decision_is(camera, DisplayMode::CAMERA, DisplayRequestSource::IDLE_TIMER));
+  CHECK(camera.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::DISPLAY_OFF));
+  CHECK(decision_is(camera, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(camera.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(camera.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE));
+  CHECK(decision_is(camera, DisplayMode::ACTIVE, DisplayRequestSource::USER_WAKE));
 
   CHECK(controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE));
   CHECK(decision_is(controller, DisplayMode::ACTIVE, std::nullopt,
@@ -185,6 +203,7 @@ int main() {
       {DisplayRequestSource::BOOT_GUARD, DisplayMode::DISPLAY_OFF},
       {DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED},
       {DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::CLOCK},
+      {DisplayRequestSource::IDLE_TIMER, DisplayMode::CAMERA},
       {DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::ACTIVE},
       {DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF},
       {DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART},

@@ -528,7 +528,10 @@ function composeApplicationContext(): ApplicationContext {
     finalCountdown: (value) => Model.normalizeAlarmDelayFinalCountdown(value),
   });
   const screensaver = createScreensaverController({
-    action: (value) => Model.normalizeScreensaverAction(value),
+    action: (value) => {
+      const action = Model.normalizeScreensaverAction(value);
+      return action === "camera" && !layout.config.features?.cameraScreensaver ? "off" : action;
+    },
     dimBrightness: (value) => Model.normalizeScreensaverDimmedBrightness(value),
     clockBrightness: (value, fallback) => Model.normalizeClockBrightness(value, fallback),
   });
@@ -554,6 +557,7 @@ function composeApplicationContext(): ApplicationContext {
     statusPreview,
     clockBarPostApi,
     fields,
+    artworkPostApi,
   });
   selection = createButtonSettingsSelectionFeature(
     runtime,

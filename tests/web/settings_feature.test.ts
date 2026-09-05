@@ -48,7 +48,7 @@ export function runSettingsFeatureTests(): void {
   equal(alarm.setFinalCountdown(enabled, 80).finalCountdown, 60, "countdown changes are normalized");
 
   const screensaver = createScreensaverController({
-    action: (value) => ["off", "dim", "clock"].includes(String(value)) ? String(value) : "off",
+    action: (value) => ["off", "dim", "clock", "camera"].includes(String(value)) ? String(value) : "off",
     dimBrightness: (value) => Math.max(1, Math.min(100, Number(value))),
     clockBrightness: (value, fallback) => Math.max(1, Math.min(100, Number(value) || fallback)),
   });
@@ -64,6 +64,9 @@ export function runSettingsFeatureTests(): void {
   equal(screensaver.uiState(dim).clockVisible, false, "clock controls hide in dim mode");
   const clockMode = screensaver.setAction(dim, "clock");
   equal(screensaver.uiState(clockMode).clockVisible, true, "clock controls show in clock mode");
+  const cameraMode = screensaver.setAction(clockMode, "camera");
+  equal(screensaver.uiState(cameraMode).cameraVisible, true, "camera entity control shows in camera mode");
+  equal(screensaver.uiState(cameraMode).clockVisible, false, "clock controls hide in camera mode");
   equal(screensaver.setDimBrightness(clockMode, 200).dimBrightness, 100, "dim brightness is normalized");
   equal(screensaver.setDimBrightnessByPeriod(clockMode, "dimBrightnessDay", 25).dimBrightnessDay,
         25, "daytime dim brightness is updated independently");

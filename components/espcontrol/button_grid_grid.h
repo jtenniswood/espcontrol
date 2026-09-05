@@ -58,6 +58,7 @@ struct GridConfig {
   esphome::artwork_image::ArtworkImage **image_card_images = nullptr;
   esphome::artwork_image::ArtworkImage *image_card_modal_image = nullptr;
   int image_card_image_count = 0;
+  bool media_cover_art_supported = true;
   bool image_card_diagnostics = false;
   std::function<std::string()> home_assistant_base_url;
 };
@@ -371,6 +372,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
     static_cast<MediaNowPlayingCtx *>(lv_obj_get_user_data(s.sensor_container));
   if (!media_ctx || !media_ctx->btn) return;
   clear_media_cover_art(media_ctx);
+  if (!cfg.media_cover_art_supported) return;
   if (!media_cover_art_enabled(p) || p.entity.empty()) return;
   ImageCardCtx *art = acquire_image_card_context(cfg, p.entity);
   if (!art) {
@@ -2041,6 +2043,7 @@ inline void grid_phase2(
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+      refresh_visible_image_cards();
     }, LV_EVENT_CLICKED, main_page_obj);
     screen_lock_register_controlled_button(back_btn);
     navigation_register_subpage_back_button(si + 1, back_slot);

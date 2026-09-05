@@ -486,6 +486,7 @@ select:
       - "Display Off"
       - "Screen Dimmed"
       - "Clock"
+      - "Camera"
     web_server:
       sorting_group_id: sg_screensaver
     on_value:
@@ -494,6 +495,8 @@ select:
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+            id(screensaver_action_camera) =
+                ${screensaver_camera_supported} && screensaver_action_camera_mode(action);
         - if:
             condition:
               lambda: |-
@@ -508,9 +511,44 @@ select:
               - switch.turn_off: clock_screensaver_enabled
         - if:
             condition:
+              lambda: |-
+                return screensaver_action_camera_mode(id(screensaver_action).current_option()) &&
+                       !${screensaver_camera_supported};
+            then:
+              - lambda: |-
+                  auto call = id(screensaver_action).make_call();
+                  call.set_option("Display Off");
+                  call.perform();
+        - if:
+            condition:
               lambda: 'return id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::ACTIVE) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screen_saver_camera_image_mode}"
+    internal: true
+    id: screensaver_camera_image_mode
+    entity_category: config
+    icon: "mdi:image-size-select-large"
+    optimistic: true
+    restore_value: true
+    initial_option: "Fit"
+    options:
+      - "Fit"
+      - "Fill"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return id(espcontrol_app).display().target_mode_is(
+                  espcontrol::DisplayMode::CAMERA);
+            then:
+              - lambda: 'id(camera_screensaver_downloaded_image)->cancel_update();'
+              - script.execute: camera_screensaver_request_image
 
   - platform: template
     name: "${entity_screen_temperature_unit}"
@@ -658,6 +696,25 @@ text:
     on_value:
       then:
         - script.execute: refresh_button_grid
+
+  - platform: template
+    name: "${entity_screen_saver_camera_entity}"
+    internal: true
+    id: screensaver_camera_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:camera"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: camera_screensaver_config_changed
 
   # Optional media player that keeps the screensaver awake while playing.
   - platform: template

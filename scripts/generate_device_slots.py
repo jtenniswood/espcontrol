@@ -40,6 +40,10 @@ def package_substitution_lines(device: dict) -> list[str]:
     ]
     if package.get("firmwareVersion"):
         lines.append(f'  firmware_version: "{package["firmwareVersion"]}"')
+    camera_screensaver_supported = bool(device.get("camera_screensaver_supported"))
+    lines.append(
+        f'  screensaver_camera_supported: "{str(camera_screensaver_supported).lower()}"'
+    )
     added_voice_substitutions = False
     for key, value in package["substitutions"].items():
         lines.append(f"  {key}: {value}")
@@ -268,6 +272,12 @@ def package_file_text(device: dict) -> str:
             include_line("screen_setup", "!include ../../common/device/screen_button_setup.yaml"),
             include_line("screen_clock", "!include ../../common/device/screen_clock.yaml"),
             include_line("screen_art", "!include ../../common/device/screen_cover_art.yaml"),
+            include_line(
+                "screen_camera",
+                "!include ../../common/device/screen_camera_screensaver.yaml"
+                if device.get("camera_screensaver_supported")
+                else "!include ../../common/device/screen_camera_screensaver_disabled.yaml",
+            ),
             *(
                 [
                     include_line(
@@ -500,6 +510,8 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append("            cfg.image_card_images = image_card_downloaders;")
         lines.append("            cfg.image_card_modal_image = id(image_card_modal_download_1);")
         lines.append(f"            cfg.image_card_image_count = {image_card_count};")
+    if not device.get("media_cover_art_supported", True):
+        lines.append("            cfg.media_cover_art_supported = false;")
     if device.get("image_card_diagnostics"):
         lines.append("            cfg.image_card_diagnostics = true;")
     lines.append("            cfg.home_assistant_base_url = []() {")

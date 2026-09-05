@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 7,
     "cardTypes": 42,
-    "entityNames": 101,
+    "entityNames": 103,
     "icons": 335,
     "structuralIcons": 20,
     "compatibilityFixtureGroups": 2
@@ -1205,7 +1205,7 @@
       "slug": "guition-esp32-s3-4848s040",
       "slots": 9,
       "capabilities": {
-        "imageSlots": 1
+        "imageSlots": 2
       },
       "public": {
         "name": "Guition 4848S040",
@@ -1249,8 +1249,7 @@
         "dragMode": "displace",
         "dragAnimation": true,
         "disabledCardTypes": [
-          "weather_forecast",
-          "image"
+          "weather_forecast"
         ],
         "screen": {
           "width": "55%",
@@ -6521,6 +6520,32 @@
           "screen_saver__action",
           "screen_saver_action",
           "screensaver_action"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_camera_entity",
+        "domain": "text",
+        "name": "Screen Saver: Camera Entity",
+        "objectIds": [
+          "screen_saver__camera_entity",
+          "screen_saver_camera_entity",
+          "screensaver_camera_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_camera_image_mode",
+        "domain": "select",
+        "name": "Screen Saver: Camera Image Mode",
+        "objectIds": [
+          "screen_saver__camera_image_mode",
+          "screen_saver_camera_image_mode",
+          "screensaver_camera_image_mode"
         ],
         "groups": [
           "settings"

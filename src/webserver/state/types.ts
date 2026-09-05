@@ -13,6 +13,7 @@ export interface DeviceConfigFeatures {
   voiceServices?: boolean;
   battery?: boolean;
   alarmDelayAudio?: boolean;
+  cameraScreensaver?: boolean;
 }
 
 export interface DeviceConfig {
@@ -141,6 +142,8 @@ export interface AppState {
   temperatureDegreeSymbolOn: boolean;
   subpageChevronsOn: boolean;
   presenceEntity: string;
+  screensaverCameraEntity: string;
+  screensaverCameraImageMode: string;
   mediaPlayerSleepPreventionOn: boolean;
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaverOn: boolean;
