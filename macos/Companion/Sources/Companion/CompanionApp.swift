@@ -821,10 +821,12 @@ private struct CompanionSettings: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                Button("Enable Support…") {
-                    _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                        NSWorkspace.shared.open(url)
+                if !accessibilityGranted {
+                    Button("Enable Support…") {
+                        _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                            NSWorkspace.shared.open(url)
+                        }
                     }
                 }
             }
