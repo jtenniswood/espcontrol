@@ -28,6 +28,24 @@ export async function runBackupRestoreControllerTests(): Promise<void> {
   await Promise.resolve();
   equal(events.at(-1), "success:Configuration imported successfully", "successful queue completion is reported");
 
+  const combinedWarningEvents: string[] = [];
+  const combinedWarnings = createBackupRestoreController<{ warnings: string[] }, undefined>({
+    plan: () => ({ warnings: ["Native configuration will be skipped", "Backup has 19 slots, current config has 20 - adapting"] }),
+    warnings: (plan) => plan.warnings,
+    showBanner: (message, kind) => combinedWarningEvents.push(`${kind}:${message}`),
+    setPostThrottle: () => undefined,
+    resetPostQueueError: () => undefined,
+    postQueueIdle: async () => undefined,
+    postQueueHadError: () => false,
+  });
+  equal(combinedWarnings.restore({}, undefined, () => undefined), true,
+    "restore starts when multiple warnings are present");
+  equal(
+    combinedWarningEvents[0],
+    "warning:Native configuration will be skipped Backup has 19 slots, current config has 20 - adapting",
+    "multiple restore warnings stay visible in one banner",
+  );
+
   const delayedEvents: string[] = [];
   let finishApply: (() => void) | undefined;
   let finishDelayedQueue: (() => void) | undefined;

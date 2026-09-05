@@ -146,6 +146,36 @@ export function runBackupFeatureTests(migrationFixture?: MigrationFixture): void
   equal(nativeBackup.native_config?.device_profile, "panel-a", "native backup records its device profile");
   equal(nativeBackup.native_config?.document_version, 1, "native backup records its document version");
 
+  const nativeMismatchPlan = feature.planBackupImport(
+    {
+      ...nativeBackup,
+      buttons: [{}],
+      slots: 1,
+    },
+    { device: "panel-b", slots: 1 },
+  );
+  equal(
+    nativeMismatchPlan.warnings[0],
+    "This backup was taken from panel-a; this device is panel-b. Layout will be restored, but the native configuration will be skipped.",
+    "native profile mismatches explain the safe fallback",
+  );
+  equal(nativeMismatchPlan.warnings.length, 1, "native profile mismatch replaces the generic panel warning");
+  equal(nativeMismatchPlan.buttons.length, 1, "layout planning still succeeds for native profile mismatch");
+
+  const sameProfilePlan = feature.planBackupImport(
+    {
+      ...nativeBackup,
+      buttons: [{}],
+      slots: 1,
+    },
+    { device: "panel-a", slots: 1 },
+  );
+  equal(
+    sameProfilePlan.warnings.some((warning) => warning.includes("native configuration will be skipped")),
+    false,
+    "same-profile native imports do not warn about skipping native configuration",
+  );
+
   const newerNativeDocument = feature.normalizeBackupConfig({
     version: 2,
     format: "espcontrol.backup",
@@ -156,6 +186,11 @@ export function runBackupFeatureTests(migrationFixture?: MigrationFixture): void
 
   const plan = feature.planBackupImport(backup, { device: "panel-b", slots: 3 });
   equal(plan.warnings.length, 2, "cross-device and slot-count warnings are retained");
+  equal(
+    plan.warnings[0],
+    "Config was exported from a different panel (panel-a) - layout may look different",
+    "legacy cross-device warning remains unchanged",
+  );
   equal(plan.buttons.length, 3, "backup expands to the target slot count");
   equal(plan.buttons[1]?.sensor, "speaker_group", "backup preserves standalone speaker group mode");
   equal(
