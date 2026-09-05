@@ -13,6 +13,8 @@ cd macos/Companion
 
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. Installed applications are available to launch or to open validated `http://` and `https://` links. Finder folders are separate: add folders with the native picker in the app's **Folders** page, then select one for each Open folder card in the panel web editor. The app can replay keyboard shortcuts created in the panel's web editor; macOS Accessibility permission is required the first time a shortcut is used.
 
+On first launch, the setup guide walks through Accessibility for shortcut and window-control cards, optional Mac statistics sharing, and opening Companion at login. Use **General → Run Setup Guide…** to review these choices later.
+
 Click the EspControl icon in the macOS menu bar to see the display address and connection status, connect or disconnect, open display settings in your browser, or open Companion settings. About EspControl Companion is in the application menu.
 When Companion is installed as a packaged `.app`, its General page also includes an **Open EspControl Companion at Login** switch. The local Swift launcher does not create an app bundle, so it intentionally omits this setting. macOS may require approval under **System Settings → General → Login Items**.
 

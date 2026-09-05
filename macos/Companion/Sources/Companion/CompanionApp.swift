@@ -270,6 +270,175 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
     }
 }
 
+private struct CompanionOnboardingPage<Content: View>: View {
+    let icon: String
+    let title: String
+    let summary: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Image(systemName: icon)
+                .font(.system(size: 36, weight: .medium))
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 28, weight: .semibold))
+                Text(summary)
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            content()
+        }
+        .frame(maxWidth: 620, alignment: .leading)
+    }
+}
+
+private struct CompanionOnboarding: View {
+    @ObservedObject var store: CompanionStore
+    let onComplete: () -> Void
+    @State private var step = 0
+    @State private var accessibilityGranted = false
+
+    private let totalSteps = 3
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Set up EspControl Companion")
+                    .font(.title2.weight(.semibold))
+                HStack(spacing: 10) {
+                    ProgressView(value: Double(step + 1), total: Double(totalSteps))
+                    Text("\(step + 1) of \(totalSteps)")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .frame(maxWidth: 620, alignment: .leading)
+            .padding(.top, 34)
+
+            Spacer(minLength: 28)
+
+            currentPage
+                .id(step)
+                .transition(.opacity)
+
+            Spacer(minLength: 28)
+
+            Divider()
+            HStack {
+                Button("Skip for now") { onComplete() }
+                    .buttonStyle(.borderless)
+                Spacer()
+                if step > 0 {
+                    Button("Back") { step -= 1 }
+                }
+                Button(step == totalSteps - 1 ? "Finish" : "Continue") {
+                    if step == totalSteps - 1 {
+                        onComplete()
+                    } else {
+                        step += 1
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: 620)
+            .padding(.vertical, 18)
+        }
+        .padding(.horizontal, 44)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.2), value: step)
+        .onAppear { refreshAccessibilityStatus() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshAccessibilityStatus()
+        }
+    }
+
+    @ViewBuilder private var currentPage: some View {
+        switch step {
+        case 0:
+            CompanionOnboardingPage(
+                icon: "keyboard",
+                title: "Enable shortcut support",
+                summary: "Shortcut and window-control cards need macOS Accessibility permission to send commands to your active Mac app."
+            ) {
+#if APP_STORE
+                Label("Unavailable in the App Store edition", systemImage: "info.circle")
+                    .foregroundStyle(.secondary)
+                Text("Use the direct-download edition of EspControl Companion for keyboard shortcuts and window controls. Then allow the app in System Settings → Privacy & Security → Accessibility.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+#else
+                if accessibilityGranted {
+                    Label("Accessibility support is enabled", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Text("Keyboard shortcuts are currently disabled. Click Enable Support…, then turn on EspControl Companion in System Settings → Privacy & Security → Accessibility.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Button("Enable Support…") { enableAccessibility() }
+                        .buttonStyle(.borderedProminent)
+                }
+#endif
+            }
+        case 1:
+            CompanionOnboardingPage(
+                icon: "chart.bar.xaxis",
+                title: "Enable Mac statistics",
+                summary: "Stats cards can show processor, memory, storage, network, and battery information from this Mac."
+            ) {
+                Toggle(isOn: $store.shareSystemMetricsEnabled) {
+                    Label("Share Mac system statistics", systemImage: "chart.bar.xaxis")
+                }
+                .toggleStyle(.switch)
+                Text("Statistics are shared only with your paired display on the local network. You can change this later in General settings.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        default:
+            CompanionOnboardingPage(
+                icon: "power",
+                title: "Stay connected at login",
+                summary: "Start Companion automatically when you sign in so your paired display can reconnect to the Mac."
+            ) {
+                if store.supportsLaunchAtLogin {
+                    Toggle(isOn: store.launchAtLoginBinding()) {
+                        Label("Open EspControl Companion at Login", systemImage: "power")
+                    }
+                    .toggleStyle(.switch)
+                    Text(store.launchAtLoginMessage)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Install EspControl Companion in Applications before enabling automatic startup.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Text("You can change this later in General settings.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func refreshAccessibilityStatus() {
+#if !APP_STORE
+        accessibilityGranted = CompanionAccessibilityAuthorizer.shared.hasAccess
+#endif
+    }
+
+    private func enableAccessibility() {
+#if !APP_STORE
+        _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+#endif
+    }
+}
+
 private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
@@ -277,10 +446,21 @@ private struct CompanionSettings: View {
     @State private var confirmingForget = false
     @State private var folderToRemove: ApprovedFolder?
     @State private var accessibilityGranted = false
+    @AppStorage("companion.onboarding.completed") private var onboardingCompleted = false
     @AppStorage("settings.selectedPage") private var selectedPageID = CompanionSettingsPage.connection.rawValue
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
+        if onboardingCompleted {
+            settingsContent
+        } else {
+            CompanionOnboarding(store: store) {
+                onboardingCompleted = true
+            }
+        }
+    }
+
+    private var settingsContent: some View {
         HStack(spacing: 0) {
             List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
                 Label(page.title, systemImage: page.icon).tag(page)
@@ -596,6 +776,12 @@ private struct CompanionSettings: View {
 
     private var generalPage: some View {
         Form {
+            Section("Setup") {
+                Text("Review the permissions and startup choices that keep your display connected to this Mac.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Button("Run Setup Guide…") { onboardingCompleted = false }
+            }
             Section("Startup") {
                 if store.supportsLaunchAtLogin {
                     Toggle("Open EspControl Companion at Login", isOn: store.launchAtLoginBinding())
