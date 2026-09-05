@@ -42,7 +42,7 @@ sensor:
     internal: true
 
 # ---------------------------------------------------------------------------
-# IP address (text_sensor)
+# Network transport (text_sensor)
 # ---------------------------------------------------------------------------
 text_sensor:
   - platform: template
@@ -54,8 +54,3 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       return {"ethernet"};
-
-  - platform: ethernet_info
-    ip_address:
-      name: IP Address
-      icon: mdi:ip-network
