@@ -23,9 +23,6 @@ jobs:
       - name: Run Companion tests
         run: swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
 
-      - name: Run App Store Companion tests
-        run: ESPCONTROL_APP_STORE=1 swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
-
       - name: Build standalone Companion bundle
         run: ALLOW_ADHOC=1 macos/Companion/Packaging/build_standalone.sh
 
@@ -40,34 +37,8 @@ jobs:
           ! codesign --display --entitlements - "${APP}" 2>&1 | grep -q 'com.apple.security.app-sandbox'
           codesign --display --entitlements - "${APP}" 2>&1 | grep -q 'com.apple.security.automation.apple-events'
 
-      - name: Build App Store-safe bundle
-        run: ALLOW_ADHOC=1 macos/Companion/Packaging/build_app_store.sh
-
-      - name: Verify bundle metadata and entitlements
-        run: |
-          APP="macos/Companion/.build/app-store/EspControl Companion.app"
-          test -f "${APP}/Contents/Info.plist"
-          test -f "${APP}/Contents/Resources/AppIcon.icns"
-          test -f "${APP}/Contents/Resources/PrivacyInfo.xcprivacy"
-          plutil -lint "${APP}/Contents/Info.plist"
-          plutil -lint "${APP}/Contents/Resources/PrivacyInfo.xcprivacy"
-          VERSION="$(plutil -extract CFBundleShortVersionString raw "${APP}/Contents/Info.plist")"
-          test "${VERSION%%.*}" -ge 1
-          test "$(plutil -extract LSApplicationCategoryType raw "${APP}/Contents/Info.plist")" = "public.app-category.utilities"
-          codesign --display --entitlements - "${APP}"
-          ! codesign --display --entitlements - "${APP}" 2>&1 | grep -q 'com.apple.security.automation.apple-events'
-          ! plutil -extract NSAppleEventsUsageDescription raw "${APP}/Contents/Info.plist"
-          ! strings "${APP}/Contents/MacOS/EspControl Companion" | grep -E -q 'MediaRemote\.framework|MRMediaRemote'
-          ! nm -u "${APP}/Contents/MacOS/EspControl Companion" | grep -E -q 'AXIsProcessTrusted|CGEventPost|NSAppleScript'
-
       - uses: actions/upload-artifact@v7
         with:
           name: espcontrol-companion-standalone
           path: macos/Companion/.build/standalone/EspControl Companion.app
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: espcontrol-companion-app-store
-          path: macos/Companion/.build/app-store/EspControl Companion.app
           if-no-files-found: error

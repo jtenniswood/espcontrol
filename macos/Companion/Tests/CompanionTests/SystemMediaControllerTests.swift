@@ -18,17 +18,10 @@ final class SystemMediaControllerTests: XCTestCase {
         let source = FakeMediaCommandSource()
         let controller = SystemMediaController(commandSource: source)
 
-#if APP_STORE
-        XCTAssertFalse(controller.perform(actionIdentifier: SystemMediaController.playPauseID))
-        XCTAssertFalse(controller.perform(actionIdentifier: "media.previous"))
-        XCTAssertFalse(controller.perform(actionIdentifier: "media.next"))
-        XCTAssertTrue(source.commands.isEmpty)
-#else
         XCTAssertTrue(controller.perform(actionIdentifier: SystemMediaController.playPauseID))
         XCTAssertTrue(controller.perform(actionIdentifier: "media.previous"))
         XCTAssertTrue(controller.perform(actionIdentifier: "media.next"))
         XCTAssertEqual(source.commands, [2, 5, 4])
-#endif
     }
 
     func testUnavailableCommandDoesNotDispatch() {
@@ -46,11 +39,7 @@ final class SystemMediaControllerTests: XCTestCase {
         let controller = SystemMediaController(commandSource: source)
 
         XCTAssertFalse(controller.perform(actionIdentifier: SystemMediaController.playPauseID))
-#if APP_STORE
-        XCTAssertTrue(source.commands.isEmpty)
-#else
         XCTAssertEqual(source.commands, [2])
-#endif
     }
 
     func testForcedSnapshotMarksEveryMissingControlUnavailable() {

@@ -1,9 +1,7 @@
 import AppKit
 import CryptoKit
 import Foundation
-#if !APP_STORE
 import MediaRemoteShim
-#endif
 
 enum CompanionPlaybackState: String, Codable {
     case playing, paused, stopped, unavailable
@@ -35,7 +33,6 @@ protocol MediaRemoteProviding {
     func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?, NSNumber?) -> Void)
 }
 
-#if !APP_STORE
 struct MediaRemoteSystemSource: MediaRemoteProviding {
     var isAvailable: Bool { ECMediaRemoteBridge.isAvailable() }
     func startObserving(_ handler: @escaping () -> Void) -> Bool {
@@ -46,18 +43,6 @@ struct MediaRemoteSystemSource: MediaRemoteProviding {
         ECMediaRemoteBridge.fetchNowPlaying(completion)
     }
 }
-#endif
-
-#if APP_STORE
-struct AppStoreMediaRemoteSource: MediaRemoteProviding {
-    var isAvailable: Bool { false }
-    func startObserving(_ handler: @escaping () -> Void) -> Bool { false }
-    func stopObserving() {}
-    func fetch(_ completion: @escaping ([AnyHashable: Any]?, NSNumber?, NSNumber?) -> Void) {
-        completion(nil, nil, nil)
-    }
-}
-#endif
 
 @MainActor
 final class SystemNowPlayingProvider {
@@ -76,11 +61,7 @@ final class SystemNowPlayingProvider {
     private let source: MediaRemoteProviding
 
     init(source: MediaRemoteProviding? = nil) {
-#if APP_STORE
-        self.source = source ?? AppStoreMediaRemoteSource()
-#else
         self.source = source ?? MediaRemoteSystemSource()
-#endif
     }
 
     var isAvailable: Bool { source.isAvailable }

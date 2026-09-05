@@ -39,14 +39,10 @@ frontmost Finder window. Accessibility access is optional and is used only to
 replay a keyboard shortcut requested by a Companion card. You can remove these
 permissions in macOS System Settings.
 
-The Mac App Store build does not request or use Finder automation or
-Accessibility. It omits Finder front-window auto-detection, keyboard shortcuts,
-and window controls; these capabilities are available only in the direct build.
-
 ## Deletion and support
 
 Use **Forget this panel** to remove the panel credential and certificate data.
-Remove folders from the Folders tab to remove their bookmarks. Uninstalling
+Remove folders from the Folders tab to remove their saved locations. Uninstalling
 the app removes its local preferences; Keychain items can be removed by
 forgetting the panel before uninstalling.
 

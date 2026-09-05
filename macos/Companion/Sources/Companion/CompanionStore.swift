@@ -27,74 +27,55 @@ struct ApprovedFolder: Codable, Identifiable, Hashable {
 
     let id: UUID
     let name: String
-    let bookmarkData: Data?
-    private let legacyPath: String?
+    let path: String
 
     init(id: UUID, name: String, path: String) {
         self.id = id
         self.name = name
-        self.bookmarkData = nil
-        self.legacyPath = path
-    }
-
-    init(id: UUID, name: String, bookmarkData: Data) {
-        self.id = id
-        self.name = name
-        self.bookmarkData = bookmarkData
-        self.legacyPath = nil
+        self.path = path
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, bookmarkData, path
+        case id, name, path, bookmarkData
     }
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
         name = try values.decode(String.self, forKey: .name)
-        bookmarkData = try values.decodeIfPresent(Data.self, forKey: .bookmarkData)
-        legacyPath = try values.decodeIfPresent(String.self, forKey: .path)
+        if let savedPath = try values.decodeIfPresent(String.self, forKey: .path) {
+            path = savedPath
+            return
+        }
+        if let bookmarkData = try values.decodeIfPresent(Data.self, forKey: .bookmarkData) {
+            var isStale = false
+            if let resolvedURL = try? URL(
+                resolvingBookmarkData: bookmarkData,
+                options: [],
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            ) {
+                path = resolvedURL.path
+                return
+            }
+        }
+        throw DecodingError.dataCorruptedError(
+            forKey: .path,
+            in: values,
+            debugDescription: "Approved folder has no usable local path"
+        )
     }
 
     func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(id, forKey: .id)
         try values.encode(name, forKey: .name)
-        try values.encodeIfPresent(bookmarkData, forKey: .bookmarkData)
+        try values.encode(path, forKey: .path)
     }
 
-    var path: String {
-        securityScopedURL()?.url.path ?? legacyPath ?? "Access needs approval"
-    }
-
-    var needsReapproval: Bool { securityScopedURL() == nil }
-
-    struct SecurityScopedURL {
-        let url: URL
-        let refreshedBookmarkData: Data?
-    }
-
-    func securityScopedURL() -> SecurityScopedURL? {
-        guard let bookmarkData else { return nil }
-        var isStale = false
-        guard let url = try? URL(
-            resolvingBookmarkData: bookmarkData,
-            options: [.withSecurityScope],
-            relativeTo: nil,
-            bookmarkDataIsStale: &isStale
-        ) else { return nil }
-        let refreshedBookmarkData = isStale
-            ? try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
-            : nil
-        return SecurityScopedURL(url: url, refreshedBookmarkData: refreshedBookmarkData)
-    }
-
-    func withSecurityScopedAccess<T>(_ body: (URL) -> T) -> T? {
-        guard let access = securityScopedURL(), access.url.startAccessingSecurityScopedResource() else {
-            return nil
-        }
-        defer { access.url.stopAccessingSecurityScopedResource() }
-        return body(access.url)
+    var needsReapproval: Bool {
+        var isDirectory: ObjCBool = false
+        return !FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) || !isDirectory.boolValue
     }
 
     var actionIdentifier: String { Self.actionPrefix + id.uuidString.lowercased() }
@@ -382,9 +363,6 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func focusedFinderFolderPath() -> String? {
-#if APP_STORE
-        return nil
-#else
         let source = """
         tell application "Finder"
             if (count of windows) is 0 then return ""
@@ -401,7 +379,6 @@ final class CompanionStore: NSObject, ObservableObject {
               let path = descriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
               !path.isEmpty else { return nil }
         return path
-#endif
     }
 
     @objc private func frontmostApplicationDidChange(_: Notification) {
@@ -419,13 +396,13 @@ final class CompanionStore: NSObject, ObservableObject {
     func chooseFolder(restoring folder: ApprovedFolder? = nil) {
         folderMessage = nil
         let panel = NSOpenPanel()
-        panel.title = folder.map { "Restore access to \($0.name)" } ?? "Choose a folder for your display"
-        panel.prompt = folder == nil ? "Add Folder" : "Restore Access"
+        panel.title = folder.map { "Choose a new location for \($0.name)" } ?? "Choose a folder for your display"
+        panel.prompt = folder == nil ? "Add Folder" : "Choose Folder"
         if let folder {
             if folder.path.hasPrefix("/") {
                 panel.directoryURL = URL(fileURLWithPath: folder.path).deletingLastPathComponent()
             }
-            panel.message = "Select this folder again to restore access. Existing display cards will keep using it."
+            panel.message = "Choose the folder that should be used by this display card."
         }
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -434,33 +411,16 @@ final class CompanionStore: NSObject, ObservableObject {
         guard panel.runModal() == .OK, let selected = panel.url else { return }
 
         let url = selected.standardizedFileURL
-        if let folder, folder.path.hasPrefix("/"),
-           URL(fileURLWithPath: folder.path).standardizedFileURL.path != url.path {
-            folderMessage = "Select \(folder.name) at \(folder.path) to restore its access. Use Add Folder to share a different folder."
-            return
-        }
         if let folder, approvedFolders.contains(where: { $0.id != folder.id && $0.path == url.path }) {
-            folderMessage = "That folder is already available. Select the folder you want to restore."
-            return
-        }
-        guard let bookmarkData = try? url.bookmarkData(
-            options: [.withSecurityScope],
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        ) else {
-            folderMessage = "macOS could not save access to that folder. Please select it again."
+            folderMessage = "That folder is already available. Choose a different folder."
             return
         }
         if let folder {
-            refreshBookmark(for: folder, with: bookmarkData)
-            folderMessage = "Access restored for \(folder.name)."
-            if isConnected { connection.publishCatalogue() }
-            return
-        }
-        if let legacyFolder = approvedFolders.first(where: {
-            $0.needsReapproval && URL(fileURLWithPath: $0.path).standardizedFileURL.path == url.path
-        }) {
-            refreshBookmark(for: legacyFolder, with: bookmarkData)
+            guard let index = approvedFolders.firstIndex(where: { $0.id == folder.id }) else { return }
+            foldersNeedingAccess.remove(folder.id)
+            approvedFolders[index] = ApprovedFolder(id: folder.id, name: folder.name, path: url.path)
+            persistApprovedFolders()
+            folderMessage = "Folder updated for \(folder.name)."
             if isConnected { connection.publishCatalogue() }
             return
         }
@@ -469,7 +429,7 @@ final class CompanionStore: NSObject, ObservableObject {
             return
         }
         let displayName = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-        approvedFolders.append(ApprovedFolder(id: UUID(), name: displayName, bookmarkData: bookmarkData))
+        approvedFolders.append(ApprovedFolder(id: UUID(), name: displayName, path: url.path))
         approvedFolders.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         persistApprovedFolders()
         if isConnected { connection.publishCatalogue() }
@@ -489,12 +449,6 @@ final class CompanionStore: NSObject, ObservableObject {
         }
     }
 
-    private func refreshBookmark(for folder: ApprovedFolder, with data: Data) {
-        guard let index = approvedFolders.firstIndex(where: { $0.id == folder.id }) else { return }
-        foldersNeedingAccess.remove(folder.id)
-        approvedFolders[index] = ApprovedFolder(id: folder.id, name: folder.name, bookmarkData: data)
-        persistApprovedFolders()
-    }
     func connect() { connection.connect(mode: .authenticate) }
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
@@ -656,24 +610,16 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Blocked an unavailable folder")
             return false
         }
-        guard let access = folder.securityScopedURL(),
-              access.url.startAccessingSecurityScopedResource() else {
-            foldersNeedingAccess.insert(folder.id)
-            folderMessage = "Restore access to \(folder.name) to open it from your display."
-            updateStatus("Restore this folder’s access in Folders")
-            return false
-        }
-        defer { access.url.stopAccessingSecurityScopedResource() }
-        if let refreshedBookmarkData = access.refreshedBookmarkData {
-            refreshBookmark(for: folder, with: refreshedBookmarkData)
-        }
+        let url = URL(fileURLWithPath: folder.path)
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: access.url.path, isDirectory: &isDirectory),
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
-            updateStatus("The selected folder is no longer available")
+            foldersNeedingAccess.insert(folder.id)
+            folderMessage = "Choose a new location for \(folder.name) in Folders."
+            updateStatus("This folder is no longer available")
             return false
         }
-        return NSWorkspace.shared.open(access.url)
+        return NSWorkspace.shared.open(url)
     }
 
     func perform(actionIdentifier: String) async -> Bool {
@@ -691,11 +637,6 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Blocked an invalid keyboard shortcut")
             return false
         }
-#if APP_STORE
-        _ = shortcut
-        updateStatus("This action is unavailable in the App Store edition")
-        return false
-#else
         guard shortcut.isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else {
             updateStatus("Window tiling requires macOS 15 or later")
             return false
@@ -705,7 +646,6 @@ final class CompanionStore: NSObject, ObservableObject {
             return false
         }
         return true
-#endif
     }
 
     func setMediaControlValue(_ value: Int, controlIdentifier: String) -> Bool {

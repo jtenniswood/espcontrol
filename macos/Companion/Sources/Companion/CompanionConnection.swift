@@ -565,19 +565,11 @@ final class CompanionConnection: NSObject {
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
         lastFocusedActionIdentifier = nil
-#if APP_STORE
-        let supportedWindowActions: [String] = []
-#else
         let supportedWindowActions = Self.supportedWindowActionIDs(
             for: ProcessInfo.processInfo.operatingSystemVersion
         )
-#endif
         var capabilities = (store.mediaActionsAvailable ? ["media_actions"] : []) + supportedWindowActions
-#if !APP_STORE
         capabilities.append("keyboard_shortcuts")
-#else
-        capabilities.append("keyboard_shortcuts_unavailable")
-#endif
         sendJSON(["type": "capabilities", "values": capabilities])
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.

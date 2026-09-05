@@ -29,19 +29,19 @@ final class ApprovedFolderTests: XCTestCase {
             "")
     }
 
-    func testBookmarkRepresentationDoesNotPersistFolderPath() throws {
+    func testFolderRepresentationPersistsLocalPath() throws {
         let identifier = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
-        let folder = ApprovedFolder(id: identifier, name: "Projects", bookmarkData: Data([1, 2, 3]))
+        let folder = ApprovedFolder(id: identifier, name: "Projects", path: "/Users/example/Projects")
         let data = try JSONEncoder().encode(folder)
         let encoded = try XCTUnwrap(String(data: data, encoding: .utf8))
 
-        XCTAssertTrue(encoded.contains("bookmarkData"))
-        XCTAssertFalse(encoded.contains("path"))
-        XCTAssertFalse(encoded.contains("Users"))
+        XCTAssertTrue(encoded.contains("path"))
+        XCTAssertTrue(encoded.contains("/Users/example/Projects"))
+        XCTAssertFalse(encoded.contains("bookmarkData"))
         XCTAssertEqual(try JSONDecoder().decode(ApprovedFolder.self, from: data), folder)
     }
 
-    func testLegacyPathDataLoadsAsNeedingFolderReapproval() throws {
+    func testMissingFolderIsMarkedAsNeedingLocationUpdate() throws {
         let data = Data(#"{"id":"00000000-0000-0000-0000-000000000003","name":"Projects","path":"/Users/example/Projects"}"#.utf8)
         let folder = try JSONDecoder().decode(ApprovedFolder.self, from: data)
 

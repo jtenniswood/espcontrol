@@ -398,13 +398,6 @@ private struct CompanionOnboarding: View {
                 title: "Enable shortcut support",
                 summary: "Shortcut and window-control cards need macOS Accessibility permission to send commands to your active Mac app."
             ) {
-#if APP_STORE
-                Label("Unavailable in the App Store edition", systemImage: "info.circle")
-                    .foregroundStyle(.secondary)
-                Text("Use the direct-download edition of EspControl Companion for keyboard shortcuts and window controls. Then allow the app in System Settings → Privacy & Security → Accessibility.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-#else
                 if accessibilityGranted {
                     Label("Accessibility support is enabled", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
@@ -415,7 +408,6 @@ private struct CompanionOnboarding: View {
                     Button("Enable Support…") { enableAccessibility() }
                         .buttonStyle(.borderedProminent)
                 }
-#endif
             }
         case 1:
             CompanionOnboardingPage(
@@ -449,18 +441,14 @@ private struct CompanionOnboarding: View {
     }
 
     private func refreshAccessibilityStatus() {
-#if !APP_STORE
         accessibilityGranted = CompanionAccessibilityAuthorizer.shared.hasAccess
-#endif
     }
 
     private func enableAccessibility() {
-#if !APP_STORE
         _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
         }
-#endif
     }
 }
 
@@ -756,9 +744,9 @@ private struct CompanionSettings: View {
                                     .truncationMode(.middle)
                                     .help(folder.path)
                                 if store.folderNeedsAccess(folder) {
-                                    Label("Access needed", systemImage: "exclamationmark.triangle")
+                                    Label("Folder unavailable", systemImage: "exclamationmark.triangle")
                                         .font(.callout)
-                                    Button("Restore Access…") { store.chooseFolder(restoring: folder) }
+                                    Button("Choose Again…") { store.chooseFolder(restoring: folder) }
                                 }
                             }
                             Spacer()
@@ -822,12 +810,6 @@ private struct CompanionSettings: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section("Keyboard & Window Controls") {
-#if APP_STORE
-                Label("Keyboard shortcuts unavailable in this edition", systemImage: "info.circle")
-                Text("The App Store edition cannot send keyboard shortcuts or control windows. Use the direct-download edition, then allow EspControl Companion in System Settings → Privacy & Security → Accessibility.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-#else
                 Label(accessibilityGranted ? "Accessibility access enabled" : "Accessibility access needed",
                       systemImage: accessibilityGranted ? "checkmark.circle" : "lock")
                 if accessibilityGranted {
@@ -845,7 +827,6 @@ private struct CompanionSettings: View {
                         NSWorkspace.shared.open(url)
                     }
                 }
-#endif
             }
             Section("Help") {
                 Link("EspControl Support", destination: CompanionStore.supportURL)
@@ -857,8 +838,6 @@ private struct CompanionSettings: View {
     }
 
     private func refreshAccessibilityStatus() {
-#if !APP_STORE
         accessibilityGranted = CompanionAccessibilityAuthorizer.shared.hasAccess
-#endif
     }
 }

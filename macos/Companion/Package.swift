@@ -2,8 +2,6 @@
 import Foundation
 import PackageDescription
 
-let appStoreBuild = ProcessInfo.processInfo.environment["ESPCONTROL_APP_STORE"] == "1"
-
 let package = Package(
     name: "EspControlCompanion",
     platforms: [.macOS(.v13)],
@@ -17,9 +15,8 @@ let package = Package(
         ),
         .executableTarget(
             name: "Companion",
-            dependencies: appStoreBuild ? [] : ["MediaRemoteShim"],
+            dependencies: ["MediaRemoteShim"],
             path: "Sources/Companion",
-            swiftSettings: appStoreBuild ? [.define("APP_STORE")] : [],
             linkerSettings: [
                 .linkedFramework("IOKit"),
                 .linkedFramework("SystemConfiguration"),
@@ -28,8 +25,7 @@ let package = Package(
         .testTarget(
             name: "CompanionTests",
             dependencies: ["Companion"],
-            path: "Tests/CompanionTests",
-            swiftSettings: appStoreBuild ? [.define("APP_STORE")] : []
+            path: "Tests/CompanionTests"
         ),
     ]
 )

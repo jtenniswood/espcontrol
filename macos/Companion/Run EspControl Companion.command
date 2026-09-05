@@ -9,7 +9,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
 fi
 
 if ! command -v swift >/dev/null 2>&1; then
-  echo "Swift is unavailable. Install Xcode from the App Store, open it once, then try again."
+  echo "Swift is unavailable. Install Xcode from Apple's developer tools, open it once, then try again."
   exit 1
 fi
 

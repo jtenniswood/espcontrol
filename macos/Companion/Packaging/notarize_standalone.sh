@@ -7,9 +7,9 @@ if [[ -z "${APP_PATH}" || ! -d "${APP_PATH}" ]]; then
     exit 2
 fi
 
-: "${NOTARY_KEY_PATH:?Set NOTARY_KEY_PATH to the App Store Connect API .p8 key}"
-: "${NOTARY_KEY_ID:?Set NOTARY_KEY_ID to the App Store Connect API key ID}"
-: "${NOTARY_ISSUER_ID:?Set NOTARY_ISSUER_ID to the App Store Connect issuer ID}"
+: "${NOTARY_KEY_PATH:?Set NOTARY_KEY_PATH to the Apple notary API .p8 key}"
+: "${NOTARY_KEY_ID:?Set NOTARY_KEY_ID to the Apple notary API key ID}"
+: "${NOTARY_ISSUER_ID:?Set NOTARY_ISSUER_ID to the Apple notary issuer ID}"
 
 APP_DIR="$(cd "$(dirname "${APP_PATH}")" && pwd)"
 APP_NAME="$(basename "${APP_PATH}")"

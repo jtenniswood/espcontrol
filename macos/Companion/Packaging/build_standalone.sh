@@ -27,13 +27,13 @@ rm -rf "${APP_DIR}" "${OUTPUT_DIR}/AppIcon.iconset" "${OUTPUT_DIR}/generate_maco
 mkdir -p "${APP_DIR}/Contents/MacOS" "${APP_DIR}/Contents/Resources"
 
 echo "Building the standalone Companion product…"
-ESPCONTROL_APP_STORE=0 swift build \
+swift build \
     --package-path "${PROJECT_DIR}" \
     --configuration release \
     --product "${EXECUTABLE_NAME}" \
     -Xswiftc -warnings-as-errors
 
-BUILD_BIN_PATH="$(ESPCONTROL_APP_STORE=0 swift build \
+BUILD_BIN_PATH="$(swift build \
     --package-path "${PROJECT_DIR}" \
     --configuration release \
     --product "${EXECUTABLE_NAME}" \

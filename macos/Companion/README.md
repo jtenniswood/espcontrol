@@ -1,6 +1,6 @@
 # EspControl Companion for macOS
 
-EspControl Companion is a native macOS 13+ menu-bar app for securely connecting a Mac to an EspControl display. It is intended to be distributed as a standalone Developer ID app outside the Mac App Store. The standalone packaging instructions are below; the legacy App Store packaging notes are in [APP_STORE.md](APP_STORE.md).
+EspControl Companion is a native macOS 13+ menu-bar app for securely connecting a Mac to an EspControl display. It is distributed as a standalone Developer ID app.
 
 For the quickest local test, double-click **Run EspControl Companion.command**. macOS may ask you to confirm that you want to open a downloaded script. Keep its Terminal window open while testing; press Control-C there to stop the app.
 
@@ -19,7 +19,7 @@ ALLOW_ADHOC=1 ./Packaging/build_standalone.sh
 
 The output is `./.build/standalone/EspControl Companion.app`. For distribution, set `CODE_SIGN_IDENTITY` to a Developer ID Application certificate and notarize the resulting app. This bundle is not App Sandbox-restricted, so shortcut and window-control cards can use macOS Accessibility after the user grants permission.
 
-The manual release workflow signs and notarizes this standalone app for each firmware release. Configure these repository secrets before using it: `MACOS_DEVELOPER_ID_P12_BASE64`, `MACOS_DEVELOPER_ID_P12_PASSWORD`, `MACOS_DEVELOPER_ID_APPLICATION`, `APPLE_NOTARY_KEY_BASE64`, `APPLE_NOTARY_KEY_ID`, and `APPLE_NOTARY_ISSUER_ID`. The certificate must be a Developer ID Application certificate, and the API key must be an App Store Connect key permitted to submit software for notarization. The workflow uploads the stapled, verified ZIP to the GitHub release.
+The manual release workflow signs and notarizes this standalone app for each firmware release. Configure these repository secrets before using it: `MACOS_DEVELOPER_ID_P12_BASE64`, `MACOS_DEVELOPER_ID_P12_PASSWORD`, `MACOS_DEVELOPER_ID_APPLICATION`, `APPLE_NOTARY_KEY_BASE64`, `APPLE_NOTARY_KEY_ID`, and `APPLE_NOTARY_ISSUER_ID`. The certificate must be a Developer ID Application certificate, and the API key must be permitted to submit software for notarization. The workflow uploads the stapled, verified ZIP to the GitHub release.
 
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. Installed applications are available to launch or to open validated `http://` and `https://` links. Finder folders are separate: add folders with the native picker in the app's **Folders** page, then select one for each Open folder card in the panel web editor. The app can replay keyboard shortcuts created in the panel's web editor; macOS Accessibility permission is required the first time a shortcut is used.
 
@@ -38,7 +38,7 @@ After pairing, use the **Applications** page to approve only the installed apps
 that the display may discover, launch, or control. The approved list is stored
 locally on the Mac and can be changed at any time. Search by name; the toolbar actions enable or disable only the applications currently shown.
 
-In **Folders**, use **Restore Access…** if macOS needs permission again. Removing a folder asks for confirmation and does not delete any files. In non-App Store builds, **General → Keyboard & Window Controls** shows Accessibility access and opens the relevant System Settings page. Simply viewing Companion settings does not request permission.
+In **Folders**, use **Choose Again…** if a folder has been moved or removed. Removing a folder asks for confirmation and does not delete any files. **General → Keyboard & Window Controls** shows Accessibility access and opens the relevant System Settings page. Simply viewing Companion settings does not request permission.
 
 Enable **General → Share Mac system statistics** to share overall processor and memory usage, startup-disk storage, combined network throughput on the primary interface, and battery level when the Mac has a battery. Memory and storage cards can show either used or free capacity. No additional macOS permission is required, and it does not collect application, file, browsing, or network-content details. Choose the corresponding type on a Companion card to show a reading.
 
