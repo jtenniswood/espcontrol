@@ -599,6 +599,7 @@ def publish_draft_release(
     release_contract: Path | None = None,
     web_manifest: Path | None = None,
     web_root: Path | None = None,
+    additional_files: list[Path] | None = None,
     gh_runner=run_gh,
 ) -> None:
     require_file(notes_file, "release notes")
@@ -609,9 +610,13 @@ def publish_draft_release(
         base_dir, slugs, version, source_revision, release_contract, web_manifest, web_root,
         recovery_slugs,
     )
-    files = verify_release_inventory(
+    firmware_files = verify_release_inventory(
         base_dir, slugs, recovery_slugs, include_release_manifest=True
     )
+    extra_files = additional_files or []
+    for path in extra_files:
+        require_file(path, "additional release asset")
+    files = firmware_files + extra_files
 
     release = load_release_from_github(repo, version, gh_runner)
     assert_draft_release(release, version)
@@ -834,6 +839,7 @@ def cmd_publish_draft(args: argparse.Namespace) -> None:
         Path(args.release_contract),
         Path(args.web_manifest),
         Path(args.web_root),
+        additional_files=[Path(path) for path in args.additional_files],
     )
 
 
@@ -947,6 +953,9 @@ def build_parser() -> argparse.ArgumentParser:
     publish_draft_cmd.add_argument("--release-contract", required=True)
     publish_draft_cmd.add_argument("--web-manifest", required=True)
     publish_draft_cmd.add_argument("--web-root", required=True)
+    publish_draft_cmd.add_argument(
+        "--additional-files", nargs="*", default=[], help="Additional release assets to upload"
+    )
     publish_draft_cmd.set_defaults(func=cmd_publish_draft)
 
     verify_pages_cmd = sub.add_parser("verify-pages", help="Verify public GitHub Pages firmware")

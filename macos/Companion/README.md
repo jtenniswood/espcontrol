@@ -19,6 +19,8 @@ ALLOW_ADHOC=1 ./Packaging/build_standalone.sh
 
 The output is `./.build/standalone/EspControl Companion.app`. For distribution, set `CODE_SIGN_IDENTITY` to a Developer ID Application certificate and notarize the resulting app. This bundle is not App Sandbox-restricted, so shortcut and window-control cards can use macOS Accessibility after the user grants permission.
 
+The manual release workflow signs and notarizes this standalone app for each firmware release. Configure these repository secrets before using it: `MACOS_DEVELOPER_ID_P12_BASE64`, `MACOS_DEVELOPER_ID_P12_PASSWORD`, `MACOS_DEVELOPER_ID_APPLICATION`, `APPLE_NOTARY_KEY_BASE64`, `APPLE_NOTARY_KEY_ID`, and `APPLE_NOTARY_ISSUER_ID`. The certificate must be a Developer ID Application certificate, and the API key must be an App Store Connect key permitted to submit software for notarization. The workflow uploads the stapled, verified ZIP to the GitHub release.
+
 For Xcode debugging, open `Package.swift`, choose **EspControl Companion**, and click Run. Installed applications are available to launch or to open validated `http://` and `https://` links. Finder folders are separate: add folders with the native picker in the app's **Folders** page, then select one for each Open folder card in the panel web editor. The app can replay keyboard shortcuts created in the panel's web editor; macOS Accessibility permission is required the first time a shortcut is used.
 
 On first launch, the setup guide walks through Accessibility for shortcut and window-control cards, optional Mac statistics sharing, and opening Companion at login. Use **General → Run Setup Guide…** to review these choices later.

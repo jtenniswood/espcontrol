@@ -411,9 +411,94 @@ jobs:
           name: release-dist
           path: dist/
 
+  companion-release:
+    name: Sign and notarize Companion
+    needs: preflight
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+
+      - name: Sign, notarize, staple, and verify Companion
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.MACOS_DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.MACOS_DEVELOPER_ID_P12_PASSWORD }}
+          DEVELOPER_ID_APPLICATION: ${{ secrets.MACOS_DEVELOPER_ID_APPLICATION }}
+          NOTARY_KEY_BASE64: ${{ secrets.APPLE_NOTARY_KEY_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          for required in \
+            DEVELOPER_ID_P12_BASE64 \
+            DEVELOPER_ID_P12_PASSWORD \
+            DEVELOPER_ID_APPLICATION \
+            NOTARY_KEY_BASE64 \
+            NOTARY_KEY_ID \
+            NOTARY_ISSUER_ID; do
+            if [[ -z "${!required}" ]]; then
+              echo "Missing required repository secret for Companion notarization: ${required}" >&2
+              exit 2
+            fi
+          done
+
+          COMPANION_VERSION="${RELEASE_TAG#v}"
+          if [[ ! "${COMPANION_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must be a stable semantic version for the Companion bundle: ${RELEASE_TAG}" >&2
+            exit 2
+          fi
+
+          KEYCHAIN_PATH="${RUNNER_TEMP}/espcontrol-companion-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          CERT_PATH="${RUNNER_TEMP}/espcontrol-developer-id.p12"
+          NOTARY_KEY_PATH="${RUNNER_TEMP}/AuthKey_${NOTARY_KEY_ID}.p8"
+          OUTPUT_DIR="${RUNNER_TEMP}/espcontrol-companion"
+          cleanup() {
+            security delete-keychain "${KEYCHAIN_PATH}" >/dev/null 2>&1 || true
+            rm -f "${CERT_PATH}" "${NOTARY_KEY_PATH}"
+          }
+          trap cleanup EXIT
+
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          printf '%s' "${DEVELOPER_ID_P12_BASE64}" | base64 -D > "${CERT_PATH}"
+          security import "${CERT_PATH}" \
+            -k "${KEYCHAIN_PATH}" \
+            -P "${DEVELOPER_ID_P12_PASSWORD}" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+          security list-keychains -d user -s "${KEYCHAIN_PATH}"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+
+          MARKETING_VERSION="${COMPANION_VERSION}" \
+          CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+          CODE_SIGN_IDENTITY="${DEVELOPER_ID_APPLICATION}" \
+          OUTPUT_DIR="${OUTPUT_DIR}" \
+          ./macos/Companion/Packaging/build_standalone.sh
+
+          printf '%s' "${NOTARY_KEY_BASE64}" | base64 -D > "${NOTARY_KEY_PATH}"
+          chmod 600 "${NOTARY_KEY_PATH}"
+          NOTARY_KEY_PATH="${NOTARY_KEY_PATH}" \
+          NOTARY_KEY_ID="${NOTARY_KEY_ID}" \
+          NOTARY_ISSUER_ID="${NOTARY_ISSUER_ID}" \
+          ./macos/Companion/Packaging/notarize_standalone.sh \
+            "${OUTPUT_DIR}/EspControl Companion.app"
+
+      - name: Upload notarized Companion release asset
+        uses: actions/upload-artifact@v7
+        with:
+          name: espcontrol-companion-release
+          path: ${{ runner.temp }}/espcontrol-companion/EspControl Companion-*.zip
+          if-no-files-found: error
+
   publish:
     name: Publish Verified Draft
-    needs: [preflight, assemble-release]
+    needs: [preflight, assemble-release, companion-release]
     runs-on: self-hosted
     steps:
       - name: Prepare self-hosted workspace
@@ -431,6 +516,12 @@ jobs:
           name: release-dist
           path: dist
 
+      - name: Download notarized Companion release
+        uses: actions/download-artifact@v8
+        with:
+          name: espcontrol-companion-release
+          path: dist/companion
+
       - name: Upload, verify, and publish draft release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -438,6 +529,11 @@ jobs:
         run: |
           mapfile -t DEVICE_SLUGS < <(python3 scripts/device_matrix.py release | jq -r '.include[].slug')
           mapfile -t RECOVERY_SLUGS < <(python3 scripts/device_matrix.py release | jq -r '.include[] | select(.recovery) | .slug')
+          COMPANION_ZIP="$(find dist/companion -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          if [[ -z "${COMPANION_ZIP}" ]]; then
+            echo "The notarized Companion release asset is missing" >&2
+            exit 1
+          fi
           python3 scripts/firmware_release.py publish-draft \
             --version "${RELEASE_TAG}" \
             --dir dist/firmware \
@@ -448,4 +544,5 @@ jobs:
             --source-revision "${{ needs.preflight.outputs.source_sha }}" \
             --release-contract product/release_contract.json \
             --web-manifest docs/public/webserver/web-assets.json \
-            --web-root docs/public/webserver
+            --web-root docs/public/webserver \
+            --additional-files "${COMPANION_ZIP}"

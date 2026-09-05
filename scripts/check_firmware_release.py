@@ -309,6 +309,7 @@ def publish_release(
     notes: Path,
     github: FakeGitHub,
     recovery_slugs: list[str] | None = None,
+    additional_files: list[Path] | None = None,
 ) -> None:
     web_manifest = web_manifest_for(base, slugs)
     firmware_release.publish_draft_release(
@@ -322,6 +323,7 @@ def publish_release(
         RELEASE_CONTRACT,
         web_manifest,
         WEB_ROOT,
+        additional_files=additional_files,
         gh_runner=github,
     )
 
@@ -696,6 +698,26 @@ def test_draft_release_publishes_only_after_remote_asset_verification() -> None:
             ["release", "edit"],
             ["release", "view"],
         ]
+
+
+def test_draft_release_can_publish_a_verified_companion_asset() -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        base = root / "firmware"
+        base.mkdir()
+        make_release_files(base)
+        companion = root / "EspControl Companion-v9.8.7.zip"
+        companion.write_bytes(b"notarized companion placeholder")
+        notes = root / "release-notes.md"
+        notes.write_text("Verified release notes\n", encoding="utf-8")
+        github = FakeGitHub(VERSION)
+        record_release_provenance(base, [SLUG])
+
+        publish_release(base, [SLUG], notes, github, additional_files=[companion])
+
+        upload = next(call for call in github.calls if call[:2] == ["release", "upload"])
+        assert str(companion) in upload
+        assert github.draft is False
 
 
 def test_published_or_mismatched_asset_release_stays_unpublished() -> None:
