@@ -90,6 +90,7 @@ Right-click a card and open **Size** to choose:
 - **Extra Tall** - spans three rows.
 - **Wide** - spans two columns.
 - **Extra Wide** - spans three columns.
+- **Ultra Wide** - spans five columns and is available on screens with a five-column grid.
 - **Large** - spans a 2 x 2 area.
 - **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
 - **Max Wide** - spans a 3 x 2 area and is available for Camera cards.

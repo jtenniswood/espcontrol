@@ -10,6 +10,7 @@ import {
     CARD_SIZE_PORTRAIT_LARGE,
     CARD_SIZE_SINGLE,
     CARD_SIZE_TALL,
+    CARD_SIZE_ULTRA_WIDE,
     CARD_SIZE_WIDE,
 } from "../model/grid";
 import { mdiIcon } from "./ui_primitives";
@@ -79,6 +80,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
+        cardSupportsUltraWideSize,
         normalizeCardSizeForConfig,
         getSubpage,
         serializeSubpageGrid,
@@ -199,6 +201,8 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             options.push({ size: CARD_SIZE_EXTRA_TALL, label: "Extra Tall (3x1)" });
             options.push({ size: CARD_SIZE_WIDE, label: "Wide (1x2)" });
             options.push({ size: CARD_SIZE_EXTRA_WIDE, label: "Extra Wide (1x3)" });
+            if (cardSupportsUltraWideSize(b))
+                options.push({ size: CARD_SIZE_ULTRA_WIDE, label: "Ultra Wide (1x5)" });
         }
         options.push({ size: CARD_SIZE_LARGE, label: "Large (2x2)" });
         if (cardSupportsExtraLargeSize(b) && dependencies.layout.gridCols >= 3 && dependencies.layout.gridRows >= 3)
@@ -353,6 +357,8 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             addSubItem(sub, "", "Extra Tall (3x1)", function (this: any) { resizeSlot(-2, 5); }, bkSz === 5);
             addSubItem(sub, "", "Wide (1x2)", function (this: any) { resizeSlot(-2, 3); }, bkSz === 3);
             addSubItem(sub, "", "Extra Wide (1x3)", function (this: any) { resizeSlot(-2, 6); }, bkSz === 6);
+            if (cardSupportsUltraWideSize(null))
+                addSubItem(sub, "", "Ultra Wide (1x5)", function (this: any) { resizeSlot(-2, CARD_SIZE_ULTRA_WIDE); }, bkSz === CARD_SIZE_ULTRA_WIDE);
             addSubItem(sub, "", "Large (2x2)", function (this: any) { resizeSlot(-2, 4); }, bkSz === 4);
         });
     }

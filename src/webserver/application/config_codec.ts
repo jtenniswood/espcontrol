@@ -9,6 +9,7 @@ import {
     CARD_SIZE_MAX_WIDE,
     CARD_SIZE_PORTRAIT_LARGE,
     CARD_SIZE_SINGLE,
+    CARD_SIZE_ULTRA_WIDE,
 } from "../model/grid";
 import {
     cardContractDefaultConfig,
@@ -196,8 +197,13 @@ export function createConfigCodecFeature(
     function cardSupportsLandscapeLargeSize(this: any, b?: any) {
         return cardSupportsMaxSize(b) && layout.gridRows >= 3 && layout.gridCols >= 4;
     }
+    function cardSupportsUltraWideSize(this: any, b?: any) {
+        return !cardRequiresSquareSize(b) && layout.gridCols >= 5;
+    }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        // Wi-Fi sharing keeps its own allow-list, so it stays ahead of the
+        // wider spans and never resolves to Ultra Wide.
         if (cardIsWifiSharing(b)) {
             if (size === CARD_SIZE_SINGLE || size === CARD_SIZE_LARGE)
                 return size;
@@ -208,6 +214,8 @@ export function createConfigCodecFeature(
                 return size;
             return CARD_SIZE_SINGLE;
         }
+        if (size === CARD_SIZE_ULTRA_WIDE)
+            return cardSupportsUltraWideSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_LANDSCAPE_LARGE)
             return cardSupportsLandscapeLargeSize(b) ? size : CARD_SIZE_SINGLE;
         if (size === CARD_SIZE_PORTRAIT_LARGE)
@@ -1028,6 +1036,7 @@ export function createConfigCodecFeature(
         cardSupportsMaxSize,
         cardSupportsPortraitLargeSize,
         cardSupportsLandscapeLargeSize,
+        cardSupportsUltraWideSize,
         normalizeCardSizeForConfig,
         isBrightnessSliderType,
         isFanCardType,
