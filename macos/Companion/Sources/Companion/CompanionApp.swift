@@ -557,12 +557,10 @@ private struct CompanionSettings: View {
                                 .buttonStyle(.borderedProminent)
                         }
                         Spacer()
+                        Button("Forget Display…", role: .destructive) { confirmingForget = true }
                         Button("Customize Display") { store.openPanelWebServer() }
                             .help("Open the display’s configuration in your browser")
                     }
-                }
-                Section {
-                    Button("Forget Display…", role: .destructive) { confirmingForget = true }
                 }
             } else {
                 Section {
@@ -628,14 +626,6 @@ private struct CompanionSettings: View {
                      : store.connectionRecoveryMessage)
                     .font(.callout)
                     .foregroundStyle(.secondary)
-            }
-            if !store.statusDescription.isEmpty {
-                DisclosureGroup("Connection Details") {
-                    Text(store.statusDescription)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
             }
         }
     }

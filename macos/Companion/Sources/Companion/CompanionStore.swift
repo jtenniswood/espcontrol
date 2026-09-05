@@ -104,7 +104,6 @@ final class CompanionStore: NSObject, ObservableObject {
     @Published private(set) var availableApps: [LaunchableApp] = []
     @Published private(set) var approvedApplicationIdentifiers: Set<String>
     @Published private(set) var approvedFolders: [ApprovedFolder]
-    @Published private(set) var statusDescription = "Not connected"
     @Published private(set) var isConnected = false
     @Published private(set) var connectionState: CompanionConnectionState = .disconnected
     @Published private(set) var connectionRecoveryMessage = ""
@@ -489,7 +488,6 @@ final class CompanionStore: NSObject, ObservableObject {
         pairingAccount = ""
         connection.disconnect()
         panelHost = ""
-        statusDescription = "Display forgotten"
     }
 
     func updateConnectionStatus(_ message: String, state: CompanionConnectionState, recovery: String? = nil) {
@@ -515,7 +513,6 @@ final class CompanionStore: NSObject, ObservableObject {
 
     func updateStatus(_ message: String) {
         print("[EspControl Companion] \(message)")
-        statusDescription = message
     }
 
     private func updateSystemMetricsProvider() {
