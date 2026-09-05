@@ -648,6 +648,30 @@ private struct CompanionSettings: View {
                     .foregroundStyle(.secondary)
             }
             Section {
+                HStack(spacing: 12) {
+                    Menu {
+                        Button(isSearching ? "Enable All Results" : "Enable All Applications") {
+                            store.setApplications(filteredApplications, approved: true)
+                        }
+                        .disabled(filteredApplications.isEmpty || filteredApplications.allSatisfy(store.applicationIsApproved))
+                        Button(isSearching ? "Disable All Results" : "Disable All Applications") {
+                            store.setApplications(filteredApplications, approved: false)
+                        }
+                        .disabled(!filteredApplications.contains(where: store.applicationIsApproved))
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Application Actions")
+                    .help("Enable or disable the applications shown")
+                    Button { store.refreshApplications() } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .accessibilityLabel("Refresh Applications")
+                    .help("Refresh installed applications")
+                    Spacer()
+                }
+            }
+            Section {
                 if store.availableApps.isEmpty {
                     emptyState("No Applications Found", symbol: "app.dashed",
                                detail: "Install applications in your Applications folder, then refresh this list.")
@@ -675,27 +699,6 @@ private struct CompanionSettings: View {
         .formStyle(.grouped)
         .searchable(text: $applicationSearch, placement: .toolbar, prompt: "Search Applications")
         .navigationTitle("Applications")
-        .toolbar {
-            ToolbarItemGroup {
-                Menu {
-                    Button(isSearching ? "Enable All Results" : "Enable All Applications") {
-                        store.setApplications(filteredApplications, approved: true)
-                    }
-                    .disabled(filteredApplications.isEmpty || filteredApplications.allSatisfy(store.applicationIsApproved))
-                    Button(isSearching ? "Disable All Results" : "Disable All Applications") {
-                        store.setApplications(filteredApplications, approved: false)
-                    }
-                    .disabled(!filteredApplications.contains(where: store.applicationIsApproved))
-                } label: {
-                    Label("Application Actions", systemImage: "ellipsis.circle")
-                }
-                .help("Enable or disable the applications shown")
-                Button { store.refreshApplications() } label: {
-                    Label("Refresh Applications", systemImage: "arrow.clockwise")
-                }
-                .help("Refresh installed applications")
-            }
-        }
     }
 
     private var isSearching: Bool { !applicationSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
