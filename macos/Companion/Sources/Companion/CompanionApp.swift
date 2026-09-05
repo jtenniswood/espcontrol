@@ -9,7 +9,8 @@ struct CompanionApp: App {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            CompanionSettings(store: appDelegate.store)
+                .frame(minWidth: 760, minHeight: 500)
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
@@ -21,11 +22,10 @@ struct CompanionApp: App {
 }
 
 @MainActor
-final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate {
     private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
-    private var settingsWindow: NSWindow?
     private var connectionObservation: AnyCancellable?
     private var instanceLockFileDescriptor: Int32 = -1
 
@@ -83,15 +83,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
         return false
     }
 
-    func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow,
-              window === settingsWindow else { return }
-        DispatchQueue.main.async {
-            guard self.settingsWindow?.isVisible != true else { return }
-            NSApp.setActivationPolicy(.accessory)
-        }
-    }
-
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
@@ -140,33 +131,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSWin
 
     func openCompanionWindow() {
         activateCompanionApplication()
-        if settingsWindow == nil {
-            let content = CompanionSettings(store: store)
-                .frame(minWidth: 760, minHeight: 500)
-            let controller = NSHostingController(rootView: content)
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "EspControl Companion"
-            window.titleVisibility = .visible
-            window.titlebarAppearsTransparent = true
-            window.titlebarSeparatorStyle = .none
-            window.toolbarStyle = .unified
-            window.isMovableByWindowBackground = false
-            window.contentMinSize = NSSize(width: 760, height: 500)
-            window.contentViewController = controller
-            window.delegate = self
-            window.isReleasedWhenClosed = false
-            window.center()
-            settingsWindow = window
-        }
-        settingsWindow?.level = .normal
-        settingsWindow?.makeKeyAndOrderFront(nil)
-        settingsWindow?.orderFrontRegardless()
-        activateCompanionApplication()
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
 }
@@ -284,6 +249,10 @@ private struct CompanionSettings: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                Text(store.statusDescription)
+                    .font(.callout)
+                    .foregroundStyle(store.isConnected ? .green : .secondary)
+                    .accessibilityLabel("Connection status: \(store.statusDescription)")
 
                 if hasPanelAddress {
                     NativeSettingsRow(
@@ -332,6 +301,10 @@ private struct CompanionSettings: View {
                 }
 
                 Text("Press and hold the Wi-Fi icon on the display, then enter its local address and the code shown on the touchscreen.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Text("For privacy, Companion only connects to local-network addresses such as private IP addresses or .local host names.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

@@ -76,6 +76,7 @@ fi
 plutil -replace CFBundleIdentifier -string "${BUNDLE_IDENTIFIER}" "${APP_DIR}/Contents/Info.plist"
 plutil -replace CFBundleShortVersionString -string "${VERSION}" "${APP_DIR}/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "${BUILD_NUMBER}" "${APP_DIR}/Contents/Info.plist"
+plutil -remove NSAppleEventsUsageDescription "${APP_DIR}/Contents/Info.plist" 2>/dev/null || true
 plutil -lint "${APP_DIR}/Contents/Info.plist"
 plutil -lint "${APP_DIR}/Contents/Resources/PrivacyInfo.xcprivacy"
 if [[ "$(plutil -extract LSApplicationCategoryType raw "${APP_DIR}/Contents/Info.plist")" != \
@@ -86,7 +87,7 @@ fi
 
 SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 codesign --force --options runtime \
-    --entitlements "${SCRIPT_DIR}/EspControlCompanion.entitlements" \
+    --entitlements "${SCRIPT_DIR}/EspControlCompanion.app-store.entitlements" \
     --sign "${SIGNING_IDENTITY}" "${APP_DIR}"
 
 APP_BINARY="${APP_DIR}/Contents/MacOS/${EXECUTABLE_NAME}"

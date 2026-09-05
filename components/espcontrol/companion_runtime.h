@@ -67,6 +67,7 @@ struct CompanionRuntimeSnapshot {
   std::vector<CompanionValue> values;
   std::string focused_action_id;
   bool media_actions_supported{false};
+  bool keyboard_actions_supported{false};
   std::vector<std::string> window_actions;
   bool connected{false};
   CompanionNowPlayingSnapshot now_playing;
@@ -77,7 +78,7 @@ class CompanionRuntimeService {
  public:
   CompanionRuntimeSnapshot snapshot() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return {actions_, values_, focused_action_id_, media_actions_supported_, window_actions_,
+    return {actions_, values_, focused_action_id_, media_actions_supported_, keyboard_actions_supported_, window_actions_,
             connected_, now_playing_, system_metrics_};
   }
 
@@ -96,6 +97,12 @@ class CompanionRuntimeService {
   void set_window_actions(std::vector<std::string> actions) {
     std::lock_guard<std::mutex> lock(mutex_);
     window_actions_ = std::move(actions);
+    request_refresh_();
+  }
+
+  void set_keyboard_actions_supported(bool supported) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    keyboard_actions_supported_ = supported;
     request_refresh_();
   }
 
@@ -158,11 +165,13 @@ class CompanionRuntimeService {
   void set_connected(bool connected) {
     std::lock_guard<std::mutex> lock(mutex_);
     connected_ = connected;
+    if (connected_) keyboard_actions_supported_ = true;
     if (!connected_) {
       values_.clear();
       focused_action_id_.clear();
       pending_auto_subpage_action_id_.clear();
       media_actions_supported_ = false;
+      keyboard_actions_supported_ = false;
       window_actions_.clear();
       now_playing_ = {};
       system_metrics_ = {};
@@ -183,6 +192,7 @@ class CompanionRuntimeService {
   std::string focused_action_id_;
   std::string pending_auto_subpage_action_id_;
   bool media_actions_supported_{false};
+  bool keyboard_actions_supported_{false};
   std::vector<std::string> window_actions_;
   bool connected_{false};
   CompanionNowPlayingSnapshot now_playing_;

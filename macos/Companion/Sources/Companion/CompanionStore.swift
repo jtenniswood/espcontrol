@@ -405,6 +405,9 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     private func focusedFinderFolderPath() -> String? {
+#if APP_STORE
+        return nil
+#else
         let source = """
         tell application "Finder"
             if (count of windows) is 0 then return ""
@@ -421,6 +424,7 @@ final class CompanionStore: NSObject, ObservableObject {
               let path = descriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
               !path.isEmpty else { return nil }
         return path
+#endif
     }
 
     @objc private func frontmostApplicationDidChange(_: Notification) {
@@ -502,7 +506,8 @@ final class CompanionStore: NSObject, ObservableObject {
     static func panelWebServerURL(from value: String) -> URL? {
         let raw = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = URL(string: raw.contains("://") ? raw : "http://\(raw)"),
-              let host = parsed.host else { return nil }
+              let host = parsed.host,
+              ConnectionEndpointPolicy.isLocalHost(host) else { return nil }
         var components = URLComponents()
         components.scheme = parsed.scheme?.lowercased() == "https" ? "https" : "http"
         components.host = host
@@ -666,6 +671,11 @@ final class CompanionStore: NSObject, ObservableObject {
             updateStatus("Blocked an invalid keyboard shortcut", connected: isConnected)
             return false
         }
+#if APP_STORE
+        _ = shortcut
+        updateStatus("This action is unavailable in the App Store edition", connected: isConnected)
+        return false
+#else
         guard shortcut.isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else {
             updateStatus("Window tiling requires macOS 15 or later", connected: isConnected)
             return false
@@ -675,6 +685,7 @@ final class CompanionStore: NSObject, ObservableObject {
             return false
         }
         return true
+#endif
     }
 
     func setMediaControlValue(_ value: Int, controlIdentifier: String) -> Bool {

@@ -1,9 +1,12 @@
+#if !APP_STORE
 import ApplicationServices
+#endif
 import CoreGraphics
 import Foundation
 
 @MainActor
 final class CompanionAccessibilityAuthorizer {
+#if !APP_STORE
     static let shared = CompanionAccessibilityAuthorizer(
         isProcessTrusted: AXIsProcessTrusted,
         requestPrompt: {
@@ -11,6 +14,12 @@ final class CompanionAccessibilityAuthorizer {
             _ = AXIsProcessTrustedWithOptions(prompt)
         }
     )
+#else
+    static let shared = CompanionAccessibilityAuthorizer(
+        isProcessTrusted: { false },
+        requestPrompt: {}
+    )
+#endif
 
     private let isProcessTrusted: () -> Bool
     private let requestPrompt: () -> Void
@@ -77,6 +86,11 @@ struct CompanionKeyboardShortcut {
 
     @MainActor
     func replay() -> Bool {
+#if APP_STORE
+        // Synthetic keyboard events require Accessibility and are not part of
+        // the sandboxed Mac App Store feature set.
+        return false
+#else
         guard isSupported(on: ProcessInfo.processInfo.operatingSystemVersion) else { return false }
         guard CompanionAccessibilityAuthorizer.shared.isTrusted() else { return false }
         guard let source = CGEventSource(stateID: .hidSystemState),
@@ -89,6 +103,7 @@ struct CompanionKeyboardShortcut {
         keyDown.post(tap: .cghidEventTap)
         keyUp.post(tap: .cghidEventTap)
         return true
+#endif
     }
 
     private static let keyCodes: [String: CGKeyCode] = [

@@ -23,6 +23,9 @@ jobs:
       - name: Run Companion tests
         run: swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
 
+      - name: Run App Store Companion tests
+        run: ESPCONTROL_APP_STORE=1 swift test --package-path macos/Companion -Xswiftc -DAPP_STORE -Xswiftc -warnings-as-errors
+
       - name: Build App Store-safe bundle
         run: ALLOW_ADHOC=1 macos/Companion/Packaging/build_app_store.sh
 
@@ -38,7 +41,10 @@ jobs:
           test "${VERSION%%.*}" -ge 1
           test "$(plutil -extract LSApplicationCategoryType raw "${APP}/Contents/Info.plist")" = "public.app-category.utilities"
           codesign --display --entitlements - "${APP}"
+          ! codesign --display --entitlements - "${APP}" 2>&1 | grep -q 'com.apple.security.automation.apple-events'
+          ! plutil -extract NSAppleEventsUsageDescription raw "${APP}/Contents/Info.plist"
           ! strings "${APP}/Contents/MacOS/EspControl Companion" | grep -E -q 'MediaRemote\.framework|MRMediaRemote'
+          ! nm -u "${APP}/Contents/MacOS/EspControl Companion" | grep -E -q 'AXIsProcessTrusted|CGEventPost|NSAppleScript'
 
       - uses: actions/upload-artifact@v7
         with:

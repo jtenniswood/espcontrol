@@ -40,18 +40,22 @@ Upload the resulting `.pkg` with Transporter or Xcode, then complete the
 App Store Connect product page, pricing, screenshots, age rating, privacy
 answers, support URL, and review notes. The review notes should explain that
 the app pairs with an EspControl panel on the same local network and that the
-Accessibility permission is optional and only enables keyboard-shortcut cards.
+the store edition deliberately excludes Accessibility and Apple Events features.
 Attach a short video showing physical pairing and the display receiving an
 action, because App Review cannot exercise the core workflow without EspControl
 hardware. Also explain that system statistics stay off until the user enables
-them in General settings, and that optional Finder automation only identifies
-an approved folder shown in the frontmost Finder window.
+them in General settings.
 
 The App Store build intentionally omits the private macOS `MediaRemote`
 bridge. Apple requires Mac App Store apps to use public APIs, so Now Playing
-and Play/Pause/Previous/Next Companion actions are unavailable in the store
-build. CoreAudio volume controls, pairing, folder cards, app cards, URLs,
-keyboard shortcuts, and optional system statistics remain in the build.
+and Play/Pause/Previous/Next actions are unavailable because the private
+`MediaRemote` bridge is not shippable. Keyboard shortcuts and window controls
+are also omitted because they synthesize global keyboard events and require
+Accessibility. Finder front-window auto-detection is omitted because it
+requires Apple Events. Pairing, approved folder cards, app cards, URLs, and
+optional system statistics remain available. The Mac app advertises these
+capabilities to the panel so unsupported cards are disabled instead of failing
+after a tap.
 
 ## Non-code prerequisites
 

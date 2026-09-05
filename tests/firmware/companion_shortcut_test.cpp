@@ -77,11 +77,16 @@ int main() {
   const std::string folder_action = "folder.00000000-0000-0000-0000-000000000001";
   companion_set_actions({{"com.apple.Safari", "Safari"}, {folder_action, "Projects"}});
   companion_set_window_actions({"window.left"});
+  companion_set_keyboard_actions_supported(true);
   assert(companion_card_refresh_requested().load());
   companion_set_connected(true);
   assert(companion_connected());
+  assert(companion_action_available("shortcut.command+a"));
   assert(companion_window_action_valid("window.left"));
   assert(companion_action_available("window.left"));
+  assert(companion_action_available("shortcut.command+a"));
+  companion_set_keyboard_actions_supported(false);
+  assert(!companion_action_available("shortcut.command+a"));
   assert(!companion_action_available("window.close"));
   assert(!companion_action_available("window.not-real"));
   assert(companion_metric_key_valid("stat.cpu"));

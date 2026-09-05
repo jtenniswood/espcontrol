@@ -104,9 +104,13 @@ final class CompanionConnection: NSObject {
             if case .authenticate = mode { return true }
             return false
         }()
-        guard !store.panelHost.isEmpty, let url = connectionURL() else {
+        guard !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             shouldReconnect = false
             store.updateStatus("Enter the panel address first")
+            return
+        }
+        guard let url = connectionURL() else {
+            shouldReconnect = false
             return
         }
         self.mode = mode
@@ -191,7 +195,11 @@ final class CompanionConnection: NSObject {
     private func connectionURL() -> URL? {
         let raw = store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = URL(string: raw.contains("://") ? raw : "wss://\(raw)"),
-              let host = parsed.host else { return nil }
+              let host = parsed.host,
+              ConnectionEndpointPolicy.isLocalHost(host) else {
+            store.updateStatus("Panel address must be on the local network")
+            return nil
+        }
         var components = URLComponents()
         components.scheme = "wss"
         components.host = host
@@ -539,10 +547,19 @@ final class CompanionConnection: NSObject {
     func publishCatalogue() {
         guard store.isConnected || task != nil else { return }
         lastFocusedActionIdentifier = nil
+#if APP_STORE
+        let supportedWindowActions: [String] = []
+#else
         let supportedWindowActions = Self.supportedWindowActionIDs(
             for: ProcessInfo.processInfo.operatingSystemVersion
         )
-        let capabilities = (store.mediaActionsAvailable ? ["media_actions"] : []) + supportedWindowActions
+#endif
+        var capabilities = (store.mediaActionsAvailable ? ["media_actions"] : []) + supportedWindowActions
+#if !APP_STORE
+        capabilities.append("keyboard_shortcuts")
+#else
+        capabilities.append("keyboard_shortcuts_unavailable")
+#endif
         sendJSON(["type": "capabilities", "values": capabilities])
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
