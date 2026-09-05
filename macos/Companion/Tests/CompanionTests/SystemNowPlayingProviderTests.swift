@@ -190,8 +190,8 @@ func testPanelWebServerURLDropsCompanionPort() {
         "http://192.168.6.100"
     )
     XCTAssertEqual(
-        CompanionStore.panelWebServerURL(from: "https://panel.example:9443")?.absoluteString,
-        "https://panel.example"
+        CompanionStore.panelWebServerURL(from: "https://panel.local:9443")?.absoluteString,
+        "https://panel.local"
     )
 }
 }
