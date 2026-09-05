@@ -243,21 +243,6 @@ private func activateCompanionApplication() {
     NSApp.activate(ignoringOtherApps: true)
 }
 
-private extension View {
-    @ViewBuilder
-    func companionSettingsToolbar() -> some View {
-        if #available(macOS 15.0, *) {
-            self
-                .toolbar(removing: .sidebarToggle)
-                .toolbar(removing: .title)
-        } else if #available(macOS 14.0, *) {
-            self.toolbar(removing: .sidebarToggle)
-        } else {
-            self
-        }
-    }
-}
-
 private enum CompanionSettingsField: Hashable {
     case panelHost, pairingCode
 }
@@ -296,7 +281,7 @@ private struct CompanionSettings: View {
     @FocusState private var focusedField: CompanionSettingsField?
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
                 Label(page.title, systemImage: page.icon).tag(page)
             }
@@ -304,12 +289,13 @@ private struct CompanionSettings: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 Color.clear.frame(height: 28)
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
-        } detail: {
+            .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
+
+            Divider()
+
             detailView
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .navigationSplitViewStyle(.balanced)
-        .companionSettingsToolbar()
         .onAppear {
             if !store.hasSavedPairing { selectedPageID = CompanionSettingsPage.connection.rawValue }
             refreshAccessibilityStatus()
