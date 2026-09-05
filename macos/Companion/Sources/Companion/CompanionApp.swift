@@ -97,7 +97,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         menu.addItem(.separator())
 
         let panelWebpageItem = NSMenuItem(
-            title: "Open Panel Webpage…",
+            title: "Customize Display",
             action: #selector(openDisplaySettings),
             keyEquivalent: ""
         )
@@ -118,7 +118,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         let title = NSTextField(labelWithString: "EspControl Companion")
         title.font = .systemFont(ofSize: 14, weight: .semibold)
 
-        let status = NSTextField(labelWithString: store.isConnected ? "Connected" : store.connectionState.title)
+        let status = NSTextField(labelWithString: store.isConnected ? "Connected" : "Disconnected")
         status.font = .systemFont(ofSize: 13)
         status.textColor = .secondaryLabelColor
 
@@ -131,8 +131,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         connectionSwitch.state = store.isConnected ? .on : .off
         connectionSwitch.target = self
         connectionSwitch.action = #selector(connectionSwitchChanged(_:))
-        connectionSwitch.toolTip = store.isConnected ? "Disable the Companion connector" : "Enable the Companion connector"
-        connectionSwitch.isEnabled = store.hasSavedPairing
+        connectionSwitch.toolTip = store.isConnected ? "Disconnect from the display" : "Connect to the display"
+        connectionSwitch.isEnabled = store.isConnected
+            || !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         connectionSwitch.setAccessibilityLabel("Companion connector")
 
         container.addSubview(labels)
@@ -154,6 +155,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
     private func addMenuItem(_ title: String, action: Selector, key: String = "", to menu: NSMenu) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
+        item.image = nil
         menu.addItem(item)
     }
 
@@ -369,7 +371,7 @@ private struct CompanionSettings: View {
                                 .buttonStyle(.borderedProminent)
                         }
                         Spacer()
-                        Button("Open Display Settings…") { store.openPanelWebServer() }
+                        Button("Customize Display") { store.openPanelWebServer() }
                             .help("Open the display’s configuration in your browser")
                     }
                 }
