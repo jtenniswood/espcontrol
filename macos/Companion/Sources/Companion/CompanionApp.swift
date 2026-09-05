@@ -97,18 +97,15 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         menu.addItem(connectionStatusItem())
         menu.addItem(.separator())
 
-        let panelWebpageItem = NSMenuItem(
-            title: "Configure",
+        let panelWebpageItem = menuLinkItem(
+            "Configure",
             action: #selector(openDisplaySettings),
-            keyEquivalent: ""
+            isEnabled: !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         )
-        panelWebpageItem.target = self
-        panelWebpageItem.image = nil
-        panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         menu.addItem(panelWebpageItem)
 
-        addMenuItem("Settings", action: #selector(openSettings), key: ",", to: menu)
-        addMenuItem("Quit", action: #selector(quit), key: "q", to: menu)
+        menu.addItem(menuLinkItem("Settings", action: #selector(openSettings)))
+        menu.addItem(menuLinkItem("Quit", action: #selector(quit)))
     }
 
     private func connectionStatusItem() -> NSMenuItem {
@@ -152,11 +149,30 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         return item
     }
 
-    private func addMenuItem(_ title: String, action: Selector, key: String = "", to menu: NSMenu) {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
-        item.target = self
-        item.image = nil
-        menu.addItem(item)
+    private func menuLinkItem(_ title: String, action: Selector, isEnabled: Bool = true) -> NSMenuItem {
+        let item = NSMenuItem()
+        item.isEnabled = isEnabled
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 44))
+        let button = NSButton(title: title, target: self, action: action)
+        button.font = .menuFont(ofSize: 0)
+        button.alignment = .left
+        button.isBordered = false
+        button.focusRingType = .none
+        button.imagePosition = .noImage
+        button.isEnabled = isEnabled
+
+        container.addSubview(button)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
+            button.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            button.topAnchor.constraint(equalTo: container.topAnchor),
+            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        item.view = container
+        return item
     }
 
     @objc private func connectionSwitchChanged(_ sender: NSSwitch) {
