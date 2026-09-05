@@ -93,20 +93,62 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        let status = NSMenuItem(title: store.connectionState.title, action: nil, keyEquivalent: "")
-        menu.addItem(status)
-        if !store.panelHost.isEmpty {
-            menu.addItem(NSMenuItem(title: "Display · \(store.panelHost)", action: nil, keyEquivalent: ""))
-        }
+        menu.addItem(connectionStatusItem())
         menu.addItem(.separator())
-        if store.hasSavedPairing {
-            addMenuItem(store.connectionState.isBusy ? "Cancel Connection" : (store.isConnected ? "Disconnect" : "Connect"),
-                        action: #selector(toggleConnection), to: menu)
-            addMenuItem("Open Display Settings…", action: #selector(openDisplaySettings), to: menu)
-        }
+
+        let panelWebpageItem = NSMenuItem(
+            title: "Open Panel Webpage…",
+            action: #selector(openDisplaySettings),
+            keyEquivalent: ""
+        )
+        panelWebpageItem.target = self
+        panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        menu.addItem(panelWebpageItem)
+
+        menu.addItem(.separator())
         addMenuItem("Settings…", action: #selector(openSettings), key: ",", to: menu)
         menu.addItem(.separator())
         addMenuItem("Quit EspControl Companion", action: #selector(quit), key: "q", to: menu)
+    }
+
+    private func connectionStatusItem() -> NSMenuItem {
+        let item = NSMenuItem()
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 58))
+
+        let title = NSTextField(labelWithString: "EspControl Companion")
+        title.font = .systemFont(ofSize: 14, weight: .semibold)
+
+        let status = NSTextField(labelWithString: store.isConnected ? "Connected" : store.connectionState.title)
+        status.font = .systemFont(ofSize: 13)
+        status.textColor = .secondaryLabelColor
+
+        let labels = NSStackView(views: [title, status])
+        labels.orientation = .vertical
+        labels.alignment = .leading
+        labels.spacing = 1
+
+        let connectionSwitch = NSSwitch()
+        connectionSwitch.state = store.isConnected ? .on : .off
+        connectionSwitch.target = self
+        connectionSwitch.action = #selector(connectionSwitchChanged(_:))
+        connectionSwitch.toolTip = store.isConnected ? "Disable the Companion connector" : "Enable the Companion connector"
+        connectionSwitch.isEnabled = store.hasSavedPairing
+        connectionSwitch.setAccessibilityLabel("Companion connector")
+
+        container.addSubview(labels)
+        container.addSubview(connectionSwitch)
+        labels.translatesAutoresizingMaskIntoConstraints = false
+        connectionSwitch.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            labels.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
+            labels.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            labels.trailingAnchor.constraint(lessThanOrEqualTo: connectionSwitch.leadingAnchor, constant: -12),
+            connectionSwitch.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            connectionSwitch.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        item.view = container
+        return item
     }
 
     private func addMenuItem(_ title: String, action: Selector, key: String = "", to menu: NSMenu) {
@@ -115,9 +157,12 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         menu.addItem(item)
     }
 
-    @objc private func toggleConnection() {
-        if store.isConnected || store.connectionState.isBusy { store.disconnect() }
-        else { store.connect() }
+    @objc private func connectionSwitchChanged(_ sender: NSSwitch) {
+        if sender.state == .on {
+            store.connect()
+        } else {
+            store.disconnect()
+        }
     }
 
     @objc private func openDisplaySettings() { store.openPanelWebServer() }
