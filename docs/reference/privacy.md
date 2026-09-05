@@ -8,8 +8,9 @@ description:
 
 **Effective date: September 5, 2026**
 
-EspControl is an open-source touchscreen control panel project maintained by
-[jtenniswood](https://github.com/jtenniswood). This policy explains what
+EspControl is a source-available, non-commercial touchscreen control panel
+project maintained by [jtenniswood](https://github.com/jtenniswood). This
+policy explains what
 information may be involved when you use the EspControl documentation website,
 firmware, or built-in web configuration interface.
 
@@ -33,10 +34,18 @@ The site does not intentionally use cookies, advertising trackers, or a
 first-party analytics service. Its search is generated and run in your
 browser.
 
-Some pages include a support button whose image is loaded from Buy Me a
-Coffee's CDN. Loading that image may disclose your IP address and browser
-request information to Buy Me a Coffee or its service providers. Following
-the button takes you to Buy Me a Coffee, which has its own privacy policy.
+Every documentation page includes a support button whose image is loaded from
+Buy Me a Coffee's CDN. Loading that image may disclose your IP address and
+browser request information to Buy Me a Coffee or its service providers.
+Following the button takes you to Buy Me a Coffee, which has its own privacy
+policy.
+
+The install and C6 recovery pages also automatically load the USB installer
+library from unpkg when the browser supports Web Serial, and the install pages
+check a public firmware manifest. These browser requests may disclose normal
+request metadata, such as your IP address, browser and device information, and
+request time, to the relevant hosting providers. The library is not loaded on
+other documentation pages unless one of these installer components is used.
 
 The site also contains links to GitHub, Home Assistant, ESPHome, and other
 third-party websites. Those sites have their own terms and privacy practices.
@@ -77,6 +86,19 @@ provides that option. Ethernet-only builds documented on this site omit the
 EspControl update checker. ESPHome OTA or other update methods may still
 contact the services you select.
 
+Standard released firmware also loads the JavaScript for its built-in web
+configuration interface from EspControl's GitHub Pages site. The request URL
+includes the device model slug and firmware version, so the hosting provider
+may receive those values along with normal browser or device connection
+metadata when the interface is opened. This asset request is separate from
+the firmware update checker.
+
+Networked standard builds automatically synchronize time with the public NTP
+pool at `0.pool.ntp.org`, `1.pool.ntp.org`, and `2.pool.ntp.org`. DNS and NTP
+requests may disclose normal connection metadata to the pool operators. This
+traffic occurs even when no optional cards or services are configured and the
+EspControl update checker is disabled.
+
 ## Information you provide to the project
 
 If you open a GitHub issue, pull request, or discussion, GitHub processes your
@@ -99,8 +121,11 @@ that service's policy and retention practices.
 
 You can choose whether to use automatic firmware updates, configure optional
 webhooks or voice features, visit external links, or submit information to
-GitHub. You can also remove local device settings by resetting or re-flashing
-the device, subject to any copies you have made elsewhere.
+GitHub. To remove local device settings, use a full flash erase or another
+verified factory-reset procedure that clears the device's storage. A normal
+reset or firmware re-flash may preserve saved configuration, including entity
+IDs, webhook credentials, and other settings. This does not remove copies you
+have made elsewhere.
 
 For a question about this policy or a request concerning information directly
 controlled by the project maintainer, contact [jtenniswood through GitHub](https://github.com/jtenniswood).
@@ -113,4 +138,3 @@ that service.
 This policy may be updated when EspControl's data practices or the services it
 uses change. The effective date at the top of this page indicates when the
 current version was published.
-
