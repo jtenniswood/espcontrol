@@ -75,6 +75,60 @@ function serializeSubpage(subpage: FeatureSubpage): string {
   );
 }
 
+function companionCapabilityCards(): CardConfig[] {
+  return [
+    cloneCardConfig({
+      entity: "com.apple.Safari",
+      label: "Safari",
+      icon: "Monitor",
+      type: "companion",
+      options: "app_shortcuts,app_shortcuts_auto_switch",
+    }),
+    cloneCardConfig({
+      entity: "shortcut.command+shift+s",
+      label: "Save",
+      icon: "Shortcut Command",
+      type: "companion",
+    }),
+    cloneCardConfig({
+      entity: "",
+      label: "Dashboard",
+      icon: "Web",
+      sensor: "url.https%3A%2F%2Fexample.com%2Fdashboard",
+      type: "companion",
+    }),
+    cloneCardConfig({
+      entity: "folder.Projects",
+      label: "Projects",
+      icon: "Folder Outline",
+      type: "companion",
+    }),
+    cloneCardConfig({
+      entity: "media.play_pause",
+      label: "Play / Pause",
+      icon: "Play Pause",
+      type: "companion",
+    }),
+    cloneCardConfig({
+      entity: "stat.memory",
+      label: "Memory",
+      icon: "Gauge",
+      unit: "%",
+      type: "companion",
+      precision: "2",
+      options: "large_numbers",
+    }),
+    cloneCardConfig({
+      entity: "stat.storage_free",
+      label: "Storage",
+      icon: "Gauge",
+      unit: "%",
+      type: "companion",
+      precision: "0",
+    }),
+  ];
+}
+
 const feature = createBackupFeature({
   deviceId: "panel-a",
   gridCols: 3,
@@ -165,6 +219,34 @@ export function runBackupFeatureTests(migrationFixture?: MigrationFixture): void
   );
   deepEqual(Object.keys(plan.subpages), ["1"], "subpages follow mapped home slots");
   equal(plan.subpages["1"]?.grid?.[0], 1, "imported subpage layout is rebuilt");
+
+  const companionCards = companionCapabilityCards();
+  const companionBackup = feature.createBackupConfig({
+    device: "panel-a",
+    slots: companionCards.length,
+    button_order: "1,2,3,4,5,6,7",
+    buttons: companionCards,
+    subpages: {
+      "1": {
+        order: ["1", "2", "3", "4", "5", "6"],
+        backLabel: "Back",
+        buttons: companionCards.slice(1),
+      },
+    },
+  });
+  const normalizedCompanionBackup = feature.normalizeBackupConfig(companionBackup);
+  deepEqual(normalizedCompanionBackup.buttons, companionCards,
+    "backup preserves every Companion card subtype and option");
+  deepEqual(normalizedCompanionBackup.subpage_objects["1"]?.buttons, companionCards.slice(1),
+    "backup preserves mixed Companion subpage card contents");
+  const companionPlan = feature.planBackupImport(normalizedCompanionBackup, {
+    device: "panel-a",
+    slots: companionCards.length,
+  });
+  deepEqual(companionPlan.buttons, companionCards,
+    "backup restore retains every Companion card field");
+  deepEqual(companionPlan.subpages["1"]?.buttons, companionCards.slice(1),
+    "backup restore retains Companion subpage card fields");
 
   let failure = "";
   try {

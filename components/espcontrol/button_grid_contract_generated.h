@@ -42,6 +42,7 @@ enum class CardTypeId : uint8_t {
   MEDIA,
   OPTION_SELECT,
   PUSH,
+  COMPANION,
   SCREEN_LOCK,
   WEBHOOK,
   SENSOR,
@@ -92,6 +93,7 @@ enum class CardDriverId : uint8_t {
   MEDIA_PLAYLIST,
   OPTION_SELECT,
   PUSH,
+  COMPANION,
   SCREEN_LOCK,
   WEBHOOK,
   SENSOR,
@@ -154,6 +156,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "media") return CardTypeId::MEDIA;
   if (type == "option_select") return CardTypeId::OPTION_SELECT;
   if (type == "push") return CardTypeId::PUSH;
+  if (type == "companion") return CardTypeId::COMPANION;
   if (type == "screen_lock") return CardTypeId::SCREEN_LOCK;
   if (type == "webhook") return CardTypeId::WEBHOOK;
   if (type == "sensor") return CardTypeId::SENSOR;
@@ -201,6 +204,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::MEDIA: return {type, CardDriverId::MEDIA, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_NUMERIC_CONTROL | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::OPTION_SELECT: return {type, CardDriverId::OPTION_SELECT, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::PUSH: return {type, CardDriverId::PUSH, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
+    case CardTypeId::COMPANION: return {type, CardDriverId::COMPANION, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::SCREEN_LOCK: return {type, CardDriverId::SCREEN_LOCK, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEBHOOK: return {type, CardDriverId::WEBHOOK, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::SENSOR: return {type, CardDriverId::SENSOR, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
@@ -293,6 +297,8 @@ inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today",
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIONS = "actions";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_COLOR = "active_color";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ALARM_CARD_TYPE = "alarm_card_type";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_APP_SHORTCUTS = "app_shortcuts";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_APP_SHORTCUTS_AUTO_SWITCH = "app_shortcuts_auto_switch";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CLIMATE_TABS = "climate_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_MESSAGE = "confirm_message";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_NO = "confirm_no";
@@ -348,6 +354,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT = "state_output";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT_2 = "state_output_2";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_PRECISION = "state_precision";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_UNIT = "state_unit";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_SUBPAGE_CONNECTOR = "subpage_connector";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SUBPAGE_KIND = "subpage_kind";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP = "temperature_step";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TIME_UNIT = "time_unit";
@@ -588,6 +595,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "media") return "Media";
   if (type == "option_select") return "Option Select";
   if (type == "push") return "Trigger";
+  if (type == "companion") return "Companion";
   if (type == "screen_lock") return "Screen Lock";
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
@@ -634,6 +642,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "media") return true;
   if (type == "option_select") return true;
   if (type == "push") return true;
+  if (type == "companion") return true;
   if (type == "screen_lock") return true;
   if (type == "webhook") return true;
   if (type == "sensor") return true;
@@ -680,6 +689,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "media") return "Auto";
   if (type == "option_select") return "Flash";
   if (type == "push") return "Gesture Tap";
+  if (type == "companion") return "Monitor";
   if (type == "screen_lock") return "Lock";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
@@ -726,6 +736,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "media") return "Auto";
   if (type == "option_select") return "Auto";
   if (type == "push") return "Auto";
+  if (type == "companion") return "Auto";
   if (type == "screen_lock") return "Lock Open";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
@@ -769,6 +780,7 @@ inline bool card_contract_large_numbers_supported(const std::string &type, const
   if (type == "sensor") return precision != "icon" && precision != "text";
   if (type == "weather") return precision == "today" || precision == "tomorrow";
   return type == "" || type == "action" || type == "calendar" || type == "clock" ||
+         type == "companion" ||
          type == "climate" || type == "media" || type == "subpage" ||
          type == "timezone";
 }
@@ -808,6 +820,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "climate") return "H";
   if (type == "climate_control") return "HC";
   if (type == "push") return "P";
+  if (type == "companion") return "CP";
   if (type == "screen_lock") return "SL";
   if (type == "webhook") return "WH";
   if (type == "internal") return "I";
@@ -850,6 +863,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "H") return "climate";
   if (code == "HC") return "climate_control";
   if (code == "P") return "push";
+  if (code == "CP") return "companion";
   if (code == "SL") return "screen_lock";
   if (code == "WH") return "webhook";
   if (code == "I") return "internal";

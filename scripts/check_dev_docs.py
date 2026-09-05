@@ -156,6 +156,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "alarm_action": "docs/card-types/alarms.md",
     "calendar": "docs/card-types/calendar.md",
     "clock": "docs/card-types/calendar.md",
+    "companion": "docs/card-types/companion.md",
     "climate": "docs/card-types/climate.md",
     "climate_control": "docs/card-types/climate.md",
     "cover": "docs/card-types/covers.md",
@@ -317,7 +318,10 @@ def included_yaml_paths(path: Path) -> list[Path]:
 
 def device_yaml_graph(device_root: Path) -> set[Path]:
     """Return device YAML plus local shared YAML reachable through includes."""
-    pending = list(device_root.glob("**/*.yaml"))
+    pending = [
+        path for path in device_root.glob("**/*.yaml")
+        if not any(part.startswith(".") for part in path.relative_to(device_root).parts)
+    ]
     visited: set[Path] = set()
     while pending:
         path = pending.pop().resolve()

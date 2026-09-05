@@ -272,6 +272,7 @@ const ICON_GROUPS = {
   'Silverware': 'Appliances',
 
   'Cast': 'Media & Entertainment',
+  'Folder Outline': 'Media & Entertainment',
   'Folder Music Outline': 'Media & Entertainment',
   'Folder Play': 'Media & Entertainment',
   'Gamepad': 'Media & Entertainment',
@@ -293,6 +294,7 @@ const ICON_GROUPS = {
   'PlayStation': 'Media & Entertainment',
   'Projector': 'Media & Entertainment',
   'Projector Off': 'Media & Entertainment',
+  'Web': 'Media & Entertainment',
   'Remote Back': 'Media & Entertainment',
   'Remote Down': 'Media & Entertainment',
   'Remote Home': 'Media & Entertainment',
@@ -331,6 +333,7 @@ const ICON_GROUPS = {
 
   'Application': 'Network & Tech',
   'Bluetooth': 'Network & Tech',
+  'Folder Outline': 'Network & Tech',
   'LAN': 'Network & Tech',
   'Printer': 'Network & Tech',
   'Printer 3D': 'Network & Tech',
@@ -344,6 +347,7 @@ const ICON_GROUPS = {
   'Robot Vacuum Variant Off': 'Network & Tech',
   'Router': 'Network & Tech',
   'Router Network': 'Network & Tech',
+  'Web': 'Network & Tech',
   'Wifi': 'Network & Tech',
   'Vacuum': 'Network & Tech',
   'Vacuum Outline': 'Network & Tech',

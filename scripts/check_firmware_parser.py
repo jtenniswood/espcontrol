@@ -18,6 +18,8 @@ PARSER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config_parser.
 MEDIA_CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_media_config.h"
 DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
+COMPANION_TIMEZONE_HEADER = ROOT / "components" / "espcontrol" / "companion_timezone.h"
+COMPANION_CAPABILITIES_HEADER = ROOT / "components" / "espcontrol" / "companion_capabilities_generated.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 CARD_REGISTRY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_registry.h"
@@ -374,6 +376,25 @@ int main() {
   assert(icon_sensor.options == "");
   assert(!card_large_numbers_enabled(icon_sensor));
 
+  auto companion_metric = parse_cfg("stat.cpu;Processor;Monitor;Auto;ignored;;companion;bad;large_numbers,active_color");
+  assert(companion_system_metric_config(companion_metric));
+  assert(companion_metric.sensor == "");
+  assert(companion_metric.unit == "%");
+  assert(companion_metric.precision == "0");
+  assert(companion_metric.options == "large_numbers");
+  assert(card_large_numbers_enabled(companion_metric));
+  auto companion_network = parse_cfg("stat.network_throughput;Network Throughput;Gauge;Auto;;;companion;;");
+  assert(companion_system_metric_config(companion_network));
+  assert(companion_network.unit == "MB/s");
+  assert(companion_network.precision == "0");
+  auto legacy_companion_network = parse_cfg("stat.network_throughput;Network Throughput;Gauge;Auto;;KB/s;companion;;");
+  assert(legacy_companion_network.unit == "MB/s");
+  auto companion_action = parse_cfg("com.apple.Safari;Safari;Monitor;Auto;;;companion;2;large_numbers");
+  assert(!companion_system_metric_config(companion_action));
+  assert(companion_action.unit == "");
+  assert(companion_action.precision == "");
+  assert(companion_action.options == "");
+
   auto clock = parse_cfg(";;;;;;clock;;large_numbers");
   assert(clock.type == "clock");
   assert(clock.options == "large_numbers");
@@ -497,6 +518,13 @@ int main() {
   assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") > 10.3f);
   assert(convert_temperature_value_for_display_float(50.7f, "\u00B0F") < 10.4f);
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 10);
+
+  esphome::companion::register_companion_timezone_home_assistant_connected_provider([]() { return false; });
+  esphome::companion::companion_set_timezone_id("Europe/London");
+  assert(effective_timezone_option("Auto (Home Assistant)") == "Europe/London");
+  esphome::companion::register_companion_timezone_home_assistant_connected_provider([]() { return true; });
+  assert(effective_timezone_option("Auto (Home Assistant)") == "UTC (GMT+0)");
+  esphome::companion::companion_set_timezone_id("");
 
   auto migrated = parse_cfg("media_player.living:Living:Speaker:Auto:controls::media");
   assert(migrated.type.empty());
@@ -626,6 +654,18 @@ int main() {
   assert(subpage_lawn_mower.options == "subpage_kind=lawn_mower");
   auto subpage_weather = parse_cfg("weather.home;Weather;Weather Partly Cloudy;Auto;indicator;;subpage;;subpage_kind=weather");
   assert(subpage_weather.options == "subpage_kind=weather");
+  auto subpage_companion_stat = parse_cfg("stat.memory_free;Mac RAM Free;Auto;Auto;indicator;%;subpage;;subpage_kind=companion_stat");
+  assert(subpage_companion_stat.entity == "stat.memory_free");
+  assert(subpage_companion_stat.label == "Mac RAM Free");
+  assert(subpage_companion_stat.icon == "Gauge");
+  assert(subpage_companion_stat.sensor == "indicator");
+  assert(subpage_companion_stat.unit == "%");
+  assert(subpage_companion_stat.options == "subpage_kind=companion_stat");
+  auto companion_subpage = parse_cfg(";Mac Controls;Auto;Auto;;;subpage;;subpage_connector=mac_companion");
+  assert(companion_subpage.options == "subpage_connector=mac_companion");
+  auto subpage_companion_stat_invalid = parse_cfg("sensor.cpu;CPU;Auto;Auto;indicator;%;subpage;;subpage_kind=companion_stat");
+  assert(subpage_companion_stat_invalid.entity == "stat.cpu");
+  assert(subpage_companion_stat_invalid.label == "CPU");
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
@@ -917,6 +957,8 @@ def main() -> int:
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
+        shutil.copy2(COMPANION_TIMEZONE_HEADER, tmp_path / "companion_timezone.h")
+        shutil.copy2(COMPANION_CAPABILITIES_HEADER, tmp_path / "companion_capabilities_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")

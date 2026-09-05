@@ -42,7 +42,9 @@ import { normalizeSavedConfigClimate } from "../generated/saved_config_climate";
 import { normalizeSavedConfigLightControl } from "../generated/saved_config_light_control";
 import { normalizeSavedConfigWebhook } from "../generated/saved_config_webhook";
 import { normalizeSavedConfigSubpage } from "../generated/saved_config_subpage";
+import { COMPANION_SYSTEM_METRICS } from "../cards/companion";
 import { normalizeSavedConfigSwitch } from "../generated/saved_config_switch";
+import { normalizeCompanionAppShortcutOptions } from "./companion_shortcut_folder";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigSensorOptionsFeature } from "./config_sensor_options";
 import type { ConfigMediaOptionsFeature } from "./config_media_options";
@@ -428,6 +430,26 @@ export function createConfigCodecFeature(
         return headers ? setConfigOptionValue("", "webhook_headers", headers) : "";
     }
     function normalizeSavedConfigSubpageFields(this: any, b?: any) {
+        if (subpageKind(b) === "companion_stat") {
+            var metric: any = COMPANION_SYSTEM_METRICS.find(function (candidate) {
+                return candidate.id === b.entity || candidate.freeId === b.entity;
+            }) || COMPANION_SYSTEM_METRICS[0];
+            if (!metric)
+                return;
+            if (!metric.id && !metric.freeId)
+                b.entity = "";
+            else if (b.entity !== metric.id && b.entity !== metric.freeId)
+                b.entity = metric.id;
+            if (!b.label)
+                b.label = metric.label;
+            if (!b.icon || b.icon === "Auto")
+                b.icon = "Gauge";
+            b.icon_on = "Auto";
+            b.sensor = "indicator";
+            b.unit = metric.unit;
+            b.precision = "";
+            return;
+        }
         applySubpagePresetConfig(b);
     }
     function normalizeSavedConfigSubpageOptions(this: any, options?: any, b?: any) {
@@ -474,7 +496,7 @@ export function createConfigCodecFeature(
         var normalizedSavedSensor: any = !!(b && normalizeSavedConfigSensor(b, wasLegacyTextSensor, normalizeSavedConfigSensorFields, normalizeSensorOptions));
         var normalizedSavedOccupancy: any = !!(b && normalizeSavedConfigOccupancy(b, normalizeSavedConfigOccupancyFields, normalizeSavedConfigOccupancyOptions));
         var normalizedSavedSwitch: any = !!(b && !normalizedSavedSensor && normalizeSavedConfigSwitch(b, normalizeSwitchConfirmationOptions));
-        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
+        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && b.type !== "companion" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
         return b;
@@ -634,6 +656,18 @@ export function createConfigCodecFeature(
         }
         else if (type === "subpage") {
             options = normalizeSubpageOptions(options, sensor, precision);
+        }
+        else if (type === "companion") {
+            const isCompanionMetric = COMPANION_SYSTEM_METRICS.some((metric) =>
+                metric.id === (b && b.entity) || metric.freeId === (b && b.entity));
+            options = isCompanionMetric ? copyLargeNumbersOption("", options) :
+                normalizeCompanionAppShortcutOptions({
+                    ...(b || {}),
+                    type,
+                    entity: b && b.entity,
+                    sensor,
+                    options,
+                });
         }
         else if (type === "webhook") {
             var webhookButton: any = EspControlModel.cloneCardConfig(b || {});

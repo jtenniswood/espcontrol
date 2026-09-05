@@ -15,6 +15,7 @@ import type { EntityStateFeature } from "./entity_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
 import type { GridFeature } from "./grid";
+import { cardOwnsSubpage } from "./companion_shortcut_folder";
 export interface PreviewClipboardDependencies {
     readonly configPersistence: ConfigPersistenceFeature;
     readonly document: Document;
@@ -84,7 +85,7 @@ export function createPreviewClipboardFeature(
         var c: any = ctx();
         var src: any = c.buttons[slot - 1];
         var subpageConfig: any = null;
-        if (!c.isSub && src.type === "subpage" && state.subpages[slot]) {
+        if (!c.isSub && cardOwnsSubpage(src) && state.subpages[slot]) {
             subpageConfig = serializeSubpageConfig(state.subpages[slot]);
         }
         return createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
@@ -156,7 +157,7 @@ export function createPreviewClipboardFeature(
             throw cardTransferError("This controller does not support the " +
                 cardTransferTypeLabel(type) + " card type.");
         }
-        if (inSubpage && type === "subpage") {
+        if (inSubpage && cardOwnsSubpage(normalized)) {
             throw cardTransferError("Subpage cards cannot be placed inside another subpage.");
         }
         if (inSubpage && !buttonTypeRegistryValue(typeDef, "allowInSubpage", false)) {
@@ -292,6 +293,9 @@ export function createPreviewClipboardFeature(
                 if (targetIsSubpage) {
                     throw cardTransferError("Subpage cards can only be pasted onto the home screen.");
                 }
+                if (!cardOwnsSubpage(button)) {
+                    throw cardTransferError("This card type cannot own a subpage.");
+                }
                 var parsed: any = EspControlModel.parseStructuredSubpageConfig(transfer.subpage);
                 parsed.buttons = parsed.buttons.map(function (subpageButton: any) {
                     return validateCardTransferButton(subpageButton, true, warnings);
@@ -420,6 +424,7 @@ export function createPreviewClipboardFeature(
         var resized: any = 0;
         for (var i: any = 0; i < entries.length; i++) {
             var entry: any = entries[i];
+            var normalizedEntry: any = clipboardButtonConfig(entry);
             var typeDef: any = dependencies.cards.definitions[entry.type || ""];
             if (entry.subpageConfig || entry.type === "subpage") {
                 return { error: "Subpage cards can only be pasted onto the home screen." };
@@ -439,7 +444,7 @@ export function createPreviewClipboardFeature(
                 resized++;
             while (subpage.buttons.length < newSlot)
                 subpage.buttons.push(emptyButtonConfig());
-            subpage.buttons[newSlot - 1] = clipboardButtonConfig(entry);
+            subpage.buttons[newSlot - 1] = normalizedEntry;
             if (placement.size === 1)
                 delete subpage.sizes[newSlot];
             else

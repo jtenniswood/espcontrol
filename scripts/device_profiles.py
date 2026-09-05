@@ -388,12 +388,14 @@ def validate_capabilities(slug: str, device: dict[str, Any], errors: list[str]) 
     capabilities = require_object(slug, errors, device.get("capabilities"), "capabilities")
     if capabilities is None:
         return
-    unknown = sorted(set(capabilities) - {"imageSlots"})
+    unknown = sorted(set(capabilities) - {"imageSlots", "companion"})
     if unknown:
         errors.append(device_error(slug, "capabilities has unknown keys: " + ", ".join(unknown)))
     image_slots = capabilities.get("imageSlots")
     if not isinstance(image_slots, int) or isinstance(image_slots, bool) or not 0 <= image_slots <= 6:
         errors.append(device_error(slug, "capabilities.imageSlots must be an integer from 0 to 6"))
+    if "companion" in capabilities and not isinstance(capabilities["companion"], bool):
+        errors.append(device_error(slug, "capabilities.companion must be true or false when set"))
 
 
 def validate_public(slug: str, device: dict[str, Any], errors: list[str]) -> None:
@@ -892,6 +894,8 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
         features["alarmDelayAudio"] = True
     if package.get("subpageConfigChunks"):
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
+    if profile["capabilities"].get("companion"):
+        features["companion"] = True
     return features
 
 

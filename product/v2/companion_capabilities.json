@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "protocol": {
+    "version": 3,
+    "path": "/companion/v3",
+    "maximumTextFrameBytes": 16384,
+    "maximumArtworkBytes": 262144,
+    "artworkChunkBytes": 12288,
+    "messages": [
+      { "id": "hello", "direction": "panel_to_mac", "authorization": "public" },
+      { "id": "pair.request", "direction": "mac_to_panel", "authorization": "pairing_window" },
+      { "id": "pair.accepted", "direction": "panel_to_mac", "authorization": "pairing_window" },
+      { "id": "auth.request", "direction": "mac_to_panel", "authorization": "paired" },
+      { "id": "auth.accepted", "direction": "panel_to_mac", "authorization": "paired" },
+      { "id": "capabilities", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "catalogue.request", "direction": "panel_to_mac", "authorization": "session" },
+      { "id": "catalogue.page", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "action.invoke", "direction": "panel_to_mac", "authorization": "session" },
+      { "id": "action.result", "direction": "bidirectional", "authorization": "session" },
+      { "id": "value.set", "direction": "panel_to_mac", "authorization": "session" },
+      { "id": "value.state", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "focus.changed", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "timezone.changed", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "now_playing", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "system_metrics", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "artwork.begin", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "artwork.ack", "direction": "panel_to_mac", "authorization": "session" },
+      { "id": "artwork.end", "direction": "mac_to_panel", "authorization": "session" },
+      { "id": "artwork.abort", "direction": "bidirectional", "authorization": "session" },
+      { "id": "artwork.request", "direction": "panel_to_mac", "authorization": "session" },
+      { "id": "error", "direction": "bidirectional", "authorization": "public" }
+    ]
+  },
+  "security": {
+    "pairingAuthorization": "physical_presence",
+    "browserExposesPairingCode": false,
+    "pairingWindowSeconds": 900,
+    "credentialStorage": "keychain",
+    "certificatePolicy": "trust_on_first_pair_then_pin",
+    "transport": "tls_websocket"
+  },
+  "cardModes": [
+    { "id": "app", "label": "Launch app", "capability": "applications", "defaultIcon": "Monitor" },
+    { "id": "shortcut", "label": "Keyboard shortcut", "capability": "keyboard_shortcuts", "defaultIcon": "Shortcut Command" },
+    { "id": "url", "label": "Open URL", "capability": "applications", "defaultIcon": "Web" },
+    { "id": "folder", "label": "Open folder", "capability": "folders", "defaultIcon": "Folder Outline" },
+    { "id": "media", "label": "Media control", "capability": "media_actions", "defaultIcon": "Play Pause" },
+    { "id": "stats", "label": "Stats", "capability": "system_metrics", "defaultIcon": "Gauge" },
+    { "id": "window", "label": "Window control", "capability": "window_actions", "defaultIcon": "Monitor" }
+  ],
+  "windowActions": [
+    { "id": "window.close", "label": "Close", "group": "Window", "key": "w", "modifiers": ["command"], "minimumMacOS": 13 },
+    { "id": "window.minimize", "label": "Minimise", "group": "Window", "key": "m", "modifiers": ["command"], "minimumMacOS": 13 },
+    { "id": "window.hide", "label": "Hide App", "group": "Window", "key": "h", "modifiers": ["command"], "minimumMacOS": 13 },
+    { "id": "window.fullscreen", "label": "Full Screen", "group": "Window", "key": "f", "modifiers": ["control", "command"], "minimumMacOS": 13 },
+    { "id": "window.fill", "label": "Fill Desktop", "group": "Move & Resize", "key": "f", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.center", "label": "Centre", "group": "Move & Resize", "key": "c", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.left", "label": "Left", "group": "Move & Resize", "key": "left", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.right", "label": "Right", "group": "Move & Resize", "key": "right", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.top", "label": "Top", "group": "Move & Resize", "key": "up", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.bottom", "label": "Bottom", "group": "Move & Resize", "key": "down", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.restore", "label": "Return to Previous Size", "group": "Move & Resize", "key": "r", "modifiers": ["function", "control"], "minimumMacOS": 15 },
+    { "id": "window.arrange.left-right", "label": "Left & Right", "group": "Arrange Windows", "key": "left", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.right-left", "label": "Right & Left", "group": "Arrange Windows", "key": "right", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.top-bottom", "label": "Top & Bottom", "group": "Arrange Windows", "key": "up", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.bottom-top", "label": "Bottom & Top", "group": "Arrange Windows", "key": "down", "modifiers": ["function", "control", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.left-quarters", "label": "Left & Quarters", "group": "Arrange Windows", "key": "left", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.right-quarters", "label": "Right & Quarters", "group": "Arrange Windows", "key": "right", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.top-quarters", "label": "Top & Quarters", "group": "Arrange Windows", "key": "up", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 },
+    { "id": "window.arrange.bottom-quarters", "label": "Bottom & Quarters", "group": "Arrange Windows", "key": "down", "modifiers": ["function", "control", "option", "shift"], "minimumMacOS": 15 }
+  ],
+  "mediaActions": [
+    { "id": "media.play_pause", "label": "Play / Pause", "icon": "Play Pause", "command": "togglePlayPause" },
+    { "id": "media.previous", "label": "Previous", "icon": "Skip Previous", "command": "previousTrack" },
+    { "id": "media.next", "label": "Next", "icon": "Skip Next", "command": "nextTrack" }
+  ],
+  "systemMetrics": [
+    { "mode": "processor", "id": "stat.cpu", "label": "Processor", "labelKey": "processor", "unit": "%" },
+    { "mode": "memory_usage", "id": "stat.memory", "freeId": "stat.memory_free", "label": "Memory", "labelKey": "memory", "unit": "%" },
+    { "mode": "storage", "id": "stat.storage", "freeId": "stat.storage_free", "label": "Storage", "labelKey": "storage", "unit": "%" },
+    { "mode": "battery", "id": "stat.battery", "label": "Battery", "labelKey": "battery", "unit": "%" },
+    { "mode": "network_throughput", "id": "stat.network_throughput", "label": "Network", "labelKey": "network_throughput", "unit": "MB/s" }
+  ]
+}

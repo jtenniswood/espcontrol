@@ -33,6 +33,8 @@ export interface CardPickerOption {
   readonly icon: string;
   readonly description: string;
   readonly disabled: boolean;
+  readonly connector: "home_assistant" | "mac_companion" | "mixed" |
+    "home_assistant_or_local" | "local" | "network";
 }
 
 interface PickerDetails {
@@ -59,6 +61,14 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   alarm: { icon: "shield-home", description: "Control or trigger alarm panel actions." },
   calendar: { icon: "calendar-clock", description: "Show date, time, or world clock values." },
   climate: { icon: "thermostat", description: "Show climate status and temperature controls." },
+  companion_app: { icon: "application-outline", description: "Launch an app on the Mac." },
+  companion_folder: { icon: "folder", description: "Open an approved folder on the Mac." },
+  companion_media: { icon: "music", description: "Control media playback on the Mac." },
+  companion_shortcut: { icon: "apple-keyboard-command", description: "Run a keyboard shortcut on the Mac." },
+  companion_stats: { icon: "gauge", description: "Show a Mac system statistic." },
+  companion_subpage: { icon: "view-grid-plus", description: "Open a nested page of Mac Companion cards." },
+  companion_url: { icon: "web", description: "Open a URL on the Mac." },
+  companion_window: { icon: "window-open", description: "Control the active Mac window." },
   cover: { icon: "window-shutter", description: "Control blinds, curtains, or covers." },
   door_window: { icon: "door-open", description: "Show open or closed sensor state." },
   presence: { icon: "account", description: "Show person or presence status." },
@@ -77,7 +87,7 @@ const CARD_TYPE_PICKER_DETAILS: Readonly<Record<string, PickerDetails>> = {
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
-  subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
+  subpage: { icon: "view-grid-plus", description: "Open a nested page of Home Assistant cards." },
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
   vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
@@ -87,7 +97,46 @@ const CARD_TYPE_PICKER_DEFAULTS: Readonly<Record<string, string>> = {
   climate: "climate_control",
   light_brightness: "light_control",
   media_control: "media",
+  companion_app: "companion",
+  companion_folder: "companion",
+  companion_media: "companion",
+  companion_shortcut: "companion",
+  companion_stats: "companion",
+  companion_subpage: "subpage",
+  companion_url: "companion",
+  companion_window: "companion",
 };
+
+const MAC_COMPANION_HIDDEN_CARD_TYPES = new Set([
+  "action", "companion", "push", "sensor",
+]);
+
+const HOME_ASSISTANT_ONLY_CARD_TYPES = new Set([
+  "calendar", "internal", "screen_lock", "slider", "wifi_qr", "wifi_qr_card",
+]);
+
+const LOCAL_CARD_TYPES = new Set([
+  "clock", "local_sensor", "push", "timezone",
+]);
+
+export type CardPickerConnector = "home_assistant" | "mac_companion";
+
+export function cardTypeConnector(key: string): CardPickerOption["connector"] {
+  if (key === "companion" || key.startsWith("companion_")) return "mac_companion";
+  if (HOME_ASSISTANT_ONLY_CARD_TYPES.has(key)) return "home_assistant";
+  if (key === "action" || key === "sensor") {
+    return "home_assistant_or_local";
+  }
+  if (key === "webhook") return "network";
+  if (LOCAL_CARD_TYPES.has(key)) return "local";
+  return "home_assistant";
+}
+
+export function cardTypeVisibleForConnector(key: string, connector: CardPickerConnector): boolean {
+  if (connector === "mac_companion" && MAC_COMPANION_HIDDEN_CARD_TYPES.has(key)) return false;
+  const source = cardTypeConnector(key);
+  return connector === "mac_companion" ? source !== "home_assistant" : source !== "mac_companion";
+}
 
 export function previewValue<T>(preview: Record<string, unknown> | null | undefined, key: string, fallback: T): T {
   return preview && Object.prototype.hasOwnProperty.call(preview, key) ? preview[key] as T : fallback;
@@ -133,6 +182,7 @@ export function cardTypePickerOptions(
   infoOnly: boolean,
   isSub: boolean,
   selectedTypeKey: string | null | undefined,
+  connector: CardPickerConnector = "home_assistant",
 ): CardPickerOption[] {
   const options: CardPickerOption[] = [];
   let selectedUnsupported: { key: string; label: string } | null = null;
@@ -152,7 +202,14 @@ export function cardTypePickerOptions(
     if (pickerKey && pickerKey !== typeKey) continue;
     if (isSub && !allowInSubpage) continue;
     if (definition.isAvailable && !definition.isAvailable({ isSub }) && selectedTypeKey !== typeKey) continue;
-    options.push({ key: typeKey, label, disabled: false, ...cardTypePickerDetails(typeKey, label) });
+    if (!cardTypeVisibleForConnector(typeKey, connector)) continue;
+    options.push({
+      key: typeKey,
+      label,
+      disabled: false,
+      connector: cardTypeConnector(typeKey),
+      ...cardTypePickerDetails(typeKey, label),
+    });
   }
   if (selectedUnsupported) {
     const label = `${selectedUnsupported.label} (not available)`;
@@ -160,6 +217,7 @@ export function cardTypePickerOptions(
       key: selectedUnsupported.key,
       label,
       disabled: true,
+      connector: cardTypeConnector(selectedUnsupported.key),
       ...cardTypePickerDetails(selectedUnsupported.key, label),
     });
   }

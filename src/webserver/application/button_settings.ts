@@ -19,8 +19,10 @@ import type { GridFeature } from "./grid";
 import type { ButtonSettingsIconPickerFeature } from "./button_settings_icon_picker";
 import type { ButtonSettingsSelectionFeature } from "./button_settings_selection";
 import type { PreviewRenderFeature } from "./preview_render";
+import type { CardPickerConnector } from "../features/preview";
 import type { PreviewInteractionsFeature } from "./preview_interactions";
 import type { ControlsFieldsFeature } from "./controls_fields";
+import { cardOwnsSubpage } from "./companion_shortcut_folder";
 
 export function entityMatchesDomains(entityId?: any, domains?: any): boolean {
     var value: any = String(entityId || "").trim();
@@ -71,6 +73,24 @@ export function createButtonSettingsFeature(
         renderCardTextField, segmentControl, selectField, syncCardLargeNumbersToggle,
         textInput, toggleRow,
     } = fields;
+
+    function cardSettingsTitle(this: any, typeDefinition?: any, button?: any): string {
+        var label: any = buttonTypeRegistryValue(typeDefinition, "label", "Card");
+        var mode: any = typeDefinition && typeDefinition.cardMetadata && typeDefinition.cardMetadata.mode;
+        if (mode && Array.isArray(mode.options) && typeof mode.value === "function") {
+            var selectedMode: any = mode.value(button);
+            var selectedOption: any = mode.options.find(function (this: any, option?: any) {
+                return option && option[0] === selectedMode;
+            });
+            if (selectedOption && selectedOption[1])
+                label = selectedOption[1];
+        }
+        label = String(label || "Card").replace(/\b[a-z]/g, function (character?: any) {
+            return character.toUpperCase();
+        });
+        return label + " Settings";
+    }
+
     const {
         imageSlotCapacity,
         imageCardCountWithCandidate,
@@ -139,6 +159,11 @@ export function createButtonSettingsFeature(
     }
     function renderButtonSettings(this: any, forceOpen?: any) {
         var container: any = els.buttonSettings;
+        var openDisclosureIds: any = {};
+        container.querySelectorAll(".sp-disclosure.sp-open").forEach(function (this: any, disclosure?: any) {
+            var button: any = disclosure.querySelector(".sp-disclosure-button");
+            if (button && button.id) openDisclosureIds[button.id] = true;
+        });
         container.innerHTML = "";
         var settingsModal: any = els.settingsOverlay ? els.settingsOverlay.querySelector(".sp-settings-modal") : null;
         if (settingsModal)
@@ -395,6 +420,7 @@ export function createButtonSettingsFeature(
             var originalButtons: any = c.buttons.map(cloneButtonConfig);
             var originalSizes: any = Object.assign({}, c.sizes || {});
             var subpageHomeSlot: any = state.editingSubpage;
+            var originalMainSubpage: any = !c.isSub ? state.subpages[slot] : undefined;
             var originalSubpageOrder: any = c.isSub
                 ? (getSubpage(subpageHomeSlot).order || []).slice() : null;
             var originalSubpagePending: any = c.isSub
@@ -410,6 +436,10 @@ export function createButtonSettingsFeature(
                         delete state.subpageSavePending[subpageHomeSlot];
                     else
                         state.subpageSavePending[subpageHomeSlot] = originalSubpagePending;
+                } else if (originalMainSubpage === undefined) {
+                    delete state.subpages[slot];
+                } else {
+                    state.subpages[slot] = originalMainSubpage;
                 }
                 renderPreview();
             }
@@ -423,6 +453,12 @@ export function createButtonSettingsFeature(
                 return Promise.resolve(false);
             }
             var savedButton: any = saved.button;
+            var originalSubpageOwner: any = originalButtons[slot - 1];
+            var replacedFolderOwner: any = !c.isSub &&
+                cardOwnsSubpage(originalSubpageOwner) &&
+                (savedButton.type !== "companion" || savedButton.sensor ||
+                    originalSubpageOwner.type !== savedButton.type ||
+                    originalSubpageOwner.entity !== savedButton.entity);
             var sizeChanged: any = applyCardSizeConstraint(savedButton);
             var orderChanged: any = !saved.saveSubpage && (saved.saveGrid || sizeChanged);
             var persistence: any;
@@ -441,13 +477,30 @@ export function createButtonSettingsFeature(
                     restoreDraftState();
                     return false;
                 }
-                state.settingsDraft = null;
-                var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
-                if (savedTypeDef && savedTypeDef.afterSave) {
-                    savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub });
+                var cleanup: any = Promise.resolve("saved");
+                if (replacedFolderOwner) {
+                    delete state.subpages[slot];
+                    cleanup = configPersistence.saveSubpageEntity(slot);
                 }
-                renderPreview();
-                return true;
+                return Promise.resolve(cleanup).then(function (cleanupResult: any) {
+                    if (!saveResultSucceeded(cleanupResult)) {
+                        restoreDraftState();
+                        return false;
+                    }
+                    var savedTypeDef: any = cardRegistry.definitions[savedButton.type || ""];
+                    var afterSave: any = savedTypeDef && savedTypeDef.afterSave
+                        ? savedTypeDef.afterSave(savedButton, slot, { isSub: c.isSub })
+                        : "saved";
+                    return Promise.resolve(afterSave).then(function (afterSaveResult: any) {
+                        if (!saveResultSucceeded(afterSaveResult)) {
+                            restoreDraftState();
+                            return false;
+                        }
+                        state.settingsDraft = null;
+                        renderPreview();
+                        return true;
+                    });
+                });
             }).catch(function () {
                 restoreDraftState();
                 showBanner("Could not save the configuration. Check the connection and try again.", "error");
@@ -569,6 +622,9 @@ export function createButtonSettingsFeature(
             var td: any = cardRegistry.definitions[newType];
             if (td && td.onSelect && !keepMediaEntity)
                 td.onSelect(b);
+            var pickerDefinition: any = cardRegistry.definitions[pickerType];
+            if (pickerDefinition && pickerDefinition !== td && pickerDefinition.onSelect && !keepMediaEntity)
+                pickerDefinition.onSelect(b);
             if (pickerType === "media_control") {
                 b.sensor = "cover_art";
                 b.label = "Cover Art";
@@ -584,15 +640,43 @@ export function createButtonSettingsFeature(
             saveField("type", b.type);
             renderButtonSettings();
         }
-        function renderCardTypeGrid(this: any, options?: any) {
+        function renderCardTypeGrid(this: any, isSub?: any, selectedTypeKey?: any) {
             var field: any = document.createElement("div");
             field.className = "sp-field sp-card-type-picker-field";
-            field.appendChild(fieldLabel("Card", "sp-card-type-picker"));
+            var activeConnector: CardPickerConnector = "home_assistant";
+            var hasCompanion: any = !!layout.config.features?.companion;
+            if (hasCompanion) {
+                var tabs: any = document.createElement("div");
+                tabs.className = "sp-card-type-tabs";
+                tabs.setAttribute("role", "tablist");
+                ([
+                    ["home_assistant", "Home Assistant"],
+                    ["mac_companion", "Mac Companion"],
+                ] as Array<[CardPickerConnector, string]>).forEach(function (this: any, tabDef?: any) {
+                    var tab: any = document.createElement("button");
+                    tab.type = "button";
+                    tab.className = "sp-card-type-tab";
+                    tab.textContent = tabDef[1];
+                    tab.setAttribute("role", "tab");
+                    tab.setAttribute("aria-selected", tabDef[0] === activeConnector ? "true" : "false");
+                    tab.addEventListener("click", function (this: any) {
+                        activeConnector = tabDef[0];
+                        tabs.querySelectorAll(".sp-card-type-tab").forEach(function (this: any, other?: any) {
+                            other.setAttribute("aria-selected", other === tab ? "true" : "false");
+                        });
+                        renderOptions();
+                    });
+                    tabs.appendChild(tab);
+                });
+                field.appendChild(tabs);
+            }
             var grid: any = document.createElement("div");
             grid.className = "sp-card-type-grid";
             grid.id = "sp-card-type-picker";
             grid.setAttribute("role", "list");
-            (options || []).forEach(function (this: any, o?: any) {
+            function renderOptions(this: any) {
+                grid.innerHTML = "";
+                buttonTypePickerOptionList(!!isSub, selectedTypeKey, activeConnector).forEach(function (this: any, o?: any) {
                 var item: any = document.createElement("button");
                 item.type = "button";
                 item.className = "sp-card-type-option";
@@ -611,7 +695,9 @@ export function createButtonSettingsFeature(
                     selectCardType(o.key);
                 });
                 grid.appendChild(item);
-            });
+                });
+            }
+            renderOptions();
             field.appendChild(grid);
             return field;
         }
@@ -732,31 +818,11 @@ export function createButtonSettingsFeature(
             if (isNewDraftWithoutType) {
                 if (settingsModal)
                     settingsModal.classList.add("sp-card-type-picker-open");
-                panel.appendChild(renderCardTypeGrid(typeOpts));
+                panel.appendChild(renderCardTypeGrid(c.isSub, selectedTypeKey));
                 container.appendChild(panel);
                 return;
             }
-            var tf: any = document.createElement("div");
-            tf.className = "sp-field";
-            tf.appendChild(fieldLabel("Card", "sp-inp-type"));
-            var typeSelect: any = document.createElement("select");
-            typeSelect.className = "sp-select";
-            typeSelect.id = "sp-inp-type";
-            typeOpts.forEach(function (this: any, o?: any) {
-                var opt: any = document.createElement("option");
-                opt.value = o.key;
-                opt.textContent = o.label;
-                opt.disabled = !!o.disabled;
-                if (selectedTypeKey === o.key)
-                    opt.selected = true;
-                typeSelect.appendChild(opt);
-            });
-            typeSelect.addEventListener("change", function (this: any) {
-                selectCardType(this.value);
-            });
-            tf.appendChild(typeSelect);
-            panel.appendChild(tf);
-            markCardPrimaryField(tf, "card");
+            title.textContent = cardSettingsTitle(rawTypeDef, b);
         }
         var typeHelpers: any = {
             makeIconPicker: makeIconPicker,
@@ -843,6 +909,14 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         groupCardSettingsFields(panel, idPrefix);
+        Object.keys(openDisclosureIds).forEach(function (this: any, id?: any) {
+            var disclosureButton: any = document.getElementById(id);
+            if (!disclosureButton || !container.contains(disclosureButton)) return;
+            var disclosure: any = disclosureButton.closest(".sp-disclosure");
+            if (!disclosure) return;
+            disclosure.classList.add("sp-open");
+            disclosureButton.setAttribute("aria-expanded", "true");
+        });
         var saveRow: any = document.createElement("div");
         saveRow.className = "sp-btn-row sp-btn-row--save";
         if (!isNewDraft) {

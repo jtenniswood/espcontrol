@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
+#include <utility>
 #include <vector>
 
 struct ScreenLockCardRef {
@@ -19,6 +21,17 @@ struct ScreenLockCardRef {
 inline bool &screen_lock_enabled() {
   static bool locked = false;
   return locked;
+}
+
+using ScreenLockChangedHandler = std::function<void(bool)>;
+
+inline ScreenLockChangedHandler &screen_lock_changed_handler() {
+  static ScreenLockChangedHandler handler;
+  return handler;
+}
+
+inline void register_screen_lock_changed_handler(ScreenLockChangedHandler handler) {
+  screen_lock_changed_handler() = std::move(handler);
 }
 
 inline std::vector<lv_obj_t *> &screen_lock_controlled_buttons() {
@@ -140,6 +153,8 @@ inline void screen_lock_apply() {
 inline void screen_lock_set_enabled(bool locked) {
   screen_lock_enabled() = locked;
   screen_lock_apply();
+  auto &changed = screen_lock_changed_handler();
+  if (changed) changed(locked);
 }
 
 inline void screen_lock_toggle() {

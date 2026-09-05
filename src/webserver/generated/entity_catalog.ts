@@ -268,6 +268,13 @@ export const ENTITY_CATALOG = {
         "screensaver_cover_art"
       ]
     },
+    "cover_art_source": {
+      "domain": "select",
+      "name": "Cover Art Source",
+      "objectIds": [
+        "cover_art_source"
+      ]
+    },
     "screen_saver_cover_art_entity": {
       "domain": "text",
       "name": "Screen Saver: Cover Art Entity",
@@ -747,6 +754,7 @@ export const ENTITY_CATALOG = {
       "screen_saver_media_player_sleep_prevention",
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",
+      "cover_art_source",
       "screen_saver_cover_art_entity",
       "screen_saver_cover_art_secondary_entity",
       "screen_saver_cover_art_conditions",

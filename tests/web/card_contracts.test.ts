@@ -44,4 +44,10 @@ export function runCardContractTests(): void {
     sensor: "cover_art",
   });
   equal(media?.driver, "media_cover_art", "mode-aware Media driver resolution");
+  const companion = cardContractDefaultConfig("companion");
+  equal(companion.type, "companion", "Companion default type");
+  equal(companion.icon, "Monitor", "Companion default icon");
+  equal(resolveCardRuntimeSpec(companion)?.driver, "companion", "Companion runtime driver");
+  equal(cardContractSubpageTypeCode("companion"), "CP", "Companion compact type code");
+  equal(cardContractCard("todo"), null, "retired Todo card stays outside the public contract");
 }

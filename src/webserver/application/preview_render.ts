@@ -10,6 +10,7 @@ import {
     previewValue,
     registryValue,
 } from "../features/preview";
+import type { CardPickerConnector } from "../features/preview";
 import type { ApplicationLayoutState } from "./application_context";
 import type { CardRegistry } from "./card_registry";
 import type { ConfigConfirmationOptionsFeature } from "./config_confirmation_options";
@@ -36,8 +37,8 @@ export interface PreviewRenderFeature {
     registryValue(typeDefinition?: any, key?: any, fallback?: any): any;
     configDisabled(button?: any): boolean;
     defaultTypeForPicker(key?: any): any;
-    pickerOptions(isSubpage?: any, selectedTypeKey?: any): any[];
-    pickerKeys(isSubpage?: any, selectedTypeKey?: any): any[];
+    pickerOptions(isSubpage?: any, selectedTypeKey?: any, connector?: CardPickerConnector): any[];
+    pickerKeys(isSubpage?: any, selectedTypeKey?: any, connector?: CardPickerConnector): any[];
     typeVisibleInPicker(key?: any, isSubpage?: any): boolean;
 }
 
@@ -77,11 +78,11 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
     function buttonTypePickerDetails(this: any, key?: any, label?: any) {
         return cardTypePickerDetails(key || "", label || "");
     }
-    function buttonTypePickerOptionList(this: any, isSub?: any, selectedTypeKey?: any) {
-        return cardTypePickerOptions(dependencies.cards.definitions, dependencies.layout.config.disabledCardTypes || [], !!dependencies.layout.config.infoOnly, !!isSub, selectedTypeKey);
+    function buttonTypePickerOptionList(this: any, isSub?: any, selectedTypeKey?: any, connector?: CardPickerConnector) {
+        return cardTypePickerOptions(dependencies.cards.definitions, dependencies.layout.config.disabledCardTypes || [], !!dependencies.layout.config.infoOnly, !!isSub, selectedTypeKey, connector);
     }
-    function buttonTypePickerKeys(this: any, isSub?: any, selectedTypeKey?: any) {
-        return buttonTypePickerOptionList(!!isSub, selectedTypeKey).map(function (this: any, opt?: any) {
+    function buttonTypePickerKeys(this: any, isSub?: any, selectedTypeKey?: any, connector?: CardPickerConnector) {
+        return buttonTypePickerOptionList(!!isSub, selectedTypeKey, connector).map(function (this: any, opt?: any) {
             return opt.key;
         });
     }

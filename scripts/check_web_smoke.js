@@ -394,6 +394,26 @@ const encoded = hooks.serializeButtonConfig(button);
 assert.strictEqual(encoded, "light.kitchen;Kitchen;Auto;Lightbulb");
 assert.deepStrictEqual(plain(hooks.parseButtonConfig(encoded)), button);
 
+const safariShortcutFolderButton = {
+  entity: "com.apple.Safari",
+  label: "Safari",
+  icon: "Monitor",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "companion",
+  precision: "",
+  options: "app_shortcuts",
+};
+const safariShortcutFolderRoundTrip = hooks.parseButtonConfig(
+  hooks.serializeButtonConfig(safariShortcutFolderButton)
+);
+assert.strictEqual(
+  safariShortcutFolderRoundTrip.options,
+  "app_shortcuts",
+  "Safari shortcut-folder options must survive button serialization"
+);
+
 const confirmationButton = {
   entity: "switch.printer",
   label: "3D Printer",
@@ -1328,6 +1348,18 @@ const subpagePresencePreview = hooks.buttonTypePreviewFor("subpage", {
 assert(subpagePresencePreview.iconHtml.includes("mdi-account"), "presence subpage preset preview uses the account icon");
 assert(subpagePresencePreview.labelHtml.includes("Presence"), "presence subpage preset preview uses the Presence label");
 assert(subpagePresencePreview.labelHtml.includes("mdi-chevron-right"), "presence subpage preset preview shows the chevron badge");
+
+const subpageCompanionStatPreview = hooks.buttonTypePreviewFor("subpage", {
+  entity: "stat.memory_free",
+  label: "Mac RAM Free",
+  icon: "Gauge",
+  sensor: "indicator",
+  type: "subpage",
+  options: "subpage_kind=companion_stat",
+});
+assert(subpageCompanionStatPreview.iconHtml.includes("%"), "Companion Stat subpage preview shows the metric unit");
+assert(subpageCompanionStatPreview.labelHtml.includes("Mac RAM Free"), "Companion Stat subpage preview uses the custom title");
+assert(subpageCompanionStatPreview.labelHtml.includes("mdi-chevron-right"), "Companion Stat subpage preview shows the chevron badge");
 
 [
   ["alarm", "alarm_control_panel.home", "mdi-shield-home", "Alarm"],

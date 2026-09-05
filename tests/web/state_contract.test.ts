@@ -7,6 +7,7 @@ import {
   parseEntityEventData,
   resetStateForConnection,
 } from "../../src/webserver/state/event_state";
+import { normalizeBackupPanelSettings } from "../../src/webserver/model";
 import {
   isC6FirmwareInstallButtonEvent,
   isFirmwareUpdateEvent,
@@ -51,6 +52,31 @@ export function runStateContractTests(): void {
   equal(first.alarmDelayAudioOn, false, "alarm delay audio defaults off");
   equal(first.alarmDelayTtsOn, true, "alarm delay TTS defaults on");
   equal(first.alarmDelayFinalCountdown, 10, "alarm delay final countdown defaults to ten seconds");
+  equal(first.coverArtSource, "Home Assistant", "cover art defaults to the Home Assistant source");
+  const restoredCompanionSettings = normalizeBackupPanelSettings({
+    screensaver_mode: "companion",
+    cover_art_source: "Mac Companion",
+  }, {
+    timezone: "UTC",
+    language: "en",
+    clockFormat: "12",
+    clockFormatOptions: ["12"],
+    ntpDefaults: ["", "", ""],
+    ntpServer1: "",
+    ntpServer2: "",
+    ntpServer3: "",
+    coverArtHomeAssistantProtocol: "auto",
+    coverArtHomeAssistantPort: 8123,
+    coverArtHomeAssistantEndpointMode: "auto",
+    autoUpdate: false,
+    updateFrequency: "daily",
+    updateFrequencyOptions: ["daily"],
+    screenRotationOptions: ["0"],
+  });
+  equal(restoredCompanionSettings.screensaverMode, "companion",
+    "backup restore preserves Companion screensaver mode");
+  equal(restoredCompanionSettings.coverArtSource, "Mac Companion",
+    "backup restore preserves the Mac cover-art source");
   first.grid[0] = 9;
   first.buttons[0]!.label = "Changed";
   equal(second.grid[0], 0, "state factories do not share grid arrays");
@@ -110,6 +136,7 @@ export function runStateContractTests(): void {
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
+    coverArtSource: "select-cover_art_source",
     coverArtEntity: "text-screen_saver__cover_art_entity",
     coverArtSecondaryEntity: "text-screen_saver__external_source_media_entity",
     coverArtConditions: "text-screen_saver__cover_art_conditions",

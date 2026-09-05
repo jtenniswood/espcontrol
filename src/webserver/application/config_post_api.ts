@@ -127,7 +127,7 @@ export function createConfigPersistenceFeature(
         var keys: any = subpageEntityKeys();
         var chunks: any = EspControlModel.splitSubpageConfigChunks(full, keys.length, 255);
         if (!chunks)
-            return;
+            return "failed";
         var previousPendingChunks: any = EspControlModel.splitSubpageConfigChunks(state.subpageSavePending[slot] || "", keys.length, 255) || [];
         state.subpageSavePending[slot] = full;
         var directPosts: any = [];
@@ -142,7 +142,12 @@ export function createConfigPersistenceFeature(
                 requests().postText(chunkName, chunk);
         }
         if (direct)
-            return Promise.all(directPosts);
+            return Promise.all(directPosts).then(function (results: any[]) {
+                return results.every(function (result: any) {
+                    return result !== null && result !== undefined &&
+                        (typeof result.ok !== "boolean" || result.ok);
+                }) ? "saved" : "failed";
+            });
     }
     function saveSubpageEntity(this: any, slot?: any) {
         var sp: any = state.subpages[slot];
@@ -151,7 +156,7 @@ export function createConfigPersistenceFeature(
         var chunks: any = EspControlModel.splitSubpageConfigChunks(full, keys.length, 255);
         if (!chunks) {
             showBanner("Subpage is too large to save. Shorten labels or entity IDs.", "error");
-            return;
+            return "failed";
         }
         var nativeSave: any = nativePanelConfig
             ? nativePanelConfig.writeSubpage(Number.parseInt(String(slot), 10), full)
@@ -172,7 +177,7 @@ export function createConfigPersistenceFeature(
         }
         if (serializedConfigContainsWifiSharing(full))
             return Promise.resolve(rejectLegacyWifiSharingSave(requests()));
-        saveSubpageEntityLegacy(slot, full);
+        return saveSubpageEntityLegacy(slot, full, true);
     }
     function scheduleSliderSubpageMigration(this: any, slot?: any) {
         runtime.pendingSliderSubpageMigrations[slot] = true;

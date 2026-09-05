@@ -1020,6 +1020,21 @@
     }
   },
   {
+    "name": "companion: approved_app",
+    "input": "~com.apple.Safari,Safari,Monitor,Auto,,,companion,,",
+    "expected": {
+      "entity": "com.apple.Safari",
+      "label": "Safari",
+      "icon": "Monitor",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "companion",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "screen_lock: toggle",
     "input": "~,,Lock,Lock%20Open,,,screen_lock,,",
     "expected": {
@@ -1332,6 +1347,21 @@
       "type": "sensor",
       "precision": "text",
       "options": ""
+    }
+  },
+  {
+    "name": "companion_subpage: picker_alias",
+    "input": "~,Mac%20Controls,Auto,Auto,,,subpage,,subpage_connector%3Dmac_companion",
+    "expected": {
+      "entity": "",
+      "label": "Mac Controls",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "subpage",
+      "precision": "",
+      "options": "subpage_connector=mac_companion"
     }
   },
   {

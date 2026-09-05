@@ -5,6 +5,7 @@ import {
 } from "../model/config_primitives";
 import {
     SENSOR_LARGE_NUMBERS_OPTION,
+    SUBPAGE_CONNECTOR_OPTION,
     SUBPAGE_KIND_OPTION,
     copyLargeNumbersOption,
     largeNumbersExplicitlyDisabled,
@@ -12,10 +13,18 @@ import {
     // ── Subpage Card Options ───────────────────────────────────────────
     function normalizeSubpageKind(this: any, value?: any) {
         value = String(value || "").trim();
-        return subpagePresetDefaults(value) ? value : "";
+        return SUBPAGE_KIND_PRESET_DEFINITIONS.some(function (definition: any) {
+            return definition.value === value;
+        }) ? value : "";
     }
     function subpageKind(this: any, b?: any) {
         return normalizeSubpageKind(configOptionValue(b && b.options, SUBPAGE_KIND_OPTION));
+    }
+    function normalizeSubpageConnector(this: any, value?: any) {
+        return String(value || "").trim() === "mac_companion" ? "mac_companion" : "home_assistant";
+    }
+    function subpageConnector(this: any, b?: any) {
+        return normalizeSubpageConnector(configOptionValue(b && b.options, SUBPAGE_CONNECTOR_OPTION));
     }
     var SUBPAGE_KIND_PRESET_DEFINITIONS: any = [
         { value: "", label: "Generic" },
@@ -34,9 +43,15 @@ import {
         { value: "weather", label: "Weather", preset: { label: "Weather", icon: "Weather Partly Cloudy", entityDomains: ["weather"], placeholder: "e.g. weather.home" } },
         { value: "sensor", label: "Sensor", preset: { label: "Sensor", icon: "Gauge", entityDomains: ["sensor", "binary_sensor", "text_sensor"], placeholder: "e.g. sensor.open_windows" } },
         { value: "image", label: "Camera/Image", preset: { label: "Camera", icon: "Camera", entityDomains: ["camera", "image"], placeholder: "e.g. camera.front_door" } },
+        { value: "companion_stat", label: "Companion Stat" },
     ];
-    function subpageKindOptions(this: any) {
-        return SUBPAGE_KIND_PRESET_DEFINITIONS.map(function (this: any, definition?: any) {
+    function subpageKindOptions(this: any, connector?: any) {
+        var normalizedConnector: any = normalizeSubpageConnector(connector);
+        return SUBPAGE_KIND_PRESET_DEFINITIONS.filter(function (definition: any) {
+            return normalizedConnector === "mac_companion"
+                ? definition.value === ""
+                : definition.value !== "companion_stat";
+        }).map(function (this: any, definition?: any) {
             return [definition.value, definition.label];
         });
     }
@@ -66,6 +81,9 @@ import {
     }
     function normalizeSubpageOptions(this: any, options?: any, sensor?: any, precision?: any) {
         var out: any = "";
+        var connector: any = normalizeSubpageConnector(configOptionValue(options, SUBPAGE_CONNECTOR_OPTION));
+        if (connector === "mac_companion")
+            out = setConfigOptionValue(out, SUBPAGE_CONNECTOR_OPTION, connector);
         var kind: any = normalizeSubpageKind(configOptionValue(options, SUBPAGE_KIND_OPTION));
         if (kind)
             out = setConfigOptionValue(out, SUBPAGE_KIND_OPTION, kind);
@@ -77,6 +95,8 @@ import {
     }
 export {
     normalizeSubpageKind,
+    normalizeSubpageConnector,
+    subpageConnector,
     subpageKind,
     SUBPAGE_KIND_PRESET_DEFINITIONS,
     subpageKindOptions,

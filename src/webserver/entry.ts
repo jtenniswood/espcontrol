@@ -57,6 +57,8 @@ import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } fro
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
 import { createSettingsSystemSectionFeature } from "./application/settings_system_section";
+import { createSettingsCompanionSectionFeature } from "./application/settings_companion_section";
+import { createConnectorsPageFeature, type ConnectorsPageFeature } from "./application/connectors_page";
 import { createSettingsPageFeature, type SettingsPageFeature } from "./application/settings_page";
 import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./application/controls_fields";
 import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
@@ -98,6 +100,7 @@ import { createReconnectController } from "./features/reconnect";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
 import { registerCalendarCardTypes } from "./cards/calendar";
+import { registerCompanionCardTypes } from "./cards/companion";
 import { registerClimateCardTypes } from "./cards/climate";
 import { registerClockCardTypes } from "./cards/clock";
 import { createCoverLikeCardRegistration } from "./cards/cover_like_card";
@@ -150,6 +153,16 @@ function registerCards(context: ApplicationContext) {
   registerActionCardTypes(registry, context.configuration.confirmationOptions, context.controllers.entityState, fields, cardUi);
   registerAlarmCardTypes(registry, context.configuration.accessClimateAlarm, context.controllers.renderQueue, fields, cardUi);
   registerCalendarCardTypes(registry, context.configuration.dateTimeOptions, fields);
+  registerCompanionCardTypes(
+    registry,
+    !!context.device.profile.features?.companion,
+    context.dom.document,
+    context.dom.fetch,
+    fields,
+    cardUi,
+    context.configuration.codec,
+    context.controllers.selection,
+  );
   registerClimateCardTypes(
     registry,
     context.configuration.modalTabs,
@@ -191,7 +204,15 @@ function registerCards(context: ApplicationContext) {
   registerPushCardTypes(registry, fields);
   registerScreenLockCardTypes(registry, fields);
   registerSensorCardTypes(registry, context.configuration.options, fields, cardUi);
-  registerSliderCardTypes(registry, context.configuration.modalTabs, lightCards, fields, context.controllers.settingsUi);
+  registerSliderCardTypes(
+    registry,
+    context.configuration.modalTabs,
+    lightCards,
+    fields,
+    context.controllers.settingsUi,
+    !!context.device.profile.features?.companion,
+    cardUi,
+  );
   registerSubpageCardTypes(registry, context.configuration.codec, context.core, context.controllers.selection, fields, cardUi);
   registerSwitchCardTypes(registry, context.configuration.confirmationOptions, lightCards, fields);
   registerTimezoneCardTypes(registry, context.configuration.dateTimeOptions, context.dom.document, fields);
@@ -284,6 +305,7 @@ function composeApplicationContext(): ApplicationContext {
   let fields: ControlsFieldsFeature;
   let settingsHelpers: SettingsPageHelpersFeature;
   let settingsPage: SettingsPageFeature;
+  let connectorsPage: ConnectorsPageFeature;
   let buttonSettings: ButtonSettingsFeature;
   let app: AppFeature;
   const shell = createControlsShellFeature(runtime, {
@@ -292,6 +314,7 @@ function composeApplicationContext(): ApplicationContext {
     schedule: dom.schedule,
     cancelSchedule: (handle) => { dom.window.clearTimeout(handle); },
     buildSettingsPage: (parent) => { settingsPage.buildSettingsPage(parent); },
+    buildConnectorsPage: (parent) => { connectorsPage.buildPage(parent); },
     closeSettings: () => { selection.closeSettings(); },
     postButtonPress: (name) => requestApi.postButtonPress(name),
     waitForReboot: () => { stateLoader.waitForReboot(); },
@@ -835,11 +858,6 @@ function composeApplicationContext(): ApplicationContext {
     requestApi,
     appEvents,
   );
-  app = createAppFeature(
-    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
-    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
-    interactions, preview, buttonSettings,
-  );
   const scheduleSection = createSettingsScheduleSectionFeature(
     configurationCodec, runtime, screenScheduleState, entityState, requestApi,
     schedulePostApi, fields, settingsHelpers,
@@ -847,6 +865,7 @@ function composeApplicationContext(): ApplicationContext {
   const coverArtSection = createSettingsCoverArtSectionFeature(
     configurationCodec, runtime, entityState, statusPreview, artworkPostApi,
     fields, settingsHelpers, coverArtScreensaver, mediaPlayback,
+    !!layout.config.features?.companion,
   );
   const systemSection = createSettingsSystemSectionFeature({
     exportBackup: backupApplication.exportConfig,
@@ -854,12 +873,26 @@ function composeApplicationContext(): ApplicationContext {
   }, runtime, firmwareVersion, firmwareUpdate, c6Firmware, shell, requestApi,
   stateLoader, firmwarePostApi, artworkPostApi, publicFirmwareInstall, fields,
   settingsHelpers);
+  const companionSection = createSettingsCompanionSectionFeature(dom, shell, fields);
+  connectorsPage = createConnectorsPageFeature(
+    dom, shell, fields, companionSection, !!layout.config.features?.companion,
+  );
   settingsPage = createSettingsPageFeature(
     configurationCodec, runtime, core, layout, environment, screenScheduleState,
     screensaverTimeout, screenRotation, appearance, clockBarState, entityState,
     shell, requestApi, statusPreview, artworkPostApi, schedulePostApi,
     clockBarPostApi, fields, settingsHelpers, scheduleSection, coverArtSection,
-    systemSection, preview,
+    systemSection, preview, connectorsPage,
+  );
+  app = createAppFeature(
+    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
+    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
+    interactions, preview, buttonSettings, connectorsPage,
+  );
+  app = createAppFeature(
+    pageTitle, createWebStyles(layout.config.dragAnimation), core, screenRotation,
+    clockBarState, shell, appEvents, statusPreview, selection, contextMenu,
+    interactions, preview, buttonSettings, connectorsPage,
   );
   requestApi.connectReconnect(appEvents.connect);
   return createApplicationContext({

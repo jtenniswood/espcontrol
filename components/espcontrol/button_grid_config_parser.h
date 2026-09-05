@@ -12,6 +12,7 @@
 
 #include "button_grid_card_runtime.h"
 #include "button_grid_string.h"
+#include "companion_capabilities_generated.h"
 #include "button_grid_saved_config_action_generated.h"
 #include "button_grid_saved_config_access_generated.h"
 #include "button_grid_saved_config_security_generated.h"
@@ -61,6 +62,7 @@ constexpr const char *MEDIA_SPEAKER_GROUP_ENTITY_OPTION = card_runtime_option_na
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
+constexpr const char *SUBPAGE_CONNECTOR_OPTION = card_runtime_option_name_subpage_connector();
 // Extract the Nth semicolon-delimited field from a config string
 inline std::string cfg_field(const std::string &cfg, int idx) {
   size_t start = 0;
@@ -728,15 +730,20 @@ inline std::string normalize_subpage_kind(const std::string &value) {
     value == "lock" || value == "vacuum" ||
     value == "lawn_mower" ||
     value == "weather" || value == "sensor" ||
-    value == "image" ? value : "";
+    value == "image" || value == "companion_stat" ? value : "";
 }
 
 inline std::string subpage_card_options_normalized(const std::string &options,
                                                    const std::string &sensor,
                                                    const std::string &precision) {
   std::string out;
+  std::string connector = cfg_option_value(options, SUBPAGE_CONNECTOR_OPTION);
+  if (connector == "mac_companion") out = std::string(SUBPAGE_CONNECTOR_OPTION) + "=" + connector;
   std::string kind = normalize_subpage_kind(cfg_option_value(options, "subpage_kind"));
-  if (!kind.empty()) out = "subpage_kind=" + kind;
+  if (!kind.empty()) {
+    if (!out.empty()) out += ",";
+    out += "subpage_kind=" + kind;
+  }
   if (!sensor.empty() && sensor != "indicator" && precision != "text" &&
       (cfg_option_token_present(options, "large_numbers") ||
        large_numbers_explicitly_disabled(options))) {
@@ -861,6 +868,30 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   }
   if (p.type == "subpage") return !p.sensor.empty() && p.sensor != "indicator" && p.precision != "text";
   return card_runtime_large_numbers_supported(p.type, p.precision);
+}
+
+inline bool companion_system_metric_config(const ParsedCfg &p) {
+  return p.type == "companion" && companion_metric_capability(p.entity) != nullptr;
+}
+
+inline bool subpage_companion_stat_entity_valid(const std::string &entity) {
+  return companion_metric_capability(entity) != nullptr;
+}
+
+inline bool subpage_companion_stat_config(const ParsedCfg &p) {
+  return p.type == "subpage" &&
+         cfg_option_value(p.options, "subpage_kind") == "companion_stat" &&
+         subpage_companion_stat_entity_valid(p.entity);
+}
+
+inline const char *subpage_companion_stat_default_label(const std::string &entity) {
+  const auto *capability = companion_metric_capability(entity);
+  return capability ? capability->label : "Processor";
+}
+
+inline const char *subpage_companion_stat_default_unit(const std::string &entity) {
+  const auto *capability = companion_metric_capability(entity);
+  return capability ? capability->unit : "%";
 }
 
 inline std::string date_time_card_options_normalized(const std::string &options,
@@ -1261,6 +1292,16 @@ inline const char *saved_config_subpage_default_icon(const std::string &kind) {
 inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
   const std::string kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
   if (kind.empty()) return;
+  if (kind == "companion_stat") {
+    if (!subpage_companion_stat_entity_valid(p.entity)) p.entity = "stat.cpu";
+    if (p.label.empty()) p.label = subpage_companion_stat_default_label(p.entity);
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Gauge";
+    p.icon_on = "Auto";
+    p.sensor = "indicator";
+    if (p.unit.empty()) p.unit = subpage_companion_stat_default_unit(p.entity);
+    p.precision.clear();
+    return;
+  }
   if (p.label.empty()) p.label = saved_config_subpage_default_label(kind);
   if (p.icon.empty() || p.icon == "Auto") p.icon = saved_config_subpage_default_icon(kind);
   p.icon_on = "Auto";
@@ -1272,6 +1313,25 @@ inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
 inline std::string normalize_saved_config_subpage_options(
     const std::string &options, const ParsedCfg &p) {
   return subpage_card_options_normalized(options, p.sensor, p.precision);
+}
+
+inline bool companion_app_shortcuts_enabled(const ParsedCfg &p) {
+  return p.type == "companion" &&
+         (p.entity == "com.apple.Safari" || p.entity == "com.openai.codex" ||
+          p.entity == "com.tinyspeck.slackmacgap") &&
+         p.sensor.empty() &&
+         cfg_option_token_present(p.options, "app_shortcuts");
+}
+
+inline bool companion_app_subpage_auto_switch_enabled(const ParsedCfg &p) {
+  return companion_app_shortcuts_enabled(p) &&
+         cfg_option_token_present(p.options, "app_shortcuts_auto_switch");
+}
+
+inline std::string companion_card_options_normalized(const ParsedCfg &p) {
+  if (!companion_app_shortcuts_enabled(p)) return "";
+  return companion_app_subpage_auto_switch_enabled(p)
+    ? "app_shortcuts,app_shortcuts_auto_switch" : "app_shortcuts";
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
@@ -1304,6 +1364,24 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
   normalize_saved_config_action(p, normalize_saved_config_action_fields,
                                 action_card_options_normalized);
+  if (p.type == "companion") {
+    p.icon_on = "Auto";
+    if (companion_system_metric_config(p)) {
+      p.sensor.clear();
+      if (p.unit.empty()) {
+        if (p.entity == "stat.network_throughput") p.unit = "MB/s";
+        else p.unit = "%";
+      } else if (p.entity == "stat.network_throughput" && p.unit == "KB/s") {
+        p.unit = "MB/s";
+      }
+      if (p.precision != "0" && p.precision != "1" && p.precision != "2") p.precision = "0";
+      p.options = date_time_card_options_normalized(p.options, p);
+    } else {
+      p.unit.clear();
+      p.precision.clear();
+      p.options = companion_card_options_normalized(p);
+    }
+  }
   if (migrate_saved_config_vacuum_legacy(p)) {
     if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }
@@ -1321,7 +1399,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "companion" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,

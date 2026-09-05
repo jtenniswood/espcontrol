@@ -10,10 +10,10 @@
   },
   "summary": {
     "deviceProfiles": 7,
-    "cardTypes": 42,
-    "entityNames": 101,
-    "icons": 335,
-    "structuralIcons": 20,
+    "cardTypes": 43,
+    "entityNames": 102,
+    "icons": 337,
+    "structuralIcons": 26,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -1205,7 +1205,8 @@
       "slug": "guition-esp32-s3-4848s040",
       "slots": 9,
       "capabilities": {
-        "imageSlots": 1
+        "imageSlots": 1,
+        "companion": true
       },
       "public": {
         "name": "Guition 4848S040",
@@ -1488,6 +1489,7 @@
         "media_playlist",
         "option_select",
         "push",
+        "companion",
         "screen_lock",
         "webhook",
         "sensor",
@@ -1882,6 +1884,18 @@
         },
         "push": {
           "driver": "push",
+          "capabilities": {
+            "informationOnly": false,
+            "subscriptions": false,
+            "actions": true,
+            "numericControl": false,
+            "modal": false,
+            "runtimeAllocation": false,
+            "subpage": true
+          }
+        },
+        "companion": {
+          "driver": "companion",
           "capabilities": {
             "informationOnly": false,
             "subscriptions": false,
@@ -4864,6 +4878,91 @@
           "options": ""
         }
       },
+      "companion": {
+        "label": "Companion",
+        "allowInSubpage": true,
+        "domains": [],
+        "options": [
+          {
+            "name": "app_shortcuts",
+            "label": "App Subpage",
+            "kind": "flag",
+            "omitDefault": true
+          },
+          {
+            "name": "app_shortcuts_auto_switch",
+            "label": "Auto switch to subpage",
+            "kind": "flag",
+            "omitDefault": true
+          },
+          {
+            "name": "large_numbers",
+            "label": "Large Sensor Numbers",
+            "kind": "flag",
+            "omitDefault": true
+          }
+        ],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "keep"
+            },
+            "label": {
+              "policy": "keep"
+            },
+            "icon": {
+              "policy": "default_if_empty",
+              "value": "Monitor"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "keep"
+            },
+            "unit": {
+              "policy": "keep"
+            },
+            "type": {
+              "policy": "default",
+              "value": "companion"
+            },
+            "precision": {
+              "policy": "allowed",
+              "values": [
+                "",
+                "0",
+                "1",
+                "2"
+              ],
+              "fallback": ""
+            },
+            "options": {
+              "policy": "hook",
+              "hook": "normalize_date_time_options"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": [
+            "app_shortcuts",
+            "app_shortcuts_auto_switch",
+            "large_numbers"
+          ],
+          "optionHook": "normalize_date_time_options"
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Monitor",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "companion",
+          "precision": "",
+          "options": ""
+        }
+      },
       "screen_lock": {
         "label": "Screen Lock",
         "allowInSubpage": true,
@@ -5312,6 +5411,17 @@
         "domains": [],
         "options": [
           {
+            "name": "subpage_connector",
+            "label": "Subpage Connector",
+            "kind": "choice",
+            "values": [
+              "",
+              "mac_companion"
+            ],
+            "defaultValue": "",
+            "omitDefault": true
+          },
+          {
             "name": "subpage_kind",
             "label": "Subpage Type",
             "kind": "choice",
@@ -5331,7 +5441,8 @@
               "lawn_mower",
               "weather",
               "sensor",
-              "image"
+              "image",
+              "companion_stat"
             ],
             "defaultValue": "",
             "omitDefault": true
@@ -5383,6 +5494,7 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "subpage_connector",
             "subpage_kind",
             "large_numbers"
           ],
@@ -6155,6 +6267,7 @@
       "climate": "H",
       "climate_control": "HC",
       "push": "P",
+      "companion": "CP",
       "screen_lock": "SL",
       "webhook": "WH",
       "internal": "I",
@@ -6580,6 +6693,17 @@
           "screen_saver__cover_art",
           "screen_saver_cover_art",
           "screensaver_cover_art"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "cover_art_source",
+        "domain": "select",
+        "name": "Cover Art Source",
+        "objectIds": [
+          "cover_art_source"
         ],
         "groups": [
           "settings"
@@ -7393,6 +7517,42 @@
         "codepoint": "F02ED",
         "mdi": "image-broken",
         "comment": "Image card unavailable state"
+      },
+      {
+        "name": "Shortcut Command",
+        "codepoint": "F0633",
+        "mdi": "apple-keyboard-command",
+        "comment": "Companion shortcut labels"
+      },
+      {
+        "name": "Shortcut Control",
+        "codepoint": "F0634",
+        "mdi": "apple-keyboard-control",
+        "comment": "Companion shortcut labels"
+      },
+      {
+        "name": "Shortcut Option",
+        "codepoint": "F0635",
+        "mdi": "apple-keyboard-option",
+        "comment": "Companion shortcut labels"
+      },
+      {
+        "name": "Shortcut Shift",
+        "codepoint": "F0636",
+        "mdi": "apple-keyboard-shift",
+        "comment": "Companion shortcut labels"
+      },
+      {
+        "name": "Shortcut Left",
+        "codepoint": "F004D",
+        "mdi": "arrow-left",
+        "comment": "Companion shortcut labels"
+      },
+      {
+        "name": "Shortcut Right",
+        "codepoint": "F0054",
+        "mdi": "arrow-right",
+        "comment": "Companion shortcut labels"
       }
     ],
     "icons": [
@@ -7885,6 +8045,11 @@
         "name": "Folder Music Outline",
         "codepoint": "F135A",
         "mdi": "folder-music-outline"
+      },
+      {
+        "name": "Folder Outline",
+        "codepoint": "F0256",
+        "mdi": "folder-outline"
       },
       {
         "name": "Folder Play",
@@ -9025,6 +9190,11 @@
         "name": "Weather Windy Variant",
         "codepoint": "F059E",
         "mdi": "weather-windy-variant"
+      },
+      {
+        "name": "Web",
+        "codepoint": "F059F",
+        "mdi": "web"
       },
       {
         "name": "Wifi",

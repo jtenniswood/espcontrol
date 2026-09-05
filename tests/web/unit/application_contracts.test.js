@@ -17,9 +17,13 @@ function sourceFiles(directory) {
 
 describe("browserless application contracts", () => {
   const { runClipboardFeatureTests } = loadTypescriptTest("tests/web/clipboard_feature.test.ts");
+  const { runCompanionPairingFeatureTests } = loadTypescriptTest("tests/web/companion_pairing_feature.test.ts");
+  const { runCompanionShortcutFeatureTests } = loadTypescriptTest("tests/web/companion_shortcut_feature.test.ts");
+  const { runConnectorsFeatureTests } = loadTypescriptTest("tests/web/connectors_feature.test.ts");
   const { runApplicationContextTests } = loadTypescriptTest("tests/web/application_context.test.ts");
   const { runDeviceApiTests } = loadTypescriptTest("tests/web/device_api.test.ts");
   const { runSettingsFeatureTests } = loadTypescriptTest("tests/web/settings_feature.test.ts");
+  const { runPreviewFeatureTests } = loadTypescriptTest("tests/web/preview_feature.test.ts");
   const { runStateContractTests } = loadTypescriptTest("tests/web/state_contract.test.ts");
   const { createEntityStateFeature } = loadTypescriptTest("src/webserver/application/entity_state.ts");
   const { createConfigModalTabOptionsFeature } = loadTypescriptTest("src/webserver/application/config_modal_tab_options.ts");
@@ -29,8 +33,81 @@ describe("browserless application contracts", () => {
     runClipboardFeatureTests();
   });
 
+  test("formats physical Companion pairing status", () => {
+    runCompanionPairingFeatureTests();
+  });
+
+  test("captures and formats Companion keyboard shortcuts", () => {
+    runCompanionShortcutFeatureTests();
+  });
+
+  test("models connector onboarding and card sources", () => {
+    runConnectorsFeatureTests();
+  });
+
+  test("renders connector badges and connection-specific setup guidance", () => {
+    const connectors = fs.readFileSync(path.join(ROOT, "src/webserver/application/connectors_page.ts"), "utf8");
+    const companion = fs.readFileSync(path.join(ROOT, "src/webserver/application/settings_companion_section.ts"), "utf8");
+    const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
+    assert.match(connectors, /sp-card-badge sp-hidden/);
+    assert.match(connectors, /setHidden\(homeAssistantSteps, value\.home_assistant\.connected\)/);
+    assert.match(connectors, /setHidden\(homeAssistantActionInfo, value\.home_assistant\.actions_confirmed\)/);
+    assert.match(connectors, /sp-connector-info/);
+    assert.match(connectors, /cannot perform actions in Home Assistant/);
+    assert.match(connectors, /connectors\/home-assistant\/complete/);
+    assert.match(connectors, /I enabled Home Assistant actions/);
+    assert.doesNotMatch(connectors, /Actions confirmed/);
+    assert.match(companion, /setHidden\(instructions, value\.connected\)/);
+    assert.match(companion, /setHidden\(badge, !value\.paired\)/);
+    assert.match(companion, /Press and hold the Wi-Fi icon on the display/);
+    assert.doesNotMatch(companion, /Pairing code:|copyButton/);
+    assert.match(styles, /\.sp-connectors-config\{max-width:960px/);
+    assert.doesNotMatch(connectors, /sp-connectors-intro|Manage the services that provide data and actions/);
+    assert.match(styles, /\.sp-hidden\{display:none!important\}/);
+  });
+
+  test("gates Home Assistant and Companion screensaver modes by connector setup", () => {
+    const settings = fs.readFileSync(path.join(ROOT, "src/webserver/application/settings_page.ts"), "utf8");
+    const screensaver = fs.readFileSync(path.join(ROOT, "src/webserver/application/screensaver_state.ts"), "utf8");
+    const eventHandlers = fs.readFileSync(path.join(ROOT, "src/webserver/application/app_state_event_handlers.ts"), "utf8");
+    const connectors = fs.readFileSync(path.join(ROOT, "src/webserver/application/connectors_page.ts"), "utf8");
+    assert.match(settings, /\["sensor", "Home Assistant"\]/);
+    assert.match(settings, /\["companion", "Companion App"\]/);
+    assert.match(settings, /sensorBtn\.hidden = !haAvailable/);
+    assert.match(settings, /companionBtn\.hidden = !companionAvailable/);
+    assert.match(settings, /onStatusChange\(syncScreensaverModeOptions\)/);
+    assert.match(screensaver, /state\.screensaverMode === "companion"/);
+    assert.match(eventHandlers, /val === "companion"/);
+    assert.match(connectors, /homeAssistantConfigured\(\)/);
+    assert.match(connectors, /companionConfigured\(\)/);
+  });
+
+  test("publishes and executes only approved Mac applications", () => {
+    const store = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionStore.swift"), "utf8");
+    const app = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionApp.swift"), "utf8");
+    assert.match(store, /approvedApplicationIdentifiers\.contains\(\$0\.bundleIdentifier\)/);
+    assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
+    assert.doesNotMatch(store, /NSWorkspace\.shared\.icon\(forFile: url\.path\)/);
+    assert.match(app, /case connection, applications, folders, general/);
+    assert.match(app, /NavigationSplitView/);
+    assert.match(app, /\.listStyle\(\.sidebar\)/);
+    assert.match(app, /\.formStyle\(\.grouped\)/);
+    assert.match(app, /\.searchable\(text: \$applicationSearch, placement: \.toolbar/);
+    assert.doesNotMatch(app, /Image\(nsImage: application\.icon\)/);
+    assert.match(app, /\.toggleStyle\(\.checkbox\)/);
+    assert.match(app, /\.controlSize\(\.small\)/);
+    assert.match(app, /"Enable All Results" : "Enable All Applications"/);
+    assert.match(app, /"Disable All Results" : "Disable All Applications"/);
+    assert.match(app, /setApplications\(filteredApplications, approved: true\)/);
+    assert.match(app, /setApplications\(filteredApplications, approved: false\)/);
+  });
+
   test("owns browser composition and compatibility layout state", () => {
     runApplicationContextTests();
+  });
+
+  test("filters the add-card picker by connector without persisting a source", () => {
+    runPreviewFeatureTests();
   });
 
   test("owns entity catalogue helpers as one explicit service", () => {
@@ -553,6 +630,37 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(globals, /\bvar (?:WEBHOOK_CARD_METADATA|WEBHOOK_HEADERS_OPTION|WEBHOOK_METHODS|normalizeWebhookConfig|setWebhookHeaders|webhookHeaders|webhookMethod):/);
   });
 
+  test("registers the Companion card through profile and browser services", () => {
+    const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
+    const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/companion.ts"), "utf8");
+    assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal|CFG)\b/);
+    assert.match(entry, /registerCompanionCardTypes\(\s*registry,\s*!!context\.device\.profile\.features\?\.companion,\s*context\.dom\.document,\s*context\.dom\.fetch,\s*fields,\s*cardUi,\s*context\.configuration\.codec,\s*context\.controllers\.selection,?\s*\);/);
+    assert.match(card, /fetchImpl\("\/companion\/actions", \{ cache: "no-store" \}\)/);
+    assert.doesNotMatch(entry, /registerCompatibility\(registerCompanionCardTypes/);
+  });
+
+  test("keeps Companion primary selectors outside Card Settings", () => {
+    const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/companion.ts"), "utf8");
+    const fields = fs.readFileSync(path.join(ROOT, "src/webserver/application/controls_fields.ts"), "utf8");
+    assert.match(card, /statsField[\s\S]*markCardPrimaryField\(statsField, "statistic"\)/);
+    assert.match(card, /shortcutField[\s\S]*markCardPrimaryField\(shortcutField, "shortcut"\)/);
+    assert.match(card, /urlField[\s\S]*markCardPrimaryField\(urlField, "url"\)/);
+    assert.match(card, /mediaField[\s\S]*markCardPrimaryField\(mediaField, "media"\)/);
+    assert.match(card, /folderField[\s\S]*markCardPrimaryField\(folderField, "folder"\)/);
+    assert.match(card, /windowField[\s\S]*markCardPrimaryField\(windowField, "window"\)/);
+    assert.match(card, /folderPlaceholder\.disabled = true/);
+    assert.match(card, /folderPlaceholder\.hidden = true/);
+    assert.doesNotMatch(card, /Unavailable folder/);
+    assert.match(fields, /statistic: false/);
+    assert.match(fields, /shortcut: false/);
+    assert.match(fields, /url: false/);
+    assert.match(fields, /media: false/);
+    assert.match(fields, /folder: false/);
+    assert.match(fields, /window: false/);
+    assert.match(card, /sortCompanionLabels\(COMPANION_MEDIA_ACTIONS\)/);
+    assert.match(card, /first\.group\.localeCompare\(second\.group/);
+  });
+
   test("registers the internal relay card with profile-owned options", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/internal.ts"), "utf8");
@@ -618,7 +726,8 @@ describe("browserless application contracts", () => {
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/slider.ts"), "utf8");
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
-    assert.match(entry, /registerSliderCardTypes\(registry, context\.configuration\.modalTabs, lightCards, fields, context\.controllers\.settingsUi\);/);
+    assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?context\.device\.profile\.features\?\.companion,[\s\S]*?cardUi,[\s\S]*?\);/);
+    assert.match(card, /metadata\.entity\.validateDomains && sliderMode === "home_assistant"/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerSliderCardTypes/);
     assert.doesNotMatch(globals, /\bvar (?:renderCoverControlTabSettings|sliderCardMetadata|sliderTypeFactory):/);
   });
@@ -746,7 +855,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.doesNotMatch(light, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal)\b/);
     assert.match(entry, /const lightCards = registerLightTemperatureCardTypes\(registry, context\.configuration\.modalTabs, fields, cardUi\);/);
-    assert.match(entry, /registerSliderCardTypes\(registry, context\.configuration\.modalTabs, lightCards, fields, context\.controllers\.settingsUi\);/);
+    assert.match(entry, /registerSliderCardTypes\([\s\S]*?context\.configuration\.modalTabs,[\s\S]*?lightCards,[\s\S]*?context\.controllers\.settingsUi,[\s\S]*?cardUi,[\s\S]*?\);/);
     assert.match(entry, /registerSwitchCardTypes\(registry, context\.configuration\.confirmationOptions, lightCards, fields\);/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerLightTemperatureCardTypes/);
     assert.match(slider, /lightCards: LightCardRegistration/);
@@ -1059,6 +1168,7 @@ describe("browserless application contracts", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     for (const file of [
       "controls_fields.ts",
+      "settings_companion_section.ts",
       "settings_system_section.ts",
       "settings_page.ts",
       "settings_page_helpers.ts",
@@ -1247,6 +1357,7 @@ describe("browserless application contracts", () => {
     assert.match(entry, /settingsHelpers = createSettingsPageHelpersFeature\(/);
     assert.match(entry, /const scheduleSection = createSettingsScheduleSectionFeature\(/);
     assert.match(entry, /const coverArtSection = createSettingsCoverArtSectionFeature\(/);
+    assert.match(entry, /const companionSection = createSettingsCompanionSectionFeature\(dom, shell, fields\)/);
     assert.match(entry, /const systemSection = createSettingsSystemSectionFeature\(/);
     assert.match(entry, /settingsPage = createSettingsPageFeature\(/);
     assert.doesNotMatch(entry, /installSettings(?:PageHelpers|ScheduleSection|CoverArtSection|SystemSection|Page)Module/);
@@ -1370,6 +1481,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.match(styles, /export function createWebStyles\(dragAnimation: boolean\)/);
     assert.match(styles, /import \{ WEB_UI_COLORS \} from "\.\.\/state\/ui_tokens"/);
+    assert.match(styles, /#sp-set-clock-bar:checked\+\.sp-toggle-track\{background:#0a84ff;border-color:#0a84ff\}/);
     assert.match(app, /style\.textContent = webStyles/);
     assert.match(entry, /createWebStyles\(layout\.config\.dragAnimation\)/);
     assert.doesNotMatch(styles, /\bCFG\b/);

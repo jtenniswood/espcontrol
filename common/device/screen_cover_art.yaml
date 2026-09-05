@@ -10,6 +10,9 @@ globals:
   - id: cover_art_media_playing
     type: bool
     initial_value: 'false'
+  - id: cover_art_companion_source_active
+    type: bool
+    initial_value: 'false'
   - id: cover_art_delay_interrupted_by_transition
     type: bool
     initial_value: 'false'
@@ -1390,6 +1393,13 @@ script:
             return;
           }
           #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          if (id(cover_art_companion_source_active)) {
+            const bool progress_available =
+              espcontrol::cover_art::progress_available(id(cover_art_media_duration));
+            if (progress_available) lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
           media_playback_prepare_cover_art_progress(
             id(cover_art_active_media_player_entity),
             id(cover_art_media_playing));
@@ -1434,6 +1444,7 @@ script:
           bool progress_playing = id(cover_art_media_playing);
 
           #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          if (!id(cover_art_companion_source_active)) {
           bool shared_playing = false;
           float shared_duration = 0.0f;
           float shared_position = 0.0f;
@@ -1466,6 +1477,7 @@ script:
             id(cover_art_position_anchor) = 0.0f;
             id(cover_art_position_anchor_epoch) = 0;
             id(cover_art_last_position_timestamp) = 0;
+          }
           }
           #endif
 
@@ -1748,7 +1760,9 @@ script:
       - lvgl.widget.hide: cover_art_progress_bar
       - if:
           condition:
-            lambda: 'return std::string("${device_slug}") == "guition-esp32-s3-4848s040";'
+            lambda: |-
+              return std::string("${device_slug}") == "guition-esp32-s3-4848s040" &&
+                     !id(cover_art_companion_source_active);
           then:
             - script.execute: cover_art_clear_image_source
             - script.wait: cover_art_clear_image_source
@@ -1813,7 +1827,8 @@ script:
               return espcontrol::cover_art::display_allowed(
                        id(cover_art_screensaver_enabled).state,
                        id(cover_art_media_playing),
-                       !id(cover_art_media_player_entity).state.empty(),
+                       id(cover_art_companion_source_active) ||
+                         !id(cover_art_media_player_entity).state.empty(),
                        id(cover_art_attribute_conditions_match),
                        id(cover_art_hide_external_input_enabled).state,
                        id(cover_art_external_input_active),
@@ -1836,7 +1851,8 @@ script:
             lambda: |-
               return id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
-                     !id(cover_art_media_player_entity).state.empty();
+                     (id(cover_art_companion_source_active) ||
+                      !id(cover_art_media_player_entity).state.empty());
           then:
             - script.execute: cover_art_playback_started
           else:
@@ -1900,6 +1916,23 @@ script:
             id(cover_art_downloaded_image)->release();
             lv_obj_add_flag(id(cover_art_image_widget), LV_OBJ_FLAG_HIDDEN);
             id(cover_art_show_black_screen).execute();
+            return;
+          }
+          if (id(cover_art_companion_source_active)) {
+            if (id(cover_art_downloaded_image)->has_image() &&
+                id(cover_art_runtime).image_available) {
+              #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+              lv_image_set_src(id(cover_art_image_widget), id(cover_art_downloaded_image)->get_lv_image_dsc());
+              #else
+              lv_img_set_src(id(cover_art_image_widget), id(cover_art_downloaded_image)->get_lv_img_dsc());
+              #endif
+              lv_obj_clear_flag(id(cover_art_image_widget), LV_OBJ_FLAG_HIDDEN);
+              id(cover_art_extract_accent_color).execute();
+              id(cover_art_show_track_overlay).execute();
+            } else {
+              lv_obj_add_flag(id(cover_art_image_widget), LV_OBJ_FLAG_HIDDEN);
+              id(cover_art_show_black_screen).execute();
+            }
             return;
           }
           const std::string cover_entity = id(cover_art_active_media_player_entity);
@@ -2722,7 +2755,8 @@ script:
                   id(screen_schedule_sensor_activation).current_option());
               return espcontrol::cover_art::feature_allowed(
                   id(cover_art_screensaver_enabled).state,
-                  !id(cover_art_media_player_entity).state.empty(),
+                  id(cover_art_companion_source_active) ||
+                    !id(cover_art_media_player_entity).state.empty(),
                   id(cover_art_attribute_conditions_match),
                   id(cover_art_hide_external_input_enabled).state,
                   id(cover_art_external_input_active)) &&
@@ -2730,7 +2764,8 @@ script:
                   !alarm_display_takeover_active();
           then:
             - lambda: |-
-                if (!id(cover_art_runtime).image_available) {
+                if (!id(cover_art_runtime).image_available &&
+                    !id(cover_art_companion_source_active)) {
                   id(cover_art_runtime).refresh_needed = true;
                   id(cover_art_runtime).retry_url.clear();
                   id(cover_art_runtime).retry_count = 0;

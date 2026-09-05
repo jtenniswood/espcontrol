@@ -8,7 +8,7 @@ import {
     cardContractPickerKey,
 } from "../generated/card_contract";
 import { iconSlug } from "../application/ui_primitives";
-import type { CardRegistry } from "../application/card_registry";
+import type { CardRegistry, CardUiServices } from "../application/card_registry";
 import {
     coverCommandMode,
     coverModeOptionsForSettings,
@@ -19,16 +19,43 @@ import type { ConfigModalTabOptionsFeature } from "../application/config_modal_t
 import type { LightCardRegistration } from "./light_temperature";
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 import type { SettingsUiFeature } from "../features/settings";
+
+export const COMPANION_OUTPUT_VOLUME_ID = "media.output_volume";
+export const COMPANION_INPUT_VOLUME_ID = "media.input_volume";
+
+export function companionSliderMode(card: any): string {
+    if (card?.entity === COMPANION_OUTPUT_VOLUME_ID) return "mac_output";
+    if (card?.entity === COMPANION_INPUT_VOLUME_ID) return "mac_input";
+    return "home_assistant";
+}
+
+function companionSliderDefaultIcon(mode: string): string {
+    if (mode === "mac_output") return "Volume High";
+    if (mode === "mac_input") return "Microphone";
+    return "Auto";
+}
+
+export function companionSliderIcon(icon: string, previousMode: string, nextMode: string): string {
+    const previousDefault = companionSliderDefaultIcon(previousMode);
+    if (!icon || icon === "Auto" || icon === previousDefault) {
+        return companionSliderDefaultIcon(nextMode);
+    }
+    return icon;
+}
+
 export function registerSliderCardTypes(
     registry: CardRegistry,
     modalTabs: ConfigModalTabOptionsFeature,
     lightCards: LightCardRegistration,
     fields: ControlsFieldsFeature,
     settingsUi: Pick<SettingsUiFeature, "inlineDisclosure">,
+    companionSupported: boolean,
+    cardUi: CardUiServices,
 ): void {
     const { cardBadgeLabelHtml } = fields;
     const { inlineDisclosure } = settingsUi;
     const { renderControlTypeField: renderLightControlTypeField } = lightCards;
+    const { renderButtonSettings } = cardUi;
     const {
         coverControlTabDefinitions,
         coverControlTabs,
@@ -91,6 +118,18 @@ export function registerSliderCardTypes(
                     return normalizeCoverPosition(b.unit);
                 },
             },
+            companionVolume: {
+                mode: {
+                    label: "Control",
+                    idSuffix: "slider-control",
+                    options: [
+                        ["home_assistant", "Home Assistant light or fan"],
+                        ["mac_output", "Mac output volume"],
+                        ["mac_input", "Mac input volume"],
+                    ],
+                    value: companionSliderMode,
+                },
+            },
             preview: {
                 badge: opts.badgeIcon,
             },
@@ -122,6 +161,37 @@ export function registerSliderCardTypes(
                 }
                 if (opts.lightControlType)
                     renderLightControlTypeField(panel, b, helpers);
+                var sliderMode: any = opts.companionVolumeModes ? companionSliderMode(b) : "home_assistant";
+                if (opts.companionVolumeModes && companionSupported) {
+                    helpers.renderCardModeSelector(panel, b, helpers, {
+                        mode: Object.assign({}, metadata.companionVolume.mode, {
+                            value: function (this: any) { return sliderMode; },
+                            onChange: function (this: HTMLSelectElement) {
+                                sliderMode = this.value;
+                                var previousMode: any = companionSliderMode(b);
+                                b.icon = companionSliderIcon(b.icon, previousMode, sliderMode);
+                                b.icon_on = companionSliderIcon(b.icon_on, previousMode, sliderMode);
+                                if (sliderMode === "mac_output") {
+                                    b.entity = COMPANION_OUTPUT_VOLUME_ID;
+                                    if (!b.label || b.label === "Input Volume") b.label = "Output Volume";
+                                }
+                                else if (sliderMode === "mac_input") {
+                                    b.entity = COMPANION_INPUT_VOLUME_ID;
+                                    if (!b.label || b.label === "Output Volume") b.label = "Input Volume";
+                                }
+                                else if (previousMode !== "home_assistant") {
+                                    b.entity = "";
+                                    if (b.label === "Output Volume" || b.label === "Input Volume") b.label = "";
+                                }
+                                helpers.saveField("entity", b.entity);
+                                helpers.saveField("label", b.label);
+                                helpers.saveField("icon", b.icon);
+                                helpers.saveField("icon_on", b.icon_on);
+                                renderButtonSettings();
+                            },
+                        }),
+                    });
+                }
                 var coverMode: any = "";
                 var coverPositionField: any = null;
                 var coverPositionInput: any = null;
@@ -263,7 +333,9 @@ export function registerSliderCardTypes(
                 if (opts.renderLabelInSettings && !opts.labelAfterEntity && !opts.coverControlTabs)
                     labelField();
                 var entityField: any = helpers.renderCardEntityField(panel, b, helpers, metadata);
-                if (metadata.entity.validateDomains) {
+                if (opts.companionVolumeModes && companionSupported && sliderMode !== "home_assistant")
+                    entityField.field.style.display = "none";
+                if (metadata.entity.validateDomains && sliderMode === "home_assistant") {
                     helpers.requireEntityDomain(
                         entityField.input,
                         cardContractDomains(opts.type),
@@ -366,8 +438,13 @@ export function registerSliderCardTypes(
                 }
             },
             renderPreview: function (this: any, b?: any, helpers?: any) {
-                var label: any = b.label || b.entity || opts.fallbackLabel;
-                var iconName: any = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : opts.fallbackIcon;
+                var sliderMode: any = companionSliderMode(b);
+                var defaultLabel: any = sliderMode === "mac_output" ? "Output Volume"
+                    : sliderMode === "mac_input" ? "Input Volume" : b.entity || opts.fallbackLabel;
+                var defaultIcon: any = sliderMode === "mac_output" ? "volume-high"
+                    : sliderMode === "mac_input" ? "microphone" : opts.fallbackIcon;
+                var label: any = b.label || defaultLabel;
+                var iconName: any = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : defaultIcon;
                 if (opts.interactionMode && (b.sensor === "toggle" || coverCommandMode(b.sensor))) {
                     return {
                         iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
@@ -415,6 +492,7 @@ export function registerSliderCardTypes(
         onIconInheritsOff: true,
         iconOffFieldLabel: "Off Icon",
         iconOnFieldLabel: "On Icon",
+        companionVolumeModes: true,
     }));
     registry.register("cover", sliderTypeFactory({
         type: "cover",

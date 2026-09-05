@@ -163,6 +163,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Stojí";
   if (std::strcmp(text, "Subpage") == 0) return "Podstránka";
   if (std::strcmp(text, "Stop") == 0) return "Zastavit";
+  if (std::strcmp(text, "Stopped") == 0) return "Zastaveno";
   if (std::strcmp(text, "Sunny") == 0) return "Slunečno";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Sluneční varování";
   if (std::strcmp(text, "Sunset") == 0) return "Západ slunce";
@@ -242,6 +243,10 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Seskupení se nezdařilo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizovány";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizace reproduktorů";
+  if (std::strcmp(text, "Processor") == 0) return "Procesor";
+  if (std::strcmp(text, "Memory") == 0) return "Paměť";
+  if (std::strcmp(text, "Storage") == 0) return "Úložiště";
+  if (std::strcmp(text, "Battery") == 0) return "Baterie";
   return text;
 }
 
@@ -388,6 +393,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Spot Clean") == 0) return "Pletrengøring";
   if (std::strcmp(text, "Still") == 0) return "Stille";
   if (std::strcmp(text, "Subpage") == 0) return "Underside";
+  if (std::strcmp(text, "Stopped") == 0) return "Stoppet";
   if (std::strcmp(text, "Sunny") == 0) return "Solrigt";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Solvarsel";
   if (std::strcmp(text, "Sunset") == 0) return "Solnedgang";
@@ -466,6 +472,9 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislykkedes";
   if (std::strcmp(text, "Speakers updated") == 0) return "Højttalere opdateret";
   if (std::strcmp(text, "Updating speakers") == 0) return "Opdaterer højttalere";
+  if (std::strcmp(text, "Memory") == 0) return "Hukommelse";
+  if (std::strcmp(text, "Storage") == 0) return "Lager";
+  if (std::strcmp(text, "Battery") == 0) return "Batteri";
   return text;
 }
 
@@ -610,6 +619,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Spot Clean") == 0) return "Punktreinigung";
   if (std::strcmp(text, "Subpage") == 0) return "Unterseite";
   if (std::strcmp(text, "Stop") == 0) return "Stopp";
+  if (std::strcmp(text, "Stopped") == 0) return "Gestoppt";
   if (std::strcmp(text, "Sunny") == 0) return "Sonnig";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Sonnenwarnung";
   if (std::strcmp(text, "Sunset") == 0) return "Sonnenuntergang";
@@ -688,6 +698,10 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppierung fehlgeschlagen";
   if (std::strcmp(text, "Speakers updated") == 0) return "Lautsprecher aktualisiert";
   if (std::strcmp(text, "Updating speakers") == 0) return "Lautsprecher werden aktualisiert";
+  if (std::strcmp(text, "Processor") == 0) return "Prozessor";
+  if (std::strcmp(text, "Memory") == 0) return "Arbeitsspeicher";
+  if (std::strcmp(text, "Storage") == 0) return "Speicher";
+  if (std::strcmp(text, "Battery") == 0) return "Batterie";
   return text;
 }
 
@@ -839,6 +853,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Quieto";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
   if (std::strcmp(text, "Stop") == 0) return "Detener";
+  if (std::strcmp(text, "Stopped") == 0) return "Detenido";
   if (std::strcmp(text, "Sunny") == 0) return "Soleado";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerta de sol";
   if (std::strcmp(text, "Sunset") == 0) return "Puesta de sol";
@@ -917,6 +932,10 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Error al agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Altavoces actualizados";
   if (std::strcmp(text, "Updating speakers") == 0) return "Actualizando altavoces";
+  if (std::strcmp(text, "Processor") == 0) return "Procesador";
+  if (std::strcmp(text, "Memory") == 0) return "Memoria";
+  if (std::strcmp(text, "Storage") == 0) return "Almacenamiento";
+  if (std::strcmp(text, "Battery") == 0) return "Batería";
   return text;
 }
 
@@ -1076,6 +1095,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Paikallaan";
   if (std::strcmp(text, "Subpage") == 0) return "Alisivu";
   if (std::strcmp(text, "Stop") == 0) return "Pysäytä";
+  if (std::strcmp(text, "Stopped") == 0) return "Pysäytetty";
   if (std::strcmp(text, "Sunny") == 0) return "Aurinkoista";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Aurinkohälytys";
   if (std::strcmp(text, "Sunset") == 0) return "Auringonlasku";
@@ -1156,6 +1176,10 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Ryhmittely epäonnistui";
   if (std::strcmp(text, "Speakers updated") == 0) return "Kaiuttimet päivitetty";
   if (std::strcmp(text, "Updating speakers") == 0) return "Päivitetään kaiuttimia";
+  if (std::strcmp(text, "Processor") == 0) return "Suoritin";
+  if (std::strcmp(text, "Memory") == 0) return "Muisti";
+  if (std::strcmp(text, "Storage") == 0) return "Tallennustila";
+  if (std::strcmp(text, "Battery") == 0) return "Akku";
   return text;
 }
 
@@ -1300,6 +1324,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Fixe";
   if (std::strcmp(text, "Subpage") == 0) return "Sous-page";
   if (std::strcmp(text, "Stop") == 0) return "Arrêter";
+  if (std::strcmp(text, "Stopped") == 0) return "Arrêté";
   if (std::strcmp(text, "Sunny") == 0) return "Ensoleillé";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerte soleil";
   if (std::strcmp(text, "Sunset") == 0) return "Coucher du soleil";
@@ -1378,6 +1403,10 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Échec du regroupement";
   if (std::strcmp(text, "Speakers updated") == 0) return "Enceintes mises à jour";
   if (std::strcmp(text, "Updating speakers") == 0) return "Mise à jour des enceintes";
+  if (std::strcmp(text, "Processor") == 0) return "Processeur";
+  if (std::strcmp(text, "Memory") == 0) return "Mémoire";
+  if (std::strcmp(text, "Storage") == 0) return "Stockage";
+  if (std::strcmp(text, "Battery") == 0) return "Batterie";
   return text;
 }
 
@@ -1542,6 +1571,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "נייח";
   if (std::strcmp(text, "Subpage") == 0) return "תת-עמוד";
   if (std::strcmp(text, "Stop") == 0) return "עצירה";
+  if (std::strcmp(text, "Stopped") == 0) return "הופסק";
   if (std::strcmp(text, "Sunny") == 0) return "שמשי";
   if (std::strcmp(text, "Sunny Alert") == 0) return "התראת שמש";
   if (std::strcmp(text, "Sunset") == 0) return "שקיעה";
@@ -1625,6 +1655,10 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "הקיבוץ נכשל";
   if (std::strcmp(text, "Speakers updated") == 0) return "הרמקולים עודכנו";
   if (std::strcmp(text, "Updating speakers") == 0) return "מעדכן רמקולים";
+  if (std::strcmp(text, "Processor") == 0) return "מעבד";
+  if (std::strcmp(text, "Memory") == 0) return "זיכרון";
+  if (std::strcmp(text, "Storage") == 0) return "אחסון";
+  if (std::strcmp(text, "Battery") == 0) return "סוללה";
   return text;
 }
 
@@ -1783,6 +1817,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Álló";
   if (std::strcmp(text, "Subpage") == 0) return "Aloldal";
   if (std::strcmp(text, "Stop") == 0) return "Leállítás";
+  if (std::strcmp(text, "Stopped") == 0) return "Leállítva";
   if (std::strcmp(text, "Sunny") == 0) return "Napos";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Napsütés riasztás";
   if (std::strcmp(text, "Sunset") == 0) return "Naplemente";
@@ -1864,6 +1899,10 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "A csoportosítás sikertelen";
   if (std::strcmp(text, "Speakers updated") == 0) return "Hangszórók frissítve";
   if (std::strcmp(text, "Updating speakers") == 0) return "Hangszórók frissítése";
+  if (std::strcmp(text, "Processor") == 0) return "Processzor";
+  if (std::strcmp(text, "Memory") == 0) return "Memória";
+  if (std::strcmp(text, "Storage") == 0) return "Tárhely";
+  if (std::strcmp(text, "Battery") == 0) return "Akkumulátor";
   return text;
 }
 
@@ -2017,6 +2056,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Fermo";
   if (std::strcmp(text, "Subpage") == 0) return "Sottopagina";
   if (std::strcmp(text, "Stop") == 0) return "Arresta";
+  if (std::strcmp(text, "Stopped") == 0) return "Interrotto";
   if (std::strcmp(text, "Sunny") == 0) return "Soleggiato";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Allerta sole";
   if (std::strcmp(text, "Sunset") == 0) return "Tramonto";
@@ -2094,6 +2134,10 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Raggruppamento non riuscito";
   if (std::strcmp(text, "Speakers updated") == 0) return "Altoparlanti aggiornati";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aggiornamento altoparlanti";
+  if (std::strcmp(text, "Processor") == 0) return "Processore";
+  if (std::strcmp(text, "Memory") == 0) return "Memoria";
+  if (std::strcmp(text, "Storage") == 0) return "Archiviazione";
+  if (std::strcmp(text, "Battery") == 0) return "Batteria";
   return text;
 }
 
@@ -2243,6 +2287,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Stille";
   if (std::strcmp(text, "Subpage") == 0) return "Underside";
   if (std::strcmp(text, "Stop") == 0) return "Stopp";
+  if (std::strcmp(text, "Stopped") == 0) return "Stoppet";
   if (std::strcmp(text, "Sunny") == 0) return "Sol";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Solvarsel";
   if (std::strcmp(text, "Sunset") == 0) return "Solnedgang";
@@ -2321,6 +2366,10 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering mislyktes";
   if (std::strcmp(text, "Speakers updated") == 0) return "Høyttalere oppdatert";
   if (std::strcmp(text, "Updating speakers") == 0) return "Oppdaterer høyttalere";
+  if (std::strcmp(text, "Processor") == 0) return "Prosessor";
+  if (std::strcmp(text, "Memory") == 0) return "Minne";
+  if (std::strcmp(text, "Storage") == 0) return "Lagring";
+  if (std::strcmp(text, "Battery") == 0) return "Batteri";
   return text;
 }
 
@@ -2473,6 +2522,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Vast";
   if (std::strcmp(text, "Subpage") == 0) return "Subpagina";
   if (std::strcmp(text, "Stop") == 0) return "Stoppen";
+  if (std::strcmp(text, "Stopped") == 0) return "Gestopt";
   if (std::strcmp(text, "Sunny") == 0) return "Zonnig";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Zonwaarschuwing";
   if (std::strcmp(text, "Sunset") == 0) return "Zonsondergang";
@@ -2549,6 +2599,9 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Groeperen mislukt";
   if (std::strcmp(text, "Speakers updated") == 0) return "Luidsprekers bijgewerkt";
   if (std::strcmp(text, "Updating speakers") == 0) return "Luidsprekers bijwerken";
+  if (std::strcmp(text, "Memory") == 0) return "Geheugen";
+  if (std::strcmp(text, "Storage") == 0) return "Opslag";
+  if (std::strcmp(text, "Battery") == 0) return "Batterij";
   return text;
 }
 
@@ -2698,6 +2751,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Stabilny";
   if (std::strcmp(text, "Subpage") == 0) return "Podstrona";
   if (std::strcmp(text, "Stop") == 0) return "Zatrzymaj";
+  if (std::strcmp(text, "Stopped") == 0) return "Zatrzymane";
   if (std::strcmp(text, "Sunny") == 0) return "Słonecznie";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Ostrzeżenie słoneczne";
   if (std::strcmp(text, "Sunset") == 0) return "Zachód słońca";
@@ -2776,6 +2830,10 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Grupowanie nie powiodło się";
   if (std::strcmp(text, "Speakers updated") == 0) return "Głośniki zaktualizowane";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizowanie głośników";
+  if (std::strcmp(text, "Processor") == 0) return "Procesor";
+  if (std::strcmp(text, "Memory") == 0) return "Pamięć";
+  if (std::strcmp(text, "Storage") == 0) return "Pamięć masowa";
+  if (std::strcmp(text, "Battery") == 0) return "Bateria";
   return text;
 }
 
@@ -2928,6 +2986,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Parado";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
   if (std::strcmp(text, "Stop") == 0) return "Parar";
+  if (std::strcmp(text, "Stopped") == 0) return "Parado";
   if (std::strcmp(text, "Sunny") == 0) return "Ensolarado";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerta de sol";
   if (std::strcmp(text, "Sunset") == 0) return "Pôr do sol";
@@ -3005,6 +3064,10 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Alto-falantes atualizados";
   if (std::strcmp(text, "Updating speakers") == 0) return "Atualizando alto-falantes";
+  if (std::strcmp(text, "Processor") == 0) return "Processador";
+  if (std::strcmp(text, "Memory") == 0) return "Memória";
+  if (std::strcmp(text, "Storage") == 0) return "Armazenamento";
+  if (std::strcmp(text, "Battery") == 0) return "Bateria";
   return text;
 }
 
@@ -3158,6 +3221,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Parado";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
   if (std::strcmp(text, "Stop") == 0) return "Parar";
+  if (std::strcmp(text, "Stopped") == 0) return "Parado";
   if (std::strcmp(text, "Sunny") == 0) return "Solarengo";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alerta de sol";
   if (std::strcmp(text, "Sunset") == 0) return "Pôr do sol";
@@ -3235,6 +3299,10 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(text, "Speakers updated") == 0) return "Colunas atualizadas";
   if (std::strcmp(text, "Updating speakers") == 0) return "A atualizar colunas";
+  if (std::strcmp(text, "Processor") == 0) return "Processador";
+  if (std::strcmp(text, "Memory") == 0) return "Memória";
+  if (std::strcmp(text, "Storage") == 0) return "Armazenamento";
+  if (std::strcmp(text, "Battery") == 0) return "Bateria";
   return text;
 }
 
@@ -3393,6 +3461,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Nemișcat";
   if (std::strcmp(text, "Subpage") == 0) return "Subpagină";
   if (std::strcmp(text, "Stop") == 0) return "Oprire";
+  if (std::strcmp(text, "Stopped") == 0) return "Oprit";
   if (std::strcmp(text, "Sunny") == 0) return "Însorit";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Alertă soare";
   if (std::strcmp(text, "Sunset") == 0) return "Apus";
@@ -3474,6 +3543,10 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruparea a eșuat";
   if (std::strcmp(text, "Speakers updated") == 0) return "Difuzoare actualizate";
   if (std::strcmp(text, "Updating speakers") == 0) return "Se actualizează difuzoarele";
+  if (std::strcmp(text, "Processor") == 0) return "Procesor";
+  if (std::strcmp(text, "Memory") == 0) return "Memorie";
+  if (std::strcmp(text, "Storage") == 0) return "Stocare";
+  if (std::strcmp(text, "Battery") == 0) return "Baterie";
   return text;
 }
 
@@ -3637,6 +3710,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Неподвижно";
   if (std::strcmp(text, "Subpage") == 0) return "Подстраница";
   if (std::strcmp(text, "Stop") == 0) return "Стоп";
+  if (std::strcmp(text, "Stopped") == 0) return "Остановлено";
   if (std::strcmp(text, "Sunny") == 0) return "Солнечно";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Солнечно, предупреждение";
   if (std::strcmp(text, "Sunset") == 0) return "Закат";
@@ -3720,6 +3794,10 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Не удалось сгруппировать";
   if (std::strcmp(text, "Speakers updated") == 0) return "Динамики обновлены";
   if (std::strcmp(text, "Updating speakers") == 0) return "Обновление динамиков";
+  if (std::strcmp(text, "Processor") == 0) return "Процессор";
+  if (std::strcmp(text, "Memory") == 0) return "Память";
+  if (std::strcmp(text, "Storage") == 0) return "Хранилище";
+  if (std::strcmp(text, "Battery") == 0) return "Батарея";
   return text;
 }
 
@@ -3872,6 +3950,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Stojí";
   if (std::strcmp(text, "Subpage") == 0) return "Podstránka";
   if (std::strcmp(text, "Stop") == 0) return "Zastaviť";
+  if (std::strcmp(text, "Stopped") == 0) return "Zastavené";
   if (std::strcmp(text, "Sunny") == 0) return "Slnečno";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Slnečné varovanie";
   if (std::strcmp(text, "Sunset") == 0) return "Západ slnka";
@@ -3951,6 +4030,10 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Zoskupenie zlyhalo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Reproduktory aktualizované";
   if (std::strcmp(text, "Updating speakers") == 0) return "Aktualizácia reproduktorov";
+  if (std::strcmp(text, "Processor") == 0) return "Procesor";
+  if (std::strcmp(text, "Memory") == 0) return "Pamäť";
+  if (std::strcmp(text, "Storage") == 0) return "Úložisko";
+  if (std::strcmp(text, "Battery") == 0) return "Batéria";
   return text;
 }
 
@@ -4106,6 +4189,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Mirovanje";
   if (std::strcmp(text, "Subpage") == 0) return "Podstran";
   if (std::strcmp(text, "Stop") == 0) return "Ustavi";
+  if (std::strcmp(text, "Stopped") == 0) return "Ustavljeno";
   if (std::strcmp(text, "Sunny") == 0) return "Sončno";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Opozorilo za sonce";
   if (std::strcmp(text, "Sunset") == 0) return "Sončni zahod";
@@ -4186,6 +4270,10 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Združevanje ni uspelo";
   if (std::strcmp(text, "Speakers updated") == 0) return "Zvočniki posodobljeni";
   if (std::strcmp(text, "Updating speakers") == 0) return "Posodabljanje zvočnikov";
+  if (std::strcmp(text, "Processor") == 0) return "Procesor";
+  if (std::strcmp(text, "Memory") == 0) return "Pomnilnik";
+  if (std::strcmp(text, "Storage") == 0) return "Shramba";
+  if (std::strcmp(text, "Battery") == 0) return "Baterija";
   return text;
 }
 
@@ -4335,6 +4423,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Start") == 0) return "Starta";
   if (std::strcmp(text, "Subpage") == 0) return "Undersida";
   if (std::strcmp(text, "Stop") == 0) return "Stoppa";
+  if (std::strcmp(text, "Stopped") == 0) return "Stoppad";
   if (std::strcmp(text, "Sunny") == 0) return "Soligt";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Solvarning";
   if (std::strcmp(text, "Sunset") == 0) return "Solnedgång";
@@ -4413,6 +4502,9 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruppering misslyckades";
   if (std::strcmp(text, "Speakers updated") == 0) return "Högtalare uppdaterade";
   if (std::strcmp(text, "Updating speakers") == 0) return "Uppdaterar högtalare";
+  if (std::strcmp(text, "Memory") == 0) return "Minne";
+  if (std::strcmp(text, "Storage") == 0) return "Lagring";
+  if (std::strcmp(text, "Battery") == 0) return "Batteri";
   return text;
 }
 
@@ -4571,6 +4663,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Durgun";
   if (std::strcmp(text, "Subpage") == 0) return "Alt sayfa";
   if (std::strcmp(text, "Stop") == 0) return "Durdur";
+  if (std::strcmp(text, "Stopped") == 0) return "Durduruldu";
   if (std::strcmp(text, "Sunny") == 0) return "Güneşli";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Güneş uyarısı";
   if (std::strcmp(text, "Sunset") == 0) return "Gün batımı";
@@ -4652,6 +4745,10 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Gruplama başarısız";
   if (std::strcmp(text, "Speakers updated") == 0) return "Hoparlörler güncellendi";
   if (std::strcmp(text, "Updating speakers") == 0) return "Hoparlörler güncelleniyor";
+  if (std::strcmp(text, "Processor") == 0) return "İşlemci";
+  if (std::strcmp(text, "Memory") == 0) return "Bellek";
+  if (std::strcmp(text, "Storage") == 0) return "Depolama";
+  if (std::strcmp(text, "Battery") == 0) return "Pil";
   return text;
 }
 
@@ -4812,6 +4909,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Still") == 0) return "Нерухомо";
   if (std::strcmp(text, "Subpage") == 0) return "Підсторінка";
   if (std::strcmp(text, "Stop") == 0) return "Зупинити";
+  if (std::strcmp(text, "Stopped") == 0) return "Зупинено";
   if (std::strcmp(text, "Sunny") == 0) return "Сонячно";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Попередження про сонце";
   if (std::strcmp(text, "Sunset") == 0) return "Захід сонця";
@@ -4893,6 +4991,10 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Grouping failed") == 0) return "Не вдалося згрупувати";
   if (std::strcmp(text, "Speakers updated") == 0) return "Динаміки оновлено";
   if (std::strcmp(text, "Updating speakers") == 0) return "Оновлення динаміків";
+  if (std::strcmp(text, "Processor") == 0) return "Процесор";
+  if (std::strcmp(text, "Memory") == 0) return "Пам’ять";
+  if (std::strcmp(text, "Storage") == 0) return "Сховище";
+  if (std::strcmp(text, "Battery") == 0) return "Батарея";
   return text;
 }
 
@@ -5058,6 +5160,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Still";
   if (std::strcmp(key, "subpage") == 0) return "Subpage";
   if (std::strcmp(key, "stop") == 0) return "Stop";
+  if (std::strcmp(key, "stopped") == 0) return "Stopped";
   if (std::strcmp(key, "sunny") == 0) return "Sunny";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sunny Alert";
   if (std::strcmp(key, "sunset") == 0) return "Sunset";
@@ -5142,6 +5245,11 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Grouping failed";
   if (std::strcmp(key, "speakers_updated") == 0) return "Speakers updated";
   if (std::strcmp(key, "updating_speakers") == 0) return "Updating speakers";
+  if (std::strcmp(key, "processor") == 0) return "Processor";
+  if (std::strcmp(key, "memory") == 0) return "Memory";
+  if (std::strcmp(key, "storage") == 0) return "Storage";
+  if (std::strcmp(key, "battery") == 0) return "Battery";
+  if (std::strcmp(key, "network_throughput") == 0) return "Network";
   return key;
 }
 
@@ -5294,6 +5402,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Stojí";
   if (std::strcmp(key, "subpage") == 0) return "Podstránka";
   if (std::strcmp(key, "stop") == 0) return "Zastavit";
+  if (std::strcmp(key, "stopped") == 0) return "Zastaveno";
   if (std::strcmp(key, "sunny") == 0) return "Slunečno";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sluneční varování";
   if (std::strcmp(key, "sunset") == 0) return "Západ slunce";
@@ -5373,6 +5482,11 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Seskupení se nezdařilo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizovány";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizace reproduktorů";
+  if (std::strcmp(key, "processor") == 0) return "Procesor";
+  if (std::strcmp(key, "memory") == 0) return "Paměť";
+  if (std::strcmp(key, "storage") == 0) return "Úložiště";
+  if (std::strcmp(key, "battery") == 0) return "Baterie";
+  if (std::strcmp(key, "network_throughput") == 0) return "Síťová propustnost";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5520,6 +5634,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "spot_clean") == 0) return "Pletrengøring";
   if (std::strcmp(key, "still") == 0) return "Stille";
   if (std::strcmp(key, "subpage") == 0) return "Underside";
+  if (std::strcmp(key, "stopped") == 0) return "Stoppet";
   if (std::strcmp(key, "sunny") == 0) return "Solrigt";
   if (std::strcmp(key, "sunny_alert") == 0) return "Solvarsel";
   if (std::strcmp(key, "sunset") == 0) return "Solnedgang";
@@ -5598,6 +5713,10 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislykkedes";
   if (std::strcmp(key, "speakers_updated") == 0) return "Højttalere opdateret";
   if (std::strcmp(key, "updating_speakers") == 0) return "Opdaterer højttalere";
+  if (std::strcmp(key, "memory") == 0) return "Hukommelse";
+  if (std::strcmp(key, "storage") == 0) return "Lager";
+  if (std::strcmp(key, "battery") == 0) return "Batteri";
+  if (std::strcmp(key, "network_throughput") == 0) return "Netværkshastighed";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5743,6 +5862,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "spot_clean") == 0) return "Punktreinigung";
   if (std::strcmp(key, "subpage") == 0) return "Unterseite";
   if (std::strcmp(key, "stop") == 0) return "Stopp";
+  if (std::strcmp(key, "stopped") == 0) return "Gestoppt";
   if (std::strcmp(key, "sunny") == 0) return "Sonnig";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sonnenwarnung";
   if (std::strcmp(key, "sunset") == 0) return "Sonnenuntergang";
@@ -5821,6 +5941,11 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppierung fehlgeschlagen";
   if (std::strcmp(key, "speakers_updated") == 0) return "Lautsprecher aktualisiert";
   if (std::strcmp(key, "updating_speakers") == 0) return "Lautsprecher werden aktualisiert";
+  if (std::strcmp(key, "processor") == 0) return "Prozessor";
+  if (std::strcmp(key, "memory") == 0) return "Arbeitsspeicher";
+  if (std::strcmp(key, "storage") == 0) return "Speicher";
+  if (std::strcmp(key, "battery") == 0) return "Batterie";
+  if (std::strcmp(key, "network_throughput") == 0) return "Netzwerkdurchsatz";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5973,6 +6098,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Quieto";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
   if (std::strcmp(key, "stop") == 0) return "Detener";
+  if (std::strcmp(key, "stopped") == 0) return "Detenido";
   if (std::strcmp(key, "sunny") == 0) return "Soleado";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerta de sol";
   if (std::strcmp(key, "sunset") == 0) return "Puesta de sol";
@@ -6051,6 +6177,11 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Error al agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Altavoces actualizados";
   if (std::strcmp(key, "updating_speakers") == 0) return "Actualizando altavoces";
+  if (std::strcmp(key, "processor") == 0) return "Procesador";
+  if (std::strcmp(key, "memory") == 0) return "Memoria";
+  if (std::strcmp(key, "storage") == 0) return "Almacenamiento";
+  if (std::strcmp(key, "battery") == 0) return "Batería";
+  if (std::strcmp(key, "network_throughput") == 0) return "Rendimiento de red";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6211,6 +6342,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Paikallaan";
   if (std::strcmp(key, "subpage") == 0) return "Alisivu";
   if (std::strcmp(key, "stop") == 0) return "Pysäytä";
+  if (std::strcmp(key, "stopped") == 0) return "Pysäytetty";
   if (std::strcmp(key, "sunny") == 0) return "Aurinkoista";
   if (std::strcmp(key, "sunny_alert") == 0) return "Aurinkohälytys";
   if (std::strcmp(key, "sunset") == 0) return "Auringonlasku";
@@ -6291,6 +6423,11 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Ryhmittely epäonnistui";
   if (std::strcmp(key, "speakers_updated") == 0) return "Kaiuttimet päivitetty";
   if (std::strcmp(key, "updating_speakers") == 0) return "Päivitetään kaiuttimia";
+  if (std::strcmp(key, "processor") == 0) return "Suoritin";
+  if (std::strcmp(key, "memory") == 0) return "Muisti";
+  if (std::strcmp(key, "storage") == 0) return "Tallennustila";
+  if (std::strcmp(key, "battery") == 0) return "Akku";
+  if (std::strcmp(key, "network_throughput") == 0) return "Verkon siirtonopeus";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6436,6 +6573,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Fixe";
   if (std::strcmp(key, "subpage") == 0) return "Sous-page";
   if (std::strcmp(key, "stop") == 0) return "Arrêter";
+  if (std::strcmp(key, "stopped") == 0) return "Arrêté";
   if (std::strcmp(key, "sunny") == 0) return "Ensoleillé";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerte soleil";
   if (std::strcmp(key, "sunset") == 0) return "Coucher du soleil";
@@ -6514,6 +6652,11 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Échec du regroupement";
   if (std::strcmp(key, "speakers_updated") == 0) return "Enceintes mises à jour";
   if (std::strcmp(key, "updating_speakers") == 0) return "Mise à jour des enceintes";
+  if (std::strcmp(key, "processor") == 0) return "Processeur";
+  if (std::strcmp(key, "memory") == 0) return "Mémoire";
+  if (std::strcmp(key, "storage") == 0) return "Stockage";
+  if (std::strcmp(key, "battery") == 0) return "Batterie";
+  if (std::strcmp(key, "network_throughput") == 0) return "Débit réseau";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6679,6 +6822,7 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "still") == 0) return "נייח";
   if (std::strcmp(key, "subpage") == 0) return "תת-עמוד";
   if (std::strcmp(key, "stop") == 0) return "עצירה";
+  if (std::strcmp(key, "stopped") == 0) return "הופסק";
   if (std::strcmp(key, "sunny") == 0) return "שמשי";
   if (std::strcmp(key, "sunny_alert") == 0) return "התראת שמש";
   if (std::strcmp(key, "sunset") == 0) return "שקיעה";
@@ -6762,6 +6906,11 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "הקיבוץ נכשל";
   if (std::strcmp(key, "speakers_updated") == 0) return "הרמקולים עודכנו";
   if (std::strcmp(key, "updating_speakers") == 0) return "מעדכן רמקולים";
+  if (std::strcmp(key, "processor") == 0) return "מעבד";
+  if (std::strcmp(key, "memory") == 0) return "זיכרון";
+  if (std::strcmp(key, "storage") == 0) return "אחסון";
+  if (std::strcmp(key, "battery") == 0) return "סוללה";
+  if (std::strcmp(key, "network_throughput") == 0) return "קצב רשת";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6921,6 +7070,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Álló";
   if (std::strcmp(key, "subpage") == 0) return "Aloldal";
   if (std::strcmp(key, "stop") == 0) return "Leállítás";
+  if (std::strcmp(key, "stopped") == 0) return "Leállítva";
   if (std::strcmp(key, "sunny") == 0) return "Napos";
   if (std::strcmp(key, "sunny_alert") == 0) return "Napsütés riasztás";
   if (std::strcmp(key, "sunset") == 0) return "Naplemente";
@@ -7002,6 +7152,11 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "A csoportosítás sikertelen";
   if (std::strcmp(key, "speakers_updated") == 0) return "Hangszórók frissítve";
   if (std::strcmp(key, "updating_speakers") == 0) return "Hangszórók frissítése";
+  if (std::strcmp(key, "processor") == 0) return "Processzor";
+  if (std::strcmp(key, "memory") == 0) return "Memória";
+  if (std::strcmp(key, "storage") == 0) return "Tárhely";
+  if (std::strcmp(key, "battery") == 0) return "Akkumulátor";
+  if (std::strcmp(key, "network_throughput") == 0) return "Hálózati átviteli sebesség";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7156,6 +7311,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Fermo";
   if (std::strcmp(key, "subpage") == 0) return "Sottopagina";
   if (std::strcmp(key, "stop") == 0) return "Arresta";
+  if (std::strcmp(key, "stopped") == 0) return "Interrotto";
   if (std::strcmp(key, "sunny") == 0) return "Soleggiato";
   if (std::strcmp(key, "sunny_alert") == 0) return "Allerta sole";
   if (std::strcmp(key, "sunset") == 0) return "Tramonto";
@@ -7233,6 +7389,11 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Raggruppamento non riuscito";
   if (std::strcmp(key, "speakers_updated") == 0) return "Altoparlanti aggiornati";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aggiornamento altoparlanti";
+  if (std::strcmp(key, "processor") == 0) return "Processore";
+  if (std::strcmp(key, "memory") == 0) return "Memoria";
+  if (std::strcmp(key, "storage") == 0) return "Archiviazione";
+  if (std::strcmp(key, "battery") == 0) return "Batteria";
+  if (std::strcmp(key, "network_throughput") == 0) return "Velocità di rete";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7383,6 +7544,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Stille";
   if (std::strcmp(key, "subpage") == 0) return "Underside";
   if (std::strcmp(key, "stop") == 0) return "Stopp";
+  if (std::strcmp(key, "stopped") == 0) return "Stoppet";
   if (std::strcmp(key, "sunny") == 0) return "Sol";
   if (std::strcmp(key, "sunny_alert") == 0) return "Solvarsel";
   if (std::strcmp(key, "sunset") == 0) return "Solnedgang";
@@ -7461,6 +7623,11 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering mislyktes";
   if (std::strcmp(key, "speakers_updated") == 0) return "Høyttalere oppdatert";
   if (std::strcmp(key, "updating_speakers") == 0) return "Oppdaterer høyttalere";
+  if (std::strcmp(key, "processor") == 0) return "Prosessor";
+  if (std::strcmp(key, "memory") == 0) return "Minne";
+  if (std::strcmp(key, "storage") == 0) return "Lagring";
+  if (std::strcmp(key, "battery") == 0) return "Batteri";
+  if (std::strcmp(key, "network_throughput") == 0) return "Nettverkshastighet";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7613,6 +7780,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Vast";
   if (std::strcmp(key, "subpage") == 0) return "Subpagina";
   if (std::strcmp(key, "stop") == 0) return "Stoppen";
+  if (std::strcmp(key, "stopped") == 0) return "Gestopt";
   if (std::strcmp(key, "sunny") == 0) return "Zonnig";
   if (std::strcmp(key, "sunny_alert") == 0) return "Zonwaarschuwing";
   if (std::strcmp(key, "sunset") == 0) return "Zonsondergang";
@@ -7689,6 +7857,10 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Groeperen mislukt";
   if (std::strcmp(key, "speakers_updated") == 0) return "Luidsprekers bijgewerkt";
   if (std::strcmp(key, "updating_speakers") == 0) return "Luidsprekers bijwerken";
+  if (std::strcmp(key, "memory") == 0) return "Geheugen";
+  if (std::strcmp(key, "storage") == 0) return "Opslag";
+  if (std::strcmp(key, "battery") == 0) return "Batterij";
+  if (std::strcmp(key, "network_throughput") == 0) return "Netwerkdoorvoer";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7839,6 +8011,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Stabilny";
   if (std::strcmp(key, "subpage") == 0) return "Podstrona";
   if (std::strcmp(key, "stop") == 0) return "Zatrzymaj";
+  if (std::strcmp(key, "stopped") == 0) return "Zatrzymane";
   if (std::strcmp(key, "sunny") == 0) return "Słonecznie";
   if (std::strcmp(key, "sunny_alert") == 0) return "Ostrzeżenie słoneczne";
   if (std::strcmp(key, "sunset") == 0) return "Zachód słońca";
@@ -7917,6 +8090,11 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Grupowanie nie powiodło się";
   if (std::strcmp(key, "speakers_updated") == 0) return "Głośniki zaktualizowane";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizowanie głośników";
+  if (std::strcmp(key, "processor") == 0) return "Procesor";
+  if (std::strcmp(key, "memory") == 0) return "Pamięć";
+  if (std::strcmp(key, "storage") == 0) return "Pamięć masowa";
+  if (std::strcmp(key, "battery") == 0) return "Bateria";
+  if (std::strcmp(key, "network_throughput") == 0) return "Przepustowość sieci";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8070,6 +8248,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Parado";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
   if (std::strcmp(key, "stop") == 0) return "Parar";
+  if (std::strcmp(key, "stopped") == 0) return "Parado";
   if (std::strcmp(key, "sunny") == 0) return "Ensolarado";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerta de sol";
   if (std::strcmp(key, "sunset") == 0) return "Pôr do sol";
@@ -8147,6 +8326,11 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Alto-falantes atualizados";
   if (std::strcmp(key, "updating_speakers") == 0) return "Atualizando alto-falantes";
+  if (std::strcmp(key, "processor") == 0) return "Processador";
+  if (std::strcmp(key, "memory") == 0) return "Memória";
+  if (std::strcmp(key, "storage") == 0) return "Armazenamento";
+  if (std::strcmp(key, "battery") == 0) return "Bateria";
+  if (std::strcmp(key, "network_throughput") == 0) return "Taxa de rede";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8301,6 +8485,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Parado";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
   if (std::strcmp(key, "stop") == 0) return "Parar";
+  if (std::strcmp(key, "stopped") == 0) return "Parado";
   if (std::strcmp(key, "sunny") == 0) return "Solarengo";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alerta de sol";
   if (std::strcmp(key, "sunset") == 0) return "Pôr do sol";
@@ -8378,6 +8563,11 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Falha ao agrupar";
   if (std::strcmp(key, "speakers_updated") == 0) return "Colunas atualizadas";
   if (std::strcmp(key, "updating_speakers") == 0) return "A atualizar colunas";
+  if (std::strcmp(key, "processor") == 0) return "Processador";
+  if (std::strcmp(key, "memory") == 0) return "Memória";
+  if (std::strcmp(key, "storage") == 0) return "Armazenamento";
+  if (std::strcmp(key, "battery") == 0) return "Bateria";
+  if (std::strcmp(key, "network_throughput") == 0) return "Taxa de rede";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8537,6 +8727,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Nemișcat";
   if (std::strcmp(key, "subpage") == 0) return "Subpagină";
   if (std::strcmp(key, "stop") == 0) return "Oprire";
+  if (std::strcmp(key, "stopped") == 0) return "Oprit";
   if (std::strcmp(key, "sunny") == 0) return "Însorit";
   if (std::strcmp(key, "sunny_alert") == 0) return "Alertă soare";
   if (std::strcmp(key, "sunset") == 0) return "Apus";
@@ -8618,6 +8809,11 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruparea a eșuat";
   if (std::strcmp(key, "speakers_updated") == 0) return "Difuzoare actualizate";
   if (std::strcmp(key, "updating_speakers") == 0) return "Se actualizează difuzoarele";
+  if (std::strcmp(key, "processor") == 0) return "Procesor";
+  if (std::strcmp(key, "memory") == 0) return "Memorie";
+  if (std::strcmp(key, "storage") == 0) return "Stocare";
+  if (std::strcmp(key, "battery") == 0) return "Baterie";
+  if (std::strcmp(key, "network_throughput") == 0) return "Debit rețea";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8782,6 +8978,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Неподвижно";
   if (std::strcmp(key, "subpage") == 0) return "Подстраница";
   if (std::strcmp(key, "stop") == 0) return "Стоп";
+  if (std::strcmp(key, "stopped") == 0) return "Остановлено";
   if (std::strcmp(key, "sunny") == 0) return "Солнечно";
   if (std::strcmp(key, "sunny_alert") == 0) return "Солнечно, предупреждение";
   if (std::strcmp(key, "sunset") == 0) return "Закат";
@@ -8865,6 +9062,11 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Не удалось сгруппировать";
   if (std::strcmp(key, "speakers_updated") == 0) return "Динамики обновлены";
   if (std::strcmp(key, "updating_speakers") == 0) return "Обновление динамиков";
+  if (std::strcmp(key, "processor") == 0) return "Процессор";
+  if (std::strcmp(key, "memory") == 0) return "Память";
+  if (std::strcmp(key, "storage") == 0) return "Хранилище";
+  if (std::strcmp(key, "battery") == 0) return "Батарея";
+  if (std::strcmp(key, "network_throughput") == 0) return "Пропускная способность сети";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9018,6 +9220,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Stojí";
   if (std::strcmp(key, "subpage") == 0) return "Podstránka";
   if (std::strcmp(key, "stop") == 0) return "Zastaviť";
+  if (std::strcmp(key, "stopped") == 0) return "Zastavené";
   if (std::strcmp(key, "sunny") == 0) return "Slnečno";
   if (std::strcmp(key, "sunny_alert") == 0) return "Slnečné varovanie";
   if (std::strcmp(key, "sunset") == 0) return "Západ slnka";
@@ -9097,6 +9300,11 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Zoskupenie zlyhalo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Reproduktory aktualizované";
   if (std::strcmp(key, "updating_speakers") == 0) return "Aktualizácia reproduktorov";
+  if (std::strcmp(key, "processor") == 0) return "Procesor";
+  if (std::strcmp(key, "memory") == 0) return "Pamäť";
+  if (std::strcmp(key, "storage") == 0) return "Úložisko";
+  if (std::strcmp(key, "battery") == 0) return "Batéria";
+  if (std::strcmp(key, "network_throughput") == 0) return "Priepustnosť siete";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9253,6 +9461,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Mirovanje";
   if (std::strcmp(key, "subpage") == 0) return "Podstran";
   if (std::strcmp(key, "stop") == 0) return "Ustavi";
+  if (std::strcmp(key, "stopped") == 0) return "Ustavljeno";
   if (std::strcmp(key, "sunny") == 0) return "Sončno";
   if (std::strcmp(key, "sunny_alert") == 0) return "Opozorilo za sonce";
   if (std::strcmp(key, "sunset") == 0) return "Sončni zahod";
@@ -9333,6 +9542,11 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Združevanje ni uspelo";
   if (std::strcmp(key, "speakers_updated") == 0) return "Zvočniki posodobljeni";
   if (std::strcmp(key, "updating_speakers") == 0) return "Posodabljanje zvočnikov";
+  if (std::strcmp(key, "processor") == 0) return "Procesor";
+  if (std::strcmp(key, "memory") == 0) return "Pomnilnik";
+  if (std::strcmp(key, "storage") == 0) return "Shramba";
+  if (std::strcmp(key, "battery") == 0) return "Baterija";
+  if (std::strcmp(key, "network_throughput") == 0) return "Prepustnost omrežja";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9483,6 +9697,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "start") == 0) return "Starta";
   if (std::strcmp(key, "subpage") == 0) return "Undersida";
   if (std::strcmp(key, "stop") == 0) return "Stoppa";
+  if (std::strcmp(key, "stopped") == 0) return "Stoppad";
   if (std::strcmp(key, "sunny") == 0) return "Soligt";
   if (std::strcmp(key, "sunny_alert") == 0) return "Solvarning";
   if (std::strcmp(key, "sunset") == 0) return "Solnedgång";
@@ -9561,6 +9776,10 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruppering misslyckades";
   if (std::strcmp(key, "speakers_updated") == 0) return "Högtalare uppdaterade";
   if (std::strcmp(key, "updating_speakers") == 0) return "Uppdaterar högtalare";
+  if (std::strcmp(key, "memory") == 0) return "Minne";
+  if (std::strcmp(key, "storage") == 0) return "Lagring";
+  if (std::strcmp(key, "battery") == 0) return "Batteri";
+  if (std::strcmp(key, "network_throughput") == 0) return "Nätverkshastighet";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9720,6 +9939,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Durgun";
   if (std::strcmp(key, "subpage") == 0) return "Alt sayfa";
   if (std::strcmp(key, "stop") == 0) return "Durdur";
+  if (std::strcmp(key, "stopped") == 0) return "Durduruldu";
   if (std::strcmp(key, "sunny") == 0) return "Güneşli";
   if (std::strcmp(key, "sunny_alert") == 0) return "Güneş uyarısı";
   if (std::strcmp(key, "sunset") == 0) return "Gün batımı";
@@ -9801,6 +10021,11 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Gruplama başarısız";
   if (std::strcmp(key, "speakers_updated") == 0) return "Hoparlörler güncellendi";
   if (std::strcmp(key, "updating_speakers") == 0) return "Hoparlörler güncelleniyor";
+  if (std::strcmp(key, "processor") == 0) return "İşlemci";
+  if (std::strcmp(key, "memory") == 0) return "Bellek";
+  if (std::strcmp(key, "storage") == 0) return "Depolama";
+  if (std::strcmp(key, "battery") == 0) return "Pil";
+  if (std::strcmp(key, "network_throughput") == 0) return "Ağ aktarım hızı";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9962,6 +10187,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "still") == 0) return "Нерухомо";
   if (std::strcmp(key, "subpage") == 0) return "Підсторінка";
   if (std::strcmp(key, "stop") == 0) return "Зупинити";
+  if (std::strcmp(key, "stopped") == 0) return "Зупинено";
   if (std::strcmp(key, "sunny") == 0) return "Сонячно";
   if (std::strcmp(key, "sunny_alert") == 0) return "Попередження про сонце";
   if (std::strcmp(key, "sunset") == 0) return "Захід сонця";
@@ -10043,6 +10269,11 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "grouping_failed") == 0) return "Не вдалося згрупувати";
   if (std::strcmp(key, "speakers_updated") == 0) return "Динаміки оновлено";
   if (std::strcmp(key, "updating_speakers") == 0) return "Оновлення динаміків";
+  if (std::strcmp(key, "processor") == 0) return "Процесор";
+  if (std::strcmp(key, "memory") == 0) return "Пам’ять";
+  if (std::strcmp(key, "storage") == 0) return "Сховище";
+  if (std::strcmp(key, "battery") == 0) return "Батарея";
+  if (std::strcmp(key, "network_throughput") == 0) return "Пропускна здатність мережі";
   return espcontrol_i18n_key_en(key);
 }
 
