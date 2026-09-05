@@ -69,7 +69,7 @@ sensor:
         - script.execute: network_status_refresh
 
 # ---------------------------------------------------------------------------
-# IP address (text_sensor)
+# Network transport (text_sensor)
 # ---------------------------------------------------------------------------
 text_sensor:
   - platform: template
@@ -81,8 +81,3 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       return {"wifi"};
-
-  - platform: wifi_info
-    ip_address:
-      name: IP Address
-      icon: mdi:ip-network
