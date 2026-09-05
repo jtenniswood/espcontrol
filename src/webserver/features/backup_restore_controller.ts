@@ -34,7 +34,8 @@ export function createBackupRestoreController<Plan, Target>(
         return false;
       }
 
-      for (const warning of options.warnings(backupPlan)) options.showBanner(warning, "warning");
+      const warnings = options.warnings(backupPlan);
+      if (warnings.length) options.showBanner(warnings.join(" "), "warning");
 
       options.setPostThrottle(75);
       options.resetPostQueueError();
