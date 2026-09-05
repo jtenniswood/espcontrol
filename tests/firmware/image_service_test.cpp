@@ -1,13 +1,16 @@
 #include <cassert>
 #include <vector>
 
+#include "artwork_image.h"
 #include "image_service.h"
 
+using esphome::artwork_image::ArtworkImage;
+using esphome::artwork_image::ImageService;
 using esphome::artwork_image::ImageRequestPriority;
 using esphome::artwork_image::ImageRequestQueue;
 using esphome::artwork_image::dispatch_next_image_request;
 
-int main() {
+static void test_queue_ordering() {
   int background = 1;
   int first_tile = 2;
   int second_tile = 3;
@@ -30,8 +33,6 @@ int main() {
     return true;
   };
 
-  // Queuing a request must not invoke its start callback synchronously.
-  assert(started.empty());
   dispatch_next_image_request(queue, active, dispatching, start);
   assert(started.size() == 1);
   assert(started.back() == &modal);
@@ -84,4 +85,138 @@ int main() {
   dispatch_next_image_request(queue, active, dispatching, fail_start);
   assert(active == nullptr);
   assert(!queue.pop_next(request));
+}
+
+static void test_request_defers_and_wakes_idle_image() {
+  ImageService service;
+  ArtworkImage image;
+  assert(!image.loop_enabled);
+
+  service.request(&image, 1, ImageRequestPriority::COVER_ART);
+  assert(image.loop_enabled);
+  assert(image.started_generations.empty());
+  assert(!service.is_active(&image));
+  assert(service.queued_requests() == 1);
+
+  service.request(&image, 2, ImageRequestPriority::COVER_ART);
+  assert(image.started_generations.empty());
+  assert(service.queued_requests() == 1);
+  service.process_pending();
+  assert(image.started_generations == std::vector<uint32_t>{2});
+  assert(service.is_active(&image));
+  service.process_pending();
+  assert(image.started_generations.size() == 1);
+}
+
+static void test_completion_defers_next_request() {
+  ImageService service;
+  ArtworkImage first;
+  ArtworkImage next;
+  service.request(&first, 1, ImageRequestPriority::TILE);
+  service.process_pending();
+  service.request(&next, 1, ImageRequestPriority::TILE);
+  service.complete(&next);
+  assert(service.is_active(&first));
+
+  service.complete(&first);
+  assert(!service.is_active(&first));
+  assert(next.started_generations.empty());
+  assert(service.queued_requests() == 1);
+  service.process_pending();
+  assert(next.started_generations == std::vector<uint32_t>{1});
+  assert(service.is_active(&next));
+}
+
+static void test_cancellation_defers_next_request() {
+  ImageService service;
+  ArtworkImage active;
+  ArtworkImage cancelled;
+  ArtworkImage next;
+  service.request(&active, 1, ImageRequestPriority::TILE);
+  service.process_pending();
+  service.request(&cancelled, 1, ImageRequestPriority::MODAL);
+  service.request(&next, 1, ImageRequestPriority::TILE);
+
+  service.cancel(&cancelled);
+  assert(service.is_active(&active));
+  assert(service.queued_requests() == 1);
+  service.cancel(&active);
+  assert(!service.is_active(&active));
+  assert(next.started_generations.empty());
+  service.process_pending();
+  assert(cancelled.started_generations.empty());
+  assert(next.started_generations == std::vector<uint32_t>{1});
+  assert(service.is_active(&next));
+}
+
+static void test_followup_defers_and_wakes_image() {
+  ImageService service;
+  ArtworkImage image;
+  ArtworkImage tile;
+  service.request(&image, 1, ImageRequestPriority::COVER_ART);
+  service.process_pending();
+  service.request(&tile, 1, ImageRequestPriority::TILE);
+  image.loop_enabled = false;
+
+  service.complete_and_request(&image, 2, ImageRequestPriority::COVER_ART);
+  assert(image.loop_enabled);
+  assert(image.started_generations == std::vector<uint32_t>{1});
+  assert(tile.started_generations.empty());
+  assert(!service.is_active(&image));
+  assert(service.queued_requests() == 2);
+
+  service.process_pending();
+  assert((image.started_generations == std::vector<uint32_t>{1, 2}));
+  assert(tile.started_generations.empty());
+  assert(service.is_active(&image));
+  service.complete(&image);
+  assert(tile.started_generations.empty());
+  service.process_pending();
+  assert(service.is_active(&tile));
+}
+
+static void test_start_callback_cannot_dispatch_recursively() {
+  ImageService service;
+  ArtworkImage image;
+  bool inside_start = false;
+  image.on_start = [&](uint32_t generation) {
+    assert(!inside_start);
+    inside_start = true;
+    if (generation == 1) {
+      service.complete_and_request(&image, 2, ImageRequestPriority::COVER_ART);
+      service.process_pending();
+      assert(image.started_generations.size() == 1);
+    }
+    inside_start = false;
+  };
+
+  service.request(&image, 1, ImageRequestPriority::COVER_ART);
+  assert(image.started_generations.empty());
+  service.process_pending();
+  assert((image.started_generations == std::vector<uint32_t>{1, 2}));
+  assert(service.is_active(&image));
+}
+
+static void test_rejected_start_releases_active_slot() {
+  ImageService service;
+  ArtworkImage stale;
+  ArtworkImage next;
+  stale.accept_start = false;
+  service.request(&stale, 1, ImageRequestPriority::MODAL);
+  service.request(&next, 2, ImageRequestPriority::TILE);
+  service.process_pending();
+  assert(stale.started_generations == std::vector<uint32_t>{1});
+  assert(next.started_generations == std::vector<uint32_t>{2});
+  assert(service.is_active(&next));
+  assert(service.queued_requests() == 0);
+}
+
+int main() {
+  test_queue_ordering();
+  test_request_defers_and_wakes_idle_image();
+  test_completion_defers_next_request();
+  test_cancellation_defers_next_request();
+  test_followup_defers_and_wakes_image();
+  test_start_callback_cannot_dispatch_recursively();
+  test_rejected_start_releases_active_slot();
 }
