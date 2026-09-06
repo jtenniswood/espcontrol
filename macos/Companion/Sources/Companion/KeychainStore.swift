@@ -1,11 +1,29 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 enum KeychainStore {
     static let service = "io.espcontrol.companion"
 
+    // A pairing credential may be protected by an ACL that requires the user
+    // to approve access. Keep this context alive for each Security operation
+    // so macOS can present that prompt when the app needs the credential.
+    private static func authenticationContext() -> LAContext {
+        let context = LAContext()
+        context.localizedReason = "access your saved display pairing"
+        context.interactionNotAllowed = false
+        return context
+    }
+
     static func load(service: String, account: String) -> Data? {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        query[kSecUseAuthenticationContext as String] = authenticationContext()
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
         return item as? Data
@@ -13,11 +31,12 @@ enum KeychainStore {
 
     @discardableResult
     static func save(_ data: Data, service: String, account: String) -> Bool {
-        let identity: [String: Any] = [
+        var identity: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+        identity[kSecUseAuthenticationContext as String] = authenticationContext()
         let update: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,

@@ -169,9 +169,9 @@ final class CompanionConnection: NSObject {
         let account = store.pairingAccount
         store.updateConnectionStatus("Authenticating…", state: reconnectAttempt > 0 ? .reconnecting : .connecting)
         Task { [weak self, weak webSocketTask] in
-            let credential = await Task.detached(priority: .userInitiated) {
-                KeychainStore.load(service: KeychainStore.service, account: account)
-            }.value
+            // Stay on the main actor so Security can present an interactive
+            // Keychain access prompt when the saved credential requires it.
+            let credential = KeychainStore.load(service: KeychainStore.service, account: account)
             guard let self, let webSocketTask, self.task === webSocketTask else { return }
             guard let credential else {
                 self.hasTerminalConnectionError = true
