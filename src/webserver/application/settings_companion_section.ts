@@ -14,7 +14,10 @@ export interface CompanionPairingState {
 }
 
 export interface SettingsCompanionSectionFeature {
-    buildCompanionSettingsCard(onStatus?: (state: CompanionPairingState) => void): HTMLElement;
+    buildCompanionSettingsCard(
+        onStatus?: (state: CompanionPairingState) => void,
+        defaultCollapsed?: boolean,
+    ): HTMLElement;
 }
 
 function setHidden(element: HTMLElement, hidden: boolean): void {
@@ -56,7 +59,10 @@ export function createSettingsCompanionSectionFeature(
         return await response.json() as CompanionPairingState;
     }
 
-    function buildCompanionSettingsCard(onStatus?: (state: CompanionPairingState) => void): HTMLElement {
+    function buildCompanionSettingsCard(
+        onStatus?: (state: CompanionPairingState) => void,
+        defaultCollapsed = true,
+    ): HTMLElement {
         const body = document.createElement("div");
         const instructions = document.createElement("div");
         instructions.className = "sp-connector-instructions";
@@ -149,7 +155,7 @@ export function createSettingsCompanionSectionFeature(
         requestPairing().then(render).catch(function () {
             status.textContent = "Companion pairing is unavailable";
         });
-        const card = fields.makeCollapsibleCard("Mac Companion", body, true, badge);
+        const card = fields.makeCollapsibleCard("Mac Companion", body, defaultCollapsed, badge);
         let refreshInProgress = false;
         const refreshTimer = window.setInterval(async function () {
             if (!card.isConnected) {

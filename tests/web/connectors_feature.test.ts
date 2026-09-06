@@ -1,6 +1,7 @@
 import {
   connectorOnboardingComplete,
   homeAssistantConnectorStatusText,
+  requestedConnectorFromSearch,
   type ConnectorsStatus,
 } from "../../src/webserver/application/connectors_page";
 
@@ -24,6 +25,15 @@ function status(overrides: Partial<ConnectorsStatus> = {}): ConnectorsStatus {
 }
 
 export function runConnectorsFeatureTests(): void {
+  if (requestedConnectorFromSearch("?tab=connectors") !== "mac_companion") {
+    throw new Error("The legacy connectors pairing URL must open Mac Companion");
+  }
+  if (requestedConnectorFromSearch("?tab=connectors&connector=mac_companion") !== "mac_companion") {
+    throw new Error("The explicit Mac Companion URL must open Mac Companion");
+  }
+  if (requestedConnectorFromSearch("?tab=settings") !== null) {
+    throw new Error("Unrelated deep links must not select a connector");
+  }
   if (connectorOnboardingComplete(status())) {
     throw new Error("An unconfigured display must remain in onboarding");
   }

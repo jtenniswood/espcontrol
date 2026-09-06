@@ -50,6 +50,18 @@ export function connectorOnboardingComplete(status: ConnectorsStatus): boolean {
     return !!(status.home_assistant.configured || status.mac_companion.paired);
 }
 
+export function requestedConnectorFromSearch(search: string): "mac_companion" | null {
+    const params = new URLSearchParams(search);
+    if (params.get("connector") === "mac_companion") return "mac_companion";
+    // The original pairing URL only selected the Connectors tab. Preserve it
+    // as a Mac Companion deep link so links already shown to users keep doing
+    // the useful thing after this page gains multiple connector cards.
+    if (params.get("tab") === "connectors" && !params.has("connector")) {
+        return "mac_companion";
+    }
+    return null;
+}
+
 export function createConnectorsPageFeature(
     dom: Pick<ApplicationDomServices, "document" | "window" | "fetch">,
     shell: Pick<ControlsShellFeature, "setOnboardingComplete">,
@@ -236,7 +248,11 @@ export function createConnectorsPageFeature(
         config.appendChild(heading);
         config.appendChild(buildHomeAssistantCard());
         if (companionSupported) {
-            config.appendChild(companionSection.buildCompanionSettingsCard(applyCompanionStatus));
+            const openCompanion = requestedConnectorFromSearch(window.location.search) === "mac_companion";
+            config.appendChild(companionSection.buildCompanionSettingsCard(
+                applyCompanionStatus,
+                !openCompanion,
+            ));
         }
         page.appendChild(config);
         parent.appendChild(page);

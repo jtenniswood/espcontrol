@@ -456,15 +456,15 @@ final class CompanionStore: NSObject, ObservableObject {
     }
 
     func openPanelPairing() -> Bool {
-        openPanelWebServer(tab: "connectors")
+        openPanelWebServer(tab: "connectors", connector: "mac_companion")
     }
 
-    private func openPanelWebServer(tab: String?) -> Bool {
+    private func openPanelWebServer(tab: String?, connector: String? = nil) -> Bool {
         guard !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             updateStatus("Enter the display address first")
             return false
         }
-        guard let url = Self.panelWebServerURL(from: panelHost, tab: tab),
+        guard let url = Self.panelWebServerURL(from: panelHost, tab: tab, connector: connector),
               NSWorkspace.shared.open(url) else {
             updateStatus("Could not open display settings")
             return false
@@ -472,7 +472,11 @@ final class CompanionStore: NSObject, ObservableObject {
         return true
     }
 
-    static func panelWebServerURL(from value: String, tab: String? = nil) -> URL? {
+    static func panelWebServerURL(
+        from value: String,
+        tab: String? = nil,
+        connector: String? = nil,
+    ) -> URL? {
         let raw = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = URL(string: raw.contains("://") ? raw : "http://\(raw)"),
               let host = parsed.host,
@@ -482,6 +486,11 @@ final class CompanionStore: NSObject, ObservableObject {
         components.host = host
         if let tab {
             components.queryItems = [URLQueryItem(name: "tab", value: tab)]
+        }
+        if let connector {
+            components.queryItems = (components.queryItems ?? []) + [
+                URLQueryItem(name: "connector", value: connector),
+            ]
         }
         return components.url
     }
