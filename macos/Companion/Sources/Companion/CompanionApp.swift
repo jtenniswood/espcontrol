@@ -10,6 +10,7 @@ struct CompanionApp: App {
     var body: some Scene {
         Settings {
             CompanionSettings(store: appDelegate.store)
+                .dynamicTypeSize(.large)
                 .frame(minWidth: 760, minHeight: 500)
         }
         .windowStyle(.hiddenTitleBar)
@@ -120,10 +121,10 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 58))
 
         let title = NSTextField(labelWithString: "EspControl")
-        title.font = .systemFont(ofSize: 14, weight: .semibold)
+        title.font = .systemFont(ofSize: 16, weight: .semibold)
 
         let status = NSTextField(labelWithString: store.isConnected ? "Connected" : "Disconnected")
-        status.font = .systemFont(ofSize: 13)
+        status.font = .systemFont(ofSize: 15)
         status.textColor = .secondaryLabelColor
 
         let labels = NSStackView(views: [title, status])
@@ -161,6 +162,10 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
     ) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
+        item.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [.font: NSFont.menuFont(ofSize: 15)]
+        )
         item.image = image
         menu.addItem(item)
     }
@@ -230,7 +235,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         positionWindowControls(in: window)
         window.minSize = NSSize(width: 760, height: 500)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: CompanionSettings(store: store))
+        window.contentView = NSHostingView(
+            rootView: CompanionSettings(store: store).dynamicTypeSize(.large)
+        )
         window.center()
         settingsWindow = window
         window.makeKeyAndOrderFront(nil)
