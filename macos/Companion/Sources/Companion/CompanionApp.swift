@@ -747,11 +747,6 @@ private struct CompanionSettings: View {
                     Toggle("Select All", isOn: selectAllBinding)
                         .toggleStyle(.checkbox)
                         .disabled(filteredApplications.isEmpty)
-                    Button { store.refreshApplications() } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .accessibilityLabel("Refresh Applications")
-                    .help("Refresh installed applications")
                     Spacer()
                 }
             }
