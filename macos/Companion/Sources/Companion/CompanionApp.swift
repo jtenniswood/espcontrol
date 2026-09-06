@@ -682,19 +682,6 @@ private struct CompanionSettings: View {
     private var applicationsPage: some View {
         Form {
             Section {
-                HStack(spacing: 12) {
-                    Toggle("Select All", isOn: selectAllBinding)
-                        .toggleStyle(.checkbox)
-                        .disabled(filteredApplications.isEmpty)
-                    Button { store.refreshApplications() } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .accessibilityLabel("Refresh Applications")
-                    .help("Refresh installed applications")
-                    Spacer()
-                }
-            }
-            Section {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
@@ -715,6 +702,19 @@ private struct CompanionSettings: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(.background, in: RoundedRectangle(cornerRadius: 10))
+            }
+            Section {
+                HStack(spacing: 12) {
+                    Toggle("Select All", isOn: selectAllBinding)
+                        .toggleStyle(.checkbox)
+                        .disabled(filteredApplications.isEmpty)
+                    Button { store.refreshApplications() } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .accessibilityLabel("Refresh Applications")
+                    .help("Refresh installed applications")
+                    Spacer()
+                }
             }
             Section {
                 if store.availableApps.isEmpty {
