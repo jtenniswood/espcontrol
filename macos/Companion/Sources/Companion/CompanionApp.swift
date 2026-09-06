@@ -850,12 +850,6 @@ private struct CompanionSettings: View {
 
     private var generalPage: some View {
         Form {
-            Section("Setup") {
-                Text("Review the permissions and startup choices that keep your display connected to this Mac.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Button("Run Setup Guide…") { onboardingCompleted = false }
-            }
             Section("Startup") {
                 if store.supportsLaunchAtLogin {
                     CompanionLaunchAtLoginToggle(isEnabled: store.launchAtLoginBinding())
