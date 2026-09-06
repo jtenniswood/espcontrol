@@ -256,12 +256,14 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
             window.standardWindowButton(.miniaturizeButton),
             window.standardWindowButton(.zoomButton),
         ]
-        let inset: CGFloat = 20
+        let inset: CGFloat = 32
+        let topPadding: CGFloat = 12
         let spacing: CGFloat = 8
         var nextX = inset
         for button in buttons.compactMap({ $0 }) {
             var frame = button.frame
             frame.origin.x = nextX
+            frame.origin.y = max(0, frame.origin.y - topPadding)
             button.frame = frame
             button.contentTintColor = .secondaryLabelColor
             nextX += frame.width + spacing
