@@ -548,7 +548,7 @@ private struct CompanionSettings: View {
                     .font(.system(size: 24, weight: .semibold))
                     .padding(.leading, 20)
                     .padding(.top, 28)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 20)
 
                 Text("Settings")
                     .font(.system(size: 15, weight: .semibold))
