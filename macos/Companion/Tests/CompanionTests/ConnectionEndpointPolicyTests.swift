@@ -19,4 +19,11 @@ final class ConnectionEndpointPolicyTests: XCTestCase {
         XCTAssertNotNil(CompanionStore.panelWebServerURL(from: "192.168.1.20"))
         XCTAssertNil(CompanionStore.panelWebServerURL(from: "https://8.8.8.8"))
     }
+
+    func testPanelPairingURLOpensTheConnectorsPage() {
+        XCTAssertEqual(
+            CompanionStore.panelWebServerURL(from: "192.168.1.20", tab: "connectors")?.absoluteString,
+            "http://192.168.1.20?tab=connectors"
+        )
+    }
 }

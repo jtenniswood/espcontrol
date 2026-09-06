@@ -42,6 +42,9 @@ export function createControlsShellFeature(
     const els = runtime.els;
     const document = dependencies.document;
     const state = dependencies.state;
+    const requestedInitialTab = new URLSearchParams(
+        document.defaultView?.location.search ?? "",
+    ).get("tab") === "connectors" ? "connectors" : null;
     // ── Build UI ───────────────────────────────────────────────────────────
     function createMdiIcon(this: any, name?: any, className?: any) {
         var icon: any = document.createElement("span");
@@ -110,7 +113,7 @@ export function createControlsShellFeature(
         }
         els.root = root;
         root.classList.add("sp-onboarding");
-        switchTab("connectors");
+        switchTab(requestedInitialTab ?? "connectors");
     }
     function buildHeader(this: any, parent?: any) {
         var header: any = document.createElement("div");
@@ -262,7 +265,7 @@ export function createControlsShellFeature(
         const wasOnboarding = els.root.classList.contains("sp-onboarding");
         els.root.classList.toggle("sp-onboarding", !complete);
         if (complete && wasOnboarding) {
-            switchTab("screen");
+            switchTab(requestedInitialTab ?? "screen");
             if (announce)
                 showBanner("Connector setup complete. You can add cards to your screen.", "success");
         }

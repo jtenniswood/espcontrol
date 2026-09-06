@@ -301,6 +301,10 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
     }
 }
 
+private enum CompanionPairingStep {
+    case address, code, connecting, connected
+}
+
 private struct CompanionOnboardingPage<Content: View>: View {
     let icon: String
     let title: String
@@ -508,6 +512,9 @@ private struct CompanionSettings: View {
     @State private var confirmingForget = false
     @State private var folderToRemove: ApprovedFolder?
     @State private var accessibilityGranted = false
+    @State private var pairingStep: CompanionPairingStep = .address
+    @State private var pairingFlowActive = false
+    @State private var pairingFlowError = ""
     @AppStorage("companion.onboarding.completed") private var onboardingCompleted = false
     @AppStorage("settings.selectedPage") private var selectedPageID = CompanionSettingsPage.connection.rawValue
     @FocusState private var focusedField: CompanionSettingsField?
@@ -557,19 +564,39 @@ private struct CompanionSettings: View {
         }
         .onAppear {
             if !store.hasSavedPairing { selectedPageID = CompanionSettingsPage.connection.rawValue }
+            if !store.hasSavedPairing && !pairingFlowActive { startPairingFlow() }
             refreshAccessibilityStatus()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshAccessibilityStatus()
         }
         .onChange(of: store.isConnected) { connected in
-            if connected { pairingCode = "" }
+            if connected {
+                pairingCode = ""
+                if pairingFlowActive { pairingStep = .connected }
+            }
+        }
+        .onChange(of: store.connectionState) { state in
+            if pairingFlowActive && pairingStep == .connecting && state == .failed {
+                pairingStep = .code
+                pairingFlowError = store.connectionRecoveryMessage
+            }
+        }
+        .onChange(of: pairingStep) { step in
+            switch step {
+            case .address: focusedField = .panelHost
+            case .code: focusedField = .pairingCode
+            case .connecting, .connected: focusedField = nil
+            }
         }
         .alert("Forget this display?", isPresented: $confirmingForget) {
             Button("Cancel", role: .cancel) {}
             Button("Forget Display", role: .destructive) {
                 store.forgetPanel()
                 pairingCode = ""
+                pairingFlowActive = true
+                pairingStep = .address
+                pairingFlowError = ""
                 focusedField = .panelHost
             }
         } message: {
@@ -609,7 +636,7 @@ private struct CompanionSettings: View {
 
     private var connectionPage: some View {
         Group {
-            if store.hasSavedPairing {
+            if store.hasSavedPairing && !pairingFlowActive {
                 List {
                     Section {
                         HStack {
@@ -630,50 +657,92 @@ private struct CompanionSettings: View {
                 }
                 .listStyle(.inset)
             } else {
-                Form {
-                Section {
-                    Text("Connect your Mac to an EspControl display to launch applications, open folders, and use Mac controls from its touchscreen.")
-                    Label("Open the device webpage to start pairing and get its pairing code.", systemImage: "safari")
+                pairingFlowPage
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var pairingFlowPage: some View {
+        Form {
+            switch pairingStep {
+            case .address:
+                Section("Step 1 of 3 · Display address") {
+                    Text("Enter the local address of your EspControl display.")
                         .foregroundStyle(.secondary)
-                }
-                Section("Pair Display") {
-                    LabeledContent("Display address") {
-                        TextField("IP address or name.local", text: $store.panelHost)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 260)
-                            .accessibilityLabel("Display address")
-                            .disabled(store.connectionState.isBusy)
-                            .focused($focusedField, equals: .panelHost)
-                            .onSubmit { focusedField = .pairingCode }
+                    TextField("IP address or name.local", text: $store.panelHost)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Display address")
+                        .focused($focusedField, equals: .panelHost)
+                        .onSubmit { openPairingPage() }
+                    if !pairingFlowError.isEmpty {
+                        Text(pairingFlowError)
+                            .font(.callout)
+                            .foregroundStyle(.orange)
                     }
-                    LabeledContent("Pairing code") {
-                        TextField("ABCD-EFGH", text: $pairingCode)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(maxWidth: 260)
-                            .accessibilityLabel("Pairing code")
-                            .disabled(store.connectionState.isBusy)
-                            .focused($focusedField, equals: .pairingCode)
-                            .onSubmit { pairDisplay() }
-                    }
-                    Text("Open the device webpage at its local address, start pairing, and enter the eight-letter code it shows. You can include or omit the hyphen. Both devices must be on the same local network.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
                     HStack {
-                        if store.connectionState.isBusy {
-                            Button("Cancel") { store.disconnect() }
+                        Spacer()
+                        Button("Continue") { openPairingPage() }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!canOpenPairingPage)
+                    }
+                }
+            case .code:
+                Section("Step 2 of 3 · Pairing code") {
+                    Text("A pairing page has opened for your display. Start pairing there, copy the eight-letter code, then enter it below.")
+                        .foregroundStyle(.secondary)
+                    TextField("ABCD-EFGH", text: $pairingCode)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                        .accessibilityLabel("Pairing code")
+                        .focused($focusedField, equals: .pairingCode)
+                        .onSubmit { pairDisplay() }
+                    if !pairingFlowError.isEmpty {
+                        Text(pairingFlowError)
+                            .font(.callout)
+                            .foregroundStyle(.orange)
+                    }
+                    HStack {
+                        Button("Back") {
+                            pairingFlowError = ""
+                            pairingStep = .address
                         }
                         Spacer()
-                        Button("Pair Display") { pairDisplay() }
+                        Button("Continue") { pairDisplay() }
                             .buttonStyle(.borderedProminent)
                             .disabled(!canPair)
                     }
-                    connectionStatus
                 }
+            case .connecting:
+                Section("Step 3 of 3 · Confirm connection") {
+                    HStack(spacing: 10) {
+                        ProgressView().controlSize(.small)
+                        Text("Pairing and connecting to your display…")
+                    }
+                    .accessibilityElement(children: .combine)
+                    Text("Keep both devices connected to the same local network.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
-                .formStyle(.grouped)
+            case .connected:
+                Section("Step 3 of 3 · Connection established") {
+                    Label("Connected", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Your Mac is paired with the EspControl display and ready to use.")
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Spacer()
+                        Button("Done") {
+                            pairingFlowActive = false
+                            pairingStep = .address
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
             }
         }
+        .formStyle(.grouped)
+        .navigationTitle("Connect Display")
     }
 
     private var connectionStatus: some View {
@@ -715,8 +784,36 @@ private struct CompanionSettings: View {
         !store.connectionState.isBusy && CompanionPairingInput.isValid(host: store.panelHost, code: pairingCode)
     }
 
+    private var canOpenPairingPage: Bool {
+        CompanionStore.panelWebServerURL(from: store.panelHost) != nil
+    }
+
+    private func startPairingFlow() {
+        pairingFlowActive = true
+        pairingStep = .address
+        pairingFlowError = ""
+    }
+
+    private func openPairingPage() {
+        guard canOpenPairingPage else {
+            pairingFlowError = "Enter a valid local IP address or name.local."
+            return
+        }
+        guard store.openPanelPairing() else {
+            pairingFlowError = "Could not open the display pairing page."
+            return
+        }
+        pairingFlowError = ""
+        pairingStep = .code
+    }
+
     private func pairDisplay() {
-        guard canPair else { return }
+        guard canPair else {
+            pairingFlowError = "Enter the eight-letter pairing code shown on the display."
+            return
+        }
+        pairingFlowError = ""
+        pairingStep = .connecting
         store.pair(code: pairingCode)
     }
 

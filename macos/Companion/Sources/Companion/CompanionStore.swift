@@ -452,18 +452,27 @@ final class CompanionStore: NSObject, ObservableObject {
     func connect() { connection.connect(mode: .authenticate) }
     func disconnect() { connection.disconnect() }
     func openPanelWebServer() {
-        guard !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            updateStatus("Enter the display address first")
-            return
-        }
-        guard let url = Self.panelWebServerURL(from: panelHost),
-              NSWorkspace.shared.open(url) else {
-            updateStatus("Could not open display settings")
-            return
-        }
+        _ = openPanelWebServer(tab: nil)
     }
 
-    static func panelWebServerURL(from value: String) -> URL? {
+    func openPanelPairing() -> Bool {
+        openPanelWebServer(tab: "connectors")
+    }
+
+    private func openPanelWebServer(tab: String?) -> Bool {
+        guard !panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            updateStatus("Enter the display address first")
+            return false
+        }
+        guard let url = Self.panelWebServerURL(from: panelHost, tab: tab),
+              NSWorkspace.shared.open(url) else {
+            updateStatus("Could not open display settings")
+            return false
+        }
+        return true
+    }
+
+    static func panelWebServerURL(from value: String, tab: String? = nil) -> URL? {
         let raw = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = URL(string: raw.contains("://") ? raw : "http://\(raw)"),
               let host = parsed.host,
@@ -471,6 +480,9 @@ final class CompanionStore: NSObject, ObservableObject {
         var components = URLComponents()
         components.scheme = parsed.scheme?.lowercased() == "https" ? "https" : "http"
         components.host = host
+        if let tab {
+            components.queryItems = [URLQueryItem(name: "tab", value: tab)]
+        }
         return components.url
     }
     func pair(code: String) {
