@@ -596,11 +596,6 @@ private struct CompanionSettings: View {
                         }
                         if store.connectionState.isBusy {
                             Button("Cancel Connection") { store.disconnect() }
-                        } else if store.isConnected {
-                            Button("Disconnect") { store.disconnect() }
-                        } else {
-                            Button("Connect") { store.connect() }
-                                .buttonStyle(.borderedProminent)
                         }
                         Button("Forget Display…", role: .destructive) { confirmingForget = true }
                         Button("Customize Display") { store.openPanelWebServer() }
