@@ -658,7 +658,6 @@ private struct CompanionSettings: View {
                 .formStyle(.grouped)
             }
         }
-        .navigationTitle("Display")
     }
 
     private var connectionStatus: some View {
