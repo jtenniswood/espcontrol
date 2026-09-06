@@ -1053,13 +1053,30 @@ private struct CompanionSettings: View {
             .flatMap { Bundle(url: $0) } ?? .module
     }
 
+    private var supportButtonImage: NSImage? {
+        guard let imageURL = companionResourceBundle.url(
+            forResource: "buy-me-a-coffee-button",
+            withExtension: "png"
+        ) else { return nil }
+        return NSImage(contentsOf: imageURL)
+    }
+
     private var floatingSupportButton: some View {
         Link(destination: CompanionStore.buyMeACoffeeURL) {
-            Image("buy-me-a-coffee-button", bundle: companionResourceBundle)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 214, height: 60)
-                .clipShape(Capsule())
+            if let supportButtonImage {
+                Image(nsImage: supportButtonImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 214, height: 60)
+                    .clipShape(Capsule())
+            } else {
+                Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.black.opacity(0.78))
+                    .frame(width: 214, height: 60)
+                    .background(Color(red: 1.0, green: 0.867, blue: 0.0))
+                    .clipShape(Capsule())
+            }
         }
         .buttonStyle(.plain)
         .help("Support EspControl by buying me a coffee")
