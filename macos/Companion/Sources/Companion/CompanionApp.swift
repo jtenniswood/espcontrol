@@ -613,12 +613,15 @@ private struct CompanionSettings: View {
                 List {
                     Section {
                         HStack {
-                            Spacer()
                             Toggle("Connection", isOn: connectionToggleBinding)
                                 .labelsHidden()
                                 .toggleStyle(.switch)
                                 .tint(.green)
                                 .disabled(store.connectionState.isBusy)
+                            Text(store.isConnected ? "Connected" : "Disconnected")
+                                .font(.headline)
+                                .foregroundStyle(store.isConnected ? .primary : .secondary)
+                            Spacer()
                         }
                         Button("Forget Display…", role: .destructive) { confirmingForget = true }
                         Button("Customize Display") { store.openPanelWebServer() }
