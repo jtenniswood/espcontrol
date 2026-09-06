@@ -100,9 +100,10 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         let panelWebpageItem = NSMenuItem(
             title: "Configure",
             action: #selector(openDisplaySettings),
-            keyEquivalent: ""
+            keyEquivalent: "d"
         )
         panelWebpageItem.target = self
+        panelWebpageItem.keyEquivalentModifierMask = [.command]
         panelWebpageItem.image = NSImage(
             systemSymbolName: "display", accessibilityDescription: "Configure")
         panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
