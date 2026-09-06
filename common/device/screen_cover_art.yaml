@@ -2279,6 +2279,7 @@ script:
               id(cover_art_title).clear();
               id(cover_art_artist).clear();
               id(cover_art_album).clear();
+              ha_reset_fresh_state_requests();
               id(cover_art_refresh_media_metadata).execute();
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();
@@ -2374,6 +2375,7 @@ script:
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_title)) return;
               id(cover_art_artist).clear();
+              ha_reset_fresh_state_requests();
               id(cover_art_refresh_media_metadata).execute();
               // Hide an older track's duration, but keep a duration callback
               // that arrived immediately before this metadata update.

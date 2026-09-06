@@ -1596,6 +1596,7 @@ inline void media_playback_metadata_refresh_timer_cb(lv_timer_t *timer) {
 
 inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state) {
   if (!state || state->entity_id.empty()) return;
+  ha_reset_fresh_state_requests();
   state->metadata_refresh_pending = true;
   if (!state->metadata_refresh_timer) {
     state->metadata_refresh_timer = lv_timer_create(

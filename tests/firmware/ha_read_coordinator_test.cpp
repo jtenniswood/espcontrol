@@ -693,8 +693,10 @@ void fresh_request_fans_out_through_live_callbacks() {
           "second metadata subscription should register");
   require(coordinator.request_fresh("media_player.room", "media_artist"),
           "fresh metadata request should use the live channel");
+  require(coordinator.request_fresh("media_player.room", "media_artist"),
+          "shared fresh metadata request should reuse the pending channel request");
   require(coordinator.transport().fresh_requests.size() == 1,
-          "fresh metadata request should create one native request");
+          "shared fresh metadata consumers should create one native request");
   coordinator.transport().publish_fresh(0, "Artist");
   require(first_calls == 1 && second_calls == 1,
           "fresh metadata response did not fan out to live callbacks");

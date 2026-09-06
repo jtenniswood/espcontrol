@@ -43,6 +43,10 @@ class HaReadCoordinator {
     for (const auto &request : deferred_) count += request.callbacks.size();
     return count;
   }
+
+  void reset_fresh_requests() {
+    for (auto &channel : subscription_channels_) channel.fresh_request_pending = false;
+  }
   size_t transient_callback_capacity() const {
     size_t capacity = deferred_.capacity();
     for (const auto &request : deferred_) capacity += request.callbacks.capacity();
@@ -111,12 +115,15 @@ class HaReadCoordinator {
       }
     }
     if (!has_active_callback) return false;
+    if (subscription_channels_[channel].fresh_request_pending) return true;
     // Reuse the channel dispatcher so a reset or reconnect can invalidate the
     // request before the native once-response arrives.
     const uint32_t request_generation = generation_;
+    subscription_channels_[channel].fresh_request_pending = true;
     transport_.request(entity_id, attribute,
                        [this, channel, request_generation](State state) {
                          if (generation_ != request_generation) return;
+                         subscription_channels_[channel].fresh_request_pending = false;
                          invoke_subscription_channel(channel, state);
                        });
     return true;
@@ -151,6 +158,7 @@ class HaReadCoordinator {
     // particular, artwork URLs and access tokens may change while the panel is
     // offline, so reads after a reconnect must wait for a fresh announcement.
     for (auto &channel : subscription_channels_) {
+      channel.fresh_request_pending = false;
       release_string_storage(channel.last_state);
       channel.has_last_state = false;
       release_string_storage(channel.cached_state);
@@ -176,6 +184,7 @@ class HaReadCoordinator {
     if (generation_ == 0) generation_ = 1;
     reset_deferred();
     for (auto &channel : subscription_channels_) {
+      channel.fresh_request_pending = false;
       release_callback_storage(channel.pending_reads);
       release_string_storage(channel.cached_state);
       channel.has_cached_state = false;
@@ -243,6 +252,7 @@ class HaReadCoordinator {
     std::string cached_state;
     std::vector<CallbackRef> pending_reads;
     bool has_cached_state = false;
+    bool fresh_request_pending = false;
   };
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;

@@ -17,6 +17,7 @@
 inline bool ha_request_fresh_attributes(
     const std::string &entity_id,
     std::initializer_list<const char *> attributes);
+inline void ha_reset_fresh_state_requests();
 
 namespace espcontrol::cover_art {
 
