@@ -553,13 +553,28 @@ private struct CompanionSettings: View {
                 .padding(.bottom, 18)
 
                 Text("Settings")
-                    .font(.headline)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.leading, 22)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 12)
 
                 List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
-                    Label(page.title, systemImage: page.icon).tag(page)
+                    Label {
+                        Text(page.title)
+                            .font(.system(size: 19, weight: .medium))
+                    } icon: {
+                        Image(systemName: page.icon)
+                            .font(.system(size: 19, weight: .regular))
+                            .frame(width: 24)
+                    }
+                    .padding(.vertical, 7)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(selectedPage == page ? Color.white.opacity(0.14) : .clear)
+                    )
+                    .listRowSeparator(.hidden)
+                    .tag(page)
                 }
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
