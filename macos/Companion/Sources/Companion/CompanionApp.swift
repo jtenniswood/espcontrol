@@ -588,8 +588,6 @@ private struct CompanionSettings: View {
                     Section {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("EspControl")
-                                    .font(.system(size: 26, weight: .semibold))
                                 Text(store.connectionState.title)
                                     .font(.title3)
                                     .foregroundStyle(.secondary)
