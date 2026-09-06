@@ -682,12 +682,6 @@ private struct CompanionSettings: View {
     private var applicationsPage: some View {
         Form {
             Section {
-                Text("Choose which applications are available on your display.")
-                Text("\(store.launchableApps().count) of \(store.availableApps.count) enabled")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            Section {
                 HStack(spacing: 12) {
                     Toggle("Select All", isOn: selectAllBinding)
                         .toggleStyle(.checkbox)
