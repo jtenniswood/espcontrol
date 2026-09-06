@@ -358,6 +358,27 @@ private struct CompanionLaunchAtLoginToggle: View {
     }
 }
 
+private struct CompanionAccessibilityToggle: View {
+    @Binding var isEnabled: Bool
+    let openSettings: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Toggle("", isOn: Binding(
+                get: { isEnabled },
+                set: { _ in openSettings() }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .tint(.green)
+            .accessibilityLabel("Enable keyboard shortcuts and window controls")
+            Text(isEnabled ? "Shortcuts enabled" : "Shortcuts disabled")
+                .font(.headline)
+                .foregroundStyle(isEnabled ? .primary : .secondary)
+        }
+    }
+}
+
 private struct CompanionOnboarding: View {
     @ObservedObject var store: CompanionStore
     let onComplete: () -> Void
@@ -427,16 +448,12 @@ private struct CompanionOnboarding: View {
                 title: "Enable shortcut support",
                 summary: "Shortcut and window-control cards need macOS Accessibility permission to send commands to your active Mac app."
             ) {
-                if accessibilityGranted {
-                    Label("Accessibility support is enabled", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                } else {
-                    Text("Keyboard shortcuts are currently disabled. Click Enable Support…, then turn on EspControl Companion in System Settings → Privacy & Security → Accessibility.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    Button("Enable Support…") { enableAccessibility() }
-                        .buttonStyle(.borderedProminent)
-                }
+                CompanionAccessibilityToggle(isEnabled: $accessibilityGranted, openSettings: enableAccessibility)
+                Text(accessibilityGranted
+                     ? "Keyboard shortcuts and window controls are enabled for your display."
+                     : "Turn on EspControl Companion in System Settings → Privacy & Security → Accessibility to enable keyboard shortcuts and window controls.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
         case 1:
             CompanionOnboardingPage(
@@ -865,25 +882,12 @@ private struct CompanionSettings: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section("Keyboard & Window Controls") {
-                Label(accessibilityGranted ? "Accessibility access enabled" : "Accessibility access needed",
-                      systemImage: accessibilityGranted ? "checkmark.circle" : "lock")
-                if accessibilityGranted {
-                    Text("Keyboard shortcuts and window controls are enabled for your display.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Keyboard shortcuts are disabled. Click Enable Support…, then turn on EspControl Companion in System Settings → Privacy & Security → Accessibility.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                if !accessibilityGranted {
-                    Button("Enable Support…") {
-                        _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-                }
+                CompanionAccessibilityToggle(isEnabled: $accessibilityGranted, openSettings: enableAccessibility)
+                Text(accessibilityGranted
+                     ? "Keyboard shortcuts and window controls are enabled for your display."
+                     : "Turn on EspControl Companion in System Settings → Privacy & Security → Accessibility to enable keyboard shortcuts and window controls.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
             Section("Help") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -904,5 +908,12 @@ private struct CompanionSettings: View {
 
     private func refreshAccessibilityStatus() {
         accessibilityGranted = CompanionAccessibilityAuthorizer.shared.hasAccess
+    }
+
+    private func enableAccessibility() {
+        _ = CompanionAccessibilityAuthorizer.shared.isTrusted()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
