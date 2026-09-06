@@ -1074,13 +1074,13 @@ private struct CompanionSettings: View {
                 Image(nsImage: supportButtonImage)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 214, height: 60)
+                    .frame(width: 171.2, height: 48)
                     .clipShape(Capsule())
             } else {
                 Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.black.opacity(0.78))
-                    .frame(width: 214, height: 60)
+                    .frame(width: 171.2, height: 48)
                     .background(Color(red: 1.0, green: 0.867, blue: 0.0))
                     .clipShape(Capsule())
             }
