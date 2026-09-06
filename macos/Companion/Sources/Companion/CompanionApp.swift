@@ -892,6 +892,14 @@ private struct CompanionSettings: View {
                 }
             }
             Section("Help") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Support EspControl")
+                        .font(.headline)
+                    Text("If EspControl is useful to you, you can support ongoing development and user support by buying me a coffee.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Link("Buy Me a Coffee", destination: CompanionStore.buyMeACoffeeURL)
+                }
                 Link("EspControl Support", destination: CompanionStore.supportURL)
                 Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
             }
