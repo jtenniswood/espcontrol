@@ -686,7 +686,7 @@ private struct CompanionSettings: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
-                    TextField("Search Applications", text: $applicationSearch)
+                    TextField("Search", text: $applicationSearch)
                         .textFieldStyle(.plain)
                     if !applicationSearch.isEmpty {
                         Button {
@@ -699,9 +699,13 @@ private struct CompanionSettings: View {
                         .accessibilityLabel("Clear Search")
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(.background, in: RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .background(.background, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color.primary.opacity(0.22), lineWidth: 1)
+                }
             }
             Section {
                 HStack(spacing: 12) {
