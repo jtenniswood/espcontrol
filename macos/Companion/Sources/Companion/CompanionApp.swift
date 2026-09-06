@@ -278,7 +278,7 @@ private enum CompanionSettingsField: Hashable {
 
 private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
     // Retain the saved selection identifiers from earlier versions.
-    case connection, applications, folders, general
+    case connection, applications, folders, general, help
 
     var id: String { rawValue }
     var title: String {
@@ -287,6 +287,7 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         case .applications: return "Applications"
         case .folders: return "Folders"
         case .general: return "General"
+        case .help: return "Help"
         }
     }
     var icon: String {
@@ -295,6 +296,7 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         case .applications: return "square.grid.2x2"
         case .folders: return "folder"
         case .general: return "gearshape"
+        case .help: return "questionmark.circle"
         }
     }
 }
@@ -593,6 +595,7 @@ private struct CompanionSettings: View {
         case .applications: applicationsPage
         case .folders: foldersPage
         case .general: generalPage
+        case .help: helpPage
         }
     }
 
@@ -889,7 +892,14 @@ private struct CompanionSettings: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            Section("Help") {
+        }
+        .formStyle(.grouped)
+        .navigationTitle("General")
+    }
+
+    private var helpPage: some View {
+        Form {
+            Section("Support") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Support EspControl")
                         .font(.headline)
@@ -898,12 +908,14 @@ private struct CompanionSettings: View {
                         .foregroundStyle(.secondary)
                     Link("Buy Me a Coffee", destination: CompanionStore.buyMeACoffeeURL)
                 }
+            }
+            Section("Resources") {
                 Link("EspControl Support", destination: CompanionStore.supportURL)
                 Link("Privacy Policy", destination: CompanionStore.privacyPolicyURL)
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("General")
+        .navigationTitle("Help")
     }
 
     private func refreshAccessibilityStatus() {
