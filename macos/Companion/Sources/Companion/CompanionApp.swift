@@ -30,7 +30,7 @@ struct CompanionApp: App {
 }
 
 @MainActor
-final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private static let openSettingsNotification = Notification.Name("io.espcontrol.companion.open-settings")
     let store = CompanionStore()
     private var statusItem: NSStatusItem?
@@ -229,6 +229,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.styleMask.insert(.fullSizeContentView)
+        window.delegate = self
         positionWindowControls(in: window)
         window.minSize = NSSize(width: 760, height: 500)
         window.isReleasedWhenClosed = false
@@ -239,6 +240,14 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         settingsWindow = window
         window.makeKeyAndOrderFront(nil)
         activateCompanionApplication()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let closedWindow = notification.object as? NSWindow,
+              closedWindow === settingsWindow else { return }
+        // Keep the menu-bar companion running, but remove its Dock presence
+        // once the settings window has been closed.
+        NSApp.setActivationPolicy(.accessory)
     }
 
     private func positionWindowControls(in window: NSWindow) {
