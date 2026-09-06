@@ -581,13 +581,13 @@ private struct CompanionSettings: View {
     }
 
     private var connectionPage: some View {
-        Form {
+        Group {
             if store.hasSavedPairing {
-                Section("Paired Display") {
-                    LabeledContent("Address", value: store.panelHost)
-                        .textSelection(.enabled)
-                    connectionStatus
-                    HStack {
+                List {
+                    Section("Paired Display") {
+                        LabeledContent("Address", value: store.panelHost)
+                            .textSelection(.enabled)
+                        connectionStatus
                         if store.connectionState.isBusy {
                             Button("Cancel Connection") { store.disconnect() }
                         } else if store.isConnected {
@@ -596,13 +596,14 @@ private struct CompanionSettings: View {
                             Button("Connect") { store.connect() }
                                 .buttonStyle(.borderedProminent)
                         }
-                        Spacer()
                         Button("Forget Display…", role: .destructive) { confirmingForget = true }
                         Button("Customize Display") { store.openPanelWebServer() }
                             .help("Open the display’s configuration in your browser")
                     }
                 }
+                .listStyle(.inset)
             } else {
+                Form {
                 Section {
                     Text("Connect your Mac to an EspControl display to launch applications, open folders, and use Mac controls from its touchscreen.")
                     Label("Open the device webpage to start pairing and get its pairing code.", systemImage: "safari")
@@ -642,9 +643,10 @@ private struct CompanionSettings: View {
                     }
                     connectionStatus
                 }
+                }
+                .formStyle(.grouped)
             }
         }
-        .formStyle(.grouped)
         .navigationTitle("Display")
     }
 
