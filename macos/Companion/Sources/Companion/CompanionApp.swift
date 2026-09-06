@@ -286,7 +286,7 @@ private enum CompanionSettingsPage: String, CaseIterable, Identifiable {
         case .connection: return "Display"
         case .applications: return "Applications"
         case .folders: return "Folders"
-        case .general: return "General"
+        case .general: return "Permissions"
         case .help: return "Help"
         }
     }
@@ -464,7 +464,7 @@ private struct CompanionOnboarding: View {
                 summary: "Stats cards can show processor, memory, storage, network, and battery information from this Mac. Data is only shared to your local device."
             ) {
                 CompanionStatsToggle(isEnabled: $store.shareSystemMetricsEnabled)
-                Text("Statistics are shared only with your paired display on the local network. You can change this later in General settings.")
+                Text("Statistics are shared only with your paired display on the local network. You can change this later in Permissions settings.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -594,7 +594,7 @@ private struct CompanionSettings: View {
         case .connection: connectionPage
         case .applications: applicationsPage
         case .folders: foldersPage
-        case .general: generalPage
+        case .general: permissionsPage
         case .help: helpPage
         }
     }
@@ -868,7 +868,7 @@ private struct CompanionSettings: View {
         .padding(.vertical, 8)
     }
 
-    private var generalPage: some View {
+    private var permissionsPage: some View {
         Form {
             Section("Startup") {
                 if store.supportsLaunchAtLogin {
@@ -894,7 +894,7 @@ private struct CompanionSettings: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("General")
+        .navigationTitle("Permissions")
     }
 
     private var helpPage: some View {
