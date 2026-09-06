@@ -572,7 +572,7 @@ private struct CompanionSettings: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.plain)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 7)
                         .contentShape(Rectangle())
                         .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                         .listRowBackground(
