@@ -584,10 +584,24 @@ private struct CompanionSettings: View {
         Group {
             if store.hasSavedPairing {
                 List {
-                    Section("Paired Display") {
+                    Section {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("EspControl")
+                                    .font(.system(size: 26, weight: .semibold))
+                                Text(store.connectionState.title)
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Toggle("Connection", isOn: connectionToggleBinding)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .tint(.green)
+                                .disabled(store.connectionState.isBusy)
+                        }
                         LabeledContent("Address", value: store.panelHost)
                             .textSelection(.enabled)
-                        connectionStatus
                         if store.connectionState.isBusy {
                             Button("Cancel Connection") { store.disconnect() }
                         } else if store.isConnected {
@@ -670,6 +684,19 @@ private struct CompanionSettings: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var connectionToggleBinding: Binding<Bool> {
+        Binding(
+            get: { store.isConnected },
+            set: { enabled in
+                if enabled {
+                    store.connect()
+                } else {
+                    store.disconnect()
+                }
+            }
+        )
     }
 
     private var canPair: Bool {
