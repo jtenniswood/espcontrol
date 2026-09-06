@@ -509,9 +509,6 @@ private struct CompanionSettings: View {
                 HStack(spacing: 8) {
                     Text("EspControl")
                         .font(.system(size: 26, weight: .semibold))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
                 }
                 .padding(.leading, 22)
                 .padding(.top, 34)
