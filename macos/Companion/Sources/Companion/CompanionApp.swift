@@ -516,8 +516,10 @@ private struct CompanionSettings: View {
                     Label(page.title, systemImage: page.icon).tag(page)
                 }
                 .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
             }
             .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
+            .background(Color(nsColor: .windowBackgroundColor))
 
             Divider()
                 .ignoresSafeArea(.container, edges: .top)
