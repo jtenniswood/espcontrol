@@ -39,6 +39,8 @@ BUILD_BIN_PATH="$(swift build \
     --product "${EXECUTABLE_NAME}" \
     --show-bin-path)"
 cp "${BUILD_BIN_PATH}/${EXECUTABLE_NAME}" "${APP_DIR}/Contents/MacOS/${EXECUTABLE_NAME}"
+# SwiftPM resources must travel with the app, including the support button artwork.
+cp -R "${BUILD_BIN_PATH}/EspControlCompanion_Companion.bundle" "${APP_DIR}/Contents/Resources/"
 cp "${SCRIPT_DIR}/Info.plist" "${APP_DIR}/Contents/Info.plist"
 cp "${SCRIPT_DIR}/PrivacyInfo.xcprivacy" "${APP_DIR}/Contents/Resources/PrivacyInfo.xcprivacy"
 
