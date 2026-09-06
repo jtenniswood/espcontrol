@@ -237,13 +237,8 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
-    if (
-        "get_home_assistant_state" in read_boundary_text
-        or "transport_.get(" in coordinator_text
-        or "ha_get_state" in text
-        or "ha_get_attribute" in text
-    ):
-        errors.append(f"{rel}: never register accumulating one-shot Home Assistant state reads")
+    if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
+        errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
     if (
         "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
         or "!channel_reuses_reads(channel)" not in coordinator_text

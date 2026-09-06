@@ -6,9 +6,17 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 
 #include "artwork_controller.h"
+
+// Defined by the firmware Home Assistant transport. Keeping this declaration
+// lightweight lets host-side Cover Art tests use the controller without
+// pulling in ESPHome's generated API types.
+inline bool ha_request_fresh_attributes(
+    const std::string &entity_id,
+    std::initializer_list<const char *> attributes);
 
 namespace espcontrol::cover_art {
 

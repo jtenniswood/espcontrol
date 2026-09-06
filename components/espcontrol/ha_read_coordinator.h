@@ -98,6 +98,30 @@ class HaReadCoordinator {
     return true;
   }
 
+  bool request_fresh(const std::string &entity_id,
+                    const std::string &attribute) {
+    if (!available() || entity_id.empty() || attribute.empty()) return false;
+    const size_t channel = find_subscription_channel(entity_id, attribute, true);
+    if (channel == subscription_channels_.size()) return false;
+    bool has_active_callback = false;
+    for (const auto &ref : subscriptions_) {
+      if (!ref.pending_release && ref.channel == channel && ref.callback && *ref.callback) {
+        has_active_callback = true;
+        break;
+      }
+    }
+    if (!has_active_callback) return false;
+    // Reuse the channel dispatcher so a reset or reconnect can invalidate the
+    // request before the native once-response arrives.
+    const uint32_t request_generation = generation_;
+    transport_.request(entity_id, attribute,
+                       [this, channel, request_generation](State state) {
+                         if (generation_ != request_generation) return;
+                         invoke_subscription_channel(channel, state);
+                       });
+    return true;
+  }
+
   void flush(size_t max_requests,
              size_t min_free,
              size_t min_largest) {

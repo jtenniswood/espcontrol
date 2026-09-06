@@ -23,6 +23,7 @@ struct FakeTransport {
   bool api_available = true;
   bool connected = true;
   std::vector<Request> subscriptions;
+  std::vector<Request> fresh_requests;
 
   bool available() const { return api_available; }
   bool state_connected() const { return connected; }
@@ -33,8 +34,19 @@ struct FakeTransport {
     subscriptions.push_back({entity_id, attribute, std::move(callback)});
   }
 
+  void request(const std::string &entity_id,
+               const std::string &attribute,
+               Callback callback) {
+    fresh_requests.push_back({entity_id, attribute, std::move(callback)});
+  }
+
   void publish(size_t index, const std::string &state) {
     Callback callback = subscriptions.at(index).callback;
+    callback(state);
+  }
+
+  void publish_fresh(size_t index, const std::string &state) {
+    Callback callback = fresh_requests.at(index).callback;
     callback(state);
   }
 };
@@ -665,6 +677,43 @@ void retained_subscription_preserves_attribute() {
           "retained subscription lost its attribute");
 }
 
+void fresh_request_fans_out_through_live_callbacks() {
+  Coordinator coordinator;
+  int first_calls = 0;
+  int second_calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "media_artist",
+              [&](std::string value) { if (value == "Artist") first_calls++; },
+              1u, nullptr, true),
+          "first metadata subscription should register");
+  require(coordinator.subscribe(
+              "media_player.room", "media_artist",
+              [&](std::string value) { if (value == "Artist") second_calls++; },
+              1u, nullptr, true),
+          "second metadata subscription should register");
+  require(coordinator.request_fresh("media_player.room", "media_artist"),
+          "fresh metadata request should use the live channel");
+  require(coordinator.transport().fresh_requests.size() == 1,
+          "fresh metadata request should create one native request");
+  coordinator.transport().publish_fresh(0, "Artist");
+  require(first_calls == 1 && second_calls == 1,
+          "fresh metadata response did not fan out to live callbacks");
+}
+
+void fresh_request_is_ignored_after_reconnect_generation_change() {
+  Coordinator coordinator;
+  int calls = 0;
+  require(coordinator.subscribe(
+              "media_player.room", "media_artist",
+              [&](std::string) { calls++; }, 1u, nullptr, true),
+          "metadata subscription should register before reconnect");
+  require(coordinator.request_fresh("media_player.room", "media_artist"),
+          "fresh metadata request should be accepted before reconnect");
+  coordinator.bump_generation(1u);
+  coordinator.transport().publish_fresh(0, "old artist");
+  require(calls == 0, "stale fresh response survived a reconnect generation change");
+}
+
 
 void released_owner_drops_pending_reads_even_if_its_address_is_reused() {
   Coordinator coordinator;
@@ -767,6 +816,8 @@ int main() {
   unowned_reusable_channel_keeps_independent_reads();
   generation_change_drops_pending_retained_reads();
   retained_subscription_preserves_attribute();
+  fresh_request_fans_out_through_live_callbacks();
+  fresh_request_is_ignored_after_reconnect_generation_change();
   released_owner_drops_pending_reads_even_if_its_address_is_reused();
   callback_owner_scope_restores_the_previous_owner();
   app_owned_callback_owner_is_used_when_bound();

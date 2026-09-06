@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -79,6 +80,13 @@ struct EspHomeHaReadTransport {
                  Callback callback) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         entity_id, attribute, std::move(callback));
+  }
+
+  void request(const std::string &entity_id,
+               const std::string &attribute,
+               Callback callback) {
+    esphome::api::global_api_server->get_home_assistant_state(
+        entity_id.c_str(), attribute.c_str(), std::move(callback));
   }
 };
 
@@ -314,4 +322,31 @@ inline bool ha_read_retained_attribute(const std::string &entity_id,
   return ha_read_coordinator().read_retained(
       entity_id, attribute, std::move(callback), true,
       HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
+}
+
+inline bool ha_request_fresh_attribute(const std::string &entity_id,
+                                       const std::string &attribute) {
+  if (!ha_api_state_connected() || entity_id.empty() || attribute.empty()) return false;
+  if (!ha_internal_heap_available("fresh Home Assistant state request",
+                                  HA_READ_INTERNAL_FREE_MIN_BYTES,
+                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
+  if (!ha_read_coordinator().request_fresh(entity_id, attribute)) return false;
+  return true;
+}
+
+inline bool ha_request_fresh_attributes(
+    const std::string &entity_id,
+    std::initializer_list<const char *> attributes) {
+  if (!ha_api_state_connected() || entity_id.empty() || attributes.size() == 0) return false;
+  if (!ha_internal_heap_available("fresh Home Assistant metadata request",
+                                  HA_READ_INTERNAL_FREE_MIN_BYTES,
+                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
+  bool requested = false;
+  for (const char *attribute : attributes) {
+    if (attribute != nullptr &&
+        ha_read_coordinator().request_fresh(entity_id, std::string(attribute))) {
+      requested = true;
+    }
+  }
+  return requested;
 }
