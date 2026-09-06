@@ -856,6 +856,8 @@ class CompanionActionsHandler : public esphome::web_server_idf::AsyncWebHandler 
 };
 
 inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapshot) {
+  const std::string pairing_code = !snapshot.paired && snapshot.active
+      ? snapshot.pairing_code : "";
   return std::string("{\"available\":") + (snapshot.available ? "true" : "false") +
     ",\"active\":" + (snapshot.active ? "true" : "false") +
     ",\"paired\":" + (snapshot.paired ? "true" : "false") +
@@ -863,7 +865,7 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
     ",\"port\":" + std::to_string(snapshot.port) +
     ",\"system_metrics_generation\":" + std::to_string(snapshot.system_metrics_generation) +
-    ",\"pairing_code\":\"\",\"mdns_name\":\"" +
+    ",\"pairing_code\":\"" + companion_json_escape(pairing_code) + "\",\"mdns_name\":\"" +
     companion_json_escape(snapshot.mdns_name) + "\"}";
 }
 
@@ -880,6 +882,10 @@ class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler 
     CompanionPairingSnapshot snapshot;
     if (companion_pairing_provider()) {
       snapshot = companion_pairing_provider()();
+      if (snapshot.available && !snapshot.paired && !snapshot.active) {
+        esphome::companion::begin_companion_pairing();
+        snapshot = companion_pairing_provider()();
+      }
     }
     const std::string json = companion_pairing_json(snapshot);
     httpd_req_t *req = *request;

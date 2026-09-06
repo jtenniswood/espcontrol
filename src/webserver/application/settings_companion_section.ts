@@ -39,6 +39,10 @@ export function companionPairingStatusText(state: CompanionPairingState): string
     return state.paired ? "Mac paired, but not connected" : "No Mac paired";
 }
 
+export function companionPairingCodeVisible(state: CompanionPairingState): boolean {
+    return !state.paired && state.active && state.pairing_code.trim().length > 0;
+}
+
 export function createSettingsCompanionSectionFeature(
     dom: Pick<ApplicationDomServices, "document" | "window" | "fetch">,
     shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner">,
@@ -68,15 +72,15 @@ export function createSettingsCompanionSectionFeature(
         instructions.className = "sp-connector-instructions";
         const note = document.createElement("p");
         note.className = "sp-setting-note sp-companion-note";
-        note.textContent = "Pairing requires physical access to the display. The setup code expires after 15 minutes or as soon as the Mac connects; the trusted pairing remains saved across reboots.";
+        note.textContent = "Open this page to start pairing. The setup code expires after 15 minutes or as soon as the Mac connects; the trusted pairing remains saved across reboots.";
         instructions.appendChild(note);
 
         const steps = document.createElement("ol");
         steps.className = "sp-connector-steps";
         [
-            "Press and hold the Wi-Fi icon on the display to show a pairing code.",
-            "Open EspControl Companion on your Mac and select the Device tab.",
-            "Enter the display address and the code shown on the display, then select Pair.",
+            "Copy the pairing code shown below.",
+            "Open EspControl Companion on your Mac and enter the display address and code.",
+            "Select Continue in the Companion app to complete pairing.",
         ].forEach(function (text) {
             const item = document.createElement("li");
             item.textContent = text;
@@ -84,6 +88,17 @@ export function createSettingsCompanionSectionFeature(
         });
         instructions.appendChild(steps);
         body.appendChild(instructions);
+
+        const pairingDetails = document.createElement("div");
+        pairingDetails.className = "sp-companion-details sp-hidden";
+        const pairingCodeRow = document.createElement("div");
+        pairingCodeRow.className = "sp-companion-code-row";
+        pairingCodeRow.appendChild(document.createTextNode("Pairing code"));
+        const pairingCode = document.createElement("strong");
+        pairingCode.className = "sp-companion-code";
+        pairingCodeRow.appendChild(pairingCode);
+        pairingDetails.appendChild(pairingCodeRow);
+        body.appendChild(pairingDetails);
 
         const status = document.createElement("div");
         status.className = "sp-companion-status";
@@ -138,6 +153,8 @@ export function createSettingsCompanionSectionFeature(
             if (onStatus) onStatus(value);
             status.textContent = companionPairingStatusText(value);
             status.classList.toggle("sp-companion-status-connected", value.connected);
+            pairingCode.textContent = value.pairing_code;
+            setHidden(pairingDetails, !companionPairingCodeVisible(value));
             setHidden(instructions, value.connected);
             setHidden(badge, !value.paired);
             setHidden(resetButton, !value.paired);
