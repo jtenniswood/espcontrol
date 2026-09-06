@@ -16,8 +16,9 @@ APP_NAME="$(basename "${APP_PATH}")"
 APP_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${APP_PATH}/Contents/Info.plist")"
 SUBMISSION_ZIP="${APP_DIR}/${APP_NAME%.app}-submission.zip"
 FINAL_ZIP="${APP_DIR}/${APP_NAME%.app}-${APP_VERSION}.zip"
+FINAL_DMG="${APP_DIR}/${APP_NAME%.app}-${APP_VERSION}.dmg"
 
-rm -f "${SUBMISSION_ZIP}" "${FINAL_ZIP}"
+rm -f "${SUBMISSION_ZIP}" "${FINAL_ZIP}" "${FINAL_DMG}"
 ditto -c -k --keepParent "${APP_PATH}" "${SUBMISSION_ZIP}"
 
 echo "Submitting ${APP_NAME} to Apple notarization…"
@@ -33,6 +34,20 @@ xcrun stapler validate "${APP_PATH}"
 codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
 spctl --assess --type execute --verbose=4 "${APP_PATH}"
 
+"${SCRIPT_DIR}/build_dmg.sh" "${APP_PATH}"
+
+echo "Submitting Companion disk image to Apple notarization…"
+xcrun notarytool submit "${FINAL_DMG}" \
+    --key "${NOTARY_KEY_PATH}" \
+    --key-id "${NOTARY_KEY_ID}" \
+    --issuer "${NOTARY_ISSUER_ID}" \
+    --wait
+
+echo "Stapling and verifying Apple’s disk-image ticket…"
+xcrun stapler staple "${FINAL_DMG}"
+xcrun stapler validate "${FINAL_DMG}"
+hdiutil verify "${FINAL_DMG}"
+
 ditto -c -k --keepParent "${APP_PATH}" "${FINAL_ZIP}"
 rm -f "${SUBMISSION_ZIP}"
-echo "Built notarized release: ${FINAL_ZIP}"
+echo "Built notarized release assets: ${FINAL_ZIP} and ${FINAL_DMG}"

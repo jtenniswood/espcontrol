@@ -493,7 +493,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: espcontrol-companion-release
-          path: ${{ runner.temp }}/espcontrol-companion/EspControl Companion-*.zip
+          path: ${{ runner.temp }}/espcontrol-companion/EspControl Companion-*
           if-no-files-found: error
 
   publish:
@@ -530,8 +530,9 @@ jobs:
           mapfile -t DEVICE_SLUGS < <(python3 scripts/device_matrix.py release | jq -r '.include[].slug')
           mapfile -t RECOVERY_SLUGS < <(python3 scripts/device_matrix.py release | jq -r '.include[] | select(.recovery) | .slug')
           COMPANION_ZIP="$(find dist/companion -maxdepth 1 -type f -name '*.zip' -print -quit)"
-          if [[ -z "${COMPANION_ZIP}" ]]; then
-            echo "The notarized Companion release asset is missing" >&2
+          COMPANION_DMG="$(find dist/companion -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          if [[ -z "${COMPANION_ZIP}" || -z "${COMPANION_DMG}" ]]; then
+            echo "The notarized Companion ZIP or DMG release asset is missing" >&2
             exit 1
           fi
           python3 scripts/firmware_release.py publish-draft \
@@ -545,4 +546,4 @@ jobs:
             --release-contract product/release_contract.json \
             --web-manifest docs/public/webserver/web-assets.json \
             --web-root docs/public/webserver \
-            --additional-files "${COMPANION_ZIP}"
+            --additional-files "${COMPANION_ZIP}" "${COMPANION_DMG}"

@@ -37,8 +37,17 @@ jobs:
           ! codesign --display --entitlements - "${APP}" 2>&1 | grep -q 'com.apple.security.app-sandbox'
           codesign --display --entitlements - "${APP}" 2>&1 | grep -q 'com.apple.security.automation.apple-events'
 
+      - name: Build Companion disk image
+        run: ALLOW_ADHOC=1 SKIP_FINDER_LAYOUT=1 macos/Companion/Packaging/build_dmg.sh
+
       - uses: actions/upload-artifact@v7
         with:
           name: espcontrol-companion-standalone
           path: macos/Companion/.build/standalone/EspControl Companion.app
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: espcontrol-companion-disk-image
+          path: macos/Companion/.build/standalone/*.dmg
           if-no-files-found: error
