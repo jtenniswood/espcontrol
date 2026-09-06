@@ -38,10 +38,12 @@ export function companionPairingStatusText(state: CompanionPairingState): string
 
 export function createSettingsCompanionSectionFeature(
     dom: Pick<ApplicationDomServices, "document" | "window" | "fetch">,
-    _shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner">,
+    shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner">,
     fields: Pick<ControlsFieldsFeature, "makeCollapsibleCard">,
 ): SettingsCompanionSectionFeature {
     const { document, window, fetch } = dom;
+    const { createActionButton, showBanner } = shell;
+    let latestState: CompanionPairingState | null = null;
 
     async function requestPairing(): Promise<CompanionPairingState> {
         const options: RequestInit = {
@@ -84,6 +86,40 @@ export function createSettingsCompanionSectionFeature(
         status.setAttribute("aria-live", "polite");
         body.appendChild(status);
 
+        const resetButton = createActionButton(
+            "sp-action-btn sp-delete-btn",
+            "Reset pairing",
+            "restore",
+            "Reset Mac Companion pairing",
+        );
+        resetButton.classList.add("sp-hidden");
+        body.appendChild(resetButton);
+        let resetInProgress = false;
+
+        async function resetPairing(): Promise<void> {
+            if (resetInProgress || !latestState?.paired) return;
+            if (!window.confirm(
+                "Reset pairing? This will disconnect and remove the saved Mac Companion pairing. You will need to pair the display again.",
+            )) return;
+            resetInProgress = true;
+            resetButton.disabled = true;
+            try {
+                const response = await fetch("/companion/pairing/reset", {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                });
+                if (!response.ok) throw new Error("Pairing reset was not accepted");
+                showBanner("Mac Companion pairing reset.", "success");
+                await refreshStatus();
+            } catch {
+                showBanner("Could not reset Mac Companion pairing.", "error");
+            } finally {
+                resetInProgress = false;
+                resetButton.disabled = false;
+            }
+        }
+        resetButton.addEventListener("click", () => { void resetPairing(); });
+
         const badge = document.createElement("span");
         badge.className = "sp-card-badge sp-hidden";
         const badgeDot = document.createElement("span");
@@ -92,11 +128,13 @@ export function createSettingsCompanionSectionFeature(
         badge.appendChild(document.createTextNode("ON"));
 
         function render(value: CompanionPairingState): void {
+            latestState = value;
             if (onStatus) onStatus(value);
             status.textContent = companionPairingStatusText(value);
             status.classList.toggle("sp-companion-status-connected", value.connected);
             setHidden(instructions, value.connected);
             setHidden(badge, !value.paired);
+            setHidden(resetButton, !value.paired);
         }
 
         async function refreshStatus(): Promise<void> {

@@ -889,12 +889,39 @@ class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 };
 
+class CompanionPairingResetHandler : public esphome::web_server_idf::AsyncWebHandler {
+ public:
+  bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
+    if (request->method() != HTTP_POST) return false;
+    char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    return request->url_to(url_buf) == "/companion/pairing/reset";
+  }
+
+  void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    if (!companion_authorize_web_request(request)) return;
+    if (!companion_pairing_provider() || !companion_pairing_provider()().available) {
+      httpd_req_t *raw_request = *request;
+      httpd_resp_set_status(raw_request, "404 Not Found");
+      httpd_resp_set_type(raw_request, "text/plain");
+      httpd_resp_send(raw_request, "Companion pairing is unavailable", HTTPD_RESP_USE_STRLEN);
+      return;
+    }
+    revoke_companion_pairing();
+    httpd_req_t *raw_request = *request;
+    httpd_resp_set_status(raw_request, "200 OK");
+    httpd_resp_set_type(raw_request, "application/json");
+    httpd_resp_set_hdr(raw_request, "Cache-Control", "no-store");
+    httpd_resp_send(raw_request, "{\"reset\":true}", HTTPD_RESP_USE_STRLEN);
+  }
+};
+
 inline void register_companion_actions_endpoint(
     esphome::web_server_idf::AsyncWebServer &server) {
   static bool registered = false;
   if (registered) return;
   server.addHandler(new CompanionActionsHandler());
   server.addHandler(new CompanionPairingHandler());
+  server.addHandler(new CompanionPairingResetHandler());
   registered = true;
 }
 
