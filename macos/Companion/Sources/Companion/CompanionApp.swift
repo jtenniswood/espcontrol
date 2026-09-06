@@ -515,6 +515,12 @@ private struct CompanionSettings: View {
                 .padding(.top, 34)
                 .padding(.bottom, 18)
 
+                Text("Settings")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 22)
+                    .padding(.bottom, 8)
+
                 List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
                     Label(page.title, systemImage: page.icon).tag(page)
                 }
