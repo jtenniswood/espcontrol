@@ -21,7 +21,7 @@ struct CompanionApp: App {
                 }
             }
             CommandGroup(replacing: .appSettings) {
-                Button("Settings") { appDelegate.openCompanionWindow() }
+                Button("Companion Settings") { appDelegate.openCompanionWindow() }
                     .keyboardShortcut(",", modifiers: .command)
             }
         }
@@ -98,7 +98,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         menu.addItem(.separator())
 
         let panelWebpageItem = NSMenuItem(
-            title: "Configure",
+            title: "Customize Panel",
             action: #selector(openDisplaySettings),
             keyEquivalent: "d"
         )
@@ -109,9 +109,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         menu.addItem(panelWebpageItem)
 
-        addMenuItem("Settings", action: #selector(openSettings), key: ",", to: menu)
+        addMenuItem("Companion Settings", action: #selector(openSettings), key: ",", to: menu)
         addMenuItem(
-            "Quit", action: #selector(quit), key: "q",
+            "Quit App", action: #selector(quit), key: "q",
             image: NSImage(systemSymbolName: "power", accessibilityDescription: "Quit"), to: menu)
     }
 
