@@ -554,7 +554,7 @@ private struct CompanionSettings: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Color(white: 0.50))
                     .padding(.leading, 20)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 0)
 
                 List {
                     ForEach(CompanionSettingsPage.allCases) { page in
