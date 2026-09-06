@@ -601,8 +601,6 @@ private struct CompanionSettings: View {
                                 .tint(.green)
                                 .disabled(store.connectionState.isBusy)
                         }
-                        LabeledContent("Address", value: store.panelHost)
-                            .textSelection(.enabled)
                         if store.connectionState.isBusy {
                             Button("Cancel Connection") { store.disconnect() }
                         } else if store.isConnected {
