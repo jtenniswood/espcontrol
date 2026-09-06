@@ -552,7 +552,7 @@ private struct CompanionSettings: View {
 
                 Text("Settings")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.50))
                     .padding(.leading, 20)
                     .padding(.bottom, 8)
 
@@ -577,7 +577,7 @@ private struct CompanionSettings: View {
                         .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(selectedPage == page ? Color.black.opacity(0.22) : .clear)
+                                .fill(selectedPage == page ? Color(white: 0.21) : .clear)
                         )
                         .listRowSeparator(.hidden)
                     }
@@ -586,7 +586,8 @@ private struct CompanionSettings: View {
                 .scrollContentBackground(.hidden)
             }
             .frame(minWidth: 190, idealWidth: 210, maxWidth: 230)
-            .background(Color(nsColor: .windowBackgroundColor))
+            .foregroundStyle(Color(white: 0.98))
+            .background(Color(white: 0.14))
 
                 Divider()
                     .ignoresSafeArea(.container, edges: .top)
