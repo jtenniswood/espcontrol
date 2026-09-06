@@ -17,6 +17,7 @@ let package = Package(
             name: "Companion",
             dependencies: ["MediaRemoteShim"],
             path: "Sources/Companion",
+            resources: [.process("Resources")],
             linkerSettings: [
                 .linkedFramework("IOKit"),
                 .linkedFramework("SystemConfiguration"),

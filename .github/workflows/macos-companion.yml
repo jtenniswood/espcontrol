@@ -31,6 +31,7 @@ jobs:
           APP="macos/Companion/.build/standalone/EspControl Companion.app"
           test -f "${APP}/Contents/Info.plist"
           test -f "${APP}/Contents/Resources/AppIcon.icns"
+          cmp common/assets/images/buy-me-a-coffee-button.png "${APP}/Contents/Resources/EspControlCompanion_Companion.bundle/buy-me-a-coffee-button.png"
           test -f "${APP}/Contents/Resources/PrivacyInfo.xcprivacy"
           plutil -lint "${APP}/Contents/Info.plist"
           plutil -lint "${APP}/Contents/Resources/PrivacyInfo.xcprivacy"

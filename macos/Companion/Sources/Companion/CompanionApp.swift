@@ -1046,13 +1046,19 @@ private struct CompanionSettings: View {
         .navigationTitle("Help")
     }
 
+    private var companionResourceBundle: Bundle {
+        // Installed apps keep resources inside Contents/Resources; SwiftPM runs
+        // use the generated module bundle beside the build output.
+        Bundle.main.url(forResource: "EspControlCompanion_Companion", withExtension: "bundle")
+            .flatMap { Bundle(url: $0) } ?? .module
+    }
+
     private var floatingSupportButton: some View {
         Link(destination: CompanionStore.buyMeACoffeeURL) {
-            Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.black.opacity(0.78))
+            Image("buy-me-a-coffee-button", bundle: companionResourceBundle)
+                .resizable()
+                .scaledToFit()
                 .frame(width: 214, height: 60)
-                .background(Color(red: 1.0, green: 0.867, blue: 0.0))
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
