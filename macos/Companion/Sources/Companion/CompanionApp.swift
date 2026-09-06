@@ -556,23 +556,31 @@ private struct CompanionSettings: View {
                     .padding(.leading, 20)
                     .padding(.bottom, 8)
 
-                List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
-                    Label {
-                        Text(page.title)
-                            .font(.system(size: 14, weight: .medium))
-                    } icon: {
-                        Image(systemName: page.icon)
-                            .font(.system(size: 16, weight: .regular))
-                            .frame(width: 22)
+                List {
+                    ForEach(CompanionSettingsPage.allCases) { page in
+                        Button {
+                            selectedPageID = page.rawValue
+                        } label: {
+                            Label {
+                                Text(page.title)
+                                    .font(.system(size: 14, weight: .medium))
+                            } icon: {
+                                Image(systemName: page.icon)
+                                    .font(.system(size: 16, weight: .regular))
+                                    .frame(width: 22)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                        .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(selectedPage == page ? Color.black.opacity(0.22) : .clear)
+                        )
+                        .listRowSeparator(.hidden)
                     }
-                    .padding(.vertical, 4)
-                    .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                    .listRowBackground(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(selectedPage == page ? Color(nsColor: .controlAccentColor).opacity(0.25) : .clear)
-                    )
-                    .listRowSeparator(.hidden)
-                    .tag(page)
                 }
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
