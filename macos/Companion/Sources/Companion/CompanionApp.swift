@@ -587,11 +587,6 @@ private struct CompanionSettings: View {
                 List {
                     Section {
                         HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(store.connectionState.title)
-                                    .font(.title3)
-                                    .foregroundStyle(.secondary)
-                            }
                             Spacer()
                             Toggle("Connection", isOn: connectionToggleBinding)
                                 .labelsHidden()
