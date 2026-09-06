@@ -542,8 +542,9 @@ private struct CompanionSettings: View {
     }
 
     private var settingsContent: some View {
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
+        ZStack(alignment: .bottomTrailing) {
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
                     Text("EspControl")
                         .font(.system(size: 26, weight: .semibold))
@@ -582,13 +583,12 @@ private struct CompanionSettings: View {
             .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
             .background(Color(nsColor: .windowBackgroundColor))
 
-            Divider()
-                .ignoresSafeArea(.container, edges: .top)
+                Divider()
+                    .ignoresSafeArea(.container, edges: .top)
 
-            detailView
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .overlay(alignment: .bottomTrailing) {
+                detailView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
             floatingSupportButton
                 .padding(.trailing, 24)
                 .padding(.bottom, 24)
