@@ -716,6 +716,7 @@ private struct CompanionSettings: View {
                         .accessibilityHidden(true)
                     TextField("Search", text: $applicationSearch)
                         .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .focused($applicationSearchFocused)
                     if !applicationSearch.isEmpty {
