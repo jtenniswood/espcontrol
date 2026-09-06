@@ -117,9 +117,9 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
 
     private func connectionStatusItem() -> NSMenuItem {
         let item = NSMenuItem()
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 58))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 58))
 
-        let title = NSTextField(labelWithString: "EspControl Companion")
+        let title = NSTextField(labelWithString: "EspControl")
         title.font = .systemFont(ofSize: 14, weight: .semibold)
 
         let status = NSTextField(labelWithString: store.isConnected ? "Connected" : "Disconnected")
