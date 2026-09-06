@@ -18,6 +18,7 @@
 #include "companion_capabilities_generated.h"
 #include "companion_runtime.h"
 #include "companion_timezone.h"
+#include "../companion/companion.h"
 
 #ifdef USE_WEBSERVER
 #include "esphome/components/web_server_idf/web_server_idf.h"
