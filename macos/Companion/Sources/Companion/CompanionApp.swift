@@ -227,6 +227,7 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.styleMask.insert(.fullSizeContentView)
+        positionWindowControls(in: window)
         window.minSize = NSSize(width: 760, height: 500)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: CompanionSettings(store: store))
@@ -234,6 +235,24 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         settingsWindow = window
         window.makeKeyAndOrderFront(nil)
         activateCompanionApplication()
+    }
+
+    private func positionWindowControls(in window: NSWindow) {
+        let buttons: [NSButton?] = [
+            window.standardWindowButton(.closeButton),
+            window.standardWindowButton(.miniaturizeButton),
+            window.standardWindowButton(.zoomButton),
+        ]
+        let inset: CGFloat = 20
+        let spacing: CGFloat = 8
+        var nextX = inset
+        for button in buttons.compactMap({ $0 }) {
+            var frame = button.frame
+            frame.origin.x = nextX
+            button.frame = frame
+            button.contentTintColor = .secondaryLabelColor
+            nextX += frame.width + spacing
+        }
     }
 
 }
