@@ -498,6 +498,7 @@ private struct CompanionSettings: View {
     var body: some View {
         if onboardingCompleted {
             settingsContent
+                .dynamicTypeSize(.xLarge)
         } else {
             CompanionOnboarding(store: store) {
                 onboardingCompleted = true
@@ -510,7 +511,7 @@ private struct CompanionSettings: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
                     Text("EspControl")
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.system(size: 26, weight: .semibold))
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
