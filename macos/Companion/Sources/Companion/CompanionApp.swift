@@ -578,6 +578,7 @@ private struct CompanionSettings: View {
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .fill(selectedPage == page ? Color(white: 0.21) : .clear)
+                                .padding(.horizontal, 10)
                         )
                         .listRowSeparator(.hidden)
                     }
