@@ -533,7 +533,6 @@ private struct CompanionSettings: View {
     var body: some View {
         if onboardingCompleted {
             settingsContent
-                .dynamicTypeSize(.xLarge)
         } else {
             CompanionOnboarding(store: store) {
                 onboardingCompleted = true
@@ -545,34 +544,32 @@ private struct CompanionSettings: View {
         ZStack(alignment: .bottomTrailing) {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
-                    Text("EspControl")
-                        .font(.system(size: 26, weight: .semibold))
-                }
-                .padding(.leading, 22)
-                .padding(.top, 34)
-                .padding(.bottom, 18)
+                Text("EspControl")
+                    .font(.system(size: 24, weight: .semibold))
+                    .padding(.leading, 20)
+                    .padding(.top, 28)
+                    .padding(.bottom, 12)
 
                 Text("Settings")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.leading, 22)
-                    .padding(.bottom, 12)
+                    .padding(.leading, 20)
+                    .padding(.bottom, 8)
 
                 List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
                     Label {
                         Text(page.title)
-                            .font(.system(size: 19, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                     } icon: {
                         Image(systemName: page.icon)
-                            .font(.system(size: 19, weight: .regular))
-                            .frame(width: 24)
+                            .font(.system(size: 16, weight: .regular))
+                            .frame(width: 22)
                     }
-                    .padding(.vertical, 7)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
+                    .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                     .listRowBackground(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(selectedPage == page ? Color.white.opacity(0.14) : .clear)
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(selectedPage == page ? Color(nsColor: .controlAccentColor).opacity(0.25) : .clear)
                     )
                     .listRowSeparator(.hidden)
                     .tag(page)
@@ -580,7 +577,7 @@ private struct CompanionSettings: View {
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
             }
-            .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
+            .frame(minWidth: 190, idealWidth: 210, maxWidth: 230)
             .background(Color(nsColor: .windowBackgroundColor))
 
                 Divider()
