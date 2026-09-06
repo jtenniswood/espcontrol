@@ -103,12 +103,15 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
             keyEquivalent: ""
         )
         panelWebpageItem.target = self
-        panelWebpageItem.image = nil
+        panelWebpageItem.image = NSImage(
+            systemSymbolName: "display", accessibilityDescription: "Configure")
         panelWebpageItem.isEnabled = !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         menu.addItem(panelWebpageItem)
 
         addMenuItem("Settings", action: #selector(openSettings), key: ",", to: menu)
-        addMenuItem("Quit", action: #selector(quit), key: "q", to: menu)
+        addMenuItem(
+            "Quit", action: #selector(quit), key: "q",
+            image: NSImage(systemSymbolName: "power", accessibilityDescription: "Quit"), to: menu)
     }
 
     private func connectionStatusItem() -> NSMenuItem {
@@ -152,10 +155,12 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
         return item
     }
 
-    private func addMenuItem(_ title: String, action: Selector, key: String = "", to menu: NSMenu) {
+    private func addMenuItem(
+        _ title: String, action: Selector, key: String = "", image: NSImage? = nil, to menu: NSMenu
+    ) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
-        item.image = nil
+        item.image = image
         menu.addItem(item)
     }
 
