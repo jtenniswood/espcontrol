@@ -573,6 +573,11 @@ private struct CompanionSettings: View {
             detailView
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .overlay(alignment: .bottomTrailing) {
+            floatingSupportButton
+                .padding(.trailing, 24)
+                .padding(.bottom, 24)
+        }
         .onAppear {
             if !store.hasSavedPairing { selectedPageID = CompanionSettingsPage.connection.rawValue }
             if !store.hasSavedPairing && !pairingFlowActive { startPairingFlow() }
@@ -1024,6 +1029,22 @@ private struct CompanionSettings: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Help")
+    }
+
+    private var floatingSupportButton: some View {
+        Link(destination: CompanionStore.buyMeACoffeeURL) {
+            Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.black.opacity(0.78))
+                .padding(.horizontal, 18)
+                .frame(height: 44)
+                .background(Color(red: 1.0, green: 0.86, blue: 0.08))
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.28), radius: 8, y: 3)
+        }
+        .buttonStyle(.plain)
+        .help("Support EspControl by buying me a coffee")
+        .accessibilityLabel("Buy me a coffee to support EspControl")
     }
 
     private func refreshAccessibilityStatus() {
