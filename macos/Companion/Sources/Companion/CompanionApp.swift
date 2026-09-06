@@ -485,6 +485,7 @@ private struct CompanionSettings: View {
     @ObservedObject var store: CompanionStore
     @State private var pairingCode = ""
     @State private var applicationSearch = ""
+    @FocusState private var applicationSearchFocused: Bool
     @State private var confirmingForget = false
     @State private var folderToRemove: ApprovedFolder?
     @State private var accessibilityGranted = false
@@ -717,6 +718,8 @@ private struct CompanionSettings: View {
                         .accessibilityHidden(true)
                     TextField("Search", text: $applicationSearch)
                         .textFieldStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .focused($applicationSearchFocused)
                     if !applicationSearch.isEmpty {
                         Button {
                             applicationSearch = ""
@@ -735,6 +738,10 @@ private struct CompanionSettings: View {
                     Capsule()
                         .stroke(Color.primary.opacity(0.22), lineWidth: 1)
                 }
+                .contentShape(Capsule())
+                .simultaneousGesture(
+                    TapGesture().onEnded { applicationSearchFocused = true }
+                )
             }
             Section {
                 HStack(spacing: 12) {
