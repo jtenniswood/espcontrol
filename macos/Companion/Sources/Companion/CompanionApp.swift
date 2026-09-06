@@ -500,10 +500,23 @@ private struct CompanionSettings: View {
 
     private var settingsContent: some View {
         HStack(spacing: 0) {
-            List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
-                Label(page.title, systemImage: page.icon).tag(page)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Text("EspControl")
+                        .font(.system(size: 24, weight: .semibold))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.leading, 22)
+                .padding(.top, 34)
+                .padding(.bottom, 18)
+
+                List(CompanionSettingsPage.allCases, selection: selectedPageBinding) { page in
+                    Label(page.title, systemImage: page.icon).tag(page)
+                }
+                .listStyle(.sidebar)
             }
-            .listStyle(.sidebar)
             .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
 
             Divider()
