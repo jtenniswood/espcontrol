@@ -620,9 +620,6 @@ private struct CompanionSettings: View {
                                 .tint(.green)
                                 .disabled(store.connectionState.isBusy)
                         }
-                        if store.connectionState.isBusy {
-                            Button("Cancel Connection") { store.disconnect() }
-                        }
                         Button("Forget Display…", role: .destructive) { confirmingForget = true }
                         Button("Customize Display") { store.openPanelWebServer() }
                             .help("Open the display’s configuration in your browser")
