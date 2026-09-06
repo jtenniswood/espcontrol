@@ -863,8 +863,8 @@ inline std::string companion_pairing_json(const CompanionPairingSnapshot &snapsh
     ",\"expires_in_seconds\":" + std::to_string(snapshot.expires_in_seconds) +
     ",\"port\":" + std::to_string(snapshot.port) +
     ",\"system_metrics_generation\":" + std::to_string(snapshot.system_metrics_generation) +
-    ",\"pairing_code\":\"\"" +
-    "\",\"mdns_name\":\"" + companion_json_escape(snapshot.mdns_name) + "\"}";
+    ",\"pairing_code\":\"\",\"mdns_name\":\"" +
+    companion_json_escape(snapshot.mdns_name) + "\"}";
 }
 
 class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler {
