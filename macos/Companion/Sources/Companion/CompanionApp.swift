@@ -119,12 +119,13 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
     private func connectionStatusItem() -> NSMenuItem {
         let item = NSMenuItem()
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 58))
+        let menuFont = NSFont.menuFont(ofSize: 0)
 
         let title = NSTextField(labelWithString: "EspControl")
-        title.font = .systemFont(ofSize: 16, weight: .semibold)
+        title.font = .systemFont(ofSize: menuFont.pointSize, weight: .semibold)
 
         let status = NSTextField(labelWithString: store.isConnected ? "Connected" : "Disconnected")
-        status.font = .systemFont(ofSize: 15)
+        status.font = menuFont
         status.textColor = .secondaryLabelColor
 
         let labels = NSStackView(views: [title, status])
@@ -162,10 +163,6 @@ final class CompanionApplicationDelegate: NSObject, NSApplicationDelegate, NSMen
     ) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
-        item.attributedTitle = NSAttributedString(
-            string: title,
-            attributes: [.font: NSFont.menuFont(ofSize: 15)]
-        )
         item.image = image
         menu.addItem(item)
     }
