@@ -1494,7 +1494,9 @@ inline void image_card_request_current_picture(ImageCardCtx *ctx) {
     // Failed reads keep their existing immediate retry path. Ordinary triggers
     // are coalesced separately before starting a new paired read.
     if (ctx->media_artwork_retry_mask != 0) {
-      image_card_request_media_artwork(ctx, true);
+      // A missing companion attribute is not a new track. Retain any force
+      // already in flight, but do not create another forced image download.
+      image_card_request_media_artwork(ctx, false);
     } else {
       image_card_schedule_media_artwork_refresh(ctx);
     }
@@ -1508,6 +1510,7 @@ inline void image_card_request_current_picture(ImageCardCtx *ctx) {
 // the source that previously failed to queue.
 inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {
   if (!ctx) return;
+  const bool force_refresh = !ctx->image_ready || ctx->media_artwork_refresh.forced;
   if (ctx->media_artwork) {
     ctx->media_artwork_retry_mask = 0;
     ctx->media_artwork_timeout_retries = 0;
@@ -1523,7 +1526,9 @@ inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {
     }
   }
   if (ctx->media_artwork) {
-    image_card_schedule_media_artwork_refresh(ctx, true);
+    // Reconnect recovery rechecks the URLs; unchanged, healthy artwork stays
+    // cached. A pending metadata trigger still retains its forced refresh.
+    image_card_schedule_media_artwork_refresh(ctx, force_refresh);
   } else {
     image_card_request_current_picture(ctx);
   }

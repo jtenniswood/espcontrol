@@ -748,8 +748,11 @@ def firmware_weather_reconnect_errors(core_infra_path: Path, root: Path) -> list
         return errors
 
     body = connected_match.group("body")
+    if "id(ha_refresh_after_connect).execute(" in body:
+        body = yaml_script_body(core_text, "ha_refresh_after_connect") or ""
+        body = re.split(r"(?m)^[a-z_]+:", body, maxsplit=1)[0]
     for match in re.finditer(r"refresh_weather_forecast_cards\(\);", body):
-        guard_window = body[max(0, match.start() - 160) : match.end()]
+        guard_window = body[max(0, match.start() - 220) : match.end()]
         if "ha_api_state_connected()" not in guard_window:
             errors.append(f"{core_rel}: wait for Home Assistant state readiness before forecast reconnect refreshes")
             break
@@ -2248,7 +2251,7 @@ def firmware_image_card_startup_errors(
     if (
         "image_card_request_current_picture" not in text
         or "if (ctx->media_artwork)" not in text
-        or "image_card_request_media_artwork(ctx, true);" not in text
+        or "image_card_request_media_artwork(ctx, false);" not in text
         or "image_card_refresh_current_picture(ctx);" not in text
         or "ctx->media_artwork_retry_mask = 0;" not in text
         or "ctx->pending_fallback_picture.clear();" not in text
@@ -6704,7 +6707,7 @@ def run_self_test() -> int:
         "    ctx->pending_fallback_picture.clear();\n"
         "  }\n"
         "  if (ctx->media_artwork) {\n"
-        "    image_card_request_media_artwork(ctx, true);\n"
+        "    image_card_request_media_artwork(ctx, false);\n"
         "  } else {\n"
         "    image_card_request_current_picture(ctx);\n"
         "  }\n"
