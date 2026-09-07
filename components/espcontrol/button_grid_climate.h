@@ -2720,7 +2720,6 @@ inline void climate_process_pending_optional_subscriptions(lv_timer_t *timer) {
     climate_optional_subscription_timer() = nullptr;
   }
   bool added = false;
-  const size_t channels_before = ha_read_coordinator().subscription_channel_count();
   ClimateControlCtx **refs = climate_control_refs();
   const int count = climate_control_ref_count();
   for (int index = 0; index < count; index++) {
@@ -2731,9 +2730,10 @@ inline void climate_process_pending_optional_subscriptions(lv_timer_t *timer) {
     uint8_t missing = ctx->optional_subscriptions.take_required(required);
     added = climate_subscribe_optional_fields(ctx, missing) || added;
   }
-  const bool added_upstream_channel =
-    ha_read_coordinator().subscription_channel_count() > channels_before;
-  if (added && added_upstream_channel && ha_api_state_connected()) {
+  // A callback can attach to an append-only channel that Home Assistant
+  // already knows. Reannounce that batch too so the new listener receives a
+  // fresh current value instead of waiting for the attribute to change.
+  if (added && ha_api_state_connected()) {
     ha_reannounce_state_subscriptions();
   }
   lv_timer_del(timer);

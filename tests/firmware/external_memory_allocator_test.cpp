@@ -16,6 +16,7 @@ void reset_allocator_state() {
   fake_esphome_allocator::external_available = true;
   fake_esphome_allocator::internal_available = true;
   fake_esphome_allocator::last_external_pointer = nullptr;
+  fake_esphome_allocator::last_allocation_flags = 0;
   EspControlExternalAllocatorStats::external_bytes = 0;
   EspControlExternalAllocatorStats::internal_bytes = 0;
   EspControlExternalAllocatorStats::external_allocations = 0;
@@ -28,6 +29,9 @@ void external_memory_is_preferred() {
   EspControlExternalAllocator<int> allocator;
   int *pointer = allocator.allocate(4);
   require(pointer != nullptr);
+  require(fake_esphome_allocator::last_allocation_flags ==
+          (esphome::RAMAllocator<int>::ALLOC_EXTERNAL |
+           esphome::RAMAllocator<int>::ALLOC_INTERNAL));
   require(EspControlExternalAllocatorStats::external_bytes == 4 * sizeof(int));
   require(EspControlExternalAllocatorStats::external_allocations == 1);
   require(EspControlExternalAllocatorStats::internal_bytes == 0);

@@ -42,7 +42,7 @@ class EspControlExternalAllocator {
 
   [[nodiscard]] T *allocate(size_t count) {
     if (count > max_size()) fail_allocation(count, true);
-    esphome::RAMAllocator<T> allocator;
+    esphome::RAMAllocator<T> allocator(ram_allocator_flags());
     T *result = allocator.allocate(count);
     if (result == nullptr && count != 0) fail_allocation(count, false);
     if (result == nullptr) return nullptr;
@@ -75,7 +75,7 @@ class EspControlExternalAllocator {
 #else
     subtract_saturating(EspControlExternalAllocatorStats::internal_bytes, bytes);
 #endif
-    esphome::RAMAllocator<T> allocator;
+    esphome::RAMAllocator<T> allocator(ram_allocator_flags());
     allocator.deallocate(pointer, count);
   }
 
@@ -94,6 +94,11 @@ class EspControlExternalAllocator {
   }
 
  private:
+  static constexpr uint8_t ram_allocator_flags() {
+    return static_cast<uint8_t>(esphome::RAMAllocator<T>::ALLOC_EXTERNAL |
+                                esphome::RAMAllocator<T>::ALLOC_INTERNAL);
+  }
+
   static void subtract_saturating(size_t &value, size_t amount) {
     value = amount <= value ? value - amount : 0;
   }
