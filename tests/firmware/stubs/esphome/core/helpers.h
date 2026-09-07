@@ -3,12 +3,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <new>
+#include <unordered_set>
 
 namespace fake_esphome_allocator {
 
 inline bool external_available = true;
 inline bool internal_available = true;
-inline const void *last_external_pointer = nullptr;
+inline std::unordered_set<const void *> external_pointers;
 inline uint8_t last_allocation_flags = 0;
 
 }  // namespace fake_esphome_allocator
@@ -40,12 +41,15 @@ class RAMAllocator {
     T *pointer = static_cast<T *>(
         ::operator new(count * sizeof(T), std::nothrow));
     if (pointer != nullptr && use_external) {
-      fake_esphome_allocator::last_external_pointer = pointer;
+      fake_esphome_allocator::external_pointers.insert(pointer);
     }
     return pointer;
   }
 
-  void deallocate(T *pointer, size_t) { ::operator delete(pointer); }
+  void deallocate(T *pointer, size_t) {
+    fake_esphome_allocator::external_pointers.erase(pointer);
+    ::operator delete(pointer);
+  }
 
  private:
   // Deliberately internal-only so tests fail if production relies on the

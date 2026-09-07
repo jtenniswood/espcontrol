@@ -75,13 +75,9 @@ add_test(NAME climate_target_logic_test COMMAND climate_target_logic_test)
 
 add_executable(climate_subscription_policy_test climate_subscription_policy_test.cpp)
 target_compile_features(climate_subscription_policy_test PRIVATE cxx_std_17)
-target_compile_options(climate_subscription_policy_test PRIVATE -Wall -Wextra -Werror)
+target_compile_options(climate_subscription_policy_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_include_directories(climate_subscription_policy_test PRIVATE ../../components/espcontrol)
-add_test(
-  NAME climate_subscription_policy_test
-  COMMAND climate_subscription_policy_test
-          ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/issue_1837_climate_subpage.json
-)
+add_test(NAME climate_subscription_policy_test COMMAND climate_subscription_policy_test)
 
 add_executable(media_volume_capability_test media_volume_capability_test.cpp)
 target_compile_features(media_volume_capability_test PRIVATE cxx_std_17)
@@ -266,6 +262,25 @@ target_include_directories(image_pipeline_policy_test PRIVATE ../../components/a
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(CLIMATE_SUBSCRIPTION_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_subscription_runtime_test.cpp)
+add_custom_command(
+  OUTPUT ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_climate_subscription_runtime_test.py
+    --output ${CLIMATE_SUBSCRIPTION_TEST_SOURCE}
+  DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_climate_subscription_runtime_test.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/climate_subscription_runtime_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/issue_1837_climate_subpage.json
+  VERBATIM
+)
+add_executable(climate_subscription_runtime_test ${CLIMATE_SUBSCRIPTION_TEST_SOURCE})
+target_compile_features(climate_subscription_runtime_test PRIVATE cxx_std_17)
+target_compile_options(climate_subscription_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(climate_subscription_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME climate_subscription_runtime_test COMMAND climate_subscription_runtime_test)
+
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json

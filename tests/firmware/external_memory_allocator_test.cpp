@@ -15,7 +15,7 @@ void require(bool condition) {
 void reset_allocator_state() {
   fake_esphome_allocator::external_available = true;
   fake_esphome_allocator::internal_available = true;
-  fake_esphome_allocator::last_external_pointer = nullptr;
+  require(fake_esphome_allocator::external_pointers.empty());
   fake_esphome_allocator::last_allocation_flags = 0;
   EspControlExternalAllocatorStats::external_bytes = 0;
   EspControlExternalAllocatorStats::internal_bytes = 0;
@@ -50,6 +50,30 @@ void internal_memory_is_the_fallback() {
   require(EspControlExternalAllocatorStats::internal_fallbacks == 1);
   allocator.deallocate(pointer, 3);
   require(EspControlExternalAllocatorStats::internal_bytes == 0);
+}
+
+void overlapping_allocations_keep_their_regions() {
+  for (bool reverse : {false, true}) {
+    reset_allocator_state();
+    EspControlExternalAllocator<int> allocator;
+    int *first = allocator.allocate(2);
+    fake_esphome_allocator::external_available = false;
+    int *fallback = allocator.allocate(3);
+    fake_esphome_allocator::external_available = true;
+    int *second = allocator.allocate(4);
+    require(EspControlExternalAllocatorStats::external_bytes == 6 * sizeof(int));
+    require(EspControlExternalAllocatorStats::internal_bytes == 3 * sizeof(int));
+    require(EspControlExternalAllocatorStats::internal_fallbacks == 1);
+    allocator.deallocate(reverse ? second : first, reverse ? 4 : 2);
+    require(EspControlExternalAllocatorStats::external_bytes ==
+            (reverse ? 2 : 4) * sizeof(int));
+    require(EspControlExternalAllocatorStats::internal_bytes == 3 * sizeof(int));
+    allocator.deallocate(fallback, 3);
+    require(EspControlExternalAllocatorStats::internal_bytes == 0);
+    allocator.deallocate(reverse ? first : second, reverse ? 2 : 4);
+    require(EspControlExternalAllocatorStats::external_bytes == 0);
+    require(fake_esphome_allocator::external_pointers.empty());
+  }
 }
 
 template<typename Callback>
@@ -88,6 +112,7 @@ void allocation_overflow_uses_the_explicit_fatal_path() {
 int main() {
   external_memory_is_preferred();
   internal_memory_is_the_fallback();
+  overlapping_allocations_keep_their_regions();
   exhaustion_uses_the_explicit_fatal_path();
   allocation_overflow_uses_the_explicit_fatal_path();
   return EXIT_SUCCESS;

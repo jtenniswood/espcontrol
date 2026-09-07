@@ -88,6 +88,12 @@ effective fallback controls need them. An optional subscription stays registered
 for that card context; narrowing a configuration can therefore leave its upstream
 channel in the append-only coordinator history until reboot.
 
+The firmware host tests generate a climate subscription harness from the actual
+registration, maintenance, and context-deletion functions. It uses the issue
+fixture to count registered channels and a fake transport/timer to check delayed
+delivery and rebuilds; LVGL rendering and physical memory behaviour still need
+device testing.
+
 Use the firmware UI playbook for subscription and runtime checks.
 
 ## Config Parser Rules

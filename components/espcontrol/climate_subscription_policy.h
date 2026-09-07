@@ -14,7 +14,6 @@ constexpr uint8_t CLIMATE_TAB_MODE = 1u << 1;
 constexpr uint8_t CLIMATE_TAB_PRESET = 1u << 2;
 constexpr uint8_t CLIMATE_TAB_FAN = 1u << 3;
 constexpr uint8_t CLIMATE_TAB_SWING = 1u << 4;
-constexpr size_t CLIMATE_MANDATORY_SUBSCRIPTION_COUNT = 15;
 
 struct SubscriptionCapabilities {
   bool temperature = false;
@@ -86,7 +85,7 @@ constexpr uint8_t required_optional_subscription_mask(
     uint8_t tabs, const SubscriptionCapabilities &capabilities) {
   uint8_t mask = configured_optional_subscription_mask(tabs);
   if (configured_tab_is_supported(tabs, capabilities)) return mask;
-  if (capabilities.hvac) return mask;
+  if (capabilities.temperature || capabilities.hvac) return mask;
   if (capabilities.preset) return mask | OPTIONAL_SUBSCRIPTION_PRESET;
   if (capabilities.fan) return mask | OPTIONAL_SUBSCRIPTION_FAN;
   if (capabilities.swing) return mask | OPTIONAL_SUBSCRIPTION_SWING;
@@ -121,20 +120,5 @@ struct OptionalSubscriptionState {
 
   void clear_pending() { pending = 0; }
 };
-
-constexpr size_t optional_subscription_count(uint8_t mask) {
-  size_t count = 0;
-  while (mask != 0) {
-    count += mask & 1u;
-    mask >>= 1;
-  }
-  return count;
-}
-
-constexpr size_t initial_subscription_count(std::string_view normalized_tabs) {
-  return CLIMATE_MANDATORY_SUBSCRIPTION_COUNT +
-         optional_subscription_count(
-             configured_optional_subscription_mask(normalized_tabs));
-}
 
 }  // namespace espcontrol::climate
