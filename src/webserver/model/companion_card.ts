@@ -1,4 +1,3 @@
-import type { CardConfig } from "../contracts/types";
 import {
   COMPANION_CARD_MODES,
   type CompanionCardMode,
@@ -6,13 +5,16 @@ import {
 
 export type CompanionCardModeId = typeof COMPANION_CARD_MODES[number]["id"];
 
-export type CompanionCardModel = {
-  [Mode in CompanionCardModeId]: {
-    readonly mode: Mode;
-    readonly capability: string;
-    readonly config: CardConfig;
-  }
-}[CompanionCardModeId];
+// Drafts can contain empty identifiers. Availability is a separate catalogue
+// concern, so losing a connection never changes the saved card identity.
+export type CompanionCardModel =
+  | { readonly mode: "app"; readonly applicationId: string }
+  | { readonly mode: "shortcut"; readonly shortcutId: string }
+  | { readonly mode: "url"; readonly applicationId: string; readonly encodedUrl: string }
+  | { readonly mode: "folder"; readonly folderId: string }
+  | { readonly mode: "media"; readonly actionId: string }
+  | { readonly mode: "stats"; readonly metricId: string; readonly precision: string; readonly unit: string }
+  | { readonly mode: "window"; readonly actionId: string };
 
 export function companionCardModeContract(mode: unknown): CompanionCardMode | undefined {
   return COMPANION_CARD_MODES.find((candidate) => candidate.id === mode);
@@ -28,10 +30,4 @@ export function companionCardModeOptions(): ReadonlyArray<readonly [CompanionCar
 
 export function companionCardDefaultIcon(mode: CompanionCardModeId): string {
   return companionCardModeContract(mode)?.defaultIcon || "Monitor";
-}
-
-export function companionCardModel(config: CardConfig, mode: CompanionCardModeId): CompanionCardModel {
-  const contract = companionCardModeContract(mode);
-  if (!contract) throw new Error(`Unknown Companion card mode: ${mode}`);
-  return { mode, capability: contract.capability, config } as CompanionCardModel;
 }

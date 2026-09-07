@@ -43,7 +43,10 @@ private final class CompanionSessionDelegate: NSObject, URLSessionDelegate, URLS
 final class CompanionConnection: NSObject {
     enum Mode { case authenticate, pair(code: String) }
 
-    private unowned let store: CompanionStore
+    private unowned let preferences: any CompanionSessionPreferences
+    private unowned let resources: any CompanionSessionResources
+    private let credentials: any CompanionSessionCredentials
+    var onEvent: ((CompanionSessionEvent) -> Void)?
     private var session: URLSession?
     private var task: URLSessionWebSocketTask?
     private var mode: Mode = .authenticate
@@ -68,7 +71,9 @@ final class CompanionConnection: NSObject {
     private var lastSystemMetricsPublication = Date.distantPast
     private static let artworkChunkBytes = CompanionCapabilities.artworkChunkBytes
     private static let maximumTextFrameBytes = CompanionCapabilities.maximumTextFrameBytes
-    private lazy var sessionDelegate: CompanionSessionDelegate = {
+    private var connectionGeneration: UInt64 = 0
+    private func makeSessionDelegate() -> CompanionSessionDelegate {
+        let generation = connectionGeneration
         let delegate = CompanionSessionDelegate()
         delegate.onOpen = { [weak self] task in
             Task { @MainActor [weak self] in self?.connectionDidOpen(task) }
@@ -78,7 +83,7 @@ final class CompanionConnection: NSObject {
         }
         delegate.onChallenge = { [weak self] challenge, completion in
             Task { @MainActor [weak self] in
-                guard let self else {
+                guard let self, self.connectionGeneration == generation else {
                     completion(.cancelAuthenticationChallenge, nil)
                     return
                 }
@@ -86,9 +91,19 @@ final class CompanionConnection: NSObject {
             }
         }
         return delegate
-    }()
+    }
 
-    init(store: CompanionStore) { self.store = store }
+    init(preferences: any CompanionSessionPreferences,
+         resources: any CompanionSessionResources,
+         credentials: any CompanionSessionCredentials = CompanionKeychainCredentials()) {
+        self.preferences = preferences
+        self.resources = resources
+        self.credentials = credentials
+    }
+
+    private func updateConnectionStatus(_ message: String, state: CompanionConnectionState, recovery: String? = nil) {
+        onEvent?(.connection(message: message, state: state, recovery: recovery))
+    }
 
     func connect(mode: Mode) {
         startConnection(mode: mode, resetBackoff: true)
@@ -104,9 +119,9 @@ final class CompanionConnection: NSObject {
             if case .authenticate = mode { return true }
             return false
         }()
-        guard !store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard !preferences.panelHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             shouldReconnect = false
-            store.updateConnectionStatus("Enter the display address first", state: .failed)
+            updateConnectionStatus("Enter the display address first", state: .failed)
             return
         }
         guard let url = connectionURL() else {
@@ -116,14 +131,14 @@ final class CompanionConnection: NSObject {
         self.mode = mode
         let configuration = URLSessionConfiguration.ephemeral
         configuration.waitsForConnectivity = true
-        session = URLSession(configuration: configuration, delegate: sessionDelegate, delegateQueue: nil)
+        session = URLSession(configuration: configuration, delegate: makeSessionDelegate(), delegateQueue: nil)
         guard let task = session?.webSocketTask(with: url) else {
-            store.updateConnectionStatus("Could not create the display connection", state: .failed)
+            updateConnectionStatus("Could not create the display connection", state: .failed)
             return
         }
         self.task = task
         task.resume()
-        store.updateConnectionStatus("Connecting…", state: resetBackoff ? .connecting : .reconnecting)
+        updateConnectionStatus("Connecting…", state: resetBackoff ? .connecting : .reconnecting)
         receive(from: task)
         startConnectionTimeout(for: task)
     }
@@ -133,10 +148,11 @@ final class CompanionConnection: NSObject {
         reconnectTask?.cancel()
         reconnectTask = nil
         tearDownConnection()
-        store.updateConnectionStatus("Not connected", state: .disconnected)
+        updateConnectionStatus("Not connected", state: .disconnected)
     }
 
     private func tearDownConnection() {
+        connectionGeneration &+= 1
         sessionAuthenticated = false
         authenticationRequestOutstanding = false
         resetArtworkTransferState()
@@ -166,17 +182,17 @@ final class CompanionConnection: NSObject {
     private func authenticate(on webSocketTask: URLSessionWebSocketTask) {
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
-        let account = store.pairingAccount
-        store.updateConnectionStatus("Authenticating…", state: reconnectAttempt > 0 ? .reconnecting : .connecting)
+        let account = preferences.pairingAccount
+        updateConnectionStatus("Authenticating…", state: reconnectAttempt > 0 ? .reconnecting : .connecting)
         Task { [weak self, weak webSocketTask] in
             // Stay on the main actor so Security can present an interactive
             // Keychain access prompt when the saved credential requires it.
-            let credential = KeychainStore.load(service: KeychainStore.service, account: account)
+            let credential = self?.credentials.load(account: account)
             guard let self, let webSocketTask, self.task === webSocketTask else { return }
             guard let credential else {
                 self.hasTerminalConnectionError = true
                 self.shouldReconnect = false
-                self.store.updateConnectionStatus("Unlock the Mac or allow Keychain access to reconnect", state: .failed, recovery: "Unlock your Mac and allow Companion to access Keychain, then try again.")
+                self.updateConnectionStatus("Unlock the Mac or allow Keychain access to reconnect", state: .failed, recovery: "Unlock your Mac and allow Companion to access Keychain, then try again.")
                 self.handleConnectionFailure(for: webSocketTask)
                 return
             }
@@ -195,11 +211,11 @@ final class CompanionConnection: NSObject {
     }
 
     private func connectionURL() -> URL? {
-        let raw = store.panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = preferences.panelHost.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsed = URL(string: raw.contains("://") ? raw : "wss://\(raw)"),
               let host = parsed.host,
               ConnectionEndpointPolicy.isLocalHost(host) else {
-            store.updateConnectionStatus("Display address must be on the local network", state: .failed)
+            updateConnectionStatus("Display address must be on the local network", state: .failed)
             return nil
         }
         var components = URLComponents()
@@ -221,11 +237,11 @@ final class CompanionConnection: NSObject {
             completionHandler(.performDefaultHandling, nil); return
         }
         let fingerprint = SHA256.hash(data: SecCertificateCopyData(certificate) as Data).map { String(format: "%02x", $0) }.joined()
-        let saved = store.stringPreference(forKey: certificateFingerprintKey)
+        let saved = preferences.stringPreference(forKey: certificateFingerprintKey)
         if let saved, saved != fingerprint {
             shouldReconnect = false
             hasTerminalConnectionError = true
-            store.updateConnectionStatus("Blocked: display certificate changed", state: .failed, recovery: "The display’s identity has changed. If you reset or replaced it, forget this display and pair again using the code from its webpage.")
+            updateConnectionStatus("Blocked: display certificate changed", state: .failed, recovery: "The display’s identity has changed. If you reset or replaced it, forget this display and pair again using the code from its webpage.")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else if saved != nil {
             if case .pair = mode { pendingCertificateFingerprint = fingerprint }
@@ -236,7 +252,7 @@ final class CompanionConnection: NSObject {
             pendingCertificateFingerprint = fingerprint
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
-            store.updateConnectionStatus("Open the device webpage to start pairing", state: .failed)
+            updateConnectionStatus("Open the device webpage to start pairing", state: .failed)
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
@@ -262,11 +278,11 @@ final class CompanionConnection: NSObject {
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(10))
-            guard !Task.isCancelled, let self, self.task === task, !self.store.isConnected else { return }
+            guard !Task.isCancelled, let self, self.task === task, !self.sessionAuthenticated else { return }
             if case .pair = self.mode {
-                self.store.updateConnectionStatus("Pairing failed — try again", state: .failed)
+                self.updateConnectionStatus("Pairing failed — try again", state: .failed)
             } else {
-                self.store.updateConnectionStatus("Display did not respond — reconnecting…", state: .reconnecting)
+                self.updateConnectionStatus("Display did not respond — reconnecting…", state: .reconnecting)
             }
             self.handleConnectionFailure(for: task)
         }
@@ -292,7 +308,7 @@ final class CompanionConnection: NSObject {
     private func handleConnectionFailure(for failedTask: URLSessionWebSocketTask) {
         guard task === failedTask else { return }
         if !hasTerminalConnectionError, case .pair = mode {
-            store.updateConnectionStatus("Pairing failed — try again", state: .failed)
+            updateConnectionStatus("Pairing failed — try again", state: .failed)
         }
         sessionAuthenticated = false
         resetArtworkTransferState()
@@ -323,12 +339,12 @@ final class CompanionConnection: NSObject {
         // Keep the specific server error visible instead of replacing it with
         // a generic disconnect message during that expected teardown.
         guard shouldReconnect else { return }
-        guard store.hasSavedPairing else {
-            store.updateConnectionStatus("Display disconnected", state: .disconnected)
+        guard preferences.hasSavedPairing else {
+            updateConnectionStatus("Display disconnected", state: .disconnected)
             return
         }
         guard reconnectTask == nil else { return }
-        store.updateConnectionStatus("Display unavailable — reconnecting…", state: .reconnecting)
+        updateConnectionStatus("Display unavailable — reconnecting…", state: .reconnecting)
         reconnectTask = Task { [weak self] in
             guard let self else { return }
             let delay = ReconnectBackoff.delaySeconds(
@@ -348,120 +364,116 @@ final class CompanionConnection: NSObject {
             hasTerminalConnectionError = true
             shouldReconnect = false
             tearDownConnection()
-            store.updateConnectionStatus("Display sent an unsupported protocol message", state: .failed, recovery: "Update Companion and your display to matching versions, then reconnect.")
+            updateConnectionStatus("Display sent an unsupported protocol message", state: .failed, recovery: "Update Companion and your display to matching versions, then reconnect.")
             return
         }
     }
 
     private func handleJSON(_ message: String) -> Bool {
+        let state: CompanionProtocolState = sessionAuthenticated ? .connected : {
+            if case .pair = mode { return .pairing }
+            return .authenticating
+        }()
         guard let data = message.data(using: .utf8),
+              let decoded = CompanionProtocolDecoder.decode(data, direction: .panelToMac, state: state),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let type = object["type"] as? String,
-              (object["protocol"] as? NSNumber)?.intValue == CompanionCapabilities.protocolVersion,
-              CompanionCapabilities.protocolMessages.contains(type) else { return false }
+              let type = object["type"] as? String else { return false }
         print("[EspControl Companion] Received \(type)")
-        switch type {
-        case "hello":
+        switch decoded {
+        case .hello:
             break
-        case "pair.accepted":
-            guard let encodedCredential = object["credential"] as? String,
-                  let credential = Data(hex: encodedCredential) else { store.updateConnectionStatus("Pairing failed", state: .failed); return true }
-            guard let fingerprint = pendingCertificateFingerprint else { store.updateConnectionStatus("Pairing failed", state: .failed); return true }
-            let pairingAccount = store.panelHost
-            guard KeychainStore.save(credential, service: KeychainStore.service, account: pairingAccount) else {
-                store.updateConnectionStatus("Pairing failed: the credential could not be saved in Keychain", state: .failed, recovery: "Unlock your Mac and allow Companion to access Keychain, then try again.")
+        case .pairAccepted(let payload):
+            guard let credential = Data(hex: payload.credential) else { updateConnectionStatus("Pairing failed", state: .failed); return true }
+            guard let fingerprint = pendingCertificateFingerprint else { updateConnectionStatus("Pairing failed", state: .failed); return true }
+            let pairingAccount = preferences.panelHost
+            guard credentials.save(credential, account: pairingAccount) else {
+                updateConnectionStatus("Pairing failed: the credential could not be saved in Keychain", state: .failed, recovery: "Unlock your Mac and allow Companion to access Keychain, then try again.")
                 return true
             }
-            store.rememberPairingAccount(pairingAccount)
-            store.setPreference(fingerprint, forKey: certificateFingerprintKey)
-            store.removePreference(forKey: authenticationSequenceKey)
+            preferences.rememberPairingAccount(pairingAccount)
+            preferences.setPreference(fingerprint, forKey: certificateFingerprintKey)
+            preferences.removePreference(forKey: authenticationSequenceKey)
             pendingCertificateFingerprint = nil
-            store.updateConnectionStatus("Paired — reconnecting", state: .connecting)
+            updateConnectionStatus("Paired — reconnecting", state: .connecting)
             connect(mode: .authenticate)
-        case "auth.accepted":
+        case .authAccepted(let payload):
             guard case .authenticate = mode, authenticationRequestOutstanding else { return false }
             authenticationRequestOutstanding = false
             sessionAuthenticated = true
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
             reconnectAttempt = 0
-            store.updateConnectionStatus("Connected to \(store.panelHost)", state: .connected)
-            let capabilityVersion = (object["capabilityVersion"] as? NSNumber)?.intValue ?? 0
-            store.setSystemMetricsSupported(capabilityVersion >= 2)
+            updateConnectionStatus("Connected to \(preferences.panelHost)", state: .connected)
+            let capabilityVersion = payload.capabilityVersion
+            onEvent?(.capabilities(systemMetrics: capabilityVersion >= 2))
             if let task { startHeartbeat(for: task) }
             publishTimezone()
             publishCatalogue()
-            store.republishCurrentNowPlaying()
-            store.republishCurrentSystemMetrics()
-        case "catalogue.request":
+            onEvent?(.publishCurrentState)
+        case .catalogueRequest:
             guard sessionAuthenticated else { return false }
             publishCatalogue()
-        case "action.invoke":
+        case .actionInvoke(let payload):
             guard sessionAuthenticated else { return false }
-            guard let requestIdentifier = object["requestId"] as? String,
-                  let kind = object["kind"] as? String else { return false }
-            if kind == "action", let actionIdentifier = object["actionId"] as? String {
+            let requestIdentifier = payload.requestId
+            let kind = payload.kind
+            if kind == "action", let actionIdentifier = payload.actionId {
                 let requestingTask = task
                 Task { [weak self, weak requestingTask] in
-                    guard let self else { return }
-                    let status = await self.store.performResultStatus(actionIdentifier: actionIdentifier)
-                    guard let requestingTask, self.task === requestingTask, self.sessionAuthenticated else { return }
+                    guard let self, let requestingTask, self.task === requestingTask, self.sessionAuthenticated else { return }
+                    let status = await self.resources.performResultStatus(actionIdentifier: actionIdentifier)
+                    guard self.task === requestingTask, self.sessionAuthenticated else { return }
                     self.sendJSON(["type": "action.result", "requestId": requestIdentifier, "status": status])
                 }
-            } else if kind == "url", let appIdentifier = object["appId"] as? String,
-                      let encodedURL = object["encodedUrl"] as? String {
+            } else if kind == "url", let appIdentifier = payload.appId,
+                      let encodedURL = payload.encodedUrl {
                 let requestingTask = task
                 Task { [weak self, weak requestingTask] in
-                    guard let self else { return }
-                    let opened = await self.store.openURL(encodedURL: encodedURL, bundleIdentifier: appIdentifier)
-                    guard let requestingTask, self.task === requestingTask, self.sessionAuthenticated else { return }
+                    guard let self, let requestingTask, self.task === requestingTask, self.sessionAuthenticated else { return }
+                    let opened = await self.resources.openURL(encodedURL: encodedURL, bundleIdentifier: appIdentifier)
+                    guard self.task === requestingTask, self.sessionAuthenticated else { return }
                     self.sendJSON(["type": "action.result", "requestId": requestIdentifier,
                                    "status": opened ? "opened" : "not_allowed"])
                 }
             } else { return false }
-        case "value.set":
+        case .valueSet(let payload):
             guard sessionAuthenticated else { return false }
-            guard let requestIdentifier = object["requestId"] as? String,
-                  let controlIdentifier = object["controlId"] as? String,
-                  let value = (object["value"] as? NSNumber)?.intValue,
-                  (0...100).contains(value) else { return false }
-            let changed = store.setMediaControlValue(value, controlIdentifier: controlIdentifier)
+            let requestIdentifier = payload.requestId
+            let controlIdentifier = payload.controlId
+            let value = Int(payload.value)
+            let changed = resources.setMediaControlValue(value, controlIdentifier: controlIdentifier)
             sendJSON(["type": "action.result", "requestId": requestIdentifier,
                       "status": changed ? "performed" : "not_allowed"])
-        case "error":
-            let code = object["code"] as? String ?? "unknown_error"
+        case .error(let payload):
+            let code = payload.code
             if code == "authentication_sequence",
-               let panelSequence = (object["lastSequence"] as? NSNumber)?.uint32Value,
+               let panelSequence = payload.lastSequence,
                panelSequence < UInt32.max {
-                store.setPreference(Int(panelSequence), forKey: authenticationSequenceKey)
-                store.updateConnectionStatus("Authentication counter repaired — reconnecting", state: .reconnecting)
+                preferences.setPreference(Int(panelSequence), forKey: authenticationSequenceKey)
+                updateConnectionStatus("Authentication counter repaired — reconnecting", state: .reconnecting)
                 connect(mode: .authenticate)
             } else {
                 let message = code.replacingOccurrences(of: "_", with: " ")
                 if sessionAuthenticated {
-                    store.updateStatus(message)
+                    onEvent?(.status(message))
                 } else {
                     hasTerminalConnectionError = true
                     shouldReconnect = false
                     tearDownConnection()
-                    store.updateConnectionStatus(message, state: .failed)
+                    updateConnectionStatus(message, state: .failed)
                 }
             }
-        case "artwork.ack":
+        case .artworkAck(let payload):
             guard sessionAuthenticated else { return false }
-            if let generation = (object["generation"] as? NSNumber)?.uint32Value,
-               let nextOffset = (object["nextOffset"] as? NSNumber)?.intValue,
-               generation == artworkGeneration, nextOffset == artworkOffset {
+            if payload.generation == artworkGeneration, Int(payload.nextOffset) == artworkOffset {
                 sendNextArtworkChunk()
             }
-        case "artwork.abort":
+        case .artworkAbort:
             guard sessionAuthenticated else { return false }
             resetArtworkTransferState()
-        case "artwork.request":
+        case .artworkRequest(let payload):
             guard sessionAuthenticated else { return false }
-            if let generation = (object["generation"] as? NSNumber)?.uint32Value {
-                store.republishNowPlayingArtwork(generation: generation)
-            }
+            onEvent?(.artworkRequested(payload.generation))
         default:
             return false
         }
@@ -559,26 +571,30 @@ final class CompanionConnection: NSObject {
         guard JSONSerialization.isValidJSONObject(envelope),
               let data = try? JSONSerialization.data(withJSONObject: envelope), data.count <= Self.maximumTextFrameBytes,
               let value = String(data: data, encoding: .utf8) else { return }
+        let state: CompanionProtocolState = sessionAuthenticated ? .connected : {
+            if case .pair = mode { return .pairing }; return .authenticating
+        }()
+        guard CompanionProtocolDecoder.decode(data, direction: .macToPanel, state: state) != nil else { return }
         send(value)
     }
 
     func publishCatalogue() {
-        guard store.isConnected || task != nil else { return }
+        guard sessionAuthenticated || task != nil else { return }
         lastFocusedActionIdentifier = nil
         let supportedWindowActions = Self.supportedWindowActionIDs(
             for: ProcessInfo.processInfo.operatingSystemVersion
         )
-        var capabilities = (store.mediaActionsAvailable ? ["media_actions"] : []) + supportedWindowActions
+        var capabilities = (resources.mediaActionsAvailable ? ["media_actions"] : []) + supportedWindowActions
         capabilities.append("keyboard_shortcuts")
         sendJSON(["type": "capabilities", "values": capabilities])
         // Bundle identifiers are stable and opaque to the browser layout editor;
         // it never receives a path or an arbitrary shell command.
         // Approved folders are sent first so they remain available even when
         // the installed application catalogue reaches the frame limit.
-        let entries: [[String: String]] = store.folderActions().compactMap { folder -> [String: String]? in
+        let entries: [[String: String]] = resources.folderActions().compactMap { folder -> [String: String]? in
             guard Self.validCatalogueIdentifier(folder.actionIdentifier) else { return nil }
             return ["id": folder.actionIdentifier, "label": Self.catalogueLabel(folder.name, fallback: "Folder")]
-        } + store.launchableApps().compactMap { app -> [String: String]? in
+        } + resources.launchableApps().compactMap { app -> [String: String]? in
             guard Self.validCatalogueIdentifier(app.bundleIdentifier) else { return nil }
             return ["id": app.bundleIdentifier, "label": Self.catalogueLabel(app.name, fallback: app.bundleIdentifier)]
         }
@@ -607,7 +623,7 @@ final class CompanionConnection: NSObject {
     }
 
     func publishFocusedAction() {
-        let identifier = store.focusedCompanionActionIdentifier()
+        let identifier = resources.focusedCompanionActionIdentifier()
         guard identifier.isEmpty || Self.validCatalogueIdentifier(identifier) else { return }
         guard identifier != lastFocusedActionIdentifier else { return }
         lastFocusedActionIdentifier = identifier
@@ -655,13 +671,13 @@ final class CompanionConnection: NSObject {
         return abs(lhs - rhs)
     }
 
-    private var certificateFingerprintKey: String { "companion.certificateFingerprint.\(store.pairingAccount)" }
-    private var authenticationSequenceKey: String { "companion.authenticationSequence.\(store.pairingAccount)" }
+    private var certificateFingerprintKey: String { "companion.certificateFingerprint.\(preferences.pairingAccount)" }
+    private var authenticationSequenceKey: String { "companion.authenticationSequence.\(preferences.pairingAccount)" }
 
     private func nextAuthenticationSequence() -> UInt32 {
-        let previous = UInt32(clamping: store.integerPreference(forKey: authenticationSequenceKey))
+        let previous = UInt32(clamping: preferences.integerPreference(forKey: authenticationSequenceKey))
         let next = previous &+ 1
-        store.setPreference(Int(next), forKey: authenticationSequenceKey)
+        preferences.setPreference(Int(next), forKey: authenticationSequenceKey)
         return next
     }
 

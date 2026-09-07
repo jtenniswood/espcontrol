@@ -4,6 +4,10 @@
   "outputs": [
     "src/webserver/generated/companion_capabilities.ts",
     "components/espcontrol/companion_capabilities_generated.h",
-    "macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift"
+    "macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift",
+    "components/espcontrol/companion_protocol_generated.h",
+    "macos/Companion/Sources/Companion/CompanionProtocol.generated.swift",
+    "product/generated/companion_compatibility.json",
+    "docs/generated/companion-compatibility.md"
   ]
 }

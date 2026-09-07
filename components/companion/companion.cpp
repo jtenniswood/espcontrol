@@ -1,5 +1,6 @@
 #include "companion.h"
 #include "now_playing_protocol.h"
+#include "../espcontrol/companion_protocol_generated.h"
 
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
@@ -339,6 +340,13 @@ CompanionService::AuthenticationResult CompanionService::authenticate_(
   return AuthenticationResult::AUTHENTICATED;
 }
 
+void CompanionService::defer_session_(std::function<void()> callback) {
+  const uint32_t generation = this->session_.generation();
+  this->defer([this, generation, callback = std::move(callback)]() {
+    if (this->session_.current(generation)) callback();
+  });
+}
+
 void CompanionService::handle_message_(int socket_fd, const std::string &message) {
   if (message.empty() || message.front() != '{') {
     this->send_(socket_fd, "{\"type\":\"error\",\"protocol\":3,\"code\":\"json_required\"}");
@@ -350,9 +358,12 @@ void CompanionService::handle_message_(int socket_fd, const std::string &message
 
 void CompanionService::handle_json_(int socket_fd, const std::string &message) {
   bool parsed = json::parse_json(message, [this, socket_fd](JsonObject root) -> bool {
-    const std::string type = root["type"] | "";
-    const uint32_t version = root["protocol"] | 0;
-    if (version != COMPANION_PROTOCOL_VERSION) return false;
+    const auto state = socket_fd == this->session_.authenticated_socket()
+      ? companion_protocol::SessionState::CONNECTED
+      : (std::string(root["type"] | "") == "pair.request" && this->pairing_active()
+        ? companion_protocol::SessionState::PAIRING : companion_protocol::SessionState::AUTHENTICATING);
+    const auto decoded = companion_protocol::decode(root, companion_protocol::Direction::MAC_TO_PANEL, state);
+    if (!decoded) return false;
     auto send_error = [this, socket_fd](const char *code, uint32_t last_sequence = 0) {
       std::string response = "{\"type\":\"error\",\"protocol\":" +
           std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"code\":\"" + code + "\"";
@@ -360,10 +371,10 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       this->send_(socket_fd, response + "}");
     };
 
-    if (type == "auth.request") {
-      const uint32_t sequence = root["sequence"] | 0;
-      const std::string nonce = root["nonce"] | "";
-      const std::string signature = root["signature"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::AuthRequest>(&*decoded)) {
+      const uint32_t sequence = payload->sequence;
+      const std::string nonce = payload->nonce;
+      const std::string signature = payload->signature;
       uint32_t last_sequence = 0;
       const auto authentication = this->authenticate_(sequence, nonce, signature, last_sequence);
       if (authentication == AuthenticationResult::STALE_SEQUENCE) {
@@ -395,8 +406,8 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       return true;
     }
 
-    if (type == "pair.request") {
-      const std::string code = root["code"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::PairRequest>(&*decoded)) {
+      const std::string code = payload->code;
       const uint32_t now = millis();
       std::unique_lock<std::mutex> pairing_lock(this->pairing_mutex_);
       if (!safe_field(code, 16) || !this->pairing_active_locked_(now)) {
@@ -452,14 +463,12 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       return true;
     }
 
-    if (type == "capabilities") {
+    if (const auto *payload = std::get_if<companion_protocol::Capabilities>(&*decoded)) {
       bool media_actions = false;
       bool keyboard_actions = false;
       bool keyboard_actions_capability_received = false;
       std::vector<std::string> window_actions;
-      const JsonArray values = root["values"].as<JsonArray>();
-      for (JsonVariant value : values) {
-        const std::string capability = value.as<const char *>();
+      for (const auto &capability : payload->values) {
         if (capability == "media_actions") {
           media_actions = true;
         } else if (capability == "keyboard_shortcuts") {
@@ -472,18 +481,19 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
           window_actions.push_back(capability);
         }
       }
-      companion_set_media_actions_supported(media_actions);
-      if (keyboard_actions_capability_received) {
-        companion_set_keyboard_actions_supported(keyboard_actions);
-      }
-      companion_set_window_actions(std::move(window_actions));
+      this->defer_session_([media_actions, keyboard_actions, keyboard_actions_capability_received,
+                            window_actions = std::move(window_actions)]() mutable {
+        companion_set_media_actions_supported(media_actions);
+        if (keyboard_actions_capability_received) companion_set_keyboard_actions_supported(keyboard_actions);
+        companion_set_window_actions(std::move(window_actions));
+      });
       return true;
     }
 
-    if (type == "catalogue.page") {
-      const uint32_t catalogue_generation = root["generation"] | 0;
-      const uint16_t page = root["page"] | 0;
-      const bool complete = root["complete"] | false;
+    if (const auto *payload = std::get_if<companion_protocol::CataloguePage>(&*decoded)) {
+      const uint32_t catalogue_generation = payload->generation;
+      const uint16_t page = payload->page;
+      const bool complete = payload->complete;
       if (catalogue_generation == 0 ||
           (page == 0 ? false : catalogue_generation != this->catalogue_generation_) ||
           page != (page == 0 ? 0 : this->catalogue_next_page_)) return false;
@@ -492,11 +502,10 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
         this->catalogue_generation_ = catalogue_generation;
         this->catalogue_next_page_ = 0;
       }
-      const JsonArray items = root["items"].as<JsonArray>();
-      for (JsonObject item : items) {
+      for (const auto &item : payload->items) {
         if (this->catalogue_actions_.size() >= MAX_CATALOGUE_ACTIONS) break;
-        const std::string id = item["id"] | "";
-        const std::string label = item["label"] | "";
+        const std::string id = item.id;
+        const std::string label = item.label;
         if (safe_field(id, 96) && safe_utf8_field(label, 96))
           this->catalogue_actions_.emplace_back(id, label);
       }
@@ -505,75 +514,74 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
         std::vector<CompanionAction> actions;
         actions.reserve(this->catalogue_actions_.size());
         for (const auto &item : this->catalogue_actions_) actions.push_back({item.first, item.second});
-        companion_set_actions(std::move(actions));
+        this->defer_session_([actions = std::move(actions)]() mutable { companion_set_actions(std::move(actions)); });
       }
       return true;
     }
 
-    if (type == "action.result") {
-      const std::string request_id = root["requestId"] | "";
-      const std::string status = root["status"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::ActionResult>(&*decoded)) {
+      const std::string request_id = payload->requestId;
+      const std::string status = payload->status;
       if (!safe_field(request_id, 64) || !safe_field(status, 32)) return false;
-      this->defer([request_id, status]() { companion_deliver_action_result(request_id, status); });
+      this->defer_session_([request_id, status]() { companion_deliver_action_result(request_id, status); });
       return true;
     }
 
-    if (type == "value.state") {
-      const std::string control_id = root["controlId"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::ValueState>(&*decoded)) {
+      const std::string control_id = payload->controlId;
       if (!companion_volume_control_valid(control_id)) return false;
-      if (!(root["available"] | true)) {
-        companion_remove_value(control_id);
+      if (!payload->available) {
+        this->defer_session_([control_id] { companion_remove_value(control_id); });
         return true;
       }
-      const int value = root["value"] | -1;
+      const int value = payload->value ? static_cast<int>(*payload->value) : -1;
       if (value < 0 || value > 100) return false;
-      companion_set_value(control_id, value);
+      this->defer_session_([control_id, value] { companion_set_value(control_id, value); });
       return true;
     }
 
-    if (type == "focus.changed") {
-      const std::string action_id = root["actionId"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::FocusChanged>(&*decoded)) {
+      const std::string action_id = payload->actionId;
       if (!action_id.empty() && !safe_field(action_id, 96)) return false;
-      companion_set_focused_action(action_id);
+      this->defer_session_([action_id] { companion_set_focused_action(action_id); });
       return true;
     }
 
-    if (type == "timezone.changed") {
-      const std::string timezone = root["identifier"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::TimezoneChanged>(&*decoded)) {
+      const std::string timezone = payload->identifier;
       if (!safe_field(timezone, 96)) return false;
-      this->defer([timezone]() { companion_set_timezone_id(timezone); });
+      this->defer_session_([timezone]() { companion_set_timezone_id(timezone); });
       return true;
     }
 
     const uint32_t generation = root["generation"] | 0;
     if (generation == 0) return false;
 
-    if (type == "now_playing") {
+    if (const auto *payload = std::get_if<companion_protocol::NowPlaying>(&*decoded)) {
       if (generation < this->now_playing_generation_) return true;
-      auto text = [&root](const char *key) { return std::string(root[key] | ""); };
       CompanionNowPlayingSnapshot snapshot;
       snapshot.generation = generation;
-      snapshot.source_application_id = text("applicationIdentifier");
-      snapshot.source_application_name = text("applicationName");
-      snapshot.content_id = text("contentIdentifier");
-      snapshot.title = text("title");
-      snapshot.artist = text("artist");
-      snapshot.album = text("album");
+      snapshot.source_application_id = payload->applicationIdentifier;
+      snapshot.source_application_name = payload->applicationName;
+      snapshot.content_id = payload->contentIdentifier;
+      snapshot.title = payload->title;
+      snapshot.artist = payload->artist;
+      snapshot.album = payload->album;
       const std::array<const std::string *, 6> fields{{
           &snapshot.source_application_id, &snapshot.source_application_name,
           &snapshot.content_id, &snapshot.title, &snapshot.artist, &snapshot.album}};
       if (std::any_of(fields.begin(), fields.end(), [](const std::string *field) {
             return field->size() > MAX_NOW_PLAYING_FIELD_BYTES;
           })) return false;
-      const std::string state = text("state");
+      const std::string state = payload->state;
       if (state == "playing") snapshot.playback_state = CompanionPlaybackState::PLAYING;
       else if (state == "paused") snapshot.playback_state = CompanionPlaybackState::PAUSED;
       else if (state == "stopped") snapshot.playback_state = CompanionPlaybackState::STOPPED;
       else if (state == "unavailable") snapshot.playback_state = CompanionPlaybackState::UNAVAILABLE;
       else return false;
-      const double duration_ms = root["durationMs"] | 0.0;
-      const double position_ms = root["positionMs"] | 0.0;
-      const double playback_rate = root["playbackRate"] | 0.0;
+      const double duration_ms = payload->durationMs;
+      const double position_ms = payload->positionMs;
+      const double playback_rate = payload->playbackRate;
       if (!std::isfinite(duration_ms) || !std::isfinite(position_ms) ||
           !std::isfinite(playback_rate) || duration_ms < 0 || position_ms < 0 ||
           duration_ms > 86400000.0 || position_ms > 86400000.0 ||
@@ -581,31 +589,31 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       snapshot.duration = static_cast<float>(duration_ms / 1000.0);
       snapshot.position = static_cast<float>(position_ms / 1000.0);
       snapshot.playback_rate = static_cast<float>(playback_rate);
-      snapshot.artwork_follows = root["hasArtwork"] | false;
+      snapshot.artwork_follows = payload->hasArtwork;
       if (generation != this->now_playing_generation_)
         this->reset_artwork_transfer_("new now-playing generation");
       else if (!snapshot.artwork_follows)
         this->reset_artwork_transfer_("artwork removed from current snapshot", true);
       this->now_playing_generation_ = generation;
       this->now_playing_artwork_follows_ = snapshot.artwork_follows;
-      this->defer([snapshot = std::move(snapshot)]() mutable {
+      this->defer_session_([snapshot = std::move(snapshot)]() mutable {
         companion_set_now_playing(std::move(snapshot));
       });
       return true;
     }
 
-    if (type == "system_metrics") {
-      if (!(root["available"] | true)) {
-        this->defer([] { companion_set_system_metrics({}); });
+    if (const auto *payload = std::get_if<companion_protocol::SystemMetrics>(&*decoded)) {
+      if (!payload->available.value_or(true)) {
+        this->defer_session_([] { companion_set_system_metrics({}); });
         return true;
       }
       CompanionSystemMetricsSnapshot snapshot;
       snapshot.generation = generation;
-      snapshot.cpu_usage_percent = root["cpuUsagePercent"] | NAN;
-      snapshot.memory_usage_percent = root["memoryUsagePercent"] | NAN;
-      snapshot.storage_usage_percent = root["storageUsagePercent"] | NAN;
-      snapshot.battery_percent = root["batteryPercent"] | NAN;
-      snapshot.network_throughput_kbps = root["networkThroughputKBps"] | NAN;
+      snapshot.cpu_usage_percent = payload->cpuUsagePercent.value_or(NAN);
+      snapshot.memory_usage_percent = payload->memoryUsagePercent.value_or(NAN);
+      snapshot.storage_usage_percent = payload->storageUsagePercent.value_or(NAN);
+      snapshot.battery_percent = payload->batteryPercent.value_or(NAN);
+      snapshot.network_throughput_kbps = payload->networkThroughputKBps.value_or(NAN);
       const std::array<float, 3> required{{
           snapshot.cpu_usage_percent,
           snapshot.memory_usage_percent,
@@ -618,16 +626,16 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
           (snapshot.battery_percent < 0.0f || snapshot.battery_percent > 100.0f)) return false;
       if (std::isfinite(snapshot.network_throughput_kbps) &&
           (snapshot.network_throughput_kbps < 0.0f || snapshot.network_throughput_kbps > 1.0e9f)) return false;
-      this->defer([snapshot]() mutable {
+      this->defer_session_([snapshot]() mutable {
         companion_set_system_metrics(std::move(snapshot));
       });
       return true;
     }
 
-    if (type == "artwork.begin") {
-      const size_t length = root["byteLength"] | 0;
-      const std::string sha256 = root["sha256"] | "";
-      const std::string mime_type = root["mimeType"] | "";
+    if (const auto *payload = std::get_if<companion_protocol::ArtworkBegin>(&*decoded)) {
+      const size_t length = payload->byteLength;
+      const std::string sha256 = payload->sha256;
+      const std::string mime_type = payload->mimeType;
       std::array<uint8_t, 32> expected{};
       const bool hash_valid = parse_hex_sha256(sha256, expected);
       if (!protocol::artwork_begin_valid(true, generation, this->now_playing_generation_,
@@ -644,7 +652,7 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       return true;
     }
 
-    if (type == "artwork.end") {
+    if (const auto *payload = std::get_if<companion_protocol::ArtworkEnd>(&*decoded)) {
       if (!this->artwork_buffer_ || generation != this->artwork_generation_ ||
           this->artwork_offset_ != this->artwork_length_) return false;
       if (!protocol::jpeg_signature_valid(this->artwork_buffer_, this->artwork_length_)) {
@@ -665,7 +673,12 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       this->artwork_length_ = 0;
       this->artwork_offset_ = 0;
       this->artwork_generation_ = 0;
-      this->defer([this, generation, owned, owned_size]() {
+      const uint32_t session_generation = this->session_.generation();
+      this->defer([this, generation, session_generation, owned, owned_size]() {
+        if (!this->session_.current(session_generation)) {
+          this->artwork_allocator_.deallocate(owned, owned_size);
+          return;
+        }
         if (!companion_deliver_artwork(generation, owned, owned_size)) {
           this->artwork_allocator_.deallocate(owned, owned_size);
         }
@@ -673,7 +686,7 @@ void CompanionService::handle_json_(int socket_fd, const std::string &message) {
       return true;
     }
 
-    if (type == "artwork.abort") {
+    if (const auto *payload = std::get_if<companion_protocol::ArtworkAbort>(&*decoded)) {
       if (generation == this->artwork_generation_) this->reset_artwork_transfer_("Mac aborted transfer");
       return true;
     }
@@ -735,10 +748,10 @@ void CompanionService::reset_artwork_transfer_(const char *reason, bool notify) 
 
 void CompanionService::expire_now_playing_() {
   this->reset_artwork_transfer_("connection grace period expired");
-  auto snapshot = companion_runtime_snapshot().now_playing;
+  auto snapshot = companion_runtime_service().now_playing();
   snapshot.playback_state = CompanionPlaybackState::UNAVAILABLE;
   snapshot.artwork_follows = false;
-  this->defer([snapshot = std::move(snapshot)]() mutable {
+  this->defer_session_([snapshot = std::move(snapshot)]() mutable {
     companion_set_now_playing(std::move(snapshot));
   });
 }
@@ -824,7 +837,11 @@ void CompanionService::set_connected_(bool connected, int closing_socket) {
     this->reset_artwork_transfer_("connection closed");
     this->disconnect_grace_expires_at_.store(millis() + NOW_PLAYING_RECONNECT_GRACE_MS);
   }
-  this->defer([connected]() {
+  this->defer_session_([connected]() {
+    if (connected) {
+      companion_cancel_action_result();
+      companion_runtime_service().set_connected(false);
+    }
     companion_set_connected(connected);
     if (!connected) {
       companion_set_actions({});
@@ -842,9 +859,13 @@ void CompanionService::publish_catalogue_() {
 bool CompanionService::invoke_(const std::string &action_id, const std::string &request_id) {
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(action_id, 96) || !safe_field(request_id, 64)) return false;
-  return this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
-                     std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"action\",\"requestId\":\"" +
-                     request_id + "\",\"actionId\":\"" + action_id + "\"}");
+  companion_protocol::ActionInvoke payload;
+  payload.requestId = request_id;
+  payload.kind = "action";
+  payload.actionId = action_id;
+  return this->send_(socket_fd, json::build_json([&payload](JsonObject root) {
+    companion_protocol::encode(root, payload);
+  }));
 }
 
 bool CompanionService::invoke_url_(const std::string &app_id, const std::string &encoded_url,
@@ -852,20 +873,25 @@ bool CompanionService::invoke_url_(const std::string &app_id, const std::string 
   const int socket_fd = this->session_.authenticated_socket();
   if (socket_fd < 0 || !safe_field(app_id, 96) ||
       !safe_field(encoded_url, 128) || !safe_field(request_id, 64)) return false;
-  return this->send_(socket_fd, "{\"type\":\"action.invoke\",\"protocol\":" +
-                     std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"kind\":\"url\",\"requestId\":\"" +
-                     request_id + "\",\"appId\":\"" + app_id + "\",\"encodedUrl\":\"" + encoded_url + "\"}");
+  companion_protocol::ActionInvoke payload;
+  payload.requestId = request_id;
+  payload.kind = "url";
+  payload.appId = app_id;
+  payload.encodedUrl = encoded_url;
+  return this->send_(socket_fd, json::build_json([&payload](JsonObject root) {
+    companion_protocol::encode(root, payload);
+  }));
 }
 
 bool CompanionService::invoke_value_(const std::string &control_id, int value,
                                      const std::string &request_id) {
   const int socket_fd = this->session_.authenticated_socket();
-  if (socket_fd < 0 ||
-      !companion_volume_control_valid(control_id) ||
+  if (socket_fd < 0 || !companion_volume_control_valid(control_id) ||
       value < 0 || value > 100 || !safe_field(request_id, 64)) return false;
-  return this->send_(socket_fd, "{\"type\":\"value.set\",\"protocol\":" +
-                     std::to_string(COMPANION_PROTOCOL_VERSION) + ",\"requestId\":\"" + request_id +
-                     "\",\"controlId\":\"" + control_id + "\",\"value\":" + std::to_string(value) + "}");
+  const companion_protocol::ValueSet payload{request_id, control_id, static_cast<uint32_t>(value)};
+  return this->send_(socket_fd, json::build_json([&payload](JsonObject root) {
+    companion_protocol::encode(root, payload);
+  }));
 }
 
 void CompanionService::begin_pairing() {

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from companion_release import compatibility
 from pathlib import Path
 
 
@@ -29,8 +30,8 @@ def main() -> int:
     require(protocol["path"] == "/companion/v3", "the v3 endpoint changed unexpectedly")
     require(len(message_ids) == len(set(message_ids)), "protocol message IDs are not unique")
     require(len(mode_ids) == len(set(mode_ids)), "card mode IDs are not unique")
-    require(security["pairingAuthorization"] == "physical_presence", "pairing must require physical access")
-    require(not security["browserExposesPairingCode"], "the browser must not expose pairing codes")
+    require(security["pairingAuthorization"] == "device_web_access", "pairing must follow device web authorization")
+    require(security["browserExposesPairingCode"], "browser pairing must expose its active setup code")
 
     required_messages = {
         "hello", "pair.request", "pair.accepted", "auth.request", "auth.accepted",
@@ -45,9 +46,9 @@ def main() -> int:
     require(manifest["source"] == str(CONTRACT.relative_to(ROOT)), "generated manifest source is wrong")
     require(manifest["generator"] == "python3 scripts/build.py companion", "generated command is wrong")
     outputs = [ROOT / path for path in manifest["outputs"]]
-    require(len(outputs) == 3 and all(path.is_file() for path in outputs), "generated outputs are missing")
+    require(len(outputs) == 7 and all(path.is_file() for path in outputs), "generated outputs are missing")
 
-    for output in outputs:
+    for output in outputs[:3]:
         text = output.read_text()
         require(protocol["path"] in text, f"{output.relative_to(ROOT)} omits the protocol path")
         for message_id in message_ids:
@@ -66,14 +67,11 @@ def main() -> int:
         require(not any(token in text for token in legacy_tokens),
                 f"{source.relative_to(ROOT)} contains a legacy delimiter message")
 
-    firmware = transport_sources[0].read_text()
-    browser = (ROOT / "src/webserver/application/settings_companion_section.ts").read_text()
-    require("register_companion_pairing_callbacks" not in firmware,
-            "firmware still exposes remote pairing activation")
-    require("Pairing code:" not in browser and "copyButton" not in browser,
-            "browser UI still renders pairing credentials")
-
-    print("Companion contract, generated outputs, and physical pairing boundary passed.")
+    require(json.loads((ROOT / "product/generated/companion_compatibility.json").read_text()) == compatibility(),
+            "release compatibility is stale")
+    # Behavioral authorization and code-visibility tests run in the firmware
+    # host suite; spelling checks cannot establish an endpoint security boundary.
+    print("Companion contract and generated output registry passed.")
     return 0
 
 

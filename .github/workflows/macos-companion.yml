@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'macos/Companion/**'
+      - 'product/v2/companion_capabilities.json'
+      - 'compatibility/fixtures/companion_protocol_v3.json'
+      - 'scripts/companion_protocol_codegen.py'
+      - 'scripts/companion_release.py'
+      - 'scripts/build.py'
       - 'scripts/generate_macos_icon.swift'
       - 'docs/reference/privacy.md'
       - 'docs/.vitepress/config.mts'
@@ -19,6 +24,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7.0.1
+
+      - name: Verify generated Companion contract
+        run: python3 scripts/build.py companion --check
 
       - name: Run Companion tests
         run: swift test --package-path macos/Companion -Xswiftc -warnings-as-errors

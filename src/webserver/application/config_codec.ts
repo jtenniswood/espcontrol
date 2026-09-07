@@ -42,7 +42,7 @@ import { normalizeSavedConfigClimate } from "../generated/saved_config_climate";
 import { normalizeSavedConfigLightControl } from "../generated/saved_config_light_control";
 import { normalizeSavedConfigWebhook } from "../generated/saved_config_webhook";
 import { normalizeSavedConfigSubpage } from "../generated/saved_config_subpage";
-import { COMPANION_SYSTEM_METRICS } from "../cards/companion";
+import { COMPANION_SYSTEM_METRICS } from "../generated/companion_capabilities";
 import { normalizeSavedConfigSwitch } from "../generated/saved_config_switch";
 import { normalizeCompanionAppShortcutOptions } from "./companion_shortcut_folder";
 import type { CardRegistry } from "./card_registry";

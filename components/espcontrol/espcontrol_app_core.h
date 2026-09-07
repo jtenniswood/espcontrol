@@ -6,6 +6,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <new>
+#include <memory>
+#include "companion_runtime.h"
 #include <optional>
 #include <type_traits>
 
@@ -159,6 +161,16 @@ class EspControlAppCore {
     return modal_state_service_.get_or_create_ui_service<ModalService>();
   }
 
+  CompanionRuntimeService &companion_runtime() {
+    if (!companion_runtime_) companion_runtime_ = std::make_unique<CompanionRuntimeService>();
+    return *companion_runtime_;
+  }
+
+  template<typename ViewService>
+  ViewService &companion_view_service() {
+    return companion_view_service_.get_or_create_ui_service<ViewService>();
+  }
+
   // Compatibility facade for ESPHome YAML while display ownership migrates to
   // the explicit lifecycle service.
   DisplayModeController &display() { return display_lifecycle_.controller(); }
@@ -167,6 +179,8 @@ class EspControlAppCore {
   }
 
  private:
+  std::unique_ptr<CompanionRuntimeService> companion_runtime_;
+  FixedRuntimeServiceSlot<64> companion_view_service_{};
   AppLifecycleState lifecycle_state_{AppLifecycleState::CONSTRUCTED};
   uint32_t loop_count_{0};
   DisplayLifecycleService display_lifecycle_{};

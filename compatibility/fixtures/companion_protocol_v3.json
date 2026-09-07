@@ -1,0 +1,964 @@
+[
+  {
+    "name": "hello",
+    "message": {
+      "protocol": 3,
+      "type": "hello"
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": true
+  },
+  {
+    "name": "pair request",
+    "message": {
+      "protocol": 3,
+      "type": "pair.request",
+      "code": "ABCD-EFGH"
+    },
+    "direction": "mac_to_panel",
+    "state": "pairing",
+    "valid": true
+  },
+  {
+    "name": "pair accepted",
+    "message": {
+      "protocol": 3,
+      "type": "pair.accepted",
+      "credential": "0101010101010101010101010101010101010101010101010101010101010101"
+    },
+    "direction": "panel_to_mac",
+    "state": "pairing",
+    "valid": true
+  },
+  {
+    "name": "authentication",
+    "message": {
+      "protocol": 3,
+      "type": "auth.request",
+      "sequence": 4,
+      "nonce": "a-nonce",
+      "signature": "abababababababababababababababababababababababababababababababab"
+    },
+    "direction": "mac_to_panel",
+    "state": "authenticating",
+    "valid": true
+  },
+  {
+    "name": "authenticated",
+    "message": {
+      "protocol": 3,
+      "type": "auth.accepted",
+      "capabilityVersion": 2
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": true
+  },
+  {
+    "name": "capabilities",
+    "message": {
+      "protocol": 3,
+      "type": "capabilities",
+      "values": [
+        "keyboard_shortcuts",
+        "window.left"
+      ]
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "catalogue request",
+    "message": {
+      "protocol": 3,
+      "type": "catalogue.request"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "catalogue page",
+    "message": {
+      "protocol": 3,
+      "type": "catalogue.page",
+      "generation": 1,
+      "page": 0,
+      "complete": true,
+      "items": [
+        {
+          "id": "com.example.App",
+          "label": "Caf\u00e9"
+        }
+      ]
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "launch action",
+    "message": {
+      "protocol": 3,
+      "type": "action.invoke",
+      "kind": "action",
+      "requestId": "r1",
+      "actionId": "com.example.App"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "url action",
+    "message": {
+      "protocol": 3,
+      "type": "action.invoke",
+      "kind": "url",
+      "requestId": "r2",
+      "appId": "com.example.App",
+      "encodedUrl": "https%3A%2F%2Fexample.com"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "action result",
+    "message": {
+      "protocol": 3,
+      "type": "action.result",
+      "requestId": "r1",
+      "status": "activated"
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "set volume",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": 50
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "volume",
+    "message": {
+      "protocol": 3,
+      "type": "value.state",
+      "controlId": "media.output_volume",
+      "available": true,
+      "value": 50
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "unavailable volume",
+    "message": {
+      "protocol": 3,
+      "type": "value.state",
+      "controlId": "media.input_volume",
+      "available": false
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "no focus",
+    "message": {
+      "protocol": 3,
+      "type": "focus.changed",
+      "actionId": ""
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "timezone",
+    "message": {
+      "protocol": 3,
+      "type": "timezone.changed",
+      "identifier": "Europe/London"
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "now playing",
+    "message": {
+      "protocol": 3,
+      "type": "now_playing",
+      "generation": 1,
+      "applicationIdentifier": "app",
+      "applicationName": "App",
+      "contentIdentifier": "song",
+      "title": "Title",
+      "artist": "Artist",
+      "album": "Album",
+      "state": "playing",
+      "durationMs": 123000,
+      "positionMs": 200,
+      "playbackRate": 1,
+      "hasArtwork": true
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "statistics",
+    "message": {
+      "protocol": 3,
+      "type": "system_metrics",
+      "generation": 1,
+      "cpuUsagePercent": 20.2,
+      "memoryUsagePercent": 33,
+      "storageUsagePercent": 80,
+      "batteryPercent": 50,
+      "networkThroughputKBps": 1024
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "unavailable statistics",
+    "message": {
+      "protocol": 3,
+      "type": "system_metrics",
+      "generation": 1,
+      "available": false
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "artwork begin",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.begin",
+      "generation": 1,
+      "byteLength": 1024,
+      "sha256": "abababababababababababababababababababababababababababababababab",
+      "mimeType": "image/jpeg"
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "artwork ack",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.ack",
+      "generation": 1,
+      "nextOffset": 1024
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "artwork end",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.end",
+      "generation": 1
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "artwork abort",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.abort",
+      "generation": 1
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "artwork request",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.request",
+      "generation": 1
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": true
+  },
+  {
+    "name": "error",
+    "message": {
+      "protocol": 3,
+      "type": "error",
+      "code": "authentication_sequence",
+      "lastSequence": 100
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": true
+  },
+  {
+    "name": "wrong protocol",
+    "message": {
+      "protocol": 4,
+      "type": "hello"
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": false
+  },
+  {
+    "name": "boolean protocol",
+    "message": {
+      "protocol": true,
+      "type": "hello"
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": false
+  },
+  {
+    "name": "unknown type",
+    "message": {
+      "protocol": 3,
+      "type": "future.command"
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": false
+  },
+  {
+    "name": "pair acceptance outside pairing",
+    "message": {
+      "protocol": 3,
+      "type": "pair.accepted",
+      "credential": "0101010101010101010101010101010101010101010101010101010101010101"
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": false
+  },
+  {
+    "name": "unsolicited auth acceptance",
+    "message": {
+      "protocol": 3,
+      "type": "auth.accepted",
+      "capabilityVersion": 2
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "command before authentication",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": 50
+    },
+    "direction": "panel_to_mac",
+    "state": "authenticating",
+    "valid": false
+  },
+  {
+    "name": "wrong direction",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": 50
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid volume True",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": true
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid volume '50'",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": "50"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid volume None",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": null
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid volume -1",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": -1
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid volume 101",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": 101
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid volume 50.5",
+    "message": {
+      "protocol": 3,
+      "type": "value.set",
+      "requestId": "v1",
+      "controlId": "media.output_volume",
+      "value": 50.5
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "missing action id",
+    "message": {
+      "protocol": 3,
+      "type": "action.invoke",
+      "kind": "action",
+      "requestId": "r1"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "missing url",
+    "message": {
+      "protocol": 3,
+      "type": "action.invoke",
+      "kind": "url",
+      "requestId": "r2",
+      "appId": "com.example.App"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "oversized request",
+    "message": {
+      "protocol": 3,
+      "type": "action.invoke",
+      "kind": "action",
+      "requestId": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "actionId": "com.example.App"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "embedded NUL",
+    "message": {
+      "protocol": 3,
+      "type": "action.invoke",
+      "kind": "action",
+      "requestId": "r1",
+      "actionId": "app\u0000hidden"
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "missing available volume",
+    "message": {
+      "protocol": 3,
+      "type": "value.state",
+      "controlId": "media.output_volume",
+      "available": true
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "missing available metrics",
+    "message": {
+      "protocol": 3,
+      "type": "system_metrics",
+      "generation": 1,
+      "memoryUsagePercent": 33,
+      "storageUsagePercent": 80,
+      "batteryPercent": 50,
+      "networkThroughputKBps": 1024
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid optional metric",
+    "message": {
+      "protocol": 3,
+      "type": "system_metrics",
+      "generation": 1,
+      "cpuUsagePercent": 20.2,
+      "memoryUsagePercent": 33,
+      "storageUsagePercent": 80,
+      "batteryPercent": null,
+      "networkThroughputKBps": 1024
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "metrics above range",
+    "message": {
+      "protocol": 3,
+      "type": "system_metrics",
+      "generation": 1,
+      "cpuUsagePercent": 101,
+      "memoryUsagePercent": 33,
+      "storageUsagePercent": 80,
+      "batteryPercent": 50,
+      "networkThroughputKBps": 1024
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "oversized page",
+    "message": {
+      "protocol": 3,
+      "type": "catalogue.page",
+      "generation": 1,
+      "page": 0,
+      "complete": true,
+      "items": [
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        },
+        {
+          "id": "a",
+          "label": "b"
+        }
+      ]
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid page entry",
+    "message": {
+      "protocol": 3,
+      "type": "catalogue.page",
+      "generation": 1,
+      "page": 0,
+      "complete": true,
+      "items": [
+        {
+          "id": "a",
+          "label": 5
+        }
+      ]
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "fractional page",
+    "message": {
+      "protocol": 3,
+      "type": "catalogue.page",
+      "generation": 1,
+      "page": 0.5,
+      "complete": true,
+      "items": [
+        {
+          "id": "com.example.App",
+          "label": "Caf\u00e9"
+        }
+      ]
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "oversized utf8 text",
+    "message": {
+      "protocol": 3,
+      "type": "now_playing",
+      "generation": 1,
+      "applicationIdentifier": "app",
+      "applicationName": "App",
+      "contentIdentifier": "song",
+      "title": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+      "artist": "Artist",
+      "album": "Album",
+      "state": "playing",
+      "durationMs": 123000,
+      "positionMs": 200,
+      "playbackRate": 1,
+      "hasArtwork": true
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "unknown playback state",
+    "message": {
+      "protocol": 3,
+      "type": "now_playing",
+      "generation": 1,
+      "applicationIdentifier": "app",
+      "applicationName": "App",
+      "contentIdentifier": "song",
+      "title": "Title",
+      "artist": "Artist",
+      "album": "Album",
+      "state": "loading",
+      "durationMs": 123000,
+      "positionMs": 200,
+      "playbackRate": 1,
+      "hasArtwork": true
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "negative duration",
+    "message": {
+      "protocol": 3,
+      "type": "now_playing",
+      "generation": 1,
+      "applicationIdentifier": "app",
+      "applicationName": "App",
+      "contentIdentifier": "song",
+      "title": "Title",
+      "artist": "Artist",
+      "album": "Album",
+      "state": "playing",
+      "durationMs": -1,
+      "positionMs": 200,
+      "playbackRate": 1,
+      "hasArtwork": true
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "oversized artwork",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.begin",
+      "generation": 1,
+      "byteLength": 262145,
+      "sha256": "abababababababababababababababababababababababababababababababab",
+      "mimeType": "image/jpeg"
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "invalid hash",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.begin",
+      "generation": 1,
+      "byteLength": 1024,
+      "sha256": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+      "mimeType": "image/jpeg"
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "zero generation",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.end",
+      "generation": 0
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "negative offset",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.ack",
+      "generation": 1,
+      "nextOffset": -1
+    },
+    "direction": "panel_to_mac",
+    "state": "connected",
+    "valid": false
+  },
+  {
+    "name": "generation overflow",
+    "message": {
+      "protocol": 3,
+      "type": "artwork.end",
+      "generation": 4294967296
+    },
+    "direction": "mac_to_panel",
+    "state": "connected",
+    "valid": false
+  }
+]

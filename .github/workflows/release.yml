@@ -420,6 +420,11 @@ jobs:
         with:
           ref: ${{ needs.preflight.outputs.source_sha }}
 
+      - name: Verify Companion contract and shared protocol fixtures
+        run: |
+          python3 scripts/build.py companion --check
+          swift test --package-path macos/Companion -Xswiftc -warnings-as-errors
+
       - name: Sign, notarize, staple, and verify Companion
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
@@ -535,6 +540,14 @@ jobs:
             echo "The notarized Companion ZIP or DMG release asset is missing" >&2
             exit 1
           fi
+          python3 scripts/companion_release.py create \
+            --firmware-dir dist/firmware --companion-dir dist/companion \
+            --source-revision "${{ needs.preflight.outputs.source_sha }}" \
+            --version "${RELEASE_TAG}" --out dist/companion/companion-compatibility.json
+          python3 scripts/companion_release.py verify \
+            --firmware-dir dist/firmware --companion-dir dist/companion \
+            --source-revision "${{ needs.preflight.outputs.source_sha }}" \
+            --version "${RELEASE_TAG}" --out dist/companion/companion-compatibility.json
           python3 scripts/firmware_release.py publish-draft \
             --version "${RELEASE_TAG}" \
             --dir dist/firmware \
@@ -546,4 +559,4 @@ jobs:
             --release-contract product/release_contract.json \
             --web-manifest docs/public/webserver/web-assets.json \
             --web-root docs/public/webserver \
-            --additional-files "${COMPANION_ZIP}" "${COMPANION_DMG}"
+            --additional-files "${COMPANION_ZIP}" "${COMPANION_DMG}" dist/companion/companion-compatibility.json

@@ -1,3 +1,7 @@
+import { decodeCompanionCard, encodeCompanionCard, companionMetricForEntity } from "../model/companion_card_codec";
+import { createCompanionCatalogue } from "../api/companion_catalogue";
+import type { CompanionAction } from "../api/companion_catalogue";
+export type { CompanionAction } from "../api/companion_catalogue";
 import {
     cardContractAllowInSubpage,
     cardContractCardLabel,
@@ -13,7 +17,6 @@ import {
     COMPANION_SYSTEM_METRICS,
     COMPANION_WINDOW_ACTIONS,
 } from "../generated/companion_capabilities";
-import type { CompanionSystemMetric } from "../generated/companion_capabilities";
 import {
     companionCardDefaultIcon,
     companionCardModeOptions,
@@ -52,10 +55,7 @@ import {
     syncCompanionShortcutSubpage,
 } from "../application/companion_shortcut_folder";
 
-export interface CompanionAction {
-    readonly id: string;
-    readonly label: string;
-}
+
 
 const COMPANION_URL_PREFIX = "url.";
 const COMPANION_STATS_PLACEHOLDER = "stats";
@@ -244,10 +244,7 @@ export function companionCardIsMetric(card: any): boolean {
     return !!companionMetricForEntity(card?.entity);
 }
 
-function companionMetricForEntity(entity: unknown): CompanionSystemMetric | undefined {
-    return COMPANION_SYSTEM_METRICS.find((metric) =>
-        metric.id === entity || metric.freeId === entity);
-}
+
 
 export function companionMetricDisplayMode(card: any): "used" | "free" {
     const metric = companionMetricForEntity(card?.entity);
@@ -268,17 +265,7 @@ export function companionMetricPreviewValue(precision: unknown, sample = Math.ra
 }
 
 export function companionCardMode(card: any): CompanionCardModeId {
-    const entity = typeof card?.entity === "string" ? card.entity : "";
-    const sensor = typeof card?.sensor === "string" ? card.sensor : "";
-    if (entity.startsWith(COMPANION_SHORTCUT_PREFIX)) return "shortcut";
-    if (entity === COMPANION_WINDOW_PREFIX || entity.startsWith(COMPANION_WINDOW_PREFIX)) return "window";
-    if (entity === COMPANION_FINDER_ID || entity.startsWith(COMPANION_FOLDER_PREFIX)) return "folder";
-    if (COMPANION_MEDIA_ACTIONS.some((action) => action.id === entity)) return "media";
-    if (entity === COMPANION_STATS_PLACEHOLDER) return "stats";
-    const metric = companionMetricForEntity(entity);
-    if (metric) return "stats";
-    if (sensor.startsWith(COMPANION_URL_PREFIX)) return "url";
-    return "app";
+    return decodeCompanionCard(card || {}).mode;
 }
 
 export function companionEntityForMode(mode: string): string {
@@ -357,9 +344,12 @@ export function normalizeCompanionCard(card: any): void {
         card.type = "companion";
         card.sensor = "";
         // Existing cards may still contain the old generated KB/s unit.
-        card.unit = card.unit === "KB/s" ? metric.unit : (card.unit || metric.unit);
-        card.precision = card.precision === "0" || card.precision === "1" || card.precision === "2"
-            ? card.precision : "0";
+        const model = decodeCompanionCard(card);
+        if (model.mode !== "stats") return;
+        Object.assign(card, encodeCompanionCard({ ...model,
+            unit: model.unit === "KB/s" ? metric.unit : (model.unit || metric.unit),
+            precision: ["0", "1", "2"].includes(model.precision) ? model.precision : "0",
+        }, card));
         card.options = String(card.options || "").split(",").filter((option) =>
             option === "large_numbers" || option === "large_numbers=off").join(",");
         card.icon_on = "Auto";
@@ -384,16 +374,6 @@ export function normalizeCompanionCard(card: any): void {
     }
 }
 
-async function fetchCompanionActions(fetchImpl: typeof fetch): Promise<readonly CompanionAction[]> {
-    const response = await fetchImpl("/companion/actions", { cache: "no-store" });
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    const value: unknown = await response.json();
-    if (!Array.isArray(value)) return [];
-    return value.filter((action): action is CompanionAction =>
-        !!action && typeof action.id === "string" && typeof action.label === "string",
-    );
-}
-
 export function registerCompanionCardTypes(
     registry: CardRegistry,
     supported: boolean,
@@ -408,23 +388,8 @@ export function registerCompanionCardTypes(
 ): void {
     const { cardBadgePreview, cardBadgeLabelHtml, cardSensorPreviewHtml, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
-    let companionActionsCache: readonly CompanionAction[] | null = null;
-    let companionActionsRequest: Promise<readonly CompanionAction[]> | null = null;
-
-    function loadCompanionActions(refresh = false): Promise<readonly CompanionAction[]> {
-        if (companionActionsRequest) return companionActionsRequest;
-        if (!refresh && companionActionsCache) return Promise.resolve(companionActionsCache);
-        const request = fetchCompanionActions(fetchImpl).then(function (actions) {
-            companionActionsCache = actions;
-            return actions;
-        });
-        companionActionsRequest = request;
-        void request.then(
-            function () { if (companionActionsRequest === request) companionActionsRequest = null; },
-            function () { if (companionActionsRequest === request) companionActionsRequest = null; },
-        );
-        return request;
-    }
+    const catalogue = createCompanionCatalogue(fetchImpl);
+    const loadCompanionActions = catalogue.load;
 
     function applyCompanionPickerPreset(card: any, mode: string): void {
         if (!card) return;

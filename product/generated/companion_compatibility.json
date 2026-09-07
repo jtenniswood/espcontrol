@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 3,
+  "capabilityVersion": 2,
+  "contractSha256": "e7fe32db3f774690e38f4e25c482a7f87d98527fa2ef673a28fe3677f37fee7e",
+  "supportedDevices": [
+    "guition-esp32-s3-4848s040"
+  ],
+  "supportedCombinations": [
+    {
+      "firmwareProtocol": 3,
+      "companionProtocol": 3
+    }
+  ],
+  "releasePolicy": "coordinated",
+  "savedPanelConfigVersion": 1,
+  "wireFixturesSha256": "bfbec68ae1bf5681bddd339af2e40d5a64e127e8c834b80ed8b278ef524623ca"
+}

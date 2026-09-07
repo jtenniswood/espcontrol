@@ -33,7 +33,7 @@ describe("browserless application contracts", () => {
     runClipboardFeatureTests();
   });
 
-  test("formats physical Companion pairing status", () => {
+  test("formats browser Companion pairing status", () => {
     runCompanionPairingFeatureTests();
   });
 
@@ -85,7 +85,7 @@ describe("browserless application contracts", () => {
 
   test("publishes and executes only approved Mac applications", () => {
     const store = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionStore.swift"), "utf8");
-    const app = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionApp.swift"), "utf8");
+    const app = fs.readFileSync(path.join(ROOT, "macos/Companion/Sources/Companion/CompanionSettings.swift"), "utf8");
     assert.match(store, /approvedApplicationIdentifiers\.contains\(\$0\.bundleIdentifier\)/);
     assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
     assert.doesNotMatch(store, /NSWorkspace\.shared\.icon\(forFile: url\.path\)/);
@@ -638,7 +638,6 @@ describe("browserless application contracts", () => {
     const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal|CFG)\b/);
     assert.match(entry, /registerCompanionCardTypes\(\s*registry,\s*!!context\.device\.profile\.features\?\.companion,\s*context\.dom\.document,\s*context\.dom\.fetch,\s*fields,\s*cardUi,\s*context\.configuration\.modalTabs,\s*context\.configuration\.codec,\s*context\.controllers\.selection,\s*context\.layout\.numSlots,?\s*\);/);
-    assert.match(card, /fetchImpl\("\/companion\/actions", \{ cache: "no-store" \}\)/);
     assert.match(card, /disclosureSection\(\s*"App subpage"/);
     assert.match(card, /renderModalTabSettings\(appSubpageDisclosure\.section/);
     assert.match(card, /_appShortcutDisabledTabs = companionShortcutTabs\(card\)/);

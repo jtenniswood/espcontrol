@@ -44,6 +44,8 @@ bool EspControlAppCore::run_once() {
 bool EspControlAppCore::stop() {
   if (lifecycle_state_ != AppLifecycleState::RUNNING) return false;
   if (!display_lifecycle_.stop()) return false;
+  companion_view_service_.reset();
+  companion_runtime_.reset();
   home_assistant_binding_service_.reset();
   modal_state_service_.reset();
   grid_navigation_service_.reset();

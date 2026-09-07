@@ -1,3 +1,4 @@
+import { decodeCompanionCard, encodeCompanionCard } from "../../src/webserver/model/companion_card_codec";
 import {
   applyCompanionMediaPresentation,
   companionAppLabel,
@@ -70,7 +71,6 @@ import {
   companionCardDefaultIcon,
   companionCardModeOptions,
   companionCardModeValid,
-  companionCardModel,
 } from "../../src/webserver/model/companion_card";
 import { emptyCardConfig } from "../../src/webserver/model/card";
 
@@ -93,10 +93,15 @@ export function runCompanionShortcutFeatureTests(): void {
       companionCardDefaultIcon("shortcut") !== "Shortcut Command") {
     throw new Error("Companion card modes must come from the generated product contract");
   }
-  const typedCard = companionCardModel(emptyCardConfig("companion"), "app");
-  if (typedCard.mode !== "app" || typedCard.capability !== "applications" ||
-      typedCard.config.type !== "companion") {
+  const typedCard = decodeCompanionCard(emptyCardConfig("companion"), "app");
+  if (typedCard.mode !== "app" || typedCard.applicationId !== "") {
     throw new Error("Companion cards must have a typed in-memory model without changing saved config");
+  }
+  for (const entity of ["com.example.Offline", "shortcut.command+a", "folder.saved-id", "media.play_pause", "window.left", "stat.memory_free"]) {
+    const saved = { ...emptyCardConfig("companion"), entity, label: "Keep", options: "future_option=keep", precision: "2", unit: "%" };
+    if (JSON.stringify(encodeCompanionCard(decodeCompanionCard(saved), saved)) !== JSON.stringify(saved)) {
+      throw new Error("Companion variants must round-trip offline cards and unknown options");
+    }
   }
   if (normalizeSubpageKind("companion_stat") !== "companion_stat") {
     throw new Error("Legacy Companion Stat subpages must remain readable");

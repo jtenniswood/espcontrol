@@ -15,6 +15,8 @@ constexpr size_t COMPANION_MAXIMUM_ARTWORK_BYTES = 262144;
 constexpr size_t COMPANION_ARTWORK_CHUNK_BYTES = 12288;
 constexpr uint32_t COMPANION_PAIRING_WINDOW_SECONDS = 900;
 
+constexpr bool COMPANION_BROWSER_STARTS_PAIRING = true;
+constexpr bool COMPANION_BROWSER_EXPOSES_PAIRING_CODE = true;
 struct CompanionProtocolMessagePolicy { const char *id; const char *direction; const char *authorization; };
 inline constexpr CompanionProtocolMessagePolicy COMPANION_PROTOCOL_MESSAGES[] = {
   {"hello", "panel_to_mac", "public"},

@@ -141,7 +141,11 @@ final class CompanionStore: NSObject, ObservableObject {
     private static let preferencesSuite = "io.espcontrol.companion"
     private static let legacyPreferencesSuite = "EspControl Companion"
     private let defaults: UserDefaults
-    private lazy var connection = CompanionConnection(store: self)
+    private lazy var connection: CompanionConnection = {
+        let session = CompanionConnection(preferences: self, resources: self)
+        session.onEvent = { [weak self] event in self?.receiveSessionEvent(event) }
+        return session
+    }()
     private let nowPlayingProvider: any NowPlayingProviding
     private let mediaController: any MediaControlling
     private let systemMetricsProvider: any SystemMetricsProviding
@@ -512,6 +516,19 @@ final class CompanionStore: NSObject, ObservableObject {
         panelHost = ""
     }
 
+    private func receiveSessionEvent(_ event: CompanionSessionEvent) {
+        switch event {
+        case let .connection(message, state, recovery):
+            updateConnectionStatus(message, state: state, recovery: recovery)
+        case let .status(message): updateStatus(message)
+        case let .capabilities(systemMetrics): setSystemMetricsSupported(systemMetrics)
+        case .publishCurrentState:
+            republishCurrentNowPlaying()
+            republishCurrentSystemMetrics()
+        case let .artworkRequested(generation): republishNowPlayingArtwork(generation: generation)
+        }
+    }
+
     func updateConnectionStatus(_ message: String, state: CompanionConnectionState, recovery: String? = nil) {
         connectionRecoveryMessage = recovery ?? (hasSavedPairing
             ? "Check that your display is on and connected to the same network, then try Connect again."
@@ -726,3 +743,5 @@ final class CompanionStore: NSObject, ObservableObject {
         return opened
     }
 }
+
+extension CompanionStore: CompanionSessionPreferences, CompanionSessionResources {}

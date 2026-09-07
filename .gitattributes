@@ -6,3 +6,6 @@ components/espcontrol/companion_capabilities_generated.h linguist-generated=true
 src/webserver/generated/companion_capabilities.ts linguist-generated=true
 macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift linguist-generated=true
 product/generated/companion_manifest.json linguist-generated=true
+components/espcontrol/companion_protocol_generated.h linguist-generated=true
+macos/Companion/Sources/Companion/CompanionProtocol.generated.swift linguist-generated=true
+product/generated/companion_compatibility.json linguist-generated=true

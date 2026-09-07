@@ -23,3 +23,5 @@ valid implementation shape will be marked **intentionally retired** when their
 domain migration reaches the mutation-overlap step. Stage 1 does not retire the
 broad browser-oriented checks; the compatibility runner executes the new named
 suites before the legacy assertions during the overlap period.
+
+Companion pairing source-string assertions have been retired in favor of `companion_pairing_policy_test`, which executes the operation used by the HTTP endpoint, including authorization failure, repeated visits, expiry and reconnect. Protocol payload validation is exercised by identical C++/Swift fixtures.

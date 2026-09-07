@@ -16,7 +16,8 @@
 #include <vector>
 
 #include "companion_capabilities_generated.h"
-#include "companion_runtime.h"
+#include "companion_runtime_access.h"
+#include "companion_pairing_policy.h"
 #include "companion_timezone.h"
 
 namespace esphome::companion {
@@ -35,28 +36,8 @@ void revoke_companion_pairing();
 #include "i18n_generated.h"
 #endif
 
-using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
-using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
-using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
-using CompanionActionResultHandler = std::function<void()>;
-using CompanionConnectionChangedHandler = std::function<void(bool)>;
-
-struct CompanionPendingAction {
-  std::string request_id;
-  std::string expected_application_id;
-  uint32_t expires_at{0};
-  CompanionActionResultHandler success;
-};
-
-struct CompanionPendingActions {
-  static constexpr size_t MAX_PENDING = 8;
-  std::mutex mutex;
-  std::array<CompanionPendingAction, MAX_PENDING> entries{};
-};
-
 inline CompanionPendingActions &companion_pending_actions() {
-  static CompanionPendingActions pending;
-  return pending;
+  return companion_runtime_service().pending_actions;
 }
 
 inline void companion_clear_pending_action(CompanionPendingAction &pending) {
@@ -134,24 +115,6 @@ inline void companion_deliver_action_result(const std::string &request_id,
   if (success) success();
 }
 
-struct CompanionPairingSnapshot {
-  bool available{false};
-  bool active{false};
-  bool paired{false};
-  bool connected{false};
-  uint32_t expires_in_seconds{0};
-  uint16_t port{8443};
-  uint32_t system_metrics_generation{0};
-  std::string pairing_code;
-  std::string mdns_name;
-};
-
-using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
-
-using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
-// Ownership of data transfers to the handler only when it returns true.
-using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t *data, size_t size)>;
-
 inline void companion_request_card_refresh();
 
 // Compatibility accessor for card rendering and the existing firmware tests.
@@ -169,13 +132,11 @@ inline CompanionRuntimeSnapshot companion_runtime_snapshot() {
 }
 
 inline CompanionNowPlayingHandler &companion_now_playing_handler() {
-  static CompanionNowPlayingHandler handler;
-  return handler;
+  return companion_runtime_service().now_playing_handler;
 }
 
 inline CompanionConnectionChangedHandler &companion_connection_changed_handler() {
-  static CompanionConnectionChangedHandler handler;
-  return handler;
+  return companion_runtime_service().connection_changed_handler;
 }
 
 inline void register_companion_connection_changed_handler(
@@ -184,8 +145,7 @@ inline void register_companion_connection_changed_handler(
 }
 
 inline CompanionArtworkHandler &companion_artwork_handler() {
-  static CompanionArtworkHandler handler;
-  return handler;
+  return companion_runtime_service().artwork_handler;
 }
 
 inline void register_companion_now_playing_handlers(CompanionNowPlayingHandler now_playing,
@@ -239,27 +199,23 @@ inline bool companion_deliver_artwork(uint32_t generation, uint8_t *data, size_t
 }
 
 inline bool companion_connected() {
-  return companion_runtime_snapshot().connected;
+  return companion_runtime_service().connected();
 }
 
 inline CompanionActionSender &companion_action_sender() {
-  static CompanionActionSender sender;
-  return sender;
+  return companion_runtime_service().action_sender;
 }
 
 inline CompanionUrlSender &companion_url_sender() {
-  static CompanionUrlSender sender;
-  return sender;
+  return companion_runtime_service().url_sender;
 }
 
 inline CompanionValueSender &companion_value_sender() {
-  static CompanionValueSender sender;
-  return sender;
+  return companion_runtime_service().value_sender;
 }
 
 inline CompanionPairingProvider &companion_pairing_provider() {
-  static CompanionPairingProvider provider;
-  return provider;
+  return companion_runtime_service().pairing_provider;
 }
 
 inline void companion_set_actions(std::vector<CompanionAction> actions) {
@@ -297,12 +253,7 @@ inline const char *companion_volume_control_label(const std::string &control_id)
 }
 
 inline bool companion_value(const std::string &control_id, int &value) {
-  const auto snapshot = companion_runtime_snapshot();
-  const auto item = std::find_if(snapshot.values.begin(), snapshot.values.end(),
-    [&control_id](const CompanionValue &candidate) { return candidate.id == control_id; });
-  if (item == snapshot.values.end()) return false;
-  value = item->value;
-  return true;
+  return companion_runtime_service().value(control_id, value);
 }
 
 inline void companion_set_value(const std::string &control_id, int value) {
@@ -326,8 +277,7 @@ inline void companion_set_focused_action(std::string action_id) {
 }
 
 inline std::atomic<bool> &companion_subpage_return_requested() {
-  static std::atomic<bool> requested{false};
-  return requested;
+  return companion_runtime_service().subpage_return_requested;
 }
 
 inline bool companion_consume_subpage_return_request() {
@@ -385,8 +335,7 @@ inline bool companion_action_active(const std::string &action_id) {
 }
 
 inline uint32_t companion_next_request_number() {
-  static std::atomic<uint32_t> request_number{0};
-  return ++request_number;
+  return ++companion_runtime_service().request_number;
 }
 
 inline void companion_set_connected(bool connected) {
@@ -588,14 +537,23 @@ inline void companion_apply_card_focus(lv_obj_t *button, const std::string &acti
   else lv_obj_clear_state(button, LV_STATE_CHECKED);
 }
 
+struct CompanionViewRegistry {
+  std::vector<CompanionCardRef> cards;
+  std::vector<CompanionSliderRef> sliders;
+};
+
+inline CompanionViewRegistry &companion_view_registry() {
+  auto *core = espcontrol::active_espcontrol_app_core();
+  if (core == nullptr) std::abort();
+  return core->companion_view_service<CompanionViewRegistry>();
+}
+
 inline std::vector<CompanionCardRef> &companion_card_refs() {
-  static std::vector<CompanionCardRef> refs;
-  return refs;
+  return companion_view_registry().cards;
 }
 
 inline std::vector<CompanionSliderRef> &companion_slider_refs() {
-  static std::vector<CompanionSliderRef> refs;
-  return refs;
+  return companion_view_registry().sliders;
 }
 
 inline void companion_forget_card(lv_obj_t *button) {
@@ -882,15 +840,12 @@ class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler 
   }
 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
-    if (!companion_authorize_web_request(request)) return;
-    CompanionPairingSnapshot snapshot;
-    if (companion_pairing_provider()) {
-      snapshot = companion_pairing_provider()();
-      if (snapshot.available && !snapshot.paired && !snapshot.active) {
-        esphome::companion::begin_companion_pairing();
-        snapshot = companion_pairing_provider()();
-      }
-    }
+    const auto result = companion_pairing_status(
+      companion_authorize_web_request(request),
+      [] { return companion_pairing_provider() ? companion_pairing_provider()() : CompanionPairingSnapshot{}; },
+      [] { esphome::companion::begin_companion_pairing(); });
+    if (!result) return;
+    const auto &snapshot = *result;
     const std::string json = companion_pairing_json(snapshot);
     httpd_req_t *req = *request;
     httpd_resp_set_status(req, snapshot.available ? "200 OK" : "404 Not Found");

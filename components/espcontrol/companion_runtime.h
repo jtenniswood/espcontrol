@@ -5,6 +5,8 @@
 // catalogue state itself.
 
 #include <algorithm>
+#include <array>
+#include <functional>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -74,8 +76,78 @@ struct CompanionRuntimeSnapshot {
   CompanionSystemMetricsSnapshot system_metrics;
 };
 
+using CompanionActionSender = std::function<bool(const std::string &, const std::string &)>;
+using CompanionUrlSender = std::function<bool(const std::string &, const std::string &, const std::string &)>;
+using CompanionValueSender = std::function<bool(const std::string &, int, const std::string &)>;
+using CompanionActionResultHandler = std::function<void()>;
+using CompanionConnectionChangedHandler = std::function<void(bool)>;
+
+struct CompanionPendingAction {
+  std::string request_id;
+  std::string expected_application_id;
+  uint32_t expires_at{0};
+  CompanionActionResultHandler success;
+};
+
+struct CompanionPendingActions {
+  static constexpr size_t MAX_PENDING = 8;
+  std::mutex mutex;
+  std::array<CompanionPendingAction, MAX_PENDING> entries{};
+};
+
+
+struct CompanionPairingSnapshot {
+  bool available{false};
+  bool active{false};
+  bool paired{false};
+  bool connected{false};
+  uint32_t expires_in_seconds{0};
+  uint16_t port{8443};
+  uint32_t system_metrics_generation{0};
+  std::string pairing_code;
+  std::string mdns_name;
+};
+
+using CompanionPairingProvider = std::function<CompanionPairingSnapshot()>;
+
+using CompanionNowPlayingHandler = std::function<void(const CompanionNowPlayingSnapshot &)>;
+// Ownership of data transfers to the handler only when it returns true.
+using CompanionArtworkHandler = std::function<bool(uint32_t generation, uint8_t *data, size_t size)>;
+
+
 class CompanionRuntimeService {
  public:
+  // Wiring callbacks and pending requests share this service's lifetime.
+  CompanionPendingActions pending_actions;
+  CompanionActionSender action_sender;
+  CompanionUrlSender url_sender;
+  CompanionValueSender value_sender;
+  CompanionPairingProvider pairing_provider;
+  CompanionNowPlayingHandler now_playing_handler;
+  CompanionConnectionChangedHandler connection_changed_handler;
+  CompanionArtworkHandler artwork_handler;
+  std::atomic<bool> subpage_return_requested{false};
+  std::atomic<uint32_t> request_number{0};
+
+  bool connected() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return connected_;
+  }
+
+  CompanionNowPlayingSnapshot now_playing() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return now_playing_;
+  }
+
+  bool value(const std::string &id, int &result) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto item = std::find_if(values_.begin(), values_.end(),
+      [&id](const CompanionValue &candidate) { return candidate.id == id; });
+    if (item == values_.end()) return false;
+    result = item->value;
+    return true;
+  }
+
   CompanionRuntimeSnapshot snapshot() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return {actions_, values_, focused_action_id_, media_actions_supported_, keyboard_actions_supported_, window_actions_,
@@ -199,8 +271,3 @@ class CompanionRuntimeService {
   CompanionSystemMetricsSnapshot system_metrics_;
   std::atomic<bool> refresh_requested_{false};
 };
-
-inline CompanionRuntimeService &companion_runtime_service() {
-  static CompanionRuntimeService service;
-  return service;
-}

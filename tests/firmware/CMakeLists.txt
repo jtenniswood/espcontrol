@@ -29,6 +29,39 @@ target_compile_options(companion_session_state_test PRIVATE -Wall -Wextra -Werro
 target_include_directories(companion_session_state_test PRIVATE ../../components/companion)
 add_test(NAME companion_session_state_test COMMAND companion_session_state_test)
 
+# Use the same JSON parser as ESPHome; the source archive is checksum pinned.
+if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif()
+include(FetchContent)
+FetchContent_Declare(ArduinoJson
+  URL https://github.com/bblanchon/ArduinoJson/archive/refs/tags/v7.4.3.tar.gz
+  URL_HASH SHA256=a2a8a277fc3cd0404499199bf1468682ea3688f354be0eaf6af8648366911257
+)
+FetchContent_MakeAvailable(ArduinoJson)
+add_executable(companion_protocol_test companion_protocol_test.cpp)
+target_compile_features(companion_protocol_test PRIVATE cxx_std_17)
+target_compile_options(companion_protocol_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(companion_protocol_test PRIVATE ../../components/espcontrol)
+target_link_libraries(companion_protocol_test PRIVATE ArduinoJson)
+add_test(NAME companion_protocol_test COMMAND companion_protocol_test
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../compatibility/fixtures/companion_protocol_v3.json)
+
+add_executable(companion_pairing_policy_test companion_pairing_policy_test.cpp)
+target_compile_features(companion_pairing_policy_test PRIVATE cxx_std_17)
+target_compile_options(companion_pairing_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(companion_pairing_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME companion_pairing_policy_test COMMAND companion_pairing_policy_test)
+
+add_executable(companion_runtime_ownership_test companion_runtime_ownership_test.cpp
+  ../../components/espcontrol/espcontrol_app_core.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(companion_runtime_ownership_test PRIVATE cxx_std_17)
+target_compile_options(companion_runtime_ownership_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(companion_runtime_ownership_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME companion_runtime_ownership_test COMMAND companion_runtime_ownership_test)
+
 add_executable(button_grid_foundations_test button_grid_foundations_test.cpp)
 target_compile_features(button_grid_foundations_test PRIVATE cxx_std_17)
 target_compile_options(button_grid_foundations_test PRIVATE -Wall -Wextra -Werror)

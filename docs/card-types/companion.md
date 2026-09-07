@@ -11,10 +11,10 @@ Companion cards are a proof-of-concept card type for the **4-inch 4848S040** pan
 
 1. Flash the Companion Cards test firmware to a 4848S040.
 2. On the Mac, open the `EspControl Companion` project in Xcode, choose your Personal Team for signing, and run the menu-bar app.
-3. Press and hold the Wi-Fi icon on the physical panel until it displays a pairing code.
-4. In the Mac app's **Device** settings, enter the panel address and the displayed code, then choose **Pair**. Pair on a trusted local network, then choose which installed apps it may launch.
+3. Open the display’s web settings and its Mac Companion setup page to start pairing and show the code.
+4. In the Mac app's **Display** page, enter the panel address and the displayed code, then choose **Continue**. Pair on a trusted local network, then choose which installed apps it may launch.
 
-For the first pairing, the Mac accepts the panel's locally generated certificate after you enter the one-time code shown on the physical display. Pairing cannot be started and its code cannot be read through the browser editor. After pairing succeeds, the Mac stores the credential in Keychain and pins that certificate; later certificate changes are blocked. If you forget the panel from the Mac app, pair it again before Companion cards will work.
+For the first pairing, the Mac accepts the panel's locally generated certificate after you enter the one-time code shown on the setup page. Browser pairing uses the display’s configured web authentication; without a web password, anyone who can reach that page can start pairing. The code expires after 15 minutes and is hidden after pairing. After pairing succeeds, the Mac stores the credential in Keychain and pins that certificate; later certificate changes are blocked. If you forget the panel from the Mac app, pair it again before Companion cards will work.
 When the authenticated Mac is connected, a monitor icon appears beside Wi-Fi in the panel's clock bar. It disappears within a moment if the connection ends.
 
 ## Add a Companion card
@@ -51,4 +51,6 @@ Action cards are disabled when the Mac is offline, when an app or URL card refer
 - Reading and controlling other applications' Now Playing session uses macOS's private `MediaRemote` framework because Apple's public API only lets an application publish its own session. The framework is loaded dynamically. If a macOS update removes the required symbols, Companion reports the feed or command as unavailable and its existing non-media cards continue to work.
 - Companion is only offered on the 4848S040 profile. Other panels continue to behave normally.
 
-If a pairing needs to be replaced, forget it in the Mac app and press and hold the panel's Wi-Fi icon to start a new physical pairing session.
+If a pairing needs to be replaced, reset pairing on the display’s Companion setup page, forget the display in the Mac app, and use the new code. A long press on the panel’s Wi-Fi icon can also start a pairing session.
+
+See [Companion compatibility](../generated/companion-compatibility.md) for supported firmware/Mac combinations.

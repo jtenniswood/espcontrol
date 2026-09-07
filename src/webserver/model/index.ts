@@ -196,3 +196,5 @@ export type {
   StructuredSubpageConfig,
   SubpageGridSource,
 } from "./subpage";
+
+export * from "./companion_card_codec";

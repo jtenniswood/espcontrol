@@ -62,6 +62,7 @@ class CompanionService final : public Component {
   bool ensure_identity_();
   AuthenticationResult authenticate_(uint32_t sequence, const std::string &nonce,
                                      const std::string &signature, uint32_t &last_sequence);
+  void defer_session_(std::function<void()> callback);
   void handle_message_(int socket_fd, const std::string &message);
   void handle_json_(int socket_fd, const std::string &message);
   void handle_binary_(int socket_fd, const uint8_t *data, size_t size);

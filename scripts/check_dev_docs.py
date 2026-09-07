@@ -45,6 +45,15 @@ class CheckMatrixRow:
 
 SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     SourceTruthRow(
+        "product/v2/companion_capabilities.json, product/v2/devices/*.json, product/release_contract.json, compatibility/fixtures/companion_protocol_v3.json",
+        ("src/webserver/generated/companion_capabilities.ts", "components/espcontrol/companion_capabilities_generated.h",
+         "components/espcontrol/companion_protocol_generated.h", "macos/Companion/Sources/Companion/CompanionCapabilities.generated.swift",
+         "macos/Companion/Sources/Companion/CompanionProtocol.generated.swift", "product/generated/companion_manifest.json",
+         "product/generated/companion_compatibility.json", "docs/generated/companion-compatibility.md"),
+        "python3 scripts/build.py companion",
+        "`npm run check:companion-contract`, host firmware tests, and native Swift tests",
+    ),
+    SourceTruthRow(
         "product/v2/card_contract.json",
         (
             "src/webserver/generated/card_contract.ts",
