@@ -48,6 +48,7 @@ import {
   companionShortcutFolderEditorAvailable,
   companionShortcutSelectionMatchesSavedParent,
   companionShortcutTabs,
+  companionShortcutTabsFitSubpage,
   companionShortcutTabsFromSubpage,
   SAFARI_BUNDLE_ID,
   CODEX_BUNDLE_ID,
@@ -308,6 +309,21 @@ export function runCompanionShortcutFeatureTests(): void {
       card.options.includes("app_shortcut_preset=com.openai.codex%3A2") && card.label === "Pasted Browser") ||
       companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, crossAppSubpage).join("|") !== "0") {
     throw new Error("Shortcut cards pasted from another app must remain custom content");
+  }
+  const fullSafariSubpage = createSafariShortcutSubpage();
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["0", "1", "2", "3"], fullSafariSubpage);
+  for (let index = 0; index < 4; index += 1) {
+    fullSafariSubpage.buttons.push({
+      ...safariPreset[0],
+      entity: "shortcut.command+" + String(index),
+      label: "Custom " + String(index),
+      options: "",
+    });
+  }
+  fullSafariSubpage.order = ["B", "1", "2", "3", "4", "5", "6", "7", "8"];
+  if (companionShortcutTabsFitSubpage(
+      SAFARI_BUNDLE_ID, ["0", "1", "2", "3", "4"], fullSafariSubpage, 9)) {
+    throw new Error("A shortcut must not be enabled beyond the physical subpage grid");
   }
   setCompanionShortcutTabs(safariFolderCard, []);
   if (companionShortcutTabs(safariFolderCard).length !== 0 ||

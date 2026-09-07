@@ -41,6 +41,7 @@ import {
     companionShortcutSelectionMatchesSavedParent,
     companionShortcutTabDefinitions,
     companionShortcutTabs,
+    companionShortcutTabsFitSubpage,
     companionShortcutTabsFromSubpage,
     createCompanionShortcutSubpage,
     normalizeCompanionAppShortcutOptions,
@@ -403,6 +404,7 @@ export function registerCompanionCardTypes(
     modalTabs: Pick<ConfigModalTabOptionsFeature, "renderModalTabSettings">,
     codec: Pick<ConfigCodecFeature, "buildSubpageGrid" | "enterSubpage" | "saveSubpageConfig">,
     selection: Pick<ButtonSettingsSelectionFeature, "closeSettings">,
+    maxSlots: number,
 ): void {
     const { cardBadgePreview, cardBadgeLabelHtml, cardSensorPreviewHtml, fieldLabel } = fields;
     const { renderButtonSettings } = cardUi;
@@ -742,13 +744,27 @@ export function registerCompanionCardTypes(
                         return normalizeCompanionAppShortcutOptions({ ...card, options });
                     },
                     setTabs: function (button: any, tabs: string[]) {
+                        if (!companionShortcutTabsFitSubpage(
+                            button.entity, tabs, savedShortcutSubpage, maxSlots,
+                        )) {
+                            button._appShortcutCapacityRejected = true;
+                            return false;
+                        }
+                        delete button._appShortcutCapacityRejected;
                         setCompanionShortcutTabs(button, tabs);
                         button._appShortcutSelectionChanged = true;
+                        return true;
                     },
                     idPrefix: "companion-shortcut-",
                     hideHeading: true,
                     allowEmpty: true,
                 });
+                if (card._appShortcutCapacityRejected === true) {
+                    const capacityNote = document.createElement("div");
+                    capacityNote.className = "sp-field-info-text sp-visible";
+                    capacityNote.textContent = "No free subpage space. Remove a custom card before enabling another shortcut.";
+                    appSubpageDisclosure.section.appendChild(capacityNote);
+                }
             }
 
             const autoSwitchField = document.createElement("div");
@@ -1024,6 +1040,7 @@ export function registerCompanionCardTypes(
             delete card._appShortcutSelectionChanged;
             delete card._appShortcutAppChanged;
             delete card._appShortcutDisabledTabs;
+            delete card._appShortcutCapacityRejected;
             if (!companionAppShortcutFolderEnabled(card)) return "saved";
             const existing = state.subpages[slot];
             if (existing && !selectionChanged && !appChanged) return "saved";
@@ -1035,7 +1052,7 @@ export function registerCompanionCardTypes(
                 sizes: { ...(existing.sizes || {}) },
             } : null;
             const subpage = source && !appChanged
-                ? syncCompanionShortcutSubpage(card.entity, companionShortcutTabs(card), source)
+                ? syncCompanionShortcutSubpage(card.entity, companionShortcutTabs(card), source, maxSlots)
                 : createCompanionShortcutSubpage(card.entity, companionShortcutTabs(card));
             codec.buildSubpageGrid(subpage);
             state.subpages[slot] = subpage;

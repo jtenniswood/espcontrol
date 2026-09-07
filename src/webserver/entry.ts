@@ -163,6 +163,7 @@ function registerCards(context: ApplicationContext) {
     context.configuration.modalTabs,
     context.configuration.codec,
     context.controllers.selection,
+    context.layout.numSlots,
   );
   registerClimateCardTypes(
     registry,

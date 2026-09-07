@@ -342,6 +342,7 @@ export function syncCompanionShortcutSubpage(
     bundleIdentifier: string,
     tabs: readonly string[],
     subpage: any,
+    maxSlots = Number.POSITIVE_INFINITY,
 ): any {
     if (!subpage) return createCompanionShortcutSubpage(bundleIdentifier, tabs);
     const presets = companionShortcutPresetCards(bundleIdentifier);
@@ -418,13 +419,13 @@ export function syncCompanionShortcutSubpage(
         newButtons.push(card);
         newOrder.push(String(newButtons.length));
     });
-    for (let index = 0; index < newOrder.length && desiredIndex < desired.length; index += 1) {
-        if (newOrder[index]) continue;
+    for (let index = 0; index < newOrder.length && index < maxSlots && desiredIndex < desired.length; index += 1) {
+        if (newOrder[index] || (subpage.grid?.length && subpage.grid[index] !== 0)) continue;
         const entry: any = desired[desiredIndex++];
         newButtons.push(entry.card);
         newOrder[index] = String(newButtons.length) + (suffixByKey.get(entry.key) || "");
     }
-    while (desiredIndex < desired.length) {
+    while (desiredIndex < desired.length && newOrder.length < maxSlots) {
         const entry: any = desired[desiredIndex++];
         newButtons.push(entry.card);
         newOrder.push(String(newButtons.length) + (suffixByKey.get(entry.key) || ""));
@@ -434,6 +435,24 @@ export function syncCompanionShortcutSubpage(
     subpage.order = newOrder;
     subpage.sizes = {};
     return subpage;
+}
+
+export function companionShortcutTabsFitSubpage(
+    bundleIdentifier: string,
+    tabs: readonly string[],
+    subpage: any,
+    maxSlots: number,
+): boolean {
+    if (!subpage) return tabs.length + 1 <= maxSlots;
+    const source = {
+        ...subpage,
+        order: (subpage.order || []).slice(),
+        buttons: (subpage.buttons || []).map(function (button: any) { return { ...button }; }),
+        grid: (subpage.grid || []).slice(),
+        sizes: { ...(subpage.sizes || {}) },
+    };
+    syncCompanionShortcutSubpage(bundleIdentifier, tabs, source, maxSlots);
+    return companionShortcutTabsFromSubpage(bundleIdentifier, source).join("|") === tabs.join("|");
 }
 
 export function createSafariShortcutSubpage(): any {

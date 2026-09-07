@@ -332,10 +332,15 @@ export function createConfigModalTabOptionsFeature(
             return true;
         }
         function saveTabs(this: any, nextTabs?: any) {
-            config.setTabs(b, nextTabs);
+            if (config.setTabs(b, nextTabs) === false) {
+                b._modalSettingsOpen = true;
+                dependencies.renderButtonSettings();
+                return false;
+            }
             b._modalSettingsOpen = true;
             helpers.saveField("options", b.options);
             dependencies.renderButtonSettings();
+            return true;
         }
         function moveRow(this: any, row?: any, direction?: any) {
             var sibling: any = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
