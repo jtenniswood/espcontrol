@@ -846,10 +846,8 @@ def check_root(root: Path) -> list[str]:
                 )
         setup_body = function_body(text, "media_driver_setup_visual") or ""
         if (
-            "grid_track_media_now_playing_runtime" not in setup_body
-            or "grid_delete_media_now_playing_with_owner" not in setup_body
-            or "grid_track_media_slider_runtime" not in setup_body
-            or "grid_delete_media_slider_with_owner" not in setup_body
+            "media_driver_track_now_playing" not in setup_body
+            or "media_driver_track_slider" not in setup_body
         ):
             failures.append(
                 f"components/espcontrol/{MEDIA_DRIVER_HEADER}: own media visual contexts before data binding"

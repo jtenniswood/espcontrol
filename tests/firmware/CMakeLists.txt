@@ -3,6 +3,7 @@ project(espcontrol_firmware_tests LANGUAGES CXX)
 
 enable_testing()
 include(CheckCXXSourceCompiles)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 add_executable(foundation_test foundation_test.cpp)
 target_compile_features(foundation_test PRIVATE cxx_std_17)
@@ -88,6 +89,29 @@ target_compile_options(media_metadata_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(media_metadata_policy_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_metadata_policy_test COMMAND media_metadata_policy_test)
 
+set(MEDIA_LIFECYCLE_PRODUCTION ${CMAKE_CURRENT_BINARY_DIR}/media_lifecycle_production.h)
+add_custom_command(
+  OUTPUT ${MEDIA_LIFECYCLE_PRODUCTION}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/generate_media_lifecycle_integration.py
+    --root ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    --output ${MEDIA_LIFECYCLE_PRODUCTION}
+  DEPENDS
+    generate_media_lifecycle_integration.py
+    ../../components/espcontrol/button_grid_sliders.h
+    ../../components/espcontrol/button_grid_media.h
+    ../../components/espcontrol/button_grid_grid.h
+    ../../components/espcontrol/button_grid_media_driver.h
+  VERBATIM
+)
+add_executable(media_lifecycle_integration_test
+  media_lifecycle_integration_test.cpp ${MEDIA_LIFECYCLE_PRODUCTION})
+target_compile_features(media_lifecycle_integration_test PRIVATE cxx_std_17)
+target_compile_options(media_lifecycle_integration_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_lifecycle_integration_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR} ../../components/espcontrol)
+add_test(NAME media_lifecycle_integration_test COMMAND media_lifecycle_integration_test)
+
 add_executable(media_slider_lifecycle_test media_slider_lifecycle_test.cpp)
 target_compile_features(media_slider_lifecycle_test PRIVATE cxx_std_17)
 target_compile_options(media_slider_lifecycle_test PRIVATE -Wall -Wextra -Werror)
@@ -100,8 +124,10 @@ check_cxx_source_compiles("int main() { return 0; }" ESPCONTROL_HAS_ADDRESS_SANI
 set(CMAKE_REQUIRED_FLAGS "${ESPCONTROL_REQUIRED_FLAGS_SAVED}")
 set(CMAKE_REQUIRED_LINK_OPTIONS "${ESPCONTROL_REQUIRED_LINK_OPTIONS_SAVED}")
 if(ESPCONTROL_HAS_ADDRESS_SANITIZER)
-  target_compile_options(media_slider_lifecycle_test PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-  target_link_options(media_slider_lifecycle_test PRIVATE -fsanitize=address)
+  foreach(target media_slider_lifecycle_test media_lifecycle_integration_test)
+    target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address)
+  endforeach()
 endif()
 add_test(NAME media_slider_lifecycle_test COMMAND media_slider_lifecycle_test)
 
@@ -263,7 +289,6 @@ target_compile_options(image_pipeline_policy_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_pipeline_policy_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_pipeline_policy_test COMMAND image_pipeline_policy_test)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json

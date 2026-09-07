@@ -26,6 +26,20 @@ inline bool media_driver_matches(const Context &context) {
   }
 }
 
+inline MediaNowPlayingCtx *media_driver_track_now_playing(
+    const Context &context, lv_obj_t *owner, MediaNowPlayingCtx *now_playing) {
+  return context.surface == Surface::SUBPAGE
+    ? grid_delete_media_now_playing_with_owner(owner, now_playing)
+    : grid_track_media_now_playing_runtime(owner, now_playing);
+}
+
+inline SliderCtx *media_driver_track_slider(
+    const Context &context, lv_obj_t *owner, SliderCtx *slider) {
+  return context.surface == Surface::SUBPAGE
+    ? grid_delete_media_slider_with_owner(owner, slider)
+    : grid_track_media_slider_runtime(owner, slider);
+}
+
 inline bool media_driver_setup_visual(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const CardPalette &palette, const DisplayProfile &display,
@@ -73,20 +87,11 @@ inline bool media_driver_setup_visual(
       ? static_cast<MediaNowPlayingCtx *>(
           lv_obj_get_user_data(slot.sensor_container))
       : nullptr;
-    if (context.surface == Surface::SUBPAGE) {
-      grid_delete_media_now_playing_with_owner(
-        slot.btn, now_playing);
-    } else {
-      grid_track_media_now_playing_runtime(slot.btn, now_playing);
-    }
+    media_driver_track_now_playing(context, slot.btn, now_playing);
     if (now_playing != nullptr && now_playing->progress_slider != nullptr) {
       SliderCtx *slider = static_cast<SliderCtx *>(
         lv_obj_get_user_data(now_playing->progress_slider));
-      if (context.surface == Surface::SUBPAGE) {
-        grid_delete_media_slider_with_owner(slot.btn, slider);
-      } else {
-        grid_track_media_slider_runtime(slot.btn, slider);
-      }
+      media_driver_track_slider(context, slot.btn, slider);
     }
   } else if (mode != "playlist" && !media_playback_button_mode(mode) &&
              !media_control_modal_mode(mode) && mode != "volume") {
@@ -96,11 +101,7 @@ inline bool media_driver_setup_visual(
     SliderCtx *slider = slider_obj
       ? static_cast<SliderCtx *>(lv_obj_get_user_data(slider_obj))
       : nullptr;
-    if (context.surface == Surface::SUBPAGE) {
-      grid_delete_media_slider_with_owner(slot.btn, slider);
-    } else {
-      grid_track_media_slider_runtime(slot.btn, slider);
-    }
+    media_driver_track_slider(context, slot.btn, slider);
   }
   return true;
 }
@@ -192,20 +193,6 @@ inline MediaPlaylistCtx *media_driver_track_playlist(
   return context.surface == Surface::SUBPAGE
     ? grid_delete_media_playlist_with_owner(owner, playlist)
     : grid_track_media_playlist_runtime(owner, playlist);
-}
-
-inline MediaNowPlayingCtx *media_driver_track_now_playing(
-    const Context &context, lv_obj_t *owner, MediaNowPlayingCtx *now_playing) {
-  return context.surface == Surface::SUBPAGE
-    ? grid_delete_media_now_playing_with_owner(owner, now_playing)
-    : grid_track_media_now_playing_runtime(owner, now_playing);
-}
-
-inline SliderCtx *media_driver_track_slider(
-    const Context &context, lv_obj_t *owner, SliderCtx *slider) {
-  return context.surface == Surface::SUBPAGE
-    ? grid_delete_media_slider_with_owner(owner, slider)
-    : grid_track_media_slider_runtime(owner, slider);
 }
 
 inline MediaControlCtx *media_driver_create_control(

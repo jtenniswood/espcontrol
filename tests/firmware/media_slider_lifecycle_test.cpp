@@ -110,7 +110,7 @@ bool test_cleanup_is_idempotent() {
          harness.removed_parent_callbacks == 1;
 }
 
-bool test_replaced_or_rebound_slider() {
+bool test_detach_keeps_other_slider_intact() {
   FakeTimer stale_timer;
   FakeTimer current_timer;
   FakeWidget old_slider;
@@ -129,7 +129,7 @@ bool test_replaced_or_rebound_slider() {
   if (callback_is_current(&old_ctx, &stale_timer)) return false;
   if (!callback_is_current(&new_ctx, &current_timer)) return false;
 
-  // Rebinding data does not detach the visual context or duplicate timers.
+  // Detaching one context leaves the other context and its timer untouched.
   return can_schedule(&new_ctx) && new_ctx.media_timer == &current_timer &&
          current_timer.delete_count == 0;
 }
@@ -157,7 +157,7 @@ bool test_shared_non_media_slider_cleanup() {
 int main() {
   if (!test_delete_before_first_timer()) return EXIT_FAILURE;
   if (!test_cleanup_is_idempotent()) return EXIT_FAILURE;
-  if (!test_replaced_or_rebound_slider()) return EXIT_FAILURE;
+  if (!test_detach_keeps_other_slider_intact()) return EXIT_FAILURE;
   if (!test_shared_non_media_slider_cleanup()) return EXIT_FAILURE;
   return EXIT_SUCCESS;
 }
