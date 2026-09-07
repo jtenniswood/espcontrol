@@ -851,6 +851,7 @@ script:
     parameters:
       generation: int
       target_mode: int
+      minimum_level: float
     then:
       - lambda: |-
           if (!id(espcontrol_app).display().transition_is_current(
@@ -862,7 +863,9 @@ script:
           id(display_backlight).current_values_as_brightness(&brightness);
           if (brightness <= 0.01f) brightness = id(display_backlight).remote_values.get_brightness();
           if (brightness <= 0.01f) brightness = 1.0f;
-          id(screensaver_fade_out).start(brightness, 0.0f, millis(), 400);
+          id(screensaver_fade_out).start(
+              brightness, minimum_level, millis(),
+              target_mode == static_cast<int>(espcontrol::DisplayMode::CLOCK) ? 500 : 400);
       - while:
           condition:
             lambda: |-
@@ -876,7 +879,7 @@ script:
       - lambda: |-
           if (id(espcontrol_app).display().transition_is_current(
                 static_cast<uint32_t>(generation), static_cast<espcontrol::DisplayMode>(target_mode))) {
-            id(gpio_backlight_pwm).set_level(0.0f);
+            id(gpio_backlight_pwm).set_level(minimum_level);
           }
 
   - id: display_mode_effect_off
@@ -913,7 +916,7 @@ script:
                *transition.winning_source == espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           if (automatic) {
             id(backlight_fade_current_ui_to_black).execute(
-                generation, static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF));
+                generation, static_cast<int>(espcontrol::DisplayMode::DISPLAY_OFF), 0.0f);
           } else {
             id(backlight_force_display_off).execute();
           }
@@ -1470,6 +1473,7 @@ script:
                 id: backlight_fade_current_ui_to_black
                 generation: !lambda 'return generation;'
                 target_mode: !lambda 'return static_cast<int>(espcontrol::DisplayMode::CLOCK);'
+                minimum_level: 0.02
             - script.wait: backlight_fade_current_ui_to_black
             - lambda: |-
                 if (!id(espcontrol_app).display().transition_is_current(
@@ -1487,12 +1491,13 @@ script:
                 refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));
                 lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(id(clock_screensaver));
-                id(screensaver_fade_in).start(0.0f, id(screensaver_clock_target_level), millis(), 300);
+                id(screensaver_fade_in).start(0.02f, id(screensaver_clock_target_level), millis(), 450);
             - output.set_level:
                 id: gpio_backlight_pwm
-                level: 0%
-            # Allow the overlay to redraw while dark. This pause counts toward
-            # the fade deadline, even if artwork work delays the next loop.
+                level: 2%
+            # Keep a barely visible backlight during the overlay redraw. A
+            # hard zero here creates a noticeable flash before the clock fades
+            # in, especially on the 7-inch panel.
             - delay: 50ms
             - while:
                 condition:
