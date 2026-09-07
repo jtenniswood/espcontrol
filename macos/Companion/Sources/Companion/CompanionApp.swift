@@ -360,6 +360,7 @@ private struct CompanionStatsToggle: View {
 
 private struct CompanionLaunchAtLoginToggle: View {
     @Binding var isEnabled: Bool
+    let isAvailable: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -367,6 +368,7 @@ private struct CompanionLaunchAtLoginToggle: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .tint(.green)
+                .disabled(!isAvailable)
                 .accessibilityLabel("Open EspControl Companion at Login")
             Text(isEnabled ? "Login enabled" : "Login disabled")
                 .font(.headline)
@@ -489,16 +491,15 @@ private struct CompanionOnboarding: View {
                 title: "Stay connected at login",
                 summary: "Start Companion automatically when you sign in so your paired display can reconnect to the Mac."
             ) {
-                if store.supportsLaunchAtLogin {
-                    CompanionLaunchAtLoginToggle(isEnabled: store.launchAtLoginBinding())
-                    Text(store.launchAtLoginMessage)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Install EspControl Companion in Applications before enabling automatic startup.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                CompanionLaunchAtLoginToggle(
+                    isEnabled: store.launchAtLoginBinding(),
+                    isAvailable: store.supportsLaunchAtLogin
+                )
+                Text(store.supportsLaunchAtLogin
+                     ? store.launchAtLoginMessage
+                     : "Install EspControl Companion in Applications before enabling automatic startup.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -1006,13 +1007,15 @@ private struct CompanionSettings: View {
     private var permissionsPage: some View {
         Form {
             Section("Startup") {
-                if store.supportsLaunchAtLogin {
-                    CompanionLaunchAtLoginToggle(isEnabled: store.launchAtLoginBinding())
-                    Text(store.launchAtLoginMessage).font(.callout).foregroundStyle(.secondary)
-                } else {
-                    Text("Install EspControl Companion in Applications to open it automatically at login.")
-                        .foregroundStyle(.secondary)
-                }
+                CompanionLaunchAtLoginToggle(
+                    isEnabled: store.launchAtLoginBinding(),
+                    isAvailable: store.supportsLaunchAtLogin
+                )
+                Text(store.supportsLaunchAtLogin
+                     ? store.launchAtLoginMessage
+                     : "Install EspControl Companion in Applications to open it automatically at login.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
             Section("Privacy") {
                 CompanionStatsToggle(isEnabled: $store.shareSystemMetricsEnabled)

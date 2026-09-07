@@ -100,6 +100,8 @@ describe("browserless application contracts", () => {
     assert.match(app, /\.controlSize\(\.small\)/);
     assert.match(app, /Toggle\("Select All", isOn: selectAllBinding\)/);
     assert.match(app, /setApplications\(filteredApplications, approved: \$0\)/);
+    assert.equal((app.match(/isAvailable: store\.supportsLaunchAtLogin/g) || []).length, 2);
+    assert.match(app, /\.disabled\(!isAvailable\)/);
   });
 
   test("owns browser composition and compatibility layout state", () => {
