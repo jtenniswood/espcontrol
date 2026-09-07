@@ -14,6 +14,7 @@ static bool near(float actual, float expected) {
 }
 
 int main() {
+  using namespace espcontrol;
   espcontrol::BacklightFade fade;
   // Regular updates give more than the old eight discrete fade-out steps.
   fade.start(0.8f, 0.0f, 1000, 400);
@@ -39,11 +40,12 @@ int main() {
 
   // The redraw pause counts toward clock fade-in, including a redraw that
   // consumes the entire fade budget. Never replay a backlog of dim samples.
-  fade.start(0.0f, 0.35f, 6000, 300);
-  CHECK(near(fade.level(6050), 0.35f / 6.0f));
-  CHECK(near(fade.level(6150), 0.175f));
-  CHECK(!fade.finished(6299));
-  CHECK(fade.finished(6300));
+  fade.start(CLOCK_HANDOFF_LEVEL, 0.35f, 6000, CLOCK_FADE_IN_MS);
+  CHECK(near(fade.level(6000 + CLOCK_REDRAW_PAUSE_MS),
+             CLOCK_HANDOFF_LEVEL + (0.35f - CLOCK_HANDOFF_LEVEL) *
+                 CLOCK_REDRAW_PAUSE_MS / CLOCK_FADE_IN_MS));
+  CHECK(!fade.finished(6000 + CLOCK_FADE_IN_MS - 1));
+  CHECK(fade.finished(6000 + CLOCK_FADE_IN_MS));
   CHECK(fade.level(6800) == 0.35f);
 
   // A replacement fade starts a fresh timeline with its own brightness.

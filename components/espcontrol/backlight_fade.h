@@ -4,6 +4,14 @@
 
 namespace espcontrol {
 
+// Clock reveal includes the redraw pause; screen-off still fades fully to zero.
+inline constexpr uint32_t CLOCK_FADE_OUT_MS = 250;
+inline constexpr uint32_t CLOCK_FADE_IN_MS = 225;
+inline constexpr uint32_t CLOCK_REDRAW_PAUSE_MS = 25;
+inline constexpr uint32_t DISPLAY_OFF_FADE_OUT_MS = 400;
+inline constexpr uint32_t BACKLIGHT_FADE_SAMPLE_MS = 16;
+inline constexpr float CLOCK_HANDOFF_LEVEL = 0.02f;
+
 // Sample brightness from elapsed time. A busy loop skips overdue samples
 // instead of extending the fade by waiting for every intermediate step.
 class BacklightFade {
