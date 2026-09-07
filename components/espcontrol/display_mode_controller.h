@@ -192,6 +192,10 @@ class DisplayModeController {
     if (!in_flight_) return false;
     cancelled_generation_ = in_flight_->transition.generation;
     in_flight_.reset();
+    // A stopped effect can be retried without any request changing. Advance
+    // the policy generation in that case so a delayed completion from the
+    // cancelled attempt can never match the retry.
+    if (generation_ == cancelled_generation_) advance_generation();
     return true;
   }
 

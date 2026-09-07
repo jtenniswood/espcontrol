@@ -2427,6 +2427,11 @@ def firmware_screensaver_wake_guard_errors(
                 "controller.cancel_transition()",
                 "controller.require_presentation_cleanup()",
                 "script.stop: display_mode_apply_transition",
+                "script.stop: cover_art_hide_effect",
+                "script.stop: display_mode_effect_active",
+                "script.stop: display_mode_effect_setup_dimmed",
+                "script.stop: display_mode_effect_off",
+                "script.stop: display_mode_effect_cover_art",
                 "lv_obj_has_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN)",
             )
             if any(token not in body for token in interrupted_transition_tokens):
@@ -6845,6 +6850,11 @@ def run_self_test() -> int:
         "              id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "              id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::DISPLAY_OFF);\n"
         "      - script.stop: display_mode_apply_transition\n"
+        "      - script.stop: cover_art_hide_effect\n"
+        "      - script.stop: display_mode_effect_active\n"
+        "      - script.stop: display_mode_effect_setup_dimmed\n"
+        "      - script.stop: display_mode_effect_off\n"
+        "      - script.stop: display_mode_effect_cover_art\n"
         "      - script.execute: screensaver_wake_touch_block\n"
         "      - lambda: |-\n"
         "          id(espcontrol_app).display().clear(espcontrol::DisplayRequestSource::IDLE_TIMER);\n"

@@ -298,7 +298,7 @@ int main() {
   CHECK(!interrupted_clock.start_transition(wake_cleanup, 5400));
 
   // If a presentation script stops without a policy change, cancelling it
-  // leaves cleanup pending and permits the same generation to be retried.
+  // leaves cleanup pending and invalidates the generation before retrying.
   DisplayModeController stopped_effect;
   CHECK(stopped_effect.request(DisplayRequestSource::IDLE_TIMER,
                                DisplayMode::CLOCK));
@@ -306,9 +306,13 @@ int main() {
   CHECK(stopped_effect.start_transition(stopped_transition, 6000));
   CHECK(stopped_effect.cancel_transition());
   CHECK(stopped_effect.presentation_incomplete());
+  const auto stopped_retry = stopped_effect.resolve();
+  CHECK(stopped_retry.generation != stopped_transition.generation);
   CHECK(!stopped_effect.complete_transition(stopped_transition, 6100));
-  CHECK(stopped_effect.start_transition(stopped_transition, 6200));
-  CHECK(stopped_effect.complete_transition(stopped_transition, 6300));
+  CHECK(stopped_effect.start_transition(stopped_retry, 6200));
+  // Starting the retry must not make the cancelled callback acceptable again.
+  CHECK(!stopped_effect.complete_transition(stopped_transition, 6250));
+  CHECK(stopped_effect.complete_transition(stopped_retry, 6300));
 
   // A newer winning request supersedes the old effect and invalidates its
   // completion callback, including when the destination mode stays CLOCK but

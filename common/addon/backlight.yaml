@@ -483,7 +483,7 @@ script:
             id(cover_art_playback_started).execute();
           }
 
-          const auto transition = controller.resolve();
+          auto transition = controller.resolve();
           const bool migrated_target =
               transition.target_mode == espcontrol::DisplayMode::ACTIVE ||
               transition.target_mode == espcontrol::DisplayMode::SETUP_DIMMED ||
@@ -512,6 +512,7 @@ script:
                      espcontrol::display_mode_name(transition.target_mode),
                      espcontrol::display_request_source_name(transition.winning_source));
             controller.cancel_transition();
+            transition = controller.resolve();
           } else if (controller.has_transition_in_progress()) {
             const auto *cancelled = controller.in_flight_transition();
             if (cancelled != nullptr) {
@@ -523,6 +524,7 @@ script:
                        espcontrol::display_request_source_name(cancelled->winning_source));
             }
             controller.cancel_transition();
+            transition = controller.resolve();
           }
 
           const bool transition_required =
@@ -1148,6 +1150,11 @@ script:
             controller.require_presentation_cleanup();
           }
       - script.stop: display_mode_apply_transition
+      - script.stop: cover_art_hide_effect
+      - script.stop: display_mode_effect_active
+      - script.stop: display_mode_effect_setup_dimmed
+      - script.stop: display_mode_effect_off
+      - script.stop: display_mode_effect_cover_art
       - script.stop: screen_schedule_sleep
       - script.stop: backlight_fade_current_ui_to_black
       - script.stop: backlight_sleep_display_off
