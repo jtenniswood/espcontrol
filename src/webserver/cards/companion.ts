@@ -736,7 +736,29 @@ export function registerCompanionCardTypes(
                 renderButtonSettings();
             });
 
+            const autoSwitchField = document.createElement("div");
+            autoSwitchField.className = "sp-field";
+            const autoSwitchToggle = helpers.toggleRow(
+                "Auto switch to subpage",
+                helpers.idPrefix + "companion-app-shortcuts-auto-switch",
+                companionAppShortcutAutoSwitchEnabled(card),
+            );
+            autoSwitchField.appendChild(autoSwitchToggle.row);
+            const autoSwitchNote = document.createElement("div");
+            autoSwitchNote.className = "sp-field-info-text";
+            autoSwitchNote.textContent = "Automatically show this subpage when " + shortcutFolderApp +
+                " is opened or focused on the Mac.";
+            autoSwitchField.appendChild(autoSwitchNote);
+            appSubpageDisclosure.section.appendChild(autoSwitchField);
+            autoSwitchToggle.input.addEventListener("change", function () {
+                setCompanionAppShortcutAutoSwitchEnabled(card, autoSwitchToggle.input.checked);
+                helpers.saveField("options", card.options);
+            });
+
             if (companionAppShortcutFolderEnabled(card)) {
+                const shortcutOptionsDivider = document.createElement("div");
+                shortcutOptionsDivider.className = "sp-app-subpage-options-divider";
+                appSubpageDisclosure.section.appendChild(shortcutOptionsDivider);
                 modalTabs.renderModalTabSettings(appSubpageDisclosure.section, card, helpers, {
                     definitions: function () { return companionShortcutTabDefinitions(card.entity); },
                     tabs: companionShortcutTabs,
@@ -766,25 +788,6 @@ export function registerCompanionCardTypes(
                     appSubpageDisclosure.section.appendChild(capacityNote);
                 }
             }
-
-            const autoSwitchField = document.createElement("div");
-            autoSwitchField.className = "sp-field";
-            const autoSwitchToggle = helpers.toggleRow(
-                "Auto switch to subpage",
-                helpers.idPrefix + "companion-app-shortcuts-auto-switch",
-                companionAppShortcutAutoSwitchEnabled(card),
-            );
-            autoSwitchField.appendChild(autoSwitchToggle.row);
-            const autoSwitchNote = document.createElement("div");
-            autoSwitchNote.className = "sp-field-info-text";
-            autoSwitchNote.textContent = "Automatically show this subpage when " + shortcutFolderApp +
-                " is opened or focused on the Mac.";
-            autoSwitchField.appendChild(autoSwitchNote);
-            appSubpageDisclosure.section.appendChild(autoSwitchField);
-            autoSwitchToggle.input.addEventListener("change", function () {
-                setCompanionAppShortcutAutoSwitchEnabled(card, autoSwitchToggle.input.checked);
-                helpers.saveField("options", card.options);
-            });
 
             function syncMode(mode: string): void {
                 appField.style.display = mode === "app" || mode === "url" ? "" : "none";

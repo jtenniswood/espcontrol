@@ -635,6 +635,7 @@ describe("browserless application contracts", () => {
   test("registers the Companion card through profile and browser services", () => {
     const entry = fs.readFileSync(path.join(ROOT, "src/webserver/entry.ts"), "utf8");
     const card = fs.readFileSync(path.join(ROOT, "src/webserver/cards/companion.ts"), "utf8");
+    const styles = fs.readFileSync(path.join(ROOT, "src/webserver/application/styles.ts"), "utf8");
     assert.doesNotMatch(card, /\b(?:GlobalDescriptors|staticGlobal|liveGlobal|CFG)\b/);
     assert.match(entry, /registerCompanionCardTypes\(\s*registry,\s*!!context\.device\.profile\.features\?\.companion,\s*context\.dom\.document,\s*context\.dom\.fetch,\s*fields,\s*cardUi,\s*context\.configuration\.modalTabs,\s*context\.configuration\.codec,\s*context\.controllers\.selection,\s*context\.layout\.numSlots,?\s*\);/);
     assert.match(card, /fetchImpl\("\/companion\/actions", \{ cache: "no-store" \}\)/);
@@ -642,6 +643,8 @@ describe("browserless application contracts", () => {
     assert.match(card, /renderModalTabSettings\(appSubpageDisclosure\.section/);
     assert.match(card, /_appShortcutDisabledTabs = companionShortcutTabs\(card\)/);
     assert.match(card, /setCompanionShortcutTabs\(card, card\._appShortcutDisabledTabs\)/);
+    assert.match(card, /appendChild\(shortcutFolderField\);[\s\S]*appendChild\(autoSwitchField\);[\s\S]*sp-app-subpage-options-divider[\s\S]*renderModalTabSettings/);
+    assert.match(styles, /\.sp-app-subpage-options-divider\{/);
     assert.match(card, /No free subpage space\. Remove a custom card before enabling another shortcut\./);
     assert.match(card, /changedFromSavedApp = card\.entity !== savedParent\?\.entity/);
     assert.match(card, /delete card\._appShortcutAppChanged;[\s\S]*if \(!companionAppShortcutFolderEnabled\(card\)\)/);

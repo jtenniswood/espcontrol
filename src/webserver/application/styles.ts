@@ -421,6 +421,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "#sp-set-clock-bar:checked+.sp-toggle-track{background:#0a84ff;border-color:#0a84ff}" +
         ".sp-toggle input:checked+.sp-toggle-track:before{transform:translateX(20px)}" +
         ".sp-light-tab-list{display:grid;gap:0;margin:-6px 0 18px}" +
+        ".sp-app-subpage-options-divider{height:1px;background:var(--border);margin:-6px 0 18px}" +
         ".sp-light-tab-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;" +
         "gap:10px;min-height:42px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)}" +
         ".sp-light-tab-row:last-child{border-bottom:0}" +
