@@ -34,11 +34,11 @@ void lv_timer_del(lv_timer_t *timer) {
   timers.erase(std::remove(timers.begin(), timers.end(), timer), timers.end());
   delete timer;
 }
-void run_maintenance() {
+void run_maintenance(bool expect_retry = false) {
   assert(timers.size() == 1);
   auto *timer = timers.front();
   timer->callback(timer);
-  assert(timers.empty());
+  assert(timers.size() == (expect_retry ? 1u : 0u));
 }
 std::string string_ref_limited(esphome::StringRef value, size_t limit) {
   return std::string(value.c_str(), std::min(value.size(), limit));
@@ -59,7 +59,8 @@ struct FakeTransport {
   std::vector<Channel> channels;
   bool connected = true;
   bool dispatching = false;
-  bool available() const { return true; }
+  bool api_available = true;
+  bool available() const { return api_available; }
   bool state_connected() const { return connected; }
   void subscribe(const std::string &entity, const std::string &attribute, Callback callback) {
     assert(!dispatching);  // Capability delivery must defer new registrations.
@@ -89,7 +90,7 @@ void *callback_owner = nullptr;
 size_t reannouncements = 0;
 std::function<void()> on_reannounce;
 uint32_t ha_subscription_generation() { return coordinator.generation(); }
-void *ha_callback_owner() { return callback_owner; }
+void ha_release_callbacks_for_owner(void *owner) { coordinator.release_owner(owner); }
 struct HaCallbackOwnerScope {
   void *previous;
   explicit HaCallbackOwnerScope(void *owner) : previous(callback_owner) { callback_owner = owner; }
@@ -131,12 +132,10 @@ ClimateControlCtx *add_card(const std::string &entity, const char *tabs) {
   ctx->entity_id = entity;
   ctx->configured_tab_mask = espcontrol::climate::configured_climate_tab_mask(tabs);
   climate_control_refs()[climate_control_ref_count()++] = ctx;
-  HaCallbackOwnerScope scope(ctx);
   subscribe_climate_control_state(ctx);
   return ctx;
 }
 void remove_card(ClimateControlCtx *ctx) {
-  coordinator.release_owner(ctx);  // Same owner teardown order as the card driver.
   delete_climate_control_context(ctx);
 }
 void reset() {
@@ -257,6 +256,109 @@ void temperature_fallback_does_not_subscribe_to_preset() {
   assert(!coordinator.transport().has(ctx->entity_id, "preset_mode"));
 }
 
+void failed_registration_retries_without_new_capabilities() {
+  reset();
+  auto *ctx = add_card("climate.retry", "temperature");
+  coordinator.transport().publish(ctx->entity_id, "supported_features", "0");
+  coordinator.transport().publish(ctx->entity_id, "fan_modes", "['auto']");
+  auto *timer = timers.front();
+  coordinator.transport().api_available = false;
+  run_maintenance(true);
+  run_maintenance(true);
+  assert(timers.front() == timer && reannouncements == 0);
+  assert(ctx->optional_subscriptions.pending == espcontrol::climate::OPTIONAL_SUBSCRIPTION_FAN);
+  coordinator.transport().api_available = true;
+  // No further capability updates: retry alone must finish registration.
+  run_maintenance();
+  assert(coordinator.subscription_count() == 16 && reannouncements == 1);
+  coordinator.transport().publish(ctx->entity_id, "fan_mode", "auto");
+  assert(ctx->fan_mode == "auto");
+  coordinator.transport().publish(ctx->entity_id, "fan_modes", "['auto']");
+  assert(timers.empty());
+}
+
+void failed_registration_is_cancelled_by_deletion_or_capability_change() {
+  reset();
+  auto *ctx = add_card("climate.obsolete", "temperature");
+  coordinator.transport().publish(ctx->entity_id, "supported_features", "0");
+  coordinator.transport().publish(ctx->entity_id, "fan_modes", "['auto']");
+  coordinator.transport().api_available = false;
+  run_maintenance(true);
+  coordinator.transport().publish(ctx->entity_id, "supported_features", "1");
+  run_maintenance();
+  assert(ctx->optional_subscriptions.pending == 0 && reannouncements == 0);
+  coordinator.transport().publish(ctx->entity_id, "supported_features", "0");
+  run_maintenance(true);
+  remove_card(ctx);
+  run_maintenance();
+  assert(coordinator.subscription_count() == 0 && reannouncements == 0);
+}
+
+void context_teardown_preserves_other_cards_on_the_same_page() {
+  reset();
+  int page = 0;
+  HaCallbackOwnerScope page_scope(&page);
+  auto *first = add_card("climate.same", "fan");
+  auto *second = add_card("climate.same", "fan");
+  assert(callback_owner == &page);
+  // The first channel listener destroys its context during dispatch. The
+  // second card must still receive this update, with no generation change.
+  bool removed = false;
+  coordinator.subscribe("climate.same", "preset_mode", [&](auto) {
+    remove_card(first);
+    removed = true;
+  }, 1, &page);
+  climate_subscribe_optional_fields(first, espcontrol::climate::OPTIONAL_SUBSCRIPTION_PRESET);
+  climate_subscribe_optional_fields(second, espcontrol::climate::OPTIONAL_SUBSCRIPTION_PRESET);
+  coordinator.transport().publish("climate.same", "preset_mode", "eco");
+  assert(removed && second->preset_mode == "eco");
+  assert(callback_owner == &page);
+  coordinator.transport().publish("climate.same", "fan_mode", "auto");
+  assert(second->fan_mode == "auto");
+  remove_card(second);
+  assert(coordinator.subscription_count() == 1); // Only the page callback remains.
+  coordinator.release_owner(&page);
+}
+
+void reannouncement_can_queue_the_next_fallback() {
+  reset();
+  auto *ctx = add_card("climate.next_fallback", "temperature");
+  coordinator.transport().publish(ctx->entity_id, "supported_features", "0");
+  coordinator.transport().publish(ctx->entity_id, "fan_modes", "['auto']");
+  bool first = true;
+  on_reannounce = [&] {
+    if (!first) return;
+    first = false;
+    coordinator.transport().publish(ctx->entity_id, "fan_modes", "[]");
+    coordinator.transport().publish(ctx->entity_id, "swing_modes", "['vertical']");
+  };
+  run_maintenance(true);
+  run_maintenance();
+  assert(coordinator.subscription_count() == 17 && reannouncements == 2);
+}
+
+void generation_reset_discards_stale_pending_work() {
+  reset();
+  auto *ctx = add_card("climate.generation", "temperature");
+  coordinator.transport().publish(ctx->entity_id, "supported_features", "0");
+  coordinator.transport().publish(ctx->entity_id, "fan_modes", "['auto']");
+  coordinator.bump_generation(1);
+  run_maintenance();
+  assert(coordinator.subscription_count() == 0 && reannouncements == 0);
+  assert(!coordinator.transport().has(ctx->entity_id, "fan_mode"));
+}
+
+void configured_optional_failures_are_retried() {
+  reset();
+  coordinator.transport().api_available = false;
+  auto *ctx = add_card("climate.configured_retry", "fan");
+  run_maintenance(true);
+  coordinator.transport().api_available = true;
+  run_maintenance();
+  assert(coordinator.transport().has(ctx->entity_id, "fan_mode"));
+  assert(reannouncements == 1);
+}
+
 int main() {
   fixture_registers_only_needed_attributes();
   configured_values_are_registered_immediately();
@@ -265,6 +367,12 @@ int main() {
   maintenance_rechecks_capabilities_and_batches_cards();
   disconnected_maintenance_waits_for_connection_replay();
   temperature_fallback_does_not_subscribe_to_preset();
+  failed_registration_retries_without_new_capabilities();
+  failed_registration_is_cancelled_by_deletion_or_capability_change();
+  context_teardown_preserves_other_cards_on_the_same_page();
+  reannouncement_can_queue_the_next_fallback();
+  generation_reset_discards_stale_pending_work();
+  configured_optional_failures_are_retried();
   reset();
   std::puts("Climate subscription runtime tests passed");
 }

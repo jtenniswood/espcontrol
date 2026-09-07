@@ -101,6 +101,7 @@ TASKS = (
              "components/espcontrol/button_grid_config_parser.h",
              "components/espcontrol/button_grid_subpages.h",
              "components/espcontrol/button_grid_climate.h",
+             "components/espcontrol/button_grid_climate_subscriptions.h",
              "components/espcontrol/climate_subscription_policy.h",
              "components/espcontrol/climate_target_logic.h",
              "components/espcontrol/ha_read_coordinator.h",

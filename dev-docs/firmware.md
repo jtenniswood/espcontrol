@@ -88,8 +88,19 @@ effective fallback controls need them. An optional subscription stays registered
 for that card context; narrowing a configuration can therefore leave its upstream
 channel in the append-only coordinator history until reboot.
 
-The firmware host tests generate a climate subscription harness from the actual
-registration, maintenance, and context-deletion functions. It uses the issue
+Each climate context owns its callbacks and releases them before deletion; a
+shared page callback scope is restored after registration. Optional registration
+failures stay pending on the guarded 250 ms timer, which rechecks current
+capabilities and stops once the work completes or its contexts are removed.
+
+Subscription diagnostics report `container_bytes` as persistent vector capacity,
+including nested lists. `alloc_external_bytes` and `alloc_internal_bytes` track
+all live allocations made by the adapter, including shared callback blocks and
+any active dispatch snapshots. String payloads, allocations inside `std::function`,
+and ESPHome transport storage are excluded from both measurements.
+
+The firmware host tests include the climate subscription maintenance helper
+directly and generate a harness for registration and context-deletion functions. It uses the issue
 fixture to count registered channels and a fake transport/timer to check delayed
 delivery and rebuilds; LVGL rendering and physical memory behaviour still need
 device testing.

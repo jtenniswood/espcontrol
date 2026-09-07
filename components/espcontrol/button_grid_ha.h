@@ -162,7 +162,7 @@ inline void ha_log_subscription_diagnostics(const char *stage) {
   internal_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
   psram_free = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
 #endif
-  ESP_LOGD("ha", "Subscriptions %s: active=%u retained=%u channels=%u/%u pending=%u deferred=%u upstream=%u storage=%u external=%u internal=%u fallback=%u failed=%u heap_internal=%u heap_largest=%u psram_free=%u",
+  ESP_LOGD("ha", "Subscriptions %s: active=%u retained=%u channels=%u/%u pending=%u deferred=%u upstream=%u container_bytes=%u alloc_external_bytes=%u alloc_internal_bytes=%u fallback=%u failed=%u heap_internal=%u heap_largest=%u psram_free=%u",
            stage ? stage : "status",
            static_cast<unsigned>(coordinator.subscription_count()),
            static_cast<unsigned>(coordinator.retained_channel_count()),

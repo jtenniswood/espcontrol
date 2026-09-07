@@ -43,9 +43,10 @@ def generate() -> str:
     ):
         context += function(name)
 
-    # This contiguous block contains the complete registration and maintenance
-    # implementation, including forward declarations and all optional fields.
-    runtime = definition(r"^inline lv_timer_t \*&climate_optional_subscription_timer\(\).*\Z")
+    # Maintenance is included directly; only the registration/UI boundary
+    # definitions still need extracting from the larger rendering header.
+    runtime = '#include "button_grid_climate_subscriptions.h"\n'
+    runtime += function("subscribe_climate_control_state")
     runtime += function("delete_climate_control_context")
 
     fixture = json.loads((ROOT / "tests/firmware/fixtures/issue_1837_climate_subpage.json").read_text())

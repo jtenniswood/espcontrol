@@ -108,9 +108,9 @@ struct OptionalSubscriptionState {
     return missing != 0;
   }
 
-  uint8_t take_required(uint8_t required) {
-    pending = 0;
-    return required & ~subscribed;
+  uint8_t update_required(uint8_t required) {
+    pending = required & ~subscribed;
+    return pending;
   }
 
   void mark_subscribed(uint8_t fields) {

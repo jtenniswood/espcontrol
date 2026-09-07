@@ -53,11 +53,11 @@ int main() {
   assert(state.pending == OPTIONAL_SUBSCRIPTION_FAN);
   assert(state.mark_required(OPTIONAL_SUBSCRIPTION_FAN));
   assert(state.pending == OPTIONAL_SUBSCRIPTION_FAN);
-  assert(state.take_required(OPTIONAL_SUBSCRIPTION_FAN) ==
+  assert(state.update_required(OPTIONAL_SUBSCRIPTION_FAN) ==
          OPTIONAL_SUBSCRIPTION_FAN);
   state.mark_subscribed(OPTIONAL_SUBSCRIPTION_FAN);
   assert(!state.mark_required(OPTIONAL_SUBSCRIPTION_FAN));
-  assert(state.take_required(OPTIONAL_SUBSCRIPTION_FAN) == 0);
+  assert(state.update_required(OPTIONAL_SUBSCRIPTION_FAN) == 0);
 
   state.mark_required(OPTIONAL_SUBSCRIPTION_SWING);
   state.clear_pending();  // Context deletion/rebuild drops delayed work.

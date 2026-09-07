@@ -271,6 +271,7 @@ add_custom_command(
   DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_climate_subscription_runtime_test.py
     ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate_subscriptions.h
     ${CMAKE_CURRENT_SOURCE_DIR}/climate_subscription_runtime_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/issue_1837_climate_subpage.json
   VERBATIM
