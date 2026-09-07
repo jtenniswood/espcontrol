@@ -345,14 +345,14 @@ inline void ha_schedule_metadata_refresh(const std::string &entity_id,
   if (!timer) {
     timer = lv_timer_create([](lv_timer_t *timer) {
       auto &coordinator = ha_read_coordinator();
-      coordinator.flush_fresh(millis(), HA_READ_INTERNAL_FREE_MIN_BYTES,
+      coordinator.flush_fresh(esphome::millis(), HA_READ_INTERNAL_FREE_MIN_BYTES,
                               HA_READ_INTERNAL_LARGEST_MIN_BYTES);
       if (!coordinator.has_scheduled_fresh()) lv_timer_pause(timer);
     }, 50, nullptr);
   }
   if (!timer) return;
   for (const char *attribute : attributes) {
-    if (attribute) ha_read_coordinator().schedule_fresh(entity_id, attribute, scope, millis());
+    if (attribute) ha_read_coordinator().schedule_fresh(entity_id, attribute, scope, esphome::millis());
   }
   if (ha_read_coordinator().has_scheduled_fresh()) lv_timer_resume(timer);
 }
