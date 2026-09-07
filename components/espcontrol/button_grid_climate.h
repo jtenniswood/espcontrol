@@ -1,5 +1,6 @@
 #pragma once
 
+#include "climate_state_logic.h"
 #include "climate_target_logic.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -550,39 +551,38 @@ inline std::string climate_hvac_service_value(const std::string &raw) {
   return value;
 }
 
-inline bool climate_action_is_working(const std::string &action) {
-  return action == "heating" || action == "cooling" ||
-         action == "drying" || action == "fan";
-}
-
 inline std::string climate_action_label(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return espcontrol_i18n(std::string("Unavailable"));
-  if (ctx->hvac_action == "heating") return espcontrol_i18n(std::string("Heating"));
-  if (ctx->hvac_action == "cooling") return espcontrol_i18n(std::string("Cooling"));
-  if (ctx->hvac_action == "drying") return espcontrol_i18n(std::string("Drying"));
-  if (ctx->hvac_action == "fan") return espcontrol_i18n(std::string("Fan"));
-  if (ctx->hvac_mode == "off") return espcontrol_i18n(std::string("Off"));
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") return climate_option_label(ctx->hvac_mode);
-  if (ctx->hvac_action == "idle") return espcontrol_i18n(std::string("Idle"));
-  if (ctx->hvac_action == "off") return espcontrol_i18n(std::string("Off"));
+  if (!ctx) return espcontrol_i18n(std::string("Unavailable"));
+  switch (espcontrol::climate::status(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action)) {
+    case espcontrol::climate::Status::UNAVAILABLE:
+      return espcontrol_i18n(std::string("Unavailable"));
+    case espcontrol::climate::Status::OFF:
+      return espcontrol_i18n(std::string("Off"));
+    case espcontrol::climate::Status::HEATING:
+      return espcontrol_i18n(std::string("Heating"));
+    case espcontrol::climate::Status::COOLING:
+      return espcontrol_i18n(std::string("Cooling"));
+    case espcontrol::climate::Status::DRYING:
+      return espcontrol_i18n(std::string("Drying"));
+    case espcontrol::climate::Status::FAN:
+      return espcontrol_i18n(std::string("Fan"));
+    case espcontrol::climate::Status::IDLE:
+      return espcontrol_i18n(std::string("Idle"));
+    case espcontrol::climate::Status::MODE_FALLBACK:
+      return climate_option_label(ctx->hvac_mode);
+  }
   return espcontrol_i18n(std::string("Idle"));
 }
 
 inline bool climate_is_active(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available) return false;
-  if (climate_action_is_working(ctx->hvac_action)) return true;
-  if (ctx->hvac_mode == "off") return false;
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") {
-    return !climate_unavailable_value(ctx->hvac_mode);
-  }
-  return !(ctx->hvac_action == "idle" || ctx->hvac_action == "off");
+  return ctx && espcontrol::climate::active(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action);
 }
 
 inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
-  return ctx && ctx->available &&
-         (ctx->hvac_mode != "off" || climate_action_is_working(ctx->hvac_action));
+  return ctx && espcontrol::climate::icon_enabled(
+      ctx->available, ctx->hvac_mode, ctx->hvac_action);
 }
 
 inline bool climate_modal_temperature_controls_enabled(ClimateControlCtx *ctx) {

@@ -99,6 +99,8 @@ TASKS = (
              "components/espcontrol/button_grid_slider_geometry.h",
              "components/espcontrol/button_grid_string.h",
              "components/espcontrol/button_grid_config_parser.h",
+             "components/espcontrol/button_grid_climate.h",
+             "components/espcontrol/climate_state_logic.h",
              "components/espcontrol/button_grid_subpages.h",
              "components/artwork_image/image_pipeline_policy.h",
              "common/config/card_normalization_fixtures.json",

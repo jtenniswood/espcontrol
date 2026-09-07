@@ -63,6 +63,12 @@ target_compile_options(climate_target_logic_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_target_logic_test PRIVATE ../../components/espcontrol)
 add_test(NAME climate_target_logic_test COMMAND climate_target_logic_test)
 
+add_executable(climate_state_logic_test climate_state_logic_test.cpp)
+target_compile_features(climate_state_logic_test PRIVATE cxx_std_17)
+target_compile_options(climate_state_logic_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(climate_state_logic_test PRIVATE ../../components/espcontrol)
+add_test(NAME climate_state_logic_test COMMAND climate_state_logic_test)
+
 add_executable(media_volume_capability_test media_volume_capability_test.cpp)
 target_compile_features(media_volume_capability_test PRIVATE cxx_std_17)
 target_compile_options(media_volume_capability_test PRIVATE -Wall -Wextra -Werror)
