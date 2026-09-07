@@ -23,6 +23,7 @@ function createWebSandbox() {
     clearTimeout,
     requestAnimationFrame(fn) { return setTimeout(fn, 0); },
     URL,
+    URLSearchParams,
     location: { href: "http://espcontrol.test/" },
     document: {
       readyState: "loading",
