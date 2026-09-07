@@ -14,10 +14,10 @@
 // Defined by the firmware Home Assistant transport. Keeping this declaration
 // lightweight lets host-side Cover Art tests use the controller without
 // pulling in ESPHome's generated API types.
-inline bool ha_request_fresh_attributes(
+inline void ha_schedule_metadata_refresh(
     const std::string &entity_id,
-    std::initializer_list<const char *> attributes);
-inline void ha_reset_fresh_state_requests();
+    std::initializer_list<const char *> attributes, uint32_t scope);
+inline void ha_cancel_metadata_refresh(uint32_t scope);
 
 namespace espcontrol::cover_art {
 

@@ -23,6 +23,7 @@ struct FakeTransport {
   bool api_available = true;
   bool connected = true;
   bool accept_requests = true;
+  std::string rejected_attribute;
   std::vector<Request> subscriptions;
   std::vector<Request> fresh_requests;
 
@@ -36,7 +37,7 @@ struct FakeTransport {
   }
 
   bool request(const std::string &entity_id, const std::string &attribute) {
-    if (!connected || !accept_requests) return false;
+    if (!connected || !accept_requests || attribute == rejected_attribute) return false;
     fresh_requests.push_back({entity_id, attribute, {}});
     return true;
   }
@@ -749,13 +750,103 @@ void fresh_requests_reuse_subscription_and_recover_after_send_failure() {
           "fresh request must require an existing live channel");
 }
 
+void scheduled_metadata_refreshes_share_channels_and_retry_only_failed_sends() {
+  Coordinator coordinator;
+  for (const auto *attribute : {"media_title", "media_artist"}) {
+    coordinator.subscribe("media_player.room", attribute, [](std::string) {}, 1u);
+    coordinator.subscribe("media_player.room", attribute, [](std::string) {}, 2u);
+    require(coordinator.schedule_fresh("media_player.room", attribute, 1u, 0), "schedule card");
+    require(coordinator.schedule_fresh("media_player.room", attribute, 2u, 0), "schedule screensaver");
+  }
+  require(!coordinator.schedule_fresh("media_player.room", "media_album_name", 2u, 0),
+          "S3 must not queue an unsupported album channel");
+  coordinator.flush_fresh(99, 0, 0);
+  require(coordinator.transport().fresh_requests.empty(), "debounce must delay sends");
+  coordinator.transport().rejected_attribute = "media_artist";
+  coordinator.flush_fresh(100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1, "shared title should send once");
+  coordinator.transport().publish(0, "Title");
+  coordinator.flush_fresh(1099, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1, "failed sends must back off");
+  coordinator.transport().rejected_attribute.clear();
+  coordinator.flush_fresh(1100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 2 &&
+          coordinator.transport().fresh_requests.back().attribute == "media_artist",
+          "retry must send only the failed artist attribute");
+  require(!coordinator.has_scheduled_fresh(), "unsupported album must not keep S3 retrying");
+  coordinator.flush_fresh(2100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 2, "completed batch must stop");
+}
+
+void scheduled_metadata_refreshes_recover_and_cancel_by_consumer() {
+  Coordinator coordinator;
+  coordinator.subscribe("media_player.room", "media_artist", [](std::string) {}, 1u);
+  coordinator.subscribe("media_player.room", "media_artist", [](std::string) {}, 2u);
+  coordinator.schedule_fresh("media_player.room", "media_artist", 1u, 0);
+  coordinator.schedule_fresh("media_player.room", "media_artist", 2u, 0);
+  coordinator.reset_subscriptions(2u);
+  coordinator.transport().connected = false;
+  coordinator.flush_fresh(100, 0, 0);
+  coordinator.transport().connected = true;
+  coordinator.heap_probe().enough = false;
+  coordinator.flush_fresh(1100, 0, 0);
+  require(coordinator.transport().fresh_requests.empty() && coordinator.has_scheduled_fresh(),
+          "transient failures must preserve scheduled work");
+  coordinator.heap_probe().enough = true;
+  coordinator.flush_fresh(2100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1,
+          "resetting Cover Art must preserve the card request");
+  coordinator.schedule_fresh("media_player.room", "media_artist", 1u, 2200);
+  coordinator.bump_generation(1u);
+  coordinator.flush_fresh(2300, 0, 0);
+  require(!coordinator.has_scheduled_fresh() && coordinator.transport().fresh_requests.size() == 1,
+          "retired subscriptions must cancel scheduled work");
+}
+
+void scheduled_metadata_refreshes_isolate_players_and_handle_clock_wrap() {
+  Coordinator coordinator;
+  int owner = 0;
+  coordinator.subscribe("media_player.first", "media_artist", [](std::string) {}, 1u, &owner);
+  coordinator.subscribe("media_player.second", "media_artist", [](std::string) {}, 1u);
+  coordinator.request_fresh("media_player.second", "media_artist");
+  coordinator.schedule_fresh("media_player.first", "media_artist", 1u, UINT32_MAX - 49);
+  coordinator.request_fresh("media_player.second", "media_artist");
+  require(coordinator.transport().fresh_requests.size() == 1,
+          "first player's transition must not reset second player's pending read");
+  coordinator.flush_fresh(49, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 1, "wrapped deadline fired early");
+  coordinator.flush_fresh(50, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 2, "wrapped deadline never fired");
+  coordinator.schedule_fresh("media_player.first", "media_artist", 1u, 60);
+  coordinator.release_owner(&owner);
+  coordinator.flush_fresh(160, 0, 0);
+  require(!coordinator.has_scheduled_fresh() && coordinator.transport().fresh_requests.size() == 2,
+          "destroyed card must not leave queued refresh work");
+}
+
+void scheduled_metadata_refreshes_limit_each_send_burst() {
+  Coordinator coordinator;
+  for (int i = 0; i < 6; ++i) {
+    const std::string entity = "media_player.room" + std::to_string(i);
+    coordinator.subscribe(entity, "media_artist", [](std::string) {}, 1u);
+    coordinator.schedule_fresh(entity, "media_artist", 1u, 0);
+  }
+  coordinator.flush_fresh(100, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 4 && coordinator.has_scheduled_fresh(),
+          "refresh bursts must leave room for other API messages");
+  coordinator.flush_fresh(150, 0, 0);
+  require(coordinator.transport().fresh_requests.size() == 6 && !coordinator.has_scheduled_fresh(),
+          "remaining players must be serviced on the next pump");
+}
+
 void omitted_fresh_responses_do_not_accumulate_callbacks() {
   Coordinator coordinator;
   coordinator.subscribe("media_player.room", "media_artist",
                         [](std::string) {}, 1u, nullptr, true);
   const size_t capacity = coordinator.transient_callback_capacity();
   for (int i = 0; i < 100; ++i) {
-    coordinator.reset_fresh_requests();
+    coordinator.schedule_fresh("media_player.room", "media_artist", 1u, i * 1000);
+    coordinator.flush_fresh(i * 1000 + 100, 0, 0);
     require(coordinator.request_fresh("media_player.room", "media_artist"),
             "a new track must still request an omitted attribute");
     // Deliberately never answer: missing attributes must not retain a native
@@ -844,6 +935,10 @@ void core_owns_binding_service_lifetime() {
 }  // namespace
 
 int main() {
+  scheduled_metadata_refreshes_share_channels_and_retry_only_failed_sends();
+  scheduled_metadata_refreshes_recover_and_cancel_by_consumer();
+  scheduled_metadata_refreshes_isolate_players_and_handle_clock_wrap();
+  scheduled_metadata_refreshes_limit_each_send_burst();
   fresh_requests_reuse_subscription_and_recover_after_send_failure();
   omitted_fresh_responses_do_not_accumulate_callbacks();
   disconnected_read_flushes_after_reconnect();

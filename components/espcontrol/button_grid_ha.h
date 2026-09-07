@@ -185,10 +185,6 @@ inline void ha_reset_deferred_state_requests() {
 }
 #define ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED 1
 
-inline void ha_reset_fresh_state_requests() {
-  ha_read_coordinator().reset_fresh_requests();
-}
-
 inline void ha_invalidate_retained_state() {
   ha_read_coordinator().invalidate_retained_state();
   ha_log_subscription_diagnostics("client-disconnected");
@@ -341,29 +337,26 @@ inline bool ha_read_retained_attribute(const std::string &entity_id,
       HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES, owner);
 }
 
-inline bool ha_request_fresh_attribute(const std::string &entity_id,
-                                       const std::string &attribute) {
-  if (!ha_api_state_connected() || entity_id.empty() || attribute.empty()) return false;
-  if (!ha_internal_heap_available("fresh Home Assistant state request",
-                                  HA_READ_INTERNAL_FREE_MIN_BYTES,
-                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
-  if (!ha_read_coordinator().request_fresh(entity_id, attribute)) return false;
-  return true;
+// One timer pumps shared refresh work; it stores no consumer pointers.
+inline void ha_schedule_metadata_refresh(const std::string &entity_id,
+                                         std::initializer_list<const char *> attributes,
+                                         uint32_t scope) {
+  static lv_timer_t *timer = nullptr;
+  if (!timer) {
+    timer = lv_timer_create([](lv_timer_t *timer) {
+      auto &coordinator = ha_read_coordinator();
+      coordinator.flush_fresh(millis(), HA_READ_INTERNAL_FREE_MIN_BYTES,
+                              HA_READ_INTERNAL_LARGEST_MIN_BYTES);
+      if (!coordinator.has_scheduled_fresh()) lv_timer_pause(timer);
+    }, 50, nullptr);
+  }
+  if (!timer) return;
+  for (const char *attribute : attributes) {
+    if (attribute) ha_read_coordinator().schedule_fresh(entity_id, attribute, scope, millis());
+  }
+  if (ha_read_coordinator().has_scheduled_fresh()) lv_timer_resume(timer);
 }
 
-inline bool ha_request_fresh_attributes(
-    const std::string &entity_id,
-    std::initializer_list<const char *> attributes) {
-  if (!ha_api_state_connected() || entity_id.empty() || attributes.size() == 0) return false;
-  if (!ha_internal_heap_available("fresh Home Assistant metadata request",
-                                  HA_READ_INTERNAL_FREE_MIN_BYTES,
-                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
-  bool all_requested = true;
-  for (const char *attribute : attributes) {
-    if (attribute == nullptr ||
-        !ha_read_coordinator().request_fresh(entity_id, std::string(attribute))) {
-      all_requested = false;
-    }
-  }
-  return all_requested;
+inline void ha_cancel_metadata_refresh(uint32_t scope) {
+  ha_read_coordinator().cancel_fresh(scope);
 }

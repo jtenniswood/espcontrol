@@ -2060,7 +2060,10 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
         handler = handler_match.group("body") if handler_match else ""
         metadata_assignment = handler.find(assignment)
         duration_invalidation = handler.find("invalidate_stale_media_duration()")
-        if (
+        if metadata_name in ("artist", "album"):
+            if duration_invalidation >= 0:
+                errors.append(f"{rel}: preserve duration when restoring media {metadata_name}")
+        elif (
             metadata_assignment < 0
             or duration_invalidation < 0
             or duration_invalidation > metadata_assignment
@@ -6358,13 +6361,11 @@ def run_self_test() -> int:
         "if (!already_subscribed) {}\n"
         "# artist callback\n"
         "std::function<void(esphome::StringRef)> handle_media_artist = [](esphome::StringRef artist) {\n"
-        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_artist) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# album callback\n"
         "std::function<void(esphome::StringRef)> handle_media_album = [](esphome::StringRef album) {\n"
-        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_album) = next;\n"
         "  id(cover_art_sync_track_text).execute();\n"
         "};\n"
@@ -6459,24 +6460,24 @@ def run_self_test() -> int:
         ("preserve fresh cover art position when title metadata arrives late",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art artist change keeps stale duration",
+        "cover art artist restoration discards duration",
         cover_art_progress_visibility.replace(
+            "handle_media_artist = [](esphome::StringRef artist) {\n",
             "handle_media_artist = [](esphome::StringRef artist) {\n"
             "  invalidate_stale_media_duration();\n",
-            "handle_media_artist = [](esphome::StringRef artist) {\n",
             1,
         ),
-        ("mark stale cover art duration unavailable when media artist changes",),
+        ("preserve duration when restoring media artist",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art album change keeps stale duration",
+        "cover art album restoration discards duration",
         cover_art_progress_visibility.replace(
+            "handle_media_album = [](esphome::StringRef album) {\n",
             "handle_media_album = [](esphome::StringRef album) {\n"
             "  invalidate_stale_media_duration();\n",
-            "handle_media_album = [](esphome::StringRef album) {\n",
             1,
         ),
-        ("mark stale cover art duration unavailable when media album changes",),
+        ("preserve duration when restoring media album",),
     )
     expect_cover_art_progress_visibility_errors(
         "cover art album change delays progress refresh",

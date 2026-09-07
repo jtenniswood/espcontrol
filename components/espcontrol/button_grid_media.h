@@ -590,7 +590,7 @@ struct MediaPlaybackState {
   bool used = false;
   bool state_subscribed = false;
   bool metadata_subscribed = false;
-  bool metadata_refresh_pending = false;
+  bool metadata_title_awaiting_refresh = false;
   bool source_subscribed = false;
   bool progress_subscribed = false;
   uint32_t progress_subscription_scope = 0;
@@ -644,7 +644,6 @@ struct MediaPlaybackState {
   bool has_current_content_type = false;
   uint8_t artwork_content_mask = 0;
   lv_timer_t *progress_timer = nullptr;
-  lv_timer_t *metadata_refresh_timer = nullptr;
   std::vector<SliderCtx *> sliders;
   std::vector<MediaControlCtx *> controls;
   std::vector<MediaVolumeCtx *> volumes;
@@ -762,7 +761,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->used = true;
   state->state_subscribed = false;
   state->metadata_subscribed = false;
-  state->metadata_refresh_pending = false;
+  state->metadata_title_awaiting_refresh = false;
   state->source_subscribed = false;
   state->progress_subscribed = false;
   state->progress_subscription_scope = 0;
@@ -813,7 +812,6 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->has_current_content_type = false;
   state->content_id_observed_for_state = false;
   state->artwork_content_mask = 0;
-  if (state->metadata_refresh_timer) lv_timer_pause(state->metadata_refresh_timer);
   std::vector<SliderCtx *>().swap(state->sliders);
   std::vector<MediaControlCtx *>().swap(state->controls);
   std::vector<MediaVolumeCtx *>().swap(state->volumes);
@@ -1581,35 +1579,10 @@ inline void media_playback_refresh_progress_timer(MediaPlaybackState *state) {
   else lv_timer_pause(state->progress_timer);
 }
 
-inline void media_playback_metadata_refresh_timer_cb(lv_timer_t *timer) {
-  MediaPlaybackState *state = static_cast<MediaPlaybackState *>(lv_timer_get_user_data(timer));
-  if (!state || state->generation != ha_subscription_generation() ||
-      !state->metadata_refresh_pending) {
-    if (timer) lv_timer_pause(timer);
-    return;
-  }
-  if (!ha_request_fresh_attributes(state->entity_id, {"media_title", "media_artist"})) {
-    ESP_LOGD("media", "Fresh metadata request unavailable for %s", state->entity_id.c_str());
-    // Keep the same timer armed through transient API/heap/send failures.
-    if (timer) lv_timer_set_period(timer, 1000);
-    return;
-  }
-  state->metadata_refresh_pending = false;
-  if (timer) lv_timer_pause(timer);
-}
-
 inline void media_playback_schedule_metadata_refresh(MediaPlaybackState *state) {
   if (!state || state->entity_id.empty()) return;
-  ha_reset_fresh_state_requests();
-  state->metadata_refresh_pending = true;
-  if (!state->metadata_refresh_timer) {
-    state->metadata_refresh_timer = lv_timer_create(
-      media_playback_metadata_refresh_timer_cb, 100, state);
-  } else {
-    lv_timer_set_period(state->metadata_refresh_timer, 100);
-    lv_timer_reset(state->metadata_refresh_timer);
-  }
-  if (state->metadata_refresh_timer) lv_timer_resume(state->metadata_refresh_timer);
+  ha_schedule_metadata_refresh(state->entity_id, {"media_title", "media_artist"},
+                               HA_SUBSCRIPTION_SCOPE_DEFAULT);
 }
 
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state) {
@@ -1682,7 +1655,7 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
           value, HA_STATE_TEXT_MAX_LEN);
         media_playback_clear_stale_external_source(
           state, !next_title.empty());
-        if (next_title != state->title) {
+        if (next_title != state->title && !state->metadata_title_awaiting_refresh) {
           // Home Assistant omits media_artist when the new item has no artist.
           // Clear the previous item's value and request a fresh snapshot so an
           // unchanged valid artist can be restored without retaining stale text.
@@ -1690,6 +1663,7 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
           media_playback_schedule_metadata_refresh(state);
         }
         state->title = next_title;
+        state->metadata_title_awaiting_refresh = false;
         media_playback_apply_metadata_consumers(state);
       })
   );
@@ -1986,9 +1960,11 @@ inline void media_playback_subscribe_content(MediaPlaybackState *state) {
           state->current_content_fingerprint = next_content_fingerprint;
           state->current_content_kind = next_kind;
         }
-        if (decision.clear_title) state->title.clear();
+        if (decision.clear_title) {
+          state->title.clear();
+          state->metadata_title_awaiting_refresh = true;
+        }
         if (decision.item_changed) {
-          if (decision.clear_grouping) state->artist.clear();
           media_playback_clear_stale_artist(state);
           media_playback_schedule_metadata_refresh(state);
         }
