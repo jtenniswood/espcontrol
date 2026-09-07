@@ -26,6 +26,8 @@ function loadRuntime() {
     setTimeout,
     clearTimeout,
     requestAnimationFrame(fn) { return setTimeout(fn, 0); },
+    URLSearchParams,
+    location: { href: "http://espcontrol.test/", search: "" },
     document: { readyState: "loading", activeElement: null, addEventListener() {} },
   };
   sandbox.window = sandbox;
