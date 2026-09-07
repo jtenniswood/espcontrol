@@ -80,6 +80,14 @@ Cards that reflect Home Assistant state must subscribe to the entity or
 attribute they need. Keep subscriptions narrow because display memory and update
 work are limited.
 
+The shared subscription coordinator stores its container backing and callback
+ownership blocks in external RAM when available, with internal RAM as the
+allocator fallback. Climate cards always subscribe to capability lists, but
+subscribe to current preset, fan, and swing values only when their configured or
+effective fallback controls need them. An optional subscription stays registered
+for that card context; narrowing a configuration can therefore leave its upstream
+channel in the append-only coordinator history until reboot.
+
 Use the firmware UI playbook for subscription and runtime checks.
 
 ## Config Parser Rules

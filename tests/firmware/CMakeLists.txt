@@ -73,6 +73,16 @@ target_compile_options(climate_target_logic_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(climate_target_logic_test PRIVATE ../../components/espcontrol)
 add_test(NAME climate_target_logic_test COMMAND climate_target_logic_test)
 
+add_executable(climate_subscription_policy_test climate_subscription_policy_test.cpp)
+target_compile_features(climate_subscription_policy_test PRIVATE cxx_std_17)
+target_compile_options(climate_subscription_policy_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(climate_subscription_policy_test PRIVATE ../../components/espcontrol)
+add_test(
+  NAME climate_subscription_policy_test
+  COMMAND climate_subscription_policy_test
+          ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/issue_1837_climate_subpage.json
+)
+
 add_executable(media_volume_capability_test media_volume_capability_test.cpp)
 target_compile_features(media_volume_capability_test PRIVATE cxx_std_17)
 target_compile_options(media_volume_capability_test PRIVATE -Wall -Wextra -Werror)
