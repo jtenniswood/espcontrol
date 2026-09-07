@@ -66,9 +66,10 @@ struct GridConfig {
 
 inline void grid_log_memory(const char *stage) {
 #ifdef ESP_PLATFORM
-  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u psram=%u",
+  ESP_LOGI("sensors", "Phase 2 %s heap: internal=%u largest=%u psram=%u",
     stage,
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
     (unsigned) heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 #else
   (void) stage;
@@ -2224,6 +2225,7 @@ inline void grid_phase2(
     refresh_image_cards();
   }
   refresh_weather_forecast_cards();
+  ha_log_subscription_diagnostics("grid-complete");
   grid_log_memory("end");
   ESP_LOGI("sensors", "Phase 2: done (%lu ms)", esphome::millis());
 }

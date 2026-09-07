@@ -3,7 +3,9 @@
 #include "home_assistant_binding_service.h"
 
 #include <cstdlib>
+#include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -51,6 +53,48 @@ struct FakeHeapProbe {
 
 using Coordinator = HaReadCoordinator<FakeTransport, FakeHeapProbe>;
 using BindingService = HomeAssistantBindingService<FakeTransport, FakeHeapProbe>;
+
+struct TrackingAllocatorState {
+  static inline size_t allocation_calls = 0;
+  static inline size_t deallocation_calls = 0;
+  static inline size_t allocated_bytes = 0;
+
+  static void reset() {
+    allocation_calls = 0;
+    deallocation_calls = 0;
+    allocated_bytes = 0;
+  }
+};
+
+template<typename T>
+struct TrackingAllocator {
+  using value_type = T;
+  using is_always_equal = std::true_type;
+
+  TrackingAllocator() = default;
+  template<typename U>
+  TrackingAllocator(const TrackingAllocator<U> &) {}
+
+  T *allocate(size_t count) {
+    TrackingAllocatorState::allocation_calls++;
+    TrackingAllocatorState::allocated_bytes += count * sizeof(T);
+    return std::allocator<T>{}.allocate(count);
+  }
+
+  void deallocate(T *pointer, size_t count) {
+    TrackingAllocatorState::deallocation_calls++;
+    std::allocator<T>{}.deallocate(pointer, count);
+  }
+
+  template<typename U>
+  bool operator==(const TrackingAllocator<U> &) const { return true; }
+  template<typename U>
+  bool operator!=(const TrackingAllocator<U> &) const { return false; }
+};
+
+using TrackingCoordinator =
+    HaReadCoordinator<FakeTransport, FakeHeapProbe,
+                      TrackingAllocator<std::byte>>;
 
 [[noreturn]] void fail(const char *message) {
   (void) message;
@@ -737,6 +781,66 @@ void core_owns_binding_service_lifetime() {
   require(app.stop(), "application core did not stop");
 }
 
+void channel_growth_uses_the_configured_allocator_and_preserves_delivery() {
+  TrackingAllocatorState::reset();
+  TrackingCoordinator coordinator;
+  std::vector<int> deliveries(256, 0);
+  const size_t checkpoints[] = {122, 128, 129, 140, 256};
+  size_t checkpoint = 0;
+
+  for (size_t i = 0; i < deliveries.size(); i++) {
+    require(coordinator.subscribe(
+                "sensor.channel_" + std::to_string(i), "",
+                [i, &deliveries](std::string) { deliveries[i]++; }, 1u),
+            "tracked subscription should register");
+    if (checkpoint < sizeof(checkpoints) / sizeof(checkpoints[0]) &&
+        i + 1 == checkpoints[checkpoint]) {
+      require(coordinator.subscription_channel_count() == checkpoints[checkpoint],
+              "channel count changed at a growth checkpoint");
+      require(coordinator.subscription_channel_capacity() >= checkpoints[checkpoint],
+              "channel capacity did not cover its growth checkpoint");
+      checkpoint++;
+    }
+  }
+
+  require(coordinator.subscription_channel_capacity() >= 256,
+          "channel storage did not grow through 256 entries");
+  require(coordinator.persistent_container_capacity_bytes() > 0,
+          "coordinator did not report allocated container storage");
+  require(TrackingAllocatorState::allocation_calls > deliveries.size(),
+          "nested containers and callback control blocks bypassed the allocator");
+
+  for (size_t i = 0; i < deliveries.size(); i++) {
+    coordinator.transport().publish(i, "ready");
+  }
+  for (int delivered : deliveries) {
+    require(delivered == 1, "channel delivery was lost during container growth");
+  }
+}
+
+void temporary_and_pending_callback_storage_use_the_configured_allocator() {
+  TrackingAllocatorState::reset();
+  TrackingCoordinator coordinator;
+  int owner = 0;
+  int calls = 0;
+  require(coordinator.subscribe(
+              "sensor.shared", "", [&](std::string) { calls++; }, 1u,
+              &owner, true),
+          "retained subscription should register");
+  require(coordinator.read_retained(
+              "sensor.shared", "", [&](std::string) { calls++; }, false,
+              10, 5, &owner),
+          "pending retained read should register");
+  const size_t before_publish = TrackingAllocatorState::allocation_calls;
+  coordinator.transport().publish(0, "ready");
+  require(calls == 2, "subscription and pending callback did not both run");
+  require(TrackingAllocatorState::allocation_calls > before_publish,
+          "dispatch snapshot bypassed the configured allocator");
+  coordinator.release_owner(&owner);
+  require(TrackingAllocatorState::deallocation_calls > 0,
+          "released callback storage did not use the configured allocator");
+}
+
 }  // namespace
 
 int main() {
@@ -771,5 +875,7 @@ int main() {
   callback_owner_scope_restores_the_previous_owner();
   app_owned_callback_owner_is_used_when_bound();
   core_owns_binding_service_lifetime();
+  channel_growth_uses_the_configured_allocator_and_preserves_delivery();
+  temporary_and_pending_callback_storage_use_the_configured_allocator();
   return EXIT_SUCCESS;
 }
