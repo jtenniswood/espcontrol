@@ -721,7 +721,14 @@ export function registerCompanionCardTypes(
             shortcutFolderField.appendChild(shortcutFolderNote);
             appSubpageDisclosure.section.appendChild(shortcutFolderField);
             folderToggle.input.addEventListener("change", function () {
+                if (!folderToggle.input.checked) {
+                    card._appShortcutDisabledTabs = companionShortcutTabs(card);
+                }
                 setCompanionAppShortcutFolderEnabled(card, folderToggle.input.checked);
+                if (folderToggle.input.checked && Array.isArray(card._appShortcutDisabledTabs)) {
+                    setCompanionShortcutTabs(card, card._appShortcutDisabledTabs);
+                    delete card._appShortcutDisabledTabs;
+                }
                 card._modalSettingsOpen = true;
                 helpers.saveField("options", card.options);
                 renderButtonSettings();
@@ -918,6 +925,7 @@ export function registerCompanionCardTypes(
                 card.entity = select.value;
                 resetCompanionShortcutTabs(card);
                 if (appChanged) {
+                    delete card._appShortcutDisabledTabs;
                     const changedFromSavedApp = card.entity !== savedParent?.entity;
                     card._appShortcutSelectionChanged = changedFromSavedApp;
                     card._appShortcutAppChanged = changedFromSavedApp;
@@ -1015,6 +1023,7 @@ export function registerCompanionCardTypes(
             const appChanged = card._appShortcutAppChanged === true;
             delete card._appShortcutSelectionChanged;
             delete card._appShortcutAppChanged;
+            delete card._appShortcutDisabledTabs;
             if (!companionAppShortcutFolderEnabled(card)) return "saved";
             const existing = state.subpages[slot];
             if (existing && !selectionChanged && !appChanged) return "saved";

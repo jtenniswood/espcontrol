@@ -638,6 +638,8 @@ describe("browserless application contracts", () => {
     assert.match(card, /fetchImpl\("\/companion\/actions", \{ cache: "no-store" \}\)/);
     assert.match(card, /disclosureSection\(\s*"App subpage"/);
     assert.match(card, /renderModalTabSettings\(appSubpageDisclosure\.section/);
+    assert.match(card, /_appShortcutDisabledTabs = companionShortcutTabs\(card\)/);
+    assert.match(card, /setCompanionShortcutTabs\(card, card\._appShortcutDisabledTabs\)/);
     assert.match(card, /changedFromSavedApp = card\.entity !== savedParent\?\.entity/);
     assert.match(card, /delete card\._appShortcutAppChanged;[\s\S]*if \(!companionAppShortcutFolderEnabled\(card\)\)/);
     assert.doesNotMatch(entry, /registerCompatibility\(registerCompanionCardTypes/);
