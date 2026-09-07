@@ -918,8 +918,9 @@ export function registerCompanionCardTypes(
                 card.entity = select.value;
                 resetCompanionShortcutTabs(card);
                 if (appChanged) {
-                    card._appShortcutSelectionChanged = true;
-                    card._appShortcutAppChanged = true;
+                    const changedFromSavedApp = card.entity !== savedParent?.entity;
+                    card._appShortcutSelectionChanged = changedFromSavedApp;
+                    card._appShortcutAppChanged = changedFromSavedApp;
                     card._modalSettingsOpen = true;
                 }
                 card.options = normalizeCompanionAppShortcutOptions(card);
@@ -1009,12 +1010,13 @@ export function registerCompanionCardTypes(
             });
         },
         afterSave: function (card?: any, slot?: any, context?: any) {
-            if (context?.isSub || !companionAppShortcutFolderEnabled(card)) return "saved";
-            const existing = state.subpages[slot];
+            if (context?.isSub) return "saved";
             const selectionChanged = card._appShortcutSelectionChanged === true;
             const appChanged = card._appShortcutAppChanged === true;
             delete card._appShortcutSelectionChanged;
             delete card._appShortcutAppChanged;
+            if (!companionAppShortcutFolderEnabled(card)) return "saved";
+            const existing = state.subpages[slot];
             if (existing && !selectionChanged && !appChanged) return "saved";
             const source = existing ? {
                 ...existing,
