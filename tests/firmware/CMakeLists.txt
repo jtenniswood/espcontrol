@@ -282,3 +282,22 @@ target_include_directories(saved_config_parser_test PRIVATE
   ../../components/espcontrol
 )
 add_test(NAME saved_config_parser_test COMMAND saved_config_parser_test)
+
+set(CLIMATE_UPDATE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_update_test.cpp)
+add_custom_command(
+  OUTPUT ${CLIMATE_UPDATE_TEST_SOURCE}
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/generate_climate_update_test.py
+    --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    --output ${CLIMATE_UPDATE_TEST_SOURCE}
+  DEPENDS
+    generate_climate_update_test.py
+    climate_update_test.cpp.in
+    ../../components/espcontrol/button_grid_climate.h
+  VERBATIM
+)
+add_executable(climate_update_test ${CLIMATE_UPDATE_TEST_SOURCE})
+target_compile_features(climate_update_test PRIVATE cxx_std_17)
+target_compile_options(climate_update_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(climate_update_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME climate_update_test COMMAND climate_update_test)

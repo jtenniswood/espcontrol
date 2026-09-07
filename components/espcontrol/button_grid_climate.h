@@ -580,9 +580,8 @@ inline bool climate_is_active(ClimateControlCtx *ctx) {
       ctx->available, ctx->hvac_mode, ctx->hvac_action);
 }
 
-inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
-  return ctx && espcontrol::climate::icon_enabled(
-      ctx->available, ctx->hvac_mode, ctx->hvac_action);
+inline bool climate_card_icon_enabled(ClimateControlCtx *ctx) {
+  return ctx && espcontrol::climate::icon_enabled(ctx->available, ctx->hvac_mode);
 }
 
 inline bool climate_modal_temperature_controls_enabled(ClimateControlCtx *ctx) {
@@ -1084,7 +1083,7 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
       if (ctx->icon_font)
         lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
       lv_label_set_display_text(ctx->icon_lbl,
-        climate_temperature_controls_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
+        climate_card_icon_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
       climate_layout_card_icon(ctx->icon_lbl);
       lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
     } else {

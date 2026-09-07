@@ -16,8 +16,7 @@ void assert_state(const ClimateState &state, Status status, bool active,
            state.available, state.mode, state.action) == status);
   assert(espcontrol::climate::active(
            state.available, state.mode, state.action) == active);
-  assert(espcontrol::climate::icon_enabled(
-           state.available, state.mode, state.action) == icon_enabled);
+  assert(espcontrol::climate::icon_enabled(state.available, state.mode) == icon_enabled);
 }
 
 void assert_parent_indicator(const ClimateState &state, bool active) {
@@ -44,46 +43,7 @@ int main() {
   assert_state({true, "fan_only", "fan"}, Status::FAN, true, true);
   assert_state({true, "heat", "preheating"}, Status::IDLE, true, true);
 
-  // Heating -> Off retains the action because Home Assistant may not resend it.
-  ClimateState state{true, "heat", "heating"};
-  assert_state(state, Status::HEATING, true, true);
-  state.mode = "off";
-  assert_state(state, Status::OFF, false, false);
-  state.action = "heating";  // A delayed action must not override Off.
-  assert_state(state, Status::OFF, false, false);
-
-  // Auto follows action changes and remains idle without another update.
-  state = {true, "auto", "heating"};
-  assert_state(state, Status::HEATING, true, true);
-  state.action = "idle";
-  assert_state(state, Status::IDLE, false, true);
-  assert_state(state, Status::IDLE, false, true);
-
-  // Off -> Auto reuses the retained action until Home Assistant changes it.
-  state = {true, "off", "idle"};
-  assert_state(state, Status::OFF, false, false);
-  state.mode = "auto";
-  assert_state(state, Status::IDLE, false, true);
-
-  // State and attribute callbacks may arrive in either order.
-  state = {true, "heat", "heating"};
-  state.mode = "off";
-  assert_state(state, Status::OFF, false, false);
-  state.action = "off";
-  assert_state(state, Status::OFF, false, false);
-
-  state = {true, "heat", "heating"};
-  state.action = "off";
-  assert_state(state, Status::OFF, false, true);
-  state.mode = "off";
-  assert_state(state, Status::OFF, false, false);
-
-  // Availability always wins, then the retained values resume when restored.
-  state = {true, "auto", "heating"};
-  state.available = false;
-  assert_state(state, Status::UNAVAILABLE, false, false);
-  state.available = true;
-  assert_state(state, Status::HEATING, true, true);
+  // Update ordering and refresh delivery are exercised in climate_update_test.
 
   // Subpage parents reflect reported HVAC activity, while Off still wins.
   assert_parent_indicator({true, "auto", "heating"}, true);
