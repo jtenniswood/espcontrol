@@ -20,11 +20,6 @@
 #include "companion_pairing_policy.h"
 #include "companion_timezone.h"
 
-namespace esphome::companion {
-void begin_companion_pairing();
-void revoke_companion_pairing();
-}
-
 #ifdef USE_WEBSERVER
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_http_context.h"
@@ -843,7 +838,10 @@ class CompanionPairingHandler : public esphome::web_server_idf::AsyncWebHandler 
     const auto result = companion_pairing_status(
       companion_authorize_web_request(request),
       [] { return companion_pairing_provider() ? companion_pairing_provider()() : CompanionPairingSnapshot{}; },
-      [] { esphome::companion::begin_companion_pairing(); });
+      [] {
+        auto &begin = companion_runtime_service().begin_pairing;
+        if (begin) begin();
+      });
     if (!result) return;
     const auto &snapshot = *result;
     const std::string json = companion_pairing_json(snapshot);
@@ -865,14 +863,15 @@ class CompanionPairingResetHandler : public esphome::web_server_idf::AsyncWebHan
 
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
     if (!companion_authorize_web_request(request)) return;
-    if (!companion_pairing_provider() || !companion_pairing_provider()().available) {
+    auto &revoke = companion_runtime_service().revoke_pairing;
+    if (!revoke || !companion_pairing_provider() || !companion_pairing_provider()().available) {
       httpd_req_t *raw_request = *request;
       httpd_resp_set_status(raw_request, "404 Not Found");
       httpd_resp_set_type(raw_request, "text/plain");
       httpd_resp_send(raw_request, "Companion pairing is unavailable", HTTPD_RESP_USE_STRLEN);
       return;
     }
-    esphome::companion::revoke_companion_pairing();
+    revoke();
     httpd_req_t *raw_request = *request;
     httpd_resp_set_status(raw_request, "200 OK");
     httpd_resp_set_type(raw_request, "application/json");

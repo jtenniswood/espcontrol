@@ -123,6 +123,8 @@ class CompanionRuntimeService {
   CompanionUrlSender url_sender;
   CompanionValueSender value_sender;
   CompanionPairingProvider pairing_provider;
+  std::function<void()> begin_pairing;
+  std::function<void()> revoke_pairing;
   CompanionNowPlayingHandler now_playing_handler;
   CompanionConnectionChangedHandler connection_changed_handler;
   CompanionArtworkHandler artwork_handler;

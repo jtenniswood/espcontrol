@@ -124,6 +124,8 @@ void CompanionService::setup() {
       App.get_name() + ".local",
     };
   };
+  companion_runtime_service().begin_pairing = [this] { this->begin_pairing(); };
+  companion_runtime_service().revoke_pairing = [this] { this->revoke_pairing(); };
   register_companion_pairing_provider(pairing_snapshot);
   register_companion_actions_endpoint();
   if (!this->start_server_()) this->mark_failed();

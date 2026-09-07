@@ -33,6 +33,10 @@ int main() {
   auto lifetime = std::make_shared<int>(1);
   std::weak_ptr<int> callback_lifetime = lifetime;
   companion_action_sender() = [lifetime](const std::string &, const std::string &) { return true; };
+  first.companion_runtime().begin_pairing = [lifetime] {};
+  first.companion_runtime().revoke_pairing = [lifetime] {};
+  assert(!second.companion_runtime().begin_pairing);
+  assert(!second.companion_runtime().revoke_pairing);
   lifetime.reset();
   assert(!callback_lifetime.expired());
   assert(first.stop());
