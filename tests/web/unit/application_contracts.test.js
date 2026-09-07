@@ -59,7 +59,8 @@ describe("browserless application contracts", () => {
     assert.doesNotMatch(connectors, /Actions confirmed/);
     assert.match(companion, /setHidden\(instructions, value\.connected\)/);
     assert.match(companion, /setHidden\(badge, !value\.paired\)/);
-    assert.match(companion, /Press and hold the Wi-Fi icon on the display/);
+    assert.match(companion, /Open this page to start pairing/);
+    assert.match(companion, /Copy the pairing code shown below/);
     assert.doesNotMatch(companion, /Pairing code:|copyButton/);
     assert.match(styles, /\.sp-connectors-config\{max-width:960px/);
     assert.doesNotMatch(connectors, /sp-connectors-intro|Manage the services that provide data and actions/);
@@ -89,17 +90,16 @@ describe("browserless application contracts", () => {
     assert.match(store, /func setApplication\(_ application: LaunchableApp, approved: Bool\)/);
     assert.doesNotMatch(store, /NSWorkspace\.shared\.icon\(forFile: url\.path\)/);
     assert.match(app, /case connection, applications, folders, general/);
-    assert.match(app, /NavigationSplitView/);
+    assert.match(app, /HStack\(spacing: 0\)/);
+    assert.match(app, /selectedPageID = page\.rawValue/);
     assert.match(app, /\.listStyle\(\.sidebar\)/);
     assert.match(app, /\.formStyle\(\.grouped\)/);
-    assert.match(app, /\.searchable\(text: \$applicationSearch, placement: \.toolbar/);
+    assert.match(app, /TextField\("Search", text: \$applicationSearch\)/);
     assert.doesNotMatch(app, /Image\(nsImage: application\.icon\)/);
     assert.match(app, /\.toggleStyle\(\.checkbox\)/);
     assert.match(app, /\.controlSize\(\.small\)/);
-    assert.match(app, /"Enable All Results" : "Enable All Applications"/);
-    assert.match(app, /"Disable All Results" : "Disable All Applications"/);
-    assert.match(app, /setApplications\(filteredApplications, approved: true\)/);
-    assert.match(app, /setApplications\(filteredApplications, approved: false\)/);
+    assert.match(app, /Toggle\("Select All", isOn: selectAllBinding\)/);
+    assert.match(app, /setApplications\(filteredApplications, approved: \$0\)/);
   });
 
   test("owns browser composition and compatibility layout state", () => {
