@@ -807,6 +807,7 @@ script:
   - id: cover_art_disable
     mode: restart
     then:
+      - script.stop: cover_art_prepare_activation
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - script.stop: cover_art_download
@@ -1657,6 +1658,9 @@ script:
     parameters:
       generation: int
     then:
+      # Unwind the controller's nested action chain before layout/logging on
+      # the S3's fixed loopTask stack. script.wait keeps completion ordered.
+      - delay: 1ms
       - if:
           condition:
             lambda: |-
@@ -1693,10 +1697,11 @@ script:
       - script.execute: backlight_apply_brightness
       - script.execute: cover_art_apply_responsive_layout
       - script.execute: cover_art_show_track_overlay
-      - script.execute: cover_art_use_cached_artwork
-      - script.execute: cover_art_request_artwork
-      - script.execute: cover_art_prepare_download
-      - script.execute: cover_art_deferred_request_artwork
+      - lambda: |-
+          id(cover_art_prepare_activation).execute(
+              generation, id(cover_art_subscription_generation),
+              id(cover_art_active_media_player_entity));
+      - script.wait: cover_art_prepare_activation
       - if:
           condition:
             lambda: 'return id(cover_art_runtime).image_available && ${cover_art_square_overlay};'
@@ -1717,6 +1722,33 @@ script:
                   - script.execute: cover_art_show_black_screen
       - script.execute: cover_art_refresh_progress
 
+  - id: cover_art_prepare_activation
+    mode: restart
+    parameters:
+      generation: int
+      subscription_generation: int
+      cover_entity: string
+    then:
+      # Layout itself is another long action chain. Start artwork with a fresh
+      # stack, and let repeated activation requests replace pending work.
+      - delay: 1ms
+      - lambda: |-
+          if (!id(espcontrol_app).display().transition_is_current(
+                  static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART) ||
+              subscription_generation != id(cover_art_subscription_generation) ||
+              cover_entity.empty() ||
+              cover_entity != id(cover_art_active_media_player_entity) ||
+              !espcontrol::cover_art::feature_allowed(
+                  id(cover_art_screensaver_enabled).state,
+                  !id(cover_art_media_player_entity).state.empty(),
+                  id(cover_art_attribute_conditions_match),
+                  id(cover_art_hide_external_input_enabled).state,
+                  id(cover_art_external_input_active))) return;
+          // request_artwork already selects cached candidates when present.
+          id(cover_art_request_artwork).execute();
+          id(cover_art_prepare_download).execute();
+          id(cover_art_deferred_request_artwork).execute();
+
   - id: cover_art_hide_effect
     mode: restart
     parameters:
@@ -1731,6 +1763,7 @@ script:
                   static_cast<espcontrol::DisplayMode>(target_mode));
           then:
             - script.stop: cover_art_hide_effect
+      - script.stop: cover_art_prepare_activation
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - script.stop: cover_art_deferred_request_artwork
@@ -2050,6 +2083,7 @@ script:
             secondary_entity == id(cover_art_subscribed_secondary_entity);
           if (!already_subscribed) {
             const std::string previous_entity = id(cover_art_subscribed_entity);
+            id(cover_art_prepare_activation).stop();
             id(cover_art_schedule_paired_artwork).stop();
             id(cover_art_artwork_trigger).reset();
             id(cover_art_artwork_retry_mask) = 0;
