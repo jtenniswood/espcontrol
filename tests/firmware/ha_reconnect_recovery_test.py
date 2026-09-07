@@ -1,4 +1,4 @@
-"""Wiring regressions for the recovery work seen in the 7-inch debug log."""
+"""Connection wiring and executable artwork recovery regressions."""
 
 from pathlib import Path
 import os
@@ -129,17 +129,66 @@ int main() {
             )
             subprocess.run([executable], check=True)
 
-    def test_missing_companion_retry_does_not_force_another_download(self):
-        retry = self.image.split("inline void image_card_request_current_picture(", 1)[1].split("inline void image_card_refresh_current_picture(", 1)[0]
-        self.assertIn("image_card_request_media_artwork(ctx, false);", retry)
-        self.assertNotIn("image_card_request_media_artwork(ctx, true);", retry)
 
-    def test_reconnect_preserves_healthy_artwork_and_pending_metadata(self):
-        refresh = self.image.split("inline void image_card_refresh_current_picture(", 1)[1].split("inline void image_card_schedule_picture_retry(", 1)[0]
-        self.assertIn("!ctx->image_ready || ctx->media_artwork_refresh.forced", refresh)
-        self.assertIn("image_card_schedule_media_artwork_refresh(ctx, force_refresh);", refresh)
-        self.assertNotIn("media_artwork_trigger.reset()", refresh)
-        self.assertLess(refresh.index("const bool force_refresh"), refresh.index("media_artwork_refresh.reset()"))
+class ArtworkRecoveryTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.directory = tempfile.TemporaryDirectory(prefix="artwork-recovery-test-")
+        cls.addClassCleanup(cls.directory.cleanup)
+        directory = Path(cls.directory.name)
+        source = (ROOT / "components/espcontrol/button_grid_image.h").read_text()
+        names = (
+            "image_card_request_current_picture",
+            "image_card_refresh_current_picture",
+            "image_card_process_media_artwork",
+            "image_card_media_artwork_timer_cb",
+            "image_card_schedule_media_artwork_process",
+            "image_card_handle_media_artwork_picture",
+            "image_card_request_media_artwork",
+            "image_card_media_artwork_trigger_timer_cb",
+            "image_card_schedule_media_artwork_refresh",
+            "image_card_refresh_media_artwork_on_metadata_change",
+        )
+        functions = []
+        for name in names:
+            match = re.search(
+                rf"^inline void {name}\([^;{{]*\) \{{\n.*?^\}}",
+                source, re.MULTILINE | re.DOTALL,
+            )
+            if match is None:
+                raise AssertionError(f"Missing production function: {name}")
+            functions.append(match.group())
+        (directory / "artwork_recovery_functions.h").write_text("\n\n".join(functions))
+        cls.executable = str(directory / "artwork_recovery_test")
+        subprocess.run(
+            shlex.split(os.environ.get("CXX", "c++"))
+            + ["-std=c++17", "-Wall", "-Wextra", "-Werror",
+               "-I", str(directory), "-I", str(ROOT / "components/espcontrol"),
+               str(ROOT / "tests/firmware/artwork_recovery_test.cpp"),
+               "-o", cls.executable],
+            check=True,
+        )
+
+    def test_timeout_retry_refreshes_same_url_once(self):
+        subprocess.run([self.executable, "timeout_retry"], check=True)
+
+    def test_unchanged_artwork_stays_cached(self):
+        subprocess.run([self.executable, "unchanged"], check=True)
+
+    def test_missing_companion_does_not_repeat_download(self):
+        subprocess.run([self.executable, "missing_companion"], check=True)
+
+    def test_reconnect_preserves_pending_metadata(self):
+        subprocess.run([self.executable, "pending_metadata_reconnect"], check=True)
+
+    def test_reconnect_preserves_active_metadata(self):
+        subprocess.run([self.executable, "active_metadata_reconnect"], check=True)
+
+    def test_reconnect_recovers_missing_image(self):
+        subprocess.run([self.executable, "missing_image_reconnect"], check=True)
+
+    def test_reconnect_recovers_after_retry_exhaustion(self):
+        subprocess.run([self.executable, "exhausted_reconnect"], check=True)
 
 
 if __name__ == "__main__":

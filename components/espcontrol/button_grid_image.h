@@ -2183,6 +2183,10 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
   }
   if (batch_complete) ctx->media_artwork_timeout_retries = 0;
   ctx->media_artwork_refresh.finish();
+  // Settling an attribute batch does not satisfy a track-change refresh when
+  // no usable response arrived. Carry it into a retry or reconnect recovery;
+  // clear it only once the selected artwork is handed to the download path.
+  ctx->media_artwork_refresh_forced |= refresh_forced;
   ctx->media_artwork_sources.finish_refresh();
   if (espcontrol::artwork::artwork_pending_refresh_needs_reschedule(
         ctx->media_artwork_trigger.pending,
@@ -2231,6 +2235,7 @@ inline void image_card_process_media_artwork(ImageCardCtx *ctx,
     image_card_log_diagnostics(ctx, "media-artwork-unchanged");
     return;
   }
+  ctx->media_artwork_refresh_forced = false;
   image_card_handle_picture(ctx, esphome::StringRef(chosen));
 }
 

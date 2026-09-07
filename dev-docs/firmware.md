@@ -90,6 +90,8 @@ including before state subscriptions are ready. Diagnostic API clients must not
 start or cancel that work. Artwork recovery
 rechecks source URLs without forcing a healthy cached image to download again.
 Real metadata changes still force a refresh when a provider reuses its URL.
+That refresh requirement survives attribute timeouts until artwork is handed to
+the download path; retries for a missing optional attribute then stay unforced.
 
 ## Config Parser Rules
 
