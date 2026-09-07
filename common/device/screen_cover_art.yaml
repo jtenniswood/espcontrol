@@ -1846,17 +1846,18 @@ script:
     mode: restart
     then:
       - delay: 100ms
-      - lambda: |-
-          if (!id(cover_art_screensaver_enabled).state ||
-              id(cover_art_active_media_player_entity).empty() ||
-              !id(cover_art_attribute_conditions_match) ||
-              (id(cover_art_hide_external_input_enabled).state &&
-               id(cover_art_external_input_active))) {
-            return;
-          }
-          ha_request_fresh_attributes(
-            id(cover_art_active_media_player_entity),
-            {"media_title", "media_artist", "media_album_name"});
+      # Keep metadata current while visibility conditions hide Cover Art.
+      # Retry rejected sends; accepted reads still use the existing subscriptions.
+      - while:
+          condition:
+            lambda: |-
+              return id(cover_art_screensaver_enabled).state &&
+                     !id(cover_art_active_media_player_entity).empty() &&
+                     !ha_request_fresh_attributes(
+                       id(cover_art_active_media_player_entity),
+                       {"media_title", "media_artist", "media_album_name"});
+          then:
+            - delay: 1s
 
   - id: cover_art_apply_external_input_policy
     mode: restart

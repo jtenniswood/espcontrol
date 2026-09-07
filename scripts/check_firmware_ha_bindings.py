@@ -165,6 +165,21 @@ COVER_COMMAND_REQUEST_PATTERN = re.compile(
 YAML_SCRIPT_PATTERN_TEMPLATE = r"(?ms)^  - id: {script_id}\n(?P<body>.*?)(?=^  - id: |\Z)"
 
 
+def accumulating_ha_read_call(text: str) -> bool:
+    # Preserve quoted strings while removing comments, so URLs cannot hide code
+    # after them and explanatory API names do not count as calls.
+    code = re.sub(
+        r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/',
+        lambda match: " " if match.group().startswith(("//", "/*")) else match.group(),
+        text,
+        flags=re.DOTALL,
+    )
+    return bool(re.search(
+        r"\bget_home_assistant_state\s*\(|\btransport_\s*(?:\.|->)\s*get\s*\(",
+        code,
+    ))
+
+
 def yaml_script_body(text: str, script_id: str) -> str | None:
     match = re.search(YAML_SCRIPT_PATTERN_TEMPLATE.format(script_id=re.escape(script_id)), text)
     return match.group("body") if match else None
@@ -239,7 +254,7 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
     if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
         errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
-    if "->get_home_assistant_state(" in text:
+    if accumulating_ha_read_call(read_boundary_text):
         errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")
     if (
         "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
@@ -4583,6 +4598,29 @@ def expect_c6_update_status_errors(name: str, text: str, expected: tuple[str, ..
 
 
 def run_self_test() -> int:
+    for call in (
+        "api->get_home_assistant_state(entity, callback);",
+        "api.get_home_assistant_state(entity, callback);",
+        "get_home_assistant_state (entity, callback);",
+        "api . get_home_assistant_state\n(entity, callback);",
+        "transport_.get(entity, callback);",
+        "transport_ -> get (entity, callback);",
+        "api./* boundary */get_home_assistant_state(entity, callback);",
+    ):
+        for filename in ("button_grid_ha.h", "ha_read_coordinator.h"):
+            expect_ha_boundary_errors(
+                f"accumulating call in {filename}: {call}",
+                {"button_grid_ha.h": "", filename: call},
+                ("fresh metadata reads must reuse subscriptions",),
+            )
+    assert not accumulating_ha_read_call(
+        "// get_home_assistant_state(entity, callback);\n"
+        "/* transport_.get(entity, callback); */\n"
+        "transport_.request(entity, attribute);"
+    )
+    assert accumulating_ha_read_call(
+        'const char *url = "https://example.test"; api.get_home_assistant_state(entity, cb);'
+    )
     expect_media_cover_art_external_input_errors(
         "missing media cover art external-input handling",
         {

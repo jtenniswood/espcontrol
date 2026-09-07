@@ -1583,14 +1583,18 @@ inline void media_playback_refresh_progress_timer(MediaPlaybackState *state) {
 
 inline void media_playback_metadata_refresh_timer_cb(lv_timer_t *timer) {
   MediaPlaybackState *state = static_cast<MediaPlaybackState *>(lv_timer_get_user_data(timer));
-  if (!state || state->generation != ha_subscription_generation()) {
+  if (!state || state->generation != ha_subscription_generation() ||
+      !state->metadata_refresh_pending) {
     if (timer) lv_timer_pause(timer);
     return;
   }
-  state->metadata_refresh_pending = false;
   if (!ha_request_fresh_attributes(state->entity_id, {"media_title", "media_artist"})) {
     ESP_LOGD("media", "Fresh metadata request unavailable for %s", state->entity_id.c_str());
+    // Keep the same timer armed through transient API/heap/send failures.
+    if (timer) lv_timer_set_period(timer, 1000);
+    return;
   }
+  state->metadata_refresh_pending = false;
   if (timer) lv_timer_pause(timer);
 }
 

@@ -358,12 +358,12 @@ inline bool ha_request_fresh_attributes(
   if (!ha_internal_heap_available("fresh Home Assistant metadata request",
                                   HA_READ_INTERNAL_FREE_MIN_BYTES,
                                   HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
-  bool requested = false;
+  bool all_requested = true;
   for (const char *attribute : attributes) {
-    if (attribute != nullptr &&
-        ha_read_coordinator().request_fresh(entity_id, std::string(attribute))) {
-      requested = true;
+    if (attribute == nullptr ||
+        !ha_read_coordinator().request_fresh(entity_id, std::string(attribute))) {
+      all_requested = false;
     }
   }
-  return requested;
+  return all_requested;
 }

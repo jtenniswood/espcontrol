@@ -749,6 +749,26 @@ void fresh_requests_reuse_subscription_and_recover_after_send_failure() {
           "fresh request must require an existing live channel");
 }
 
+void omitted_fresh_responses_do_not_accumulate_callbacks() {
+  Coordinator coordinator;
+  coordinator.subscribe("media_player.room", "media_artist",
+                        [](std::string) {}, 1u, nullptr, true);
+  const size_t capacity = coordinator.transient_callback_capacity();
+  for (int i = 0; i < 100; ++i) {
+    coordinator.reset_fresh_requests();
+    require(coordinator.request_fresh("media_player.room", "media_artist"),
+            "a new track must still request an omitted attribute");
+    // Deliberately never answer: missing attributes must not retain a native
+    // callback per request, even when every transition resets pending reads.
+  }
+  require(coordinator.transport().subscriptions.size() == 1 &&
+              coordinator.subscription_count() == 1 &&
+              coordinator.subscription_channel_count() == 1 &&
+              coordinator.pending_read_count() == 0 &&
+              coordinator.transient_callback_capacity() == capacity,
+          "omitted attributes accumulated callbacks or transient storage");
+}
+
 
 void released_owner_drops_pending_reads_even_if_its_address_is_reused() {
   Coordinator coordinator;
@@ -825,6 +845,7 @@ void core_owns_binding_service_lifetime() {
 
 int main() {
   fresh_requests_reuse_subscription_and_recover_after_send_failure();
+  omitted_fresh_responses_do_not_accumulate_callbacks();
   disconnected_read_flushes_after_reconnect();
   low_memory_rejects_retained_read_without_pending_work();
   duplicate_reads_fan_out_once();
