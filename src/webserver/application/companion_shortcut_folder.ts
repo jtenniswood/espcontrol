@@ -414,6 +414,12 @@ export function syncCompanionShortcutSubpage(
         newButtons.push(card);
         newOrder.push(String(newButtons.length));
     });
+    for (let index = 0; index < newOrder.length && desiredIndex < desired.length; index += 1) {
+        if (newOrder[index]) continue;
+        const entry: any = desired[desiredIndex++];
+        newButtons.push(entry.card);
+        newOrder[index] = String(newButtons.length) + (suffixByKey.get(entry.key) || "");
+    }
     while (desiredIndex < desired.length) {
         const entry: any = desired[desiredIndex++];
         newButtons.push(entry.card);

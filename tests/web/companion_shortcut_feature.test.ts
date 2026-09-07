@@ -292,7 +292,8 @@ export function runCompanionShortcutFeatureTests(): void {
   syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["1", "0"], customizedSafariSubpage);
   if (customizedSafariSubpage.buttons.filter((card: any) =>
       card.options.includes("app_shortcut_preset=com.apple.Safari%3A0")).length !== 1 ||
-      customizedSafariSubpage.buttons.some((card: any) => card.entity === "shortcut.command+left")) {
+      customizedSafariSubpage.buttons.some((card: any) => card.entity === "shortcut.command+left") ||
+      customizedSafariSubpage.order.length !== 7 || customizedSafariSubpage.order[1] !== "2") {
     throw new Error("Turning an edited shortcut off and on must not create a duplicate preset");
   }
   setCompanionShortcutTabs(safariFolderCard, []);
