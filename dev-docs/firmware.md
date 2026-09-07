@@ -83,8 +83,11 @@ work are limited.
 Use the firmware UI playbook for subscription and runtime checks.
 
 Home Assistant reconnect recovery lives in the restartable
-`ha_refresh_after_connect` script. Disconnects cancel its delayed refreshes;
-diagnostic API clients must not start or cancel that work. Artwork recovery
+`ha_refresh_after_connect` script. A Home Assistant disconnect cancels its delayed
+refreshes only when no authenticated Home Assistant connection remains. An old
+socket disconnecting must preserve a replacement's recovery and pending requests,
+including before state subscriptions are ready. Diagnostic API clients must not
+start or cancel that work. Artwork recovery
 rechecks source URLs without forcing a healthy cached image to download again.
 Real metadata changes still force a refresh when a provider reuses its URL.
 
