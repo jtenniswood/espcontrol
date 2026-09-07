@@ -16,8 +16,8 @@ inline constexpr float CLOCK_HANDOFF_LEVEL = 0.02f;
 // replacement fade (or normal light transition) starts at the visible level.
 // Internal samples must not publish a new user setting or write preferences.
 template<typename Light, typename Output>
-void apply_backlight_fade_level(Light &light, Output &output, float level) {
-  auto call = light.make_call();
+void apply_backlight_fade_level(Light *light, Output *output, float level) {
+  auto call = light->make_call();
   call.set_state(level > 0.0f);
   call.set_brightness(level);
   call.set_transition_length(0);
@@ -26,7 +26,7 @@ void apply_backlight_fade_level(Light &light, Output &output, float level) {
   call.perform();
   // ESPHome schedules its output write for the next light loop. Apply this
   // sample now as well, before a redraw can delay that loop.
-  output.set_level(level);
+  output->set_level(level);
 }
 
 // Sample brightness from elapsed time. A busy loop skips overdue samples

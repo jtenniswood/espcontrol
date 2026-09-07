@@ -91,13 +91,13 @@ int main() {
         controller.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::CLOCK);
         const auto first = controller.resolve();
         CHECK(controller.start_transition(first, fixture.now_ms));
-        apply_backlight_fade_level(light, light, initial);
+        apply_backlight_fade_level(&light, &light, initial);
         BacklightFade fade;
         fade.start(initial, reveal ? 0.35f : CLOCK_HANDOFF_LEVEL, fixture.now_ms, 250);
         for (uint32_t elapsed : {0u, 100u, 200u, 250u}) {
           if (elapsed > interrupted_ms) break;
           const float sample = fade.level(fixture.now_ms + elapsed);
-          apply_backlight_fade_level(light, light, sample);
+          apply_backlight_fade_level(&light, &light, sample);
         }
         const float before = light.physical_level;
         CHECK(controller.request(DisplayRequestSource::PRESENCE_SENSOR, DisplayMode::CLOCK));
@@ -107,7 +107,7 @@ int main() {
         fixture.start_fade(static_cast<int>(DisplayMode::CLOCK), CLOCK_HANDOFF_LEVEL);
         const float first_replacement_sample = fixture.screensaver_fade_out.level(fixture.now_ms);
         CHECK(std::fabs(first_replacement_sample - before) < 0.00001f);
-        apply_backlight_fade_level(light, light, first_replacement_sample);
+        apply_backlight_fade_level(&light, &light, first_replacement_sample);
         CHECK(std::fabs(light.physical_level - before) < 0.00001f);
         CHECK(!controller.complete_transition(first, fixture.now_ms));
         CHECK(light.remote_values.get_brightness() == 0.8f);
