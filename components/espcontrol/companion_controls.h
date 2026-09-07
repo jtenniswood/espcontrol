@@ -18,7 +18,11 @@
 #include "companion_capabilities_generated.h"
 #include "companion_runtime.h"
 #include "companion_timezone.h"
-#include "../companion/companion.h"
+
+namespace esphome::companion {
+void begin_companion_pairing();
+void revoke_companion_pairing();
+}
 
 #ifdef USE_WEBSERVER
 #include "esphome/components/web_server_idf/web_server_idf.h"
