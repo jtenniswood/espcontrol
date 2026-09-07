@@ -160,6 +160,7 @@ function registerCards(context: ApplicationContext) {
     context.dom.fetch,
     fields,
     cardUi,
+    context.configuration.modalTabs,
     context.configuration.codec,
     context.controllers.selection,
   );

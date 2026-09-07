@@ -4896,6 +4896,14 @@
             "omitDefault": true
           },
           {
+            "name": "app_shortcuts_tabs",
+            "label": "App Subpage Shortcuts",
+            "kind": "text",
+            "omitDefault": true,
+            "hidden": true,
+            "docsHidden": true
+          },
+          {
             "name": "large_numbers",
             "label": "Large Sensor Numbers",
             "kind": "flag",
@@ -4947,6 +4955,7 @@
           "canonicalOptionOrder": [
             "app_shortcuts",
             "app_shortcuts_auto_switch",
+            "app_shortcuts_tabs",
             "large_numbers"
           ],
           "optionHook": "normalize_date_time_options"

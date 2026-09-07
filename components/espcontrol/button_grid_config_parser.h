@@ -1328,10 +1328,36 @@ inline bool companion_app_subpage_auto_switch_enabled(const ParsedCfg &p) {
          cfg_option_token_present(p.options, "app_shortcuts_auto_switch");
 }
 
+inline std::string companion_app_shortcut_tabs_normalized(const ParsedCfg &p) {
+  const std::string value = cfg_option_value(p.options, "app_shortcuts_tabs");
+  if (value.empty()) return "";
+  if (value == "none") return value;
+  const size_t count = p.entity == "com.openai.codex" ? 7 : 5;
+  std::vector<std::string> tabs;
+  for (const auto &part : split_config_fields(value, '|')) {
+    if (part.size() != 1 || part[0] < '0' || static_cast<size_t>(part[0] - '0') >= count ||
+        std::find(tabs.begin(), tabs.end(), part) != tabs.end()) {
+      continue;
+    }
+    tabs.push_back(part);
+  }
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
 inline std::string companion_card_options_normalized(const ParsedCfg &p) {
   if (!companion_app_shortcuts_enabled(p)) return "";
-  return companion_app_subpage_auto_switch_enabled(p)
+  std::string out = companion_app_subpage_auto_switch_enabled(p)
     ? "app_shortcuts,app_shortcuts_auto_switch" : "app_shortcuts";
+  const std::string tabs = companion_app_shortcut_tabs_normalized(p);
+  if (!tabs.empty()) {
+    out += ",app_shortcuts_tabs=" + encode_compact_field(tabs);
+  }
+  return out;
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {

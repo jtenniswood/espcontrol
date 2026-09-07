@@ -3004,6 +3004,14 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "omitDefault": true
       },
       {
+        "name": "app_shortcuts_tabs",
+        "label": "App Subpage Shortcuts",
+        "kind": "text",
+        "omitDefault": true,
+        "hidden": true,
+        "docsHidden": true
+      },
+      {
         "name": "large_numbers",
         "label": "Large Sensor Numbers",
         "kind": "flag",
@@ -3055,6 +3063,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "canonicalOptionOrder": [
         "app_shortcuts",
         "app_shortcuts_auto_switch",
+        "app_shortcuts_tabs",
         "large_numbers"
       ],
       "optionHook": "normalize_date_time_options"
@@ -4784,6 +4793,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "alarm_card_type": "alarm_card_type",
   "app_shortcuts": "app_shortcuts",
   "app_shortcuts_auto_switch": "app_shortcuts_auto_switch",
+  "app_shortcuts_tabs": "app_shortcuts_tabs",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
   "confirm_no": "confirm_no",

@@ -326,7 +326,7 @@ export function createConfigModalTabOptionsFeature(
                 if (input && input.checked)
                     nextTabs.push(row.getAttribute("data-tab"));
             });
-            if (!nextTabs.length)
+            if (!nextTabs.length && !config.allowEmpty)
                 return false;
             saveTabs(nextTabs);
             return true;
@@ -399,7 +399,7 @@ export function createConfigModalTabOptionsFeature(
             input.addEventListener("change", function (this: any) {
                 if (!available)
                     return;
-                if (!this.checked) {
+                if (!this.checked && !config.allowEmpty) {
                     var visibleCount: any = listRows().filter(function (this: any, item?: any) {
                         var itemInput: any = item.querySelector("input[type=checkbox]");
                         return itemInput && itemInput.checked;

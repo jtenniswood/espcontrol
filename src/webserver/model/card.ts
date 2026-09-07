@@ -8,6 +8,7 @@ import {
 export type DraftCardConfig = CardConfig & {
   _whenOnActive?: unknown;
   _whenOnMode?: unknown;
+  _appShortcutSelectionChanged?: unknown;
 };
 
 export const CARD_CONFIG_FIELDS: readonly SavedConfigField[] = [
@@ -54,6 +55,9 @@ export function cloneCardConfig(src?: Partial<CardConfig> & Partial<DraftCardCon
   if (src && Object.prototype.hasOwnProperty.call(src, "_whenOnMode")) {
     button._whenOnMode = src._whenOnMode;
   }
+  if (src && Object.prototype.hasOwnProperty.call(src, "_appShortcutSelectionChanged")) {
+    button._appShortcutSelectionChanged = src._appShortcutSelectionChanged;
+  }
   return button;
 }
 
@@ -67,6 +71,7 @@ export function copyCardConfig(
   }
   target._whenOnActive = button._whenOnActive;
   target._whenOnMode = button._whenOnMode;
+  target._appShortcutSelectionChanged = button._appShortcutSelectionChanged;
   return target as DraftCardConfig;
 }
 

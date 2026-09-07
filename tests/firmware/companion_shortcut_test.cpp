@@ -43,6 +43,15 @@ int main() {
   assert(companion_app_subpage_auto_switch_enabled(safari_launch));
   assert(companion_card_options_normalized(safari_launch) ==
          "app_shortcuts,app_shortcuts_auto_switch");
+  safari_launch.options =
+    "app_shortcuts,app_shortcuts_auto_switch,app_shortcuts_tabs=3%7C0";
+  assert(companion_app_shortcut_tabs_normalized(safari_launch) == "3|0");
+  assert(companion_card_options_normalized(safari_launch) ==
+         "app_shortcuts,app_shortcuts_auto_switch,app_shortcuts_tabs=3%7C0");
+  safari_launch.options = "app_shortcuts,app_shortcuts_tabs=none";
+  assert(companion_app_shortcut_tabs_normalized(safari_launch) == "none");
+  safari_launch.options = "app_shortcuts,app_shortcuts_tabs=9%7C3%7C3%7C0";
+  assert(companion_app_shortcut_tabs_normalized(safari_launch) == "3|0");
   ParsedCfg codex_launch = safari_launch;
   codex_launch.entity = "com.openai.codex";
   assert(companion_app_shortcuts_enabled(codex_launch));

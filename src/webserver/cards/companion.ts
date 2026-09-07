@@ -29,6 +29,7 @@ import type { CardRegistry, CardUiServices } from "../application/card_registry"
 import type { ControlsFieldsFeature } from "../application/controls_fields";
 import type { ConfigCodecFeature } from "../application/config_codec";
 import type { ButtonSettingsSelectionFeature } from "../application/button_settings_selection";
+import type { ConfigModalTabOptionsFeature } from "../application/config_modal_tab_options";
 import { state } from "../state/app_instance";
 import {
     COMPANION_SHORTCUT_PREFIX,
@@ -37,10 +38,16 @@ import {
     companionShortcutActionIdValid,
     companionShortcutFolderAppLabel,
     companionShortcutFolderEditorAvailable,
+    companionShortcutTabDefinitions,
+    companionShortcutTabs,
+    companionShortcutTabsFromSubpage,
     createCompanionShortcutSubpage,
     normalizeCompanionAppShortcutOptions,
+    resetCompanionShortcutTabs,
     setCompanionAppShortcutFolderEnabled,
     setCompanionAppShortcutAutoSwitchEnabled,
+    setCompanionShortcutTabs,
+    syncCompanionShortcutSubpage,
 } from "../application/companion_shortcut_folder";
 
 export interface CompanionAction {
@@ -392,6 +399,7 @@ export function registerCompanionCardTypes(
     fetchImpl: typeof fetch,
     fields: ControlsFieldsFeature,
     cardUi: CardUiServices,
+    modalTabs: Pick<ConfigModalTabOptionsFeature, "renderModalTabSettings">,
     codec: Pick<ConfigCodecFeature, "buildSubpageGrid" | "enterSubpage" | "saveSubpageConfig">,
     selection: Pick<ButtonSettingsSelectionFeature, "closeSettings">,
 ): void {
@@ -683,6 +691,14 @@ export function registerCompanionCardTypes(
                 false,
             );
             panel?.appendChild(appSubpageDisclosure.panel);
+            const savedShortcutSubpage = !helpers.isSub && slot ? state.subpages[slot] : null;
+            if (companionAppShortcutFolderEnabled(card) && savedShortcutSubpage &&
+                card._appShortcutSelectionChanged !== true) {
+                setCompanionShortcutTabs(
+                    card,
+                    companionShortcutTabsFromSubpage(card.entity, savedShortcutSubpage),
+                );
+            }
             const shortcutFolderField = document.createElement("div");
             shortcutFolderField.className = "sp-field";
             const folderToggle = helpers.toggleRow(
@@ -703,6 +719,23 @@ export function registerCompanionCardTypes(
                 helpers.saveField("options", card.options);
                 renderButtonSettings();
             });
+
+            if (companionAppShortcutFolderEnabled(card)) {
+                modalTabs.renderModalTabSettings(appSubpageDisclosure.section, card, helpers, {
+                    definitions: function () { return companionShortcutTabDefinitions(card.entity); },
+                    tabs: companionShortcutTabs,
+                    normalizeOptions: function (options: string) {
+                        return normalizeCompanionAppShortcutOptions({ ...card, options });
+                    },
+                    setTabs: function (button: any, tabs: string[]) {
+                        setCompanionShortcutTabs(button, tabs);
+                        button._appShortcutSelectionChanged = true;
+                    },
+                    idPrefix: "companion-shortcut-",
+                    hideHeading: true,
+                    allowEmpty: true,
+                });
+            }
 
             const autoSwitchField = document.createElement("div");
             autoSwitchField.className = "sp-field";
@@ -875,6 +908,7 @@ export function registerCompanionCardTypes(
                     selectedAction?.label || "",
                 );
                 card.entity = select.value;
+                resetCompanionShortcutTabs(card);
                 card.options = normalizeCompanionAppShortcutOptions(card);
                 helpers.saveField("entity", card.entity);
                 helpers.saveField("options", card.options);
@@ -963,8 +997,21 @@ export function registerCompanionCardTypes(
             });
         },
         afterSave: function (card?: any, slot?: any, context?: any) {
-            if (context?.isSub || !companionAppShortcutFolderEnabled(card) || state.subpages[slot]) return "saved";
-            const subpage = createCompanionShortcutSubpage(card.entity);
+            if (context?.isSub || !companionAppShortcutFolderEnabled(card)) return "saved";
+            const existing = state.subpages[slot];
+            const selectionChanged = card._appShortcutSelectionChanged === true;
+            delete card._appShortcutSelectionChanged;
+            if (existing && !selectionChanged) return "saved";
+            const source = existing ? {
+                ...existing,
+                order: (existing.order || []).slice(),
+                buttons: (existing.buttons || []).map(function (button: any) { return { ...button }; }),
+                grid: (existing.grid || []).slice(),
+                sizes: { ...(existing.sizes || {}) },
+            } : null;
+            const subpage = source
+                ? syncCompanionShortcutSubpage(card.entity, companionShortcutTabs(card), source)
+                : createCompanionShortcutSubpage(card.entity, companionShortcutTabs(card));
             codec.buildSubpageGrid(subpage);
             state.subpages[slot] = subpage;
             return codec.saveSubpageConfig(slot);

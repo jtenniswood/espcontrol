@@ -46,6 +46,9 @@ import {
   companionAppShortcutAutoSwitchEnabled,
   companionShortcutActionIdValid,
   companionShortcutFolderEditorAvailable,
+  companionShortcutTabs,
+  companionShortcutTabsFromSubpage,
+  SAFARI_BUNDLE_ID,
   CODEX_BUNDLE_ID,
   SLACK_BUNDLE_ID,
   createSafariShortcutSubpage,
@@ -57,6 +60,8 @@ import {
   safariShortcutPresetCards,
   setCompanionAppShortcutFolderEnabled,
   setCompanionAppShortcutAutoSwitchEnabled,
+  setCompanionShortcutTabs,
+  syncCompanionShortcutSubpage,
 } from "../../src/webserver/application/companion_shortcut_folder";
 import { cardTransferOwnsSubpage } from "../../src/webserver/model/card_transfer";
 import {
@@ -245,6 +250,28 @@ export function runCompanionShortcutFeatureTests(): void {
   const safariSubpage = createSafariShortcutSubpage();
   if (safariSubpage.backLabel !== "Back" || safariSubpage.order.join("|") !== "B|1|2|3|4|5") {
     throw new Error("Safari app subpage layout changed");
+  }
+  setCompanionShortcutTabs(safariFolderCard, ["3", "0"]);
+  if (companionShortcutTabs(safariFolderCard).join("|") !== "3|0" ||
+      !String(safariFolderCard.options).includes("app_shortcuts_tabs=3%7C0")) {
+    throw new Error("App subpage shortcut choices must retain their enabled order");
+  }
+  const selectedSafariSubpage = createSafariShortcutSubpage();
+  selectedSafariSubpage.buttons[0].label = "Previous";
+  selectedSafariSubpage.buttons.push({
+    ...selectedSafariSubpage.buttons[0], entity: "shortcut.command+l", label: "Custom",
+  });
+  selectedSafariSubpage.order.push("6");
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["3", "0"], selectedSafariSubpage);
+  if (selectedSafariSubpage.buttons.map((card: any) => card.label).join("|") !== "New Tab|Previous|Custom" ||
+      selectedSafariSubpage.order.join("|") !== "B|1|2|3" ||
+      companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, selectedSafariSubpage).join("|") !== "3|0") {
+    throw new Error("Changing shortcut choices must preserve custom cards and edited preset cards");
+  }
+  setCompanionShortcutTabs(safariFolderCard, []);
+  if (companionShortcutTabs(safariFolderCard).length !== 0 ||
+      !String(safariFolderCard.options).includes("app_shortcuts_tabs=none")) {
+    throw new Error("Users must be able to turn off every preset shortcut");
   }
   const codexSubpage = createCodexShortcutSubpage();
   if (codexSubpage.backLabel !== "Back" || codexSubpage.order.join("|") !== "B|1|2|3|4|5|6|7" ||

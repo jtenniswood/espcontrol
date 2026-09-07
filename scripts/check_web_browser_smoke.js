@@ -4994,6 +4994,71 @@ async function assertNativeProfileJourney(browser, testCase) {
   }
 }
 
+async function assertCompanionShortcutSettings(browser, testCase) {
+  if (testCase.slug !== "guition-esp32-s3-4848s040") return;
+  const nativeState = nativeConfigState(testCase.slug);
+  nativeState.document.buttons[1] =
+    "com.apple.Safari;Safari;Monitor;Auto;;;companion;;app_shortcuts";
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(
+      () => window.__eventSources && window.__eventSources.length > 0,
+    );
+    await seedNativeDocument(page, nativeState);
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+
+    const panels = page.locator(".sp-settings-modal .sp-panel > .sp-disclosure");
+    const panelLabels = await panels.locator(".sp-disclosure-button > span:first-child").allTextContents();
+    assert(
+      panelLabels.includes("Card Settings") && panelLabels.includes("App subpage"),
+      `${testCase.name}: App subpage should be a separate panel beside Card Settings`,
+    );
+    const appSubpage = panels.filter({ hasText: "App subpage" }).first();
+    await appSubpage.locator(".sp-disclosure-button").click();
+    const rows = appSubpage.locator(".sp-light-tab-row");
+    assert.deepStrictEqual(
+      await rows.locator(".sp-light-tab-label").allTextContents(),
+      ["Back", "Forward", "Reload", "New Tab", "Close Tab"],
+      `${testCase.name}: Safari should expose its reorderable shortcut list`,
+    );
+    await page.getByRole("button", { name: "Move New Tab up" }).click();
+    await page.locator("#sp-inp-companion-shortcut-1").evaluate((input) => input.click());
+    assert.deepStrictEqual(
+      await appSubpage.locator(".sp-light-tab-label").allTextContents(),
+      ["Back", "New Tab", "Reload", "Close Tab", "Forward"],
+      `${testCase.name}: disabled shortcuts should follow enabled shortcuts after rerender`,
+    );
+    const beforeSave = nativeState.puts.length;
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(
+      nativeState,
+      () => nativeState.puts.length > beforeSave &&
+        String(nativeState.document.buttons[1] || "").includes("app_shortcuts_tabs=0%7C3%7C2%7C4"),
+      `${testCase.name}: shortcut selection save`,
+    );
+    const subpage = String(nativeState.document.subpages && nativeState.document.subpages[1] || "");
+    assert(
+      subpage.includes("shortcut.command+keybracketleft") &&
+        subpage.includes("shortcut.command+t") &&
+        subpage.includes("shortcut.command+r") &&
+        subpage.includes("shortcut.command+w") &&
+        !subpage.includes("shortcut.command+keybracketright"),
+      `${testCase.name}: saving should generate only enabled shortcuts`,
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function assertLegacyProfileFallback(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -5339,6 +5404,7 @@ async function runCase(browser, testCase) {
     for (const testCase of ACTIVE_CASES) {
       if (!acceptanceOnly) await runCase(browser, testCase);
       await assertNativeProfileJourney(browser, testCase);
+      await assertCompanionShortcutSettings(browser, testCase);
       await assertLegacyProfileFallback(browser, testCase);
       if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);
       await assertOfflineProfileFallback(browser, testCase);
