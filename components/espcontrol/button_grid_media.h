@@ -537,20 +537,29 @@ inline void media_apply_position(SliderCtx *ctx) {
 inline void media_deferred_position_refresh_cb(lv_timer_t *timer) {
   if (!timer) return;
   SliderCtx *ctx = static_cast<SliderCtx *>(lv_timer_get_user_data(timer));
-  if (ctx) {
-    if (ctx->media_slider) slider_refresh_geometry(ctx->media_slider);
-    media_apply_position(ctx);
-    if (ctx->media_position_refresh_remaining > 0) {
-      ctx->media_position_refresh_remaining--;
-      return;
+  if (!espcontrol::media_slider_lifecycle::callback_is_current(
+        ctx, timer,
+        [](lv_obj_t *obj) { return lv_obj_get_user_data(obj); })) {
+    if (ctx && ctx->media_timer == timer) {
+      ctx->media_timer = nullptr;
+      ctx->media_position_refresh_remaining = 0;
     }
-    ctx->media_timer = nullptr;
+    lv_timer_del(timer);
+    return;
   }
+  slider_refresh_geometry(ctx->media_slider);
+  media_apply_position(ctx);
+  if (ctx->media_position_refresh_remaining > 0) {
+    ctx->media_position_refresh_remaining--;
+    return;
+  }
+  ctx->media_timer = nullptr;
   lv_timer_del(timer);
 }
 
 inline void media_schedule_position_refresh(SliderCtx *ctx) {
-  if (!ctx || !ctx->media_position || !ctx->media_slider) return;
+  if (!espcontrol::media_slider_lifecycle::can_schedule(
+        ctx, [](lv_obj_t *obj) { return lv_obj_get_user_data(obj); })) return;
   ctx->media_position_refresh_remaining = 10;
   if (ctx->media_timer) return;
   ctx->media_timer = lv_timer_create(media_deferred_position_refresh_cb, 100, ctx);
@@ -740,15 +749,7 @@ inline void delete_media_now_playing_context(MediaNowPlayingCtx *ctx) {
 inline void delete_media_slider_context(SliderCtx *ctx) {
   if (!ctx) return;
   media_playback_detach_slider(ctx);
-  if (ctx->media_timer) {
-    lv_timer_del(ctx->media_timer);
-    ctx->media_timer = nullptr;
-  }
-  ctx->media_slider = nullptr;
-  ctx->fill = nullptr;
-  ctx->media_track_bg = nullptr;
-  ctx->media_value_lbl = nullptr;
-  ctx->media_status_lbl = nullptr;
+  slider_detach_runtime(ctx);
   delete ctx;
 }
 

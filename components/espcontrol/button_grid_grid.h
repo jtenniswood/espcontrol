@@ -1456,15 +1456,7 @@ inline void grid_prepare_media_runtime_for_visual_reset(lv_obj_t *owner) {
     } else if (allocation.deleter == grid_delete_media_slider_runtime_ptr) {
       SliderCtx *ctx = static_cast<SliderCtx *>(allocation.ptr);
       media_playback_detach_slider(ctx);
-      if (ctx->media_timer) {
-        lv_timer_del(ctx->media_timer);
-        ctx->media_timer = nullptr;
-      }
-      ctx->media_slider = nullptr;
-      ctx->fill = nullptr;
-      ctx->media_track_bg = nullptr;
-      ctx->media_value_lbl = nullptr;
-      ctx->media_status_lbl = nullptr;
+      slider_detach_runtime(ctx);
     }
   }
 }
