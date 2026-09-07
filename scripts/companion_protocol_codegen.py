@@ -180,12 +180,12 @@ enum CompanionProtocolDirection: String { case panelToMac = "panel_to_mac", macT
     def struct(ident,fields):
         decl=[]
         for key,spec in fields.items():decl.append('    let '+key+': '+typ(spec,ident+name(key))+('?' if spec.get('optional') else ''))
-        out.append('struct Companion'+ident+': Codable, Sendable {\n'+'\n'.join(decl)+'\n}\n')
+        out.append('struct CompanionWire'+ident+': Codable, Sendable {\n'+'\n'.join(decl)+'\n}\n')
     # Nested type names need the same prefix as top-level declarations.
     for m in data['protocol']['messages']:struct(name(m['id']),m['fields'])
     out.append('enum CompanionProtocolMessage: Sendable {\n')
     for m in data['protocol']['messages']:
-        n=name(m['id']);out.append(f'    case {n[0].lower()+n[1:]}(Companion{n})\n')
+        n=name(m['id']);out.append(f'    case {n[0].lower()+n[1:]}(CompanionWire{n})\n')
     out.append('}\n')
     # Validation is generated from the same field rules as the C++ decoder.
     schema=json.dumps(data['protocol']['messages'],separators=(',',':'))
@@ -253,11 +253,11 @@ enum CompanionProtocolDirection: String { case panelToMac = "panel_to_mac", macT
         switch type {
 ''')
     for m in data['protocol']['messages']:
-        n=name(m['id']);out.append(f'        case {json.dumps(m["id"])}: return (try? decoder.decode(Companion{n}.self, from: data)).map(CompanionProtocolMessage.{n[0].lower()+n[1:]})\n')
+        n=name(m['id']);out.append(f'        case {json.dumps(m["id"])}: return (try? decoder.decode(CompanionWire{n}.self, from: data)).map(CompanionProtocolMessage.{n[0].lower()+n[1:]})\n')
     out.append('        default: return nil\n        }\n    }\n}\n')
     result=''.join(out)
     # Nested catalogue entries are generated alongside the message structures.
-    result=result.replace('[CataloguePageItemsItem]','[CompanionCataloguePageItemsItem]')
+    result=result.replace('[CataloguePageItemsItem]','[CompanionWireCataloguePageItemsItem]')
     # Foundation dictionaries are immutable after initialization, but Any does not express Sendable.
     result=result.replace('private static let schemas', 'nonisolated(unsafe) private static let schemas')
     return result

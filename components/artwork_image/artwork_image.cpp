@@ -1059,6 +1059,7 @@ size_t ArtworkImage::get_sane_content_length_() const {
 }
 
 void ArtworkImage::loop() {
+  ImageService::instance().process_pending();
   this->cleanup_retired_buffers_(false);
   if (this->s3_transfer_pending_) {
     this->consume_s3_transfer_result_();

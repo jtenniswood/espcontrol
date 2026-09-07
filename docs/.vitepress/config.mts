@@ -496,6 +496,7 @@ export default defineConfig({
           { text: 'Request Device Support', link: '/reference/request-device-support' },
           { text: 'Privacy Policy', link: '/reference/privacy' },
           { text: 'FAQ', link: '/reference/faq' },
+          { text: 'Privacy Policy', link: '/reference/privacy' },
         ],
       },
     ],

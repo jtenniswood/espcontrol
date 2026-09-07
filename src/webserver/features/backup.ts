@@ -160,7 +160,14 @@ export function createBackupFeature(dependencies: BackupFeatureDependencies): Ba
     const importedCount = config.buttons.length;
     const warnings: string[] = [];
 
-    if (config.device && config.device !== targetDeviceId) {
+    const nativeDeviceProfile = config.native_config?.device_profile ||
+      config.native_config_skipped_device_profile;
+    if (nativeDeviceProfile && nativeDeviceProfile !== targetDeviceId) {
+      warnings.push(
+        `This backup was taken from ${nativeDeviceProfile}; this device is ${targetDeviceId}. ` +
+          "Layout will be restored, but the native configuration will be skipped.",
+      );
+    } else if (config.device && config.device !== targetDeviceId) {
       warnings.push(`Config was exported from a different panel (${config.device}) - layout may look different`);
     }
     if (importedCount !== targetSlots) {

@@ -4,67 +4,67 @@ import CoreFoundation
 
 enum CompanionProtocolState: String { case pairing, authenticating, connected }
 enum CompanionProtocolDirection: String { case panelToMac = "panel_to_mac", macToPanel = "mac_to_panel" }
-struct CompanionHello: Codable, Sendable {
+struct CompanionWireHello: Codable, Sendable {
 
 }
-struct CompanionPairRequest: Codable, Sendable {
+struct CompanionWirePairRequest: Codable, Sendable {
     let code: String
 }
-struct CompanionPairAccepted: Codable, Sendable {
+struct CompanionWirePairAccepted: Codable, Sendable {
     let credential: String
 }
-struct CompanionAuthRequest: Codable, Sendable {
+struct CompanionWireAuthRequest: Codable, Sendable {
     let sequence: UInt32
     let nonce: String
     let signature: String
 }
-struct CompanionAuthAccepted: Codable, Sendable {
+struct CompanionWireAuthAccepted: Codable, Sendable {
     let capabilityVersion: UInt32
 }
-struct CompanionCapabilities: Codable, Sendable {
+struct CompanionWireCapabilities: Codable, Sendable {
     let values: [String]
 }
-struct CompanionCatalogueRequest: Codable, Sendable {
+struct CompanionWireCatalogueRequest: Codable, Sendable {
 
 }
-struct CompanionCataloguePageItemsItem: Codable, Sendable {
+struct CompanionWireCataloguePageItemsItem: Codable, Sendable {
     let id: String
     let label: String
 }
-struct CompanionCataloguePage: Codable, Sendable {
+struct CompanionWireCataloguePage: Codable, Sendable {
     let generation: UInt32
     let page: UInt32
     let complete: Bool
-    let items: [CompanionCataloguePageItemsItem]
+    let items: [CompanionWireCataloguePageItemsItem]
 }
-struct CompanionActionInvoke: Codable, Sendable {
+struct CompanionWireActionInvoke: Codable, Sendable {
     let requestId: String
     let kind: String
     let actionId: String?
     let appId: String?
     let encodedUrl: String?
 }
-struct CompanionActionResult: Codable, Sendable {
+struct CompanionWireActionResult: Codable, Sendable {
     let requestId: String
     let status: String
 }
-struct CompanionValueSet: Codable, Sendable {
+struct CompanionWireValueSet: Codable, Sendable {
     let requestId: String
     let controlId: String
     let value: UInt32
 }
-struct CompanionValueState: Codable, Sendable {
+struct CompanionWireValueState: Codable, Sendable {
     let controlId: String
     let available: Bool
     let value: UInt32?
 }
-struct CompanionFocusChanged: Codable, Sendable {
+struct CompanionWireFocusChanged: Codable, Sendable {
     let actionId: String
 }
-struct CompanionTimezoneChanged: Codable, Sendable {
+struct CompanionWireTimezoneChanged: Codable, Sendable {
     let identifier: String
 }
-struct CompanionNowPlaying: Codable, Sendable {
+struct CompanionWireNowPlaying: Codable, Sendable {
     let generation: UInt32
     let applicationIdentifier: String
     let applicationName: String
@@ -79,7 +79,7 @@ struct CompanionNowPlaying: Codable, Sendable {
     let hasArtwork: Bool
     let artworkSHA256: String?
 }
-struct CompanionSystemMetrics: Codable, Sendable {
+struct CompanionWireSystemMetrics: Codable, Sendable {
     let generation: UInt32
     let available: Bool?
     let cpuUsagePercent: Double?
@@ -88,52 +88,52 @@ struct CompanionSystemMetrics: Codable, Sendable {
     let batteryPercent: Double?
     let networkThroughputKBps: Double?
 }
-struct CompanionArtworkBegin: Codable, Sendable {
+struct CompanionWireArtworkBegin: Codable, Sendable {
     let generation: UInt32
     let byteLength: UInt32
     let sha256: String
     let mimeType: String
 }
-struct CompanionArtworkAck: Codable, Sendable {
+struct CompanionWireArtworkAck: Codable, Sendable {
     let generation: UInt32
     let nextOffset: UInt32
 }
-struct CompanionArtworkEnd: Codable, Sendable {
+struct CompanionWireArtworkEnd: Codable, Sendable {
     let generation: UInt32
 }
-struct CompanionArtworkAbort: Codable, Sendable {
+struct CompanionWireArtworkAbort: Codable, Sendable {
     let generation: UInt32
 }
-struct CompanionArtworkRequest: Codable, Sendable {
+struct CompanionWireArtworkRequest: Codable, Sendable {
     let generation: UInt32
 }
-struct CompanionError: Codable, Sendable {
+struct CompanionWireError: Codable, Sendable {
     let code: String
     let lastSequence: UInt32?
 }
 enum CompanionProtocolMessage: Sendable {
-    case hello(CompanionHello)
-    case pairRequest(CompanionPairRequest)
-    case pairAccepted(CompanionPairAccepted)
-    case authRequest(CompanionAuthRequest)
-    case authAccepted(CompanionAuthAccepted)
-    case capabilities(CompanionCapabilities)
-    case catalogueRequest(CompanionCatalogueRequest)
-    case cataloguePage(CompanionCataloguePage)
-    case actionInvoke(CompanionActionInvoke)
-    case actionResult(CompanionActionResult)
-    case valueSet(CompanionValueSet)
-    case valueState(CompanionValueState)
-    case focusChanged(CompanionFocusChanged)
-    case timezoneChanged(CompanionTimezoneChanged)
-    case nowPlaying(CompanionNowPlaying)
-    case systemMetrics(CompanionSystemMetrics)
-    case artworkBegin(CompanionArtworkBegin)
-    case artworkAck(CompanionArtworkAck)
-    case artworkEnd(CompanionArtworkEnd)
-    case artworkAbort(CompanionArtworkAbort)
-    case artworkRequest(CompanionArtworkRequest)
-    case error(CompanionError)
+    case hello(CompanionWireHello)
+    case pairRequest(CompanionWirePairRequest)
+    case pairAccepted(CompanionWirePairAccepted)
+    case authRequest(CompanionWireAuthRequest)
+    case authAccepted(CompanionWireAuthAccepted)
+    case capabilities(CompanionWireCapabilities)
+    case catalogueRequest(CompanionWireCatalogueRequest)
+    case cataloguePage(CompanionWireCataloguePage)
+    case actionInvoke(CompanionWireActionInvoke)
+    case actionResult(CompanionWireActionResult)
+    case valueSet(CompanionWireValueSet)
+    case valueState(CompanionWireValueState)
+    case focusChanged(CompanionWireFocusChanged)
+    case timezoneChanged(CompanionWireTimezoneChanged)
+    case nowPlaying(CompanionWireNowPlaying)
+    case systemMetrics(CompanionWireSystemMetrics)
+    case artworkBegin(CompanionWireArtworkBegin)
+    case artworkAck(CompanionWireArtworkAck)
+    case artworkEnd(CompanionWireArtworkEnd)
+    case artworkAbort(CompanionWireArtworkAbort)
+    case artworkRequest(CompanionWireArtworkRequest)
+    case error(CompanionWireError)
 }
 enum CompanionProtocolDecoder {
     private static let schemaData = #"[{"id":"hello","direction":"panel_to_mac","authorization":"public","fields":{},"states":["pairing","authenticating","connected"]},{"id":"pair.request","direction":"mac_to_panel","authorization":"pairing_window","fields":{"code":{"type":"string","minLength":1,"maxLength":16}},"states":["pairing"]},{"id":"pair.accepted","direction":"panel_to_mac","authorization":"pairing_window","fields":{"credential":{"type":"string","minLength":1,"maxLength":64,"pattern":"hex64"}},"states":["pairing"]},{"id":"auth.request","direction":"mac_to_panel","authorization":"paired","fields":{"sequence":{"type":"integer","minimum":1,"maximum":4294967295},"nonce":{"type":"string","minLength":1,"maxLength":96},"signature":{"type":"string","minLength":1,"maxLength":64,"pattern":"hex64"}},"states":["authenticating"]},{"id":"auth.accepted","direction":"panel_to_mac","authorization":"paired","fields":{"capabilityVersion":{"type":"integer","minimum":1,"maximum":4294967295}},"states":["authenticating"]},{"id":"capabilities","direction":"mac_to_panel","authorization":"session","fields":{"values":{"type":"array","maxItems":64,"items":{"type":"string","minLength":1,"maxLength":96}}},"states":["connected"]},{"id":"catalogue.request","direction":"panel_to_mac","authorization":"session","fields":{},"states":["connected"]},{"id":"catalogue.page","direction":"mac_to_panel","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295},"page":{"type":"integer","minimum":0,"maximum":65535},"complete":{"type":"boolean"},"items":{"type":"array","maxItems":48,"items":{"type":"object","fields":{"id":{"type":"string","minLength":1,"maxLength":96},"label":{"type":"string","minLength":1,"maxLength":96}}}}},"states":["connected"]},{"id":"action.invoke","direction":"panel_to_mac","authorization":"session","fields":{"requestId":{"type":"string","minLength":1,"maxLength":64},"kind":{"type":"string","enum":["action","url"],"minLength":1,"maxLength":6},"actionId":{"type":"string","minLength":1,"maxLength":96,"optional":true},"appId":{"type":"string","minLength":1,"maxLength":96,"optional":true},"encodedUrl":{"type":"string","minLength":1,"maxLength":128,"optional":true}},"states":["connected"],"requiresWhen":[{"field":"kind","equals":"action","required":["actionId"]},{"field":"kind","equals":"url","required":["appId","encodedUrl"]}]},{"id":"action.result","direction":"bidirectional","authorization":"session","fields":{"requestId":{"type":"string","minLength":1,"maxLength":64},"status":{"type":"string","enum":["activated","performed","opened","not_allowed","not_found","failed"],"minLength":1,"maxLength":11}},"states":["connected"]},{"id":"value.set","direction":"panel_to_mac","authorization":"session","fields":{"requestId":{"type":"string","minLength":1,"maxLength":64},"controlId":{"type":"string","enum":["media.output_volume","media.input_volume"],"minLength":1,"maxLength":19},"value":{"type":"integer","minimum":0,"maximum":100}},"states":["connected"]},{"id":"value.state","direction":"mac_to_panel","authorization":"session","fields":{"controlId":{"type":"string","enum":["media.output_volume","media.input_volume"],"minLength":1,"maxLength":19},"available":{"type":"boolean"},"value":{"type":"integer","minimum":0,"maximum":100,"optional":true}},"states":["connected"],"requiresWhen":[{"field":"available","equals":true,"required":["value"]}]},{"id":"focus.changed","direction":"mac_to_panel","authorization":"session","fields":{"actionId":{"type":"string","minLength":0,"maxLength":96}},"states":["connected"]},{"id":"timezone.changed","direction":"mac_to_panel","authorization":"session","fields":{"identifier":{"type":"string","minLength":1,"maxLength":96}},"states":["connected"]},{"id":"now_playing","direction":"mac_to_panel","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295},"applicationIdentifier":{"type":"string","minLength":0,"maxLength":256},"applicationName":{"type":"string","minLength":0,"maxLength":256},"contentIdentifier":{"type":"string","minLength":0,"maxLength":256},"title":{"type":"string","minLength":0,"maxLength":256},"artist":{"type":"string","minLength":0,"maxLength":256},"album":{"type":"string","minLength":0,"maxLength":256},"state":{"type":"string","enum":["playing","paused","stopped","unavailable"],"minLength":1,"maxLength":11},"durationMs":{"type":"number","minimum":0,"maximum":86400000},"positionMs":{"type":"number","minimum":0,"maximum":86400000},"playbackRate":{"type":"number","minimum":-16,"maximum":16},"hasArtwork":{"type":"boolean"},"artworkSHA256":{"type":"string","minLength":1,"maxLength":64,"pattern":"hex64","optional":true}},"states":["connected"]},{"id":"system_metrics","direction":"mac_to_panel","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295},"available":{"type":"boolean","optional":true},"cpuUsagePercent":{"type":"number","minimum":0,"maximum":100,"optional":true},"memoryUsagePercent":{"type":"number","minimum":0,"maximum":100,"optional":true},"storageUsagePercent":{"type":"number","minimum":0,"maximum":100,"optional":true},"batteryPercent":{"type":"number","minimum":0,"maximum":100,"optional":true},"networkThroughputKBps":{"type":"number","minimum":0,"maximum":1000000000.0,"optional":true}},"states":["connected"],"requiresWhen":[{"field":"available","unlessEquals":false,"required":["cpuUsagePercent","memoryUsagePercent","storageUsagePercent"]}]},{"id":"artwork.begin","direction":"mac_to_panel","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295},"byteLength":{"type":"integer","minimum":1,"maximum":262144},"sha256":{"type":"string","minLength":1,"maxLength":64,"pattern":"hex64"},"mimeType":{"type":"string","enum":["image/jpeg"],"minLength":1,"maxLength":10}},"states":["connected"]},{"id":"artwork.ack","direction":"panel_to_mac","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295},"nextOffset":{"type":"integer","minimum":0,"maximum":262144}},"states":["connected"]},{"id":"artwork.end","direction":"mac_to_panel","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295}},"states":["connected"]},{"id":"artwork.abort","direction":"bidirectional","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295}},"states":["connected"]},{"id":"artwork.request","direction":"panel_to_mac","authorization":"session","fields":{"generation":{"type":"integer","minimum":1,"maximum":4294967295}},"states":["connected"]},{"id":"error","direction":"bidirectional","authorization":"public","fields":{"code":{"type":"string","minLength":1,"maxLength":64},"lastSequence":{"type":"integer","minimum":0,"maximum":4294967295,"optional":true}},"states":["pairing","authenticating","connected"]}]"#.data(using: .utf8)!
@@ -197,28 +197,28 @@ enum CompanionProtocolDecoder {
         }
         let decoder = JSONDecoder()
         switch type {
-        case "hello": return (try? decoder.decode(CompanionHello.self, from: data)).map(CompanionProtocolMessage.hello)
-        case "pair.request": return (try? decoder.decode(CompanionPairRequest.self, from: data)).map(CompanionProtocolMessage.pairRequest)
-        case "pair.accepted": return (try? decoder.decode(CompanionPairAccepted.self, from: data)).map(CompanionProtocolMessage.pairAccepted)
-        case "auth.request": return (try? decoder.decode(CompanionAuthRequest.self, from: data)).map(CompanionProtocolMessage.authRequest)
-        case "auth.accepted": return (try? decoder.decode(CompanionAuthAccepted.self, from: data)).map(CompanionProtocolMessage.authAccepted)
-        case "capabilities": return (try? decoder.decode(CompanionCapabilities.self, from: data)).map(CompanionProtocolMessage.capabilities)
-        case "catalogue.request": return (try? decoder.decode(CompanionCatalogueRequest.self, from: data)).map(CompanionProtocolMessage.catalogueRequest)
-        case "catalogue.page": return (try? decoder.decode(CompanionCataloguePage.self, from: data)).map(CompanionProtocolMessage.cataloguePage)
-        case "action.invoke": return (try? decoder.decode(CompanionActionInvoke.self, from: data)).map(CompanionProtocolMessage.actionInvoke)
-        case "action.result": return (try? decoder.decode(CompanionActionResult.self, from: data)).map(CompanionProtocolMessage.actionResult)
-        case "value.set": return (try? decoder.decode(CompanionValueSet.self, from: data)).map(CompanionProtocolMessage.valueSet)
-        case "value.state": return (try? decoder.decode(CompanionValueState.self, from: data)).map(CompanionProtocolMessage.valueState)
-        case "focus.changed": return (try? decoder.decode(CompanionFocusChanged.self, from: data)).map(CompanionProtocolMessage.focusChanged)
-        case "timezone.changed": return (try? decoder.decode(CompanionTimezoneChanged.self, from: data)).map(CompanionProtocolMessage.timezoneChanged)
-        case "now_playing": return (try? decoder.decode(CompanionNowPlaying.self, from: data)).map(CompanionProtocolMessage.nowPlaying)
-        case "system_metrics": return (try? decoder.decode(CompanionSystemMetrics.self, from: data)).map(CompanionProtocolMessage.systemMetrics)
-        case "artwork.begin": return (try? decoder.decode(CompanionArtworkBegin.self, from: data)).map(CompanionProtocolMessage.artworkBegin)
-        case "artwork.ack": return (try? decoder.decode(CompanionArtworkAck.self, from: data)).map(CompanionProtocolMessage.artworkAck)
-        case "artwork.end": return (try? decoder.decode(CompanionArtworkEnd.self, from: data)).map(CompanionProtocolMessage.artworkEnd)
-        case "artwork.abort": return (try? decoder.decode(CompanionArtworkAbort.self, from: data)).map(CompanionProtocolMessage.artworkAbort)
-        case "artwork.request": return (try? decoder.decode(CompanionArtworkRequest.self, from: data)).map(CompanionProtocolMessage.artworkRequest)
-        case "error": return (try? decoder.decode(CompanionError.self, from: data)).map(CompanionProtocolMessage.error)
+        case "hello": return (try? decoder.decode(CompanionWireHello.self, from: data)).map(CompanionProtocolMessage.hello)
+        case "pair.request": return (try? decoder.decode(CompanionWirePairRequest.self, from: data)).map(CompanionProtocolMessage.pairRequest)
+        case "pair.accepted": return (try? decoder.decode(CompanionWirePairAccepted.self, from: data)).map(CompanionProtocolMessage.pairAccepted)
+        case "auth.request": return (try? decoder.decode(CompanionWireAuthRequest.self, from: data)).map(CompanionProtocolMessage.authRequest)
+        case "auth.accepted": return (try? decoder.decode(CompanionWireAuthAccepted.self, from: data)).map(CompanionProtocolMessage.authAccepted)
+        case "capabilities": return (try? decoder.decode(CompanionWireCapabilities.self, from: data)).map(CompanionProtocolMessage.capabilities)
+        case "catalogue.request": return (try? decoder.decode(CompanionWireCatalogueRequest.self, from: data)).map(CompanionProtocolMessage.catalogueRequest)
+        case "catalogue.page": return (try? decoder.decode(CompanionWireCataloguePage.self, from: data)).map(CompanionProtocolMessage.cataloguePage)
+        case "action.invoke": return (try? decoder.decode(CompanionWireActionInvoke.self, from: data)).map(CompanionProtocolMessage.actionInvoke)
+        case "action.result": return (try? decoder.decode(CompanionWireActionResult.self, from: data)).map(CompanionProtocolMessage.actionResult)
+        case "value.set": return (try? decoder.decode(CompanionWireValueSet.self, from: data)).map(CompanionProtocolMessage.valueSet)
+        case "value.state": return (try? decoder.decode(CompanionWireValueState.self, from: data)).map(CompanionProtocolMessage.valueState)
+        case "focus.changed": return (try? decoder.decode(CompanionWireFocusChanged.self, from: data)).map(CompanionProtocolMessage.focusChanged)
+        case "timezone.changed": return (try? decoder.decode(CompanionWireTimezoneChanged.self, from: data)).map(CompanionProtocolMessage.timezoneChanged)
+        case "now_playing": return (try? decoder.decode(CompanionWireNowPlaying.self, from: data)).map(CompanionProtocolMessage.nowPlaying)
+        case "system_metrics": return (try? decoder.decode(CompanionWireSystemMetrics.self, from: data)).map(CompanionProtocolMessage.systemMetrics)
+        case "artwork.begin": return (try? decoder.decode(CompanionWireArtworkBegin.self, from: data)).map(CompanionProtocolMessage.artworkBegin)
+        case "artwork.ack": return (try? decoder.decode(CompanionWireArtworkAck.self, from: data)).map(CompanionProtocolMessage.artworkAck)
+        case "artwork.end": return (try? decoder.decode(CompanionWireArtworkEnd.self, from: data)).map(CompanionProtocolMessage.artworkEnd)
+        case "artwork.abort": return (try? decoder.decode(CompanionWireArtworkAbort.self, from: data)).map(CompanionProtocolMessage.artworkAbort)
+        case "artwork.request": return (try? decoder.decode(CompanionWireArtworkRequest.self, from: data)).map(CompanionProtocolMessage.artworkRequest)
+        case "error": return (try? decoder.decode(CompanionWireError.self, from: data)).map(CompanionProtocolMessage.error)
         default: return nil
         }
     }

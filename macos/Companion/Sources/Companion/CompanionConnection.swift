@@ -310,6 +310,7 @@ final class CompanionConnection: NSObject {
         if !hasTerminalConnectionError, case .pair = mode {
             updateConnectionStatus("Pairing failed — try again", state: .failed)
         }
+        connectionGeneration &+= 1
         sessionAuthenticated = false
         resetArtworkTransferState()
         connectionTimeoutTask?.cancel()
@@ -556,11 +557,12 @@ final class CompanionConnection: NSObject {
         withUnsafeBytes(of: &offset) { frame.append(contentsOf: $0) }
         frame.append(artworkData[artworkOffset..<end])
         artworkOffset = end
-        task?.send(.data(frame)) { [weak self] error in
-            if error != nil {
-                Task { @MainActor in
-                    self?.resetArtworkTransferState()
-                }
+        guard let sendingTask = task else { resetArtworkTransferState(); return }
+        sendingTask.send(.data(frame)) { [weak self, weak sendingTask] error in
+            guard error != nil else { return }
+            Task { @MainActor [weak self, weak sendingTask] in
+                guard let self, let sendingTask, self.task === sendingTask else { return }
+                self.resetArtworkTransferState()
             }
         }
     }
