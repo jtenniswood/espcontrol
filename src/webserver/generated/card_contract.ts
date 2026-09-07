@@ -3012,6 +3012,14 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "docsHidden": true
       },
       {
+        "name": "app_shortcut_preset",
+        "label": "App Shortcut Preset",
+        "kind": "text",
+        "omitDefault": true,
+        "hidden": true,
+        "docsHidden": true
+      },
+      {
         "name": "large_numbers",
         "label": "Large Sensor Numbers",
         "kind": "flag",
@@ -3064,6 +3072,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "app_shortcuts",
         "app_shortcuts_auto_switch",
         "app_shortcuts_tabs",
+        "app_shortcut_preset",
         "large_numbers"
       ],
       "optionHook": "normalize_date_time_options"
@@ -4791,6 +4800,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "app_shortcut_preset": "app_shortcut_preset",
   "app_shortcuts": "app_shortcuts",
   "app_shortcuts_auto_switch": "app_shortcuts_auto_switch",
   "app_shortcuts_tabs": "app_shortcuts_tabs",

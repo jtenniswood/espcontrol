@@ -58,6 +58,15 @@ int main() {
   ParsedCfg slack_launch = safari_launch;
   slack_launch.entity = "com.tinyspeck.slackmacgap";
   assert(companion_app_shortcuts_enabled(slack_launch));
+  ParsedCfg edited_preset;
+  edited_preset.type = "companion";
+  edited_preset.entity = "shortcut.command+left";
+  edited_preset.options = "app_shortcut_preset=com.apple.Safari%3A0";
+  assert(companion_shortcut_preset_normalized(edited_preset) == "com.apple.Safari:0");
+  assert(companion_card_options_normalized(edited_preset) ==
+         "app_shortcut_preset=com.apple.Safari%3A0");
+  edited_preset.options = "app_shortcut_preset=com.apple.Safari%3A9";
+  assert(companion_shortcut_preset_normalized(edited_preset).empty());
   safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
   assert(!companion_app_shortcuts_enabled(safari_launch));
   assert(!companion_app_subpage_auto_switch_enabled(safari_launch));

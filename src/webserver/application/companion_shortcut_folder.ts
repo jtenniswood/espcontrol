@@ -10,6 +10,7 @@ import { isBackOrderToken } from "../model/subpage";
 export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
 export const COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION = "app_shortcuts_auto_switch";
 export const COMPANION_APP_SHORTCUTS_TABS_OPTION = "app_shortcuts_tabs";
+export const COMPANION_SHORTCUT_PRESET_OPTION = "app_shortcut_preset";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
 export const CODEX_BUNDLE_ID = "com.openai.codex";
 export const SLACK_BUNDLE_ID = "com.tinyspeck.slackmacgap";
@@ -18,6 +19,11 @@ const COMPANION_SHORTCUT_FOLDER_APPS: Readonly<Record<string, string>> = {
     [SAFARI_BUNDLE_ID]: "Safari",
     [CODEX_BUNDLE_ID]: "Codex",
     [SLACK_BUNDLE_ID]: "Slack",
+};
+const COMPANION_SHORTCUT_PRESET_COUNTS: Readonly<Record<string, number>> = {
+    [SAFARI_BUNDLE_ID]: 5,
+    [CODEX_BUNDLE_ID]: 7,
+    [SLACK_BUNDLE_ID]: 5,
 };
 const COMPANION_SHORTCUT_MODIFIERS = new Set(["command", "control", "option", "shift"]);
 const COMPANION_SHORTCUT_KEYS = new Set([
@@ -62,7 +68,12 @@ export function companionAppShortcutAutoSwitchEnabled(card: any): boolean {
 }
 
 export function normalizeCompanionAppShortcutOptions(card: any): string {
-    if (!card || card.type !== "companion" || !companionShortcutFolderAppLabel(card.entity) || card.sensor) return "";
+    if (!card || card.type !== "companion") return "";
+    const presetIdentity = companionShortcutPresetIdentity(card);
+    if (presetIdentity && companionShortcutActionIdValid(card.entity)) {
+        return setConfigOptionValue("", COMPANION_SHORTCUT_PRESET_OPTION, presetIdentity);
+    }
+    if (!companionShortcutFolderAppLabel(card.entity) || card.sensor) return "";
     const options = setConfigOption(
         "",
         COMPANION_APP_SHORTCUTS_OPTION,
@@ -159,6 +170,12 @@ export function companionShortcutFolderEditorAvailable(draftCard: any, savedCard
     return companionAppShortcutFolderEnabled(draftCard) && companionAppShortcutFolderEnabled(savedCard);
 }
 
+export function companionShortcutSelectionMatchesSavedParent(draftCard: any, savedCard: any): boolean {
+    return companionAppShortcutFolderEnabled(draftCard) &&
+        companionAppShortcutFolderEnabled(savedCard) &&
+        draftCard.entity === savedCard.entity;
+}
+
 export function companionShortcutActionIdValid(actionId: unknown): boolean {
     if (typeof actionId !== "string" || !actionId.startsWith(COMPANION_SHORTCUT_PREFIX)) return false;
     const parts = actionId.slice(COMPANION_SHORTCUT_PREFIX.length).split("+");
@@ -188,18 +205,50 @@ function shortcutCard(entity: string, label: string, icon: string): CompanionSho
     };
 }
 
+function companionShortcutPresetKey(bundleIdentifier: string, index: number): string {
+    return bundleIdentifier + ":" + String(index);
+}
+
+function markCompanionShortcutPresets(
+    bundleIdentifier: string,
+    cards: CompanionShortcutPresetCard[],
+): CompanionShortcutPresetCard[] {
+    return cards.map(function (card, index) {
+        return {
+            ...card,
+            options: setConfigOptionValue(
+                card.options,
+                COMPANION_SHORTCUT_PRESET_OPTION,
+                companionShortcutPresetKey(bundleIdentifier, index),
+            ),
+        };
+    });
+}
+
+function companionShortcutPresetIdentity(card: any): string {
+    const raw = configOptionValue(card?.options, COMPANION_SHORTCUT_PRESET_OPTION);
+    const match = raw.match(/^(.*):(\d+)$/);
+    if (!match) return "";
+    const bundleIdentifier = match[1] || "";
+    const index = Number.parseInt(match[2] || "", 10);
+    const count = COMPANION_SHORTCUT_PRESET_COUNTS[bundleIdentifier] || 0;
+    return Number.isInteger(index) && index >= 0 && index < count
+        ? companionShortcutPresetKey(bundleIdentifier, index)
+        : "";
+}
+
 export function safariShortcutPresetCards(): CompanionShortcutPresetCard[] {
-    return [
+    return markCompanionShortcutPresets(SAFARI_BUNDLE_ID, [
         shortcutCard("shortcut.command+keybracketleft", "Back", "Chevron Left"),
         shortcutCard("shortcut.command+keybracketright", "Forward", "Chevron Right"),
         shortcutCard("shortcut.command+r", "Reload", "Repeat"),
         shortcutCard("shortcut.command+t", "New Tab", "Plus"),
         shortcutCard("shortcut.command+w", "Close Tab", "Close"),
-    ];
+    ]);
 }
 
 export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
-    return [
+    return markCompanionShortcutPresets(CODEX_BUNDLE_ID, [
         shortcutCard("shortcut.command+k", "Command", "Application"),
         shortcutCard("shortcut.command+enter", "Approve", "Check"),
         shortcutCard("shortcut.command+t", "Browser", "Web"),
@@ -207,17 +256,17 @@ export function codexShortcutPresetCards(): CompanionShortcutPresetCard[] {
         shortcutCard("shortcut.option+command+b", "Side panel", "Tab"),
         shortcutCard("shortcut.command+j", "Terminal", "Application"),
         shortcutCard("shortcut.control+keybackquote", "Terminal", "Application"),
-    ];
+    ]);
 }
 
 export function slackShortcutPresetCards(): CompanionShortcutPresetCard[] {
-    return [
+    return markCompanionShortcutPresets(SLACK_BUNDLE_ID, [
         shortcutCard("shortcut.command+n", "Compose", "Message Video"),
         shortcutCard("shortcut.command+g", "Search", "Spotlight"),
         shortcutCard("shortcut.command+shift+k", "DMs", "Account"),
         shortcutCard("shortcut.command+j", "Unread", "Bell"),
         shortcutCard("shortcut.command+shift+a", "All Unread", "View Headline"),
-    ];
+    ]);
 }
 
 export function companionShortcutPresetCards(bundleIdentifier: string): CompanionShortcutPresetCard[] {
@@ -264,6 +313,9 @@ export function companionShortcutTabsFromSubpage(
 ): string[] {
     const presets = companionShortcutPresetCards(bundleIdentifier);
     const presetIndex = new Map(presets.map(function (card, index) {
+        return [companionShortcutPresetKey(bundleIdentifier, index), String(index)] as const;
+    }));
+    const legacyPresetIndex = new Map(presets.map(function (card, index) {
         return [card.entity, String(index)] as const;
     }));
     const tabs: string[] = [];
@@ -272,12 +324,15 @@ export function companionShortcutTabsFromSubpage(
         const index = subpageOrderButtonIndex(token);
         if (index < 0 || visited.has(index)) return;
         visited.add(index);
-        const value = presetIndex.get(subpage?.buttons?.[index]?.entity);
+        const card = subpage?.buttons?.[index];
+        const value = presetIndex.get(companionShortcutPresetIdentity(card)) ||
+            legacyPresetIndex.get(card?.entity);
         if (value != null && tabs.indexOf(value) < 0) tabs.push(value);
     });
     (subpage?.buttons || []).forEach(function (card: any, index: number) {
         if (visited.has(index)) return;
-        const value = presetIndex.get(card?.entity);
+        const value = presetIndex.get(companionShortcutPresetIdentity(card)) ||
+            legacyPresetIndex.get(card?.entity);
         if (value != null && tabs.indexOf(value) < 0) tabs.push(value);
     });
     return tabs;
@@ -290,48 +345,84 @@ export function syncCompanionShortcutSubpage(
 ): any {
     if (!subpage) return createCompanionShortcutSubpage(bundleIdentifier, tabs);
     const presets = companionShortcutPresetCards(bundleIdentifier);
-    const presetByEntity = new Map(presets.map(function (card) { return [card.entity, card] as const; }));
-    const existingByEntity = new Map<string, any>();
+    const presetKeyByEntity = new Map(presets.map(function (card, index) {
+        return [card.entity, companionShortcutPresetKey(bundleIdentifier, index)] as const;
+    }));
+    function presetKey(card: any): string {
+        return companionShortcutPresetIdentity(card) || presetKeyByEntity.get(card?.entity) || "";
+    }
+    const existingByKey = new Map<string, any>();
     (subpage.buttons || []).forEach(function (card: any) {
-        if (presetByEntity.has(card?.entity) && !existingByEntity.has(card.entity)) {
-            existingByEntity.set(card.entity, card);
+        const key = presetKey(card);
+        if (key && !existingByKey.has(key)) {
+            card.options = setConfigOptionValue(card.options, COMPANION_SHORTCUT_PRESET_OPTION, key);
+            existingByKey.set(key, card);
         }
     });
+    function managedPresetKey(card: any): string {
+        const key = presetKey(card);
+        return key && existingByKey.get(key) === card ? key : "";
+    }
     const desired = tabs.map(function (value) {
-        const preset = presets[Number.parseInt(value, 10)];
-        return preset ? (existingByEntity.get(preset.entity) || preset) : null;
+        const index = Number.parseInt(value, 10);
+        const preset = presets[index];
+        const key = companionShortcutPresetKey(bundleIdentifier, index);
+        return preset ? { key, card: existingByKey.get(key) || preset } : null;
     }).filter(Boolean);
-    const orderedEntries: Array<{ card: any; suffix: string }> = [];
+    const suffixByKey = new Map<string, string>();
+    (subpage.order || []).forEach(function (token: unknown) {
+        const index = subpageOrderButtonIndex(token);
+        const key = index >= 0 ? managedPresetKey(subpage.buttons?.[index]) : "";
+        if (key && !suffixByKey.has(key)) suffixByKey.set(key, subpageOrderButtonSuffix(token));
+    });
+    const newButtons: any[] = [];
+    const newOrder: string[] = [];
     const visited = new Set<number>();
     let desiredIndex = 0;
     (subpage.order || []).forEach(function (token: unknown) {
+        const rawToken = String(token || "");
+        if (isBackOrderToken(rawToken) || !rawToken) {
+            newOrder.push(rawToken);
+            return;
+        }
         const index = subpageOrderButtonIndex(token);
-        if (index < 0) return;
+        if (index < 0) {
+            newOrder.push(rawToken);
+            return;
+        }
         visited.add(index);
         const card = subpage.buttons?.[index];
-        if (!cardHasContent(card)) return;
-        if (presetByEntity.has(card.entity)) {
+        if (!cardHasContent(card)) {
+            newOrder.push("");
+            return;
+        }
+        if (managedPresetKey(card)) {
             if (desiredIndex < desired.length) {
-                orderedEntries.push({ card: desired[desiredIndex++], suffix: subpageOrderButtonSuffix(token) });
+                const entry: any = desired[desiredIndex++];
+                newButtons.push(entry.card);
+                newOrder.push(String(newButtons.length) + (suffixByKey.get(entry.key) || ""));
+            } else {
+                newOrder.push("");
             }
             return;
         }
-        orderedEntries.push({ card, suffix: subpageOrderButtonSuffix(token) });
+        newButtons.push(card);
+        newOrder.push(String(newButtons.length) + subpageOrderButtonSuffix(token));
     });
     (subpage.buttons || []).forEach(function (card: any, index: number) {
-        if (visited.has(index) || !cardHasContent(card) || presetByEntity.has(card.entity)) return;
-        orderedEntries.push({ card, suffix: "" });
+        if (visited.has(index) || !cardHasContent(card) || managedPresetKey(card)) return;
+        newButtons.push(card);
+        newOrder.push(String(newButtons.length));
     });
     while (desiredIndex < desired.length) {
-        orderedEntries.push({ card: desired[desiredIndex++], suffix: "" });
+        const entry: any = desired[desiredIndex++];
+        newButtons.push(entry.card);
+        newOrder.push(String(newButtons.length) + (suffixByKey.get(entry.key) || ""));
     }
-    const backTokens = (subpage.order || []).filter(function (token: unknown) {
-        return isBackOrderToken(String(token || ""));
-    });
-    subpage.buttons = orderedEntries.map(function (entry) { return entry.card; });
-    subpage.order = (backTokens.length ? backTokens : ["B"]).concat(
-        orderedEntries.map(function (entry, index) { return String(index + 1) + entry.suffix; }),
-    );
+    if (!newOrder.some(function (token) { return isBackOrderToken(token); })) newOrder.unshift("B");
+    subpage.buttons = newButtons;
+    subpage.order = newOrder;
+    subpage.sizes = {};
     return subpage;
 }
 

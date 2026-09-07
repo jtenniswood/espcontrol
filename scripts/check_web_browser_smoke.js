@@ -5031,7 +5031,17 @@ async function assertCompanionShortcutSettings(browser, testCase) {
       `${testCase.name}: Safari should expose its reorderable shortcut list`,
     );
     await page.getByRole("button", { name: "Move New Tab up" }).click();
+    assert.strictEqual(
+      await appSubpage.locator(".sp-disclosure-button").getAttribute("aria-expanded"),
+      "true",
+      `${testCase.name}: App subpage stays open after reordering`,
+    );
     await page.locator("#sp-inp-companion-shortcut-1").evaluate((input) => input.click());
+    assert.strictEqual(
+      await appSubpage.locator(".sp-disclosure-button").getAttribute("aria-expanded"),
+      "true",
+      `${testCase.name}: App subpage stays open after toggling a shortcut`,
+    );
     assert.deepStrictEqual(
       await appSubpage.locator(".sp-light-tab-label").allTextContents(),
       ["Back", "New Tab", "Reload", "Close Tab", "Forward"],

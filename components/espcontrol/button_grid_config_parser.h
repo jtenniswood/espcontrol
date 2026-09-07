@@ -1349,7 +1349,24 @@ inline std::string companion_app_shortcut_tabs_normalized(const ParsedCfg &p) {
   return out;
 }
 
+inline std::string companion_shortcut_preset_normalized(const ParsedCfg &p) {
+  if (p.type != "companion" || p.entity.rfind("shortcut.", 0) != 0) return "";
+  const std::string value = cfg_option_value(p.options, "app_shortcut_preset");
+  const size_t separator = value.rfind(':');
+  if (separator == std::string::npos || separator + 2 != value.size() ||
+      value[separator + 1] < '0' || value[separator + 1] > '9') return "";
+  const std::string bundle = value.substr(0, separator);
+  const size_t index = static_cast<size_t>(value[separator + 1] - '0');
+  const size_t count = bundle == "com.openai.codex" ? 7 :
+    (bundle == "com.apple.Safari" || bundle == "com.tinyspeck.slackmacgap" ? 5 : 0);
+  return index < count ? value : "";
+}
+
 inline std::string companion_card_options_normalized(const ParsedCfg &p) {
+  const std::string preset = companion_shortcut_preset_normalized(p);
+  if (!preset.empty()) {
+    return "app_shortcut_preset=" + encode_compact_field(preset);
+  }
   if (!companion_app_shortcuts_enabled(p)) return "";
   std::string out = companion_app_subpage_auto_switch_enabled(p)
     ? "app_shortcuts,app_shortcuts_auto_switch" : "app_shortcuts";

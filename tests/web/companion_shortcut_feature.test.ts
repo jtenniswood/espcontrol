@@ -46,6 +46,7 @@ import {
   companionAppShortcutAutoSwitchEnabled,
   companionShortcutActionIdValid,
   companionShortcutFolderEditorAvailable,
+  companionShortcutSelectionMatchesSavedParent,
   companionShortcutTabs,
   companionShortcutTabsFromSubpage,
   SAFARI_BUNDLE_ID,
@@ -139,6 +140,10 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard })) {
     throw new Error("Saved Safari app subpages must expose their editor");
   }
+  if (companionShortcutSelectionMatchesSavedParent(
+      { ...safariFolderCard, entity: CODEX_BUNDLE_ID }, safariFolderCard)) {
+    throw new Error("Switching apps must not inherit the previous app's shortcut selection");
+  }
   const safariUrlFolderCard = {
     ...safariFolderCard,
     sensor: "url.https%3A%2F%2Fexample.com",
@@ -188,6 +193,10 @@ export function runCompanionShortcutFeatureTests(): void {
   }
   if (!safariPreset.every((card) => card.type === "companion" && companionShortcutActionIdValid(card.entity))) {
     throw new Error("Safari presets must contain only Companion keyboard shortcuts");
+  }
+  if (!safariPreset.every((card, index) =>
+      card.options.includes("app_shortcut_preset=com.apple.Safari%3A" + index))) {
+    throw new Error("Generated shortcuts must keep a stable preset identity");
   }
   const codexPreset = codexShortcutPresetCards();
   const expectedCodexShortcuts = [
@@ -264,9 +273,27 @@ export function runCompanionShortcutFeatureTests(): void {
   selectedSafariSubpage.order.push("6");
   syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["3", "0"], selectedSafariSubpage);
   if (selectedSafariSubpage.buttons.map((card: any) => card.label).join("|") !== "New Tab|Previous|Custom" ||
-      selectedSafariSubpage.order.join("|") !== "B|1|2|3" ||
+      selectedSafariSubpage.order.join("|") !== "B|1|2||||3" ||
       companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, selectedSafariSubpage).join("|") !== "3|0") {
-    throw new Error("Changing shortcut choices must preserve custom cards and edited preset cards");
+    throw new Error("Changing shortcut choices must preserve custom cards and edited preset cards: " +
+      JSON.stringify(selectedSafariSubpage));
+  }
+  const customizedSafariSubpage = createSafariShortcutSubpage();
+  customizedSafariSubpage.buttons[0].entity = "shortcut.command+left";
+  customizedSafariSubpage.order = ["1", "", "B", "2w", "3", "4", "5"];
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["1", "0"], customizedSafariSubpage);
+  if (customizedSafariSubpage.buttons.map((card: any) => card.entity).join("|") !==
+      "shortcut.command+keybracketright|shortcut.command+left" ||
+      customizedSafariSubpage.order.join("|") !== "1w||B|2|||" ||
+      companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, customizedSafariSubpage).join("|") !== "1|0") {
+    throw new Error("Shortcut identity, size, Back position, and empty cells must survive reordering");
+  }
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["1"], customizedSafariSubpage);
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["1", "0"], customizedSafariSubpage);
+  if (customizedSafariSubpage.buttons.filter((card: any) =>
+      card.options.includes("app_shortcut_preset=com.apple.Safari%3A0")).length !== 1 ||
+      customizedSafariSubpage.buttons.some((card: any) => card.entity === "shortcut.command+left")) {
+    throw new Error("Turning an edited shortcut off and on must not create a duplicate preset");
   }
   setCompanionShortcutTabs(safariFolderCard, []);
   if (companionShortcutTabs(safariFolderCard).length !== 0 ||

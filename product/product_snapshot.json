@@ -4904,6 +4904,14 @@
             "docsHidden": true
           },
           {
+            "name": "app_shortcut_preset",
+            "label": "App Shortcut Preset",
+            "kind": "text",
+            "omitDefault": true,
+            "hidden": true,
+            "docsHidden": true
+          },
+          {
             "name": "large_numbers",
             "label": "Large Sensor Numbers",
             "kind": "flag",
@@ -4956,6 +4964,7 @@
             "app_shortcuts",
             "app_shortcuts_auto_switch",
             "app_shortcuts_tabs",
+            "app_shortcut_preset",
             "large_numbers"
           ],
           "optionHook": "normalize_date_time_options"
