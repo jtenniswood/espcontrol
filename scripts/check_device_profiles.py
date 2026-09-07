@@ -317,6 +317,7 @@ def test_public_api_encryption_policy(profile_slugs: list[str]) -> None:
     assert "provisioning:" not in policy, "public firmware must not add a timed provisioning lockout"
 
     local_reference = f"api_encryption: !include ../{PUBLIC_API_ENCRYPTION_REFERENCE}"
+    dev_reference = f"api_encryption: !include ../../{PUBLIC_API_ENCRYPTION_REFERENCE}"
     remote_reference = f"file: {PUBLIC_API_ENCRYPTION_REFERENCE}"
     for slug in profile_slugs:
         factory = (ROOT / "builds" / f"{slug}.factory.yaml").read_text(encoding="utf-8")
@@ -325,7 +326,9 @@ def test_public_api_encryption_policy(profile_slugs: list[str]) -> None:
         local_build = (ROOT / "builds" / f"{slug}.yaml").read_text(encoding="utf-8")
         assert local_reference in factory, f"{slug}: factory firmware must support dynamic API encryption"
         assert remote_reference in public_config, f"{slug}: public config must support dynamic API encryption"
-        assert PUBLIC_API_ENCRYPTION_REFERENCE not in dev, f"{slug}: dev firmware must remain plaintext"
+        assert dev_reference in dev, (
+            f"{slug}: dev firmware must preserve dynamically provisioned API encryption across OTA testing"
+        )
         assert PUBLIC_API_ENCRYPTION_REFERENCE not in local_build, f"{slug}: local build must remain plaintext"
 
     core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
