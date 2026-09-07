@@ -11,6 +11,7 @@ export const COMPANION_APP_SHORTCUTS_OPTION = "app_shortcuts";
 export const COMPANION_APP_SHORTCUTS_AUTO_SWITCH_OPTION = "app_shortcuts_auto_switch";
 export const COMPANION_APP_SHORTCUTS_TABS_OPTION = "app_shortcuts_tabs";
 export const COMPANION_SHORTCUT_PRESET_OPTION = "app_shortcut_preset";
+const COMPANION_SHORTCUT_CUSTOM_PRESET = "custom";
 export const SAFARI_BUNDLE_ID = "com.apple.Safari";
 export const CODEX_BUNDLE_ID = "com.openai.codex";
 export const SLACK_BUNDLE_ID = "com.tinyspeck.slackmacgap";
@@ -69,6 +70,10 @@ export function companionAppShortcutAutoSwitchEnabled(card: any): boolean {
 
 export function normalizeCompanionAppShortcutOptions(card: any): string {
     if (!card || card.type !== "companion") return "";
+    const presetMarker = configOptionValue(card.options, COMPANION_SHORTCUT_PRESET_OPTION);
+    if (presetMarker === COMPANION_SHORTCUT_CUSTOM_PRESET && companionShortcutActionIdValid(card.entity)) {
+        return setConfigOptionValue("", COMPANION_SHORTCUT_PRESET_OPTION, presetMarker);
+    }
     const presetIdentity = companionShortcutPresetIdentity(card);
     if (presetIdentity && companionShortcutActionIdValid(card.entity)) {
         return setConfigOptionValue("", COMPANION_SHORTCUT_PRESET_OPTION, presetIdentity);
@@ -325,14 +330,18 @@ export function companionShortcutTabsFromSubpage(
         if (index < 0 || visited.has(index)) return;
         visited.add(index);
         const card = subpage?.buttons?.[index];
+        const marker = configOptionValue(card?.options, COMPANION_SHORTCUT_PRESET_OPTION);
         const identity = companionShortcutPresetIdentity(card);
-        const value = identity ? presetIndex.get(identity) : legacyPresetIndex.get(card?.entity);
+        const value = identity ? presetIndex.get(identity) :
+            marker ? undefined : legacyPresetIndex.get(card?.entity);
         if (value != null && tabs.indexOf(value) < 0) tabs.push(value);
     });
     (subpage?.buttons || []).forEach(function (card: any, index: number) {
         if (visited.has(index)) return;
+        const marker = configOptionValue(card?.options, COMPANION_SHORTCUT_PRESET_OPTION);
         const identity = companionShortcutPresetIdentity(card);
-        const value = identity ? presetIndex.get(identity) : legacyPresetIndex.get(card?.entity);
+        const value = identity ? presetIndex.get(identity) :
+            marker ? undefined : legacyPresetIndex.get(card?.entity);
         if (value != null && tabs.indexOf(value) < 0) tabs.push(value);
     });
     return tabs;
@@ -350,10 +359,12 @@ export function syncCompanionShortcutSubpage(
         return [card.entity, companionShortcutPresetKey(bundleIdentifier, index)] as const;
     }));
     function presetKey(card: any): string {
+        const marker = configOptionValue(card?.options, COMPANION_SHORTCUT_PRESET_OPTION);
         const identity = companionShortcutPresetIdentity(card);
         if (identity) {
             return identity.startsWith(bundleIdentifier + ":") ? identity : "";
         }
+        if (marker) return "";
         return presetKeyByEntity.get(card?.entity) || "";
     }
     const existingByKey = new Map<string, any>();
@@ -362,6 +373,12 @@ export function syncCompanionShortcutSubpage(
         if (key && !existingByKey.has(key)) {
             card.options = setConfigOptionValue(card.options, COMPANION_SHORTCUT_PRESET_OPTION, key);
             existingByKey.set(key, card);
+        } else if (key && companionShortcutPresetIdentity(card)) {
+            card.options = setConfigOptionValue(
+                card.options,
+                COMPANION_SHORTCUT_PRESET_OPTION,
+                COMPANION_SHORTCUT_CUSTOM_PRESET,
+            );
         }
     });
     function managedPresetKey(card: any): string {

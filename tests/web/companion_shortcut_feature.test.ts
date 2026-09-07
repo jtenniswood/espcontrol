@@ -310,6 +310,15 @@ export function runCompanionShortcutFeatureTests(): void {
       companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, crossAppSubpage).join("|") !== "0") {
     throw new Error("Shortcut cards pasted from another app must remain custom content");
   }
+  const duplicatedPresetSubpage = createSafariShortcutSubpage();
+  duplicatedPresetSubpage.buttons.push({ ...duplicatedPresetSubpage.buttons[0], label: "Copied Back" });
+  duplicatedPresetSubpage.order.push("6");
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["1", "2", "3", "4"], duplicatedPresetSubpage);
+  if (!duplicatedPresetSubpage.buttons.some((card: any) =>
+      card.label === "Copied Back" && card.options.includes("app_shortcut_preset=custom")) ||
+      companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, duplicatedPresetSubpage).includes("0")) {
+    throw new Error("A duplicated preset must become a custom shortcut without re-enabling its source preset");
+  }
   const fullSafariSubpage = createSafariShortcutSubpage();
   syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["0", "1", "2", "3"], fullSafariSubpage);
   for (let index = 0; index < 4; index += 1) {

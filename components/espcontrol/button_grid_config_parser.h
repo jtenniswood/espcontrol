@@ -1352,6 +1352,7 @@ inline std::string companion_app_shortcut_tabs_normalized(const ParsedCfg &p) {
 inline std::string companion_shortcut_preset_normalized(const ParsedCfg &p) {
   if (p.type != "companion" || p.entity.rfind("shortcut.", 0) != 0) return "";
   const std::string value = cfg_option_value(p.options, "app_shortcut_preset");
+  if (value == "custom") return value;
   const size_t separator = value.rfind(':');
   if (separator == std::string::npos || separator + 2 != value.size() ||
       value[separator + 1] < '0' || value[separator + 1] > '9') return "";

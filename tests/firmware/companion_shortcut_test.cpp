@@ -67,6 +67,8 @@ int main() {
          "app_shortcut_preset=com.apple.Safari%3A0");
   edited_preset.options = "app_shortcut_preset=com.apple.Safari%3A9";
   assert(companion_shortcut_preset_normalized(edited_preset).empty());
+  edited_preset.options = "app_shortcut_preset=custom";
+  assert(companion_shortcut_preset_normalized(edited_preset) == "custom");
   safari_launch.sensor = "url.https%3A%2F%2Fexample.com";
   assert(!companion_app_shortcuts_enabled(safari_launch));
   assert(!companion_app_subpage_auto_switch_enabled(safari_launch));
