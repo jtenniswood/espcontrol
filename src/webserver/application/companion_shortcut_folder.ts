@@ -172,7 +172,7 @@ export function companionShortcutFolderEditorAvailable(draftCard: any, savedCard
 
 export function companionShortcutSelectionMatchesSavedParent(draftCard: any, savedCard: any): boolean {
     return companionAppShortcutFolderEnabled(draftCard) &&
-        companionAppShortcutFolderEnabled(savedCard) &&
+        !!savedCard && savedCard.type === "companion" && !savedCard.sensor &&
         draftCard.entity === savedCard.entity;
 }
 

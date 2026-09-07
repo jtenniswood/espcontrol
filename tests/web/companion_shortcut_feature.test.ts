@@ -140,6 +140,10 @@ export function runCompanionShortcutFeatureTests(): void {
   if (!companionShortcutFolderEditorAvailable(safariFolderCard, { ...safariFolderCard })) {
     throw new Error("Saved Safari app subpages must expose their editor");
   }
+  if (!companionShortcutSelectionMatchesSavedParent(
+      safariFolderCard, { ...safariFolderCard, options: "" })) {
+    throw new Error("Re-enabled app subpages must restore their retained shortcut selection");
+  }
   if (companionShortcutSelectionMatchesSavedParent(
       { ...safariFolderCard, entity: CODEX_BUNDLE_ID }, safariFolderCard)) {
     throw new Error("Switching apps must not inherit the previous app's shortcut selection");
