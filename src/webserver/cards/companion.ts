@@ -677,6 +677,12 @@ export function registerCompanionCardTypes(
             panel?.appendChild(mediaField);
             helpers.markCardPrimaryField(mediaField, "media");
 
+            const appSubpageDisclosure = helpers.disclosureSection(
+                "App subpage",
+                helpers.idPrefix + "companion-app-subpage",
+                false,
+            );
+            panel?.appendChild(appSubpageDisclosure.panel);
             const shortcutFolderField = document.createElement("div");
             shortcutFolderField.className = "sp-field";
             const folderToggle = helpers.toggleRow(
@@ -691,7 +697,7 @@ export function registerCompanionCardTypes(
             shortcutFolderNote.textContent = "Launch " + shortcutFolderApp +
                 ", then open an editable subpage. It starts with " + shortcutFolderApp + " keyboard shortcuts.";
             shortcutFolderField.appendChild(shortcutFolderNote);
-            panel?.appendChild(shortcutFolderField);
+            appSubpageDisclosure.section.appendChild(shortcutFolderField);
             folderToggle.input.addEventListener("change", function () {
                 setCompanionAppShortcutFolderEnabled(card, folderToggle.input.checked);
                 helpers.saveField("options", card.options);
@@ -711,7 +717,7 @@ export function registerCompanionCardTypes(
             autoSwitchNote.textContent = "Automatically show this subpage when " + shortcutFolderApp +
                 " is opened or focused on the Mac.";
             autoSwitchField.appendChild(autoSwitchNote);
-            panel?.appendChild(autoSwitchField);
+            appSubpageDisclosure.section.appendChild(autoSwitchField);
             autoSwitchToggle.input.addEventListener("change", function () {
                 setCompanionAppShortcutAutoSwitchEnabled(card, autoSwitchToggle.input.checked);
                 helpers.saveField("options", card.options);
@@ -725,7 +731,7 @@ export function registerCompanionCardTypes(
                 windowField.style.display = mode === "window" ? "" : "none";
                 urlField.style.display = mode === "url" ? "" : "none";
                 mediaField.style.display = mode === "media" ? "" : "none";
-                shortcutFolderField.style.display = !helpers.isSub && mode === "app" &&
+                appSubpageDisclosure.panel.style.display = !helpers.isSub && mode === "app" &&
                     !!companionShortcutFolderAppLabel(card.entity) ? "" : "none";
                 autoSwitchField.style.display = !helpers.isSub && mode === "app" &&
                     companionAppShortcutFolderEnabled(card) ? "" : "none";
