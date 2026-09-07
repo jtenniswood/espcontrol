@@ -33,11 +33,10 @@ final class ApprovedFolderTests: XCTestCase {
         let identifier = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
         let folder = ApprovedFolder(id: identifier, name: "Projects", path: "/Users/example/Projects")
         let data = try JSONEncoder().encode(folder)
-        let encoded = try XCTUnwrap(String(data: data, encoding: .utf8))
+        let encoded = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-        XCTAssertTrue(encoded.contains("path"))
-        XCTAssertTrue(encoded.contains("/Users/example/Projects"))
-        XCTAssertFalse(encoded.contains("bookmarkData"))
+        XCTAssertEqual(encoded["path"] as? String, "/Users/example/Projects")
+        XCTAssertNil(encoded["bookmarkData"])
         XCTAssertEqual(try JSONDecoder().decode(ApprovedFolder.self, from: data), folder)
     }
 
