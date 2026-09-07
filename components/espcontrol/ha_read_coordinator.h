@@ -104,7 +104,7 @@ class HaReadCoordinator {
 
   bool request_fresh(const std::string &entity_id,
                     const std::string &attribute) {
-    if (!available() || entity_id.empty() || attribute.empty()) return false;
+    if (!state_connected() || entity_id.empty() || attribute.empty()) return false;
     const size_t channel = find_subscription_channel(entity_id, attribute, true);
     if (channel == subscription_channels_.size()) return false;
     bool has_active_callback = false;
@@ -116,17 +116,12 @@ class HaReadCoordinator {
     }
     if (!has_active_callback) return false;
     if (subscription_channels_[channel].fresh_request_pending) return true;
-    // Reuse the channel dispatcher so a reset or reconnect can invalidate the
-    // request before the native once-response arrives.
-    const uint32_t request_generation = generation_;
+    // Replies use the existing subscription dispatcher, with no additional
+    // native callback or borrowed request strings retained after this call.
     subscription_channels_[channel].fresh_request_pending = true;
-    transport_.request(entity_id, attribute,
-                       [this, channel, request_generation](State state) {
-                         if (generation_ != request_generation) return;
-                         subscription_channels_[channel].fresh_request_pending = false;
-                         invoke_subscription_channel(channel, state);
-                       });
-    return true;
+    if (transport_.request(entity_id, attribute)) return true;
+    subscription_channels_[channel].fresh_request_pending = false;
+    return false;
   }
 
   void flush(size_t max_requests,
@@ -328,6 +323,7 @@ class HaReadCoordinator {
   void invoke_subscription_channel(size_t channel, State state) {
     if (channel >= subscription_channels_.size()) return;
     SubscriptionChannel &subscription = subscription_channels_[channel];
+    subscription.fresh_request_pending = false;
     std::vector<CallbackRef> pending_reads;
     pending_reads.swap(subscription.pending_reads);
     std::vector<std::shared_ptr<Callback>> callbacks;

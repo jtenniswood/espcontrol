@@ -239,6 +239,8 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
     if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
         errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
+    if "->get_home_assistant_state(" in text:
+        errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")
     if (
         "find_subscription_channel(entity_id, attribute, has_attribute)" not in coordinator_text
         or "!channel_reuses_reads(channel)" not in coordinator_text

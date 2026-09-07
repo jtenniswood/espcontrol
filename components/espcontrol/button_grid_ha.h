@@ -82,11 +82,24 @@ struct EspHomeHaReadTransport {
         entity_id, attribute, std::move(callback));
   }
 
-  void request(const std::string &entity_id,
-               const std::string &attribute,
-               Callback callback) {
-    esphome::api::global_api_server->get_home_assistant_state(
-        entity_id.c_str(), attribute.c_str(), std::move(callback));
+  bool request(const std::string &entity_id, const std::string &attribute) {
+    if (!state_connected()) return false;
+    // The coordinator already owns a persistent subscription for this pair.
+    // Ask for its current value directly: get_home_assistant_state appends a
+    // permanent callback and its const-char overload borrows these strings.
+    // Appending also cannot wake an already-finished subscription handshake.
+    esphome::api::SubscribeHomeAssistantStateResponse request;
+    request.entity_id = esphome::StringRef(entity_id);
+    request.attribute = esphome::StringRef(attribute);
+    request.once = true;
+    bool sent = false;
+    for (const auto &client : esphome::api::global_api_server->active_clients()) {
+      if (!client || client->is_marked_for_removal() || !client->is_authenticated()) continue;
+      const char *name = client->get_name();
+      if (name == nullptr || std::string(name).find("Home Assistant") == std::string::npos) continue;
+      sent = client->send_message(request) || sent;
+    }
+    return sent;
   }
 };
 

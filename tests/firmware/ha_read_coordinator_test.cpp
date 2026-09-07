@@ -22,6 +22,7 @@ struct FakeTransport {
 
   bool api_available = true;
   bool connected = true;
+  bool accept_requests = true;
   std::vector<Request> subscriptions;
   std::vector<Request> fresh_requests;
 
@@ -34,10 +35,10 @@ struct FakeTransport {
     subscriptions.push_back({entity_id, attribute, std::move(callback)});
   }
 
-  void request(const std::string &entity_id,
-               const std::string &attribute,
-               Callback callback) {
-    fresh_requests.push_back({entity_id, attribute, std::move(callback)});
+  bool request(const std::string &entity_id, const std::string &attribute) {
+    if (!connected || !accept_requests) return false;
+    fresh_requests.push_back({entity_id, attribute, {}});
+    return true;
   }
 
   void publish(size_t index, const std::string &state) {
@@ -46,8 +47,13 @@ struct FakeTransport {
   }
 
   void publish_fresh(size_t index, const std::string &state) {
-    Callback callback = fresh_requests.at(index).callback;
-    callback(state);
+    const auto request = fresh_requests.at(index);
+    for (const auto &subscription : subscriptions) {
+      if (subscription.entity_id == request.entity_id && subscription.attribute == request.attribute) {
+        Callback callback = subscription.callback;
+        callback(state);
+      }
+    }
   }
 };
 
@@ -716,6 +722,33 @@ void fresh_request_is_ignored_after_reconnect_generation_change() {
   require(calls == 0, "stale fresh response survived a reconnect generation change");
 }
 
+void fresh_requests_reuse_subscription_and_recover_after_send_failure() {
+  Coordinator coordinator;
+  int calls = 0;
+  coordinator.subscribe("media_player.room", "media_artist",
+                        [&](std::string) { calls++; }, 1u, nullptr, true);
+  coordinator.transport().accept_requests = false;
+  require(!coordinator.request_fresh("media_player.room", "media_artist"),
+          "a rejected send must not remain pending");
+  coordinator.transport().accept_requests = true;
+  for (int i = 0; i < 100; ++i) {
+    require(coordinator.request_fresh("media_player.room", "media_artist"),
+            "fresh request should recover after rejection or response");
+    require(coordinator.request_fresh("media_player.room", "media_artist"),
+            "a shared pending request should be reused");
+    require(coordinator.transport().fresh_requests.size() == static_cast<size_t>(i + 1),
+            "pending fresh requests were not deduplicated");
+    coordinator.transport().publish_fresh(i, "artist");
+  }
+  require(calls == 100 && coordinator.transport().subscriptions.size() == 1,
+          "fresh responses must dispatch once without growing native callbacks");
+  coordinator.transport().connected = false;
+  require(!coordinator.request_fresh("media_player.room", "media_artist"),
+          "disconnected fresh request should not be sent");
+  require(!coordinator.request_fresh("media_player.other", "media_artist"),
+          "fresh request must require an existing live channel");
+}
+
 
 void released_owner_drops_pending_reads_even_if_its_address_is_reused() {
   Coordinator coordinator;
@@ -791,6 +824,7 @@ void core_owns_binding_service_lifetime() {
 }  // namespace
 
 int main() {
+  fresh_requests_reuse_subscription_and_recover_after_send_failure();
   disconnected_read_flushes_after_reconnect();
   low_memory_rejects_retained_read_without_pending_work();
   duplicate_reads_fan_out_once();
