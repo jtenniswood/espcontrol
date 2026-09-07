@@ -191,6 +191,8 @@ jobs:
             --disable-pip-version-check \
             "esphome==${ESPHOME_VERSION}"
           "${MODEL_CHECK_VENV}/bin/python" scripts/check_mipi_rgb_models.py
+          # Firmware integration tests parse YAML using the pinned ESPHome environment.
+          echo "${MODEL_CHECK_VENV}/bin" >> "$GITHUB_PATH"
 
       - name: Install dependencies
         run: |

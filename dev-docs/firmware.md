@@ -101,6 +101,8 @@ and artwork-selection bodies with an ESPHome action-chain excerpt and simulated
 LVGL/network/scheduler boundaries. Its `--mutations` option verifies the yields
 and ownership guards. Use `--esphome-source <generated-src>/esphome` after a
 toolchain update to verify the excerpt against the installed automation code.
+Run it with a Python environment containing PyYAML (the pinned ESPHome
+environment provides this dependency and CI reuses it).
 
 The anonymized `tests/firmware/fixtures/issue1854-cover-art.json` backup preserves
 the reporter's tile, 60-second Cover Art delay, presence dimming, music sleep
