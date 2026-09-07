@@ -296,6 +296,15 @@ export function runCompanionShortcutFeatureTests(): void {
       customizedSafariSubpage.order.length !== 7 || customizedSafariSubpage.order[1] !== "2") {
     throw new Error("Turning an edited shortcut off and on must not create a duplicate preset");
   }
+  const crossAppSubpage = createSafariShortcutSubpage();
+  crossAppSubpage.buttons.push({ ...codexPreset[2], label: "Pasted Browser" });
+  crossAppSubpage.order.push("6");
+  syncCompanionShortcutSubpage(SAFARI_BUNDLE_ID, ["0"], crossAppSubpage);
+  if (!crossAppSubpage.buttons.some((card: any) =>
+      card.options.includes("app_shortcut_preset=com.openai.codex%3A2") && card.label === "Pasted Browser") ||
+      companionShortcutTabsFromSubpage(SAFARI_BUNDLE_ID, crossAppSubpage).join("|") !== "0") {
+    throw new Error("Shortcut cards pasted from another app must remain custom content");
+  }
   setCompanionShortcutTabs(safariFolderCard, []);
   if (companionShortcutTabs(safariFolderCard).length !== 0 ||
       !String(safariFolderCard.options).includes("app_shortcuts_tabs=none")) {

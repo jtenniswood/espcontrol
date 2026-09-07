@@ -325,14 +325,14 @@ export function companionShortcutTabsFromSubpage(
         if (index < 0 || visited.has(index)) return;
         visited.add(index);
         const card = subpage?.buttons?.[index];
-        const value = presetIndex.get(companionShortcutPresetIdentity(card)) ||
-            legacyPresetIndex.get(card?.entity);
+        const identity = companionShortcutPresetIdentity(card);
+        const value = identity ? presetIndex.get(identity) : legacyPresetIndex.get(card?.entity);
         if (value != null && tabs.indexOf(value) < 0) tabs.push(value);
     });
     (subpage?.buttons || []).forEach(function (card: any, index: number) {
         if (visited.has(index)) return;
-        const value = presetIndex.get(companionShortcutPresetIdentity(card)) ||
-            legacyPresetIndex.get(card?.entity);
+        const identity = companionShortcutPresetIdentity(card);
+        const value = identity ? presetIndex.get(identity) : legacyPresetIndex.get(card?.entity);
         if (value != null && tabs.indexOf(value) < 0) tabs.push(value);
     });
     return tabs;
@@ -349,7 +349,11 @@ export function syncCompanionShortcutSubpage(
         return [card.entity, companionShortcutPresetKey(bundleIdentifier, index)] as const;
     }));
     function presetKey(card: any): string {
-        return companionShortcutPresetIdentity(card) || presetKeyByEntity.get(card?.entity) || "";
+        const identity = companionShortcutPresetIdentity(card);
+        if (identity) {
+            return identity.startsWith(bundleIdentifier + ":") ? identity : "";
+        }
+        return presetKeyByEntity.get(card?.entity) || "";
     }
     const existingByKey = new Map<string, any>();
     (subpage.buttons || []).forEach(function (card: any) {
